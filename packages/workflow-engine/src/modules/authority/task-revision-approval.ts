@@ -11,7 +11,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { ensurePlainDirectory } from '../../runtime/repository-transaction/filesystem-safety.ts';
 import {
@@ -32,7 +32,7 @@ import {
   assertSessionId,
   assertTaskId,
   normalizePolicyPath,
-} from '../../runtime/session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import {
   readContentRecord,
   writeContentRecord,

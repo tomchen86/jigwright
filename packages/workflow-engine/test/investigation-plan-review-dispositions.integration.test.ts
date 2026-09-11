@@ -4,19 +4,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
 import {
   createEvidenceNode,
   type EvidenceNode,
-} from '../src/adapters/planning/investigation/evidence-node.ts';
+} from '../src/foundation/evidence-node/evidence-node.ts';
 import {
   createPlanReviewDispositionsEnvelope,
   createPlanReviewProgressEnvelope,
   getProposeStatus,
   resumePropose,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import { readPlanReviewNode } from '../src/modules/assurance/plan-review.ts';
-import { admitRoleResult } from '../src/modules/provider-orchestration/role-scheduler.ts';
+import { admitRoleResult } from '../src/composition-root/role-admission-production.ts';
 import {
   PROVIDER_RUNNER_RESIDUALS,
   type ProviderRunnerReport,

@@ -12,16 +12,15 @@ import {
 } from '../src/modules/investigation/domain/class-sample-audit.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
-import type {
-  InvestigationManifestV3,
-  InvestigationPlanReviewCoverageRequirementV3,
-} from '../src/modules/investigation/manifest/investigation-manifest.ts';
+import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
+import type { InvestigationPlanReviewCoverageRequirementV3 } from '../src/modules/investigation/manifest/investigation-requirement-types.ts';
 import {
   PLAN_REVIEW_COVERAGE,
-  type PlanReviewSubmission,
   readPlanReviewNode,
   planReviewProviderSubmission,
 } from '../src/modules/assurance/plan-review.ts';
+import { type PlanReviewSubmission } from '../src/modules/assurance/plan-review-report.ts';
+
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   PROVIDER_RUNNER_RESIDUALS,
@@ -35,7 +34,7 @@ import {
   getProposeStatus,
   resumePropose,
   type OrdinaryProposeOutput,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import { installPlanReviewAuthority } from './plan-review-authority-fixture.ts';
 import { driveProposeToDispositions } from './propose-drive-fixture.ts';
 import {

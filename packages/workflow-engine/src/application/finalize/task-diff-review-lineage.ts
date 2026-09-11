@@ -7,18 +7,18 @@
  *   same subject.
  */
 // Resolve review ancestry, candidate reuse, and durable supersession recovery.
-import {
-  type TaskDiffReviewSubject,
-  type TaskDiffReviewCandidatePlan,
-  deriveTaskDiffReviewCandidatePlan,
-} from '../../modules/assurance/task-diff-review.ts';
+import { deriveTaskDiffReviewCandidatePlan } from '../../modules/assurance/task-diff-review.ts';
+import type {
+  TaskDiffReviewSubject,
+  TaskDiffReviewCandidatePlan,
+} from '../../modules/assurance/task-diff-review-record.ts';
 import { resolveTaskDiffReviewLineage } from '../../modules/assurance/task-diff-review-lineage.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import {
-  assertTaskDiffReviewContentSatisfied,
-  type TaskDiffFinalAssuranceRecord,
-  type TaskDiffReviewRecord,
-} from '../../modules/assurance/task-diff-review-artifact.ts';
+import { assertTaskDiffReviewContentSatisfied } from '../../modules/assurance/task-diff-review-artifact.ts';
+import type {
+  TaskDiffFinalAssuranceRecord,
+  TaskDiffReviewRecord,
+} from '../../modules/assurance/task-diff-review-artifact-record.ts';
 import type {
   TaskDiffReviewRuntimeBindings,
   TaskDiffReviewRuntimeData,

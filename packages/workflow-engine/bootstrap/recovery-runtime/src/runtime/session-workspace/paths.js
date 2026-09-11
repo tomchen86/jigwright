@@ -5,22 +5,11 @@
  * - Identifier errors and runtime directory layouts retain their exact contracts.
  * - Policy paths cannot escape the repository or cross symbolic-link aliases.
  */
-import { RepositoryBoundaryError, assertInvestigationId as assertCoreInvestigationId, assertInvocationId as assertCoreInvocationId, assertPolicyPathInsideRepository as assertCorePolicyPathInsideRepository, assertSessionId as assertCoreSessionId, assertTaskId as assertCoreTaskId, investigationRuntimePaths, } from '@jigwright/core/runtime-path-kernel';
+import { RepositoryBoundaryError, } from '@jigwright/core/runtime-path-kernel';
+import { assertPolicyPathInsideRepository as assertCorePolicyPathInsideRepository, investigationRuntimePaths, } from '@jigwright/repository-runtime/paths';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
-import { assertChangeId, matchesAllowedPath, normalizeChangedPath, normalizeExactRepositoryPath, normalizePolicyPath, } from "../../foundation/repository-path/repository-path.js";
-export { assertChangeId, investigationRuntimePaths, matchesAllowedPath, normalizeChangedPath, normalizeExactRepositoryPath, normalizePolicyPath, };
-export function assertTaskId(value) {
-    return assertCoreTaskId(value, () => workflowError('INVALID_TASK_ID', `Invalid task ID: ${value}`, ExitCode.usage, { recovery: 'Use a dotted numeric task ID, for example 1.1.' }));
-}
-export function assertSessionId(value) {
-    return assertCoreSessionId(value, () => workflowError('INVALID_SESSION_ID', `Invalid session ID: ${value}`, ExitCode.usage));
-}
-export function assertInvestigationId(value) {
-    return assertCoreInvestigationId(value, () => workflowError('INVALID_INVESTIGATION_ID', `Invalid investigation ID: ${value}`, ExitCode.usage));
-}
-export function assertInvocationId(value) {
-    return assertCoreInvocationId(value, () => workflowError('INVALID_INVOCATION_ID', `Invalid provider invocation ID: ${value}`, ExitCode.usage));
-}
+import { normalizePolicyPath, } from "../../foundation/repository-path/repository-path.js";
+export { investigationRuntimePaths };
 export function assertPolicyPathInsideRepository(repositoryRoot, policyPath) {
     const normalized = normalizePolicyPath(policyPath);
     try {

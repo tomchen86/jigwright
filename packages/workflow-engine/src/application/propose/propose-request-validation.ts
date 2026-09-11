@@ -43,12 +43,12 @@ import {
   withEnvelopeTemplate,
 } from './propose-input.ts';
 import type {
-  BlindSurveyManifest,
   InvestigationScanSaturationAcceptanceEnvelope,
   InvestigationStatus,
-  NormalizedChangeIntent,
   ProposeRuntime,
 } from './propose-runtime.ts';
+import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
+import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
 import {
   type InvestigationExemptionRequest,
   type ProposeInput,

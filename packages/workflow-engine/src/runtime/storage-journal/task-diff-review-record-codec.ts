@@ -10,14 +10,15 @@ import {
   assertInvestigationId,
   assertSessionId,
   assertInvocationId,
-} from '../session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import { recreateProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import type {
   ProviderRoleAssignment,
   RecordedRoleParticipant,
-  AdmittedRoleResult,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+} from '../../modules/provider-orchestration/role-assignment.ts';
+import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+
 import {
   parseTaskDiffReviewRecord,
   assertTaskDiffReviewChallengeResponseCurrent,
@@ -25,8 +26,8 @@ import {
   TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA,
   parseTaskDiffReviewContinuationSubmission,
   parseTaskDiffFinalAssuranceRecord,
-  type TaskDiffReviewRecord,
 } from '../../modules/assurance/task-diff-review-artifact.ts';
+import type { TaskDiffReviewRecord } from '../../modules/assurance/task-diff-review-artifact-record.ts';
 import { parseTaskDiffReviewSubject } from '../../modules/assurance/task-diff-review.ts';
 import {
   type TaskDiffReviewReservationRecord,

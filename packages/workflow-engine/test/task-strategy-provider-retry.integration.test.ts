@@ -1,3 +1,16 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -10,7 +23,7 @@ import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { readExecutionJobState } from '../src/runtime/storage-journal/execution-store.ts';
 import { runGitWithEnvironment } from '../src/runtime/repository-transaction/git.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {
   readProviderInvocation,
   readProviderInvocationManifest,
@@ -24,11 +37,11 @@ import {
   assertTaskStrategyImplementationProviderOwnerCurrent,
   beginTaskStrategyImplementation,
   inspectTaskStrategyImplementation,
-} from '../src/application/execute-task/task-strategy-implementation-lifecycle.ts';
+} from '../src/composition-root/task-strategy-production.ts';
 import {
   inspectTaskStrategyLifecycle,
   resumeTaskStrategy,
-} from '../src/application/execute-task/task-strategy-lifecycle.ts';
+} from '../src/composition-root/task-strategy-production.ts';
 import { sealTaskStrategyRed } from '../src/application/execute-task/task-strategy-execution.ts';
 import {
   readCurrentTaskStrategyGreenFailure,
@@ -53,14 +66,24 @@ import {
 test('routine resume replaces a failed implementation transport without changing its semantic subject', () => {
   const repository = createRetryFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const red = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const initial = beginTaskStrategyImplementation(
       repository,
       session.sessionId,
@@ -246,14 +269,24 @@ test('retry budget exhaustion and unrelated collaboration grant refuse without r
 test('correction provider transport retry keeps one correction round and binds the winning attempt', () => {
   const repository = createRetryFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const red = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const initial = beginTaskStrategyImplementation(
       repository,
       session.sessionId,
@@ -282,11 +315,23 @@ test('correction provider transport retry keeps one correction round and binds t
       'patch-imported',
     );
     assert.throws(
-      () => checkSession(repository, session.sessionId, { environment: {} }),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          { environment: {} },
+        ),
       hasCode('CHECK_FAILED'),
     );
     const failure = readCurrentTaskStrategyGreenFailure(
-      inspectSession(repository, session.sessionId),
+      inspectSession(
+        productionChangeRoutingAdmissionReader,
+        repository,
+        session.sessionId,
+      ),
     );
     assert.notEqual(failure, null);
     if (failure === null) return;
@@ -353,7 +398,11 @@ test('correction provider transport retry keeps one correction round and binds t
     );
     assert.equal(
       resolveCurrentTaskStrategyCorrection(
-        inspectSession(repository, session.sessionId),
+        inspectSession(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+        ),
       ).completedCorrectionRounds,
       1,
     );
@@ -418,10 +467,15 @@ test('repeated transport failure reuses the provider within its fixed budget', (
       retry.replacement.strategyChanges,
     );
 
-    const red = sealTaskStrategyRed(repository, sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const red = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -571,14 +625,24 @@ function createRetryFixture(
 }
 
 function openFailedImplementation(repository: string) {
-  const session = startSession(repository, 'demo-change', '1.1');
+  const session = startSession(
+    productionChangeRoutingAdmissionReader,
+    repository,
+    'demo-change',
+    '1.1',
+  );
   const testPath = path.join(repository, 'test/feature.test.mjs');
   fs.mkdirSync(path.dirname(testPath), { recursive: true });
   fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-  sealTaskStrategyRed(repository, session.sessionId, {
-    explicitActor: 'codex',
-    environment: {},
-  });
+  sealTaskStrategyRed(
+    productionChangeRoutingAdmissionReader,
+    repository,
+    session.sessionId,
+    {
+      explicitActor: 'codex',
+      environment: {},
+    },
+  );
   const waiting = beginTaskStrategyImplementation(
     repository,
     session.sessionId,

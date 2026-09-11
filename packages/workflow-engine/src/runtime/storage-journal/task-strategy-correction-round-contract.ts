@@ -6,12 +6,14 @@
  * - Snapshot links and contiguous lineage checks preserve the exact failed candidate and patch head.
  */
 import {
-  type TaskStrategyPatchHead,
-  type TaskStrategyCorrectionPolicy,
-  type TaskStrategyGreenFailureRecord,
   readTaskStrategyGreenFailureRecord,
   parseTaskStrategyCorrectionPolicy,
 } from './task-strategy-correction-store.ts';
+import type {
+  TaskStrategyPatchHead,
+  TaskStrategyCorrectionPolicy,
+  TaskStrategyGreenFailureRecord,
+} from '../../modules/provider-orchestration/task-strategy-correction-record.ts';
 import type { TaskStrategyPatchImplementer } from './task-strategy-patch-store.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

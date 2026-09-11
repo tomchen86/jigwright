@@ -5,44 +5,54 @@
  * Invariants:
  * - A PlanReview must select the exact provider result it reviewed.
  */
-import { createPlanningAssuranceEvidenceResolver } from './planning-assurance-evidence.ts';
-import crypto from 'node:crypto';
-import fs from 'node:fs';
+import {
+  requireCurrentPlanReviewRoleResult,
+  resolvePlanReviewPlanningEvidence,
+  resolvePlanReviewRepositoryEvidence,
+} from './planning-assurance-evidence.ts';
+import type { PlanningAssuranceDependencies } from './planning-assurance-observations.ts';
+import {
+  isPlainRecord,
+  planningNotReady,
+  sha256,
+} from './planning-assurance-values.ts';
+export {
+  replayCurrentPlanReviewRoleResult,
+  resolvePlanReviewPlanningEvidence,
+  resolvePlanReviewRepositoryEvidence,
+} from './planning-assurance-evidence.ts';
 import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import {
-  directHumanReviewAttestationDigest,
-  type CollaborationGrantExpectedBinding,
-} from '../authority/collaboration-grant.ts';
+import type { CollaborationGrantExpectedBinding } from '../authority/collaboration-grant-codec.ts';
 import type {
   ChangeContract,
   CurrentInvestigationManifest,
+} from '../planning-provider/change-contract.ts';
+import type {
   PlanningAssuranceBinding,
   PlanningAssuranceSummary,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
-import {
-  isPlanningAssuranceBinding,
-  repositoryCurrentSchemaName,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+} from './planning-assurance-binding.ts';
+import { isPlanningAssuranceBinding } from './planning-assurance-binding.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   assertStoredEvidenceNode,
   type EvidenceNode,
-} from '../../adapters/planning/investigation/evidence-node.ts';
+} from '../../foundation/evidence-node/evidence-node.ts';
 import type {
   InvestigationManifestV3,
+  InvestigationV3RoleResult,
+} from '../investigation/manifest/investigation-manifest-types.ts';
+import type {
   InvestigationPlanReviewCoverageRequirementV3,
   InvestigationRequirementV3,
-  InvestigationV3RoleResult,
-} from '../investigation/manifest/investigation-manifest.ts';
+} from '../investigation/manifest/investigation-requirement-types.ts';
 import { validateInvestigationManifestLedgerProjection } from '../projection/investigation-design-projection.ts';
-import {
-  runGit,
-  runGitBuffer,
-} from '../../runtime/repository-transaction/git.ts';
 import { agentRolePlanV2Path } from '../source/planning-role-policy-paths.ts';
-import { readCurrentPlanningRoleOverridePolicy } from '../source/planning-role-provider-policy-reader.ts';
+import {
+  assertCurrentPlanningRoleOverridePolicy,
+  type CurrentPlanningRoleOverridePolicy,
+} from '../provider-orchestration/planning-role-provider-policy.ts';
 
 import {
   assertAuthorizedPlanReviewChallengeClosure,
@@ -51,8 +61,8 @@ import {
   PLAN_REVIEW_OUTPUT_SCHEMA,
   readPlanReviewTargetSnapshotNode,
   readPlanReviewNode,
-  type PlanReviewSubject,
 } from './plan-review.ts';
+import type { PlanReviewSubject } from './plan-review-subject.ts';
 import { assertInvestigationPlanReviewCoverageRequirementSatisfied } from './plan-review-coverage.ts';
 import { validatePlanReview } from './plan-review-validation.ts';
 import {
@@ -60,16 +70,16 @@ import {
   type PlanTarget,
   type PlanTargetComponentInput,
 } from './plan-target.ts';
-import {
-  createPlanningGeneration,
-  type PlanningGeneration,
-  type PlanningPolicyDigests,
-} from '../lifecycle/planning-generation.ts';
+import { createPlanningGeneration } from './planning-generation.ts';
+import type {
+  PlanningGeneration,
+  PlanningPolicyDigests,
+} from './planning-generation-record.ts';
 import {
   type AdmitConsumedRoleContextSharingResultReplayInput,
   type AdmitConsumedRoleResultReplayInput,
   type AdmittedRoleResult,
-} from '../provider-orchestration/role-scheduler.ts';
+} from '../provider-orchestration/role-admission-contracts.ts';
 
 const LEDGER_START = '<!-- workflow:investigation-ledger:start v1 -->';
 const LEDGER_END = '<!-- workflow:investigation-ledger:end v1 -->';
@@ -157,10 +167,16 @@ export type CurrentPlanReviewRoleResultReplayContext = Readonly<{
  * a self-referential target; it is validated separately against this subject.
  */
 export function deriveInvestigationFirstPlanningSubject(
+  observations: PlanningAssuranceDependencies,
   repositoryRoot: string,
   contract: ChangeContract,
+  planningRoleOverride: CurrentPlanningRoleOverridePolicy | null,
 ): InvestigationFirstPlanningSubject {
-  assertCurrentSubjectContract(repositoryRoot, contract);
+  assertCurrentSubjectContract(observations, repositoryRoot, contract);
+  const override = assertCurrentPlanningRoleOverridePolicy(
+    planningRoleOverride,
+    contract.changeId,
+  );
   const currentInvestigation = contract.investigation!;
   const manifest = currentInvestigation.manifest;
   const applicability = manifest.applicability;
@@ -185,10 +201,12 @@ export function deriveInvestigationFirstPlanningSubject(
       : [];
   const policies = planningPoliciesFor(applicability);
   const target = createPlanningTarget(
+    observations,
     repositoryRoot,
     contract,
     manifest,
     policies,
+    override,
   );
   const generation = createPlanningGeneration({
     schemaVersion: 1,
@@ -227,14 +245,18 @@ export function deriveInvestigationFirstPlanningSubject(
  * the governing gates.
  */
 export function validateInvestigationFirstPlanningReadiness(
+  observations: PlanningAssuranceDependencies,
   repositoryRoot: string,
   contract: ChangeContract,
   consumedPlanReviewReplay: ConsumedPlanReviewReplayPort,
+  planningRoleOverride: CurrentPlanningRoleOverridePolicy | null,
 ): InvestigationFirstPlanningReadiness {
-  assertCurrentContract(repositoryRoot, contract);
+  assertCurrentContract(observations, repositoryRoot, contract);
   const context = deriveInvestigationFirstPlanningSubject(
+    observations,
     repositoryRoot,
     contract,
+    planningRoleOverride,
   );
   const planReview = contract.planReview!;
   const reviewNode = requireNode(
@@ -254,6 +276,7 @@ export function validateInvestigationFirstPlanningReadiness(
     );
   }
   const roleResult = requireCurrentPlanReviewRoleResult(
+    observations,
     repositoryRoot,
     contract,
     providerResultNode,
@@ -327,25 +350,28 @@ export function validateInvestigationFirstPlanningReadiness(
         'The reviewed plan has no authenticated author identity.',
       );
     }
-    const policy = loadMaintainerPolicyAtCommit(
+    const policy = observations.loadMaintainerPolicyAtCommit(
       repositoryRoot,
       context.generation.investigationBaseline.head,
     );
-    assertAuthorizedPlanReviewChallengeClosure({
-      dispositionNode,
-      reviewNode,
-      expected: {
-        repositoryId: policy.repository.id,
-        changeId: contract.changeId,
-        investigationId: coverageRequirement.coverage.investigationId,
-        baselineCommit: context.generation.investigationBaseline.head,
-        baselineTree: context.generation.investigationBaseline.tree,
-        subjectDigest: context.subject.subjectDigest,
-        planningGenerationId: context.generation.planningGenerationId,
-        authorId,
+    assertAuthorizedPlanReviewChallengeClosure(
+      observations.verifyChallengeClosureSignature,
+      {
+        dispositionNode,
+        reviewNode,
+        expected: {
+          repositoryId: policy.repository.id,
+          changeId: contract.changeId,
+          investigationId: coverageRequirement.coverage.investigationId,
+          baselineCommit: context.generation.investigationBaseline.head,
+          baselineTree: context.generation.investigationBaseline.tree,
+          subjectDigest: context.subject.subjectDigest,
+          planningGenerationId: context.generation.planningGenerationId,
+          authorId,
+        },
+        policy,
       },
-      policy,
-    });
+    );
   }
   const validation = validatePlanReview({
     reviewNode,
@@ -361,6 +387,7 @@ export function validateInvestigationFirstPlanningReadiness(
       roleResult,
     },
     repositoryEvidence: resolvePlanReviewRepositoryEvidence(
+      observations,
       repositoryRoot,
       context.generation.investigationBaseline.tree,
       reviewNode,
@@ -368,6 +395,7 @@ export function validateInvestigationFirstPlanningReadiness(
     ),
     planningTarget: planningSnapshot,
     planningEvidence: resolvePlanReviewPlanningEvidence(
+      observations,
       repositoryRoot,
       planningSnapshot,
       reviewNode,
@@ -392,14 +420,17 @@ export function validateInvestigationFirstPlanningReadiness(
         'PlanReview coverage requirement belongs only to an ordinary Investigation Manifest.',
       );
     }
-    assertInvestigationPlanReviewCoverageRequirementSatisfied({
-      repositoryRoot,
-      requirement: coverageRequirement,
-      review,
-      expectedInvestigationId: context.manifest.investigationId,
-      expectedChangeId: contract.changeId,
-      expectedBaseline: context.generation.investigationBaseline,
-    });
+    assertInvestigationPlanReviewCoverageRequirementSatisfied(
+      observations.readCoverageTarget,
+      {
+        repositoryRoot,
+        requirement: coverageRequirement,
+        review,
+        expectedInvestigationId: context.manifest.investigationId,
+        expectedChangeId: contract.changeId,
+        expectedBaseline: context.generation.investigationBaseline,
+      },
+    );
   }
   const summary: InvestigationFirstPlanningAssuranceSummary = {
     applicabilityKind:
@@ -429,6 +460,7 @@ export function validateInvestigationFirstPlanningReadiness(
 }
 
 export function createTaskPlanningAssuranceBinding(
+  grantCodec: PlanningAssuranceDependencies['grantCodec'],
   contract: ChangeContract,
   summary: InvestigationFirstPlanningAssuranceSummary | null,
 ): PlanningAssuranceBinding | null {
@@ -454,7 +486,7 @@ export function createTaskPlanningAssuranceBinding(
       : null,
     reviewGrantTransitionDigest: roleResult.grantUse?.transitionDigest ?? null,
     directHumanReviewAttestationDigest: roleResult.directHumanReviewAttestation
-      ? directHumanReviewAttestationDigest(
+      ? grantCodec.directHumanReviewAttestationDigest(
           roleResult.directHumanReviewAttestation,
         )
       : null,
@@ -544,6 +576,7 @@ export function evaluatePlanningAssurance(
 }
 
 function assertCurrentContract(
+  observations: PlanningAssuranceDependencies,
   repositoryRoot: string,
   contract: ChangeContract,
 ): asserts contract is ChangeContract & {
@@ -551,7 +584,7 @@ function assertCurrentContract(
   execution: NonNullable<ChangeContract['execution']>;
   planReview: NonNullable<ChangeContract['planReview']>;
 } {
-  const currentSchemaName = repositoryCurrentSchemaName(repositoryRoot);
+  const currentSchemaName = observations.readCurrentSchema(repositoryRoot);
   if (
     contract.schemaName !== currentSchemaName ||
     !contract.investigation ||
@@ -563,13 +596,14 @@ function assertCurrentContract(
 }
 
 function assertCurrentSubjectContract(
+  observations: PlanningAssuranceDependencies,
   repositoryRoot: string,
   contract: ChangeContract,
 ): asserts contract is ChangeContract & {
   investigation: NonNullable<ChangeContract['investigation']>;
   execution: NonNullable<ChangeContract['execution']>;
 } {
-  const currentSchemaName = repositoryCurrentSchemaName(repositoryRoot);
+  const currentSchemaName = observations.readCurrentSchema(repositoryRoot);
   if (
     contract.schemaName !== currentSchemaName ||
     !contract.investigation ||
@@ -642,6 +676,7 @@ export function planningInvestigationRoleResultDependency(
 }
 
 function createPlanningTarget(
+  observations: PlanningAssuranceDependencies,
   repositoryRoot: string,
   contract: ChangeContract & {
     investigation: NonNullable<ChangeContract['investigation']>;
@@ -649,10 +684,11 @@ function createPlanningTarget(
   },
   manifest: InvestigationManifestV3,
   policies: PlanningPolicyDigests,
+  override: CurrentPlanningRoleOverridePolicy | null,
 ): PlanTarget {
   const changeRoot = relative(repositoryRoot, contract.changeDirectory);
   const read = (name: string) =>
-    fs.readFileSync(path.join(contract.changeDirectory, name), 'utf8');
+    observations.readPlanningArtifact(repositoryRoot, `${changeRoot}/${name}`);
   const design = read('design.md');
   const designProjection = designComponentProjection(
     design,
@@ -697,7 +733,7 @@ function createPlanningTarget(
       kind: 'structured-json',
       role: 'guard',
       path: `${changeRoot}/guard.json`,
-      schemaDigest: digestFile(
+      schemaDigest: observations.readPlanningSchemaDigest(
         repositoryRoot,
         'workflow/schemas/guard.schema.json',
       ),
@@ -707,7 +743,7 @@ function createPlanningTarget(
       kind: 'structured-json',
       role: 'execution',
       path: `${changeRoot}/execution.json`,
-      schemaDigest: digestFile(
+      schemaDigest: observations.readPlanningSchemaDigest(
         repositoryRoot,
         'workflow/schemas/execution-artifact.schema.json',
       ),
@@ -717,7 +753,7 @@ function createPlanningTarget(
       kind: 'structured-json',
       role: 'investigation',
       path: `${changeRoot}/investigation.json`,
-      schemaDigest: digestFile(
+      schemaDigest: observations.readPlanningSchemaDigest(
         repositoryRoot,
         'workflow/schemas/investigation-manifest-v3.schema.json',
       ),
@@ -725,10 +761,7 @@ function createPlanningTarget(
     },
   ];
   for (const specPath of specPaths) {
-    const content = fs.readFileSync(
-      path.join(repositoryRoot, specPath),
-      'utf8',
-    );
+    const content = observations.readPlanningArtifact(repositoryRoot, specPath);
     components.push({
       kind: 'authored-markdown',
       role: 'delta-spec',
@@ -757,10 +790,6 @@ function createPlanningTarget(
           name: 'investigation-manifest-ledger-renderer-v3',
         };
   const overridePath = agentRolePlanV2Path(contract.changeId);
-  const override = readCurrentPlanningRoleOverridePolicy(
-    repositoryRoot,
-    contract.changeId,
-  );
   if (override !== null) {
     components.push(
       policyComponent(overridePath, 'agent-role-plan', override.planDigest, 2),
@@ -921,28 +950,12 @@ function policyComponent(
   };
 }
 
-function digestFile(repositoryRoot: string, filePath: string): string {
-  return sha256(fs.readFileSync(path.join(repositoryRoot, filePath), 'utf8'));
-}
-
 function policyDigest(identity: string): string {
   return sha256(canonicalJson({ policy: identity }));
 }
 
 function relative(repositoryRoot: string, filePath: string): string {
   return path.relative(repositoryRoot, filePath).split(path.sep).join('/');
-}
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function planningNotReady(message: string) {
-  return workflowError(
-    'OPENSPEC_CHANGE_NOT_READY',
-    message,
-    ExitCode.verification,
-  );
 }
 
 function canonicalClone<T>(value: T): T {
@@ -957,10 +970,6 @@ function deepFreeze<T>(value: T): T {
     Object.freeze(value);
   }
   return value;
-}
-
-function sha256(value: string): string {
-  return crypto.createHash('sha256').update(value).digest('hex');
 }
 
 function planningInvalid() {
@@ -978,32 +987,5 @@ function planningValidatorInvalid() {
     ExitCode.usage,
   );
 }
-
-export type PlanningAssuranceEvidenceResolverBindings = Readonly<{
-  planningNotReady: typeof planningNotReady;
-  sha256: typeof sha256;
-  isPlainRecord: typeof isPlainRecord;
-  runGit: typeof runGit;
-  runGitBuffer: typeof runGitBuffer;
-}>;
-
-const planningAssuranceEvidenceResolver =
-  createPlanningAssuranceEvidenceResolver({
-    planningNotReady,
-    sha256,
-    isPlainRecord,
-    runGit,
-    runGitBuffer,
-  });
-export const replayCurrentPlanReviewRoleResult =
-  planningAssuranceEvidenceResolver.replayCurrentPlanReviewRoleResult;
-export const resolvePlanReviewRepositoryEvidence =
-  planningAssuranceEvidenceResolver.resolvePlanReviewRepositoryEvidence;
-export const resolvePlanReviewPlanningEvidence =
-  planningAssuranceEvidenceResolver.resolvePlanReviewPlanningEvidence;
-const requireCurrentPlanReviewRoleResult =
-  planningAssuranceEvidenceResolver.requireCurrentPlanReviewRoleResult;
-const loadMaintainerPolicyAtCommit =
-  planningAssuranceEvidenceResolver.loadMaintainerPolicyAtCommit;
 
 export type { ChangeContract, EvidenceNode };

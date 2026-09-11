@@ -20,18 +20,21 @@ import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import type { WorkflowError } from '../../foundation/errors/errors.ts';
 import type {
   PlanReviewSubmissionProtocolBindings,
-  PlanReviewSubmission,
   NormalizedSubmission,
-  PlanReviewVerdict,
   NormalizedFinding,
-  PlanReviewFinding,
   NormalizedSuggestion,
-  PlanReviewSubject,
+} from './plan-review.ts';
+import type {
+  PlanReviewSubmission,
+  PlanReviewVerdict,
+  PlanReviewFinding,
   PlanReviewScopeAssessment,
   PlanReviewProposedTerm,
   PlanReviewEvidence,
   PlanReviewSeverity,
-} from './plan-review.ts';
+} from './plan-review-report.ts';
+
+import type { PlanReviewSubject } from './plan-review-subject.ts';
 
 export function createPlanReviewSubmissionProtocol(
   bindings: PlanReviewSubmissionProtocolBindings,

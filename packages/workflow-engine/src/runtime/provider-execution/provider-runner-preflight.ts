@@ -6,9 +6,9 @@
  * - The caller supplies its reviewed adapter capability flags and existing runner host.
  */
 
-import { assertKnownBuiltInProviderDefinitionSnapshot } from './built-in-provider-definition.ts';
+import {assertKnownBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
 import { createProviderExecutionEnvironment } from './execution-environment.ts';
-import type { ProviderDefinitionSnapshot } from '@jigwright/agent-runtime';
+import type { ProviderDefinitionSnapshot } from '@jigwright/core/provider-definition-snapshot';
 import type {
   ProviderRunnerHost,
   ProviderPreflightOptions,

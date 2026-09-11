@@ -366,3 +366,49 @@ export function revocationConflict() {
     ExitCode.conflict,
   );
 }
+
+import type { MaintainerSignerProvider } from './maintainer-signer-port.ts';
+import type { MaintainerPolicy } from './maintainer-policy.ts';
+import type { GitState } from '../repository-consumer/repository-git-state.ts';
+import type {
+  AuthorityAuditLedgerScope,
+  AuthorityAuditEventInput,
+} from './authority-audit-contract.ts';
+export type HumanRevocationOptions = Readonly<{
+  reason: string;
+  now?: Date;
+  signer?: MaintainerSignerProvider;
+  /** Verifies the historical subject signature; it never supplies authority. */
+  verifier?: MaintainerSignerProvider;
+  /** Crash seam after external audit append and before grant terminalization. */
+  testAfterAudit?: () => void;
+}>;
+export type HumanRevocationAuthorizer = (
+  cwd: string,
+  rawBinding: HumanRevocationBinding,
+  rawOptions: HumanRevocationOptions,
+  preparationPath: string,
+  existingAuthorization?: HumanRevocationAuthorization | null,
+) => HumanRevocationAuthorization;
+export type HumanRevocationServices = Readonly<{
+  now: () => Date;
+  discoverRepository: (cwd: string) => Pick<GitState, 'repositoryRoot'>;
+  loadCurrentPolicy: (repositoryRoot: string) => MaintainerPolicy;
+  readRepositoryOrigin: (repositoryRoot: string) => string;
+  createSigner: (
+    repositoryRoot: string,
+    policy: MaintainerPolicy,
+  ) => MaintainerSignerProvider;
+  readOptionalPreparation: (
+    preparationPath: string,
+  ) => HumanRevocationAuthorization | null;
+  persistExactPreparation: (
+    preparationPath: string,
+    authorization: HumanRevocationAuthorization,
+  ) => void;
+  verifyAuthorityAuditEvents: (scope: AuthorityAuditLedgerScope) => void;
+  recordAuthorityAuditEvent: (
+    scope: AuthorityAuditLedgerScope,
+    input: AuthorityAuditEventInput,
+  ) => void;
+}>;

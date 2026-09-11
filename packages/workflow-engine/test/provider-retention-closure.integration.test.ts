@@ -10,9 +10,9 @@ import { pathToFileURL } from 'node:url';
 import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { listExecutionJobStates } from '../src/runtime/storage-journal/execution-store.ts';
-import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
 import {
   createProviderInvocationRequest,
   type ProviderInvocationRequest,
@@ -37,7 +37,7 @@ import {
   pruneProviderRuntime,
   readProviderRetentionReceipt,
 } from '../src/runtime/provider-execution/provider-retention.ts';
-import { pinWorkflowEvidence } from '../src/runtime/provider-execution/retention-control.ts';
+import { pinWorkflowEvidence as pinWorkflowEvidenceWithMandate } from '../src/runtime/provider-execution/retention-control.ts';
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
 import {
   createFixtureRepository,
@@ -585,3 +585,10 @@ async function waitForChild(child: ChildProcess): Promise<{
   });
   return { code, stdout, stderr };
 }
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+
+const pinWorkflowEvidence = pinWorkflowEvidenceWithMandate.bind(
+  undefined,
+  taskMandateOperations,
+);

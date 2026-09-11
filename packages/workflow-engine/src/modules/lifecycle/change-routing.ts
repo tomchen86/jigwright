@@ -1,36 +1,14 @@
-/**
- * Reviews and applies change routing, dependencies, blockers, and protected
- * continuations.
- *
- * Invariants:
- * - A blocked change must identify one exact blocker.
- */
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
-
-import { canonicalJson } from '@jigwright/core/canonical-json';
-import { isRecord } from '@jigwright/core/contract-values';
-
 import {
-  loadWorkflowConfig,
-  parseTasks,
-  type ParsedTask,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
-import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { replaceTextAtomic } from '../../runtime/repository-transaction/atomic-text.ts';
-import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
-import { assertChangeId } from '../../runtime/session-workspace/paths.ts';
-import {
-  listActiveWorkflowSessionIds,
-  runtimePaths,
-  withRepositoryLifecycleOperation,
-} from '../../runtime/session-workspace/session-store.ts';
-import {
-  CHANGE_ROUTING_CONTINUATION_CONSEQUENCE_DIGEST,
-  CHANGE_ROUTING_CONTINUATION_PARAMETER_SCHEMA_DIGEST,
   CHANGE_ROUTING_CONTINUATION_TRANSITION_ID,
+  CHANGE_ROUTING_CONTINUATION_PARAMETER_SCHEMA_DIGEST,
+  CHANGE_ROUTING_CONTINUATION_CONSEQUENCE_DIGEST,
 } from './change-routing-grant-contract.ts';
+import { type ParsedTask } from '../planning-provider/planning-artifact-types.ts';
+import { isRecord } from '@jigwright/core/contract-values';
+import { canonicalJson } from '@jigwright/core/canonical-json';
+import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
+import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
 
 export const changeLifecycleRelativePath = 'openspec/change-lifecycle.json';
 
@@ -62,7 +40,7 @@ export type ChangeRoutingIntent = Readonly<{
       }>;
 }>;
 
-type RoutingRecord = Readonly<{
+export type RoutingRecord = Readonly<{
   changeId: string;
   disposition: 'ready' | 'blocked' | 'parked';
   reason: string | null;
@@ -90,11 +68,6 @@ export type ChangeRoutingAuthorityFacts = Readonly<{
   reviewRoleResultDigest: string;
 }>;
 
-/**
- * Lower-layer contract for resolving current routing authority. The lifecycle
- * kernel owns the required facts, while the composition root supplies the
- * stable Manifest v3 + PlanReview validator used in production.
- */
 export type ChangeRoutingAuthorityPort = Readonly<{
   loadCurrentAuthority(
     repositoryRoot: string,
@@ -318,173 +291,6 @@ export function parseChangeRoutingReview(value: unknown): ChangeRoutingReview {
   };
 }
 
-export function prepareChangeRoutingReview(
-  repositoryRoot: string,
-  rawIntent: unknown,
-  authorityPort: ChangeRoutingAuthorityPort,
-  continuationGrantPort: ChangeRoutingContinuationGrantPort,
-): ChangeRoutingReview {
-  const intent = parseChangeRoutingIntent(rawIntent);
-  const snapshot = readSourceSnapshot(repositoryRoot);
-  const observed = observeChanges(repositoryRoot, authorityPort);
-  const source = snapshot.source ?? synthesizeSource(observed);
-  const continuationAuthority = authorizeContinuation(
-    repositoryRoot,
-    source,
-    snapshot.digest,
-    intent,
-    observed,
-    continuationGrantPort,
-  );
-  const nextSource = applyIntent(source, intent, observed);
-  const authorityFacts = requiredRoutingAuthorityFacts(
-    repositoryRoot,
-    intent,
-    nextSource,
-    observed,
-    authorityPort,
-  );
-  return Object.freeze({
-    schemaVersion: 3 as const,
-    kind: 'jigwright.change-routing-review.v3' as const,
-    expectedSourceDigest: snapshot.digest,
-    expectedRepositoryFactsDigest: digestObservedRepositoryFacts(observed),
-    authorityFacts,
-    continuationAuthority,
-    intent,
-    nextSource,
-    nextSourceDigest: digestSource(nextSource),
-  });
-}
-
-export function applyChangeRoutingReview(
-  repositoryRoot: string,
-  rawReview: unknown,
-  authorityPort: ChangeRoutingAuthorityPort,
-  continuationGrantPort: ChangeRoutingContinuationGrantPort,
-): Readonly<{
-  sourceDigest: string;
-  relativePath: typeof changeLifecycleRelativePath;
-  replayed: boolean;
-}> {
-  const review = parseChangeRoutingReview(rawReview);
-  const git = discoverRepository(repositoryRoot);
-  const config = loadWorkflowConfig(repositoryRoot);
-  const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
-  return withRepositoryLifecycleOperation(runtime, () =>
-    applyChangeRoutingReviewUnderLifecycleLock(
-      repositoryRoot,
-      review,
-      authorityPort,
-      continuationGrantPort,
-    ),
-  );
-}
-
-/** Composition-only kernel; callers must hold the repository lifecycle lock. */
-export function applyChangeRoutingReviewUnderLifecycleLock(
-  repositoryRoot: string,
-  review: ChangeRoutingReview,
-  authorityPort: ChangeRoutingAuthorityPort,
-  continuationGrantPort: ChangeRoutingContinuationGrantPort,
-): Readonly<{
-  sourceDigest: string;
-  relativePath: typeof changeLifecycleRelativePath;
-  replayed: boolean;
-}> {
-  const snapshot = readSourceSnapshot(repositoryRoot);
-  if (snapshot.digest === review.nextSourceDigest) {
-    return {
-      sourceDigest: review.nextSourceDigest,
-      relativePath: changeLifecycleRelativePath,
-      replayed: true,
-    };
-  }
-  if (snapshot.digest !== review.expectedSourceDigest) {
-    throw workflowError(
-      'CHANGE_ROUTING_REVIEW_STALE',
-      'The reviewed routing transition no longer matches the controlled lifecycle source.',
-      ExitCode.staleState,
-    );
-  }
-  const observed = observeChanges(repositoryRoot, authorityPort);
-  if (
-    digestObservedRepositoryFacts(observed) !==
-    review.expectedRepositoryFactsDigest
-  ) {
-    throw workflowError(
-      'CHANGE_ROUTING_REVIEW_STALE',
-      'The reviewed routing transition no longer matches current task and authority facts.',
-      ExitCode.staleState,
-    );
-  }
-  const current = snapshot.source ?? synthesizeSource(observed);
-  const continuationAuthority = authorizeContinuation(
-    repositoryRoot,
-    current,
-    snapshot.digest,
-    review.intent,
-    observed,
-    continuationGrantPort,
-  );
-  const recomputed = applyIntent(current, review.intent, observed);
-  const authorityFacts = requiredRoutingAuthorityFacts(
-    repositoryRoot,
-    review.intent,
-    recomputed,
-    observed,
-    authorityPort,
-  );
-  if (
-    canonicalJson(recomputed) !== canonicalJson(review.nextSource) ||
-    digestSource(recomputed) !== review.nextSourceDigest ||
-    canonicalJson(authorityFacts) !== canonicalJson(review.authorityFacts) ||
-    canonicalJson(continuationAuthority) !==
-      canonicalJson(review.continuationAuthority)
-  ) {
-    throw workflowError(
-      'CHANGE_ROUTING_REVIEW_INVALID',
-      'The reviewed routing result cannot be reproduced from current repository facts.',
-      ExitCode.verification,
-    );
-  }
-  if (
-    routingWorksetDigest(
-      current.primaryChangeId,
-      current.concurrentChangeIds,
-    ) !==
-    routingWorksetDigest(
-      recomputed.primaryChangeId,
-      recomputed.concurrentChangeIds,
-    )
-  ) {
-    const git = discoverRepository(repositoryRoot);
-    const config = loadWorkflowConfig(repositoryRoot);
-    const activeSessionIds = listActiveWorkflowSessionIds(
-      runtimePaths(git.gitCommonDirectory, config.runtimeDirectory),
-    );
-    if (activeSessionIds.length > 0) {
-      throw workflowError(
-        'CHANGE_ROUTING_WORKSET_BUSY',
-        'The managed writer workset cannot change while a task session is active.',
-        ExitCode.conflict,
-        { details: { activeSessionIds } },
-      );
-    }
-  }
-  const sourcePath = path.join(repositoryRoot, changeLifecycleRelativePath);
-  fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
-  replaceTextAtomic(sourcePath, prettyJson(recomputed), {
-    allowCreate: true,
-    defaultMode: 0o644,
-  });
-  return {
-    sourceDigest: review.nextSourceDigest,
-    relativePath: changeLifecycleRelativePath,
-    replayed: false,
-  };
-}
-
 export function assertChangeRoutingCommitAuthorized(
   _repositoryRoot: string,
   _stagedSourceBytes: string,
@@ -492,136 +298,7 @@ export function assertChangeRoutingCommitAuthorized(
   throw routingCommitUnauthorized();
 }
 
-export function inspectChangeRouting(
-  repositoryRoot: string,
-  authorityPort?: ChangeRoutingAuthorityPort,
-): ChangeRoutingInspection {
-  const snapshot = readSourceSnapshot(repositoryRoot);
-  const observed = observeChanges(repositoryRoot, authorityPort);
-  const source = snapshot.source ?? synthesizeSource(observed);
-  const records = new Map(
-    source.records.map((record) => [record.changeId, record]),
-  );
-  const changes = observed.map((change) => {
-    const record = records.get(change.changeId) ?? readyRecord(change.changeId);
-    const runtimeState = observeRuntimeState(repositoryRoot, change.changeId);
-    let state: ChangeRoutingState;
-    if (change.archived) state = 'archived';
-    else if (change.completed) state = 'completed-awaiting-archive';
-    else if (runtimeState !== null) state = runtimeState;
-    else if (record.disposition === 'blocked') {
-      state = blockerSatisfied(record.blocker, observed)
-        ? 'resume-available'
-        : 'blocked';
-    } else if (record.disposition === 'parked') state = 'parked';
-    else if (change.authorityChecked && change.authority === null) {
-      state = 'recovery-required';
-    } else if (source.primaryChangeId === change.changeId) state = 'primary';
-    else if (source.concurrentChangeIds.includes(change.changeId)) {
-      state = 'concurrent';
-    } else state = 'ready';
-    return Object.freeze({
-      changeId: change.changeId,
-      state,
-      reason: record.reason,
-      taskId: record.taskId,
-      blocker: record.blocker,
-      tasks: Object.freeze(
-        change.tasks.map((task) => Object.freeze({ ...task })),
-      ),
-    });
-  });
-  return Object.freeze({
-    schemaVersion: 1 as const,
-    sourcePresent: snapshot.source !== null,
-    sourceDigest: snapshot.digest,
-    primaryChangeId:
-      source.primaryChangeId !== null &&
-      changes.some(
-        ({ changeId, state }) =>
-          changeId === source.primaryChangeId &&
-          state !== 'archived' &&
-          state !== 'completed-awaiting-archive' &&
-          state !== 'recovery-required',
-      )
-        ? source.primaryChangeId
-        : null,
-    concurrentChangeIds: Object.freeze(
-      source.concurrentChangeIds.filter((changeId) =>
-        changes.some(
-          (change) =>
-            change.changeId === changeId &&
-            change.state !== 'archived' &&
-            change.state !== 'completed-awaiting-archive' &&
-            change.state !== 'recovery-required',
-        ),
-      ),
-    ),
-    changes: Object.freeze(changes),
-  });
-}
-
-export function assertChangeRoutingAdmission(
-  repositoryRoot: string,
-  requestedChangeId: string,
-  authorityPort: ChangeRoutingAuthorityPort,
-): ChangeRoutingAdmission {
-  const changeId = assertChangeId(requestedChangeId);
-  const snapshot = readSourceSnapshot(repositoryRoot);
-  if (snapshot.source === null) {
-    const structurallyObserved = observeChanges(repositoryRoot);
-    const active = structurallyObserved.filter(
-      (change) => !change.archived && !change.completed,
-    );
-    if (active.length <= 1) {
-      return Object.freeze({
-        role: 'single' as const,
-        worksetDigest: routingWorksetDigest(null, []),
-        concurrencyEnabled: false,
-      });
-    }
-  }
-  const observed = observeChanges(repositoryRoot, authorityPort);
-  const source = snapshot.source ?? synthesizeSource(observed);
-  const requested = observed.find((change) => change.changeId === changeId);
-  const record =
-    source.records.find((candidate) => candidate.changeId === changeId) ??
-    readyRecord(changeId);
-  const runtimeState = observeRuntimeState(repositoryRoot, changeId);
-  const role =
-    source.primaryChangeId === changeId
-      ? ('primary' as const)
-      : source.concurrentChangeIds.includes(changeId)
-        ? ('concurrent' as const)
-        : null;
-  if (
-    requested !== undefined &&
-    !requested.archived &&
-    record.disposition === 'ready' &&
-    runtimeState !== 'recovery-required' &&
-    role !== null
-  ) {
-    if (requested.authority === null) {
-      authorityPort.loadCurrentAuthority(repositoryRoot, changeId);
-    }
-    return Object.freeze({
-      role,
-      worksetDigest: routingWorksetDigest(
-        source.primaryChangeId,
-        source.concurrentChangeIds,
-      ),
-      concurrencyEnabled: source.concurrentChangeIds.length > 0,
-    });
-  }
-  throw workflowError(
-    'CHANGE_ROUTING_REQUIRED',
-    `Change ${changeId} is not in the managed writer workset.`,
-    ExitCode.guard,
-    { recovery: 'Prepare and apply an exact change-routing review first.' },
-  );
-}
-
-function applyIntent(
+export function applyIntent(
   source: ChangeLifecycleSource,
   intent: ChangeRoutingIntent,
   observed: readonly ObservedChange[],
@@ -754,7 +431,7 @@ function applyIntent(
   });
 }
 
-type ObservedChange = Readonly<{
+export type ObservedChange = Readonly<{
   changeId: string;
   archived: boolean;
   completed: boolean;
@@ -764,142 +441,7 @@ type ObservedChange = Readonly<{
   tasks: readonly ParsedTask[];
 }>;
 
-function observeChanges(
-  repositoryRoot: string,
-  authorityPort?: ChangeRoutingAuthorityPort,
-): readonly ObservedChange[] {
-  const config = loadWorkflowConfig(repositoryRoot);
-  const changeRoot = path.join(repositoryRoot, config.changeRoot);
-  const active = fs
-    .readdirSync(changeRoot, { withFileTypes: true })
-    .filter(
-      (entry) =>
-        entry.isDirectory() &&
-        entry.name !== 'archive' &&
-        // A directory holding nothing but `origin.json` is a promotion that
-        // has not been proposed yet: it has reserved an identity and has no
-        // tasks to route.
-        !isUnproposedChangeReservation(path.join(changeRoot, entry.name)),
-    )
-    .map((entry) =>
-      observeChange(
-        repositoryRoot,
-        path.join(changeRoot, entry.name),
-        entry.name,
-        false,
-        authorityPort,
-      ),
-    );
-  const archiveRoot = path.join(changeRoot, 'archive');
-  const archiveStats = fs.lstatSync(archiveRoot, { throwIfNoEntry: false });
-  const archived =
-    archiveStats?.isDirectory() === true
-      ? fs
-          .readdirSync(archiveRoot, { withFileTypes: true })
-          .filter((entry) => entry.isDirectory())
-          .map((entry) =>
-            observeChange(
-              repositoryRoot,
-              path.join(archiveRoot, entry.name),
-              archivedChangeId(entry.name),
-              true,
-              authorityPort,
-            ),
-          )
-      : [];
-  return Object.freeze(
-    [...active, ...archived].sort((left, right) =>
-      left.changeId.localeCompare(right.changeId),
-    ),
-  );
-}
-
-function isUnproposedChangeReservation(directory: string): boolean {
-  const entries = fs.readdirSync(directory, { withFileTypes: true });
-  return (
-    entries.length === 1 &&
-    entries[0]!.isFile() &&
-    entries[0]!.name === 'origin.json'
-  );
-}
-
-function observeChange(
-  repositoryRoot: string,
-  directory: string,
-  changeId: string,
-  archived: boolean,
-  authorityPort?: ChangeRoutingAuthorityPort,
-): ObservedChange {
-  const tasksPath = path.join(directory, 'tasks.md');
-  const tasksStats = fs.lstatSync(tasksPath, { throwIfNoEntry: false });
-  if (
-    !tasksStats?.isFile() ||
-    tasksStats.isSymbolicLink() ||
-    tasksStats.nlink !== 1
-  ) {
-    throw routingInvalid('Change task source is not a plain file.');
-  }
-  const bytes = fs.readFileSync(tasksPath, 'utf8');
-  const tasks = parseTasks(bytes);
-  const authorityArtifacts = observeRoutingFacts(directory);
-  const completed = tasks.length > 0 && tasks.every((task) => task.completed);
-  const authorityChecked = archived || completed || authorityPort !== undefined;
-  const authority =
-    archived || completed || authorityPort === undefined
-      ? null
-      : tryLoadCurrentRoutingAuthority(authorityPort, repositoryRoot, changeId);
-  return Object.freeze({
-    changeId: assertChangeId(changeId),
-    archived,
-    completed,
-    authorityChecked,
-    factsDigest: digestBytes(
-      canonicalJson({ archived, artifacts: authorityArtifacts, authority }),
-    ),
-    authority,
-    tasks: Object.freeze(tasks),
-  });
-}
-
-function observeRoutingFacts(directory: string): readonly Readonly<{
-  path: string;
-  mode: '100644' | '100755';
-  digest: string;
-}>[] {
-  const facts: Array<{
-    path: string;
-    mode: '100644' | '100755';
-    digest: string;
-  }> = [];
-  const visit = (current: string): void => {
-    const entries = fs
-      .readdirSync(current, { withFileTypes: true })
-      .sort((left, right) => left.name.localeCompare(right.name));
-    for (const entry of entries) {
-      const artifactPath = path.join(current, entry.name);
-      const stats = fs.lstatSync(artifactPath);
-      if (stats.isSymbolicLink()) {
-        throw routingInvalid('Routing authority input cannot be a symlink.');
-      }
-      if (stats.isDirectory()) {
-        visit(artifactPath);
-        continue;
-      }
-      if (!stats.isFile() || stats.nlink !== 1) {
-        throw routingInvalid('Routing authority input is not a plain file.');
-      }
-      facts.push({
-        path: path.relative(directory, artifactPath).split(path.sep).join('/'),
-        mode: (stats.mode & 0o111) === 0 ? '100644' : '100755',
-        digest: digestBuffer(fs.readFileSync(artifactPath)),
-      });
-    }
-  };
-  visit(directory);
-  return Object.freeze(facts.map((fact) => Object.freeze(fact)));
-}
-
-function digestObservedRepositoryFacts(
+export function digestObservedRepositoryFacts(
   observed: readonly ObservedChange[],
 ): string {
   return digestBytes(
@@ -914,162 +456,6 @@ function digestObservedRepositoryFacts(
   );
 }
 
-function tryLoadCurrentRoutingAuthority(
-  authorityPort: ChangeRoutingAuthorityPort,
-  repositoryRoot: string,
-  changeId: string,
-): ChangeRoutingAuthorityFacts | null {
-  try {
-    return authorityPort.loadCurrentAuthority(repositoryRoot, changeId);
-  } catch {
-    return null;
-  }
-}
-
-function requiredRoutingAuthorityFacts(
-  repositoryRoot: string,
-  intent: ChangeRoutingIntent,
-  nextSource: ChangeLifecycleSource,
-  observed: readonly ObservedChange[],
-  authorityPort: ChangeRoutingAuthorityPort,
-): readonly ChangeRoutingAuthorityFacts[] {
-  const changeIds = new Set<string>();
-  if (nextSource.primaryChangeId !== null) {
-    changeIds.add(nextSource.primaryChangeId);
-  }
-  for (const changeId of nextSource.concurrentChangeIds) {
-    changeIds.add(changeId);
-  }
-  if (
-    intent.action.kind === 'focus' ||
-    intent.action.kind === 'set-concurrent' ||
-    intent.action.kind === 'resume'
-  ) {
-    changeIds.add(intent.action.changeId);
-  }
-  return Object.freeze(
-    [...changeIds].sort().map((changeId) => {
-      const current = observed.find(
-        (change) => change.changeId === changeId,
-      )?.authority;
-      return (
-        current ?? authorityPort.loadCurrentAuthority(repositoryRoot, changeId)
-      );
-    }),
-  );
-}
-
-export function observeChangeRoutingContinuationState(
-  repositoryRoot: string,
-  requestedChangeId: string,
-): Readonly<{
-  kind: 'change-routing-continuation';
-  digest: `sha256:${string}`;
-  sourceDigest: `sha256:${string}`;
-  record: RoutingRecord;
-}> {
-  const changeId = assertChangeId(requestedChangeId);
-  const snapshot = readSourceSnapshot(repositoryRoot);
-  if (snapshot.source === null || snapshot.digest === null) {
-    throw workflowError(
-      'CHANGE_ROUTING_GRANT_NOT_REQUIRED',
-      'A protected continuation requires an existing blocked or parked routing record.',
-      ExitCode.guard,
-    );
-  }
-  const record = snapshot.source.records.find(
-    (candidate) => candidate.changeId === changeId,
-  );
-  if (record === undefined || !protectedContinuation(record)) {
-    throw workflowError(
-      'CHANGE_ROUTING_GRANT_NOT_REQUIRED',
-      'The selected routing record does not require Central Grant continuation.',
-      ExitCode.guard,
-    );
-  }
-  return Object.freeze({
-    kind: 'change-routing-continuation' as const,
-    digest: digestBytes(
-      canonicalJson({
-        kind: 'change-routing-continuation.v1',
-        changeId,
-        sourceDigest: snapshot.digest,
-        record,
-      }),
-    ) as `sha256:${string}`,
-    sourceDigest: snapshot.digest as `sha256:${string}`,
-    record,
-  });
-}
-
-function authorizeContinuation(
-  repositoryRoot: string,
-  source: ChangeLifecycleSource,
-  sourceDigest: string | null,
-  intent: ChangeRoutingIntent,
-  observed: readonly ObservedChange[],
-  continuationGrantPort: ChangeRoutingContinuationGrantPort,
-): ChangeRoutingContinuationAuthority | null {
-  if (intent.action.kind !== 'resume') return null;
-  const action = intent.action;
-  const record = source.records.find(
-    (candidate) => candidate.changeId === action.changeId,
-  );
-  if (record === undefined || record.disposition === 'ready') {
-    throw routingInvalid('Only a blocked or parked change can be resumed.');
-  }
-  if (!protectedContinuation(record)) {
-    if (action.grantChallengeId !== undefined) {
-      throw routingInvalid(
-        'Automatic change continuation cannot consume a manual grant.',
-      );
-    }
-    if (!blockerSatisfied(record.blocker, observed)) {
-      throw workflowError(
-        'CHANGE_ROUTING_RESUME_NOT_READY',
-        'The exact automatic resume condition is not yet satisfied.',
-        ExitCode.guard,
-      );
-    }
-    return null;
-  }
-  if (action.grantChallengeId === undefined) {
-    const continuation = observeChangeRoutingContinuationState(
-      repositoryRoot,
-      action.changeId,
-    );
-    if (sourceDigest === null || continuation.sourceDigest !== sourceDigest) {
-      throw workflowError(
-        'CHANGE_ROUTING_REVIEW_STALE',
-        'The protected routing record changed while its continuation was being prepared.',
-        ExitCode.staleState,
-      );
-    }
-    throw workflowError(
-      'CHANGE_ROUTING_GRANT_REQUIRED',
-      'Manual, external, and parked continuation requires one exact completed Central Grant transition.',
-      ExitCode.guard,
-      {
-        details: {
-          schemaVersion: 1,
-          kind: 'change-routing-grant-required.v1',
-          changeId: action.changeId,
-          sourceDigest: continuation.sourceDigest,
-          stateBindingDigest: continuation.digest,
-        },
-        recovery:
-          'Resolve the exact Central Grant challenge, add its challengeId to the resume intent, and prepare the review again.',
-      },
-    );
-  }
-  return verifyCompletedContinuationGrant(
-    repositoryRoot,
-    action.changeId,
-    action.grantChallengeId,
-    continuationGrantPort,
-  );
-}
-
 function protectedContinuation(record: RoutingRecord): boolean {
   return (
     record.disposition === 'parked' ||
@@ -1077,85 +463,6 @@ function protectedContinuation(record: RoutingRecord): boolean {
       (record.blocker?.kind === 'external' ||
         record.blocker?.resumeCondition === 'manual'))
   );
-}
-
-function verifyCompletedContinuationGrant(
-  repositoryRoot: string,
-  changeId: string,
-  challengeId: string,
-  continuationGrantPort: ChangeRoutingContinuationGrantPort,
-): ChangeRoutingContinuationAuthority {
-  const observed = observeChangeRoutingContinuationState(
-    repositoryRoot,
-    changeId,
-  );
-  const record = continuationGrantPort.readGrantRecord(
-    repositoryRoot,
-    challengeId,
-  );
-  const expectedOutcome = Object.freeze({
-    outcome: 'completed' as const,
-    details: Object.freeze({
-      authorized: true,
-      changeId,
-      sourceDigest: observed.sourceDigest,
-      autoFocus: false,
-    }),
-  });
-  if (
-    !isRecord(record) ||
-    record.state !== 'completed' ||
-    !isRecord(record.outcome) ||
-    record.outcome.outcome !== 'completed' ||
-    !isRecord(record.challenge) ||
-    record.challenge.sourceModuleId !== 'change-routing' ||
-    record.challenge.failureCode !== 'protected-continuation-required' ||
-    !isRecord(record.challenge.stateBinding) ||
-    record.challenge.stateBinding.kind !== observed.kind ||
-    record.challenge.stateBinding.digest !== observed.digest ||
-    !Array.isArray(record.challenge.choices) ||
-    !isRecord(record.approvalSubject) ||
-    record.approvalSubject.stateDigest !== observed.digest ||
-    record.poststateDigest !== observed.digest ||
-    canonicalJson(record.outcome) !== canonicalJson(expectedOutcome) ||
-    typeof record.approvalSubject.choiceId !== 'string' ||
-    typeof record.operationId !== 'string' ||
-    typeof record.challenge.challengeId !== 'string' ||
-    typeof record.challenge.challengeDigest !== 'string' ||
-    !/^sha256:[0-9a-f]{64}$/.test(record.challenge.challengeDigest)
-  ) {
-    throw invalidContinuationGrant();
-  }
-  const approvalChoiceId = record.approvalSubject.choiceId;
-  const choice = record.challenge.choices.find(
-    (candidate) =>
-      isRecord(candidate) && candidate.choiceId === approvalChoiceId,
-  );
-  if (
-    !isRecord(choice) ||
-    choice.transitionId !== CHANGE_ROUTING_CONTINUATION_TRANSITION_ID ||
-    choice.parameterSchemaDigest !==
-      CHANGE_ROUTING_CONTINUATION_PARAMETER_SCHEMA_DIGEST ||
-    choice.consequenceDigest !==
-      CHANGE_ROUTING_CONTINUATION_CONSEQUENCE_DIGEST ||
-    choice.resolutionKind !== 'non-retry' ||
-    !isRecord(choice.parameters) ||
-    !hasExactKeys(choice.parameters, ['changeId', 'sourceDigest']) ||
-    choice.parameters.changeId !== changeId ||
-    choice.parameters.sourceDigest !== observed.sourceDigest
-  ) {
-    throw invalidContinuationGrant();
-  }
-  return Object.freeze({
-    contractVersion: 'central-grant-completed-authority-ref.v1' as const,
-    challengeId: record.challenge.challengeId,
-    challengeDigest: record.challenge.challengeDigest as `sha256:${string}`,
-    transitionId: CHANGE_ROUTING_CONTINUATION_TRANSITION_ID,
-    operationId: record.operationId,
-    terminalOutcomeDigest: digestBytes(
-      canonicalJson(record.outcome),
-    ) as `sha256:${string}`,
-  });
 }
 
 function invalidContinuationGrant() {
@@ -1198,12 +505,12 @@ function assertChangeDependencyGraph(
   }
 }
 
-function archivedChangeId(entry: string): string {
+export function archivedChangeId(entry: string): string {
   const match = /^\d{4}-\d{2}-\d{2}-(.+)$/.exec(entry);
   return match?.[1] ?? entry;
 }
 
-function synthesizeSource(
+export function synthesizeSource(
   observed: readonly ObservedChange[],
 ): ChangeLifecycleSource {
   const active = observed.filter((change) => !change.archived);
@@ -1219,7 +526,7 @@ function synthesizeSource(
   });
 }
 
-function readyRecord(changeId: string): RoutingRecord {
+export function readyRecord(changeId: string): RoutingRecord {
   return Object.freeze({
     changeId,
     disposition: 'ready' as const,
@@ -1227,32 +534,6 @@ function readyRecord(changeId: string): RoutingRecord {
     taskId: null,
     blocker: null,
   });
-}
-
-function readSourceSnapshot(repositoryRoot: string): Readonly<{
-  source: ChangeLifecycleSource | null;
-  digest: string | null;
-}> {
-  const sourcePath = path.join(repositoryRoot, changeLifecycleRelativePath);
-  const stats = fs.lstatSync(sourcePath, { throwIfNoEntry: false });
-  if (!stats) return { source: null, digest: null };
-  if (!stats.isFile() || stats.isSymbolicLink() || stats.nlink !== 1) {
-    throw routingInvalid('Controlled lifecycle source is not a plain file.');
-  }
-  const bytes = fs.readFileSync(sourcePath, 'utf8');
-  let value: unknown;
-  try {
-    value = JSON.parse(bytes);
-  } catch {
-    throw routingInvalid('Controlled lifecycle source is not valid JSON.');
-  }
-  const source = parseChangeLifecycleSource(value);
-  if (bytes !== prettyJson(source)) {
-    throw routingInvalid(
-      'Controlled lifecycle source bytes are not canonical.',
-    );
-  }
-  return { source, digest: digestBytes(bytes) };
 }
 
 export function parseChangeLifecycleSource(
@@ -1340,7 +621,7 @@ function nextRoutingRevision(current: number): number {
   return current + 1;
 }
 
-function routingWorksetDigest(
+export function routingWorksetDigest(
   primaryChangeId: string | null,
   concurrentChangeIds: readonly string[],
 ): string {
@@ -1440,75 +721,6 @@ function blockerSatisfied(
   return false;
 }
 
-function observeRuntimeState(
-  repositoryRoot: string,
-  changeId: string,
-): 'revising' | 'recovery-required' | null {
-  try {
-    const git = discoverRepository(repositoryRoot);
-    const config = loadWorkflowConfig(repositoryRoot);
-    const runtime = runtimePaths(
-      git.gitCommonDirectory,
-      config.runtimeDirectory,
-    );
-    const sessionDirectory = runtime.sessions;
-    const sessionStats = fs.lstatSync(sessionDirectory, {
-      throwIfNoEntry: false,
-    });
-    if (sessionStats?.isDirectory()) {
-      for (const entry of fs.readdirSync(sessionDirectory).sort()) {
-        if (!entry.endsWith('.json')) continue;
-        const value = JSON.parse(
-          fs.readFileSync(path.join(sessionDirectory, entry), 'utf8'),
-        ) as unknown;
-        if (
-          isRecord(value) &&
-          value.changeId === changeId &&
-          value.state === 'revising'
-        ) {
-          return 'revising';
-        }
-      }
-    }
-    const transactionDirectory = path.join(
-      runtime.root,
-      'open-task',
-      'transactions',
-    );
-    const transactionStats = fs.lstatSync(transactionDirectory, {
-      throwIfNoEntry: false,
-    });
-    if (transactionStats?.isDirectory()) {
-      for (const entry of fs.readdirSync(transactionDirectory).sort()) {
-        if (!entry.endsWith('.json')) continue;
-        let value: unknown;
-        try {
-          value = JSON.parse(
-            fs.readFileSync(path.join(transactionDirectory, entry), 'utf8'),
-          ) as unknown;
-        } catch {
-          return 'recovery-required';
-        }
-        if (
-          isRecord(value) &&
-          value.changeId === changeId &&
-          value.phase !== 'completed' &&
-          typeof value.sessionId === 'string'
-        ) {
-          const sessionPath = path.join(
-            runtime.sessions,
-            `${value.sessionId}.json`,
-          );
-          if (!fs.existsSync(sessionPath)) return 'recovery-required';
-        }
-      }
-    }
-  } catch {
-    return 'recovery-required';
-  }
-  return null;
-}
-
 function requireActiveChange(
   observed: readonly ObservedChange[],
   changeId: string,
@@ -1520,22 +732,22 @@ function requireActiveChange(
   return change;
 }
 
-function prettyJson(value: unknown): string {
+export function prettyJson(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
-function digestSource(value: unknown): string {
+export function digestSource(value: unknown): string {
   // canonicalJson rejects non-data values/prototypes before the human-readable
   // controlled file encoding is digested.
   canonicalJson(value);
   return digestBytes(prettyJson(value));
 }
 
-function digestBytes(value: string): string {
+export function digestBytes(value: string): string {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
 
-function digestBuffer(value: Buffer): string {
+export function digestBuffer(value: Buffer): string {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
 
@@ -1688,7 +900,7 @@ function hasExactKeys(
   return JSON.stringify(actual) === JSON.stringify(expected);
 }
 
-function routingInvalid(message: string) {
+export function routingInvalid(message: string) {
   return workflowError(
     'CHANGE_ROUTING_INVALID',
     message,
@@ -1703,3 +915,351 @@ function routingCommitUnauthorized() {
     ExitCode.guard,
   );
 }
+
+export type ChangeRoutingSourceSnapshot = Readonly<{
+  source: ChangeLifecycleSource | null;
+  digest: string | null;
+}>;
+export type ChangeRoutingRuntimeState = 'revising' | 'recovery-required' | null;
+
+export function inspectObservedRoutingChange(
+  source: ChangeLifecycleSource,
+  change: ObservedChange,
+  record: RoutingRecord,
+  runtimeState: ChangeRoutingRuntimeState,
+  observed: readonly ObservedChange[],
+): ChangeRoutingObservation {
+  let state: ChangeRoutingState;
+  if (change.archived) state = 'archived';
+  else if (change.completed) state = 'completed-awaiting-archive';
+  else if (runtimeState !== null) state = runtimeState;
+  else if (record.disposition === 'blocked') {
+    state = blockerSatisfied(record.blocker, observed)
+      ? 'resume-available'
+      : 'blocked';
+  } else if (record.disposition === 'parked') state = 'parked';
+  else if (change.authorityChecked && change.authority === null) {
+    state = 'recovery-required';
+  } else if (source.primaryChangeId === change.changeId) state = 'primary';
+  else if (source.concurrentChangeIds.includes(change.changeId)) {
+    state = 'concurrent';
+  } else state = 'ready';
+  return Object.freeze({
+    changeId: change.changeId,
+    state,
+    reason: record.reason,
+    taskId: record.taskId,
+    blocker: record.blocker,
+    tasks: Object.freeze(
+      change.tasks.map((task) => Object.freeze({ ...task })),
+    ),
+  });
+}
+
+export function buildChangeRoutingInspection(
+  snapshot: ChangeRoutingSourceSnapshot,
+  source: ChangeLifecycleSource,
+  changes: ChangeRoutingObservation[],
+): ChangeRoutingInspection {
+  return Object.freeze({
+    schemaVersion: 1 as const,
+    sourcePresent: snapshot.source !== null,
+    sourceDigest: snapshot.digest,
+    primaryChangeId:
+      source.primaryChangeId !== null &&
+      changes.some(
+        ({ changeId, state }) =>
+          changeId === source.primaryChangeId &&
+          state !== 'archived' &&
+          state !== 'completed-awaiting-archive' &&
+          state !== 'recovery-required',
+      )
+        ? source.primaryChangeId
+        : null,
+    concurrentChangeIds: Object.freeze(
+      source.concurrentChangeIds.filter((changeId) =>
+        changes.some(
+          (change) =>
+            change.changeId === changeId &&
+            change.state !== 'archived' &&
+            change.state !== 'completed-awaiting-archive' &&
+            change.state !== 'recovery-required',
+        ),
+      ),
+    ),
+    changes: Object.freeze(changes),
+  });
+}
+
+export function singleChangeRoutingAdmission(
+  structurallyObserved: readonly ObservedChange[],
+): ChangeRoutingAdmission | null {
+  const active = structurallyObserved.filter(
+    (change) => !change.archived && !change.completed,
+  );
+  if (active.length <= 1) {
+    return Object.freeze({
+      role: 'single' as const,
+      worksetDigest: routingWorksetDigest(null, []),
+      concurrencyEnabled: false,
+    });
+  }
+  return null;
+}
+
+export function admissibleRoutingRole(
+  source: ChangeLifecycleSource,
+  requested: ObservedChange | undefined,
+  record: RoutingRecord,
+  runtimeState: ChangeRoutingRuntimeState,
+  changeId: string,
+): 'primary' | 'concurrent' | null {
+  const role =
+    source.primaryChangeId === changeId
+      ? ('primary' as const)
+      : source.concurrentChangeIds.includes(changeId)
+        ? ('concurrent' as const)
+        : null;
+  if (
+    requested !== undefined &&
+    !requested.archived &&
+    record.disposition === 'ready' &&
+    runtimeState !== 'recovery-required' &&
+    role !== null
+  ) {
+    return role;
+  }
+  return null;
+}
+
+export function routingAdmission(
+  source: ChangeLifecycleSource,
+  role: 'primary' | 'concurrent',
+): ChangeRoutingAdmission {
+  return Object.freeze({
+    role,
+    worksetDigest: routingWorksetDigest(
+      source.primaryChangeId,
+      source.concurrentChangeIds,
+    ),
+    concurrencyEnabled: source.concurrentChangeIds.length > 0,
+  });
+}
+
+export function routingAdmissionRequired(changeId: string): never {
+  throw workflowError(
+    'CHANGE_ROUTING_REQUIRED',
+    `Change ${changeId} is not in the managed writer workset.`,
+    ExitCode.guard,
+    { recovery: 'Prepare and apply an exact change-routing review first.' },
+  );
+}
+
+export function changeRoutingContinuationState(
+  snapshot: ChangeRoutingSourceSnapshot,
+  changeId: string,
+): Readonly<{
+  kind: 'change-routing-continuation';
+  digest: `sha256:${string}`;
+  sourceDigest: `sha256:${string}`;
+  record: RoutingRecord;
+}> {
+  if (snapshot.source === null || snapshot.digest === null) {
+    throw workflowError(
+      'CHANGE_ROUTING_GRANT_NOT_REQUIRED',
+      'A protected continuation requires an existing blocked or parked routing record.',
+      ExitCode.guard,
+    );
+  }
+  const record = snapshot.source.records.find(
+    (candidate) => candidate.changeId === changeId,
+  );
+  if (record === undefined || !protectedContinuation(record)) {
+    throw workflowError(
+      'CHANGE_ROUTING_GRANT_NOT_REQUIRED',
+      'The selected routing record does not require Central Grant continuation.',
+      ExitCode.guard,
+    );
+  }
+  return Object.freeze({
+    kind: 'change-routing-continuation' as const,
+    digest: digestBytes(
+      canonicalJson({
+        kind: 'change-routing-continuation.v1',
+        changeId,
+        sourceDigest: snapshot.digest,
+        record,
+      }),
+    ) as `sha256:${string}`,
+    sourceDigest: snapshot.digest as `sha256:${string}`,
+    record,
+  });
+}
+
+export function requiredContinuationAction(
+  source: ChangeLifecycleSource,
+  intent: ChangeRoutingIntent,
+  observed: readonly ObservedChange[],
+): Extract<ChangeRoutingIntent['action'], { kind: 'resume' }> | null {
+  if (intent.action.kind !== 'resume') return null;
+  const action = intent.action;
+  const record = source.records.find(
+    (candidate) => candidate.changeId === action.changeId,
+  );
+  if (record === undefined || record.disposition === 'ready') {
+    throw routingInvalid('Only a blocked or parked change can be resumed.');
+  }
+  if (!protectedContinuation(record)) {
+    if (action.grantChallengeId !== undefined) {
+      throw routingInvalid(
+        'Automatic change continuation cannot consume a manual grant.',
+      );
+    }
+    if (!blockerSatisfied(record.blocker, observed)) {
+      throw workflowError(
+        'CHANGE_ROUTING_RESUME_NOT_READY',
+        'The exact automatic resume condition is not yet satisfied.',
+        ExitCode.guard,
+      );
+    }
+    return null;
+  }
+  return action;
+}
+
+export function requireContinuationGrant(
+  sourceDigest: string | null,
+  continuation: ReturnType<typeof changeRoutingContinuationState>,
+  action: Extract<ChangeRoutingIntent['action'], { kind: 'resume' }>,
+): never {
+  if (sourceDigest === null || continuation.sourceDigest !== sourceDigest) {
+    throw workflowError(
+      'CHANGE_ROUTING_REVIEW_STALE',
+      'The protected routing record changed while its continuation was being prepared.',
+      ExitCode.staleState,
+    );
+  }
+  throw workflowError(
+    'CHANGE_ROUTING_GRANT_REQUIRED',
+    'Manual, external, and parked continuation requires one exact completed Central Grant transition.',
+    ExitCode.guard,
+    {
+      details: {
+        schemaVersion: 1,
+        kind: 'change-routing-grant-required.v1',
+        changeId: action.changeId,
+        sourceDigest: continuation.sourceDigest,
+        stateBindingDigest: continuation.digest,
+      },
+      recovery:
+        'Resolve the exact Central Grant challenge, add its challengeId to the resume intent, and prepare the review again.',
+    },
+  );
+}
+
+export function verifyCompletedContinuationGrantRecord(
+  changeId: string,
+  observed: ReturnType<typeof changeRoutingContinuationState>,
+  record: unknown,
+): ChangeRoutingContinuationAuthority {
+  const expectedOutcome = Object.freeze({
+    outcome: 'completed' as const,
+    details: Object.freeze({
+      authorized: true,
+      changeId,
+      sourceDigest: observed.sourceDigest,
+      autoFocus: false,
+    }),
+  });
+  if (
+    !isRecord(record) ||
+    record.state !== 'completed' ||
+    !isRecord(record.outcome) ||
+    record.outcome.outcome !== 'completed' ||
+    !isRecord(record.challenge) ||
+    record.challenge.sourceModuleId !== 'change-routing' ||
+    record.challenge.failureCode !== 'protected-continuation-required' ||
+    !isRecord(record.challenge.stateBinding) ||
+    record.challenge.stateBinding.kind !== observed.kind ||
+    record.challenge.stateBinding.digest !== observed.digest ||
+    !Array.isArray(record.challenge.choices) ||
+    !isRecord(record.approvalSubject) ||
+    record.approvalSubject.stateDigest !== observed.digest ||
+    record.poststateDigest !== observed.digest ||
+    canonicalJson(record.outcome) !== canonicalJson(expectedOutcome) ||
+    typeof record.approvalSubject.choiceId !== 'string' ||
+    typeof record.operationId !== 'string' ||
+    typeof record.challenge.challengeId !== 'string' ||
+    typeof record.challenge.challengeDigest !== 'string' ||
+    !/^sha256:[0-9a-f]{64}$/.test(record.challenge.challengeDigest)
+  ) {
+    throw invalidContinuationGrant();
+  }
+  const approvalChoiceId = record.approvalSubject.choiceId;
+  const choice = record.challenge.choices.find(
+    (candidate) =>
+      isRecord(candidate) && candidate.choiceId === approvalChoiceId,
+  );
+  if (
+    !isRecord(choice) ||
+    choice.transitionId !== CHANGE_ROUTING_CONTINUATION_TRANSITION_ID ||
+    choice.parameterSchemaDigest !==
+      CHANGE_ROUTING_CONTINUATION_PARAMETER_SCHEMA_DIGEST ||
+    choice.consequenceDigest !==
+      CHANGE_ROUTING_CONTINUATION_CONSEQUENCE_DIGEST ||
+    choice.resolutionKind !== 'non-retry' ||
+    !isRecord(choice.parameters) ||
+    !hasExactKeys(choice.parameters, ['changeId', 'sourceDigest']) ||
+    choice.parameters.changeId !== changeId ||
+    choice.parameters.sourceDigest !== observed.sourceDigest
+  ) {
+    throw invalidContinuationGrant();
+  }
+  return Object.freeze({
+    contractVersion: 'central-grant-completed-authority-ref.v1' as const,
+    challengeId: record.challenge.challengeId,
+    challengeDigest: record.challenge.challengeDigest as `sha256:${string}`,
+    transitionId: CHANGE_ROUTING_CONTINUATION_TRANSITION_ID,
+    operationId: record.operationId,
+    terminalOutcomeDigest: digestBytes(
+      canonicalJson(record.outcome),
+    ) as `sha256:${string}`,
+  });
+}
+
+export function requiredRoutingAuthorityChangeIds(
+  intent: ChangeRoutingIntent,
+  nextSource: ChangeLifecycleSource,
+): string[] {
+  const changeIds = new Set<string>();
+  if (nextSource.primaryChangeId !== null) {
+    changeIds.add(nextSource.primaryChangeId);
+  }
+  for (const changeId of nextSource.concurrentChangeIds) {
+    changeIds.add(changeId);
+  }
+  if (
+    intent.action.kind === 'focus' ||
+    intent.action.kind === 'set-concurrent' ||
+    intent.action.kind === 'resume'
+  ) {
+    changeIds.add(intent.action.changeId);
+  }
+  return [...changeIds].sort();
+}
+
+/** Required fresh observation for protected-continuation Grant operations. */
+export type ChangeRoutingContinuationObserver = (
+  repositoryRoot: string,
+  requestedChangeId: string,
+) => ReturnType<typeof changeRoutingContinuationState>;
+
+/** Fresh admission and inspection capabilities; implementations belong to composition. */
+export type ChangeRoutingAdmissionReader = (
+  repositoryRoot: string,
+  changeId: string,
+) => ChangeRoutingAdmission;
+export type ChangeRoutingInspector = (
+  repositoryRoot: string,
+  authorityPort?: ChangeRoutingAuthorityPort,
+) => ChangeRoutingInspection;

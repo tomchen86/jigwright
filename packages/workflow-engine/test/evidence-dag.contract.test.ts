@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
 
-import { validateClosedEvidenceDag } from '../src/adapters/planning/investigation/evidence-dag.ts';
+import { validateClosedEvidenceDag } from '../src/foundation/evidence-node/evidence-dag.ts';
 import {
   createEvidenceNode,
   type EvidenceNode,
   type EvidenceNodeInput,
-} from '../src/adapters/planning/investigation/evidence-node.ts';
+} from '../src/foundation/evidence-node/evidence-node.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
   evaluatePlanningAssurance,
@@ -24,8 +24,18 @@ const DIGESTS = {
 
 test('closed evidence DAG orders a derivation chain with its sink last', () => {
   const root = evidenceNode('authorization', DIGESTS.sourceA, { ok: true });
-  const middle = evidenceNode('provider-result', DIGESTS.sourceB, { terms: ['a'] }, { authorization: root });
-  const sink = evidenceNode('coverage', DIGESTS.sourceC, { covered: true }, { providerResult: middle });
+  const middle = evidenceNode(
+    'provider-result',
+    DIGESTS.sourceB,
+    { terms: ['a'] },
+    { authorization: root },
+  );
+  const sink = evidenceNode(
+    'coverage',
+    DIGESTS.sourceC,
+    { covered: true },
+    { providerResult: middle },
+  );
 
   assert.deepEqual(
     validateClosedEvidenceDag([sink, root, middle]).topologicalNodeIds,
@@ -34,8 +44,15 @@ test('closed evidence DAG orders a derivation chain with its sink last', () => {
 });
 
 test('closed evidence DAG rejects a provenance edge outside the validated set', () => {
-  const absent = evidenceNode('provider-result', DIGESTS.sourceA, { terms: [] });
-  const child = evidenceNode('coverage', DIGESTS.sourceB, { covered: true }, { providerResult: absent });
+  const absent = evidenceNode('provider-result', DIGESTS.sourceA, {
+    terms: [],
+  });
+  const child = evidenceNode(
+    'coverage',
+    DIGESTS.sourceB,
+    { covered: true },
+    { providerResult: absent },
+  );
 
   assert.throws(
     () => validateClosedEvidenceDag([child]),
@@ -44,11 +61,23 @@ test('closed evidence DAG rejects a provenance edge outside the validated set', 
 });
 
 test('closed evidence DAG rejects a descendant that records a parent result the parent never produced', () => {
-  const parent = evidenceNode('provider-result', DIGESTS.sourceA, { terms: ['a'] });
-  const other = evidenceNode('provider-result', DIGESTS.sourceB, { terms: ['b'] });
+  const parent = evidenceNode('provider-result', DIGESTS.sourceA, {
+    terms: ['a'],
+  });
+  const other = evidenceNode('provider-result', DIGESTS.sourceB, {
+    terms: ['b'],
+  });
   // The chain-assembly case: dispositions built on one scan, claimed against another.
-  const forged = evidenceNode('coverage', DIGESTS.sourceC, { covered: true }, { providerResult: parent });
-  const swapped = { ...forged, semanticParentResultDigests: { providerResult: other.resultDigest } };
+  const forged = evidenceNode(
+    'coverage',
+    DIGESTS.sourceC,
+    { covered: true },
+    { providerResult: parent },
+  );
+  const swapped = {
+    ...forged,
+    semanticParentResultDigests: { providerResult: other.resultDigest },
+  };
 
   assert.throws(
     () => validateClosedEvidenceDag([parent, swapped]),
@@ -59,7 +88,11 @@ test('closed evidence DAG rejects a descendant that records a parent result the 
 test('closed evidence DAG rejects a provenance cycle', () => {
   const first = evidenceNode('a', DIGESTS.sourceA, { n: 1 });
   const second = evidenceNode('b', DIGESTS.sourceB, { n: 2 }, { first });
-  const cyclic = { ...first, provenanceParentNodeIds: { second: second.nodeId }, semanticParentResultDigests: { second: second.resultDigest } };
+  const cyclic = {
+    ...first,
+    provenanceParentNodeIds: { second: second.nodeId },
+    semanticParentResultDigests: { second: second.resultDigest },
+  };
 
   assert.throws(
     () => validateClosedEvidenceDag([cyclic, second]),

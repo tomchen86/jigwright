@@ -23,7 +23,7 @@ import {
   hasExactKeys,
   isRecord,
   isTimestamp,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 
 /** Long enough to stay cheap over a half-hour run, short enough to answer
  * "is it still running?" without waiting. */

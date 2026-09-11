@@ -1,3 +1,7 @@
+import {
+  buildMaintainerPatchManifest,
+  verifyPatchManifestAgainstWorktree,
+} from '../src/composition-root/maintainer-manifest-production.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -5,13 +9,11 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
-  buildMaintainerPatchManifest,
   canonicalPatchManifest,
   classifyFileRole,
   parseCapabilityProfile,
   parsePatchManifest,
-  verifyPatchManifestAgainstWorktree,
-} from '../src/modules/authority/maintainer-manifest.ts';
+} from '../src/modules/authority/maintainer-manifest-contracts.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
 const PROFILE = {
@@ -28,7 +30,10 @@ const PROFILE = {
   // The grant verifier itself must never be reachable from an ordinary
   // profile, even though it sits under the implementation root.
   forbiddenPaths: [
-    'packages/workflow-engine/src/modules/authority/maintainer-grant.ts',
+    'packages/workflow-engine/src/modules/authority/maintainer-grant-contracts.ts',
+    'packages/workflow-engine/src/runtime/grants/human-resolution-grant-verification.ts',
+    'packages/workflow-engine/src/runtime/repository-observation/human-resolution-grants.ts',
+    'packages/workflow-engine/src/runtime/repository-transaction/maintainer-audit-tag.ts',
   ],
   constraints: {
     evidenceOnlyGrantForbidden: true,
@@ -232,7 +237,7 @@ test('file roles classify by profile roots with forbidden and policy precedence'
   assert.equal(
     classifyFileRole(
       profile,
-      'packages/workflow-engine/src/modules/authority/maintainer-grant.ts',
+      'packages/workflow-engine/src/modules/authority/maintainer-grant-contracts.ts',
     ),
     'forbidden',
   );

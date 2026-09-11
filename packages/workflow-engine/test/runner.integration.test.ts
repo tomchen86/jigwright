@@ -1,3 +1,16 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -6,7 +19,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { resolveCheckRunner } from '../src/adapters/consumer/repository/work-registry/runner-resolution.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {
   checkSession,
   startSession,
@@ -56,7 +69,10 @@ test('registered full-gate style runner preserves strip-types and streams startu
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+        ),
         'run-check',
         'live',
         '--json',
@@ -140,7 +156,13 @@ test('change validation rejects eval, preload, external, and ambiguous runners',
         ['unsafe'],
       );
       assert.throws(
-        () => startSession(repository, 'demo-change', '1.1'),
+        () =>
+          startSession(
+            productionChangeRoutingAdmissionReader,
+            repository,
+            'demo-change',
+            '1.1',
+          ),
         (error) => isWorkflowError(error, 'INVALID_CHECK_DEFINITION'),
         command.join(' '),
       );
@@ -220,16 +242,28 @@ test('caller NODE_OPTIONS cannot turn a failing check into passing evidence', ()
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
     assert.throws(
       () =>
-        checkSession(repository, session.sessionId, {
-          environment: {
-            ...process.env,
-            NODE_OPTIONS: `--require=${preloadPath}`,
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            environment: {
+              ...process.env,
+              NODE_OPTIONS: `--require=${preloadPath}`,
+            },
           },
-        }),
+        ),
       (error) => isWorkflowError(error, 'CHECK_FAILED'),
     );
     assert.equal(fs.existsSync(injectedMarker), false);
@@ -254,10 +288,22 @@ test('node runner detects an entrypoint changed during execution', () => {
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'CHECK_RUNNER_CHANGED'),
     );
   } finally {
@@ -295,8 +341,19 @@ test('package runner executes the declared string bin and records its digest', (
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
-    const result = checkSession(repository, session.sessionId);
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
+    const result = checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+    );
 
     assert.equal(fs.readFileSync(outputPath, 'utf8'), 'ran');
     assert.equal(
@@ -327,10 +384,22 @@ test('package runner rejects the wrong name for a string bin', () => {
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'CHECK_RUNNER_UNAVAILABLE'),
     );
   } finally {
@@ -357,10 +426,22 @@ test('package runner detects a bin changed during execution', () => {
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'CHECK_RUNNER_CHANGED'),
     );
   } finally {
@@ -376,12 +457,24 @@ test('scope verification checks both endpoints of a tracked rename', () => {
     git(repository, ['commit', '-m', 'Add outside fixture']);
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
     git(repository, ['mv', 'outside.txt', 'src/inside.txt']);
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'OUT_OF_SCOPE_PATHS'),
     );
   } finally {
@@ -413,10 +506,22 @@ test('all package runners are pinned before the first required check starts', ()
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'CHECK_RUNNER_UNAVAILABLE'),
     );
     assert.equal(fs.existsSync(markerPath), false);
@@ -469,10 +574,22 @@ test('passing checks cannot mutate allowed working-tree state', () => {
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'CHECK_MUTATED_WORKTREE'),
     );
     assert.equal(fs.existsSync(changedPath), true);

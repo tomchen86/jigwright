@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  readGrantRecord,
   grantStorePaths,
   assertGrantLifecycleBarrier,
+  createFileGrantRecordStore,
 } from '../src/runtime/storage-journal/grant-store.ts';
 import { isWorkflowError } from './fixture.ts';
 import { workflowError, ExitCode } from '../src/foundation/errors/errors.ts';
@@ -78,7 +78,9 @@ test('only a trusted-session decision reaches the exact registered transition', 
     assert.equal(result.transitionId, 'investigation.abort.v1');
     assert.equal(effects, 1);
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        CHALLENGE_ID,
+      ).state,
       'completed',
     );
   });
@@ -120,7 +122,9 @@ test('SSH is selected instead of local presence and records credential assurance
     await coordinator.requestGrant(request());
 
     await coordinator.resolveChallenge(CHALLENGE_ID);
-    const record = readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID);
+    const record = createFileGrantRecordStore(
+      grantStorePaths(runtimeRoot),
+    ).readGrantRecord(CHALLENGE_ID);
     assert.equal(record.state, 'completed');
     if (record.state !== 'completed') assert.fail('expected terminal record');
     assert.deepEqual(record.audit, {
@@ -179,7 +183,9 @@ test('a local-presence decision cannot reach authentication or prepare for an ss
     assert.equal(authenticated, false);
     assert.equal(effects, 0);
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        CHALLENGE_ID,
+      ).state,
       'pending',
     );
   });
@@ -225,20 +231,18 @@ test('prepared SSH recovery preserves the exact portable proof evidence', async 
       coordinator.resolveChallenge(CHALLENGE_ID),
       /simulated portable crash/u,
     );
-    const prepared = readGrantRecord(
+    const prepared = createFileGrantRecordStore(
       grantStorePaths(runtimeRoot),
-      CHALLENGE_ID,
-    );
+    ).readGrantRecord(CHALLENGE_ID);
     assert.equal(prepared.state, 'prepared');
     if (prepared.state !== 'prepared') assert.fail('expected prepared record');
     const evidence = prepared.proofModules[0]?.portableEvidence;
     assert.equal(evidence?.kind, 'grant-proof-ssh-portable-evidence.v1');
 
     await coordinator.recoverChallenge(CHALLENGE_ID);
-    const terminal = readGrantRecord(
+    const terminal = createFileGrantRecordStore(
       grantStorePaths(runtimeRoot),
-      CHALLENGE_ID,
-    );
+    ).readGrantRecord(CHALLENGE_ID);
     assert.equal(terminal.state, 'completed');
     if (terminal.state !== 'completed') assert.fail('expected terminal record');
     assert.deepEqual(terminal.proofModules[0]?.portableEvidence, evidence);
@@ -271,7 +275,9 @@ test('state drift after fresh authentication invalidates the approval before pre
     );
     assert.equal(effects, 0);
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        CHALLENGE_ID,
+      ).state,
       'pending',
     );
   });
@@ -315,7 +321,9 @@ test('cancel and timeout leave the challenge pending without authentication or t
     assert.equal(closed, true);
     assert.equal(effects, 0);
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        CHALLENGE_ID,
+      ).state,
       'pending',
     );
   });
@@ -360,7 +368,9 @@ test('cancel and timeout leave the challenge pending without authentication or t
     assert.equal(authenticated, false);
     assert.equal(effects, 0);
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        CHALLENGE_ID,
+      ).state,
       'pending',
     );
   });
@@ -392,7 +402,9 @@ test('after durable prepare recovery repeats only the same idempotent transition
       /simulated process crash/,
     );
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        CHALLENGE_ID,
+      ).state,
       'prepared',
     );
 
@@ -439,7 +451,9 @@ test('prepared recovery converges an idempotent transition that applied before i
       /simulated crash after transition effect/,
     );
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        CHALLENGE_ID,
+      ).state,
       'prepared',
     );
 
@@ -449,7 +463,9 @@ test('prepared recovery converges an idempotent transition that applied before i
     assert.equal(attempts, 2);
     assert.equal(effects, 1);
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        CHALLENGE_ID,
+      ).state,
       'completed',
     );
   });
@@ -484,7 +500,9 @@ test('prepared recovery terminalizes deterministic state drift without applying 
       /simulated process crash/,
     );
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        CHALLENGE_ID,
+      ).state,
       'prepared',
     );
     assert.throws(
@@ -505,10 +523,9 @@ test('prepared recovery terminalizes deterministic state drift without applying 
     assert.equal(attempts, 2);
     assert.equal(effects, 0);
 
-    const terminal = readGrantRecord(
+    const terminal = createFileGrantRecordStore(
       grantStorePaths(runtimeRoot),
-      CHALLENGE_ID,
-    );
+    ).readGrantRecord(CHALLENGE_ID);
     assert.equal(terminal.state, 'failed');
     if (terminal.state !== 'failed') assert.fail('expected terminal failure');
     assert.deepEqual(terminal.outcome, {
@@ -574,7 +591,9 @@ test('a stale-state error without changed observed state cannot cancel a prepare
     );
     assert.equal(attempts, 2);
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        CHALLENGE_ID,
+      ).state,
       'prepared',
     );
     assert.throws(
@@ -598,7 +617,7 @@ function coordinatorFixture(
 ) {
   const ids = [CHALLENGE_ID, OPERATION_ID];
   return createGrantCoordinatorKernel({
-    paths: grantStorePaths(runtimeRoot),
+    store: createFileGrantRecordStore(grantStorePaths(runtimeRoot)),
     registry: createTransitionRegistry([definition]),
     policy: parseGrantPolicyV2(
       options.enableSsh ? sshPolicyInput() : policyInput(),

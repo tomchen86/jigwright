@@ -1,15 +1,32 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import {
+  productionChangeRoutingInspector,
+  productionChangeRoutingAdmissionReader,
+} from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import {
-  cancelFinalizeRecovery,
-  finalizeSession,
-} from '../src/application/finalize/lifecycle.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { cancelFinalizeRecovery } from '../src/composition-root/finalization-production.ts';
+import { finalizeSession } from '../src/composition-root/finalization-production.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {
   getSession,
   startSession,
@@ -656,7 +673,12 @@ function createRecoveryFixture(): {
   );
   git(repository, ['checkout', '-b', 'work/demo-change']);
   prepareCurrentV3Change(repository);
-  const session = startSession(repository, 'demo-change', '1.1');
+  const session = startSession(
+    productionChangeRoutingAdmissionReader,
+    repository,
+    'demo-change',
+    '1.1',
+  );
   fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
   return {
     repository,
@@ -734,7 +756,10 @@ function runCli(
     process.execPath,
     [
       '--experimental-strip-types',
-      path.resolve(import.meta.dirname, '../src/cli.ts'),
+      path.resolve(
+        import.meta.dirname,
+        '../src/entrypoints/cli/workflow-cli.ts',
+      ),
       ...args,
     ],
     { cwd: repository, encoding: 'utf8' },

@@ -1,3 +1,4 @@
+import {parseDocumentationClosureFromCommitMessage} from '../../modules/assurance/documentation-closure.ts';
 /**
  * Resumes a pending managed commit and finalizes its session and isolation
  * leases.
@@ -9,7 +10,7 @@
 import path from 'node:path';
 
 import { assertCommitObject } from './commit-object-validation.ts';
-import { parseDocumentationClosureFromCommitMessage } from '../managed-documents/contracts/documentation-closure.ts';
+
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { commitFacts, updateManagedRef } from './git-transitions.ts';
 import { type loadActiveSessionContext } from '../../composition-root/lifecycle-context.ts';

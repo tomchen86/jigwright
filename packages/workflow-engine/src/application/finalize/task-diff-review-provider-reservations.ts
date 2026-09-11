@@ -1,3 +1,4 @@
+import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
 /**
  * Reserves provider review and continuation invocations under lifecycle
  * authority.
@@ -7,31 +8,28 @@
  *   attribution.
  */
 // Reserve provider reviews and continuations under the existing lifecycle locks.
-import {
-  type TaskDiffReviewSubject,
-  type TaskDiffReviewCandidatePlan,
-  TASK_DIFF_REVIEW_POLICY_DIGEST,
-} from '../../modules/assurance/task-diff-review.ts';
+import { TASK_DIFF_REVIEW_POLICY_DIGEST } from '../../modules/assurance/task-diff-review.ts';
+import type {
+  TaskDiffReviewSubject,
+  TaskDiffReviewCandidatePlan,
+} from '../../modules/assurance/task-diff-review-record.ts';
 import {
   type RecordedRoleParticipant,
   type RoleParticipant,
   scheduleOrdinaryRole,
   type ProviderRoleAssignment,
-  authorizeGrantedOrdinaryRole,
   type GrantedSameProviderRoleAssignment,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+} from '../../modules/provider-orchestration/role-assignment.ts';
+import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import {
-  type TaskMandateBinding,
-  authorizeTaskMandateProviderReservationUnderLifecycleLock,
-} from '../../modules/authority/task-mandate.ts';
+import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import { createProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {
   TASK_DIFF_REVIEW_OUTPUT_SCHEMA,
-  type TaskDiffReviewChallengeResponseRecord,
   TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA,
 } from '../../modules/assurance/task-diff-review-artifact.ts';
+import type { TaskDiffReviewChallengeResponseRecord } from '../../modules/assurance/task-diff-review-artifact-record.ts';
 import type {
   TaskDiffReviewRuntimeBindings,
   TaskDiffReviewRuntimeData,
@@ -60,7 +58,18 @@ export function createTaskDiffReviewProviderReservationsModule(
   runtime: TaskDiffReviewRuntimeBindings,
   common: ReturnType<typeof createTaskDiffReviewCommonModule>,
   providerBinding: ReturnType<typeof createTaskDiffReviewProviderBindingModule>,
+  roleResultAdmission: Pick<
+    RoleAdmissionServices,
+    'authorizeGrantedOrdinaryRole'
+  >,
+  taskMandate: Pick<
+    TaskMandateOperations,
+    'authorizeTaskMandateProviderReservationUnderLifecycleLock'
+  >,
 ) {
+  const { authorizeTaskMandateProviderReservationUnderLifecycleLock } =
+    taskMandate;
+  const { authorizeGrantedOrdinaryRole } = roleResultAdmission;
   const {
     loadActiveSessionContext,
     loadInvestigationRuntimeContext,

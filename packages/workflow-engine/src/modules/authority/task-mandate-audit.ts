@@ -8,7 +8,7 @@
  * - appendTaskMandateRevocationAudit throws unsafeStore unless the record
  *   is revoked with both revokedAt and revocationReason set.
  */
-import { type AuthorityRefusalAuditBinding } from './authority-refusal-audit.ts';
+import { type AuthorityRefusalAuditBinding } from './authority-audit-contract.ts';
 
 import { type ProviderId } from '../provider-orchestration/provider-registry.ts';
 

@@ -23,13 +23,15 @@ import {
   type ProviderExecutionEntry,
   materializeProviderExecutionJob,
 } from './execution-store.ts';
+import { assertProviderRuntimeDurableAuthorities } from './provider-runtime-authority.ts';
 import {
-  assertProviderRuntimeDurableAuthorities,
   readHumanResolutionHead,
   readHumanResolutionNode,
+} from './human-resolution-nodes.ts';
+import {
   listProviderInvocationLifecycleProjections,
   scanProviderInvocationLifecycles,
-} from './investigation-session-store.ts';
+} from './provider-invocation-lifecycle.ts';
 import {
   withPrivateRuntimeLock,
   privatePathExists,
@@ -48,12 +50,12 @@ import type {
   AgentRuntimeCompletionReceipt,
   ProviderInvocationAcceptanceBinding,
 } from '../../modules/provider-orchestration/agent-runtime-port.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import {
-  type InvestigationRuntimePaths,
   assertInvestigationId,
   assertChangeId,
   assertInvocationId,
-} from '../session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import { registerProviderRetentionInvocation } from './provider-retention-catalog.ts';
 import {
   createProviderRepairLineage,
@@ -73,10 +75,8 @@ import {
   readProviderInvocationEvidenceRecord,
   recoverProviderInvocationSupersessionTransaction,
 } from '../provider-execution/provider-invocation-supersession.ts';
-import {
-  type CreateProviderInvocationInput,
-  type ProviderInvocationRecord,
-} from './provider-invocation-types.ts';
+import type { CreateProviderInvocationInput } from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   invocationInvalid,
   providerExecutionPolicySnapshotMismatch,

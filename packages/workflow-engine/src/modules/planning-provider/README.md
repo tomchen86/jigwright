@@ -8,11 +8,11 @@ Keep planning-provider contracts neutral and adapt only their error presentation
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.planning-provider-readme v=1 digest=sha256:90538dc3024dcb662b01da800492fbf9270d305e5eb5e90161f42048e5892227 -->
+<!-- jigwright:region id=documents.planning-provider-readme v=1 digest=sha256:1bccf986b88eb84c70e01a9db5b8053d5a591bebc7e20a4c50c617a67a8d3f12 -->
 
 <!-- prettier-ignore-start -->
 
-7 files changed in this module since confirmation.
+14 files changed in this module since confirmation.
 
 ## Commands
 
@@ -40,11 +40,18 @@ Header history compares Git blame at the explanation confirmation with this sour
 
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
+| [change-contract-errors.ts](change-contract-errors.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [change-contract.ts](change-contract.ts) | Parsed change artifact facts, before provider readiness and planning-assurance admission. | 0 | History unavailable |
+| [change-metadata-policy.ts](change-metadata-policy.ts) | Parse canonical schema metadata text under the supplied consumer policy. | 0 | History unavailable |
+| [guard-policy.ts](guard-policy.ts) | Validate guard values after repository path admission. | 0 | History unavailable |
 | [planning-archive-projection-port.ts](planning-archive-projection-port.ts) | Adapts shared planning archive operations to workflow failure conventions. | 1 | History unavailable |
+| [planning-artifact-parsers.ts](planning-artifact-parsers.ts) | Parse planning artifact values without observing repository state. | 0 | History unavailable |
+| [planning-artifact-types.ts](planning-artifact-types.ts) | Canonical planning task, execution and PlanReview artifact data; parsers and storage share these values. | 0 | History unavailable |
 | [planning-provider-authoring-port.ts](planning-provider-authoring-port.ts) | Declares the planning provider instructions and artifact status used during authoring. | 1 | History unavailable |
 | [planning-provider-binding.ts](planning-provider-binding.ts) | Adapts the shared planning binding codec to workflow errors and exit categories. | 1 | History unavailable |
 | [planning-provider-port.ts](planning-provider-port.ts) | Exposes shared planning provider evaluation through the workflow error boundary. | 1 | History unavailable |
 | [planning-task-history.ts](planning-task-history.ts) | Adapts shared planning task-history checks to workflow errors. | 1 | History unavailable |
+| [planning-workspace.ts](planning-workspace.ts) | Planning workspace identity and operations required by proposal and task activation. | 0 | History unavailable |
 
 <!-- prettier-ignore-end -->
 

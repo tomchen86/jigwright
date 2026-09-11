@@ -1,3 +1,4 @@
+import type { HumanResolutionGrantStoreEntry } from '../../modules/authority/grant-revocation-contract.ts';
 /**
  * Publishes, reserves, reads, and terminalizes human-resolution grants.
  *
@@ -32,29 +33,22 @@ import {
 } from './investigation-private-files.ts';
 import {
   assertCanonicalResolutionEnvelopeBytes,
-  assertHumanResolutionGrantId,
-  humanResolutionGrantNotFound,
   humanResolutionGrantUnavailable,
-  humanResolutionGrantUnsafe,
   humanResolutionPaths,
-  isBoundedResolutionText,
 } from './investigation-resolution-values.ts';
+import { humanResolutionGrantNotFound } from '../../modules/investigation/domain/human-resolution-values.ts';
+import {
+  assertHumanResolutionGrantId,
+  humanResolutionGrantUnsafe,
+  isBoundedResolutionText,
+} from '../../modules/investigation/domain/human-resolution-values.ts';
 import {
   deepFreeze,
   hasExactKeys,
   isDigest,
   isRecord,
   isTimestamp,
-} from './investigation-store-values.ts';
-
-export type HumanResolutionGrantStoreEntry = {
-  grantId: string;
-  state: 'available' | 'reserved' | 'revoked' | 'consumed';
-  envelopeBytes: string;
-  terminalReason: string | null;
-  recordedAt: string | null;
-  revocationAuthorization?: HumanRevocationAuthorization;
-};
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 
 export function storeAvailableHumanResolutionGrant(
   paths: InvestigationRuntimePaths,

@@ -1,3 +1,15 @@
+import { preflightMaintainerGrantV2 } from '../src/composition-root/maintainer-authority-production.ts';
+import { prepareMaintainerGrantV2Checks } from '../src/composition-root/maintainer-authority-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -6,26 +18,23 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import {
-  AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE,
-  readAuthorityApplicationReceiptTag,
-} from '../src/modules/authority/authority-application-receipt.ts';
+import { AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE } from '../src/modules/authority/authority-application-receipt.ts';
+import { readAuthorityApplicationReceiptTag } from '../src/composition-root/authority-application-receipt-production.ts';
 import { deriveAuthorityAuditRepositoryId } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import { verifyAuthorityAuditEvents } from '../src/runtime/storage-journal/authority-audit-service.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { assertCandidateV2ChecksFresh } from '../src/modules/authority/maintainer-candidate.ts';
 import {
   canonicalMaintainerGrantV2Envelope,
-  preflightMaintainerGrantV2,
-  validateMaintainerGrantV2AuthorityBinding,
   MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
   type MaintainerEvidenceWaiver,
 } from '../src/modules/authority/maintainer-grant-v2.ts';
+import { validateMaintainerGrantV2AuthorityBinding } from '../src/composition-root/maintainer-authority-production.ts';
+
 import {
   approveAndApplyMaintainerGrantV2,
-  prepareMaintainerGrantV2Checks,
   reissueAndApplyMaintainerGrantV2,
-} from '../src/application/control-plane/maintainer-approve.ts';
+} from '../src/composition-root/maintainer-authority-production.ts';
 import {
   computeProtectedCapabilityEntryDigests,
   REQUIRED_PROTECTED_CAPABILITIES,
@@ -36,9 +45,9 @@ import {
   maintainerGrantStorePaths,
   readTerminalMaintainerGrant,
 } from '../src/runtime/storage-journal/maintainer-store.ts';
-import { startAuthoritySession } from '../src/application/control-plane/maintainer-session.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import { authorizeTaskMandate } from '../src/modules/authority/task-mandate.ts';
+import { startAuthoritySession } from '../src/composition-root/maintainer-authority-production.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+
 import {
   createFixtureRepository,
   git,
@@ -519,7 +528,10 @@ function installTrustBase(repository: string): void {
         policyPaths: ['workflow/**'],
         verificationInfrastructurePaths: ['.github/workflows/**'],
         forbiddenPaths: [
-          'packages/workflow-engine/src/modules/authority/maintainer-grant.ts',
+          'packages/workflow-engine/src/modules/authority/maintainer-grant-contracts.ts',
+          'packages/workflow-engine/src/runtime/grants/human-resolution-grant-verification.ts',
+          'packages/workflow-engine/src/runtime/repository-observation/human-resolution-grants.ts',
+          'packages/workflow-engine/src/runtime/repository-transaction/maintainer-audit-tag.ts',
         ],
         constraints: {
           evidenceOnlyGrantForbidden: true,
@@ -717,3 +729,6 @@ function externalAuditRoot(repository: string): string {
 function digest(value: string): `sha256:${string}` {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const { authorizeTaskMandate } = taskMandateOperations;

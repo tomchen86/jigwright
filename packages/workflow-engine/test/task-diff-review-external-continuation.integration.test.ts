@@ -1,3 +1,22 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import {
+  productionChangeRoutingInspector,
+  productionChangeRoutingAdmissionReader,
+} from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -10,23 +29,21 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   createDirectHumanReviewAttestation,
   issueCollaborationGrant,
-} from '../src/modules/authority/collaboration-grant.ts';
-import {
-  failCollaborationReservation,
-  inspectCollaborationGrants,
-} from '../src/runtime/storage-journal/collaboration-grant-store.ts';
-import { loadWorkflowConfig } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+} from '../src/runtime/grants/collaboration-grant-issuance.ts';
+import { failCollaborationReservation } from '../src/runtime/storage-journal/collaboration-grant-consumption.ts';
+import { inspectCollaborationGrants } from '../src/runtime/storage-journal/collaboration-grant-records.ts';
+import { loadWorkflowConfig } from '../src/runtime/repository-observation/workflow-configuration.ts';
 import { readEvidenceNode } from '../src/runtime/storage-journal/evidence-object-store.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { finalizeTask } from '../src/composition-root/finalization-production.ts';
 import {
   verifySshSignatureWithPublicKey,
   type MaintainerSignerProvider,
 } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
@@ -39,14 +56,16 @@ import {
   reconcileTaskDiffReview,
   submitExternalTaskDiffReview,
   submitExternalTaskDiffReviewContinuation,
-} from '../src/application/finalize/task-diff-review-lifecycle.ts';
+} from '../src/composition-root/task-diff-review-production.ts';
 import {
   createTaskDiffReviewChallengeResponse,
-  type TaskDiffFinalAssuranceException,
-  type TaskDiffReviewContinuationSubmission,
-  type TaskDiffReviewSubmission,
   taskDiffReviewProviderSubmission,
 } from '../src/modules/assurance/task-diff-review-artifact.ts';
+import type {
+  TaskDiffFinalAssuranceException,
+  TaskDiffReviewContinuationSubmission,
+  TaskDiffReviewSubmission,
+} from '../src/modules/assurance/task-diff-review-artifact-record.ts';
 import {
   readTaskDiffExternalContinuationBinding,
   readTaskDiffExternalReviewBinding,
@@ -56,10 +75,8 @@ import {
   readTaskDiffFinalAssuranceBinding,
   readTaskDiffReviewResultBinding,
 } from '../src/runtime/storage-journal/task-diff-review-store.ts';
-import {
-  TASK_DIFF_REVIEW_COVERAGE,
-  type TaskDiffReviewSubject,
-} from '../src/modules/assurance/task-diff-review.ts';
+import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
+import type { TaskDiffReviewSubject } from '../src/modules/assurance/task-diff-review-record.ts';
 import { productionConsumedRoleResultReplayPort } from '../src/composition-root/grant-verifier-composition.ts';
 import {
   authoritativeCollaborationGrantVerifierForTest,
@@ -77,7 +94,12 @@ test('provider review reaches FAR only through an authenticated external continu
   const signing = createSigningFixture();
   const repository = createReviewFixture(signing);
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -403,7 +425,12 @@ test('direct-human continuation binds the exposed authority-free node before FAR
   const signing = createSigningFixture();
   const repository = createReviewFixture(signing);
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -546,7 +573,12 @@ test('external initial review and external continuation retain two independently
   const signing = createSigningFixture();
   const repository = createReviewFixture(signing, true);
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -753,7 +785,10 @@ function runCli(
     process.execPath,
     [
       '--experimental-strip-types',
-      path.resolve(import.meta.dirname, '../src/cli.ts'),
+      path.resolve(
+        import.meta.dirname,
+        '../src/entrypoints/cli/workflow-cli.ts',
+      ),
       ...args,
     ],
     {

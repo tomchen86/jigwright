@@ -33,7 +33,7 @@ import {
 import { readFileAtCommit } from './git.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { readSystemDescriptionSnapshot } from './system-description-snapshot.ts';
-import { readSystemSpecDeltaInputs } from '../../modules/source/system-spec-deltas.ts';
+import type { ReadSystemSpecDeltaInputs } from '../../modules/source/system-spec-deltas.ts';
 
 export {
   SPEC_DELTA_VALIDATOR_VERSION,
@@ -48,13 +48,14 @@ export type {
 };
 
 export function verifyArchiveDeltaOutcomes(
+  readSystemSpecDeltaInputs: ReadSystemSpecDeltaInputs,
   repositoryRoot: string,
   eligibility: ArchiveDeltaSource,
   transformation: ArchiveDeltaProjection,
 ): ArchiveDeltaVerification {
   return withWorkflowArchiveProjectionErrors(() =>
     verifyPackageArchiveDeltaOutcomes(
-      archiveProjectionReader(repositoryRoot),
+      archiveProjectionReader(readSystemSpecDeltaInputs, repositoryRoot),
       eligibility,
       transformation,
     ),
@@ -96,6 +97,7 @@ export function assertSpecDeltaPreconditions(
 }
 
 export function assertSpecDeltaScenarioPreservation(
+  readSystemSpecDeltaInputs: ReadSystemSpecDeltaInputs,
   repositoryRoot: string,
   head: string,
   changeRoot: string,
@@ -105,7 +107,7 @@ export function assertSpecDeltaScenarioPreservation(
 ): SpecDeltaPreflightRecord {
   return withWorkflowArchiveProjectionErrors(() =>
     assertPackageSpecDeltaScenarioPreservation(
-      archiveProjectionReader(repositoryRoot),
+      archiveProjectionReader(readSystemSpecDeltaInputs, repositoryRoot),
       head,
       changeRoot,
       changeId,
@@ -134,6 +136,7 @@ export function findDeltaApplicabilityFaults(
 }
 
 function archiveProjectionReader(
+  readSystemSpecDeltaInputs: ReadSystemSpecDeltaInputs,
   repositoryRoot: string,
 ): OpenSpecArchiveProjectionReader {
   return {

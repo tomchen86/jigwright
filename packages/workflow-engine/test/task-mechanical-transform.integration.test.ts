@@ -1,3 +1,16 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -6,13 +19,13 @@ import test from 'node:test';
 import type {
   TransformationRetainedDisposition,
   TransformationTerm,
-} from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+} from '../src/modules/planning-provider/planning-artifact-types.ts';
 import {
   completeTask,
   finalizeTask,
   finishSession,
-} from '../src/application/finalize/lifecycle.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+} from '../src/composition-root/finalization-production.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { checkSession } from '../src/application/finalize/verification.ts';
 import {
@@ -83,9 +96,16 @@ test('mechanical transformation closure mints evidence only for the exact determ
   try {
     replaceInFile(fixture.repository, 'src/features/first.ts');
     replaceInFile(fixture.repository, 'src/features/second.ts');
-    const checked = checkSession(fixture.repository, fixture.sessionId, {
-      environment: {},
-    });
+    const checked = checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeRoutingAdmissionReader,
+      fixture.repository,
+      fixture.sessionId,
+      {
+        environment: {},
+      },
+    );
     assert.equal(checked.passed, true);
     assert.deepEqual(checked.changedPaths, [
       'src/features/first.ts',
@@ -133,7 +153,14 @@ test('compatibility check-complete-finish consumes reviewed mechanical evidence'
   });
   try {
     replaceInFile(fixture.repository, 'src/features/feature.ts');
-    checkSession(fixture.repository, fixture.sessionId, { environment: {} });
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeRoutingAdmissionReader,
+      fixture.repository,
+      fixture.sessionId,
+      { environment: {} },
+    );
     const completed = completeTask(fixture.repository, fixture.sessionId);
     assert.ok(completed.reportId);
     const finished = finishSession(fixture.repository, fixture.sessionId);
@@ -226,9 +253,16 @@ test('mechanical transformation closure permits an exact reviewed historical ret
   try {
     replaceInFile(withDisposition.repository, 'src/features/feature.ts');
     assert.equal(
-      checkSession(withDisposition.repository, withDisposition.sessionId, {
-        environment: {},
-      }).passed,
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeRoutingAdmissionReader,
+        withDisposition.repository,
+        withDisposition.sessionId,
+        {
+          environment: {},
+        },
+      ).passed,
       true,
     );
   } finally {
@@ -258,9 +292,16 @@ test('mechanical closure observes and dispositions retained terms outside mutati
   try {
     replaceInFile(fixture.repository, 'src/features/feature.ts');
     assert.equal(
-      checkSession(fixture.repository, fixture.sessionId, {
-        environment: {},
-      }).passed,
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeRoutingAdmissionReader,
+        fixture.repository,
+        fixture.sessionId,
+        {
+          environment: {},
+        },
+      ).passed,
       true,
     );
   } finally {
@@ -290,9 +331,16 @@ test('mechanical closure scans and dispositions the full tracked tree outside ta
   try {
     replaceInFile(fixture.repository, 'src/features/feature.ts');
     assert.equal(
-      checkSession(fixture.repository, fixture.sessionId, {
-        environment: {},
-      }).passed,
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeRoutingAdmissionReader,
+        fixture.repository,
+        fixture.sessionId,
+        {
+          environment: {},
+        },
+      ).passed,
       true,
     );
   } finally {
@@ -343,9 +391,16 @@ test('mechanical transformation evidence is candidate-bound without a wall-clock
   try {
     replaceInFile(fixture.repository, 'src/features/feature.ts');
     assert.equal(
-      checkSession(fixture.repository, fixture.sessionId, {
-        environment: {},
-      }).passed,
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeRoutingAdmissionReader,
+        fixture.repository,
+        fixture.sessionId,
+        {
+          environment: {},
+        },
+      ).passed,
       true,
     );
     fs.appendFileSync(
@@ -375,9 +430,16 @@ test('mechanical transformation closure supports deterministic path-term renames
       path.join(fixture.repository, 'src/features/NEW_NAME.ts'),
     );
     assert.equal(
-      checkSession(fixture.repository, fixture.sessionId, {
-        environment: {},
-      }).passed,
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeRoutingAdmissionReader,
+        fixture.repository,
+        fixture.sessionId,
+        {
+          environment: {},
+        },
+      ).passed,
       true,
     );
   } finally {
@@ -467,7 +529,12 @@ function createMechanicalFixture(options: MechanicalFixtureOptions): {
     },
   });
   commitPlanningTransition(repository, 'demo-change');
-  const session = startSession(repository, 'demo-change', '1.1');
+  const session = startSession(
+    productionChangeRoutingAdmissionReader,
+    repository,
+    'demo-change',
+    '1.1',
+  );
   return { repository, sessionId: session.sessionId };
 }
 
@@ -485,9 +552,16 @@ function assertCheckFails(
 ): void {
   assert.throws(
     () =>
-      checkSession(fixture.repository, fixture.sessionId, {
-        environment: {},
-      }),
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeRoutingAdmissionReader,
+        fixture.repository,
+        fixture.sessionId,
+        {
+          environment: {},
+        },
+      ),
     (error) => isWorkflowError(error, code),
   );
 }

@@ -1,3 +1,34 @@
+import { renderHandoffFromTrackedFacts as renderTrackedWithRouting } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { productionChangeRoutingInspector } from '../src/composition-root/change-routing-observation-production.ts';
+import { observeChangeRoutingContinuationState } from '../src/runtime/repository-observation/change-routing.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const projectHandoffForTaskProjection =
+  projectHandoffForTaskProjectionWithContractReader.bind(
+    undefined,
+    productionChangeRoutingInspector,
+    productionChangeContractReader,
+  );
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
+const renderHandoffForChange = renderHandoffForChangeWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
+const validateHandoff = validateHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
+const validateHandoffForChange =
+  validateHandoffForChangeWithContractReader.bind(
+    undefined,
+    productionChangeRoutingInspector,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -21,19 +52,19 @@ import { parseChangeLifecycleSource } from '../src/modules/lifecycle/change-rout
 import {
   createChangeRoutingFailGrantResult,
   dispatchAsync,
-} from '../src/cli.ts';
+} from '../src/entrypoints/cli/workflow-cli.ts';
 import { dispatchChangeRoutingCommand } from '../src/entrypoints/cli/change-routing-cli.ts';
-import { runRepositoryHook } from '../src/entrypoints/hooks/hooks.ts';
+import { runRepositoryHook } from '../src/composition-root/repository-hooks-production.ts';
 import { validateRepositoryStateAtCommit } from '../src/composition-root/repository-validation.ts';
-import { validateCiRouteCommit } from '../src/entrypoints/ci/ci-routing.ts';
-import { listRangeCommits } from '../src/entrypoints/ci/ci-git.ts';
+import { validateCiRouteCommit } from '../src/runtime/repository-validation/commit-replay/ci-routing.ts';
+import { listRangeCommits } from '../src/runtime/repository-validation/commit-replay/ci-git.ts';
 import { openTask } from '../src/composition-root/open-task-production.ts';
 import {
-  projectHandoffForTaskProjection,
-  renderHandoff,
-  renderHandoffForChange,
-  validateHandoff,
-  validateHandoffForChange,
+  projectHandoffForTaskProjection as projectHandoffForTaskProjectionWithContractReader,
+  renderHandoff as renderHandoffWithContractReader,
+  renderHandoffForChange as renderHandoffForChangeWithContractReader,
+  validateHandoff as validateHandoffWithContractReader,
+  validateHandoffForChange as validateHandoffForChangeWithContractReader,
 } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import {
   createFixtureRepository,
@@ -48,7 +79,10 @@ import {
   HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST,
   parseGrantPolicyV2,
 } from '../src/modules/authority/grant-policy.ts';
-import { grantStorePaths } from '../src/runtime/storage-journal/grant-store.ts';
+import {
+  grantStorePaths,
+  createFileGrantRecordStore,
+} from '../src/runtime/storage-journal/grant-store.ts';
 import { productionChangeRoutingAuthorityPort } from '../src/composition-root/validated-contract-context.ts';
 
 test('managed routing projects mixed repository state and recovers idempotently', () => {
@@ -98,6 +132,32 @@ test('managed routing projects mixed repository state and recovers idempotently'
     assert.deepEqual(focused.nextSource.concurrentChangeIds, []);
     assert.equal(applyChangeRoutingReview(repository, focused).replayed, false);
     assert.equal(applyChangeRoutingReview(repository, focused).replayed, true);
+    const observationFailure = new Error('injected live routing inspection');
+    let liveReads = 0;
+    const failingInspection = () => {
+      liveReads += 1;
+      throw observationFailure;
+    };
+    assert.throws(
+      () =>
+        renderHandoffWithContractReader(
+          failingInspection,
+          productionChangeContractReader,
+          repository,
+        ),
+      (error) => error === observationFailure,
+    );
+    assert.equal(liveReads, 1);
+    renderTrackedWithRouting(
+      failingInspection,
+      productionChangeContractReader,
+      repository,
+    );
+    assert.equal(
+      liveReads,
+      1,
+      'tracked replay does not observe live routing runtime',
+    );
 
     const inspection = inspectChangeRouting(repository);
     assert.deepEqual(
@@ -304,6 +364,7 @@ test('manual or parked continuation requires one exact completed Central Grant t
     assert.throws(
       () =>
         createChangeRoutingContinuationGrantRequest(
+          observeChangeRoutingContinuationState,
           repository,
           'demo-change',
           'Reject a cross-wired routing snapshot.',
@@ -324,14 +385,19 @@ test('manual or parked continuation requires one exact completed Central Grant t
     );
 
     const registry = createTransitionRegistry(
-      changeRoutingGrantTransitionDefinitions(repository),
+      changeRoutingGrantTransitionDefinitions(
+        observeChangeRoutingContinuationState,
+        repository,
+      ),
     );
     const ids = [
       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
     ];
     const coordinator = createGrantCoordinatorKernel({
-      paths: grantStorePaths(runtimeRoot(repository)),
+      store: createFileGrantRecordStore(
+        grantStorePaths(runtimeRoot(repository)),
+      ),
       registry,
       policy: routingGrantPolicy(),
       now: () => new Date('2026-08-24T00:00:00.000Z'),
@@ -370,6 +436,7 @@ test('manual or parked continuation requires one exact completed Central Grant t
     });
     const requested = await coordinator.requestGrant(
       createChangeRoutingContinuationGrantRequest(
+        observeChangeRoutingContinuationState,
         repository,
         'demo-change',
         'Continue after the reviewed external decision.',

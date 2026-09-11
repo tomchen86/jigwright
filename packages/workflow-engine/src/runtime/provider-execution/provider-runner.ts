@@ -21,7 +21,7 @@ import {
   CODEX_REQUIRED_EXEC_HELP_FLAGS,
   buildCodexProviderInvocation,
 } from '../../adapters/providers/codex/codex-provider-adapter.ts';
-import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../repository-observation/workflow-configuration.ts';
 import { createProviderExecutionEnvironment } from './execution-environment.ts';
 import { executionJobStatePath } from '../storage-journal/execution-store.ts';
 import {
@@ -32,9 +32,9 @@ import {
 import { readPrivateCanonicalJson } from '../storage-journal/investigation-private-files.ts';
 import {
   investigationRuntimePaths,
-  assertInvocationId,
   type InvestigationRuntimePaths,
 } from '../session-workspace/paths.ts';
+import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
 import {
   readProviderInvocationRequest,
   readProviderExecutionPolicySnapshot,
@@ -64,19 +64,19 @@ import type {
   AgentRuntimeAsyncSingleShotOptions,
   AgentRuntimeGovernedInput,
 } from '../../modules/provider-orchestration/agent-runtime-port.ts';
-import { type ProviderWrapperProtocolExecution } from '../../modules/provider-orchestration/agent-runtime-protocol.ts';
+import { type ProviderWrapperProtocolExecution } from '@jigwright/core/harness-jsonl-v1-contracts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../../modules/provider-orchestration/provider-runtime-evidence.ts';
 import {
   type BuiltInReviewedProviderProfileSnapshot,
   assertAgentProviderProfileSnapshot,
-  type ProviderDefinitionSnapshot,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
+import { type ProviderDefinitionSnapshot } from '@jigwright/core/provider-definition-snapshot';
 import {
   type ProviderExecutableObservation,
   inspectProviderExecutable,
 } from '@jigwright/agent-runtime/provider-executable-identity';
 import { spawnBoundedProviderProcess } from './bounded-provider-process.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from './built-in-provider-definition.ts';
+import {resolveBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
 import {
   type ProviderPreflightSpec,
   normalizeCandidateInspection,

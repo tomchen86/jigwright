@@ -65,7 +65,9 @@ test('recovery closure keeps stable paths and executes a workspace runtime impor
   const paths = rendered.runtimeFiles.map(({ path: filePath }) => filePath);
 
   assert.ok(
-    paths.includes('bootstrap/recovery-runtime/src/harness-bootstrap.js'),
+    paths.includes(
+      'bootstrap/recovery-runtime/src/entrypoints/cli/harness-bootstrap-cli.js',
+    ),
   );
   assert.ok(
     paths.includes(
@@ -93,7 +95,7 @@ test('recovery closure keeps stable paths and executes a workspace runtime impor
   }
   const result = childProcess.spawnSync(
     process.execPath,
-    [path.join(runtimeRoot, 'src/harness-bootstrap.js')],
+    [path.join(runtimeRoot, 'src/entrypoints/cli/harness-bootstrap-cli.js')],
     {
       cwd: runtimeRoot,
       encoding: 'utf8',
@@ -116,11 +118,17 @@ function createWorkspaceClosureFixture(t: test.TestContext): string {
     dependencies: { '@jigwright/core': 'workspace:*' },
   });
   writeText(
-    path.join(repository, 'packages/workflow-engine/src/cli.ts'),
+    path.join(
+      repository,
+      'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+    ),
     "export const cli = 'fixture';\n",
   );
   writeText(
-    path.join(repository, 'packages/workflow-engine/src/harness-bootstrap.ts'),
+    path.join(
+      repository,
+      'packages/workflow-engine/src/entrypoints/cli/harness-bootstrap-cli.ts',
+    ),
     [
       "import { fixtureRuntimeValue } from '@jigwright/core/fixture-runtime';",
       'process.stdout.write(`${fixtureRuntimeValue}\\n`);',

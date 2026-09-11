@@ -9,15 +9,17 @@
 // Authenticate external continuation bindings and recover terminal assurance.
 import {
   assertTaskDiffReviewChallengeResponseCurrent,
-  type TaskDiffReviewChallengeResponseRecord,
   createTaskDiffReviewChallengeResponse,
-  type TaskDiffReviewRecord,
-  type TaskDiffReviewContinuationSubmission,
   TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA,
-  type TaskDiffFinalAssuranceRecord,
   createTaskDiffFinalAssuranceRecord,
   assertTaskDiffFinalAssuranceCurrent,
 } from '../../modules/assurance/task-diff-review-artifact.ts';
+import type {
+  TaskDiffReviewChallengeResponseRecord,
+  TaskDiffReviewRecord,
+  TaskDiffReviewContinuationSubmission,
+  TaskDiffFinalAssuranceRecord,
+} from '../../modules/assurance/task-diff-review-artifact-record.ts';
 import { type TaskDiffReviewExternalClosureInput } from '../../modules/assurance/task-diff-review-input.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { type ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
@@ -26,25 +28,21 @@ import {
   workflowError,
   ExitCode,
 } from '../../foundation/errors/errors.ts';
-import {
-  type TaskDiffReviewSubject,
-  TASK_DIFF_REVIEW_POLICY_DIGEST,
-} from '../../modules/assurance/task-diff-review.ts';
+import { TASK_DIFF_REVIEW_POLICY_DIGEST } from '../../modules/assurance/task-diff-review.ts';
+import type { TaskDiffReviewSubject } from '../../modules/assurance/task-diff-review-record.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import {
   type CollaborationGrantExpectedBinding,
   bindingFromPayload,
-} from '../../modules/authority/collaboration-grant.ts';
+} from '../../modules/authority/collaboration-grant-codec.ts';
 import {
   type Challenge,
   type ChallengeClosure,
   assertAuthorizedReviewChallengeClosure,
 } from '../../modules/assurance/review-challenge.ts';
-import {
-  type AdmittedRoleResult,
-  type GrantedRoleAssignment,
-  admitConsumedRoleResultReplay,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
+import { type GrantedRoleAssignment } from '../../modules/provider-orchestration/role-assignment.ts';
 import type {
   TaskDiffReviewRuntimeBindings,
   TaskDiffReviewRuntimeData,
@@ -73,7 +71,12 @@ export function createTaskDiffReviewExternalContinuationBindingModule(
   runtime: TaskDiffReviewRuntimeBindings,
   common: ReturnType<typeof createTaskDiffReviewCommonModule>,
   externalBinding: ReturnType<typeof createTaskDiffReviewExternalBindingModule>,
+  roleResultAdmission: Pick<
+    RoleAdmissionServices,
+    'admitConsumedRoleResultReplay'
+  >,
 ) {
+  const { admitConsumedRoleResultReplay } = roleResultAdmission;
   const {
     loadActiveSessionContext,
     loadInvestigationRuntimeContext,

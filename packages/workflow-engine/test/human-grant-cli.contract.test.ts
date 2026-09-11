@@ -246,7 +246,10 @@ test('human grant CLI exposes registered investigation and Work Registry request
 });
 
 test('current CLI exposes no legacy authority or human-resolution entrypoints', () => {
-  const cli = path.resolve(import.meta.dirname, '../src/cli.ts');
+  const cli = path.resolve(
+    import.meta.dirname,
+    '../src/entrypoints/cli/workflow-cli.ts',
+  );
   for (const args of [
     ['human-resolution-apply', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'],
     ['human-resolution-recover', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'],

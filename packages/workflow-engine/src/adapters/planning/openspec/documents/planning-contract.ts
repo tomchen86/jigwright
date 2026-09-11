@@ -1,3 +1,6 @@
+import type { PlanningTransitionReport } from '../../../../modules/lifecycle/planning-transition-report.ts';
+import { openSpecPlanningPathPolicy } from './planning-path-policy.ts';
+import type { ChangeContractReader } from '../../../../modules/planning-provider/change-contract.ts';
 /**
  * Inspects planning introductions and revisions against the baseline
  * artifact tree and provider binding.
@@ -9,15 +12,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import {
-  digestArtifacts,
-  loadChangeContract,
-  parseTasks,
-  readManagedSchemaName,
-  repositoryPlanningPolicy as loadRepositoryPlanningPolicy,
-  type ManagedSchemaName,
-  type ParsedTask,
-} from '../../../consumer/repository/work-registry/contracts.ts';
+import { digestArtifacts } from '../../../../runtime/repository-observation/contract-artifact-observation.ts';
+
+import { parseTasks } from '../../../../modules/planning-provider/planning-artifact-parsers.ts';
+import { readManagedSchemaName } from '../../../../runtime/repository-observation/change-metadata.ts';
+import { repositoryPlanningPolicy as loadRepositoryPlanningPolicy } from '../../../../runtime/repository-observation/workflow-configuration.ts';
+import { type ManagedSchemaName } from '../../../../modules/planning-provider/change-contract.ts';
+import { type ParsedTask } from '../../../../modules/planning-provider/planning-artifact-types.ts';
 import {
   ExitCode,
   workflowError,
@@ -29,15 +30,14 @@ import {
 } from '../../../../runtime/repository-transaction/git.ts';
 import type { PlanningProviderBindingReaderPort } from '../../../../modules/planning-provider/planning-provider-binding.ts';
 import { assertPlanningTaskHistory } from '../../../../modules/planning-provider/planning-task-history.ts';
-import { normalizeChangedPath } from '../../../../runtime/session-workspace/paths.ts';
+import { normalizeChangedPath } from '../../../../foundation/repository-path/repository-path.ts';
 import {
-  assertPlanningPaths,
+  assertPlanningPaths as assertPlanningPathsWithAdmission,
   planningSourceObjectPaths,
-  requiredPlanningArtifactPaths,
 } from '../../../../modules/source/planning-paths.ts';
-import { readCurrentChangeOrigin } from '../../../../modules/governance-intake/work-registry.ts';
+import type { CurrentChangeOriginReader } from '../../../../modules/governance-intake/work-registry-contracts.ts';
 import { loadStableValidatedChangeContract } from '../../../../composition-root/validated-contract-context.ts';
-import type { PlanningTransitionReport } from '../../../../runtime/storage-journal/planning-report.ts';
+
 import type { ResolvedPlanningProviderBinding } from '../../../../modules/planning-provider/planning-provider-binding.ts';
 import { planningProviderBindingPath } from '../../../../modules/source/planning-paths.ts';
 import {
@@ -51,14 +51,19 @@ export type PlanningInspection = {
   reopenedTasks: string[];
   transitionKind: 'introduction' | 'revision';
   schemaName: ManagedSchemaName;
-  contract: ReturnType<typeof loadChangeContract>;
+  contract: ReturnType<ChangeContractReader>;
   beforeTasks: ParsedTask[] | undefined;
   currentPaths: string[];
   artifactDigests: Record<string, string>;
   planningProvider: ResolvedPlanningProviderBinding;
 };
 
-export { assertPlanningPaths } from '../../../../modules/source/planning-paths.ts';
+export const assertPlanningPaths = assertPlanningPathsWithAdmission.bind(
+  undefined,
+  openSpecPlanningPathPolicy.admit,
+);
+const requiredPlanningArtifactPaths =
+  openSpecPlanningPathPolicy.requiredArtifactPaths;
 
 export function resolveHistoricalOpenSpecPlanningTransitionBinding(
   planningProviderReader: PlanningProviderBindingReaderPort,
@@ -97,7 +102,9 @@ export function resolveHistoricalOpenSpecProviderBinding(
 }
 
 export function inspectPlanningTransition(
+  loadChangeContract: ChangeContractReader,
   planningProviderReader: PlanningProviderBindingReaderPort,
+  readCurrentChangeOrigin: CurrentChangeOriginReader,
   repositoryRoot: string,
   baselineHead: string,
   changeRoot: string,
@@ -127,6 +134,7 @@ export function inspectPlanningTransition(
     sourceRefs,
   );
   const currentPaths = assertPlanningArtifactTree(
+    readCurrentChangeOrigin,
     repositoryRoot,
     changeRoot,
     changeId,
@@ -219,6 +227,7 @@ export function validateOpenSpecPlanning(
 }
 
 function assertPlanningArtifactTree(
+  readCurrentChangeOrigin: CurrentChangeOriginReader,
   repositoryRoot: string,
   changeRoot: string,
   changeId: string,

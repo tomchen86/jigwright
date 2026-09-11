@@ -1,18 +1,6 @@
-/**
- * Loads maintainer policy, trusted signers and the eligible and sealed
- * authority path sets.
- *
- * Invariants:
- * - A policy is accepted only at schemaVersion 1 with maxTtlMinutes fixed
- *   at 30 and maxUses fixed at 1.
- * - Every sealedImmutablePath must also match some bootstrapEligiblePath or
- *   the policy is rejected.
- */
-import fs from 'node:fs';
-import path from 'node:path';
 import { isRecord, isStringArray, } from "../../foundation/canonical-json/contract-values.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
-import { matchesAllowedPath, normalizePolicyPath, } from "../../runtime/session-workspace/paths.js";
+import { matchesAllowedPath, normalizePolicyPath, } from "../../foundation/repository-path/repository-path.js";
 const CHECK_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SIGNER_ID = /^[a-zA-Z0-9][a-zA-Z0-9._@+-]{0,127}$/;
 const SSH_PUBLIC_KEY = /^ssh-(?:ed25519|ed25519-sk|rsa|ecdsa-[^ ]+) [A-Za-z0-9+/]+={0,2}$/;
@@ -30,19 +18,6 @@ const POLICY_KEYS = [
     'requiredChecks',
     'trustedSigners',
 ];
-export function loadMaintainerPolicy(repositoryRoot) {
-    const policyPath = path.join(repositoryRoot, 'workflow/maintainer-policy.json');
-    let value;
-    try {
-        value = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
-    }
-    catch (error) {
-        throw invalidPolicy('Unable to read workflow/maintainer-policy.json.', {
-            cause: error instanceof Error ? error.message : String(error),
-        });
-    }
-    return parseMaintainerPolicy(value);
-}
 export function parseMaintainerPolicy(value) {
     if (!isRecord(value) ||
         !hasExactKeys(value, POLICY_KEYS) ||
@@ -146,6 +121,6 @@ function hasExactKeys(value, keys) {
     return (actual.length === expected.length &&
         actual.every((key, index) => key === expected[index]));
 }
-function invalidPolicy(message, details) {
+export function invalidPolicy(message, details) {
     return workflowError('MAINTAINER_POLICY_INVALID', message, ExitCode.guard, details ? { details } : {});
 }

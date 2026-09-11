@@ -1,9 +1,12 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import { startSession } from '../src/application/execute-task/session.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
+import { finalizeTask } from '../src/composition-root/finalization-production.ts';
 import {
   inspectTaskStrategyTransaction,
   sealTaskStrategyRed,
@@ -12,7 +15,7 @@ import { checkSession } from '../src/application/finalize/verification.ts';
 import { runtimeRoot, sourceRepositoryRoot, git } from './fixture.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { importTaskStrategyPatch } from '../src/application/execute-task/task-strategy-patch.ts';
-import { beginTaskDiffReview } from '../src/application/finalize/task-diff-review-lifecycle.ts';
+import { beginTaskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
 import {
   createCrossAgentFixture,
   hasCode,
@@ -22,7 +25,12 @@ import {
 test('cross-agent TDD cannot enter finalize checks without an engine-sealed RED', () => {
   const { repository, counterPath } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const implementedWithoutRed = true;\n',
@@ -45,7 +53,12 @@ test('cross-agent TDD cannot enter finalize checks without an engine-sealed RED'
 test('seal RED runs the pinned check, freezes exact test bytes, and replays one immutable transaction state', () => {
   const { repository, counterPath } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
@@ -53,10 +66,15 @@ test('seal RED runs the pinned check, freezes exact test bytes, and replays one 
       "throw new Error('feature behavior is not implemented');\n",
     );
 
-    const sealed = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const sealed = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     assert.equal(sealed.phase, 'red-sealed');
     assert.equal(sealed.strategy, 'cross-agent-tdd');
     assert.equal(sealed.red.checkId, 'red');
@@ -72,10 +90,15 @@ test('seal RED runs the pinned check, freezes exact test bytes, and replays one 
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
 
     assert.deepEqual(
-      sealTaskStrategyRed(repository, session.sessionId, {
-        explicitActor: 'codex',
-        environment: {},
-      }),
+      sealTaskStrategyRed(
+        productionChangeRoutingAdmissionReader,
+        repository,
+        session.sessionId,
+        {
+          explicitActor: 'codex',
+          environment: {},
+        },
+      ),
       sealed,
     );
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
@@ -83,10 +106,15 @@ test('seal RED runs the pinned check, freezes exact test bytes, and replays one 
     fs.writeFileSync(testPath, "throw new Error('silently weakened test');\n");
     assert.throws(
       () =>
-        sealTaskStrategyRed(repository, session.sessionId, {
-          explicitActor: 'codex',
-          environment: {},
-        }),
+        sealTaskStrategyRed(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            explicitActor: 'codex',
+            environment: {},
+          },
+        ),
       hasCode('TASK_STRATEGY_RED_STALE'),
     );
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
@@ -97,9 +125,16 @@ test('seal RED runs the pinned check, freezes exact test bytes, and replays one 
     );
     assert.throws(
       () =>
-        checkSession(repository, session.sessionId, {
-          environment: { AGENT: 'claude' },
-        }),
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            environment: { AGENT: 'claude' },
+          },
+        ),
       hasCode('TASK_STRATEGY_RED_STALE'),
     );
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
@@ -111,17 +146,27 @@ test('seal RED runs the pinned check, freezes exact test bytes, and replays one 
 test('seal RED rejects an unrelated or structurally invalid failure category', () => {
   const { repository, counterPath } = createCrossAgentFixture('syntax');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, 'export {};\n');
 
     assert.throws(
       () =>
-        sealTaskStrategyRed(repository, session.sessionId, {
-          explicitActor: 'codex',
-          environment: {},
-        }),
+        sealTaskStrategyRed(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            explicitActor: 'codex',
+            environment: {},
+          },
+        ),
       hasCode('TASK_STRATEGY_RED_FAILURE_INVALID'),
     );
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
@@ -137,16 +182,26 @@ test('seal RED rejects an unrelated or structurally invalid failure category', (
 test('sealed RED state is canonical and digest-bound before any gate trusts it', () => {
   const { repository } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.mkdirSync(path.join(repository, 'test'), { recursive: true });
     fs.writeFileSync(
       path.join(repository, 'test/feature.test.mjs'),
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const transaction = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const transaction = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const statePath = path.join(
       runtimeRoot(repository),
       'investigations/refs/task-strategy-transactions',
@@ -171,16 +226,26 @@ test('sealed RED state is canonical and digest-bound before any gate trusts it',
 test('cross-agent TDD rejects manual implementation bytes without an engine-imported patch receipt', () => {
   const { repository, counterPath } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.mkdirSync(path.join(repository, 'test'), { recursive: true });
     fs.writeFileSync(
       path.join(repository, 'test/feature.test.mjs'),
       "throw new Error('feature behavior is not implemented');\n",
     );
-    sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     fs.mkdirSync(path.join(repository, 'src'), { recursive: true });
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
@@ -189,9 +254,16 @@ test('cross-agent TDD rejects manual implementation bytes without an engine-impo
 
     assert.throws(
       () =>
-        checkSession(repository, session.sessionId, {
-          environment: { AGENT: 'claude' },
-        }),
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            environment: { AGENT: 'claude' },
+          },
+        ),
       hasCode('TASK_STRATEGY_PATCH_REQUIRED'),
     );
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
@@ -214,16 +286,26 @@ test('single-agent TDD keeps the RED gate and uses a fresh Reviewer session', ()
     );
     git(repository, ['add', 'workflow/path-roles.json']);
     git(repository, ['commit', '-m', 'Configure fixture path roles']);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.mkdirSync(path.join(repository, 'test'), { recursive: true });
     fs.writeFileSync(
       path.join(repository, 'test/feature.test.mjs'),
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const transaction = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const transaction = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     assert.equal(transaction.strategy, 'tdd-single-agent');
     fs.mkdirSync(path.join(repository, 'src'), { recursive: true });
     fs.writeFileSync(
@@ -234,11 +316,16 @@ test('single-agent TDD keeps the RED gate and uses a fresh Reviewer session', ()
       'src/feature.ts',
     ]);
     fs.rmSync(path.join(repository, 'src/feature.ts'));
-    importTaskStrategyPatch(repository, session.sessionId, {
-      patch,
-      explicitActor: 'codex',
-      environment: {},
-    });
+    importTaskStrategyPatch(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        patch,
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
 
     assert.throws(
       () =>

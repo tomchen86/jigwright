@@ -14,12 +14,13 @@ import type {
   PlanningProviderAuthoringPort,
   PlanningProviderReviewedAssetMirror,
 } from '../modules/planning-provider/planning-provider-authoring-port.ts';
-import { repositoryPlanningConfiguration } from '../modules/repository-consumer/repository-consumer-config.ts';
+import { loadRepositoryConsumerConfiguration } from '../runtime/repository-observation/repository-consumer.ts';
 
 export function createPlanningProviderAuthoringPort(
   repositoryRoot: string,
 ): PlanningProviderAuthoringPort {
-  const planning = repositoryPlanningConfiguration(repositoryRoot);
+  const planning =
+    loadRepositoryConsumerConfiguration(repositoryRoot).configuration.planning;
   if (planning.providerId !== 'openspec') {
     throw workflowError(
       'PLANNING_PROVIDER_UNSUPPORTED',
@@ -59,7 +60,8 @@ export function createPlanningProviderAuthoringPort(
 export function planningProviderReviewedAssetMirrors(
   repositoryRoot: string,
 ): readonly PlanningProviderReviewedAssetMirror[] {
-  const planning = repositoryPlanningConfiguration(repositoryRoot);
+  const planning =
+    loadRepositoryConsumerConfiguration(repositoryRoot).configuration.planning;
   if (planning.providerId !== 'openspec') {
     throw workflowError(
       'PLANNING_PROVIDER_UNSUPPORTED',

@@ -1,3 +1,4 @@
+import './operational-cli-composition.contract.test.ts';
 import './archive-diagnostic-preservation.contract.test.ts';
 import './archive-applicability-provenance.contract.test.ts';
 import './assurance-assessment-chain.contract.test.ts';
@@ -66,8 +67,10 @@ import './conformance-vectors-v2.contract.test.ts';
 import './built-in-workspace-closure-v2.contract.test.ts';
 import './check-registry-package-boundaries.contract.test.ts';
 import './check-registry-port.contract.test.ts';
+import './check-execution.test.ts';
+import './document-refresh-policy.test.ts';
+import './architecture-graph.contract.test.ts';
 import './module-dependency-direction.contract.test.ts';
-import './t3-boundary-inventory-cli.contract.test.ts';
 import './path-role-registry.contract.test.ts';
 import './spec-delta-applicability.contract.test.ts';
 import './spec-scenario-preservation.contract.test.ts';
@@ -82,6 +85,8 @@ import './openspec-planning-assets.integration.test.ts';
 import './authority-attestation.contract.test.ts';
 import './authority-relay-command.contract.test.ts';
 import './authority-audit-cli.contract.test.ts';
+import './authority-audit-services.contract.test.ts';
+import './authority-audit-routing.contract.test.ts';
 import './authority-audit-ledger.contract.test.ts';
 import './authority-audit-profile.contract.test.ts';
 import './authority-audit-service.contract.test.ts';
@@ -108,6 +113,7 @@ import './execution-replacement.integration.test.ts';
 import './execution-store.contract.test.ts';
 import './external-effect-cli.contract.test.ts';
 import './external-effect-grant.contract.test.ts';
+import './external-effect-services.contract.test.ts';
 import './external-effect-optional-ttl.contract.test.ts';
 import './external-effect-reconciliation.contract.test.ts';
 import './external-effect-refusal-audit.contract.test.ts';
@@ -147,6 +153,7 @@ import './maintainer-grant-v2-recovery.contract.test.ts';
 import './maintainer-post-approval-budget.integration.test.ts';
 import './maintainer-grant-v2-reissue-cli.integration.test.ts';
 import './maintainer-manifest.contract.test.ts';
+import './maintainer-manifest-services.contract.test.ts';
 import './plan-review.contract.test.ts';
 import './pre-merge-assurance.contract.test.ts';
 import './pre-merge-assurance-store.contract.test.ts';
@@ -192,6 +199,7 @@ import './provider-runtime-registration.integration.test.ts';
 import './retention-control.contract.test.ts';
 import './semantic-reuse-reporting.integration.test.ts';
 import './task-mandate.contract.test.ts';
+import './task-mandate-services.contract.test.ts';
 import './unified-cli-routing.contract.test.ts';
 import './adaptive-class-sample-gate.integration.test.ts';
 import './amend-plan-change-option.integration.test.ts';
@@ -312,6 +320,7 @@ import './generated/package-tests/openspec-adapter/archive-projection.contract.t
 import './generated/package-tests/openspec-adapter/openspec-adapter.integration.test.ts';
 import './generated/package-tests/openspec-adapter/planning-paths.contract.test.ts';
 import './generated/package-tests/openspec-adapter/validation-payload.contract.test.ts';
+import './generated/package-tests/repository-runtime/paths.contract.test.ts';
 // END GENERATED PACKAGE TEST PROJECTIONS
 import './workflow-test-inventory.contract.test.ts';
 import './public-contract-surface.test.ts';
@@ -330,7 +339,7 @@ import './task-diff-review-provider-lifecycle.integration.test.ts';
 import './task-diff-review-candidate-replay.integration.test.ts';
 import './task-diff-review-final-assurance.integration.test.ts';
 import './task-diff-review-alternate-authority.integration.test.ts';
-import './t3-boundary-inventory.contract.test.ts';
+import './workflow-namespace.contract.test.ts';
 import './governance-source-ledger.integration.test.ts';
 import './governance-findings.integration.test.ts';
 import './governance-intake-commands.integration.test.ts';
@@ -363,3 +372,60 @@ import './system-documents-cli.contract.test.ts';
 import './system-documents.contract.test.ts';
 import './system-semantic-ledger.contract.test.ts';
 import './system-spec.contract.test.ts';
+
+import './provider-failure-retry.test.ts';
+import './provider-execution-budget-authority.contract.test.ts';
+import './implementation-reconciliation-policy.test.ts';
+import './implementation-reconciliation-boundary.test.ts';
+import './adoption-boundary.test.ts';
+import './adoption-policy.test.ts';
+import './work-registry-read-policy.test.ts';
+import './work-registry-read-boundary.test.ts';
+import './work-registry-write-policy.test.ts';
+import './governance-intake-policy.test.ts';
+import './governance-intake-boundary.test.ts';
+import './implementation-term-floor-policy.test.ts';
+import './implementation-term-floor-boundary.test.ts';
+import './provider-invocation-type-ownership.test.ts';
+import './planning-contract-policy.test.ts';
+import './change-contract-reader.test.ts';
+import './review-strategy-dto-boundary.test.ts';
+import './consumer-reader-caller-wiring.contract.test.ts';
+import './managed-document-services.test.ts';
+import './investigation-purity-boundary.test.ts';
+import './investigation-observation-policy.test.ts';
+import './provider-contract-purity.test.ts';
+import './investigation-failure-observation.test.ts';
+import './investigation-failure-purity.test.ts';
+import './plan-review-coverage-observation.test.ts';
+
+import './architecture-domain-library.test.ts';
+import './planning-assurance-purity.test.ts';
+import './planning-assurance-observations.test.ts';
+import './change-routing-domain.contract.test.ts';
+
+import './optional-grants-domain-services.test.ts';
+import './optional-grants-loader.test.ts';
+
+import './semantic-manifest-reuse-observation.test.ts';
+
+import './investigation-snapshot-policy.test.ts';
+
+import './harness-bootstrap-boundary.contract.test.ts';
+
+import './ci-replay-boundary.test.ts';
+import './execution-governance-boundary.integration.test.ts';
+import './planning-execution-epoch-boundary.test.ts';
+import './planning-source-policy.test.ts';
+import './planning-source-provider-adapter.test.ts';
+import './task-strategy-gate-boundary.test.ts';
+
+import './grant-coordinator-boundary.test.ts';
+
+import './human-resolution-domain-boundary.test.ts';
+import './repository-hooks-boundary.test.ts';
+
+import './ci-verifier-services.test.ts';
+import './authority-application-receipt-observation.test.ts';
+import './human-revocation-boundary.test.ts';
+import './maintainer-attestation-services.test.ts';

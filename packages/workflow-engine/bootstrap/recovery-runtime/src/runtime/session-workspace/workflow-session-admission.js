@@ -9,7 +9,7 @@ import { readSessionFile, } from "./workflow-session-records.js";
 import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
 import path from 'node:path';
 import { taskSessionIsolationLeasePaths, observeTaskSessionIsolationLease, taskSessionLeaseConflict, } from "./workflow-session-isolation.js";
-import { normalizePolicyPath, matchesAllowedPath } from "./paths.js";
+import { normalizePolicyPath, matchesAllowedPath, } from "../../foundation/repository-path/repository-path.js";
 import fs from 'node:fs';
 import { isBaseSpecificationPath } from "../../modules/source/system-spec-catalog.js";
 export function listActiveWorkflowSessionIds(runtime) {

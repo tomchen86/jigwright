@@ -11,7 +11,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { deriveInvestigationFirstPlanningSubject } from '../../modules/assurance/planning-assurance-validator.ts';
 import { assertPlanningTaskHistory } from '../../modules/planning-provider/planning-task-history.ts';
 import { projectInvestigationManifestLedger } from '../../modules/projection/investigation-design-projection.ts';
 import { type RoleTopologyResolutionDependencyPortV1 } from '../../modules/provider-orchestration/role-topology-resolution.ts';
@@ -140,6 +139,7 @@ export function materializePlanningContribution(
     ['execution.json', `${canonicalJson(execution)}\n`],
   ]);
   assertCurrentGovernanceSources(
+    services,
     context.git.repositoryRoot,
     rebuilt.intent.sourceRefs,
   );
@@ -298,7 +298,7 @@ export function materializePlanningContribution(
         ]),
       ),
     };
-    const planningSubject = deriveInvestigationFirstPlanningSubject(
+    const planningSubject = services.planningAssurance.deriveSubject(
       context.git.repositoryRoot,
       draftContract,
     );
@@ -390,6 +390,7 @@ export function materializeExemptionPlanningContribution(
     ['execution.json', `${canonicalJson(execution)}\n`],
   ]);
   assertCurrentGovernanceSources(
+    services,
     context.git.repositoryRoot,
     session.intent.sourceRefs,
   );
@@ -505,7 +506,7 @@ export function materializeExemptionPlanningContribution(
         ]),
       ),
     };
-    const planningSubject = deriveInvestigationFirstPlanningSubject(
+    const planningSubject = services.planningAssurance.deriveSubject(
       context.git.repositoryRoot,
       draftContract,
     );

@@ -1,3 +1,9 @@
+import type { LocalEngineBinding } from '../../modules/authority/intervention-bootstrap-contract.ts';
+import type { BootstrapDependencies } from '../../modules/authority/intervention-bootstrap-contract.ts';
+import type { BootstrapHumanSignatureVerifier } from '../../modules/authority/intervention-bootstrap-contract.ts';
+export type { LocalEngineBinding } from '../../modules/authority/intervention-bootstrap-contract.ts';
+export type { BootstrapDependencies } from '../../modules/authority/intervention-bootstrap-contract.ts';
+export type { BootstrapHumanSignatureVerifier } from '../../modules/authority/intervention-bootstrap-contract.ts';
 /**
  * Executes persisted engine adoption steps through intervention bootstrap
  * ports.
@@ -57,23 +63,6 @@ const MAX_BUNDLE_BYTES = 40 * 1024 * 1024;
 const ENGINE_COMMAND_TIMEOUT_MS = 10_000;
 const PRIVATE_EXECUTABLE_MODE = 0o500;
 
-export type BootstrapHumanSignatureVerifier = (
-  payload: string,
-  signature: string,
-  signer: string,
-  namespace: string,
-) => boolean;
-
-export interface BootstrapDependencies {
-  now?: () => Date;
-  verifyHumanSignature?: BootstrapHumanSignatureVerifier;
-  testHooks?: {
-    afterBindingUpdatedBeforeJournal?: () => void;
-    afterWorktreeReceiptPersistedBeforeSidecar?: () => void;
-    afterAdoptionReceiptPersistedBeforeSidecar?: () => void;
-  };
-}
-
 export interface PersistedUntrackedFile {
   path: string;
   mode: '100644' | '100755';
@@ -130,32 +119,6 @@ export interface ChildWorktreeMaterializationReceipt {
   materializedAt: string;
   effectsPerformed: true;
   receiptDigest: Sha256Digest;
-}
-
-export interface LocalEngineBinding {
-  kind: 'local-parent-session-metadata.v2';
-  parentChangeId: string;
-  parentWorkspacePath: string;
-  parentBranch: string;
-  interventionChangeId: string;
-  txId: string;
-  checkpointId: Sha256Digest;
-  engineDigest: Sha256Digest;
-  activeArtifact: {
-    artifactId: Sha256Digest;
-    executableDigest: Sha256Digest;
-    executablePath: string;
-  };
-  sessionSchema: string;
-  blocker: {
-    kind: 'harness-intervention';
-    checkpointId: Sha256Digest;
-    blockedBy: string;
-  } | null;
-  interventionState: 'active' | 'adopted';
-  generation: number;
-  updatedAt: string;
-  recordDigest: Sha256Digest;
 }
 
 export interface BootstrapAdoptionStepReceipt {

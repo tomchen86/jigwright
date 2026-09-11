@@ -1,3 +1,4 @@
+import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 /**
  * Reserves a reviewer and immutable plan snapshot before preparing provider work.
  *
@@ -13,26 +14,21 @@ import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
-  type PlanReviewTargetSnapshot,
   PLAN_REVIEW_OUTPUT_SCHEMA,
   createPlanReviewTargetSnapshotNode,
   readPlanReviewTargetSnapshotNode,
 } from '../../modules/assurance/plan-review.ts';
+import type { PlanReviewTargetSnapshot } from '../../modules/assurance/plan-review-target-snapshot-record.ts';
 import { type InvestigationFirstPlanningSubject } from '../../modules/assurance/planning-assurance-validator.ts';
-import {
-  type TaskMandateBinding,
-  assertActiveTaskMandateBindingUnderLifecycleLock,
-  authorizeTaskMandateProviderReservationUnderLifecycleLock,
-} from '../../modules/authority/task-mandate.ts';
+import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import { createProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {
   type GrantedSameProviderRoleAssignment,
   type ProviderRoleAssignment,
   type RecordedRoleParticipant,
   type RoleParticipant,
-  authorizeGrantedOrdinaryRole,
   scheduleOrdinaryRole,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+} from '../../modules/provider-orchestration/role-assignment.ts';
 import {
   type RoleTopologyResolutionDependencyPortV1,
   type RoleTopologyResolutionV1,
@@ -74,7 +70,8 @@ import {
   createPlanReviewReservationNode,
 } from './propose-evidence.ts';
 import { readProposeAuthorization } from './propose-request-validation.ts';
-import type { PlanReviewManifest, ProposeRuntime } from './propose-runtime.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
+import type { PlanReviewManifest } from '../../modules/assurance/provider-review-manifests.ts';
 import {
   type PlanReviewReservation,
   type ProposeLifecycleStatus,
@@ -83,7 +80,7 @@ import {
 import { reserveRoleContextSharingPlanReview } from './role-context-sharing-plan-review.ts';
 
 export function durablePlanReviewMandateBinding(
-  services: Pick<ProposeRuntime, 'investigation'>,
+  services: Pick<ProposeRuntime, 'taskMandate' | 'investigation'>,
   context: ReturnType<
     ProposeRuntime['workspace']['loadInvestigationRuntimeContext']
   >,
@@ -124,6 +121,7 @@ export function durablePlanReviewMandateBinding(
 }
 
 export function authorizePlanReviewReservationMandate(
+  services: Pick<ProposeRuntime, 'taskMandate'>,
   cwd: string,
   binding: TaskMandateBinding | undefined,
   reservation: PlanReviewReservation,
@@ -131,7 +129,7 @@ export function authorizePlanReviewReservationMandate(
   executionGrant?: { grantId: string },
 ): void {
   if (binding === undefined) return;
-  authorizeTaskMandateProviderReservationUnderLifecycleLock(
+  services.taskMandate.authorizeTaskMandateProviderReservationUnderLifecycleLock(
     cwd,
     binding,
     reservation.request.invocationId,
@@ -152,7 +150,14 @@ export function authorizePlanReviewReservationMandate(
 export function preparePlanReviewInvocation(
   services: Pick<
     ProposeRuntime,
-    'evidence' | 'grants' | 'investigation' | 'provider' | 'workspace'
+    | 'taskMandate'
+    | 'evidence'
+    | 'grants'
+    | 'investigation'
+    | 'provider'
+    | 'workspace'
+    | 'roleAdmission'
+    | 'roleContextSharingGrants'
   >,
   cwd: string,
   status: ProposeLifecycleStatus,
@@ -170,7 +175,7 @@ export function preparePlanReviewInvocation(
     status,
   );
   if (mandateBinding) {
-    assertActiveTaskMandateBindingUnderLifecycleLock(
+    services.taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock(
       cwd,
       mandateBinding,
       assertOwned,
@@ -208,6 +213,7 @@ export function preparePlanReviewInvocation(
       );
     }
     authorizePlanReviewReservationMandate(
+      services,
       cwd,
       mandateBinding,
       existing,
@@ -316,25 +322,28 @@ export function preparePlanReviewInvocation(
     const verifier = resolveAuthoritativeRoleContextSharingGrantVerifier(
       roleContextSharingGrant.verifier,
     );
-    const reserved = reserveRoleContextSharingPlanReview({
-      gitCommonDirectory: context.git.gitCommonDirectory,
-      requirementNodeId: durableRoleContextRequirement.requirementNodeId,
-      requirement,
-      grantId: roleContextSharingGrant.grantId,
-      policy: maintainerPolicy,
-      policyBlob: services.workspace
-        .runGit(context.git.repositoryRoot, [
-          'rev-parse',
-          `${requirement.baseline.head}:workflow/maintainer-policy.json`,
-        ])
-        .trim(),
-      verifier,
-      lifecycle: roleContextSharingGrant.lifecycle,
-      ...(roleContextSharingGrant.now === undefined
-        ? {}
-        : { now: roleContextSharingGrant.now }),
-      assertOwned,
-    });
+    const reserved = reserveRoleContextSharingPlanReview(
+      services.roleContextSharingGrants,
+      {
+        gitCommonDirectory: context.git.gitCommonDirectory,
+        requirementNodeId: durableRoleContextRequirement.requirementNodeId,
+        requirement,
+        grantId: roleContextSharingGrant.grantId,
+        policy: maintainerPolicy,
+        policyBlob: services.workspace
+          .runGit(context.git.repositoryRoot, [
+            'rev-parse',
+            `${requirement.baseline.head}:workflow/maintainer-policy.json`,
+          ])
+          .trim(),
+        verifier,
+        lifecycle: roleContextSharingGrant.lifecycle,
+        ...(roleContextSharingGrant.now === undefined
+          ? {}
+          : { now: roleContextSharingGrant.now }),
+        assertOwned,
+      },
+    );
     assignment = reserved.assignment;
     grantAuthorization = reserved.authorization;
     roleTopology = requirement.roleTopology;
@@ -426,7 +435,7 @@ export function preparePlanReviewInvocation(
         },
         assertOwned,
       );
-    assignment = authorizeGrantedOrdinaryRole({
+    assignment = services.roleAdmission.authorizeGrantedOrdinaryRole({
       role: 'plan-reviewer',
       author,
       targetDigest: planning.subject.subjectDigest,
@@ -571,6 +580,7 @@ export function preparePlanReviewInvocation(
     retry: null,
   };
   authorizePlanReviewReservationMandate(
+    services,
     cwd,
     mandateBinding,
     reservation,
@@ -588,7 +598,7 @@ export function preparePlanReviewInvocation(
 }
 
 function planAuthor(
-  services: Pick<ProposeRuntime, 'evidence' | 'provider'>,
+  services: Pick<ProposeRuntime, 'taskMandate' | 'evidence' | 'provider'>,
   paths: ReturnType<
     ProposeRuntime['workspace']['loadInvestigationRuntimeContext']
   >['runtime'],
@@ -618,7 +628,7 @@ function planAuthor(
 }
 
 export function ensurePlanReviewInvocation(
-  services: Pick<ProposeRuntime, 'provider'>,
+  services: Pick<ProposeRuntime, 'taskMandate' | 'provider'>,
   repositoryRoot: string,
   paths: ReturnType<
     ProposeRuntime['workspace']['loadInvestigationRuntimeContext']
@@ -722,7 +732,7 @@ export function ensurePlanReviewInvocation(
 }
 
 function copyPriorPlanReviewSnapshot(
-  services: Pick<ProposeRuntime, 'provider'>,
+  services: Pick<ProposeRuntime, 'taskMandate' | 'provider'>,
   paths: ReturnType<
     ProposeRuntime['workspace']['loadInvestigationRuntimeContext']
   >['runtime'],
@@ -740,7 +750,7 @@ function copyPriorPlanReviewSnapshot(
 }
 
 export function readPriorPlanReviewSnapshotFiles(
-  services: Pick<ProposeRuntime, 'provider'>,
+  services: Pick<ProposeRuntime, 'taskMandate' | 'provider'>,
   paths: ReturnType<
     ProposeRuntime['workspace']['loadInvestigationRuntimeContext']
   >['runtime'],

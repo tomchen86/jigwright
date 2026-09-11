@@ -1,3 +1,5 @@
+import type {ImmutableCandidateBundleV2} from './maintainer-candidate-contracts.ts';
+import type { MaintainerManifestOperations } from './maintainer-manifest.ts';
 /**
  * Preflights, signs and admits Maintainer Grants for exact checked
  * candidates against the live trust base.
@@ -22,10 +24,8 @@ import {
   isPostApprovalAdmissionFailure,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
-import {
-  assertMaintainerGrantId,
-  createMaintainerAuditTag,
-} from './maintainer-grant.ts';
+import { assertMaintainerGrantId } from './maintainer-grant-contracts.ts';
+import { createMaintainerAuditTag } from '../../runtime/repository-transaction/maintainer-audit-tag.ts';
 import {
   acceptApplyPrestate,
   assertCandidateV2ChecksFresh,
@@ -34,18 +34,15 @@ import {
   parseImmutableCandidateBundle,
   readDurableRefGenerationLedger,
   readStoredImmutableCandidateBundle,
-  type ImmutableCandidateBundleV2,
 } from './maintainer-candidate.ts';
 import { currentCandidateDependencySnapshot } from '../../application/control-plane/maintainer-candidate-dependencies.ts';
+
 import {
-  buildMaintainerPatchManifest,
   canonicalPatchManifest,
-  loadCapabilityProfileFromTrustBase,
   parsePatchManifest,
-  validatePatchManifestAgainstProfile,
   type CapabilityProfile,
   type PatchManifest,
-} from './maintainer-manifest.ts';
+} from './maintainer-manifest-contracts.ts';
 import {
   parseMaintainerPolicy,
   type MaintainerPolicy,
@@ -59,14 +56,10 @@ import {
   storeCanonicalAvailableMaintainerGrantUnderLifecycleLock,
   terminallyFailSignedMaintainerGrantV2UnderLifecycleLock,
 } from '../../runtime/storage-journal/maintainer-store.ts';
-import { assertChangeId } from '../../runtime/session-workspace/paths.ts';
+import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
 import { classifyProtectedCapabilityPaths } from '../../adapters/consumer/repository/work-registry/protected-capabilities.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
-import {
-  assertActiveTaskMandateBindingUnderLifecycleLock,
-  inspectActiveTaskMandateBinding,
-  type TaskMandateBinding,
-} from './task-mandate.ts';
+import { type TaskMandateBinding } from './task-mandate-contract.ts';
 import {
   MAX_V2_TTL_MINUTES,
   assertArmoredSignature,
@@ -173,16 +166,17 @@ export type MaintainerGrantV2IssueResult = {
 };
 
 export function preflightMaintainerGrantV2(
+  manifestOperations: MaintainerManifestOperations,
   cwd: string,
   request: MaintainerGrantV2PreflightRequest,
 ): MaintainerGrantV2PreflightResult {
   const context = loadV2TrustContext(cwd);
-  const profile = loadCapabilityProfileFromTrustBase(
+  const profile = manifestOperations.loadCapabilityProfileFromTrustBase(
     context.repository.repositoryRoot,
     context.repository.head,
     request.profileId,
   );
-  const manifest = buildMaintainerPatchManifest(
+  const manifest = manifestOperations.buildMaintainerPatchManifest(
     context.repository.repositoryRoot,
     {
       profile,
@@ -210,6 +204,8 @@ export function preflightMaintainerGrantV2(
 }
 
 export function issueMaintainerGrantV2(
+  manifestOperations: MaintainerManifestOperations,
+  taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
   request: MaintainerGrantV2IssueRequest,
   options: MaintainerGrantV2IssueOptions = {},
@@ -221,7 +217,7 @@ export function issueMaintainerGrantV2(
   }
   const manifest = parsePatchManifest(canonicalPatchManifest(request.manifest));
   const context = loadV2TrustContext(cwd, manifest.trustBaseCommit);
-  const profile = loadCapabilityProfileFromTrustBase(
+  const profile = manifestOperations.loadCapabilityProfileFromTrustBase(
     context.repository.repositoryRoot,
     manifest.trustBaseCommit,
     manifest.profile,
@@ -239,7 +235,7 @@ export function issueMaintainerGrantV2(
     profile.requiredChecks,
     profile.checkDependencies,
   );
-  const observed = buildMaintainerPatchManifest(
+  const observed = manifestOperations.buildMaintainerPatchManifest(
     context.repository.repositoryRoot,
     {
       profile,
@@ -358,6 +354,7 @@ export function issueMaintainerGrantV2(
     candidateBundle,
   );
   const mandateBinding = assertActiveApplyMandateBinding(
+    taskMandate,
     cwd,
     changeId,
     candidateBundle.mandateBinding,
@@ -471,11 +468,17 @@ export function issueMaintainerGrantV2(
     assertOwned();
     let tagObject: string | null = null;
     try {
-      assertActiveApplyMandateBinding(cwd, changeId, mandateBinding, {
-        now,
-        signer,
-        assertLifecycleOwned: assertOwned,
-      });
+      assertActiveApplyMandateBinding(
+        taskMandate,
+        cwd,
+        changeId,
+        mandateBinding,
+        {
+          now,
+          signer,
+          assertLifecycleOwned: assertOwned,
+        },
+      );
       tagObject = createMaintainerAuditTag(
         context.repository.repositoryRoot,
         manifest.trustBaseCommit,
@@ -584,6 +587,7 @@ function exactPublishedAuditTagObject(
 }
 
 function assertActiveApplyMandateBinding(
+  taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
   changeId: string,
   expected: TaskMandateBinding,
@@ -594,13 +598,17 @@ function assertActiveApplyMandateBinding(
   },
 ): TaskMandateBinding {
   const active = options.assertLifecycleOwned
-    ? assertActiveTaskMandateBindingUnderLifecycleLock(
+    ? taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock(
         cwd,
         expected,
         options.assertLifecycleOwned,
         options,
       )
-    : inspectActiveTaskMandateBinding(cwd, expected.mandateTaskId, options);
+    : taskMandate.inspectActiveTaskMandateBinding(
+        cwd,
+        expected.mandateTaskId,
+        options,
+      );
   if (
     active.changeId !== changeId ||
     canonicalJson(active) !== canonicalJson(expected)
@@ -631,6 +639,8 @@ function currentChecksEnvironmentDigest(
 }
 
 export function validateMaintainerGrantV2AuthorityBinding(
+  manifestOperations: MaintainerManifestOperations,
+  taskMandate: MaintainerTaskMandateOperations,
   repositoryRoot: string,
   envelope: MaintainerGrantV2Envelope,
   policy: MaintainerPolicy,
@@ -686,6 +696,7 @@ export function validateMaintainerGrantV2AuthorityBinding(
     );
   }
   assertActiveApplyMandateBinding(
+    taskMandate,
     repositoryRoot,
     envelope.payload.changeId,
     envelope.payload.mandateBinding,
@@ -695,7 +706,7 @@ export function validateMaintainerGrantV2AuthorityBinding(
       assertLifecycleOwned: options.assertLifecycleOwned,
     },
   );
-  const profile = loadCapabilityProfileFromTrustBase(
+  const profile = manifestOperations.loadCapabilityProfileFromTrustBase(
     repositoryRoot,
     options.expectedBase,
     envelope.payload.profile,
@@ -705,7 +716,7 @@ export function validateMaintainerGrantV2AuthorityBinding(
     profile,
     envelope.payload.manifest,
   );
-  validatePatchManifestAgainstProfile(
+  manifestOperations.validatePatchManifestAgainstProfile(
     repositoryRoot,
     envelope.payload.manifest,
     profile,
@@ -868,3 +879,10 @@ function exactDate(value: Date): Date {
   }
   return copy;
 }
+
+import type { TaskMandateOperations } from './task-mandate.ts';
+export type MaintainerTaskMandateOperations = Pick<
+  TaskMandateOperations,
+  | 'inspectActiveTaskMandateBinding'
+  | 'assertActiveTaskMandateBindingUnderLifecycleLock'
+>;

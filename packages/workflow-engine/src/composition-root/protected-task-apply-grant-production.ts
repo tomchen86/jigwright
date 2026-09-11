@@ -1,3 +1,4 @@
+import { taskMandateOperations } from './task-mandate-production.ts';
 /**
  * Connects protected-task Grant observation and finalization to production
  * lifecycle operations.
@@ -8,11 +9,9 @@
  */
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
-import {
-  finalizeProtectedTaskApplyUnderGrant,
-  inspectProtectedTaskApplyLifecycleState,
-} from '../application/finalize/lifecycle.ts';
-import { assertActiveTaskMandateBindingUnderLifecycleLock } from '../modules/authority/task-mandate.ts';
+import { inspectProtectedTaskApplyLifecycleState } from '../application/finalize/lifecycle.ts';
+import { finalizeProtectedTaskApplyUnderGrant } from './finalization-production.ts';
+
 import {
   type ProtectedTaskApplyFinalizationParametersV1,
   type ProtectedTaskApplyGrantPort,
@@ -144,3 +143,6 @@ function repositoryIdAtBaseline(
   }
   return parseMaintainerPolicy(value).repository.id;
 }
+
+const { assertActiveTaskMandateBindingUnderLifecycleLock } =
+  taskMandateOperations;

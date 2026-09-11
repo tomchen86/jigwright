@@ -8,7 +8,7 @@
  */
 import path from 'node:path';
 
-import { repositoryPlanningConfiguration } from '../../../../modules/repository-consumer/repository-consumer-config.ts';
+import { loadRepositoryConsumerConfiguration } from '../../../../runtime/repository-observation/repository-consumer.ts';
 import { WorkflowError } from '../../../../foundation/errors/errors.ts';
 import { assertOpenSpecSchemaDirectory } from './openspec-adapter.ts';
 import {
@@ -164,7 +164,8 @@ export function diagnoseOpenSpec(
 function configuredSchemaDiagnostics(
   repositoryRoot: string,
 ): SchemaDiagnostic[] {
-  const planning = repositoryPlanningConfiguration(repositoryRoot);
+  const planning =
+    loadRepositoryConsumerConfiguration(repositoryRoot).configuration.planning;
   const packageSchemas = new Set(planning.packageSchemaNames);
   return planning.supportedSchemaNames.map((name) => ({
     name,

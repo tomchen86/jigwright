@@ -1,3 +1,5 @@
+import { planningAssuranceDependencies } from '../../src/composition-root/planning-assurance-production.ts';
+import { readCurrentPlanningRoleOverridePolicy } from '../../src/runtime/repository-transaction/planning-role-provider-policy-reader.ts';
 import { discoverRepository } from '../../src/runtime/repository-transaction/git.ts';
 import { investigationRuntimePaths } from '../../src/runtime/session-workspace/paths.ts';
 import {
@@ -13,7 +15,10 @@ import {
   providerInvocationCancellationTransitionDefinitions,
 } from '../../src/modules/authority/provider-invocation-cancellation-grant.ts';
 import { createGrantCoordinatorKernel } from '../../src/modules/authority/grant-coordinator.ts';
-import { grantStorePaths } from '../../src/runtime/storage-journal/grant-store.ts';
+import {
+  grantStorePaths,
+  createFileGrantRecordStore,
+} from '../../src/runtime/storage-journal/grant-store.ts';
 import path from 'node:path';
 import { createTransitionRegistry } from '../../src/modules/authority/grant-transition-registry.ts';
 import {
@@ -40,17 +45,17 @@ import {
   agentRolePlanV2Digest,
 } from '../../src/modules/provider-orchestration/agent-role-plan.ts';
 import { agentRolePlanV2Path } from '../../src/modules/source/planning-role-policy-paths.ts';
-import { loadChangeContract } from '../../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { loadChangeContract } from '../../src/composition-root/consumer-contract-production.ts';
 import assert from 'node:assert/strict';
 import { deriveInvestigationFirstPlanningSubject } from '../../src/modules/assurance/planning-assurance-validator.ts';
 import {
   createPlanReviewTargetSnapshotNode,
   readPlanReviewTargetSnapshotNode,
   PLAN_REVIEW_OUTPUT_SCHEMA,
-  type PlanReviewSubject,
 } from '../../src/modules/assurance/plan-review.ts';
+import type { PlanReviewSubject } from '../../src/modules/assurance/plan-review-subject.ts';
 import { writeEvidenceNode } from '../../src/runtime/storage-journal/evidence-object-store.ts';
-import { createEvidenceNode } from '../../src/adapters/planning/investigation/evidence-node.ts';
+import { createEvidenceNode } from '../../src/foundation/evidence-node/evidence-node.ts';
 import {
   PROPOSE_POLICY_DIGEST,
   createProviderInvocationRequest,
@@ -58,14 +63,14 @@ import {
 } from '../../src/modules/provider-orchestration/provider-contracts.ts';
 import { canonicalJson } from '../../src/foundation/canonical-json/canonical-json.ts';
 import {
-  type PlanReviewManifest,
   providerInvocationManifestDigest,
   storeProviderExecutionPolicySnapshot,
   createProviderInvocation,
 } from '../../src/runtime/storage-journal/provider-invocation-store.ts';
+import type { PlanReviewManifest } from '../../src/modules/assurance/provider-review-manifests.ts';
 import { loadAiAdapterPolicy } from '../../src/runtime/provider-execution/ai-adapter-policy.ts';
-import { type InvestigationManifestV3 } from '../../src/modules/investigation/manifest/investigation-manifest.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../../src/runtime/provider-execution/built-in-provider-definition.ts';
+import { type InvestigationManifestV3 } from '../../src/modules/investigation/manifest/investigation-manifest-types.ts';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import { PROVIDER_RUNNER_RESIDUALS } from '../../src/runtime/provider-execution/provider-runner.ts';
 
 export async function beginExactProviderCancellationGrant(
@@ -95,7 +100,9 @@ export async function beginExactProviderCancellationGrant(
   );
   const grantNow = new Date('2030-08-30T01:00:00.000Z');
   const coordinator = createGrantCoordinatorKernel({
-    paths: grantStorePaths(path.dirname(runtime.root)),
+    store: createFileGrantRecordStore(
+      grantStorePaths(path.dirname(runtime.root)),
+    ),
     registry: createTransitionRegistry(
       providerInvocationCancellationTransitionDefinitions(port),
     ),
@@ -235,8 +242,10 @@ export function createCurrentPlanReviewNativeWorkerFixture() {
     assert.ok(contract.investigation);
     const investigationManifest = contract.investigation.manifest;
     const planning = deriveInvestigationFirstPlanningSubject(
+      planningAssuranceDependencies,
       repository,
       contract,
+      readCurrentPlanningRoleOverridePolicy(repository, contract.changeId),
     );
     const locator = discoverRepository(repository);
     const runtime = investigationRuntimePaths(

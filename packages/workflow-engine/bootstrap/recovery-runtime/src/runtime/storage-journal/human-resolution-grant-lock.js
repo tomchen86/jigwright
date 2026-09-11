@@ -7,9 +7,10 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { assertHumanResolutionGrantPublicationQuarantineReceipt, HUMAN_RESOLUTION_GRANT_FILE, HUMAN_RESOLUTION_GRANT_TEMPORARY, } from "./human-resolution-grant-publication-contract.js";
+import { assertHumanResolutionGrantPublicationQuarantineReceipt, HUMAN_RESOLUTION_GRANT_FILE, HUMAN_RESOLUTION_GRANT_TEMPORARY, } from "../../modules/investigation/domain/human-resolution-grant-publication-contract.js";
 import { assertPrivateFile, fsyncDirectory, privatePathExists, readPrivateCanonicalJson, walkPrivateDirectory, withPrivateRuntimeLock, } from "./investigation-private-files.js";
-import { assertHumanResolutionGrantId, humanResolutionGrantPublicationRecoveryRequired, humanResolutionGrantUnsafe, humanResolutionPaths, } from "./investigation-resolution-values.js";
+import { assertHumanResolutionGrantId, humanResolutionGrantUnsafe, } from "../../modules/investigation/domain/human-resolution-values.js";
+import { humanResolutionGrantPublicationRecoveryRequired, humanResolutionPaths, } from "./investigation-resolution-values.js";
 export function humanResolutionGrantPublicationRecoveryPath(stores, grantId) {
     return path.join(stores.publicationRecoveries, `${grantId}.json`);
 }

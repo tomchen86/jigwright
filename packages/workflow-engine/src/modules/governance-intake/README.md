@@ -8,11 +8,11 @@ Keep original requirement wording separate from the working inbox so corrections
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.governance-intake-readme v=1 digest=sha256:2e3c427739d1d42fd0cabc2336c26617882b70fa12985572c4dcd9ece12defd2 -->
+<!-- jigwright:region id=documents.governance-intake-readme v=1 digest=sha256:2fabdedaf7038b87ee43abb523b0335a22e1846cd7c3500693f0f2656d80c711 -->
 
 <!-- prettier-ignore-start -->
 
-12 files changed in this module since confirmation.
+20 files changed in this module since confirmation.
 
 ## Commands
 
@@ -32,10 +32,10 @@ Keep original requirement wording separate from the working inbox so corrections
 | Type | Values | Source |
 | --- | --- | --- |
 | GovernanceFindingDispositionV1 | pending, converted, linked, dismissed | [governance-intake.ts](governance-intake.ts) |
-| WorkItemKindV1 | feature, bug, improvement, chore, research | [work-registry.ts](work-registry.ts) |
-| WorkItemLaneV1 | now, next, later, icebox, null | [work-registry.ts](work-registry.ts) |
-| WorkItemStageV1 | inbox, backlog, active, closed | [work-registry.ts](work-registry.ts) |
-| WorkRegistryGovernedTransition | intake, prioritize, promote | [work-registry.ts](work-registry.ts) |
+| WorkItemKindV1 | feature, bug, improvement, chore, research | [work-registry-contracts.ts](work-registry-contracts.ts) |
+| WorkItemLaneV1 | now, next, later, icebox, null | [work-registry-contracts.ts](work-registry-contracts.ts) |
+| WorkItemStageV1 | inbox, backlog, active, closed | [work-registry-contracts.ts](work-registry-contracts.ts) |
+| WorkRegistryGovernedTransition | intake, prioritize, promote | [work-registry-contracts.ts](work-registry-contracts.ts) |
 
 ## Contracts
 
@@ -70,21 +70,25 @@ Header history compares Git blame at the explanation confirmation with this sour
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
 | [governance-finding-ref.ts](governance-finding-ref.ts) | Defines canonical Finding paths and the dedicated-ref persistence contract. | 1 | Header changed since confirmation |
-| [governance-findings.ts](governance-findings.ts) | Capture exact Finding observations and resolve their append-only dispositions. | 3 | Possibly stale |
-| [governance-intake-storage.ts](governance-intake-storage.ts) | Publishes canonical governance intake records and reads them with file identity checks. | 1 | Header changed since confirmation |
-| [governance-intake.ts](governance-intake.ts) | Captures and reads immutable requirement Sources and composes development Finding operations. | 1 | History unavailable |
+| [governance-findings.ts](governance-findings.ts) | Pure Finding identity, canonical byte admission and append-only read projection. | 0 | Header changed since confirmation |
+| [governance-intake-storage.ts](governance-intake-storage.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [governance-intake.ts](governance-intake.ts) | Canonical intake DTOs and Source byte admission; no repository access. | 0 | History unavailable |
 | [intake-policy.ts](intake-policy.ts) | Defines intake kinds and the destination of deferred observations. | 1 | Header changed since confirmation |
-| [intake-summary.ts](intake-summary.ts) | Aggregates inbox, pending Finding and backlog counts through supplied readers. | 1 | History unavailable |
-| [source-aliases.ts](source-aliases.ts) | Resolve named owner requirements to their canonical Source records. | 1 | Possibly stale |
-| [work-registry-grant.ts](work-registry-grant.ts) | Creates and validates protected Work Registry review and promotion Grant transitions. | 1 | History unavailable |
-| [work-registry-projections.ts](work-registry-projections.ts) | Renders Work Registry backlog and history views and detects projection drift. | 1 | Header changed since confirmation |
-| [work-registry-promotion-preparation.ts](work-registry-promotion-preparation.ts) | Prepares promotion surveys and exact change bindings before durable promotion. | 1 | Header changed since confirmation |
-| [work-registry-promotion-transaction.ts](work-registry-promotion-transaction.ts) | Commit and recover paired Work Item/origin updates under the registry lock. | 3 | No newer code observed |
-| [work-registry-queries.ts](work-registry-queries.ts) | Discovers Work Items, traces provenance, and validates registry relationships. | 1 | Header changed since confirmation |
+| [intake-summary.ts](intake-summary.ts) | Aggregates observed inbox, backlog and pending Finding facts without repository access. | 0 | History unavailable |
+| [source-aliases.ts](source-aliases.ts) | Parse named Source aliases; wording remains in immutable Source records. | 0 | Header changed since confirmation |
+| [work-registry-contracts.ts](work-registry-contracts.ts) | Canonical Work Item, origin, promotion and transition-policy values shared by rules and storage. | 0 | History unavailable |
+| [work-registry-grant.ts](work-registry-grant.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [work-registry-mutation.ts](work-registry-mutation.ts) | A paired Work Item/origin change; journal layout and recovery storage remain private to runtime. | 0 | History unavailable |
+| [work-registry-policy.ts](work-registry-policy.ts) | Work Item aliases, origin unions and repository transition-policy values; no repository reads. | 0 | History unavailable |
+| [work-registry-projections.ts](work-registry-projections.ts) | Pure readable backlog/history rendering and projection drift policy. | 0 | Header changed since confirmation |
+| [work-registry-promotion-policy.ts](work-registry-promotion-policy.ts) | Canonical survey values and permitted exact preparation transitions. | 0 | History unavailable |
+| [work-registry-promotion-preparation.ts](work-registry-promotion-preparation.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [work-registry-promotion-transaction.ts](work-registry-promotion-transaction.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [work-registry-queries.ts](work-registry-queries.ts) | Pure Work Registry selection, search, inventory and relationship rules. | 0 | Header changed since confirmation |
 | [work-registry-record.ts](work-registry-record.ts) | Parses canonical Work Items, lifecycle records, and change origins. | 1 | Header changed since confirmation |
-| [work-registry-source-update.ts](work-registry-source-update.ts) | Project a Source attachment or correction onto a Work Item and its origin. | 3 | No newer code observed |
-| [work-registry-storage.ts](work-registry-storage.ts) | Reads canonical Work Items, discovers their paths and publishes record replacements. | 1 | Header changed since confirmation |
-| [work-registry.ts](work-registry.ts) | Maintain canonical Work Items, reviewed transitions and change provenance. | 3 | No newer code observed |
+| [work-registry-source-update.ts](work-registry-source-update.ts) | Project a Source attachment or correction onto a Work Item and its origin. | 3 | Possibly stale |
+| [work-registry-storage.ts](work-registry-storage.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [work-registry.ts](work-registry.ts) | No leading responsibility comment. | 0 | History unavailable |
 
 <!-- prettier-ignore-end -->
 

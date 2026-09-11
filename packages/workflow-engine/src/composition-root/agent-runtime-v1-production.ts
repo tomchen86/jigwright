@@ -26,11 +26,10 @@ import {
 } from '@jigwright/agent-runtime/agent-runtime-port';
 import {
   assertAgentProviderProfileSnapshot,
-  assertKnownBuiltInProviderDefinitionSnapshot,
-  resolveBuiltInProviderDefinitionSnapshot,
   type BuiltInReviewedProviderProfileSnapshot,
-  type ProviderDefinitionSnapshot,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
+import {assertKnownBuiltInProviderDefinitionSnapshot, resolveBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
+import { type ProviderDefinitionSnapshot } from '@jigwright/core/provider-definition-snapshot';
 
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';

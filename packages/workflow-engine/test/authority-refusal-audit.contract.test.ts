@@ -10,7 +10,6 @@ import {
   authorityRefusalDigest,
   recordAuthorityRefusal,
   withAuthorityRefusalAudit,
-  type AuthorityRefusalAuditBinding,
 } from '../src/modules/authority/authority-refusal-audit.ts';
 import { verifyAuthorityAuditEvents } from '../src/runtime/storage-journal/authority-audit-service.ts';
 import {
@@ -153,3 +152,5 @@ test('non-workflow and audit-infrastructure failures are never recast as authori
     value.cleanup();
   }
 });
+
+import { type AuthorityRefusalAuditBinding } from '../src/modules/authority/authority-audit-contract.ts';

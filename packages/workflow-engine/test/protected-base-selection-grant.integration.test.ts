@@ -36,7 +36,7 @@ import {
 } from '../src/modules/authority/protected-base-selection-grant.ts';
 import {
   grantStorePaths,
-  readGrantRecord,
+  createFileGrantRecordStore,
 } from '../src/runtime/storage-journal/grant-store.ts';
 import {
   createFixtureRepository,
@@ -65,7 +65,8 @@ test('a pending local protected-base Grant has no effect and exact approval crea
     const paths = grantStorePaths(runtimeRoot(repository));
 
     assert.equal(
-      readGrantRecord(paths, challenge.challengeId).state,
+      createFileGrantRecordStore(paths).readGrantRecord(challenge.challengeId)
+        .state,
       'pending',
     );
     assert.equal(git(repository, ['show-ref']), before);
@@ -82,7 +83,8 @@ test('a pending local protected-base Grant has no effect and exact approval crea
     assert.equal(git(repository, ['rev-parse', LOCAL_REF]).trim(), source);
     assert.equal(git(repository, ['rev-parse', 'HEAD']).trim(), source);
     assert.equal(
-      readGrantRecord(paths, challenge.challengeId).state,
+      createFileGrantRecordStore(paths).readGrantRecord(challenge.challengeId)
+        .state,
       'completed',
     );
     const after = git(repository, ['show-ref']);
@@ -120,10 +122,9 @@ for (const changedRef of ['HEAD', LOCAL_REF]) {
         competing,
       );
       assert.equal(
-        readGrantRecord(
+        createFileGrantRecordStore(
           grantStorePaths(runtimeRoot(repository)),
-          challenge.challengeId,
-        ).state,
+        ).readGrantRecord(challenge.challengeId).state,
         'pending',
       );
     });
@@ -158,7 +159,8 @@ for (const competingRef of [false, true]) {
         /Simulated interruption after local ref creation/,
       );
       assert.equal(
-        readGrantRecord(paths, challenge.challengeId).state,
+        createFileGrantRecordStore(paths).readGrantRecord(challenge.challengeId)
+          .state,
         'prepared',
       );
       assert.equal(git(repository, ['rev-parse', LOCAL_REF]).trim(), source);
@@ -179,7 +181,9 @@ for (const competingRef of [false, true]) {
 
       assert.equal(recovered.recovered, true);
       assert.equal(recovered.outcome, competingRef ? 'failed' : 'completed');
-      const record = readGrantRecord(paths, challenge.challengeId);
+      const record = createFileGrantRecordStore(paths).readGrantRecord(
+        challenge.challengeId,
+      );
       assert.equal(record.state, recovered.outcome);
       assert.ok(record.state === 'completed' || record.state === 'failed');
       if (competingRef) {
@@ -349,7 +353,8 @@ function createSelectionCoordinator(
   transitionId: string = LOCAL_TRANSITION,
 ) {
   return createGrantCoordinatorKernel({
-    paths: grantStorePaths(runtimeRoot(repository)),
+    randomUUID: () => crypto.randomUUID(),
+    store: createFileGrantRecordStore(grantStorePaths(runtimeRoot(repository))),
     registry: createTransitionRegistry(
       protectedBaseSelectionGrantTransitionDefinitions(port),
     ),

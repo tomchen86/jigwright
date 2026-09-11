@@ -7,7 +7,7 @@
  *   state and a supplied output schema.
  */
 import type { ProviderInvocationPlan } from '../../../modules/provider-orchestration/provider-contracts.ts';
-export { CODEX_EXECUTABLE_CANDIDATES } from '../built-in-provider-definition.ts';
+export {CODEX_EXECUTABLE_CANDIDATES} from '@jigwright/core/built-in-provider-definition';
 
 /**
  * The reviewed flags a resolved Codex executable must advertise on its root

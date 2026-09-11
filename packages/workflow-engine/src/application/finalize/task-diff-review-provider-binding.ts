@@ -1,3 +1,4 @@
+import type { CollaborationGrantCodec } from '../../modules/authority/collaboration-grant-codec.ts';
 /**
  * Validates provider review reservations, results, and their final
  * assurance.
@@ -7,39 +8,34 @@
  *   implementation actor.
  */
 // Validate provider reservations, results, and the final assurance they authorize.
-import {
-  type TaskDiffReviewSubject,
-  TASK_DIFF_REVIEW_POLICY_DIGEST,
-} from '../../modules/assurance/task-diff-review.ts';
-import {
-  type RecordedRoleParticipant,
-  admitConsumedRoleResultReplay,
-  admitRoleResult,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+import { TASK_DIFF_REVIEW_POLICY_DIGEST } from '../../modules/assurance/task-diff-review.ts';
+import type { TaskDiffReviewSubject } from '../../modules/assurance/task-diff-review-record.ts';
+import { type RecordedRoleParticipant } from '../../modules/provider-orchestration/role-assignment.ts';
+import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 import { type ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import {
   type CollaborationGrantRequest,
   type CollaborationGrantExpectedBinding,
   collaborationPolicyDigestForPhase,
-  parseCollaborationGrantEnvelope,
-  canonicalCollaborationGrantEnvelope,
   bindingFromPayload,
-} from '../../modules/authority/collaboration-grant.ts';
+} from '../../modules/authority/collaboration-grant-codec.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
-  type TaskDiffReviewRecord,
-  type TaskDiffReviewChallengeResponseRecord,
   assertTaskDiffReviewChallengeResponseCurrent,
   TASK_DIFF_REVIEW_OUTPUT_SCHEMA,
-  type TaskDiffReviewContinuationSubmission,
   assertTaskDiffReviewContinuationSubmissionCurrent,
-  type TaskDiffFinalAssuranceRecord,
   createTaskDiffFinalAssuranceRecord,
   assertTaskDiffFinalAssuranceCurrent,
-  type TaskDiffAuthenticatedReviewerAuthority,
 } from '../../modules/assurance/task-diff-review-artifact.ts';
+import type {
+  TaskDiffReviewRecord,
+  TaskDiffReviewChallengeResponseRecord,
+  TaskDiffReviewContinuationSubmission,
+  TaskDiffFinalAssuranceRecord,
+  TaskDiffAuthenticatedReviewerAuthority,
+} from '../../modules/assurance/task-diff-review-artifact-record.ts';
 import type {
   TaskDiffReviewRuntimeBindings,
   TaskDiffReviewRuntimeData,
@@ -69,7 +65,21 @@ export function createTaskDiffReviewProviderBindingModule(
   runtime: TaskDiffReviewRuntimeBindings,
   common: ReturnType<typeof createTaskDiffReviewCommonModule>,
   subject: ReturnType<typeof createTaskDiffReviewSubjectModule>,
+  collaborationGrants: Pick<
+    CollaborationGrantCodec,
+    'parseCollaborationGrantEnvelope' | 'canonicalCollaborationGrantEnvelope'
+  >,
+  roleResultAdmission: Pick<
+    RoleAdmissionServices,
+    'admitConsumedRoleResultReplay' | 'admitRoleResult'
+  >,
 ) {
+  const { admitConsumedRoleResultReplay, admitRoleResult } =
+    roleResultAdmission;
+  const {
+    parseCollaborationGrantEnvelope,
+    canonicalCollaborationGrantEnvelope,
+  } = collaborationGrants;
   const {
     loadActiveSessionContext,
     runGit,

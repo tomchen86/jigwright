@@ -1,3 +1,4 @@
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Inspects and resumes task strategies across mechanical and TDD execution
  * states.
@@ -6,6 +7,7 @@
  * - Mechanical and other non-TDD tasks cannot retain a TDD strategy
  *   transaction.
  */
+import type { ProviderRetryAccountingReader } from '../../modules/provider-orchestration/provider-retry-accounting.ts';
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
@@ -13,7 +15,7 @@ import type {
   CrossAgentTddExecution,
   ExecutionTask,
   TddSingleAgentExecution,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+} from '../../modules/planning-provider/planning-artifact-types.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
@@ -26,15 +28,13 @@ import {
   inspectTaskMechanicalTransformLifecycle,
   resumeTaskMechanicalTransformation,
 } from './task-mechanical-transform-lifecycle.ts';
-import {
-  beginTaskStrategyImplementation,
-  type BeginTaskStrategyImplementationOptions,
-  type TaskStrategyImplementationStatus,
+import type {
+  TaskStrategyImplementationLifecycle,
+  BeginTaskStrategyImplementationOptions,
+  TaskStrategyImplementationStatus,
 } from './task-strategy-implementation-lifecycle.ts';
-import {
-  createTaskStrategyImplementationSubject,
-  type TaskStrategyImplementationSubject,
-} from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
+import { createTaskStrategyImplementationSubject } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
+import type { TaskStrategyImplementationSubject } from '../../modules/provider-orchestration/task-strategy-implementation-manifest.ts';
 import type { ManagedTaskStrategyState } from '../../modules/lifecycle/managed-workflow-state-contract.ts';
 import {
   readTaskStrategyCallerImplementationBinding,
@@ -53,10 +53,7 @@ import {
   resolveCurrentTaskStrategyImplementationAuthority,
   type TaskStrategyCorrectionProjection,
 } from './task-strategy-correction.ts';
-import {
-  beginTaskStrategyRedRevision,
-  continueTaskStrategyRedRevision,
-} from './task-strategy-red-revision.ts';
+import type { createTaskStrategyRedRevisionService } from './task-strategy-red-revision.ts';
 import type { TaskStrategyRedRevisionRequest } from '../../runtime/storage-journal/task-strategy-red-revision-store.ts';
 import { readTaskStrategyPatchCurrentBinding } from '../../runtime/storage-journal/task-strategy-patch-store.ts';
 import {
@@ -89,7 +86,7 @@ export type ResumeTaskStrategyOptions = Readonly<{
 }>;
 
 /** Strictly read durable strategy state; never seal, reserve, dispatch, or import. */
-export function inspectTaskStrategyLifecycle(
+export function inspectTaskStrategyLifecycle(routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
 ): TaskStrategyLifecycleStatus {
@@ -116,7 +113,7 @@ export function inspectTaskStrategyLifecycle(
   const task = contract.execution?.tasks[session.taskId];
   if (task?.strategy === 'mechanical-transform') {
     if (transaction !== null) throw lifecycleStale();
-    const mechanical = inspectTaskMechanicalTransformLifecycle(
+    const mechanical = inspectTaskMechanicalTransformLifecycle(routingAdmissionReader,
       cwd,
       session.sessionId,
     );
@@ -149,7 +146,7 @@ export function inspectTaskStrategyLifecycle(
     });
   }
   assertTransactionContractCurrent(transaction, session, task);
-  const inspection = inspectSession(cwd, session.sessionId);
+  const inspection = inspectSession(routingAdmissionReader, cwd, session.sessionId);
   const correction = resolveCurrentTaskStrategyCorrection(inspection);
   const implementationAuthority =
     resolveCurrentTaskStrategyImplementationAuthority(inspection, correction);
@@ -166,12 +163,18 @@ export function inspectTaskStrategyLifecycle(
  * Advance only the next durable strategy substate. Process dispatch remains a
  * CLI concern so the domain transition cannot launch an arbitrary executable.
  */
-export function resumeTaskStrategy(
+export function resumeTaskStrategy(routingAdmissionReader: ChangeRoutingAdmissionReader,
+  implementation: Pick<
+    TaskStrategyImplementationLifecycle,
+    'beginTaskStrategyImplementation'
+  >,
+  redRevision: ReturnType<typeof createTaskStrategyRedRevisionService>,
+  readProviderRetryAccountingEvidence: ProviderRetryAccountingReader,
   cwd: string,
   requestedSessionId: string,
   options: ResumeTaskStrategyOptions = {},
 ): TaskStrategyLifecycleStatus {
-  let current = inspectTaskStrategyLifecycle(cwd, requestedSessionId);
+  let current = inspectTaskStrategyLifecycle(routingAdmissionReader, cwd, requestedSessionId);
   if (current.state === 'not-required') return current;
   if (current.state === 'session-terminal') {
     throw workflowError(
@@ -192,8 +195,8 @@ export function resumeTaskStrategy(
         ExitCode.usage,
       );
     }
-    resumeTaskMechanicalTransformation(cwd, current.sessionId);
-    return inspectTaskStrategyLifecycle(cwd, current.sessionId);
+    resumeTaskMechanicalTransformation(routingAdmissionReader, cwd, current.sessionId);
+    return inspectTaskStrategyLifecycle(routingAdmissionReader, cwd, current.sessionId);
   }
   if (options.redRevisionRequest !== undefined) {
     if (
@@ -207,44 +210,44 @@ export function resumeTaskStrategy(
         ExitCode.usage,
       );
     }
-    beginTaskStrategyRedRevision(cwd, options.redRevisionRequest);
-    return inspectTaskStrategyLifecycle(cwd, current.sessionId);
+    redRevision.beginTaskStrategyRedRevision(cwd, options.redRevisionRequest);
+    return inspectTaskStrategyLifecycle(routingAdmissionReader, cwd, current.sessionId);
   }
 
-  continueTaskStrategyRedRevision(cwd, current.sessionId);
-  current = inspectTaskStrategyLifecycle(cwd, current.sessionId);
+  redRevision.continueTaskStrategyRedRevision(cwd, current.sessionId);
+  current = inspectTaskStrategyLifecycle(routingAdmissionReader, cwd, current.sessionId);
   if (current.state === 'red-authoring') {
-    const transaction = sealTaskStrategyRed(cwd, current.sessionId, {
+    const transaction = sealTaskStrategyRed(routingAdmissionReader, cwd, current.sessionId, {
       ...(options.explicitActor === undefined
         ? {}
         : { explicitActor: options.explicitActor }),
     });
     if (transaction.strategy === 'tdd-single-agent') {
-      return inspectTaskStrategyLifecycle(cwd, current.sessionId);
+      return inspectTaskStrategyLifecycle(routingAdmissionReader, cwd, current.sessionId);
     }
   }
 
-  current = inspectTaskStrategyLifecycle(cwd, current.sessionId);
+  current = inspectTaskStrategyLifecycle(routingAdmissionReader, cwd, current.sessionId);
   if (
     current.strategy === 'tdd-single-agent' &&
     current.state === 'implementation-required'
   ) {
-    const adopted = adoptCurrentTaskStrategyImplementation(
+    const adopted = adoptCurrentTaskStrategyImplementation(routingAdmissionReader,
       cwd,
       current.sessionId,
     );
     return adopted === null
       ? current
-      : inspectTaskStrategyLifecycle(cwd, current.sessionId);
+      : inspectTaskStrategyLifecycle(routingAdmissionReader, cwd, current.sessionId);
   }
   if (
     current.strategy === 'tdd-single-agent' &&
     current.state === 'correction-required'
   ) {
-    const adopted = adoptCurrentTaskStrategyCorrection(cwd, current.sessionId);
+    const adopted = adoptCurrentTaskStrategyCorrection(routingAdmissionReader, cwd, current.sessionId);
     return adopted === null
       ? current
-      : inspectTaskStrategyLifecycle(cwd, current.sessionId);
+      : inspectTaskStrategyLifecycle(routingAdmissionReader, cwd, current.sessionId);
   }
   if (
     current.state === 'patch-imported' ||
@@ -254,14 +257,19 @@ export function resumeTaskStrategy(
   ) {
     return current;
   }
-  const advanced = beginTaskStrategyImplementation(cwd, current.sessionId, {
-    ...(current.state === 'provider-failed'
-      ? { retryProviderFailure: true as const }
-      : {}),
-    ...(options.collaborationGrant === undefined
-      ? {}
-      : { collaborationGrant: options.collaborationGrant }),
-  });
+  const advanced = implementation.beginTaskStrategyImplementation(
+    readProviderRetryAccountingEvidence,
+    cwd,
+    current.sessionId,
+    {
+      ...(current.state === 'provider-failed'
+        ? { retryProviderFailure: true as const }
+        : {}),
+      ...(options.collaborationGrant === undefined
+        ? {}
+        : { collaborationGrant: options.collaborationGrant }),
+    },
+  );
   const transaction = requireTransaction(cwd, current.sessionId);
   return projectAdvancedStatus(advanced, transaction, 'active');
 }

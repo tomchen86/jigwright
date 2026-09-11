@@ -8,10 +8,8 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  assertInvestigationId,
-  type InvestigationRuntimePaths,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertInvestigationId } from '../../foundation/repository-path/repository-path.ts';
 
 export const DIGEST_PATTERN = /^[0-9a-f]{64}$/;
 

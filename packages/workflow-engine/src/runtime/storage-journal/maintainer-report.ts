@@ -6,9 +6,9 @@
  * - Accepted checks must match the pinned runners, required check order and
  *   successful outcomes.
  */
-import type { CheckEvidence } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
+import type { CheckEvidence } from '../../modules/assurance/check-evidence.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import type { AuthoritySession } from '../../application/control-plane/maintainer-session.ts';
+import type { AuthoritySession } from '../../modules/authority/authority-session-contract.ts';
 import {
   readImmutableReport,
   writeImmutableReport,

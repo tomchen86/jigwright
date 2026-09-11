@@ -28,9 +28,11 @@ import {
 import {
   assertAgentProviderProfileSnapshot,
   type HostWrapperProviderProfileSnapshot,
+} from '@jigwright/core/agent-provider-config';
+import {
   type ProviderWrapperNativeSessionIdentityObservation,
   type ProviderWrapperSessionProtocolOutcome,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/harness-jsonl-v2-contracts';
 import {
   createHostObservedAgentRuntimePortV1,
   type AgentRuntimeDriverEventV1,

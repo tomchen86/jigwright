@@ -1,15 +1,11 @@
+import type {CandidateSupportingArtifactSet} from '../src/modules/authority/maintainer-candidate-contracts.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import {
-  canonicalCandidateSupportingArtifact,
-  readStoredCandidateSupportingArtifact,
-  storeCandidateSupportingArtifacts,
-  type CandidateSupportingArtifactSet,
-} from '../src/modules/authority/maintainer-candidate.ts';
+import {canonicalCandidateSupportingArtifact,readStoredCandidateSupportingArtifact,storeCandidateSupportingArtifacts} from '../src/modules/authority/maintainer-candidate.ts';
 import { isWorkflowError } from './fixture.ts';
 
 const CHANGE_ID = 'demo-change';

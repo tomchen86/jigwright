@@ -6,12 +6,15 @@
  * - Finding services share the same ref reader and publisher; counts use
  *   the resulting list operation.
  */
-import { createGovernanceFindingServices } from '../modules/governance-intake/governance-intake.ts';
-import { createGovernanceIntakeCountsReader } from '../modules/governance-intake/intake-summary.ts';
+import { createGovernanceFindingServices } from '../application/governance-intake/governance-findings.ts';
+import { projectGovernanceIntakeCounts } from '../modules/governance-intake/intake-summary.ts';
 import {
-  readFindingRef,
   publishFindingRefRecord,
+  readFindingRef,
 } from '../runtime/storage-journal/governance-finding-ref.ts';
+import { workRegistryQueries } from './work-registry-read-production.ts';
+
+import { readGovernanceSource } from './governance-sources-production.ts';
 
 export const {
   recordGovernanceFinding,
@@ -20,10 +23,17 @@ export const {
   convertGovernanceFinding,
   linkGovernanceFinding,
 } = createGovernanceFindingServices({
-  readFindingRef,
-  publishFindingRefRecord,
+  readGovernanceSource,
+  findingRef: { readFindingRef, publishFindingRefRecord },
 });
 
-export const inspectGovernanceIntakeCounts = createGovernanceIntakeCountsReader(
-  listGovernanceFindings,
-);
+export function inspectGovernanceIntakeCounts(
+  repositoryRoot: string,
+  runtimeRoot: string,
+) {
+  const inventory = workRegistryQueries.inspectWorkRegistry(repositoryRoot);
+  return projectGovernanceIntakeCounts(
+    inventory,
+    listGovernanceFindings(runtimeRoot),
+  );
+}

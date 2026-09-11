@@ -326,6 +326,7 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
       'package/bootstrap/installed-runtime.json',
       'package/bootstrap/installed-runtime-sources/jigwright-agent-runtime/src/index.ts',
       'package/bootstrap/installed-runtime-sources/jigwright-core/src/canonical-json.ts',
+      'package/bootstrap/installed-runtime-sources/jigwright-core/conformance/workflow-conformance-v2.json',
       'package/bootstrap/installed-runtime-sources/jigwright-grants/src/central-grant-contracts.ts',
       'package/bootstrap/installed-runtime-sources/jigwright-github-adapter/src/archive-pull-request.ts',
       'package/bootstrap/installed-runtime-sources/jigwright-openspec-adapter/src/index.ts',
@@ -333,7 +334,7 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
       'package/dist/internal/core/conformance/workflow-conformance-v2.json',
       'package/dist/runtime/composition-root/public/manifest-v3.js',
       'package/runtime/composition-root/public/manifest-v3.ts',
-      'package/src/cli.ts',
+      'package/src/entrypoints/cli/workflow-cli.ts',
     ]) {
       assert.match(inventory, new RegExp(`^${escapeRegExp(expected)}$`, 'mu'));
     }
@@ -432,6 +433,26 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
       ),
     );
     assert.equal(guidance.guide.kind, 'workflow-command-guide.v1');
+    const conformance = JSON.parse(
+      run(
+        process.execPath,
+        [
+          path.join(installedRoot, 'bin', 'jigwright.mjs'),
+          'boundary',
+          'vectors',
+          '--check',
+          '--json',
+        ],
+        repositoryRoot,
+      ),
+    );
+    assert.deepEqual(conformance.result, {
+      kind: 'jigwright.conformance-vectors-check.v1',
+      status: 'current',
+      domainCount: 9,
+      vectorSetDigest:
+        'sha256:b2113b55d86f6fd83cac7a1f3c62cea5df3b27a9feb0e5df5be011de694b089a',
+    });
 
     const runtimeStateRoot = path.join(
       repositoryRoot,

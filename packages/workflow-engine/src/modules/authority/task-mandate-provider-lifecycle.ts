@@ -36,6 +36,7 @@ type AuthorityAuditRecordedEvent =
   TaskMandateProviderLifecycleTypes['AuthorityAuditRecordedEvent'];
 
 export function createTaskMandateProviderLifecycle({
+  now: clockNow,
   assertTaskMandateBinding,
   assertProviderReservationId,
   discoverRepository,
@@ -123,7 +124,7 @@ export function createTaskMandateProviderLifecycle({
       record.envelope,
       options.signer,
     );
-    const bindingNow = exactDate(options.now ?? new Date());
+    const bindingNow = exactDate(options.now ?? clockNow());
     assertRecordActive(record, bindingNow);
     assertExactTaskMandateBinding(record, exactBinding);
     appendTaskMandateAuthorizationAudit(
@@ -192,7 +193,7 @@ export function createTaskMandateProviderLifecycle({
       record.envelope,
       options.signer,
     );
-    const invocationNow = exactDate(options.now ?? new Date());
+    const invocationNow = exactDate(options.now ?? clockNow());
     assertRecordActive(record, invocationNow);
     assertExactTaskMandateBinding(record, exactBinding);
     appendTaskMandateAuthorizationAudit(repositoryRoot, record, invocationNow);
@@ -236,7 +237,7 @@ export function createTaskMandateProviderLifecycle({
       record.envelope,
       options.signer,
     );
-    const now = exactDate(options.now ?? new Date());
+    const now = exactDate(options.now ?? clockNow());
     assertRecordActive(record, now);
     assertExactTaskMandateBinding(record, exactBinding);
     appendTaskMandateAuthorizationAudit(repositoryRoot, record, now);

@@ -1,3 +1,5 @@
+import { COLLABORATION_GRANT_AUTHORIZED_EFFECT, } from "../provider-orchestration/role-independence.js";
+export { COLLABORATION_GRANT_AUTHORIZED_EFFECT, } from "../provider-orchestration/role-independence.js";
 /**
  * Encodes and verifies collaboration Grants and direct human review
  * attestations.
@@ -10,14 +12,15 @@
  *   expiresAt.
  */
 import crypto from 'node:crypto';
-import { assertTaskId as assertCoreTaskId } from '@jigwright/core/runtime-path-kernel';
-import { canonicalCollaborationGrantEnvelopeBytesV1, canonicalCollaborationGrantPayloadBytesV1, isGrantUseUniquenessError, parseCollaborationGrantEnvelopeV1, selectCollaborationGrantSignatureNamespaceV1, canonicalSignedAttestationEnvelopeBytesV1, canonicalSignedAttestationPayloadBytesV1, parseSignedAttestationEnvelopeV1, assertUniqueGrantUseClaimsV1, COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1, COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE as PACKAGE_COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE, isCollaborationGrantEnvelopeReaderError, isSignedAttestationEnvelopeReaderError, readAndVerifyCollaborationGrantEnvelopeV1, SIGNED_ATTESTATION_ENVELOPE_READER_CONTRACT_VERSION_V1, readAndVerifySignedAttestationEnvelopeV1, } from "./optional-grants-package.js";
+import { assertTaskId as assertCoreTaskId } from '@jigwright/core/workflow-identifiers';
+import { isGrantUseUniquenessError, isCollaborationGrantEnvelopeReaderError, isSignedAttestationEnvelopeReaderError, } from "./grant-errors.js";
+import { COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1, COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE as PACKAGE_COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE, } from '@jigwright/core/collaboration-grant-envelope-codec';
+import { SIGNED_ATTESTATION_ENVELOPE_READER_CONTRACT_VERSION_V1, } from '@jigwright/core/signed-attestation-envelope-codec';
 import { ExitCode, WorkflowError, workflowError, } from "../../foundation/errors/errors.js";
 import { assertChangeId } from "../../foundation/repository-path/repository-path.js";
 import { isProviderId, } from "../provider-orchestration/provider-registry.js";
 export const COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE = PACKAGE_COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE;
 export const DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE = 'workflow.direct-human-review.v1';
-export const COLLABORATION_GRANT_AUTHORIZED_EFFECT = 'role-independence-degradation-only';
 export const COLLABORATION_GRANT_REPLAY_SCOPE = 'repository-common-dir-local';
 export const COLLABORATION_GRANT_RESIDUALS = Object.freeze([
     'GLOBAL_CROSS_CLONE_ONE_USE_NOT_PROVEN',
@@ -95,75 +98,428 @@ export function collaborationSignatureInvalid(cause) {
 function assertTaskId(value) {
     return assertCoreTaskId(value, () => workflowError('INVALID_TASK_ID', `Invalid task ID: ${value}`, ExitCode.usage, { recovery: 'Use a dotted numeric task ID, for example 1.1.' }));
 }
-export function createCollaborationGrantCodec({ COLLABORATION_GRANT_AUTHORIZED_EFFECT, COLLABORATION_GRANT_MAX_TTL_MINUTES, COLLABORATION_GRANT_POLICY, COLLABORATION_GRANT_POLICY_DIGEST, COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE, DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE, TASK_DIFF_REVIEW_COLLABORATION_POLICY, TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST, assertChangeId, assertTaskId, }) {
-    const FULL_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
-    const DIGEST = /^[0-9a-f]{64}$/;
-    const GRANT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-    const IDENTITY = /^[A-Za-z0-9][A-Za-z0-9._@:+/-]{0,127}$/;
-    const COLLABORATION_GRANT_PAYLOAD_KEYS = [
-        'version',
-        'signatureNamespace',
-        'grantId',
-        'repositoryId',
-        'repositoryOrigin',
-        'policyBlob',
-        'collaborationPolicyDigest',
-        'changeId',
-        'taskId',
-        'baselineCommit',
-        'baselineTree',
-        'targetDigest',
-        'lifecyclePhase',
-        'rolePair',
-        'availableActor',
-        'degradedForm',
-        'authorizedEffect',
-        'reason',
-        'issuedAt',
-        'expiresAt',
-        'maxUses',
-        'signer',
-    ];
-    const DIRECT_HUMAN_PAYLOAD_KEYS = [
-        'version',
-        'grantId',
-        'signedEnvelopeDigest',
-        'transitionDigest',
-        'targetDigest',
-        'reviewNodeId',
-        'reviewResultDigest',
-        'signedAt',
-        'signer',
-    ];
-    const COLLABORATION_GRANT_PAYLOAD_CODEC = {
-        v2PayloadKeys: COLLABORATION_GRANT_PAYLOAD_KEYS,
-        parsePayload(value) {
-            assertCollaborationPayloadShape(value);
-            return value;
-        },
-        projectPayloadFields: collaborationGrantPayloadFields,
-        validateSignature: assertArmoredSignature,
+export const FULL_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+export const DIGEST = /^[0-9a-f]{64}$/;
+const GRANT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const IDENTITY = /^[A-Za-z0-9][A-Za-z0-9._@:+/-]{0,127}$/;
+const COLLABORATION_GRANT_PAYLOAD_KEYS = [
+    'version',
+    'signatureNamespace',
+    'grantId',
+    'repositoryId',
+    'repositoryOrigin',
+    'policyBlob',
+    'collaborationPolicyDigest',
+    'changeId',
+    'taskId',
+    'baselineCommit',
+    'baselineTree',
+    'targetDigest',
+    'lifecyclePhase',
+    'rolePair',
+    'availableActor',
+    'degradedForm',
+    'authorizedEffect',
+    'reason',
+    'issuedAt',
+    'expiresAt',
+    'maxUses',
+    'signer',
+];
+const DIRECT_HUMAN_PAYLOAD_KEYS = [
+    'version',
+    'grantId',
+    'signedEnvelopeDigest',
+    'transitionDigest',
+    'targetDigest',
+    'reviewNodeId',
+    'reviewResultDigest',
+    'signedAt',
+    'signer',
+];
+const COLLABORATION_GRANT_PAYLOAD_CODEC = {
+    v2PayloadKeys: COLLABORATION_GRANT_PAYLOAD_KEYS,
+    parsePayload(value) {
+        assertCollaborationPayloadShape(value);
+        return value;
+    },
+    projectPayloadFields: collaborationGrantPayloadFields,
+    validateSignature: assertArmoredSignature,
+};
+const DIRECT_HUMAN_REVIEW_ATTESTATION_CODEC = {
+    payloadKeys: DIRECT_HUMAN_PAYLOAD_KEYS,
+    parsePayload(value) {
+        assertDirectHumanReviewPayload(value);
+        return value;
+    },
+    projectPayloadFields(payload) {
+        return {
+            grantId: payload.grantId,
+            signedEnvelopeDigest: payload.signedEnvelopeDigest,
+            transitionDigest: payload.transitionDigest,
+            targetDigest: payload.targetDigest,
+            reviewNodeId: payload.reviewNodeId,
+            reviewResultDigest: payload.reviewResultDigest,
+            signedAt: payload.signedAt,
+            signer: payload.signer,
+        };
+    },
+    validateSignature: assertArmoredSignature,
+};
+export function assertCollaborationGrantId(value) {
+    if (typeof value !== 'string' || !GRANT_ID.test(value)) {
+        throw collaborationInvalid('Collaboration grant ID is invalid.');
+    }
+    return value;
+}
+function directHumanReviewSignatureNamespace(attestation) {
+    if (attestation.signatureNamespace === DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE) {
+        return attestation.signatureNamespace;
+    }
+    throw directHumanReviewInvalid();
+}
+export function validateCollaborationGrantPayload(payload, policy, options) {
+    assertCollaborationPayloadShape(payload);
+    if (payload.repositoryId !== policy.repository.id ||
+        payload.repositoryOrigin !== policy.repository.origin ||
+        payload.policyBlob !== options.expectedPolicyBlob ||
+        !isKnownCollaborationPolicyDigestForPhase(payload.collaborationPolicyDigest, payload.lifecyclePhase) ||
+        !policy.trustedSigners.some(({ identity }) => identity === payload.signer) ||
+        payload.maxUses !== 1 ||
+        policy.maxUses !== 1) {
+        throw collaborationBindingMismatch('Collaboration grant does not match trusted repository policy.');
+    }
+    const issuedAt = exactTimestamp(payload.issuedAt);
+    const expiresAt = exactTimestamp(payload.expiresAt);
+    const now = exactDate(options.now).getTime();
+    if (issuedAt === undefined ||
+        expiresAt === undefined ||
+        issuedAt > expiresAt ||
+        expiresAt - issuedAt >
+            Math.min(policy.maxTtlMinutes, COLLABORATION_GRANT_MAX_TTL_MINUTES) *
+                60_000 ||
+        issuedAt > now + 30_000) {
+        throw collaborationInvalid('Collaboration grant has invalid time bounds.');
+    }
+    if (!options.allowExpired && expiresAt < now) {
+        throw workflowError('COLLABORATION_GRANT_EXPIRED', 'Collaboration grant has expired.', ExitCode.staleState);
+    }
+}
+export function bindingFromPayload(payload) {
+    return {
+        repositoryId: payload.repositoryId,
+        repositoryOrigin: payload.repositoryOrigin,
+        policyBlob: payload.policyBlob,
+        collaborationPolicyDigest: payload.collaborationPolicyDigest,
+        changeId: payload.changeId,
+        taskId: payload.taskId,
+        baselineCommit: payload.baselineCommit,
+        baselineTree: payload.baselineTree,
+        targetDigest: payload.targetDigest,
+        lifecyclePhase: payload.lifecyclePhase,
+        rolePair: canonicalRolePair(payload.rolePair),
+        availableActor: canonicalAvailableActor(payload.availableActor),
+        degradedForm: payload.degradedForm,
+        reason: payload.reason,
     };
-    const DIRECT_HUMAN_REVIEW_ATTESTATION_CODEC = {
-        payloadKeys: DIRECT_HUMAN_PAYLOAD_KEYS,
-        parsePayload(value) {
-            assertDirectHumanReviewPayload(value);
-            return value;
-        },
-        projectPayloadFields(payload) {
-            return {
-                grantId: payload.grantId,
-                signedEnvelopeDigest: payload.signedEnvelopeDigest,
-                transitionDigest: payload.transitionDigest,
-                targetDigest: payload.targetDigest,
-                reviewNodeId: payload.reviewNodeId,
-                reviewResultDigest: payload.reviewResultDigest,
-                signedAt: payload.signedAt,
-                signer: payload.signer,
-            };
-        },
-        validateSignature: assertArmoredSignature,
+}
+function assertCollaborationPayloadShape(candidate) {
+    if (!isPlainRecord(candidate)) {
+        throw collaborationInvalid('Collaboration grant payload shape is invalid.');
+    }
+    const payload = candidate;
+    if (!hasExactCollaborationPayloadKeys(payload) ||
+        payload.version !== 2 ||
+        payload.signatureNamespace !== COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE ||
+        typeof payload.grantId !== 'string' ||
+        !GRANT_ID.test(payload.grantId) ||
+        typeof payload.repositoryId !== 'string' ||
+        payload.repositoryId.length === 0 ||
+        typeof payload.repositoryOrigin !== 'string' ||
+        payload.repositoryOrigin.length === 0 ||
+        typeof payload.policyBlob !== 'string' ||
+        !FULL_OID.test(payload.policyBlob) ||
+        typeof payload.collaborationPolicyDigest !== 'string' ||
+        !DIGEST.test(payload.collaborationPolicyDigest) ||
+        typeof payload.changeId !== 'string' ||
+        (payload.taskId !== null && typeof payload.taskId !== 'string') ||
+        typeof payload.baselineCommit !== 'string' ||
+        !FULL_OID.test(payload.baselineCommit) ||
+        typeof payload.baselineTree !== 'string' ||
+        !FULL_OID.test(payload.baselineTree) ||
+        payload.baselineCommit.length !== payload.baselineTree.length ||
+        typeof payload.targetDigest !== 'string' ||
+        !DIGEST.test(payload.targetDigest) ||
+        !isCollaborationLifecyclePhase(payload.lifecyclePhase) ||
+        !isCollaborationDegradedForm(payload.degradedForm) ||
+        payload.authorizedEffect !== COLLABORATION_GRANT_AUTHORIZED_EFFECT ||
+        typeof payload.reason !== 'string' ||
+        typeof payload.issuedAt !== 'string' ||
+        typeof payload.expiresAt !== 'string' ||
+        payload.maxUses !== 1 ||
+        !validReason(payload.reason) ||
+        typeof payload.signer !== 'string' ||
+        !IDENTITY.test(payload.signer)) {
+        throw collaborationInvalid('Collaboration grant payload shape is invalid.');
+    }
+    try {
+        assertChangeId(payload.changeId);
+        if (payload.taskId !== null) {
+            assertTaskId(payload.taskId);
+        }
+    }
+    catch {
+        throw collaborationInvalid('Collaboration grant change or task binding is invalid.');
+    }
+    assertRolePhase(payload.lifecyclePhase, payload.rolePair);
+    if (!collaborationPermittedForms(payload.lifecyclePhase).includes(payload.degradedForm)) {
+        throw collaborationInvalid('Collaboration policy does not permit this degraded form.');
+    }
+    assertAvailableActor(payload.availableActor, payload.degradedForm, {
+        lifecyclePhase: payload.lifecyclePhase,
+        signer: payload.signer,
+    });
+}
+export function collaborationPolicyDigestForPhase(phase) {
+    return phase === 'task-diff-review'
+        ? TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST
+        : COLLABORATION_GRANT_POLICY_DIGEST;
+}
+export function isKnownCollaborationPolicyDigestForPhase(digest, phase) {
+    return digest === collaborationPolicyDigestForPhase(phase);
+}
+function collaborationPermittedForms(phase) {
+    return phase === 'task-diff-review'
+        ? TASK_DIFF_REVIEW_COLLABORATION_POLICY.permittedForms['task-diff-review']
+        : COLLABORATION_GRANT_POLICY.permittedForms[phase];
+}
+function assertRolePhase(phase, rolePair) {
+    if (!isPlainRecord(rolePair) ||
+        !hasExactDataKeys(rolePair, ['authorRole', 'conflictingRole'])) {
+        throw collaborationInvalid('Collaboration grant role pair is invalid.');
+    }
+    const valid = (phase === 'blind-survey' &&
+        rolePair.authorRole === 'investigation-author' &&
+        rolePair.conflictingRole === 'plan-reviewer') ||
+        (phase === 'plan-review' &&
+            rolePair.authorRole === 'plan-author' &&
+            rolePair.conflictingRole === 'plan-reviewer') ||
+        (phase === 'task-diff-review' &&
+            rolePair.authorRole === 'task-implementer' &&
+            rolePair.conflictingRole === 'task-diff-reviewer') ||
+        (phase === 'task-implementation' &&
+            rolePair.authorRole === 'red-author' &&
+            rolePair.conflictingRole === 'task-implementer');
+    if (!valid) {
+        throw collaborationInvalid('Collaboration grant lifecycle phase and roles do not match.');
+    }
+}
+function assertAvailableActor(actor, form, payload) {
+    if (!isPlainRecord(actor)) {
+        throw collaborationInvalid('Collaboration grant available actor is invalid.');
+    }
+    if (form === 'same-provider-fresh-session' &&
+        hasExactDataKeys(actor, ['kind', 'providerId', 'assurance']) &&
+        actor.kind === 'provider' &&
+        isProviderId(actor.providerId) &&
+        isActorAssurance(actor.assurance)) {
+        return;
+    }
+    if (form === 'caller-supplied' &&
+        hasExactDataKeys(actor, ['kind', 'callerId', 'assurance']) &&
+        actor.kind === 'caller' &&
+        typeof actor.callerId === 'string' &&
+        IDENTITY.test(actor.callerId) &&
+        isActorAssurance(actor.assurance)) {
+        return;
+    }
+    if (form === 'direct-human-review' &&
+        (payload.lifecyclePhase === 'plan-review' ||
+            payload.lifecyclePhase === 'task-diff-review') &&
+        hasExactDataKeys(actor, ['kind', 'identity', 'assurance']) &&
+        actor.kind === 'direct-human' &&
+        actor.identity === payload.signer &&
+        actor.assurance === 'maintainer-signed') {
+        return;
+    }
+    throw collaborationInvalid('Collaboration grant degraded form and available actor do not match.');
+}
+function canonicalRolePair(pair) {
+    return {
+        authorRole: pair.authorRole,
+        conflictingRole: pair.conflictingRole,
     };
+}
+function canonicalAvailableActor(actor) {
+    if (actor.kind === 'provider') {
+        return {
+            kind: 'provider',
+            providerId: actor.providerId,
+            assurance: actor.assurance,
+        };
+    }
+    if (actor.kind === 'caller') {
+        return {
+            kind: 'caller',
+            callerId: actor.callerId,
+            assurance: actor.assurance,
+        };
+    }
+    return {
+        kind: 'direct-human',
+        identity: actor.identity,
+        assurance: 'maintainer-signed',
+    };
+}
+function collaborationGrantPayloadFields(payload) {
+    return {
+        grantId: payload.grantId,
+        repositoryId: payload.repositoryId,
+        repositoryOrigin: payload.repositoryOrigin,
+        policyBlob: payload.policyBlob,
+        collaborationPolicyDigest: payload.collaborationPolicyDigest,
+        changeId: payload.changeId,
+        taskId: payload.taskId,
+        baselineCommit: payload.baselineCommit,
+        baselineTree: payload.baselineTree,
+        targetDigest: payload.targetDigest,
+        lifecyclePhase: payload.lifecyclePhase,
+        rolePair: canonicalRolePair(payload.rolePair),
+        availableActor: canonicalAvailableActor(payload.availableActor),
+        degradedForm: payload.degradedForm,
+        authorizedEffect: payload.authorizedEffect,
+        reason: payload.reason,
+        issuedAt: payload.issuedAt,
+        expiresAt: payload.expiresAt,
+        maxUses: payload.maxUses,
+        signer: payload.signer,
+    };
+}
+export function assertArmoredSignature(signature) {
+    if (typeof signature !== 'string' ||
+        signature.length > 16_384 ||
+        signature.includes('\r') ||
+        !/^-----BEGIN SSH SIGNATURE-----\n(?:[A-Za-z0-9+/=]+\n)+-----END SSH SIGNATURE-----\n$/.test(signature)) {
+        throw workflowError('COLLABORATION_SIGNATURE_INVALID', 'Collaboration grant SSH signature is invalid.', ExitCode.verification);
+    }
+}
+function assertDirectHumanReviewPayload(payload) {
+    if (!isPlainRecord(payload) ||
+        !hasExactDataKeys(payload, DIRECT_HUMAN_PAYLOAD_KEYS) ||
+        payload.version !== 1 ||
+        !GRANT_ID.test(payload.grantId) ||
+        !DIGEST.test(payload.signedEnvelopeDigest) ||
+        !DIGEST.test(payload.transitionDigest) ||
+        !DIGEST.test(payload.targetDigest) ||
+        !DIGEST.test(payload.reviewNodeId) ||
+        !DIGEST.test(payload.reviewResultDigest) ||
+        exactTimestamp(payload.signedAt) === undefined ||
+        !IDENTITY.test(payload.signer)) {
+        throw directHumanReviewInvalid();
+    }
+}
+function isActorAssurance(value) {
+    return (value === 'self-declared' ||
+        value === 'runtime-hint' ||
+        value === 'adapter-assigned');
+}
+function isCollaborationLifecyclePhase(value) {
+    return (value === 'blind-survey' ||
+        value === 'plan-review' ||
+        value === 'task-diff-review' ||
+        value === 'task-implementation');
+}
+function isCollaborationDegradedForm(value) {
+    return (value === 'same-provider-fresh-session' ||
+        value === 'caller-supplied' ||
+        value === 'direct-human-review');
+}
+function validReason(value) {
+    return (typeof value === 'string' &&
+        value.length >= 12 &&
+        value.length <= 500 &&
+        value.trim() === value &&
+        ![...value].some((character) => {
+            const code = character.codePointAt(0) ?? 0;
+            return code <= 31 || (code >= 127 && code <= 159);
+        }));
+}
+function exactTimestamp(value) {
+    if (typeof value !== 'string') {
+        return undefined;
+    }
+    const time = Date.parse(value);
+    return Number.isFinite(time) && new Date(time).toISOString() === value
+        ? time
+        : undefined;
+}
+export function exactDate(value) {
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) {
+        throw collaborationInvalid('Collaboration grant time is invalid.');
+    }
+    return date;
+}
+function isPlainRecord(value) {
+    if (typeof value !== 'object' ||
+        value === null ||
+        Array.isArray(value) ||
+        Object.getPrototypeOf(value) !== Object.prototype) {
+        return false;
+    }
+    return Object.values(Object.getOwnPropertyDescriptors(value)).every((descriptor) => 'value' in descriptor && descriptor.enumerable === true);
+}
+function hasExactDataKeys(value, expected) {
+    const actual = Object.keys(value).sort();
+    const keys = [...expected].sort();
+    return (actual.length === keys.length &&
+        actual.every((entry, index) => entry === keys[index]));
+}
+function hasExactCollaborationPayloadKeys(value) {
+    return hasExactDataKeys(value, COLLABORATION_GRANT_PAYLOAD_KEYS);
+}
+export function collaborationInvalid(message) {
+    return workflowError('COLLABORATION_GRANT_INVALID', message, ExitCode.guard);
+}
+export function collaborationBindingMismatch(message) {
+    return workflowError('COLLABORATION_GRANT_BINDING_MISMATCH', message, ExitCode.guard);
+}
+function collaborationReaderInvalid(error, message) {
+    return (collaborationReaderSignatureCause(error) ?? collaborationInvalid(message));
+}
+function collaborationReaderSignatureCause(error) {
+    if (error instanceof WorkflowError &&
+        (error.code === 'COLLABORATION_SIGNATURE_INVALID' ||
+            error.code === 'COLLABORATION_GRANT_VERIFIER_COMPOSITION_UNAVAILABLE')) {
+        return error;
+    }
+    return error instanceof Error && error.cause !== undefined
+        ? collaborationReaderSignatureCause(error.cause)
+        : null;
+}
+function directHumanReviewInvalid() {
+    return workflowError('DIRECT_HUMAN_REVIEW_INVALID', 'Direct-human review attestation is invalid.', ExitCode.guard);
+}
+function canonicalExpectedBinding(binding) {
+    return JSON.stringify({
+        repositoryId: binding.repositoryId,
+        repositoryOrigin: binding.repositoryOrigin,
+        policyBlob: binding.policyBlob,
+        collaborationPolicyDigest: binding.collaborationPolicyDigest,
+        changeId: binding.changeId,
+        taskId: binding.taskId,
+        baselineCommit: binding.baselineCommit,
+        baselineTree: binding.baselineTree,
+        targetDigest: binding.targetDigest,
+        lifecyclePhase: binding.lifecyclePhase,
+        rolePair: canonicalRolePair(binding.rolePair),
+        availableActor: canonicalAvailableActor(binding.availableActor),
+        degradedForm: binding.degradedForm,
+        reason: binding.reason,
+    });
+}
+export function createCollaborationGrantCodec(operations) {
+    const { canonicalCollaborationGrantEnvelopeBytesV1, canonicalCollaborationGrantPayloadBytesV1, parseCollaborationGrantEnvelopeV1, selectCollaborationGrantSignatureNamespaceV1, readAndVerifyCollaborationGrantEnvelopeV1, canonicalSignedAttestationEnvelopeBytesV1, canonicalSignedAttestationPayloadBytesV1, parseSignedAttestationEnvelopeV1, readAndVerifySignedAttestationEnvelopeV1, assertUniqueGrantUseClaimsV1, } = operations;
     function canonicalCollaborationGrantPayload(payload) {
         try {
             return canonicalCollaborationGrantPayloadBytesV1(payload, COLLABORATION_GRANT_PAYLOAD_CODEC);
@@ -261,12 +617,6 @@ export function createCollaborationGrantCodec({ COLLABORATION_GRANT_AUTHORIZED_E
             throw directHumanReviewInvalid();
         }
     }
-    function assertCollaborationGrantId(value) {
-        if (typeof value !== 'string' || !GRANT_ID.test(value)) {
-            throw collaborationInvalid('Collaboration grant ID is invalid.');
-        }
-        return value;
-    }
     function parseCollaborationGrantEnvelope(raw) {
         try {
             const envelope = parseCollaborationGrantEnvelopeV1(raw, COLLABORATION_GRANT_PAYLOAD_CODEC);
@@ -279,39 +629,6 @@ export function createCollaborationGrantCodec({ COLLABORATION_GRANT_AUTHORIZED_E
                 throw signatureError;
             }
             throw collaborationInvalid('Collaboration grant envelope is invalid.');
-        }
-    }
-    function directHumanReviewSignatureNamespace(attestation) {
-        if (attestation.signatureNamespace === DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE) {
-            return attestation.signatureNamespace;
-        }
-        throw directHumanReviewInvalid();
-    }
-    function validateCollaborationGrantPayload(payload, policy, options) {
-        assertCollaborationPayloadShape(payload);
-        if (payload.repositoryId !== policy.repository.id ||
-            payload.repositoryOrigin !== policy.repository.origin ||
-            payload.policyBlob !== options.expectedPolicyBlob ||
-            !isKnownCollaborationPolicyDigestForPhase(payload.collaborationPolicyDigest, payload.lifecyclePhase) ||
-            !policy.trustedSigners.some(({ identity }) => identity === payload.signer) ||
-            payload.maxUses !== 1 ||
-            policy.maxUses !== 1) {
-            throw collaborationBindingMismatch('Collaboration grant does not match trusted repository policy.');
-        }
-        const issuedAt = exactTimestamp(payload.issuedAt);
-        const expiresAt = exactTimestamp(payload.expiresAt);
-        const now = exactDate(options.now).getTime();
-        if (issuedAt === undefined ||
-            expiresAt === undefined ||
-            issuedAt > expiresAt ||
-            expiresAt - issuedAt >
-                Math.min(policy.maxTtlMinutes, COLLABORATION_GRANT_MAX_TTL_MINUTES) *
-                    60_000 ||
-            issuedAt > now + 30_000) {
-            throw collaborationInvalid('Collaboration grant has invalid time bounds.');
-        }
-        if (!options.allowExpired && expiresAt < now) {
-            throw workflowError('COLLABORATION_GRANT_EXPIRED', 'Collaboration grant has expired.', ExitCode.staleState);
         }
     }
     /**
@@ -336,302 +653,6 @@ export function createCollaborationGrantCodec({ COLLABORATION_GRANT_AUTHORIZED_E
             }
             throw error;
         }
-    }
-    function bindingFromPayload(payload) {
-        return {
-            repositoryId: payload.repositoryId,
-            repositoryOrigin: payload.repositoryOrigin,
-            policyBlob: payload.policyBlob,
-            collaborationPolicyDigest: payload.collaborationPolicyDigest,
-            changeId: payload.changeId,
-            taskId: payload.taskId,
-            baselineCommit: payload.baselineCommit,
-            baselineTree: payload.baselineTree,
-            targetDigest: payload.targetDigest,
-            lifecyclePhase: payload.lifecyclePhase,
-            rolePair: canonicalRolePair(payload.rolePair),
-            availableActor: canonicalAvailableActor(payload.availableActor),
-            degradedForm: payload.degradedForm,
-            reason: payload.reason,
-        };
-    }
-    function assertCollaborationPayloadShape(candidate) {
-        if (!isPlainRecord(candidate)) {
-            throw collaborationInvalid('Collaboration grant payload shape is invalid.');
-        }
-        const payload = candidate;
-        if (!hasExactCollaborationPayloadKeys(payload) ||
-            payload.version !== 2 ||
-            payload.signatureNamespace !==
-                COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE ||
-            typeof payload.grantId !== 'string' ||
-            !GRANT_ID.test(payload.grantId) ||
-            typeof payload.repositoryId !== 'string' ||
-            payload.repositoryId.length === 0 ||
-            typeof payload.repositoryOrigin !== 'string' ||
-            payload.repositoryOrigin.length === 0 ||
-            typeof payload.policyBlob !== 'string' ||
-            !FULL_OID.test(payload.policyBlob) ||
-            typeof payload.collaborationPolicyDigest !== 'string' ||
-            !DIGEST.test(payload.collaborationPolicyDigest) ||
-            typeof payload.changeId !== 'string' ||
-            (payload.taskId !== null && typeof payload.taskId !== 'string') ||
-            typeof payload.baselineCommit !== 'string' ||
-            !FULL_OID.test(payload.baselineCommit) ||
-            typeof payload.baselineTree !== 'string' ||
-            !FULL_OID.test(payload.baselineTree) ||
-            payload.baselineCommit.length !== payload.baselineTree.length ||
-            typeof payload.targetDigest !== 'string' ||
-            !DIGEST.test(payload.targetDigest) ||
-            !isCollaborationLifecyclePhase(payload.lifecyclePhase) ||
-            !isCollaborationDegradedForm(payload.degradedForm) ||
-            payload.authorizedEffect !== COLLABORATION_GRANT_AUTHORIZED_EFFECT ||
-            typeof payload.reason !== 'string' ||
-            typeof payload.issuedAt !== 'string' ||
-            typeof payload.expiresAt !== 'string' ||
-            payload.maxUses !== 1 ||
-            !validReason(payload.reason) ||
-            typeof payload.signer !== 'string' ||
-            !IDENTITY.test(payload.signer)) {
-            throw collaborationInvalid('Collaboration grant payload shape is invalid.');
-        }
-        try {
-            assertChangeId(payload.changeId);
-            if (payload.taskId !== null) {
-                assertTaskId(payload.taskId);
-            }
-        }
-        catch {
-            throw collaborationInvalid('Collaboration grant change or task binding is invalid.');
-        }
-        assertRolePhase(payload.lifecyclePhase, payload.rolePair);
-        if (!collaborationPermittedForms(payload.lifecyclePhase).includes(payload.degradedForm)) {
-            throw collaborationInvalid('Collaboration policy does not permit this degraded form.');
-        }
-        assertAvailableActor(payload.availableActor, payload.degradedForm, {
-            lifecyclePhase: payload.lifecyclePhase,
-            signer: payload.signer,
-        });
-    }
-    function collaborationPolicyDigestForPhase(phase) {
-        return phase === 'task-diff-review'
-            ? TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST
-            : COLLABORATION_GRANT_POLICY_DIGEST;
-    }
-    function isKnownCollaborationPolicyDigestForPhase(digest, phase) {
-        return digest === collaborationPolicyDigestForPhase(phase);
-    }
-    function collaborationPermittedForms(phase) {
-        return phase === 'task-diff-review'
-            ? TASK_DIFF_REVIEW_COLLABORATION_POLICY.permittedForms['task-diff-review']
-            : COLLABORATION_GRANT_POLICY.permittedForms[phase];
-    }
-    function assertRolePhase(phase, rolePair) {
-        if (!isPlainRecord(rolePair) ||
-            !hasExactDataKeys(rolePair, ['authorRole', 'conflictingRole'])) {
-            throw collaborationInvalid('Collaboration grant role pair is invalid.');
-        }
-        const valid = (phase === 'blind-survey' &&
-            rolePair.authorRole === 'investigation-author' &&
-            rolePair.conflictingRole === 'plan-reviewer') ||
-            (phase === 'plan-review' &&
-                rolePair.authorRole === 'plan-author' &&
-                rolePair.conflictingRole === 'plan-reviewer') ||
-            (phase === 'task-diff-review' &&
-                rolePair.authorRole === 'task-implementer' &&
-                rolePair.conflictingRole === 'task-diff-reviewer') ||
-            (phase === 'task-implementation' &&
-                rolePair.authorRole === 'red-author' &&
-                rolePair.conflictingRole === 'task-implementer');
-        if (!valid) {
-            throw collaborationInvalid('Collaboration grant lifecycle phase and roles do not match.');
-        }
-    }
-    function assertAvailableActor(actor, form, payload) {
-        if (!isPlainRecord(actor)) {
-            throw collaborationInvalid('Collaboration grant available actor is invalid.');
-        }
-        if (form === 'same-provider-fresh-session' &&
-            hasExactDataKeys(actor, ['kind', 'providerId', 'assurance']) &&
-            actor.kind === 'provider' &&
-            isProviderId(actor.providerId) &&
-            isActorAssurance(actor.assurance)) {
-            return;
-        }
-        if (form === 'caller-supplied' &&
-            hasExactDataKeys(actor, ['kind', 'callerId', 'assurance']) &&
-            actor.kind === 'caller' &&
-            typeof actor.callerId === 'string' &&
-            IDENTITY.test(actor.callerId) &&
-            isActorAssurance(actor.assurance)) {
-            return;
-        }
-        if (form === 'direct-human-review' &&
-            (payload.lifecyclePhase === 'plan-review' ||
-                payload.lifecyclePhase === 'task-diff-review') &&
-            hasExactDataKeys(actor, ['kind', 'identity', 'assurance']) &&
-            actor.kind === 'direct-human' &&
-            actor.identity === payload.signer &&
-            actor.assurance === 'maintainer-signed') {
-            return;
-        }
-        throw collaborationInvalid('Collaboration grant degraded form and available actor do not match.');
-    }
-    function canonicalRolePair(pair) {
-        return {
-            authorRole: pair.authorRole,
-            conflictingRole: pair.conflictingRole,
-        };
-    }
-    function canonicalAvailableActor(actor) {
-        if (actor.kind === 'provider') {
-            return {
-                kind: 'provider',
-                providerId: actor.providerId,
-                assurance: actor.assurance,
-            };
-        }
-        if (actor.kind === 'caller') {
-            return {
-                kind: 'caller',
-                callerId: actor.callerId,
-                assurance: actor.assurance,
-            };
-        }
-        return {
-            kind: 'direct-human',
-            identity: actor.identity,
-            assurance: 'maintainer-signed',
-        };
-    }
-    function collaborationGrantPayloadFields(payload) {
-        return {
-            grantId: payload.grantId,
-            repositoryId: payload.repositoryId,
-            repositoryOrigin: payload.repositoryOrigin,
-            policyBlob: payload.policyBlob,
-            collaborationPolicyDigest: payload.collaborationPolicyDigest,
-            changeId: payload.changeId,
-            taskId: payload.taskId,
-            baselineCommit: payload.baselineCommit,
-            baselineTree: payload.baselineTree,
-            targetDigest: payload.targetDigest,
-            lifecyclePhase: payload.lifecyclePhase,
-            rolePair: canonicalRolePair(payload.rolePair),
-            availableActor: canonicalAvailableActor(payload.availableActor),
-            degradedForm: payload.degradedForm,
-            authorizedEffect: payload.authorizedEffect,
-            reason: payload.reason,
-            issuedAt: payload.issuedAt,
-            expiresAt: payload.expiresAt,
-            maxUses: payload.maxUses,
-            signer: payload.signer,
-        };
-    }
-    function assertArmoredSignature(signature) {
-        if (typeof signature !== 'string' ||
-            signature.length > 16_384 ||
-            signature.includes('\r') ||
-            !/^-----BEGIN SSH SIGNATURE-----\n(?:[A-Za-z0-9+/=]+\n)+-----END SSH SIGNATURE-----\n$/.test(signature)) {
-            throw workflowError('COLLABORATION_SIGNATURE_INVALID', 'Collaboration grant SSH signature is invalid.', ExitCode.verification);
-        }
-    }
-    function assertDirectHumanReviewPayload(payload) {
-        if (!isPlainRecord(payload) ||
-            !hasExactDataKeys(payload, DIRECT_HUMAN_PAYLOAD_KEYS) ||
-            payload.version !== 1 ||
-            !GRANT_ID.test(payload.grantId) ||
-            !DIGEST.test(payload.signedEnvelopeDigest) ||
-            !DIGEST.test(payload.transitionDigest) ||
-            !DIGEST.test(payload.targetDigest) ||
-            !DIGEST.test(payload.reviewNodeId) ||
-            !DIGEST.test(payload.reviewResultDigest) ||
-            exactTimestamp(payload.signedAt) === undefined ||
-            !IDENTITY.test(payload.signer)) {
-            throw directHumanReviewInvalid();
-        }
-    }
-    function isActorAssurance(value) {
-        return (value === 'self-declared' ||
-            value === 'runtime-hint' ||
-            value === 'adapter-assigned');
-    }
-    function isCollaborationLifecyclePhase(value) {
-        return (value === 'blind-survey' ||
-            value === 'plan-review' ||
-            value === 'task-diff-review' ||
-            value === 'task-implementation');
-    }
-    function isCollaborationDegradedForm(value) {
-        return (value === 'same-provider-fresh-session' ||
-            value === 'caller-supplied' ||
-            value === 'direct-human-review');
-    }
-    function validReason(value) {
-        return (typeof value === 'string' &&
-            value.length >= 12 &&
-            value.length <= 500 &&
-            value.trim() === value &&
-            ![...value].some((character) => {
-                const code = character.codePointAt(0) ?? 0;
-                return code <= 31 || (code >= 127 && code <= 159);
-            }));
-    }
-    function exactTimestamp(value) {
-        if (typeof value !== 'string') {
-            return undefined;
-        }
-        const time = Date.parse(value);
-        return Number.isFinite(time) && new Date(time).toISOString() === value
-            ? time
-            : undefined;
-    }
-    function exactDate(value) {
-        const date = new Date(value);
-        if (!Number.isFinite(date.getTime())) {
-            throw collaborationInvalid('Collaboration grant time is invalid.');
-        }
-        return date;
-    }
-    function isPlainRecord(value) {
-        if (typeof value !== 'object' ||
-            value === null ||
-            Array.isArray(value) ||
-            Object.getPrototypeOf(value) !== Object.prototype) {
-            return false;
-        }
-        return Object.values(Object.getOwnPropertyDescriptors(value)).every((descriptor) => 'value' in descriptor && descriptor.enumerable === true);
-    }
-    function hasExactDataKeys(value, expected) {
-        const actual = Object.keys(value).sort();
-        const keys = [...expected].sort();
-        return (actual.length === keys.length &&
-            actual.every((entry, index) => entry === keys[index]));
-    }
-    function hasExactCollaborationPayloadKeys(value) {
-        return hasExactDataKeys(value, COLLABORATION_GRANT_PAYLOAD_KEYS);
-    }
-    function collaborationInvalid(message) {
-        return workflowError('COLLABORATION_GRANT_INVALID', message, ExitCode.guard);
-    }
-    function collaborationBindingMismatch(message) {
-        return workflowError('COLLABORATION_GRANT_BINDING_MISMATCH', message, ExitCode.guard);
-    }
-    function collaborationReaderInvalid(error, message) {
-        return (collaborationReaderSignatureCause(error) ?? collaborationInvalid(message));
-    }
-    function collaborationReaderSignatureCause(error) {
-        if (error instanceof WorkflowError &&
-            (error.code === 'COLLABORATION_SIGNATURE_INVALID' ||
-                error.code === 'COLLABORATION_GRANT_VERIFIER_COMPOSITION_UNAVAILABLE')) {
-            return error;
-        }
-        return error instanceof Error && error.cause !== undefined
-            ? collaborationReaderSignatureCause(error.cause)
-            : null;
-    }
-    function directHumanReviewInvalid() {
-        return workflowError('DIRECT_HUMAN_REVIEW_INVALID', 'Direct-human review attestation is invalid.', ExitCode.guard);
     }
     function validateDirectHumanReviewAttestation(attestation, options) {
         if (!isPlainRecord(attestation) ||
@@ -756,73 +777,19 @@ export function createCollaborationGrantCodec({ COLLABORATION_GRANT_AUTHORIZED_E
             throw collaborationSignatureInvalid(error);
         }
     }
-    function canonicalExpectedBinding(binding) {
-        return JSON.stringify({
-            repositoryId: binding.repositoryId,
-            repositoryOrigin: binding.repositoryOrigin,
-            policyBlob: binding.policyBlob,
-            collaborationPolicyDigest: binding.collaborationPolicyDigest,
-            changeId: binding.changeId,
-            taskId: binding.taskId,
-            baselineCommit: binding.baselineCommit,
-            baselineTree: binding.baselineTree,
-            targetDigest: binding.targetDigest,
-            lifecyclePhase: binding.lifecyclePhase,
-            rolePair: canonicalRolePair(binding.rolePair),
-            availableActor: canonicalAvailableActor(binding.availableActor),
-            degradedForm: binding.degradedForm,
-            reason: binding.reason,
-        });
-    }
     return {
+        canonicalCollaborationGrantPayload,
+        collaborationGrantSignatureNamespace,
+        canonicalCollaborationGrantEnvelope,
+        collaborationGrantEnvelopeDigest,
+        canonicalDirectHumanReviewPayload,
+        canonicalDirectHumanReviewAttestation,
+        directHumanReviewAttestationDigest,
+        parseDirectHumanReviewAttestation,
+        parseCollaborationGrantEnvelope,
+        assertUniqueCollaborationGrantUses,
         validateDirectHumanReviewAttestation,
         validateCollaborationGrantEnvelope,
         verifyCollaborationGrantCapability,
-        COLLABORATION_GRANT_PAYLOAD_CODEC,
-        DIGEST,
-        DIRECT_HUMAN_PAYLOAD_KEYS,
-        DIRECT_HUMAN_REVIEW_ATTESTATION_CODEC,
-        FULL_OID,
-        assertArmoredSignature,
-        assertCollaborationGrantId,
-        assertUniqueCollaborationGrantUses,
-        bindingFromPayload,
-        canonicalAvailableActor,
-        canonicalCollaborationGrantEnvelope,
-        canonicalCollaborationGrantPayload,
-        canonicalDirectHumanReviewAttestation,
-        canonicalDirectHumanReviewPayload,
-        canonicalRolePair,
-        collaborationBindingMismatch,
-        collaborationGrantEnvelopeDigest,
-        collaborationGrantSignatureNamespace,
-        collaborationInvalid,
-        collaborationPolicyDigestForPhase,
-        collaborationReaderSignatureCause,
-        directHumanReviewAttestationDigest,
-        directHumanReviewInvalid,
-        directHumanReviewSignatureNamespace,
-        exactDate,
-        exactTimestamp,
-        hasExactCollaborationPayloadKeys,
-        hasExactDataKeys,
-        isKnownCollaborationPolicyDigestForPhase,
-        isPlainRecord,
-        parseCollaborationGrantEnvelope,
-        parseDirectHumanReviewAttestation,
-        validateCollaborationGrantPayload,
     };
 }
-const collaborationGrantCodec = createCollaborationGrantCodec({
-    COLLABORATION_GRANT_AUTHORIZED_EFFECT,
-    COLLABORATION_GRANT_MAX_TTL_MINUTES,
-    COLLABORATION_GRANT_POLICY,
-    COLLABORATION_GRANT_POLICY_DIGEST,
-    COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
-    DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE,
-    TASK_DIFF_REVIEW_COLLABORATION_POLICY,
-    TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST,
-    assertChangeId,
-    assertTaskId,
-});
-export const { collaborationInvalid, collaborationBindingMismatch, exactDate, assertArmoredSignature, FULL_OID, DIGEST, canonicalCollaborationGrantPayload, collaborationGrantSignatureNamespace, canonicalCollaborationGrantEnvelope, collaborationGrantEnvelopeDigest, canonicalDirectHumanReviewPayload, canonicalDirectHumanReviewAttestation, directHumanReviewAttestationDigest, parseDirectHumanReviewAttestation, assertCollaborationGrantId, parseCollaborationGrantEnvelope, validateCollaborationGrantPayload, assertUniqueCollaborationGrantUses, bindingFromPayload, collaborationPolicyDigestForPhase, isKnownCollaborationPolicyDigestForPhase, validateDirectHumanReviewAttestation, validateCollaborationGrantEnvelope, verifyCollaborationGrantCapability, } = collaborationGrantCodec;

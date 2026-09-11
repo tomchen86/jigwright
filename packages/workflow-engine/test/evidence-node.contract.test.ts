@@ -10,7 +10,7 @@ import {
   canonicalEvidenceNodeEnvelope,
   createEvidenceNode,
   type EvidenceNodeInput,
-} from '../src/adapters/planning/investigation/evidence-node.ts';
+} from '../src/foundation/evidence-node/evidence-node.ts';
 import {
   compareAndSwapEvidenceRef,
   readEvidenceNode,

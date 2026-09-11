@@ -12,7 +12,7 @@ import path from 'node:path';
 import {
   isPlanningAssuranceBinding,
   type PlanningAssuranceBinding,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+} from '../../modules/assurance/planning-assurance-binding.ts';
 import {
   ExitCode,
   WorkflowError,
@@ -22,7 +22,7 @@ import {
   assertPlainDirectory as assertSafePlainDirectory,
   ensurePlainDirectory,
 } from '../repository-transaction/filesystem-safety.ts';
-import { assertSessionId } from '../session-workspace/paths.ts';
+import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 
 export type WorkflowReport = {
   schemaVersion: 1;

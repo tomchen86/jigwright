@@ -47,13 +47,15 @@ import {
   gitAuthorityCandidateApplyCommitMessage,
 } from '../runtime/repository-transaction/git-transitions.ts';
 import {
-  grantRecordDigest,
   grantStorePaths,
+  createFileGrantRecordStore,
+} from '../runtime/storage-journal/grant-store.ts';
+import {
+  grantRecordDigest,
   parseGrantRecord,
   projectPreparedGrantRecord,
-  readGrantRecord,
   type TerminalGrantRecord,
-} from '../runtime/storage-journal/grant-store.ts';
+} from '../modules/authority/grant-records.ts';
 import {
   assertGitAuthorityCandidateApplyJournal,
   gitAuthorityCandidateApplyJournalObservation,
@@ -562,12 +564,11 @@ function readTerminalGrantRecord(
   const runtimeDirectory =
     parameters.baseAuthorityContext.workflowConfig.runtimeDirectory;
   const repository = discoverRepository(repositoryRoot);
-  const record = readGrantRecord(
+  const record = createFileGrantRecordStore(
     grantStorePaths(
       runtimePaths(repository.gitCommonDirectory, runtimeDirectory).root,
     ),
-    challengeId,
-  );
+  ).readGrantRecord(challengeId);
   if (record.state !== 'completed') throw receiptUnavailable();
   if (
     canonicalJson(selectedApplyChoice(record).parameters) !==

@@ -1,11 +1,10 @@
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
-import {
-  startSession,
-  abortSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
+import { abortSession } from '../src/composition-root/task-session-production.ts';
 import {
   addConcurrentChangeSkeleton,
   declareConcurrentWorkset,
@@ -34,15 +33,27 @@ test('explicit colocated contract writers serialize while disjoint module implem
         `src/modules/second/${suffix}`,
       );
       worktrees.push(first, second);
-      const active = startSession(first.worktree, 'demo-change', '1.1');
+      const active = startSession(
+        productionChangeRoutingAdmissionReader,
+        first.worktree,
+        'demo-change',
+        '1.1',
+      );
       if (explicitContract) {
         assert.throws(
-          () => startSession(second.worktree, 'second-change', '1.1'),
+          () =>
+            startSession(
+              productionChangeRoutingAdmissionReader,
+              second.worktree,
+              'second-change',
+              '1.1',
+            ),
           (error) =>
             isWorkflowError(error, 'TASK_SESSION_SERIALIZED_SCOPE_CONFLICT'),
         );
       } else {
         const concurrent = startSession(
+          productionChangeRoutingAdmissionReader,
           second.worktree,
           'second-change',
           '1.1',

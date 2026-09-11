@@ -8,11 +8,13 @@
  */
 import {
   RepositoryBoundaryError,
-  assertChangeId,
-  assertPolicyPathInsideRepository,
-  investigationRuntimePaths,
   type InvestigationRuntimePaths,
 } from '@jigwright/core/runtime-path-kernel';
+import { assertChangeId } from '@jigwright/core/workflow-identifiers';
+import {
+  assertPolicyPathInsideRepository,
+  investigationRuntimePaths,
+} from '@jigwright/repository-runtime/paths';
 import { RepositoryPathError } from '@jigwright/core/repository-path';
 
 export type FixtureRuntimePathErrorCode =

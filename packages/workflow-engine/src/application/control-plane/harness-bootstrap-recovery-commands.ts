@@ -55,9 +55,9 @@ import {
 } from './intervention-control-updater.ts';
 import type { createHarnessBootstrapRecoveryProduction } from './harness-bootstrap-production.ts';
 import type {
-  importRecoveryAuthorityDescriptor,
-  readRecoveryAuthorityDescriptor,
-} from '../../modules/authority/recovery-authority-store.ts';
+  RecoveryAuthorityDescriptorImporter,
+  RecoveryAuthorityDescriptorReader,
+} from '../../modules/authority/recovery-authority-contract.ts';
 import type { verifyRecoveryAuthorityDescriptor } from '../../modules/authority/recovery-authority-contract.ts';
 import type {
   RecoveryQuarantineMarker,
@@ -79,8 +79,8 @@ export interface HarnessBootstrapRecoveryCommandBindings extends ReturnType<
   };
   bootstrapInterventionStateRoot(gitCommonDirectory: string): string;
   bootstrapInterventionUsage(): string;
-  importRecoveryAuthorityDescriptor: typeof importRecoveryAuthorityDescriptor;
-  readRecoveryAuthorityDescriptor: typeof readRecoveryAuthorityDescriptor;
+  importRecoveryAuthorityDescriptor: RecoveryAuthorityDescriptorImporter;
+  readRecoveryAuthorityDescriptor: RecoveryAuthorityDescriptorReader;
   verifyRecoveryAuthorityDescriptor: typeof verifyRecoveryAuthorityDescriptor;
   executeRecoveryOperationalTrustRootRestore(
     externalEnvelopePath: string,

@@ -7,7 +7,7 @@
  */
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import type { RecordedRoleParticipant } from '../../modules/provider-orchestration/role-scheduler.ts';
+import type { RecordedRoleParticipant } from '../../modules/provider-orchestration/role-assignment.ts';
 import {
   parseTaskDiffReviewRecord,
   assertTaskDiffReviewChallengeResponseCurrent,
@@ -17,7 +17,7 @@ import {
   parseTaskDiffReviewSubject,
   parseTaskDiffReviewScope,
 } from '../../modules/assurance/task-diff-review.ts';
-import type { TaskMandateBinding } from '../../modules/authority/task-mandate.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import {
   type TaskDiffReviewManifestSnapshot,
   isRecord,

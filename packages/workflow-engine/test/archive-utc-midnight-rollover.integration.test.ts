@@ -1,10 +1,34 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
+import { productionPlanningArchiveSourcePolicy } from '../src/composition-root/planning-archive-projection-production.ts';
+import { collaborationGrantCodec as productionArchiveGrantCodec } from '../src/runtime/grants/grant-services.ts';
+import { reconcileArchivedWorkItems as productionArchivedWorkItemReconciler } from '../src/composition-root/work-registry-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { renderHandoffFromTrackedFacts as productionTrackedHandoffRenderer } from '../src/composition-root/handoff-production.ts';
+const commitArchiveTransition = commitArchiveTransitionWithHandoff.bind(
+  undefined,
+  productionPlanningExecution,
+  productionPlanningArchiveSourcePolicy,
+  archiveEligibilityReplayServices,
+  productionArchiveGrantCodec,
+  productionTrackedHandoffRenderer,
+  productionArchivedWorkItemReconciler,
+);
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { commitArchiveTransition } from '../src/application/archive/archive-transition.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitArchiveTransition as commitArchiveTransitionWithHandoff } from '../src/application/archive/archive-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {
   createFixtureRepository,
   git,

@@ -5,20 +5,20 @@
  * - Retries retain the root semantic subject and exact predecessor invocation chain.
  * - Attempt selection and retry schema checks preserve existing rejection and replay order.
  */
-import {
-  type InvestigationRuntimePaths,
-  assertInvocationId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
 import {
   readProviderInvocation,
   readProviderRetryReservation,
   providerInvocationExists,
   readProviderInvocationEvidence,
   providerInvocationManifestDigest,
-  type ProviderRetryReservationV2,
-  type ProviderRetryReservationV3,
   readProviderInvocationRequest,
 } from './provider-invocation-store.ts';
+import type {
+  ProviderRetryReservationV2,
+  ProviderRetryReservationV3,
+} from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
 import type {
   TaskStrategyImplementationReservation,
   TaskStrategyImplementationProviderAttempt,

@@ -9,14 +9,12 @@
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import type {
-  CheckEvidence,
-  ObservedCheckFailure,
-} from '../../adapters/consumer/repository/work-registry/check-runner.ts';
+import type { CheckEvidence } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
+import type { ObservedCheckFailure } from '../../modules/assurance/check-evidence.ts';
 import type {
   CrossAgentTddExecution,
   TddSingleAgentExecution,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+} from '../../modules/planning-provider/planning-artifact-types.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { pinCheckRunner } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import { investigationRuntimePaths } from '../../runtime/session-workspace/paths.ts';
@@ -24,8 +22,8 @@ import {
   DEFAULT_TASK_STRATEGY_CORRECTION_POLICY,
   createTaskStrategyGreenFailureRecord,
   readTaskStrategyGreenFailureRecord,
-  type TaskStrategyGreenFailureRecord,
 } from '../../runtime/storage-journal/task-strategy-correction-store.ts';
+import type { TaskStrategyGreenFailureRecord } from '../../modules/provider-orchestration/task-strategy-correction-record.ts';
 import {
   deriveTaskStrategyCorrectionState,
   listTaskStrategyCorrectionRounds,
@@ -41,8 +39,8 @@ import {
 import {
   createTaskStrategyCorrectionSubject,
   createTaskStrategyImplementationSubject,
-  type TaskStrategyImplementationSubject,
 } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
+import type { TaskStrategyImplementationSubject } from '../../modules/provider-orchestration/task-strategy-implementation-manifest.ts';
 import {
   assertTaskStrategyCallerImplementationAuthorityCurrent,
   assertTaskStrategyImplementationProviderAuthorityCurrent,
@@ -56,7 +54,7 @@ import {
 } from '../../runtime/storage-journal/task-strategy-provider-store.ts';
 import { readTaskStrategyTransaction } from '../../runtime/storage-journal/task-strategy-store.ts';
 import type { TaskStrategyTransaction } from '../../runtime/storage-journal/task-strategy-store.ts';
-import type { SessionInspection } from '../finalize/verification.ts';
+import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 
 export type CurrentTaskStrategyPatchHead = Readonly<{
   binding: NonNullable<ReturnType<typeof readTaskStrategyPatchCurrentBinding>>;

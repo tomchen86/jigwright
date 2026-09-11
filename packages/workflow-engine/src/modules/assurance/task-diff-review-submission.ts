@@ -12,10 +12,10 @@ import type {
   TaskDiffReviewSubject,
   TaskDiffReviewScope,
   TaskDiffReviewPathRole,
-} from './task-diff-review.ts';
+} from './task-diff-review-record.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
+import type { TaskDiffReviewSubmissionProtocolBindings } from './task-diff-review-artifact.ts';
 import type {
-  TaskDiffReviewSubmissionProtocolBindings,
   TaskDiffReviewSubmission,
   TaskDiffReviewAssignment,
   StoredTaskDiffReviewChallenge,
@@ -27,7 +27,7 @@ import type {
   TaskDiffReviewEvidence,
   TaskDiffDocumentationAssessment,
   TaskDiffReviewVerdict,
-} from './task-diff-review-artifact.ts';
+} from './task-diff-review-artifact-record.ts';
 
 export function createTaskDiffReviewSubmissionProtocol(
   bindings: TaskDiffReviewSubmissionProtocolBindings,
@@ -70,11 +70,6 @@ export function createTaskDiffReviewSubmissionProtocol(
     'verification-infrastructure',
     'contract-surface',
     'unregistered',
-  ] as const);
-
-  const RISK_PATH_OUTCOMES = Object.freeze([
-    'no-challenge',
-    'challenge-raised',
   ] as const);
 
   const RISK_PATH_ROLE_SET = new Set<string>(RISK_PATH_ROLES);
@@ -1117,3 +1112,5 @@ export function createTaskDiffReviewSubmissionProtocol(
     normalizeEvidence,
   };
 }
+
+import { RISK_PATH_OUTCOMES } from './task-diff-review-schema.ts';

@@ -19,7 +19,7 @@ import {
 import {
   createPrivateCanonicalJson,
   readPrivateCanonicalJson,
-} from './investigation-session-store.ts';
+} from './investigation-private-files.ts';
 import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import {
   parsePreMergeAssuranceNode,

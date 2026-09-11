@@ -9,20 +9,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  type InvestigationRuntimePaths,
-  assertChangeId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
 import {
   type InvestigationResolutionState,
   investigationResolutionStateDigest,
-} from './human-resolution-contract.ts';
+} from '../../modules/investigation/domain/human-resolution-contract.ts';
 import {
   type HumanResolutionJournal,
   assertHumanResolutionJournal,
   humanResolutionJournalPhaseIndex,
   isTerminalHumanResolutionJournalPhase,
-} from './human-resolution-journal-contract.ts';
+} from '../../modules/investigation/domain/human-resolution-journal-contract.ts';
 import {
   assertPrivateFile,
   createPrivateCanonicalJson,
@@ -34,22 +32,22 @@ import {
 } from './investigation-private-files.ts';
 import {
   activeHumanResolutionJournalPath,
-  assertHumanResolutionGrantId,
   humanResolutionArchiveUnsafe,
   humanResolutionJournalPath,
-  humanResolutionJournalUnsafe,
   humanResolutionPaths,
   humanResolutionReceiptUnsafe,
   humanResolutionRecoveryAmbiguous,
   humanResolutionStateInvalid,
 } from './investigation-resolution-values.ts';
+import { humanResolutionJournalUnsafe } from '../../modules/investigation/domain/human-resolution-journal-contract.ts';
+import { assertHumanResolutionGrantId } from '../../modules/investigation/domain/human-resolution-values.ts';
 import {
   deepFreeze,
   hasExactKeys,
   isDigest,
   isRecord,
   sha256,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 
 export const ACTIVE_HUMAN_RESOLUTION_JOURNAL =
   /^([a-z0-9]+(?:-[a-z0-9]+)*)\.json$/;

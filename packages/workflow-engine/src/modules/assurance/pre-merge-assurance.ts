@@ -9,7 +9,7 @@ import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { normalizePolicyPath } from '../../runtime/session-workspace/paths.ts';
+import { normalizePolicyPath } from '../../foundation/repository-path/repository-path.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;
 const OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;

@@ -1,12 +1,12 @@
 import test from 'node:test';
-import { parseTasks } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { parseTasks } from '../src/modules/planning-provider/planning-artifact-parsers.ts';
 import assert from 'node:assert/strict';
+import { assertPolicyPathInsideRepository } from '../src/runtime/session-workspace/paths.ts';
 import {
   normalizePolicyPath,
   matchesAllowedPath,
   normalizeChangedPath,
-  assertPolicyPathInsideRepository,
-} from '../src/runtime/session-workspace/paths.ts';
+} from '../src/foundation/repository-path/repository-path.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';

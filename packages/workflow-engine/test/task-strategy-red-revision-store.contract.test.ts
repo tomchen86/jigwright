@@ -6,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
+import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
 import {
   investigationRuntimePaths,
   type InvestigationRuntimePaths,

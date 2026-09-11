@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { issueAuthorityAttestation } from '../src/application/control-plane/maintainer-attestation.ts';
+import { issueAuthorityAttestation } from '../src/composition-root/maintainer-authority-production.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import type { MaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';

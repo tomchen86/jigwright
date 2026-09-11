@@ -33,7 +33,8 @@ const MANIFEST_RELATIVE_PATH =
   'packages/workflow-engine/bootstrap/harness-bootstrap-dependency-closure.json';
 const PIN_RELATIVE_PATH =
   'packages/workflow-engine/bootstrap/harness-bootstrap-runtime-closure-pin.ts';
-const ENTRYPOINT = 'bootstrap/recovery-runtime/src/harness-bootstrap.js';
+const ENTRYPOINT =
+  'bootstrap/recovery-runtime/src/entrypoints/cli/harness-bootstrap-cli.js';
 const TRUSTED_HARNESS_TOOLCHAIN_DIGEST =
   'sha256:2c5f1c5d7615667a8e552e9dc1f0b0dc0406695d557cb88c4bf3b414cd0e1c31' as const;
 const MAX_TOOLCHAIN_FILES = 1_000;
@@ -167,11 +168,12 @@ function withCompiledRuntime<T>(
     if (
       manifestFiles.some(
         ({ path: filePath }) =>
-          filePath === 'bootstrap/recovery-runtime/src/cli.js',
+          filePath ===
+          'bootstrap/recovery-runtime/src/entrypoints/cli/workflow-cli.js',
       )
     ) {
       throw new Error(
-        'Sealed harness-bootstrap runtime must exclude the ordinary src/cli.ts entrypoint.',
+        'Sealed harness-bootstrap runtime must exclude the ordinary src/entrypoints/cli/workflow-cli.ts entrypoint.',
       );
     }
     const manifestBytes = `${JSON.stringify(manifest, null, 2)}\n`;
@@ -223,7 +225,15 @@ function compileRuntime(
         outDir: rawOutputRoot,
         paths,
       },
-      files: [path.join(packageRoot, 'src', 'harness-bootstrap.ts')],
+      files: [
+        path.join(
+          packageRoot,
+          'src',
+          'entrypoints',
+          'cli',
+          'harness-bootstrap-cli.ts',
+        ),
+      ],
     };
     fs.writeFileSync(
       compilerConfigPath,

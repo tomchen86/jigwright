@@ -45,11 +45,8 @@ export type StoredInvestigationCheckpoint =
 export type WhyAnswersPayload = ProposeRuntimeData['WhyAnswersPayload'];
 export type ProposeExemptionSession =
   ProposeRuntimeData['ProposeExemptionSession'];
-export type BlindSurveyManifest = ProposeRuntimeData['BlindSurveyManifest'];
-export type NormalizedChangeIntent =
-  ProposeRuntimeData['NormalizedChangeIntent'];
-export type PlanReviewManifest = ProposeRuntimeData['PlanReviewManifest'];
-export type ProviderExecutionPolicySnapshotCurrent =
-  ProposeRuntimeData['ProviderExecutionPolicySnapshotCurrent'];
-export type ProviderRetryDecisionBinding =
-  ProposeRuntimeData['ProviderRetryDecisionBinding'];
+export type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
+export type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
+export type { PlanReviewManifest } from '../../modules/assurance/provider-review-manifests.ts';
+export type { ProviderExecutionPolicySnapshotCurrent } from '../../modules/provider-orchestration/provider-execution-policy-snapshot.ts';
+export type { ProviderRetryDecisionBinding } from '../../modules/provider-orchestration/provider-invocation-reservations.ts';

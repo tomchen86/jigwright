@@ -5,8 +5,12 @@
       "id": "workflow-engine-bootstrap",
       "version": 1,
       "authorityClass": "ordinary",
-      "implementationPaths": ["packages/workflow-engine/src/**"],
-      "evidencePaths": ["packages/workflow-engine/test/**"],
+      "implementationPaths": [
+        "packages/workflow-engine/src/**"
+      ],
+      "evidencePaths": [
+        "packages/workflow-engine/test/**"
+      ],
       "policyPaths": [
         "workflow/maintainer-policy.json",
         "workflow/maintainer-profiles.json",
@@ -23,30 +27,60 @@
         "packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts",
         "packages/workflow-engine/src/adapters/consumer/repository/work-registry/runner-resolution.ts",
         "packages/workflow-engine/src/adapters/signing/ssh/maintainer-signer.ts",
+        "packages/workflow-engine/src/application/assurance/base-authority-attestation.ts",
+        "packages/workflow-engine/src/application/assurance/pre-merge-verification.ts",
         "packages/workflow-engine/src/application/control-plane/authority-plan.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-approve.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-attestation.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-commit.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-recovery.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-session.ts",
-        "packages/workflow-engine/src/cli.ts",
-        "packages/workflow-engine/src/entrypoints/ci/ci-attestation.ts",
-        "packages/workflow-engine/src/entrypoints/ci/ci-authority.ts",
-        "packages/workflow-engine/src/entrypoints/ci/pre-merge-assurance-git.ts",
+        "packages/workflow-engine/src/composition-root/ci-replay-production.ts",
+        "packages/workflow-engine/src/composition-root/ci-verification-production.ts",
+        "packages/workflow-engine/src/composition-root/human-revocation-production.ts",
+        "packages/workflow-engine/src/composition-root/maintainer-attestation-production.ts",
+        "packages/workflow-engine/src/composition-root/maintainer-authority-production.ts",
+        "packages/workflow-engine/src/composition-root/maintainer-manifest-production.ts",
+        "packages/workflow-engine/src/composition-root/task-mandate-production.ts",
+        "packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts",
         "packages/workflow-engine/src/foundation/canonical-json/canonical-json.ts",
+        "packages/workflow-engine/src/modules/assurance/check-evidence.ts",
+        "packages/workflow-engine/src/modules/assurance/ci-attestation.ts",
+        "packages/workflow-engine/src/modules/assurance/commit-replay/ci-authority.ts",
         "packages/workflow-engine/src/modules/assurance/pre-merge-assurance.ts",
+        "packages/workflow-engine/src/modules/assurance/pre-merge-verification.ts",
+        "packages/workflow-engine/src/modules/authority/authority-attestation-admission.ts",
+        "packages/workflow-engine/src/modules/authority/authority-session-contract.ts",
+        "packages/workflow-engine/src/modules/authority/maintainer-grant-contracts.ts",
         "packages/workflow-engine/src/modules/authority/maintainer-grant-v2.ts",
-        "packages/workflow-engine/src/modules/authority/maintainer-grant.ts",
+        "packages/workflow-engine/src/modules/authority/maintainer-manifest-contracts.ts",
         "packages/workflow-engine/src/modules/authority/maintainer-manifest.ts",
         "packages/workflow-engine/src/modules/authority/maintainer-policy.ts",
+        "packages/workflow-engine/src/modules/authority/maintainer-signer-port.ts",
+        "packages/workflow-engine/src/modules/authority/task-mandate-contract.ts",
+        "packages/workflow-engine/src/modules/authority/task-mandate-services.ts",
         "packages/workflow-engine/src/modules/authority/task-mandate.ts",
+        "packages/workflow-engine/src/modules/investigation/domain/human-resolution-contract.ts",
         "packages/workflow-engine/src/modules/provider-orchestration/provider-registry.ts",
+        "packages/workflow-engine/src/modules/source/check-command.ts",
+        "packages/workflow-engine/src/runtime/grants/human-resolution-grant-verification.ts",
+        "packages/workflow-engine/src/runtime/repository-observation/ci-verification.ts",
+        "packages/workflow-engine/src/runtime/repository-observation/human-resolution-grants.ts",
+        "packages/workflow-engine/src/runtime/repository-observation/maintainer-attestation.ts",
+        "packages/workflow-engine/src/runtime/repository-observation/maintainer-manifest.ts",
+        "packages/workflow-engine/src/runtime/repository-observation/maintainer-policy.ts",
         "packages/workflow-engine/src/runtime/repository-transaction/filesystem-safety.ts",
         "packages/workflow-engine/src/runtime/repository-transaction/git-transitions.ts",
+        "packages/workflow-engine/src/runtime/repository-transaction/maintainer-attestation-tag.ts",
+        "packages/workflow-engine/src/runtime/repository-transaction/maintainer-audit-tag.ts",
+        "packages/workflow-engine/src/runtime/repository-validation/commit-replay/ci-authority.ts",
+        "packages/workflow-engine/src/runtime/repository-validation/commit-replay/services.ts",
         "packages/workflow-engine/src/runtime/session-workspace/session-store.ts",
         "packages/workflow-engine/src/runtime/storage-journal/maintainer-report.ts",
         "packages/workflow-engine/src/runtime/storage-journal/maintainer-store.ts",
-        "packages/workflow-engine/src/runtime/storage-journal/pre-merge-assurance-store.ts"
+        "packages/workflow-engine/src/runtime/storage-journal/pre-merge-assurance-repository.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/pre-merge-assurance-store.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/task-mandate-repository.ts"
       ],
       "constraints": {
         "evidenceOnlyGrantForbidden": true,
@@ -68,8 +102,14 @@
           "runner",
           "source-tree"
         ],
-        "workflow-format": ["runner", "source-tree"],
-        "workflow-lint": ["runner", "source-tree"],
+        "workflow-format": [
+          "runner",
+          "source-tree"
+        ],
+        "workflow-lint": [
+          "runner",
+          "source-tree"
+        ],
         "workflow-tests": [
           "base-commit",
           "harness-engine",
@@ -77,14 +117,21 @@
           "runner",
           "source-tree"
         ],
-        "workflow-typecheck": ["runner", "source-tree"]
+        "workflow-typecheck": [
+          "runner",
+          "source-tree"
+        ]
       }
     },
     "workflow-engine-root-one-shot": {
       "id": "workflow-engine-root-one-shot",
       "version": 1,
       "authorityClass": "root-one-shot",
-      "implementationPaths": ["apps/**", "docs/**", "packages/**"],
+      "implementationPaths": [
+        "apps/**",
+        "docs/**",
+        "packages/**"
+      ],
       "evidencePaths": [
         "apps/api/src/__tests__/**",
         "packages/workflow-engine/test/**"
@@ -105,30 +152,60 @@
         "packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts",
         "packages/workflow-engine/src/adapters/consumer/repository/work-registry/runner-resolution.ts",
         "packages/workflow-engine/src/adapters/signing/ssh/maintainer-signer.ts",
+        "packages/workflow-engine/src/application/assurance/base-authority-attestation.ts",
+        "packages/workflow-engine/src/application/assurance/pre-merge-verification.ts",
         "packages/workflow-engine/src/application/control-plane/authority-plan.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-approve.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-attestation.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-commit.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-recovery.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-session.ts",
-        "packages/workflow-engine/src/cli.ts",
-        "packages/workflow-engine/src/entrypoints/ci/ci-attestation.ts",
-        "packages/workflow-engine/src/entrypoints/ci/ci-authority.ts",
-        "packages/workflow-engine/src/entrypoints/ci/pre-merge-assurance-git.ts",
+        "packages/workflow-engine/src/composition-root/ci-replay-production.ts",
+        "packages/workflow-engine/src/composition-root/ci-verification-production.ts",
+        "packages/workflow-engine/src/composition-root/human-revocation-production.ts",
+        "packages/workflow-engine/src/composition-root/maintainer-attestation-production.ts",
+        "packages/workflow-engine/src/composition-root/maintainer-authority-production.ts",
+        "packages/workflow-engine/src/composition-root/maintainer-manifest-production.ts",
+        "packages/workflow-engine/src/composition-root/task-mandate-production.ts",
+        "packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts",
         "packages/workflow-engine/src/foundation/canonical-json/canonical-json.ts",
+        "packages/workflow-engine/src/modules/assurance/check-evidence.ts",
+        "packages/workflow-engine/src/modules/assurance/ci-attestation.ts",
+        "packages/workflow-engine/src/modules/assurance/commit-replay/ci-authority.ts",
         "packages/workflow-engine/src/modules/assurance/pre-merge-assurance.ts",
+        "packages/workflow-engine/src/modules/assurance/pre-merge-verification.ts",
+        "packages/workflow-engine/src/modules/authority/authority-attestation-admission.ts",
+        "packages/workflow-engine/src/modules/authority/authority-session-contract.ts",
+        "packages/workflow-engine/src/modules/authority/maintainer-grant-contracts.ts",
         "packages/workflow-engine/src/modules/authority/maintainer-grant-v2.ts",
-        "packages/workflow-engine/src/modules/authority/maintainer-grant.ts",
+        "packages/workflow-engine/src/modules/authority/maintainer-manifest-contracts.ts",
         "packages/workflow-engine/src/modules/authority/maintainer-manifest.ts",
         "packages/workflow-engine/src/modules/authority/maintainer-policy.ts",
+        "packages/workflow-engine/src/modules/authority/maintainer-signer-port.ts",
+        "packages/workflow-engine/src/modules/authority/task-mandate-contract.ts",
+        "packages/workflow-engine/src/modules/authority/task-mandate-services.ts",
         "packages/workflow-engine/src/modules/authority/task-mandate.ts",
+        "packages/workflow-engine/src/modules/investigation/domain/human-resolution-contract.ts",
         "packages/workflow-engine/src/modules/provider-orchestration/provider-registry.ts",
+        "packages/workflow-engine/src/modules/source/check-command.ts",
+        "packages/workflow-engine/src/runtime/grants/human-resolution-grant-verification.ts",
+        "packages/workflow-engine/src/runtime/repository-observation/ci-verification.ts",
+        "packages/workflow-engine/src/runtime/repository-observation/human-resolution-grants.ts",
+        "packages/workflow-engine/src/runtime/repository-observation/maintainer-attestation.ts",
+        "packages/workflow-engine/src/runtime/repository-observation/maintainer-manifest.ts",
+        "packages/workflow-engine/src/runtime/repository-observation/maintainer-policy.ts",
         "packages/workflow-engine/src/runtime/repository-transaction/filesystem-safety.ts",
         "packages/workflow-engine/src/runtime/repository-transaction/git-transitions.ts",
+        "packages/workflow-engine/src/runtime/repository-transaction/maintainer-attestation-tag.ts",
+        "packages/workflow-engine/src/runtime/repository-transaction/maintainer-audit-tag.ts",
+        "packages/workflow-engine/src/runtime/repository-validation/commit-replay/ci-authority.ts",
+        "packages/workflow-engine/src/runtime/repository-validation/commit-replay/services.ts",
         "packages/workflow-engine/src/runtime/session-workspace/session-store.ts",
         "packages/workflow-engine/src/runtime/storage-journal/maintainer-report.ts",
         "packages/workflow-engine/src/runtime/storage-journal/maintainer-store.ts",
-        "packages/workflow-engine/src/runtime/storage-journal/pre-merge-assurance-store.ts"
+        "packages/workflow-engine/src/runtime/storage-journal/pre-merge-assurance-repository.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/pre-merge-assurance-store.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/task-mandate-repository.ts"
       ],
       "constraints": {
         "evidenceOnlyGrantForbidden": true,
@@ -150,8 +227,14 @@
           "runner",
           "source-tree"
         ],
-        "workflow-format": ["runner", "source-tree"],
-        "workflow-lint": ["runner", "source-tree"],
+        "workflow-format": [
+          "runner",
+          "source-tree"
+        ],
+        "workflow-lint": [
+          "runner",
+          "source-tree"
+        ],
         "workflow-tests": [
           "base-commit",
           "harness-engine",
@@ -159,7 +242,10 @@
           "runner",
           "source-tree"
         ],
-        "workflow-typecheck": ["runner", "source-tree"]
+        "workflow-typecheck": [
+          "runner",
+          "source-tree"
+        ]
       }
     }
   }

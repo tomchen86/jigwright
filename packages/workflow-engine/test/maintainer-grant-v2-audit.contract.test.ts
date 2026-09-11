@@ -1,10 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { isWorkflowError, git } from './fixture.ts';
-import {
-  inspectActiveTaskMandateBinding,
-  revokeTaskMandate,
-} from '../src/modules/authority/task-mandate.ts';
+
 import {
   showAuthorityAuditTask,
   verifyAuthorityAuditEvents,
@@ -15,21 +12,19 @@ import {
   authorityAuditLedgerPaths,
 } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import path from 'node:path';
-import {
-  type MaintainerGrantV2Payload,
-  issueMaintainerGrantV2,
-} from '../src/modules/authority/maintainer-grant-v2.ts';
+import { type MaintainerGrantV2Payload } from '../src/modules/authority/maintainer-grant-v2.ts';
+import { issueMaintainerGrantV2 } from '../src/composition-root/maintainer-authority-production.ts';
 import {
   buildImmutableCandidateBundleV2,
   storeImmutableCandidateBundle,
 } from '../src/modules/authority/maintainer-candidate.ts';
 import { revokeMaintainerGrantV2 } from '../src/application/control-plane/maintainer-approve.ts';
 import { inspectMaintainerGrants } from '../src/runtime/storage-journal/maintainer-store.ts';
+import { readAuthoritySession } from '../src/application/control-plane/maintainer-session.ts';
 import {
   startAuthoritySession,
   checkAuthoritySession,
-  readAuthoritySession,
-} from '../src/application/control-plane/maintainer-session.ts';
+} from '../src/composition-root/maintainer-authority-production.ts';
 import {
   prepareCandidate,
   TASK_ID,
@@ -749,3 +744,7 @@ test('expired v2 admission terminalizes the grant and releases its reservation',
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const { inspectActiveTaskMandateBinding, revokeTaskMandate } =
+  taskMandateOperations;

@@ -8,17 +8,16 @@
  */
 import {
   type CollaborationAvailableActor,
-  type CollaborationDegradedForm,
   type CollaborationGrantRequest,
   type CollaborationLifecyclePhase,
   type CollaborationRolePair,
-} from '../../modules/authority/collaboration-grant.ts';
+} from '../../modules/authority/collaboration-grant-codec.ts';
+import { type CollaborationDegradedForm } from '../../modules/provider-orchestration/role-independence.ts';
 import { issueProductionCollaborationGrant } from '../../composition-root/collaboration-grant-production.ts';
 import {
   listCollaborationGrantInspections,
   readCollaborationGrantInspection,
-  revokeCollaborationGrant,
-} from '../../runtime/storage-journal/collaboration-grant-store.ts';
+} from '../../runtime/storage-journal/collaboration-grant-records.ts';
 import type { ActorAssurance } from '../../modules/provider-orchestration/actor-identity.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -302,3 +301,5 @@ export function collaborationUsage() {
     ExitCode.usage,
   );
 }
+
+import { revokeCollaborationGrant } from '../../composition-root/collaboration-grant-production.ts';

@@ -1,9 +1,22 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 
 import { readImmutableReport } from '../src/runtime/storage-journal/report-store.ts';
 import {
@@ -15,8 +28,8 @@ import {
 import { createEngineArtifact } from '../src/modules/authority/intervention-control.ts';
 import { persistInterventionEngineArtifact } from '../src/application/control-plane/intervention-maintenance.ts';
 import { preparePersistedEngineAdoption } from '../src/runtime/storage-journal/intervention-control-persistence.ts';
-import { resolveHarnessBootstrapParentState } from '../src/harness-bootstrap.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { resolveHarnessBootstrapParentState } from '../src/composition-root/harness-bootstrap-production.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {
   checkSession,
   getSession,
@@ -51,14 +64,25 @@ test('local engine adoption selectively invalidates trusted harness-engine check
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
 
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const feature = true;\n',
     );
     weakenCandidateDependencyDeclaration(repository);
 
-    const original = checkSession(repository, session.sessionId);
+    const original = checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+    );
     assert.deepEqual(readCounts(sourceCounter, engineCounter), {
       source: 1,
       engine: 1,
@@ -71,12 +95,19 @@ test('local engine adoption selectively invalidates trusted harness-engine check
     assert.throws(
       () =>
         withResumeBinding(adoption.resumeBinding, () =>
-          checkSession(repository, session.sessionId, {
-            testAfterReconciliationReport: () => {
-              crashInjected = true;
-              throw new Error('simulated reconciliation crash');
+          checkSession(
+            maintainerManifestOperations,
+            productionTaskStrategyExecutionGate,
+            productionChangeRoutingAdmissionReader,
+            repository,
+            session.sessionId,
+            {
+              testAfterReconciliationReport: () => {
+                crashInjected = true;
+                throw new Error('simulated reconciliation crash');
+              },
             },
-          }),
+          ),
         ),
       /simulated reconciliation crash/,
     );
@@ -92,7 +123,13 @@ test('local engine adoption selectively invalidates trusted harness-engine check
     const reportsAfterCrash = fs.readdirSync(reportDirectory).sort();
 
     const reconciled = withResumeBinding(adoption.resumeBinding, () =>
-      checkSession(repository, session.sessionId),
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeRoutingAdmissionReader,
+        repository,
+        session.sessionId,
+      ),
     ) as ReturnType<typeof checkSession> & {
       executedCheckIds: string[];
       reusedCheckIds: string[];
@@ -161,22 +198,42 @@ test('local engine adoption retains fresh external-state evidence bound to the s
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
 
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const feature = true;\n',
     );
     weakenCandidateExternalFreshness(repository, 'external-check', 1);
     assert.throws(
-      () => checkSession(repository, session.sessionId, { now: () => NOW }),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          { now: () => NOW },
+        ),
       (error) =>
         isWorkflowError(error, 'SESSION_EXTERNAL_STATE_SNAPSHOT_REQUIRED'),
     );
     assert.equal(lineCount(externalCounter), 0);
-    const original = checkSession(repository, session.sessionId, {
-      now: () => NOW,
-      externalSnapshotDigests: { 'external-check': snapshot },
-    });
+    const original = checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        now: () => NOW,
+        externalSnapshotDigests: { 'external-check': snapshot },
+      },
+    );
     assert.equal(lineCount(externalCounter), 1);
     assert.equal(original.checks[0]!.completedAt, NOW.toISOString());
     assert.equal(original.checks[0]!.externalSnapshotDigest, snapshot);
@@ -184,10 +241,17 @@ test('local engine adoption retains fresh external-state evidence bound to the s
 
     const adoption = adoptLocalEngine(repository, session.sessionId);
     const reconciled = withResumeBinding(adoption.resumeBinding, () =>
-      checkSession(repository, session.sessionId, {
-        now: () => new Date(NOW.getTime() + 2 * 60 * 1_000),
-        externalSnapshotDigests: { 'external-check': snapshot },
-      }),
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeRoutingAdmissionReader,
+        repository,
+        session.sessionId,
+        {
+          now: () => new Date(NOW.getTime() + 2 * 60 * 1_000),
+          externalSnapshotDigests: { 'external-check': snapshot },
+        },
+      ),
     );
     assert.deepEqual(reconciled.executedCheckIds, []);
     assert.deepEqual(reconciled.reusedCheckIds, ['external-check']);
@@ -224,7 +288,12 @@ test('local engine adoption reruns stale and snapshot-changed external-state evi
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
 
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const feature = true;\n',
@@ -234,13 +303,20 @@ test('local engine adoption reruns stale and snapshot-changed external-state evi
       'stale-check',
       24 * 60 * 60 * 1_000,
     );
-    checkSession(repository, session.sessionId, {
-      now: () => NOW,
-      externalSnapshotDigests: {
-        'changed-check': snapshotV1,
-        'stale-check': snapshotV1,
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        now: () => NOW,
+        externalSnapshotDigests: {
+          'changed-check': snapshotV1,
+          'stale-check': snapshotV1,
+        },
       },
-    });
+    );
     assert.deepEqual(
       [lineCount(changedCounter), lineCount(staleCounter)],
       [1, 1],
@@ -249,13 +325,20 @@ test('local engine adoption reruns stale and snapshot-changed external-state evi
     const adoption = adoptLocalEngine(repository, session.sessionId);
     const reconciledAt = new Date(NOW.getTime() + 2 * 60 * 1_000);
     const reconciled = withResumeBinding(adoption.resumeBinding, () =>
-      checkSession(repository, session.sessionId, {
-        now: () => reconciledAt,
-        externalSnapshotDigests: {
-          'changed-check': snapshotV2,
-          'stale-check': snapshotV1,
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeRoutingAdmissionReader,
+        repository,
+        session.sessionId,
+        {
+          now: () => reconciledAt,
+          externalSnapshotDigests: {
+            'changed-check': snapshotV2,
+            'stale-check': snapshotV1,
+          },
         },
-      }),
+      ),
     );
     assert.deepEqual(reconciled.executedCheckIds, [
       'changed-check',

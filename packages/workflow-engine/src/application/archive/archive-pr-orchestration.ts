@@ -1,3 +1,9 @@
+import type { PreMergeVerifier } from '../assurance/pre-merge-verification.ts';
+import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
+import type { ArchiveEligibilityReplayServices } from '../../modules/assurance/commit-replay/ci-archive.ts';
+import type { PlanningArchiveSourcePolicy } from '../../modules/planning-provider/planning-archive-projection-port.ts';
+import type { CollaborationGrantCodec } from '../../modules/authority/collaboration-grant-codec.ts';
+import type { ArchivedWorkItemReconciler } from '../../modules/governance-intake/work-registry-contracts.ts';
 /**
  * Discovers archive PR candidates and coordinates their worktree
  * preparation, assurance and authorized publication.
@@ -35,7 +41,7 @@ import {
   type ArchiveTransitionResult,
   type ArchiveTransitionTestHooks,
 } from './archive-transition.ts';
-import { preparePullRequestPreMergeAssurance } from '../../entrypoints/ci/pre-merge-assurance-git.ts';
+
 import { ensurePlainDirectory } from '../../runtime/repository-transaction/filesystem-safety.ts';
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
 import {
@@ -51,7 +57,7 @@ import {
   type CompletedArchivePullRequestGrantReferenceV1,
 } from '../../modules/authority/archive-pr-grant.ts';
 import { grantStorePaths } from '../../runtime/storage-journal/grant-store.ts';
-import { repositoryPlanningConfiguration } from '../../modules/repository-consumer/repository-consumer-config.ts';
+import { loadRepositoryConsumerConfiguration } from '../../runtime/repository-observation/repository-consumer.ts';
 
 export type ArchivePullRequestCandidateProjectionInput = Readonly<{
   repositoryId: string;
@@ -273,9 +279,9 @@ export function discoverArchivePullRequestCandidate(
   }
   const stable = loadStableValidatedChangeContract(before, requestedChangeId);
   const { contract, git } = stable;
-  const currentSchemaName = repositoryPlanningConfiguration(
+  const currentSchemaName = loadRepositoryConsumerConfiguration(
     git.repositoryRoot,
-  ).currentSchemaName;
+  ).configuration.planning.currentSchemaName;
   const protectedBase = contract.config.protectedBranches[0];
   if (protectedBase === undefined || git.branch !== protectedBase) {
     throw archivePrError(
@@ -576,6 +582,16 @@ export function openArchivePullRequest(
  * deliberately a later explicit operation.
  */
 export function preparePostMergeArchivePullRequest(
+  preparePullRequestPreMergeAssurance: PreMergeVerifier['preparePullRequestPreMergeAssurance'],
+  planningExecution: PlanningTransitionExecutionServices,
+  sourcePolicy: PlanningArchiveSourcePolicy,
+  archiveReplayServices: ArchiveEligibilityReplayServices,
+  collaborationGrants: Pick<
+    CollaborationGrantCodec,
+    'assertUniqueCollaborationGrantUses'
+  >,
+  renderTrackedHandoff: (repositoryRoot: string) => string,
+  reconcileArchivedWorkItems: ArchivedWorkItemReconciler,
   cwd: string,
   requestedChangeId: string,
   options: PreparePostMergeArchivePullRequestOptions,
@@ -594,6 +610,12 @@ export function preparePostMergeArchivePullRequest(
     worktreePath,
   );
   const archive = commitArchiveTransition(
+    planningExecution,
+    sourcePolicy,
+    archiveReplayServices,
+    collaborationGrants,
+    renderTrackedHandoff,
+    reconcileArchivedWorkItems,
     worktreePath,
     candidate.changeId,
     options.environment ?? process.env,
@@ -604,6 +626,12 @@ export function preparePostMergeArchivePullRequest(
     },
   );
   const archiveReplay = commitArchiveTransition(
+    planningExecution,
+    sourcePolicy,
+    archiveReplayServices,
+    collaborationGrants,
+    renderTrackedHandoff,
+    reconcileArchivedWorkItems,
     worktreePath,
     candidate.changeId,
     options.environment ?? process.env,
@@ -626,7 +654,7 @@ export function preparePostMergeArchivePullRequest(
       'Local archive replay did not return the same exact archive identity.',
     );
   }
-  const assure = options.assure ?? runLocalArchivePullRequestAssurance;
+  const assure = options.assure ?? runLocalArchivePullRequestAssurance.bind(undefined, preparePullRequestPreMergeAssurance);
   const assurance = assure(
     worktreePath,
     candidate.base.commit,
@@ -1133,6 +1161,7 @@ function materializeArchiveWorkspaceDependencies(
 }
 
 function runLocalArchivePullRequestAssurance(
+  preparePullRequestPreMergeAssurance: PreMergeVerifier['preparePullRequestPreMergeAssurance'],
   cwd: string,
   baseCommit: string,
   headCommit: string,

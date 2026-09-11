@@ -1,3 +1,4 @@
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Prepares and seals RED evidence for task strategy transactions.
  *
@@ -15,9 +16,9 @@ import {
 import type {
   CrossAgentTddExecution,
   TddSingleAgentExecution,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+} from '../../modules/planning-provider/planning-artifact-types.ts';
 import { createCheckEnvironmentForRepository } from '../../adapters/consumer/repository/work-registry/database-policy.ts';
-import { createEvidenceNode } from '../../adapters/planning/investigation/evidence-node.ts';
+import { createEvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';
 import { writeEvidenceNode } from '../../runtime/storage-journal/evidence-object-store.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { previewExactStaging } from '../../runtime/repository-transaction/git-transitions.ts';
@@ -26,7 +27,7 @@ import {
   loadInvestigationRuntimeContext,
   runSessionOperation,
 } from '../../composition-root/lifecycle-context.ts';
-import { matchesAllowedPath } from '../../runtime/session-workspace/paths.ts';
+import { matchesAllowedPath } from '../../foundation/repository-path/repository-path.ts';
 import {
   createTaskStrategyTransaction,
   readTaskStrategyTransaction,
@@ -70,22 +71,22 @@ export function inspectTaskStrategyTransaction(
   return readTaskStrategyTransaction(context.runtime, requestedSessionId);
 }
 
-export function sealTaskStrategyRed(
+export function sealTaskStrategyRed(routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   options: SealTaskStrategyRedOptions = {},
 ): TaskStrategyTransaction {
   return runSessionOperation(cwd, requestedSessionId, () =>
-    sealTaskStrategyRedUnlocked(cwd, requestedSessionId, options),
+    sealTaskStrategyRedUnlocked(routingAdmissionReader, cwd, requestedSessionId, options),
   );
 }
 
-function sealTaskStrategyRedUnlocked(
+function sealTaskStrategyRedUnlocked(routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   options: SealTaskStrategyRedOptions,
 ): TaskStrategyTransaction {
-  const inspection = inspectSession(cwd, requestedSessionId);
+  const inspection = inspectSession(routingAdmissionReader, cwd, requestedSessionId);
   const task = executionTask(inspection);
   const taskContractDigest = sha256(canonicalJson(task));
   const actorResolution = resolveActorIdentity({
@@ -135,7 +136,7 @@ function sealTaskStrategyRedUnlocked(
     return existing;
   }
 
-  const prepared = prepareTaskStrategyRed(
+  const prepared = prepareTaskStrategyRed(routingAdmissionReader,
     cwd,
     requestedSessionId,
     inspection,
@@ -154,12 +155,12 @@ function sealTaskStrategyRedUnlocked(
  * writes the evidence node, transaction object, or current-ref transition.
  * The caller owns the repository and session lifecycle locks.
  */
-export function prepareTaskStrategyRedSuccessorUnlocked(
+export function prepareTaskStrategyRedSuccessorUnlocked(routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   options: PrepareTaskStrategyRedSuccessorOptions,
 ): PreparedTaskStrategyRed {
-  const inspection = inspectSession(cwd, requestedSessionId);
+  const inspection = inspectSession(routingAdmissionReader, cwd, requestedSessionId);
   const task = executionTask(inspection);
   const taskContractDigest = sha256(canonicalJson(task));
   if (inspection.session.state !== 'active') {
@@ -169,7 +170,7 @@ export function prepareTaskStrategyRedSuccessorUnlocked(
       ExitCode.staleState,
     );
   }
-  const prepared = prepareTaskStrategyRed(
+  const prepared = prepareTaskStrategyRed(routingAdmissionReader,
     cwd,
     requestedSessionId,
     inspection,
@@ -191,7 +192,7 @@ export function prepareTaskStrategyRedSuccessorUnlocked(
   return prepared;
 }
 
-function prepareTaskStrategyRed(
+function prepareTaskStrategyRed(routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   inspection: ReturnType<typeof inspectSession>,
@@ -272,7 +273,7 @@ function prepareTaskStrategyRed(
       },
     );
   }
-  const after = inspectSession(cwd, requestedSessionId, {
+  const after = inspectSession(routingAdmissionReader, cwd, requestedSessionId, {
     expectedSession: inspection.session,
   });
   const afterPreview = previewExactStaging(

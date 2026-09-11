@@ -10,20 +10,21 @@ import { type ConsumedRoleResultReplayPort } from '../../modules/assurance/plann
 import {
   type DirectHumanReviewAttestation,
   type CollaborationGrantRequest,
-} from '../../modules/authority/collaboration-grant.ts';
-import { type TaskDiffReviewSubject } from '../../modules/assurance/task-diff-review.ts';
+} from '../../modules/authority/collaboration-grant-codec.ts';
+import type { TaskDiffReviewSubject } from '../../modules/assurance/task-diff-review-record.ts';
 import {
   type RecordedRoleParticipant,
   type GrantedRoleAssignment,
   type ProviderRoleAssignment,
-  type AdmittedRoleResult,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
-import {
-  type TaskDiffReviewRecord,
-  type TaskDiffFinalAssuranceRecord,
-  type TaskDiffReviewChallengeResponseRecord,
-  type TaskDiffAuthenticatedReviewerAuthority,
-} from '../../modules/assurance/task-diff-review-artifact.ts';
+} from '../../modules/provider-orchestration/role-assignment.ts';
+import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+
+import type {
+  TaskDiffReviewRecord,
+  TaskDiffFinalAssuranceRecord,
+  TaskDiffReviewChallengeResponseRecord,
+  TaskDiffAuthenticatedReviewerAuthority,
+} from '../../modules/assurance/task-diff-review-artifact-record.ts';
 import {
   type AssertExactStateSet,
   type ExactStateSet,

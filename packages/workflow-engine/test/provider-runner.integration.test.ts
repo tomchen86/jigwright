@@ -9,7 +9,7 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { createProviderRunnerForTesting } from '../src/runtime/provider-execution/provider-runner.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
+import {resolveBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
 import { createAgentRuntimeAssignmentBindingV1 } from '../src/modules/provider-orchestration/agent-runtime-assignment-binding.ts';
 import { git } from './fixture.ts';
 import {

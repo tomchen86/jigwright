@@ -15,7 +15,7 @@ import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { discoverRepository, runGit, } from "../../runtime/repository-transaction/git.js";
 import { deriveAuthorityAuditRepositoryId } from "../../runtime/storage-journal/authority-audit-ledger.js";
-import { assertHumanRevocationAuthorization, authorizeHumanRevocation, canonicalHumanRevocationAuthorization, digestHumanRevocationSubject, } from "./human-revocation.js";
+import { assertHumanRevocationAuthorization, canonicalHumanRevocationAuthorization, digestHumanRevocationSubject, } from "../../modules/authority/human-revocation-contract.js";
 import { createEngineArtifact, verifyHarnessMaintenanceGrant, } from "../../modules/authority/intervention-control.js";
 import { interventionEngineArtifactRecordPath as storedArtifactRecordPath, readStoredInterventionEngineArtifact, } from "../../runtime/storage-journal/intervention-engine-artifact-store.js";
 import { parseMaintainerPolicy } from "../../modules/authority/maintainer-policy.js";
@@ -252,7 +252,7 @@ export function readMaintenanceGrantForParent(storageRoot, parentChangeId) {
     });
     return matches.at(-1);
 }
-export function revokeMaintenanceGrantForParent(cwd, storageRoot, parentChangeId, options) {
+export function revokeMaintenanceGrantForParent(authorizeHumanRevocation, cwd, storageRoot, parentChangeId, options) {
     assertNonEmpty(options.reason, 'MAINTENANCE_GRANT_REVOCATION_INVALID');
     const repository = discoverRepository(cwd);
     const current = readMaintenanceGrantForParent(storageRoot, parentChangeId);

@@ -8,7 +8,7 @@
  */
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import type { ProviderInvocationPlan } from '../../../modules/provider-orchestration/provider-contracts.ts';
-export { CLAUDE_EXECUTABLE_CANDIDATES } from '../built-in-provider-definition.ts';
+export {CLAUDE_EXECUTABLE_CANDIDATES} from '@jigwright/core/built-in-provider-definition';
 
 /**
  * The reviewed help flags a resolved Claude executable must advertise before the

@@ -1,10 +1,37 @@
+import { preparePullRequestPreMergeAssurance } from '../src/composition-root/ci-verification-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
+import { productionPlanningArchiveSourcePolicy } from '../src/composition-root/planning-archive-projection-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { collaborationGrantCodec as productionArchiveGrantCodec } from '../src/runtime/grants/grant-services.ts';
+import { reconcileArchivedWorkItems as productionArchivedWorkItemReconciler } from '../src/composition-root/work-registry-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { renderHandoffFromTrackedFacts as productionTrackedHandoffRenderer } from '../src/composition-root/handoff-production.ts';
+const preparePostMergeArchivePullRequest =
+  preparePostMergeArchivePullRequestWithHandoff.bind(
+    undefined, preparePullRequestPreMergeAssurance,
+    productionPlanningExecution,
+    productionPlanningArchiveSourcePolicy,
+    archiveEligibilityReplayServices,
+    productionArchiveGrantCodec,
+    productionTrackedHandoffRenderer,
+    productionArchivedWorkItemReconciler,
+  );
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import test from 'node:test';
 import {
   discoverArchivePullRequestCandidate,
   discoverArchivePullRequestCandidates,
   openArchivePullRequest,
   projectArchivePullRequestCandidate,
-  preparePostMergeArchivePullRequest,
+  preparePostMergeArchivePullRequest as preparePostMergeArchivePullRequestWithHandoff,
   publishPostMergeArchivePullRequest,
   projectArchivePullRequestPublication,
   type ExactArchiveBranchPublisherPortV1,
@@ -26,7 +53,7 @@ import {
   syncOriginMain,
 } from './fixture.ts';
 import path from 'node:path';
-import { createArchivePullRequestCliDispatcherForTesting } from '../src/cli.ts';
+import { createArchivePullRequestCliDispatcherForTesting } from '../src/entrypoints/cli/workflow-cli.ts';
 import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -37,21 +64,17 @@ import {
 } from '../src/modules/authority/archive-pr-grant.ts';
 import {
   grantStorePaths,
-  persistGrantChallenge,
-  prepareGrantTransition,
-  recordGrantTransitionOutcome,
+  createFileGrantRecordStore,
 } from '../src/runtime/storage-journal/grant-store.ts';
 import {
   createArchivePublicationPreparation,
   persistArchivePublicationPreparation,
   readArchivePublicationPreparation,
 } from '../src/runtime/storage-journal/archive-publication-store.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
-import {
-  finalizeTask,
-  commitSession,
-} from '../src/application/finalize/lifecycle.ts';
+import { commitSession } from '../src/application/finalize/lifecycle.ts';
+import { finalizeTask } from '../src/composition-root/finalization-production.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
@@ -1091,7 +1114,10 @@ test('archive preparation status replays exact local Git truth without a worktre
       process.execPath,
       [
         '--experimental-strip-types',
-        path.resolve(import.meta.dirname, '../src/cli.ts'),
+        path.resolve(
+          import.meta.dirname,
+          '../src/entrypoints/cli/workflow-cli.ts',
+        ),
         'archive-pr',
         'status',
         local.preparation.preparationIdentity,
@@ -1192,7 +1218,10 @@ test('archive preparation status replays exact local Git truth without a worktre
       process.execPath,
       [
         '--experimental-strip-types',
-        path.resolve(import.meta.dirname, '../src/cli.ts'),
+        path.resolve(
+          import.meta.dirname,
+          '../src/entrypoints/cli/workflow-cli.ts',
+        ),
         'archive-pr',
         'status',
         local.preparation.preparationIdentity,
@@ -1419,7 +1448,12 @@ function completedFixture(): string {
   prepareCurrentV3IntroductionFixture(repository, 'demo-change');
   writeReadyV3ExemptChange(repository);
   commitPlanningTransition(repository, 'demo-change');
-  const session = startSession(repository, 'demo-change', '1.1');
+  const session = startSession(
+    productionChangeRoutingAdmissionReader,
+    repository,
+    'demo-change',
+    '1.1',
+  );
   fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
   assert.throws(
     () => finalizeTask(repository, session.sessionId),
@@ -1428,6 +1462,7 @@ function completedFixture(): string {
   satisfyCurrentTaskDiffReview(repository, session.sessionId);
   finalizeTask(repository, session.sessionId);
   const completed = commitSession(
+    productionChangeRoutingAdmissionReader,
     repository,
     session.sessionId,
     'Complete archive PR fixture task',
@@ -1516,7 +1551,7 @@ function completePublicationGrant(
       expiresAt: new Date(now.getTime() + 10 * 60_000).toISOString(),
     },
   );
-  persistGrantChallenge(paths, challenge);
+  createFileGrantRecordStore(paths).persistGrantChallenge(challenge);
   const subject = createApprovalSubject(
     challenge,
     {
@@ -1529,7 +1564,7 @@ function completePublicationGrant(
     { now },
   );
   const operationId = '77777777-7777-4777-8777-777777777777';
-  prepareGrantTransition(paths, {
+  createFileGrantRecordStore(paths).prepareGrantTransition({
     operationId,
     challenge,
     subject,
@@ -1545,7 +1580,7 @@ function completePublicationGrant(
     ],
     createdAt: now.toISOString(),
   });
-  recordGrantTransitionOutcome(paths, {
+  createFileGrantRecordStore(paths).recordGrantTransitionOutcome({
     challengeId: challenge.challengeId,
     operationId,
     poststateDigest: challenge.stateBinding.digest,

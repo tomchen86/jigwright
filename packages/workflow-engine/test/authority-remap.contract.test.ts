@@ -26,7 +26,7 @@ import { parseMaintainerPolicy } from '../src/modules/authority/maintainer-polic
 import {
   parseCapabilityProfile,
   classifyFileRole,
-} from '../src/modules/authority/maintainer-manifest.ts';
+} from '../src/modules/authority/maintainer-manifest-contracts.ts';
 import { execFileSync } from 'node:child_process';
 import {
   write,
@@ -931,7 +931,7 @@ test('authority remap composes one manifest and one existing authority-plan inte
           '--experimental-strip-types',
           path.join(
             sourceRepositoryRoot,
-            'packages/workflow-engine/src/cli.ts',
+            'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
           ),
           'boundary',
           'remap',
@@ -1063,7 +1063,7 @@ test('workspace package source moves use the pinned v2 closure roots for regener
       'packages/workflow-engine/bootstrap/built-in-engine-closure.json',
       `${JSON.stringify({
         kind: 'built-in-engine-closure-manifest.v2',
-        entrypoint: 'src/cli.ts',
+        entrypoint: 'src/entrypoints/cli/workflow-cli.ts',
         scope: 'workspace-runtime-source-closure',
         packages: [
           {
@@ -1128,7 +1128,7 @@ test('authority remap rejects retired V1 closure metadata at the pinned base', (
       'packages/workflow-engine/bootstrap/built-in-engine-closure.json',
       `${JSON.stringify({
         kind: 'built-in-engine-closure-manifest.v1',
-        entrypoint: 'src/cli.ts',
+        entrypoint: 'src/entrypoints/cli/workflow-cli.ts',
         scope: 'package-json-and-all-src-typescript',
         files: [],
       })}\n`,

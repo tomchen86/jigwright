@@ -1,3 +1,6 @@
+import type { CandidateExternalEffect } from '../../modules/authority/maintainer-candidate-contracts.ts';
+import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
+import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
 /**
  * Coordinates authority plan preparation, approval, application, resumption
  * and attestation.
@@ -14,7 +17,7 @@ import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
-import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
 import { authorityTagPublishCommand } from '../../adapters/remote/github/authority-relay-command.ts';
 import {
   ExitCode,
@@ -30,10 +33,9 @@ import {
   readPrivateCanonicalJson,
   assertPrivateInvestigationDirectory,
   withPrivateRuntimeLock,
-} from '../../runtime/storage-journal/investigation-session-store.ts';
+} from '../../runtime/storage-journal/investigation-private-files.ts';
 import {
-  issueAuthorityAttestation,
-  projectAuthorityAttestationRelay,
+  type AuthorityAttestationOperations,
   type AuthorityAttestationRelayProjection,
   type AuthorityAttestationRequest,
 } from './maintainer-attestation.ts';
@@ -41,25 +43,25 @@ import {
   approveAndApplyMaintainerGrantV2,
   type ApproveAndApplyMaintainerGrantV2Request,
 } from './maintainer-approve.ts';
-import type { CandidateExternalEffect } from '../../modules/authority/maintainer-candidate.ts';
+
 import type { MaintainerEvidenceWaiver } from '../../modules/authority/maintainer-grant-v2.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import {
-  classifyFileRole,
-  loadCapabilityProfileFromTrustBase,
-} from '../../modules/authority/maintainer-manifest.ts';
-import { parseManagedTrailers } from '../../modules/lifecycle/managed-trailers.ts';
+
+import { classifyFileRole } from '../../modules/authority/maintainer-manifest-contracts.ts';
+import { parseManagedTrailers } from '@jigwright/core/managed-transition-trailers';
 import {
   isManagedAuthorityPlanState,
   type ManagedAuthorityPlanState,
 } from '../../modules/lifecycle/managed-workflow-state-contract.ts';
 import {
-  assertChangeId,
   assertPolicyPathInsideRepository,
-  assertTaskId,
   investigationRuntimePaths,
-  normalizeExactRepositoryPath,
 } from '../../runtime/session-workspace/paths.ts';
+import {
+  assertChangeId,
+  assertTaskId,
+  normalizeExactRepositoryPath,
+} from '../../foundation/repository-path/repository-path.ts';
 
 const SHA256 = /^[0-9a-f]{64}$/;
 const COMMIT_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
@@ -194,6 +196,7 @@ export type AuthorityPlanAttestOptions = Readonly<{
 }>;
 
 export function createAuthorityPlan(
+  manifestOperations: MaintainerManifestOperations,
   cwd: string,
   candidateIntent: AuthorityPlanIntent,
   options: AuthorityPlanCreateOptions = {},
@@ -219,7 +222,7 @@ export function createAuthorityPlan(
       ExitCode.staleState,
     );
   }
-  const profile = loadCapabilityProfileFromTrustBase(
+  const profile = manifestOperations.loadCapabilityProfileFromTrustBase(
     repository.repositoryRoot,
     repository.head,
     intent.profileId,
@@ -298,6 +301,9 @@ export function inspectAuthorityPlan(
 }
 
 export function approveAndApplyAuthorityPlan(
+  authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
+  manifestOperations: MaintainerManifestOperations,
+  taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
   requestedPlanId: string,
   options: AuthorityPlanApproveOptions = {},
@@ -343,7 +349,16 @@ export function approveAndApplyAuthorityPlan(
     const approve =
       options.approveAndApply ??
       ((root: string, request: ApproveAndApplyMaintainerGrantV2Request) =>
-        approveAndApplyMaintainerGrantV2(root, request, { now: options.now }));
+        approveAndApplyMaintainerGrantV2(
+          authorityApplicationReceipts,
+          manifestOperations,
+          taskMandate,
+          root,
+          request,
+          {
+            now: options.now,
+          },
+        ));
     let applied: ApprovalResult;
     try {
       applied = approve(current.repositoryRoot, approvalRequest(record.intent));
@@ -378,6 +393,8 @@ export function approveAndApplyAuthorityPlan(
 }
 
 export function resumeAuthorityPlan(
+  authorityAttestation: AuthorityAttestationOperations,
+  authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   cwd: string,
   requestedPlanId: string,
   options: AuthorityPlanResumeOptions = {},
@@ -419,7 +436,11 @@ export function resumeAuthorityPlan(
       refresh(repository.repositoryRoot);
       if (observe(record.localApplication!.tagRef) === null) return record;
       const project =
-        options.projectAttestationRelay ?? projectAuthorityAttestationRelay;
+        options.projectAttestationRelay ??
+        authorityAttestation.projectAuthorityAttestationRelay.bind(
+          undefined,
+          authorityApplicationReceipts,
+        );
       const relay = project(
         repository.repositoryRoot,
         record.localApplication!.commitHash,
@@ -455,6 +476,8 @@ export function resumeAuthorityPlan(
 }
 
 export function attestAuthorityPlan(
+  authorityAttestation: AuthorityAttestationOperations,
+  authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   cwd: string,
   requestedPlanId: string,
   options: AuthorityPlanAttestOptions = {},
@@ -482,7 +505,14 @@ export function attestAuthorityPlan(
     const issue =
       options.issueAttestation ??
       ((root: string, value: AuthorityAttestationRequest) =>
-        issueAuthorityAttestation(root, value, { now: options.now }));
+        authorityAttestation.issueAuthorityAttestation(
+          authorityApplicationReceipts,
+          root,
+          value,
+          {
+            now: options.now,
+          },
+        ));
     const issued = issue(
       repository.repositoryRoot,
       request,
@@ -732,3 +762,5 @@ const {
   parseMaintainerPolicy,
   authorityTagPublishCommand,
 }));
+
+import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';

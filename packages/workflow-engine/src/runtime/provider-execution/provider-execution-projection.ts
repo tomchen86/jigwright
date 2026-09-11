@@ -21,11 +21,11 @@ import {
   decideProviderExecutionFailure,
 } from '../storage-journal/execution-store.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
-import {
-  type ProviderInvocationRecord,
-  type ProviderOutputSchemaGeneration,
-  type ProviderResidualsGeneration,
-} from '../storage-journal/provider-invocation-store.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
+import type {
+  ProviderOutputSchemaGeneration,
+  ProviderResidualsGeneration,
+} from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
 import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {
   type ExecutionJobInspection,

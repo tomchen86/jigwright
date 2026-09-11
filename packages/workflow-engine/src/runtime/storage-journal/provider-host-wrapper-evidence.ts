@@ -25,7 +25,7 @@ import {
   isDigest,
   isRecord,
   sha256,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 import {
   PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS,
   providerRetentionArtifact,

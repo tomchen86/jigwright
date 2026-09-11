@@ -15,17 +15,17 @@ import { spawn } from 'node:child_process';
 import {
   HARNESS_JSONL_V1_LIMITS,
   ProviderWrapperProtocolError,
-  createProviderWrapperProtocolParser,
   type ProviderWrapperProtocolExecution,
   type ProviderWrapperProtocolReceipt,
-} from './harness-jsonl-v1.ts';
+} from '@jigwright/core/harness-jsonl-v1-contracts';
+import { createProviderWrapperProtocolParser } from './harness-jsonl-v1.ts';
 import {
   HARNESS_JSONL_V2_LIMITS,
   ProviderWrapperSessionProtocolError,
-  createProviderWrapperSessionProtocolParser,
   type ProviderWrapperSessionProtocolExecution,
   type ProviderWrapperSessionProtocolOutcome,
-} from './harness-jsonl-v2.ts';
+} from '@jigwright/core/harness-jsonl-v2-contracts';
+import { createProviderWrapperSessionProtocolParser } from './harness-jsonl-v2.ts';
 
 export const BOUNDED_PROVIDER_PROCESS_CONTRACT_VERSION =
   'jigwright.agent-runtime.bounded-provider-process.v1' as const;

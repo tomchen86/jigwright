@@ -1,3 +1,21 @@
+import type {
+  TaskStrategyPatchEntry,
+  TaskStrategyPatchChange,
+  TaskStrategyPatchImplementer,
+  TaskStrategyPatchRecord,
+  TaskStrategyPatchImportReceipt,
+  TaskStrategyPatchReservation,
+  TaskStrategyPatchCurrentBinding,
+} from '../../modules/assurance/task-strategy-evidence.ts';
+export type {
+  TaskStrategyPatchEntry,
+  TaskStrategyPatchChange,
+  TaskStrategyPatchImplementer,
+  TaskStrategyPatchRecord,
+  TaskStrategyPatchImportReceipt,
+  TaskStrategyPatchReservation,
+  TaskStrategyPatchCurrentBinding,
+} from '../../modules/assurance/task-strategy-evidence.ts';
 /**
  * Persists source-scoped implementation patches, import receipts, and
  * current bindings.
@@ -14,12 +32,12 @@ import {
   createPrivateCanonicalJson,
   privatePathExists,
   readPrivateCanonicalJson,
-} from './investigation-session-store.ts';
+} from './investigation-private-files.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import {
   assertSessionId,
   normalizeChangedPath,
-  type InvestigationRuntimePaths,
-} from '../session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import {
   isProviderId,
   type ProviderId,
@@ -30,84 +48,6 @@ const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const CHANGE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const TASK_ID = /^\d+(?:\.\d+)+$/;
 const MAX_PATCH_BYTES = 8 * 1024 * 1024;
-
-export type TaskStrategyPatchEntry = Readonly<{
-  mode: '100644' | '100755';
-  objectId: string;
-}>;
-
-export type TaskStrategyPatchChange = Readonly<{
-  path: string;
-  before: TaskStrategyPatchEntry | null;
-  after: TaskStrategyPatchEntry | null;
-}>;
-
-export type TaskStrategyPatchImplementer =
-  | Readonly<{
-      providerId: ProviderId;
-      assurance: 'self-declared' | 'runtime-hint' | 'adapter-assigned';
-    }>
-  | Readonly<{
-      providerId: null;
-      principalId: string;
-      assurance: 'self-declared' | 'runtime-hint' | 'adapter-assigned';
-      degradedForm: 'caller-supplied';
-      grantId: string;
-    }>;
-
-export type TaskStrategyPatchRecord = Readonly<{
-  schemaVersion: 1;
-  kind: 'task-strategy-patch-record.v1';
-  recordDigest: string;
-  sessionId: string;
-  changeId: string;
-  taskId: string;
-  strategy: 'cross-agent-tdd' | 'tdd-single-agent';
-  sourceTree: string;
-  candidateTree: string;
-  taskContractDigest: string;
-  patchDigest: string;
-  patchBase64: string;
-  changedPaths: readonly string[];
-  changes: readonly TaskStrategyPatchChange[];
-  implementer: TaskStrategyPatchImplementer;
-  createdAt: string;
-}>;
-
-export type TaskStrategyPatchImportReceipt = Readonly<{
-  schemaVersion: 1;
-  kind: 'task-strategy-patch-import-receipt.v1';
-  receiptDigest: string;
-  recordDigest: string;
-  sessionId: string;
-  patchDigest: string;
-  candidateTree: string;
-  importedAt: string;
-}>;
-
-export type TaskStrategyPatchReservation = Readonly<{
-  schemaVersion: 1;
-  kind: 'task-strategy-patch-reservation.v1';
-  reservationDigest: string;
-  sessionId: string;
-  patchDigest: string;
-  recordDigest: string;
-  sourceTree: string;
-  candidateTree: string;
-  createdAt: string;
-}>;
-
-export type TaskStrategyPatchCurrentBinding = Readonly<{
-  schemaVersion: 1;
-  kind: 'task-strategy-patch-current.v1';
-  bindingDigest: string;
-  sessionId: string;
-  patchDigest: string;
-  recordDigest: string;
-  receiptDigest: string;
-  candidateTree: string;
-  createdAt: string;
-}>;
 
 export function createTaskStrategyPatchRecord(
   paths: InvestigationRuntimePaths,

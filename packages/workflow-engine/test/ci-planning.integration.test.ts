@@ -1,14 +1,24 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 /** Current planning introduction/revision replay through immutable CI and production composition. */
 import test from 'node:test';
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import { validateCiPlanningCommit } from '../src/entrypoints/ci/ci-planning.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { validateCiPlanningCommit } from '../src/composition-root/ci-replay-production.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { execFileSync } from 'node:child_process';
-import { loadHistoricalTaskAuthority } from '../src/entrypoints/ci/ci-historical-contract.ts';
+import { loadHistoricalTaskAuthority } from '../src/composition-root/ci-replay-production.ts';
 import os from 'node:os';
 import { agentRolePlanV2Path } from '../src/modules/source/planning-role-policy-paths.ts';
 import { CENTRAL_ROLE_PROVIDER_DEFAULT_PATH } from '../src/runtime/repository-transaction/central-role-provider-default-store.ts';
@@ -37,7 +47,10 @@ import {
 
 test('CI planning task replay crosses the production planning composition root', () => {
   const ciPlanningSource = fs.readFileSync(
-    new URL('../src/entrypoints/ci/ci-planning.ts', import.meta.url),
+    new URL(
+      '../src/runtime/repository-validation/commit-replay/ci-planning.ts',
+      import.meta.url,
+    ),
     'utf8',
   );
 

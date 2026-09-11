@@ -1,3 +1,4 @@
+import type {CandidateChecksAttestationV3,CandidateDependencySnapshot} from '../../modules/authority/maintainer-candidate-contracts.ts';
 /**
  * Captures current and sealed dependency snapshots for maintainer candidate
  * attestations.
@@ -16,16 +17,13 @@ import {
 import { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST } from '../../../bootstrap/built-in-engine-closure-pin.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { pinCheckRunner } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
-import type { CheckDefinition } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import type { CheckDefinition } from '../../modules/source/check-command.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   discoverRepository,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
-import type {
-  CandidateChecksAttestationV3,
-  CandidateDependencySnapshot,
-} from '../../modules/authority/maintainer-candidate.ts';
+
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;

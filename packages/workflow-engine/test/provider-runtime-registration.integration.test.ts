@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-import { inspectDurableRetentionCatalog } from '../src/modules/authority/execution-governance.ts';
+import { inspectDurableRetentionCatalog } from '../src/runtime/storage-journal/execution-governance-evidence-store.ts';
 import { listExecutionJobStates } from '../src/runtime/storage-journal/execution-store.ts';
-import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
 import { inspectProviderPromptContextRetentionBinding } from '../src/runtime/provider-execution/provider-execution-governance.ts';
 import {
   inspectProviderRetentionMetrics,
@@ -18,7 +18,7 @@ import {
   readProviderInvocationRequest,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import {
-  pinWorkflowEvidence,
+  pinWorkflowEvidence as pinWorkflowEvidenceWithMandate,
   runEvidenceRetentionMaintenance,
 } from '../src/runtime/provider-execution/retention-control.ts';
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
@@ -206,3 +206,10 @@ function prepareWorkflow(changeId: string) {
     },
   };
 }
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+
+const pinWorkflowEvidence = pinWorkflowEvidenceWithMandate.bind(
+  undefined,
+  taskMandateOperations,
+);

@@ -7,7 +7,7 @@
  *   cannot establish a negation.
  */
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
-import type { ScanHitContextWindow } from './investigation-scanner.ts';
+import type { ScanHitContextWindow } from './investigation-scan-facts.ts';
 
 /**
  * A deliberately small language for saying what a scan hit looks like.

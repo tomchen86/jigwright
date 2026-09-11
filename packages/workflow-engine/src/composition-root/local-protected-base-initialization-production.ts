@@ -6,9 +6,10 @@
  * - Prepared Grant recovery accepts only the exact already-created commit.
  * - Inspecting or choosing the local target never contacts a remote service.
  */
-import { loadWorkflowConfig } from '../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../runtime/repository-observation/workflow-configuration.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
-import { loadMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
+import { loadMaintainerPolicy } from '../runtime/repository-observation/maintainer-policy.ts';
+
 import {
   assertProtectedBaseInitializationParameters,
   type ProtectedBaseInitializationParametersV1,

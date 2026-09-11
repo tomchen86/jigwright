@@ -22,7 +22,7 @@ import {
   recoverProviderInvocationCompletion,
   storeProviderExecutionPolicySnapshot,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import {
   providerExecutionAdmissionAuthorityPath,
   readExecutionJobState,

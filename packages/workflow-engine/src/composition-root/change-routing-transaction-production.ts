@@ -1,3 +1,9 @@
+import { productionChangeRoutingInspector } from './change-routing-observation-production.ts';
+import { loadChangeContract as productionChangeContractReader } from './consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined, productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
 /**
  * Applies managed change routing through a recoverable journal and
  * authority port.
@@ -12,19 +18,14 @@ import path from 'node:path';
 import { canonicalJson } from '@jigwright/core/canonical-json';
 import { isRecord } from '@jigwright/core/contract-values';
 
-import { renderHandoff } from '../adapters/consumer/repository/handoff/handoff.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../adapters/consumer/repository/handoff/handoff.ts';
 import {
   loadWorkflowConfig,
   repositoryHandoffRelativePath,
-} from '../adapters/consumer/repository/work-registry/contracts.ts';
+} from '../runtime/repository-observation/workflow-configuration.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
-import {
-  applyChangeRoutingReviewUnderLifecycleLock,
-  changeLifecycleRelativePath,
-  parseChangeRoutingReview,
-  type ChangeRoutingAuthorityPort,
-  type ChangeRoutingReview,
-} from '../modules/lifecycle/change-routing.ts';
+import { applyChangeRoutingReviewUnderLifecycleLock } from '../runtime/repository-transaction/change-routing.ts';
+import { changeLifecycleRelativePath, parseChangeRoutingReview, type ChangeRoutingAuthorityPort, type ChangeRoutingReview } from '../modules/lifecycle/change-routing.ts';
 import {
   changeRoutingReportRoot,
   changeRoutingReviewDigest,

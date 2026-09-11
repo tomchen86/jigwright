@@ -1,3 +1,4 @@
+import { investigationFailureObservations } from '../src/composition-root/investigation-failure-production.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -19,31 +20,30 @@ import { HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST } from '../src/modules/authori
 import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../src/modules/assurance/plan-review-coverage.ts';
 import {
   grantStorePaths,
-  prepareGrantTransition,
-  readGrantRecord,
+  createFileGrantRecordStore,
 } from '../src/runtime/storage-journal/grant-store.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
-import {
-  buildInvestigationManifestDraft,
-  sealInvestigationManifestDraft,
-  type ExemptionInvestigationAuthoringState,
-} from '../src/modules/investigation/manifest/investigation-manifest.ts';
+import { sealInvestigationManifestDraft } from '../src/modules/investigation/manifest/investigation-manifest.ts';
+import { buildInvestigationManifestDraft } from '../src/composition-root/investigation-production.ts';
+import { type ExemptionInvestigationAuthoringState } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
 import {
   inspectInvestigationManifestPublication as inspectInvestigationManifestPublicationProduction,
-  investigationManifestPublicationNamespace,
   publishInvestigationManifestV3 as publishInvestigationManifestV3Production,
   readInvestigationPublicationRefState as readInvestigationPublicationRefStateProduction,
   resumeInvestigationManifestPublication as resumeInvestigationManifestPublicationProduction,
+} from '../src/runtime/managed-documents/transaction/investigation-publication.ts';
+import {
+  investigationManifestPublicationNamespace,
   type InvestigationManifestPublicationFailure,
   type InvestigationManifestPublicationPaths,
-} from '../src/runtime/managed-documents/transaction/investigation-publication.ts';
+} from '../src/modules/investigation/manifest/investigation-publication-contracts.ts';
 import { investigationV3GrantTransitionDefinitions } from '../src/modules/investigation/seal/investigation-v3-grant.ts';
 import {
   compareAndSwapInvestigationSession,
   createCurrentInvestigationRef,
   createInvestigationSessionRecord,
   readInvestigationSession,
-} from '../src/runtime/storage-journal/investigation-session-store.ts';
+} from '../src/runtime/storage-journal/investigation-session-records.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import { runtimePaths } from '../src/runtime/session-workspace/session-store.ts';
 import { git } from './fixture.ts';
@@ -88,7 +88,9 @@ test('every real v3 publication failure surface is source-bound and rejects drif
       }
       assert.strictEqual(propagated.result, entry.result);
       const requested = propagated.grant;
-      const pending = readGrantRecord(store, requested.challengeId);
+      const pending = createFileGrantRecordStore(store).readGrantRecord(
+        requested.challengeId,
+      );
       assert.equal(pending.state, 'pending');
       const challenge = pending.challenge;
       assert.equal(challenge.sourceModuleId, 'investigation.v3');
@@ -97,7 +99,10 @@ test('every real v3 publication failure surface is source-bound and rejects drif
         'investigation.v3.stop-transition.v3',
       );
       const registry = createTransitionRegistry(
-        investigationV3GrantTransitionDefinitions(repository),
+        investigationV3GrantTransitionDefinitions(
+          investigationFailureObservations,
+          repository,
+        ),
       );
       const choice = challenge.choices[0]!;
       const definition = registry.resolve(choice.transitionId);
@@ -176,7 +181,9 @@ test('the production publication producer persists centrally and recovery reject
       'workflow-engine',
     );
     const store = grantStorePaths(lifecycle.root);
-    const pending = readGrantRecord(store, requested.challengeId);
+    const pending = createFileGrantRecordStore(store).readGrantRecord(
+      requested.challengeId,
+    );
     assert.equal(pending.state, 'pending');
     assert.equal(pending.challenge.sourceModuleId, 'investigation.v3');
 
@@ -192,7 +199,7 @@ test('the production publication producer persists centrally and recovery reject
       },
       { now: new Date(pending.challenge.issuedAt) },
     );
-    prepareGrantTransition(store, {
+    createFileGrantRecordStore(store).prepareGrantTransition({
       operationId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
       challenge: pending.challenge,
       subject,
@@ -215,7 +222,9 @@ test('the production publication producer persists centrally and recovery reject
     ).recoverChallenge(pending.challenge.challengeId);
     assert.equal(recovered.outcome, 'failed');
     assert.equal(recovered.recovered, true);
-    const terminal = readGrantRecord(store, pending.challenge.challengeId);
+    const terminal = createFileGrantRecordStore(store).readGrantRecord(
+      pending.challenge.challengeId,
+    );
     assert.equal(terminal.state, 'failed');
     if (terminal.state !== 'failed') assert.fail('expected terminal failure');
     assert.equal(terminal.outcome.outcome, 'failed');
@@ -254,7 +263,9 @@ test('unchanged prepared v3 publication recovery completes the exact central sto
     const store = grantStorePaths(
       runtimePaths(gitState.gitCommonDirectory, 'workflow-engine').root,
     );
-    const pending = readGrantRecord(store, propagated.grant.challengeId);
+    const pending = createFileGrantRecordStore(store).readGrantRecord(
+      propagated.grant.challengeId,
+    );
     const choice = pending.challenge.choices[0]!;
     const subject = createApprovalSubject(
       pending.challenge,
@@ -267,7 +278,7 @@ test('unchanged prepared v3 publication recovery completes the exact central sto
       },
       { now: new Date(pending.challenge.issuedAt) },
     );
-    prepareGrantTransition(store, {
+    createFileGrantRecordStore(store).prepareGrantTransition({
       operationId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
       challenge: pending.challenge,
       subject,
@@ -290,7 +301,9 @@ test('unchanged prepared v3 publication recovery completes the exact central sto
     assert.equal(recovered.outcome, 'completed');
     assert.equal(recovered.recovered, true);
     assert.equal(
-      readGrantRecord(store, pending.challenge.challengeId).state,
+      createFileGrantRecordStore(store).readGrantRecord(
+        pending.challenge.challengeId,
+      ).state,
       'completed',
     );
   } finally {
@@ -612,7 +625,10 @@ test('durable v3 parameters revalidate the emitter lifecycle binding', async () 
     );
     const choice = stored.challenge.choices[0]!;
     const definition = createTransitionRegistry(
-      investigationV3GrantTransitionDefinitions(repository),
+      investigationV3GrantTransitionDefinitions(
+        investigationFailureObservations,
+        repository,
+      ),
     ).resolve(choice.transitionId);
     const hybrid = {
       ...(choice.parameters as Record<string, unknown>),
@@ -843,7 +859,10 @@ test('publication transition state binding includes branch and worktree identity
     const stored = readCentralGrantRecord(repository, requested.challengeId);
     const choice = stored.challenge.choices[0]!;
     const definition = createTransitionRegistry(
-      investigationV3GrantTransitionDefinitions(repository),
+      investigationV3GrantTransitionDefinitions(
+        investigationFailureObservations,
+        repository,
+      ),
     ).resolve(choice.transitionId);
     assert.deepEqual(
       await definition.observeState(choice.parameters),
@@ -1318,12 +1337,11 @@ function countGrantRecords(repository: string): number {
 
 function readCentralGrantRecord(repository: string, challengeId: string) {
   const gitState = discoverRepository(repository);
-  return readGrantRecord(
+  return createFileGrantRecordStore(
     grantStorePaths(
       runtimePaths(gitState.gitCommonDirectory, 'workflow-engine').root,
     ),
-    challengeId,
-  );
+  ).readGrantRecord(challengeId);
 }
 
 function digest(value: unknown): string {

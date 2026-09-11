@@ -10,8 +10,8 @@
  *   skips auditing errors whose code starts with AUTHORITY_AUDIT_.
  */
 import crypto from 'node:crypto';
-import { scanAuthorityAuditLedger, } from "../../runtime/storage-journal/authority-audit-ledger.js";
-import { recordAuthorityAuditEvent, } from "../../runtime/storage-journal/authority-audit-service.js";
+import { scanAuthorityAuditLedger } from "../../runtime/storage-journal/authority-audit-ledger.js";
+import { recordAuthorityAuditEvent } from "../../runtime/storage-journal/authority-audit-service.js";
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { WorkflowError } from "../../foundation/errors/errors.js";
 /**

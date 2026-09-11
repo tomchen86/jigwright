@@ -14,21 +14,20 @@ import {
 } from '../../foundation/errors/errors.ts';
 import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
-import type {
-  RecordedRoleParticipant,
-  AdmittedRoleResult,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+import type { RecordedRoleParticipant } from '../../modules/provider-orchestration/role-assignment.ts';
+import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+
 import type {
   TaskDiffReviewRecord,
   TaskDiffReviewChallengeResponseRecord,
   TaskDiffReviewContinuationSubmission,
   TaskDiffFinalAssuranceRecord,
-} from '../../modules/assurance/task-diff-review-artifact.ts';
+} from '../../modules/assurance/task-diff-review-artifact-record.ts';
 import type {
   TaskDiffReviewSubject,
   TaskDiffReviewScope,
-} from '../../modules/assurance/task-diff-review.ts';
-import type { TaskMandateBinding } from '../../modules/authority/task-mandate.ts';
+} from '../../modules/assurance/task-diff-review-record.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 
 export const DIGEST = /^[0-9a-f]{64}$/;
 

@@ -7,13 +7,13 @@
  *   exceptions.
  */
 import { parseTaskDiffReviewSubject } from './task-diff-review.ts';
-import type { TaskDiffReviewSubject } from './task-diff-review.ts';
+import type { TaskDiffReviewSubject } from './task-diff-review-record.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { assertAuthorizedReviewChallengeClosure } from './review-challenge.ts';
 import type { Challenge, ChallengeClosure } from './review-challenge.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
+import type { TaskDiffFinalAssuranceProtocolBindings } from './task-diff-review-artifact.ts';
 import type {
-  TaskDiffFinalAssuranceProtocolBindings,
   TaskDiffReviewRecord,
   TaskDiffReviewChallengeResponseRecord,
   TaskDiffReviewContinuationSubmission,
@@ -22,7 +22,7 @@ import type {
   TaskDiffAuthenticatedReviewerAuthority,
   TaskDiffFinalAssuranceRecord,
   TaskDiffReviewContinuationDecision,
-} from './task-diff-review-artifact.ts';
+} from './task-diff-review-artifact-record.ts';
 
 export function createTaskDiffFinalAssuranceProtocol(
   bindings: TaskDiffFinalAssuranceProtocolBindings,

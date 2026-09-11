@@ -6,10 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import {
-  dispatchBootstrapInterventionCommand,
-  type BootstrapInterventionCliDependencies,
-} from '../src/entrypoints/cli/intervention-control-bootstrap-cli.ts';
+import { dispatchBootstrapInterventionCommand } from '../src/entrypoints/cli/intervention-control-bootstrap-cli.ts';
+import { type BootstrapInterventionCliDependencies } from '../src/modules/authority/intervention-bootstrap-contract.ts';
 import { createEngineArtifact } from '../src/modules/authority/intervention-control.ts';
 import { recoverPersistedEngineAdoption } from '../src/runtime/storage-journal/intervention-control-persistence.ts';
 import {

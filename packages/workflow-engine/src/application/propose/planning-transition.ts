@@ -1,3 +1,11 @@
+import type { ArchiveApplicabilityRecord } from '../../modules/lifecycle/planning-transition-report.ts';
+import type {
+  PlanningCarryForwardTaskEvidence,
+  PlanningTransitionReport,
+} from '../../modules/lifecycle/planning-transition-report.ts';
+import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
+import type { ManagedDocumentOperations } from '../../modules/projection/managed-documents.ts';
+import type { ChangeContractReader } from '../../modules/planning-provider/change-contract.ts';
 /**
  * Commits reviewed planning transitions and restores projections after
  * failed publication.
@@ -10,11 +18,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { createArchiveApplicabilityProjection } from '../archive/archive-transformation.ts';
-import type { ArchiveApplicabilityRecord } from '../../runtime/storage-journal/planning-report.ts';
-import {
-  loadChangeContract,
-  loadWorkflowConfig,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+
+import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
 import {
   ExitCode,
   WorkflowError,
@@ -42,7 +47,7 @@ import {
 import {
   assertChangeId,
   normalizeChangedPath,
-} from '../../runtime/session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import {
   amendmentLeftWorkMarkedDone,
   assertPlanningTaskHistory,
@@ -53,8 +58,6 @@ import {
 import {
   readPlanningTransitionReport,
   writePlanningTransitionReport,
-  type PlanningCarryForwardTaskEvidence,
-  type PlanningTransitionReport,
 } from '../../runtime/storage-journal/planning-report.ts';
 import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
 import {
@@ -69,13 +72,9 @@ import {
   type PlanningAmendmentDecision,
 } from '../../modules/lifecycle/planning-amendment-decision.ts';
 import { committedPlanningGeneration } from '../../runtime/repository-transaction/planning-generation-history.ts';
-import { recordPlanningExecutionEpochTransition } from '../../modules/lifecycle/planning-execution-epoch.ts';
-import { resolveTaskExecutionGenerationEvidence } from '../../modules/assurance/task-execution-evidence.ts';
-import {
-  refreshPlanningDocuments,
-  rollbackGeneratedDocuments,
-  type GeneratedDocumentMutation,
-} from '../../runtime/managed-documents/validation/managed-documents.ts';
+
+import { rollbackGeneratedDocuments } from '../../runtime/managed-documents/validation/managed-documents.ts';
+import { type GeneratedDocumentMutation } from '../../modules/projection/managed-documents.ts';
 
 export type AmendmentRequest = {
   reason: string;
@@ -138,7 +137,6 @@ export type PlanningTransitionTestHooks = {
   }): void;
 };
 
-export { assertPlanningPaths } from '../../modules/source/planning-paths.ts';
 export { assertPlanningTaskHistory };
 
 /**
@@ -154,6 +152,9 @@ export { assertPlanningTaskHistory };
  * silently becomes uncertain.
  */
 export function commitPlanAmendment(
+  planningExecution: PlanningTransitionExecutionServices,
+  managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   requestedChangeId: string,
   amendment: AmendmentRequest,
@@ -170,6 +171,9 @@ export function commitPlanAmendment(
   );
   return withPlanningAuthority(runtime, changeId, (assertLocksOwned) =>
     commitPlanningTransitionLocked(
+      planningExecution,
+      managedDocuments,
+      loadChangeContract,
       cwd,
       changeId,
       environment,
@@ -280,6 +284,9 @@ function readReviewedAmendmentDecision(
 }
 
 export function commitPlanningTransition(
+  planningExecution: PlanningTransitionExecutionServices,
+  managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   requestedChangeId: string,
   environment: NodeJS.ProcessEnv = process.env,
@@ -294,6 +301,9 @@ export function commitPlanningTransition(
   );
   return withPlanningAuthority(runtime, changeId, (assertLocksOwned) =>
     commitPlanningTransitionLocked(
+      planningExecution,
+      managedDocuments,
+      loadChangeContract,
       cwd,
       changeId,
       environment,
@@ -304,6 +314,9 @@ export function commitPlanningTransition(
 }
 
 export function commitPlanningTransitionUnderAuthority(
+  planningExecution: PlanningTransitionExecutionServices,
+  managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   requestedChangeId: string,
   authority: HeldChangeTransitionAuthority,
@@ -316,6 +329,9 @@ export function commitPlanningTransitionUnderAuthority(
     changeId,
   );
   return commitPlanningTransitionLocked(
+    planningExecution,
+    managedDocuments,
+    loadChangeContract,
     cwd,
     changeId,
     environment,
@@ -325,6 +341,9 @@ export function commitPlanningTransitionUnderAuthority(
 }
 
 export function commitTaskRevisionPlanningTransitionUnderAuthority(
+  planningExecution: PlanningTransitionExecutionServices,
+  managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   requestedChangeId: string,
   authority: HeldChangeTransitionAuthority,
@@ -338,6 +357,9 @@ export function commitTaskRevisionPlanningTransitionUnderAuthority(
     changeId,
   );
   return commitPlanningTransitionLocked(
+    planningExecution,
+    managedDocuments,
+    loadChangeContract,
     cwd,
     changeId,
     environment,
@@ -359,6 +381,9 @@ export function commitTaskRevisionPlanningTransitionUnderAuthority(
  * replaces records nothing worth reading later.
  */
 function commitPlanningTransitionLocked(
+  planningExecution: PlanningTransitionExecutionServices,
+  managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   changeId: string,
   environment: NodeJS.ProcessEnv,
@@ -507,6 +532,7 @@ function commitPlanningTransitionLocked(
       );
     }
     amendmentExecutionEvidence = assertAmendmentStateEligible(
+      planningExecution,
       initial.repositoryRoot,
       config.changeRoot,
       changeId,
@@ -596,7 +622,7 @@ function commitPlanningTransitionLocked(
   let stagedTree: string | undefined;
   let refUpdated = false;
   try {
-    generatedMutations = refreshPlanningDocuments(
+    generatedMutations = managedDocuments.refreshPlanningDocuments(
       initial.repositoryRoot,
       changeId,
       loadChangeContract(initial.repositoryRoot, changeId).investigation
@@ -862,18 +888,21 @@ function commitPlanningTransitionLocked(
       amendmentDecision !== null &&
       amendmentExecutionEvidence !== null
     ) {
-      recordPlanningExecutionEpochTransition(initial.repositoryRoot, {
-        changeId,
-        amendmentCommit: commitHash,
-        parentCommit: initial.head,
-        planningGeneration: provenance.planningGeneration,
-        amendsPlanningGeneration: provenance.amendsPlanningGeneration,
-        decisionDigest: planningAmendmentDecisionDigest(amendmentDecision),
-        reportId,
-        executionImpact: provenance.executionImpact,
-        taskEvidence: amendmentExecutionEvidence,
-        createdAt: report.createdAt,
-      });
+      planningExecution.planningExecutionEpoch.recordPlanningExecutionEpochTransition(
+        initial.repositoryRoot,
+        {
+          changeId,
+          amendmentCommit: commitHash,
+          parentCommit: initial.head,
+          planningGeneration: provenance.planningGeneration,
+          amendsPlanningGeneration: provenance.amendsPlanningGeneration,
+          decisionDigest: planningAmendmentDecisionDigest(amendmentDecision),
+          reportId,
+          executionImpact: provenance.executionImpact,
+          taskEvidence: amendmentExecutionEvidence,
+          createdAt: report.createdAt,
+        },
+      );
     }
 
     return {
@@ -989,6 +1018,7 @@ function assertNoImpactAmendmentPaths(
 }
 
 function assertAmendmentStateEligible(
+  planningExecution: PlanningTransitionExecutionServices,
   repositoryRoot: string,
   changeRoot: string,
   changeId: string,
@@ -999,7 +1029,7 @@ function assertAmendmentStateEligible(
   const incompleteTaskIds = tasks
     .filter(({ completed }) => !completed)
     .map(({ id }) => id);
-  const generationEvidence = resolveTaskExecutionGenerationEvidence(
+  const generationEvidence = planningExecution.taskExecutionGeneration(
     repositoryRoot,
     changeRoot,
     changeId,

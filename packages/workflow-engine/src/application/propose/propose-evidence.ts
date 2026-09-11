@@ -16,14 +16,15 @@ import type {
   InvestigationTermRawCounts,
   PreviewInvestigationTerm,
 } from '../../modules/investigation/domain/investigation-terms.ts';
-import type { InvestigationManifestV3 } from '../../modules/investigation/manifest/investigation-manifest.ts';
+import type { InvestigationManifestV3 } from '../../modules/investigation/manifest/investigation-manifest-types.ts';
 import {
   PROPOSE_POLICY_DIGEST,
   type ProviderInvocationRequest,
   type ProviderProcessResult,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
 import type { ActorResolution } from '../../modules/provider-orchestration/actor-identity.ts';
-import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-scheduler.ts';
+import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+
 import {
   DIGEST,
   hasExactKeys,

@@ -5,10 +5,8 @@
  * - Immutable transaction publication precedes current-ref compare-and-swap.
  * - Current reads validate the predecessor, task contract, and reviewed lineage before returning a transaction.
  */
-import {
-  type InvestigationRuntimePaths,
-  assertSessionId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import {
   createTaskStrategyCurrentRef,
   compareAndSwapTaskStrategyCurrentRef,

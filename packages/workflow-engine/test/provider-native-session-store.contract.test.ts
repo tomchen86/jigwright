@@ -5,14 +5,14 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { createProviderWrapperSessionProtocolParser } from '@jigwright/agent-runtime';
+import { parseAgentProviderConfigToml } from '@jigwright/core/agent-provider-config';
 import {
-  createProviderWrapperSessionProtocolParser,
-  parseAgentProviderConfigToml,
   renderProviderWrapperSessionFrame,
   type ProviderWrapperNativeSessionIdentityObservation,
   type ProviderWrapperSessionProtocolBinding,
   type ProviderWrapperSessionProtocolOutcome,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/harness-jsonl-v2-contracts';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {

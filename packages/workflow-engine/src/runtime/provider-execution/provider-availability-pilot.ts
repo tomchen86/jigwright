@@ -12,8 +12,8 @@ import path from 'node:path';
 import type { AgentRuntimeProbeEvidenceV1 } from '@jigwright/core/agent-runtime-port';
 import { loadAiAdapterPolicy } from './ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
-import { createEvidenceNode } from '../../adapters/planning/investigation/evidence-node.ts';
+import { loadWorkflowConfig } from '../repository-observation/workflow-configuration.ts';
+import { createEvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';
 import { writeEvidenceNode } from '../storage-journal/evidence-node-store.ts';
 import {
   WorkflowError,
@@ -26,7 +26,6 @@ import {
   createProviderInvocationRequest,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {
-  type BlindSurveyManifest,
   blindSurveyIntentDigest,
   providerInvocationManifestDigest,
   BLIND_SURVEY_OUTPUT_SCHEMA,
@@ -40,6 +39,7 @@ import {
   readProviderInvocation,
   failProviderInvocation,
 } from '../storage-journal/provider-invocation-store.ts';
+import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
 import {
   type ProviderId,
   listBuiltInProviders,
@@ -50,7 +50,7 @@ import type {
   ProviderRunInput,
   ProviderRunOptions,
 } from './provider-runner.ts';
-import { scheduleOrdinaryRole } from '../../modules/provider-orchestration/role-scheduler.ts';
+import { scheduleOrdinaryRole } from '../../modules/provider-orchestration/role-assignment.ts';
 import { admitBuiltInProviderFamilyEvidence } from './agent-runtime-probe-evidence.ts';
 import {
   resolvePilotRecordPath,

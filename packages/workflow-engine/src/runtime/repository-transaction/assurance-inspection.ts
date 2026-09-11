@@ -16,11 +16,9 @@ import {
   type CoverageTier,
   type InvestigationChangeClass,
 } from '../../modules/assurance/assurance-assessment-chain.ts';
-import {
-  loadWorkflowConfig,
-  parseCurrentInvestigationManifest,
-  type CurrentInvestigationManifest,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../repository-observation/workflow-configuration.ts';
+import { parseCurrentInvestigationManifest } from '../repository-observation/change-contract-reader.ts';
+import { type CurrentInvestigationManifest } from '../../modules/planning-provider/change-contract.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { discoverRepository } from './git.ts';
 import { parsePathRoleRegistry } from '../../modules/source/path-role-registry.ts';
@@ -35,7 +33,7 @@ import {
 import { observeLedgerSource } from '../../modules/why-knowledge/semantic-freshness.ts';
 import { readSystemDescriptionSnapshot } from './system-description-snapshot.ts';
 import type { LedgerEntry } from '../../modules/why-knowledge/semantic-ledger.ts';
-import { materializeInvestigationEvidenceView } from '../../modules/investigation/manifest/investigation-materializer.ts';
+import { materializeInvestigationEvidenceView } from '../repository-observation/investigation-replay.ts';
 
 export type AssuranceInspection = Readonly<{
   schemaVersion: 1;

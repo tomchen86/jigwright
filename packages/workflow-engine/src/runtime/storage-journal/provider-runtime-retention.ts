@@ -33,7 +33,7 @@ import {
   isRecord,
   isTimestamp,
   sha256,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 import {
   HOST_WRAPPER_DIRECTORIES,
   digestHostWrapperRuntimeEntries,

@@ -1,3 +1,12 @@
+import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
+import type {
+  ChangeRoutingInspector,
+  ChangeRoutingAdmissionReader,
+} from '../../modules/lifecycle/change-routing.ts';
+import type { ManagedDocumentOperations } from '../../modules/projection/managed-documents.ts';
+import type { ChangeContractReader } from '../../modules/planning-provider/change-contract.ts';
+import type { PlanningDraftWorkspacePort } from '../../modules/planning-provider/planning-workspace.ts';
 /**
  * Opens execution tasks through a recoverable planning and session journal.
  *
@@ -11,11 +20,9 @@ import path from 'node:path';
 import type { systemDocumentContext } from '../../modules/source/system-document-context.ts';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import {
-  loadChangeContract,
-  loadWorkflowConfig,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
-import { validateCiPlanningCommit } from '../../entrypoints/ci/ci-planning.ts';
+
+import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
+import type { CiPlanningReplayOperations } from '../../modules/assurance/commit-replay/ci-planning.ts';
 import { isEngineProjectionPathForTransition } from '../../modules/projection/engine-projection-registry.ts';
 import {
   ExitCode,
@@ -36,17 +43,14 @@ import {
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
 import { validateHandoffForChange } from '../../adapters/consumer/repository/handoff/handoff.ts';
-import { parseManagedTrailers } from '../../modules/lifecycle/managed-trailers.ts';
-import {
-  refreshPlanningDocuments,
-  rollbackGeneratedDocuments,
-  type GeneratedDocumentMutation,
-} from '../../runtime/managed-documents/validation/managed-documents.ts';
+import { parseManagedTrailers } from '@jigwright/core/managed-transition-trailers';
+import { rollbackGeneratedDocuments } from '../../runtime/managed-documents/validation/managed-documents.ts';
+import { type GeneratedDocumentMutation } from '../../modules/projection/managed-documents.ts';
 import {
   assertChangeId,
   assertTaskId,
   normalizeChangedPath,
-} from '../../runtime/session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import {
   commitPlanningTransitionUnderAuthority,
   type PlanningTransitionResult,
@@ -56,10 +60,6 @@ import {
   withOpenTaskPlanningAuthority,
 } from '../../runtime/session-workspace/planning-lock.ts';
 import { readPlanningTransitionReport } from '../../runtime/storage-journal/planning-report.ts';
-import {
-  inspectPlanningDraftWorkspace,
-  readPlanningDraftWorkspace,
-} from '../../runtime/session-workspace/planning-workspace.ts';
 import {
   assertOwnedLock,
   assertTaskSessionWorktreeRegistration,
@@ -77,12 +77,8 @@ import {
   startMandatedSessionUnderLifecycleLock,
   assertProductionChangeRoutingAdmission,
 } from './session.ts';
-import {
-  assertActiveTaskMandateBindingUnderLifecycleLock,
-  authorizeTaskMandateOperation,
-  type TaskMandateBinding,
-  type TaskMandateOptions,
-} from '../../modules/authority/task-mandate.ts';
+import { type TaskMandateOptions } from '../../modules/authority/task-mandate.ts';
+import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import {
   assertTaskMandateOptional,
   resolveTaskAuthorizationRequirement,
@@ -164,6 +160,21 @@ export type OpenTaskResult = Readonly<{
 }>;
 
 export type OpenTaskPorts = Readonly<{
+  planningExecution: PlanningTransitionExecutionServices;
+  planningReplay: Pick<CiPlanningReplayOperations, 'validateCiPlanningCommit'>;
+  taskMandate: Pick<
+    TaskMandateOperations,
+    | 'assertActiveTaskMandateBindingUnderLifecycleLock'
+    | 'authorizeTaskMandateOperation'
+  >;
+  routingAdmissionReader: ChangeRoutingAdmissionReader;
+  routingInspector: ChangeRoutingInspector;
+  managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>;
+  loadChangeContract: ChangeContractReader;
+  planningWorkspace: Pick<
+    PlanningDraftWorkspacePort,
+    'inspectPlanningDraftWorkspace' | 'readPlanningDraftWorkspace'
+  >;
   readSystemDocuments(
     session: WorkflowSession,
   ): ReturnType<typeof systemDocumentContext>;
@@ -195,16 +206,22 @@ export function openTaskWithPorts(
   const initialRepository = discoverRepository(cwd);
   assertOpenTaskWorktreeRegistration(initialRepository);
   assertProductionChangeRoutingAdmission(
+    ports.routingAdmissionReader,
     initialRepository.repositoryRoot,
     changeId,
   );
-  const taskId = resolveOpenTaskId(cwd, changeId, requestedTaskId);
+  const taskId = resolveOpenTaskId(
+    ports.loadChangeContract,
+    cwd,
+    changeId,
+    requestedTaskId,
+  );
   const mandateTaskId =
     requestedMandateTaskId === undefined
       ? null
       : assertMandateTaskId(requestedMandateTaskId);
   const config = loadWorkflowConfig(initialRepository.repositoryRoot);
-  const initialContract = loadChangeContract(
+  const initialContract = ports.loadChangeContract(
     initialRepository.repositoryRoot,
     changeId,
   );
@@ -230,23 +247,29 @@ export function openTaskWithPorts(
     changeId,
     taskId,
   );
-  const planningWorkspace = readPlanningDraftWorkspace(cwd, changeId);
+  const planningWorkspace = ports.planningWorkspace.readPlanningDraftWorkspace(
+    cwd,
+    changeId,
+  );
   if (
     observedBeforeAuthorization === null &&
     (planningWorkspace === null ||
       planningWorkspace.baseCommit !== initialRepository.head)
   ) {
     const planningCommit = assertCommittedPlanningGeneration(
+      ports.planningReplay,
       initialRepository.repositoryRoot,
       config.changeRoot,
       changeId,
     );
     return existingPlanResult(
       mandateTaskId === null
-        ? startSession(cwd, changeId, taskId, {
+        ? startSession(ports.routingAdmissionReader, cwd, changeId, taskId, {
             environment: options.environment,
           })
         : startMandatedSession(
+            ports.taskMandate,
+            ports.routingAdmissionReader,
             cwd,
             changeId,
             taskId,
@@ -260,7 +283,7 @@ export function openTaskWithPorts(
   }
   const authorization =
     observedBeforeAuthorization === null && mandateTaskId !== null
-      ? authorizeTaskMandateOperation(
+      ? ports.taskMandate.authorizeTaskMandateOperation(
           cwd,
           mandateTaskId,
           { kind: 'draft-commit' },
@@ -295,7 +318,10 @@ export function openTaskWithPorts(
       );
     }
 
-    const workspace = inspectPlanningDraftWorkspace(cwd, changeId);
+    const workspace = ports.planningWorkspace.inspectPlanningDraftWorkspace(
+      cwd,
+      changeId,
+    );
     if (
       workspace === null ||
       workspace.worktreePath !== initialRepository.repositoryRealPath ||
@@ -312,7 +338,7 @@ export function openTaskWithPorts(
     const binding =
       mandateTaskId === null
         ? null
-        : assertActiveTaskMandateBindingUnderLifecycleLock(
+        : ports.taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock(
             cwd,
             authorization!.binding,
             assertRepositoryLock,
@@ -328,6 +354,9 @@ export function openTaskWithPorts(
       assertRepositoryLock,
       (authority) =>
         commitPlanningTransitionUnderAuthority(
+          ports.planningExecution,
+          ports.managedDocuments,
+          ports.loadChangeContract,
           cwd,
           changeId,
           authority,
@@ -375,13 +404,19 @@ export function openTaskWithPorts(
       );
     }
     assertTransitionMatchesJournal(transition, prepared);
-    assertCommittedPlanningState(cwd, prepared);
+    assertCommittedPlanningState(
+      ports.routingInspector,
+      ports.loadChangeContract,
+      cwd,
+      prepared,
+    );
     let durable = advanceJournalPhase(runtime, prepared, 'plan-committed');
     if (options.testCrashAfter === 'plan-committed') {
       throw simulatedInterruption('plan-committed');
     }
 
     const session = ensureExactSession(
+      ports.routingAdmissionReader,
       cwd,
       runtime,
       durable,
@@ -441,6 +476,7 @@ export function readOpenTaskJournal(
 }
 
 export function resolveOpenTaskId(
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   requestedChangeId: string,
   requestedTaskId?: string,
@@ -475,6 +511,7 @@ export function resolveOpenTaskId(
 }
 
 function assertCommittedPlanningGeneration(
+  planningReplay: Pick<CiPlanningReplayOperations, 'validateCiPlanningCommit'>,
   repositoryRoot: string,
   changeRoot: string,
   changeId: string,
@@ -493,7 +530,7 @@ function assertCommittedPlanningGeneration(
       (trailers?.kind === 'plan' || trailers?.kind === 'amend-plan') &&
       trailers.changeId === changeId
     ) {
-      validateCiPlanningCommit(
+      planningReplay.validateCiPlanningCommit(
         repositoryRoot,
         commitHash,
         changeId,
@@ -531,6 +568,8 @@ function existingPlanResult(
 }
 
 export function findOpenTaskLifecycleStatus(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   identifier: string,
 ): OpenTaskLifecycleStatus | null {
@@ -548,10 +587,17 @@ export function findOpenTaskLifecycleStatus(
       ExitCode.conflict,
     );
   }
-  return inspectOpenTaskJournalStatus(cwd, matches[0]!);
+  return inspectOpenTaskJournalStatus(
+    routingInspector,
+    loadChangeContract,
+    cwd,
+    matches[0]!,
+  );
 }
 
 export function contextualizeOpenTaskError(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   changeId: string,
   taskId: string,
@@ -568,7 +614,12 @@ export function contextualizeOpenTaskError(
   try {
     const journal = readOpenTaskJournal(cwd, changeId, taskId);
     if (journal === null) return error;
-    const status = inspectOpenTaskJournalStatus(cwd, journal);
+    const status = inspectOpenTaskJournalStatus(
+      routingInspector,
+      loadChangeContract,
+      cwd,
+      journal,
+    );
     return workflowError(
       workflowFailure.code,
       workflowFailure.message,
@@ -635,13 +686,15 @@ function listOpenTaskJournals(cwd: string): OpenTaskJournal[] {
 }
 
 function inspectOpenTaskJournalStatus(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   journal: OpenTaskJournal,
 ): OpenTaskLifecycleStatus {
   let errorCode: string | null = null;
   let completedSessionState: WorkflowSession['state'] | null = null;
   try {
-    assertJournalAuthority(cwd, journal);
+    assertJournalAuthority(loadChangeContract, cwd, journal);
     const repository = discoverRepository(cwd);
     const config = loadWorkflowConfig(repository.repositoryRoot);
     const runtime = runtimePaths(
@@ -672,7 +725,12 @@ function inspectOpenTaskJournalStatus(
           );
         }
       } else if (repository.head === journal.planningCommit) {
-        assertCommittedPlanningState(cwd, journal);
+        assertCommittedPlanningState(
+          routingInspector,
+          loadChangeContract,
+          cwd,
+          journal,
+        );
         if (sessionExists) readAndAssertExactSession(cwd, runtime, journal);
       } else {
         throw workflowError(
@@ -687,7 +745,12 @@ function inspectOpenTaskJournalStatus(
           'Durable open-task phase is ahead of its observable planning commit.',
         );
       }
-      assertCommittedPlanningState(cwd, journal);
+      assertCommittedPlanningState(
+        routingInspector,
+        loadChangeContract,
+        cwd,
+        journal,
+      );
       if (journal.phase === 'plan-committed') {
         if (sessionExists) readAndAssertExactSession(cwd, runtime, journal);
       } else {
@@ -742,7 +805,7 @@ function recoverOpenTask(
   options: OpenTaskOptions,
   ports: OpenTaskPorts,
 ): OpenTaskResult {
-  assertJournalAuthority(cwd, journal);
+  assertJournalAuthority(ports.loadChangeContract, cwd, journal);
   if (journal.phase === 'completed') {
     const session = readAndAssertExactSession(cwd, runtime, journal);
     return resultFrom(journal, session, true, ports);
@@ -753,20 +816,27 @@ function recoverOpenTask(
   if (durable.phase === 'prepared') {
     if (current.head === durable.parentCommit) {
       if (durable.mandateBinding !== null) {
-        assertActiveTaskMandateBindingUnderLifecycleLock(
+        ports.taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock(
           cwd,
           durable.mandateBinding,
           assertRepositoryLock,
           options.mandate,
         );
       } else {
-        assertJournalTaskAuthorization(cwd, durable);
+        assertJournalTaskAuthorization(ports.loadChangeContract, cwd, durable);
       }
       withOpenTaskPlanningAuthority(
         runtime,
         durable.changeId,
         assertRepositoryLock,
-        () => recoverPreparedPlanningCommit(cwd, durable),
+        () =>
+          recoverPreparedPlanningCommit(
+            ports.routingInspector,
+            ports.managedDocuments,
+            ports.loadChangeContract,
+            cwd,
+            durable,
+          ),
       );
       current = discoverRepository(cwd);
     }
@@ -777,7 +847,12 @@ function recoverOpenTask(
         ExitCode.staleState,
       );
     }
-    assertCommittedPlanningState(cwd, durable);
+    assertCommittedPlanningState(
+      ports.routingInspector,
+      ports.loadChangeContract,
+      cwd,
+      durable,
+    );
     durable = advanceJournalPhase(runtime, durable, 'plan-committed');
   } else {
     if (current.head !== durable.planningCommit) {
@@ -785,12 +860,18 @@ function recoverOpenTask(
         'Durable open-task phase is ahead of its observable planning commit.',
       );
     }
-    assertCommittedPlanningState(cwd, durable);
+    assertCommittedPlanningState(
+      ports.routingInspector,
+      ports.loadChangeContract,
+      cwd,
+      durable,
+    );
   }
 
   let session: WorkflowSession;
   if (durable.phase === 'plan-committed') {
     session = ensureExactSession(
+      ports.routingAdmissionReader,
       cwd,
       runtime,
       durable,
@@ -806,10 +887,13 @@ function recoverOpenTask(
 }
 
 function recoverPreparedPlanningCommit(
+  routingInspector: ChangeRoutingInspector,
+  managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   journal: OpenTaskJournal,
 ): void {
-  assertJournalAuthority(cwd, journal);
+  assertJournalAuthority(loadChangeContract, cwd, journal);
   const repository = discoverRepository(cwd);
   if (
     repository.head !== journal.parentCommit ||
@@ -823,6 +907,9 @@ function recoverPreparedPlanningCommit(
     );
   }
   const projectionMutations = restorePreparedPlanningProjection(
+    routingInspector,
+    managedDocuments,
+    loadChangeContract,
     repository.repositoryRoot,
     journal,
   );
@@ -864,10 +951,18 @@ function recoverPreparedPlanningCommit(
     );
     throw error;
   }
-  assertCommittedPlanningState(cwd, journal);
+  assertCommittedPlanningState(
+    routingInspector,
+    loadChangeContract,
+    cwd,
+    journal,
+  );
 }
 
 function restorePreparedPlanningProjection(
+  routingInspector: ChangeRoutingInspector,
+  managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   journal: OpenTaskJournal,
 ): GeneratedDocumentMutation[] {
@@ -900,7 +995,7 @@ function restorePreparedPlanningProjection(
     return { path: projectionPath, before, after };
   });
   try {
-    refreshPlanningDocuments(
+    managedDocuments.refreshPlanningDocuments(
       repositoryRoot,
       journal.changeId,
       loadChangeContract(repositoryRoot, journal.changeId).investigation
@@ -916,7 +1011,12 @@ function restorePreparedPlanningProjection(
         );
       }
     }
-    validatePreparedPlanningProjection(repositoryRoot, journal);
+    validatePreparedPlanningProjection(
+      routingInspector,
+      loadChangeContract,
+      repositoryRoot,
+      journal,
+    );
     return mutations;
   } catch (error) {
     rollbackPreparedPlanningProjection(repositoryRoot, mutations, true);
@@ -959,6 +1059,7 @@ function readPlainProjectionFile(
 }
 
 function ensureExactSession(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   runtime: ReturnType<typeof runtimePaths>,
   journal: OpenTaskJournal,
@@ -977,6 +1078,7 @@ function ensureExactSession(
   const session =
     journal.mandateBinding === null
       ? startSessionUnderLifecycleLock(
+          routingAdmissionReader,
           cwd,
           journal.changeId,
           journal.taskId,
@@ -985,6 +1087,7 @@ function ensureExactSession(
           environment,
         )
       : startMandatedSessionUnderLifecycleLock(
+          routingAdmissionReader,
           cwd,
           journal.changeId,
           journal.taskId,
@@ -1071,7 +1174,11 @@ function assertSessionIngressIdentity(
   }
 }
 
-function assertJournalAuthority(cwd: string, journal: OpenTaskJournal): void {
+function assertJournalAuthority(
+  loadChangeContract: ChangeContractReader,
+  cwd: string,
+  journal: OpenTaskJournal,
+): void {
   const repository = discoverRepository(cwd);
   const config = loadWorkflowConfig(repository.repositoryRoot);
   const expectedBranch = config.branchTemplate.replaceAll(
@@ -1091,7 +1198,7 @@ function assertJournalAuthority(cwd: string, journal: OpenTaskJournal): void {
       ExitCode.staleState,
     );
   }
-  assertJournalTaskAuthorization(cwd, journal);
+  assertJournalTaskAuthorization(loadChangeContract, cwd, journal);
   assertPreparedPlanningAuthority(
     repository.repositoryRoot,
     config.runtimeDirectory,
@@ -1101,6 +1208,7 @@ function assertJournalAuthority(cwd: string, journal: OpenTaskJournal): void {
 }
 
 function assertJournalTaskAuthorization(
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   journal: OpenTaskJournal,
 ): void {
@@ -1192,6 +1300,8 @@ function assertPreparedPlanningAuthority(
 }
 
 function assertCommittedPlanningState(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   journal: OpenTaskJournal,
 ): void {
@@ -1210,7 +1320,12 @@ function assertCommittedPlanningState(
       ExitCode.staleState,
     );
   }
-  validatePreparedPlanningProjection(repository.repositoryRoot, journal);
+  validatePreparedPlanningProjection(
+    routingInspector,
+    loadChangeContract,
+    repository.repositoryRoot,
+    journal,
+  );
 }
 
 function planningProjectionPaths(journal: OpenTaskJournal): string[] {
@@ -1220,13 +1335,20 @@ function planningProjectionPaths(journal: OpenTaskJournal): string[] {
 }
 
 function validatePreparedPlanningProjection(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   journal: OpenTaskJournal,
 ): void {
   if (
     planningProjectionPaths(journal).includes('docs/CURRENT_AND_NEXT_STEPS.md')
   ) {
-    validateHandoffForChange(repositoryRoot, journal.changeId);
+    validateHandoffForChange(
+      routingInspector,
+      loadChangeContract,
+      repositoryRoot,
+      journal.changeId,
+    );
   }
 }
 

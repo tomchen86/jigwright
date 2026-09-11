@@ -1,3 +1,4 @@
+import type { AgentRuntimeExecutableIdentityV1 } from '@jigwright/core/agent-runtime-port';
 /**
  * Inspects provider executables and binds observations to the exact file
  * identity that was read.
@@ -13,18 +14,7 @@ import path from 'node:path';
 const HASH_CHUNK_BYTES = 64 * 1024;
 export const MAX_PROVIDER_EXECUTABLE_BYTES = 1024 * 1024 * 1024;
 
-export type ProviderExecutableIdentity = Readonly<{
-  candidatePath: string;
-  realPath: string;
-  device: string;
-  inode: string;
-  mode: number;
-  uid: number;
-  gid: number;
-  size: number;
-  mtimeNs: string;
-  sha256: string;
-}>;
+export type ProviderExecutableIdentity = AgentRuntimeExecutableIdentityV1;
 
 export type ProviderExecutableUnsafeReason =
   | 'PATH_INVALID'

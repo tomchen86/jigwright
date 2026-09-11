@@ -1,3 +1,6 @@
+import type { HumanRevocationAuthorizer } from '../../modules/authority/human-revocation-contract.ts';
+import type { MaintenanceApprovalSummary } from '../../modules/authority/intervention-bootstrap-contract.ts';
+export type { MaintenanceApprovalSummary } from '../../modules/authority/intervention-bootstrap-contract.ts';
 /**
  * Persists, inspects, revokes, and expires intervention maintenance grants.
  *
@@ -21,12 +24,11 @@ import {
 import { deriveAuthorityAuditRepositoryId } from '../../runtime/storage-journal/authority-audit-ledger.ts';
 import {
   assertHumanRevocationAuthorization,
-  authorizeHumanRevocation,
   canonicalHumanRevocationAuthorization,
   digestHumanRevocationSubject,
   type HumanRevocationAuthorization,
   type HumanRevocationOptions,
-} from './human-revocation.ts';
+} from '../../modules/authority/human-revocation-contract.ts';
 import {
   createEngineArtifact,
   verifyHarnessMaintenanceGrant,
@@ -83,31 +85,6 @@ export const MAINTENANCE_SCOPE_WAIVERS = Object.freeze([
   'parent-terminalization-required',
   'selected-workflow-check',
 ] as const satisfies readonly HarnessMaintenanceWaiver[]);
-
-export interface MaintenanceApprovalSummary {
-  kind: 'maintenance-approval-summary.v1';
-  parentChangeId: string;
-  interventionChangeId: string;
-  checkpointId: Sha256Digest;
-  engineFromDigest: Sha256Digest;
-  sessionSchema: string;
-  reason: string;
-  childWorkspace: {
-    path: string;
-    changeRef: string;
-  };
-  scope: {
-    paths: string[];
-    operations: HarnessMaintenanceOperation[];
-  };
-  waivers: HarnessMaintenanceWaiver[];
-  authorityAudit: {
-    externalAuditRoot: string;
-    repositoryId: Sha256Digest;
-  };
-  maxLocalAdoptions: 1;
-  humanReadable: string;
-}
 
 interface PersistedMaintenanceGrantRecordFields {
   kind: 'persisted-maintenance-grant.v1';
@@ -453,6 +430,7 @@ export function readMaintenanceGrantForParent(
 }
 
 export function revokeMaintenanceGrantForParent(
+  authorizeHumanRevocation: HumanRevocationAuthorizer,
   cwd: string,
   storageRoot: string,
   parentChangeId: string,

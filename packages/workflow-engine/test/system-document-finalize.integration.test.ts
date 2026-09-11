@@ -1,8 +1,19 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import { dispatchAsync } from '../src/cli.ts';
+import { dispatchAsync } from '../src/entrypoints/cli/workflow-cli.ts';
 import { createOpenSpecAdapter } from '../src/composition-root/openspec-adapter-production.ts';
 import type { CentralGrantRequestPortV1 } from '@jigwright/core/central-grant-port';
 import { createSystemDocumentFailGrantResult } from '../src/entrypoints/cli/system-document-fail-grant-cli.ts';
@@ -20,11 +31,11 @@ import {
 } from './governance-intake-fixture.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {
   finalizeTask,
   finalizeSession,
-} from '../src/application/finalize/lifecycle.ts';
+} from '../src/composition-root/finalization-production.ts';
 import { systemDocumentDispositions } from '../src/composition-root/lifecycle-context.ts';
 import { SYSTEM_DOCUMENT_GRANT_REASON } from '../src/application/finalize/system-document-grant.ts';
 import { createProductionSystemDocumentGrantService } from '../src/composition-root/grant-production.ts';
@@ -32,7 +43,7 @@ import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coo
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
   grantStorePaths,
-  readGrantRecord,
+  createFileGrantRecordStore,
 } from '../src/runtime/storage-journal/grant-store.ts';
 import {
   readSystemDocumentReviewRecord,
@@ -287,7 +298,9 @@ test('Central Grant document exception recovers its exact receipt and never mark
     let crashOnce = true;
     const ids = [challengeId, operationId];
     const coordinator = createGrantCoordinatorKernel({
-      paths: grantStorePaths(runtimeRoot(repository)),
+      store: createFileGrantRecordStore(
+        grantStorePaths(runtimeRoot(repository)),
+      ),
       registry: createTransitionRegistry(
         systemDocumentGrantTransitionDefinitions(repository, {
           afterExceptionRecorded() {
@@ -340,8 +353,9 @@ test('Central Grant document exception recovers its exact receipt and never mark
       (error) => error === crash,
     );
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot(repository)), challengeId)
-        .state,
+      createFileGrantRecordStore(
+        grantStorePaths(runtimeRoot(repository)),
+      ).readGrantRecord(challengeId).state,
       'prepared',
     );
     const partial = inspectSystemDocumentDispositions(repository, sessionId);
@@ -419,7 +433,12 @@ function prepare() {
   git(repository, ['checkout', '-b', 'work/demo-change']);
   writeReadyV3ExemptChange(repository);
   commitPlanningTransition(repository, 'demo-change');
-  const session = startSession(repository, 'demo-change', '1.1');
+  const session = startSession(
+    productionChangeRoutingAdmissionReader,
+    repository,
+    'demo-change',
+    '1.1',
+  );
   fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
   return { repository, sessionId: session.sessionId, counter };
 }

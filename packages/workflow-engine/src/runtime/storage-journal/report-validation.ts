@@ -7,12 +7,12 @@
  *   digests and working-state fingerprint.
  */
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
-import { parseTasks } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type { ProjectionPathClassification } from '../../modules/projection/engine-projection-registry.ts';
 import { readImmutableReport, type WorkflowReport } from './report-store.ts';
 import { runtimePaths } from '../session-workspace/session-store.ts';
-import type { SessionInspection } from '../../application/finalize/verification.ts';
+import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 
 export function readSessionReport(
   inspection: SessionInspection,

@@ -1,3 +1,6 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import { startSession } from '../src/application/execute-task/session.ts';
 import path from 'node:path';
@@ -30,17 +33,27 @@ import {
 test('cross-agent patch validation derives one bounded implementation tree without touching the task worktree', () => {
   const { repository } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const red = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -51,14 +64,20 @@ test('cross-agent patch validation derives one bounded implementation tree witho
 
     assert.throws(
       () =>
-        validateTaskStrategyPatch(repository, session.sessionId, {
-          patch,
-          explicitActor: 'codex',
-          environment: {},
-        }),
+        validateTaskStrategyPatch(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            patch,
+            explicitActor: 'codex',
+            environment: {},
+          },
+        ),
       hasCode('TASK_STRATEGY_IMPLEMENTER_REQUIRED'),
     );
     const validation = validateTaskStrategyPatch(
+      productionChangeRoutingAdmissionReader,
       repository,
       session.sessionId,
       {
@@ -85,16 +104,26 @@ test('cross-agent patch validation derives one bounded implementation tree witho
 test('patch validation rejects frozen tests, path escape, and unsafe file modes from the derived tree', () => {
   const { repository } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     const originalTest =
       "throw new Error('feature behavior is not implemented');\n";
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, originalTest);
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const red = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
 
     fs.writeFileSync(testPath, "throw new Error('weakened');\n");
     const frozenPatch = diffAgainstTree(repository, red.red.candidateTree, [
@@ -103,11 +132,16 @@ test('patch validation rejects frozen tests, path escape, and unsafe file modes 
     fs.writeFileSync(testPath, originalTest);
     assert.throws(
       () =>
-        validateTaskStrategyPatch(repository, session.sessionId, {
-          patch: frozenPatch,
-          explicitActor: 'claude',
-          environment: {},
-        }),
+        validateTaskStrategyPatch(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            patch: frozenPatch,
+            explicitActor: 'claude',
+            environment: {},
+          },
+        ),
       hasCode('TASK_STRATEGY_PATCH_FROZEN_PATH'),
     );
 
@@ -120,11 +154,16 @@ test('patch validation rejects frozen tests, path escape, and unsafe file modes 
     fs.rmSync(escapedPath);
     assert.throws(
       () =>
-        validateTaskStrategyPatch(repository, session.sessionId, {
-          patch: escapedPatch,
-          explicitActor: 'claude',
-          environment: {},
-        }),
+        validateTaskStrategyPatch(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            patch: escapedPatch,
+            explicitActor: 'claude',
+            environment: {},
+          },
+        ),
       hasCode('TASK_STRATEGY_PATCH_SCOPE_INVALID'),
     );
 
@@ -137,11 +176,16 @@ test('patch validation rejects frozen tests, path escape, and unsafe file modes 
     fs.rmSync(symlinkPath);
     assert.throws(
       () =>
-        validateTaskStrategyPatch(repository, session.sessionId, {
-          patch: symlinkPatch,
-          explicitActor: 'claude',
-          environment: {},
-        }),
+        validateTaskStrategyPatch(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            patch: symlinkPatch,
+            explicitActor: 'claude',
+            environment: {},
+          },
+        ),
       hasCode('TASK_STRATEGY_PATCH_MODE_INVALID'),
     );
   } finally {
@@ -155,17 +199,27 @@ test('single-agent patch validation permits the RED author without weakening pat
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const red = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -175,6 +229,7 @@ test('single-agent patch validation permits the RED author without weakening pat
     fs.rmSync(implementationPath);
 
     const validation = validateTaskStrategyPatch(
+      productionChangeRoutingAdmissionReader,
       repository,
       session.sessionId,
       {
@@ -197,17 +252,27 @@ test('single-agent patch validation rejects an actor other than the sealed RED a
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const red = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -218,11 +283,16 @@ test('single-agent patch validation rejects an actor other than the sealed RED a
 
     assert.throws(
       () =>
-        validateTaskStrategyPatch(repository, session.sessionId, {
-          patch,
-          explicitActor: 'claude',
-          environment: {},
-        }),
+        validateTaskStrategyPatch(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            patch,
+            explicitActor: 'claude',
+            environment: {},
+          },
+        ),
       hasCode('TASK_STRATEGY_IMPLEMENTER_REQUIRED'),
     );
   } finally {
@@ -236,17 +306,27 @@ test('patch import persists authority before mutation and exact replay reaches e
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const red = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -258,12 +338,17 @@ test('patch import persists authority before mutation and exact replay reaches e
 
     assert.throws(
       () =>
-        importTaskStrategyPatch(repository, session.sessionId, {
-          patch,
-          explicitActor: 'codex',
-          environment: {},
-          testCrashAfter: 'reservation-persisted',
-        }),
+        importTaskStrategyPatch(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            patch,
+            explicitActor: 'codex',
+            environment: {},
+            testCrashAfter: 'reservation-persisted',
+          },
+        ),
       /reservation-persisted/,
     );
     assert.equal(fs.existsSync(implementationPath), false);
@@ -279,12 +364,17 @@ test('patch import persists authority before mutation and exact replay reaches e
     );
     assert.throws(
       () =>
-        importTaskStrategyPatch(repository, session.sessionId, {
-          patch,
-          explicitActor: 'codex',
-          environment: {},
-          testCrashAfter: 'record-persisted',
-        }),
+        importTaskStrategyPatch(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            patch,
+            explicitActor: 'codex',
+            environment: {},
+            testCrashAfter: 'record-persisted',
+          },
+        ),
       /record-persisted/,
     );
     const prepared = readTaskStrategyPatchRecord(
@@ -304,28 +394,45 @@ test('patch import persists authority before mutation and exact replay reaches e
       null,
     );
 
-    const imported = importTaskStrategyPatch(repository, session.sessionId, {
-      patch,
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const imported = importTaskStrategyPatch(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        patch,
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     assert.equal(imported.receipt.candidateTree, imported.record.candidateTree);
     assert.equal(
       fs.readFileSync(implementationPath, 'utf8'),
       'export const feature = true;\n',
     );
     assert.deepEqual(
-      importTaskStrategyPatch(repository, session.sessionId, {
-        patch,
-        explicitActor: 'codex',
-        environment: {},
-      }),
+      importTaskStrategyPatch(
+        productionChangeRoutingAdmissionReader,
+        repository,
+        session.sessionId,
+        {
+          patch,
+          explicitActor: 'codex',
+          environment: {},
+        },
+      ),
       imported,
     );
 
-    const checked = checkSession(repository, session.sessionId, {
-      environment: {},
-    });
+    const checked = checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        environment: {},
+      },
+    );
     assert.equal(checked.passed, true);
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '2');
   } finally {
@@ -339,17 +446,27 @@ test('patch-applied crash reconciles the exact candidate and later drift stales 
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const red = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -360,28 +477,46 @@ test('patch-applied crash reconciles the exact candidate and later drift stales 
 
     assert.throws(
       () =>
-        importTaskStrategyPatch(repository, session.sessionId, {
-          patch,
-          explicitActor: 'codex',
-          environment: {},
-          testCrashAfter: 'patch-applied',
-        }),
+        importTaskStrategyPatch(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            patch,
+            explicitActor: 'codex',
+            environment: {},
+            testCrashAfter: 'patch-applied',
+          },
+        ),
       /patch-applied/,
     );
     assert.equal(
       fs.readFileSync(implementationPath, 'utf8'),
       'export const feature = true;\n',
     );
-    const recovered = importTaskStrategyPatch(repository, session.sessionId, {
-      patch,
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const recovered = importTaskStrategyPatch(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        patch,
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     assert.notEqual(recovered.receipt, null);
 
     fs.writeFileSync(implementationPath, 'export const feature = false;\n');
     assert.throws(
-      () => checkSession(repository, session.sessionId, { environment: {} }),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          { environment: {} },
+        ),
       hasCode('TASK_STRATEGY_PATCH_STALE'),
     );
   } finally {
@@ -392,17 +527,27 @@ test('patch-applied crash reconciles the exact candidate and later drift stales 
 test('a durable prepared patch reservation rejects a different patch before either can mutate the worktree', () => {
   const { repository } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const red = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -417,21 +562,31 @@ test('a durable prepared patch reservation rejects a different patch before eith
 
     assert.throws(
       () =>
-        importTaskStrategyPatch(repository, session.sessionId, {
-          patch: patchA,
-          explicitActor: 'claude',
-          environment: {},
-          testCrashAfter: 'reservation-persisted',
-        }),
+        importTaskStrategyPatch(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            patch: patchA,
+            explicitActor: 'claude',
+            environment: {},
+            testCrashAfter: 'reservation-persisted',
+          },
+        ),
       /reservation-persisted/,
     );
     assert.throws(
       () =>
-        importTaskStrategyPatch(repository, session.sessionId, {
-          patch: patchB,
-          explicitActor: 'claude',
-          environment: {},
-        }),
+        importTaskStrategyPatch(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            patch: patchB,
+            explicitActor: 'claude',
+            environment: {},
+          },
+        ),
       hasCode('TASK_STRATEGY_PATCH_RESERVATION_CONFLICT'),
     );
     assert.equal(fs.existsSync(implementationPath), false);
@@ -443,17 +598,27 @@ test('a durable prepared patch reservation rejects a different patch before eith
 test('patch replay rejects independently redigested reservation metadata', () => {
   const { repository } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const red = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -461,11 +626,16 @@ test('patch replay rejects independently redigested reservation metadata', () =>
       'src/feature.ts',
     ]);
     fs.rmSync(implementationPath);
-    const imported = importTaskStrategyPatch(repository, session.sessionId, {
-      patch,
-      explicitActor: 'claude',
-      environment: {},
-    });
+    const imported = importTaskStrategyPatch(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        patch,
+        explicitActor: 'claude',
+        environment: {},
+      },
+    );
     const reservationPath = path.join(
       runtimeRoot(repository),
       'investigations/refs/task-strategy-patches',
@@ -488,11 +658,16 @@ test('patch replay rejects independently redigested reservation metadata', () =>
 
     assert.throws(
       () =>
-        importTaskStrategyPatch(repository, session.sessionId, {
-          patch,
-          explicitActor: 'claude',
-          environment: {},
-        }),
+        importTaskStrategyPatch(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            patch,
+            explicitActor: 'claude',
+            environment: {},
+          },
+        ),
       hasCode('TASK_STRATEGY_PATCH_STATE_CORRUPT'),
     );
   } finally {

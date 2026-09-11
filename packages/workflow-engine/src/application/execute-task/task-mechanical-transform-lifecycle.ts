@@ -1,3 +1,4 @@
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Resumes deterministic mechanical transformations through recoverable file
  * publication.
@@ -13,7 +14,7 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import type {
   MechanicalTransformExecution,
   TransformationTerm,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+} from '../../modules/planning-provider/planning-artifact-types.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { readFinalizeTransaction } from '../../runtime/repository-transaction/finalize-transaction.ts';
 import { listStagedPaths } from '../../runtime/repository-transaction/git-transitions.ts';
@@ -23,14 +24,14 @@ import {
   privatePathExists,
   readPrivateCanonicalJson,
   writePrivateCanonicalJsonAtomic,
-} from '../../runtime/storage-journal/investigation-session-store.ts';
+} from '../../runtime/storage-journal/investigation-private-files.ts';
 import { loadActiveSessionContext } from '../../composition-root/lifecycle-context.ts';
 import { classifyMutationPath } from '../../modules/source/mutation-class-policy.ts';
+import { investigationRuntimePaths } from '../../runtime/session-workspace/paths.ts';
 import {
-  investigationRuntimePaths,
   matchesAllowedPath,
   normalizeChangedPath,
-} from '../../runtime/session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import { deriveReviewedMutationClassPolicy } from '../../runtime/managed-documents/ownership/reviewed-mutation-policy.ts';
 import {
   withRepositoryLifecycleOperation,
@@ -40,10 +41,8 @@ import {
   readPinnedTrackedTree,
   type TrackedTreeEntry,
 } from '../../runtime/repository-transaction/tracked-tree-reader.ts';
-import {
-  inspectSession,
-  type SessionInspection,
-} from '../finalize/verification.ts';
+import { inspectSession } from '../finalize/verification.ts';
+import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 
 const RETAINED_CLASSES = new Set([
   'append-only',
@@ -131,6 +130,7 @@ export type ResumeTaskMechanicalTransformationOptions = Readonly<{
 
 /** Read-only projection status; it never creates evidence or runtime state. */
 export function inspectTaskMechanicalTransformLifecycle(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
 ): TaskMechanicalTransformLifecycleStatus | null {
@@ -142,16 +142,21 @@ export function inspectTaskMechanicalTransformLifecycle(
   const projectionApplied =
     finalizeTransaction !== null &&
     finalizeTransaction.phase !== 'projection-prepared';
-  const inspection = inspectSession(cwd, requestedSessionId, {
-    expectedSession: context.session,
-    ...(projectionApplied
-      ? {
-          projectedTaskIds: [...finalizeTransaction.completedTaskIds],
-          projectionSourceDigest: finalizeTransaction.projectionSourceDigest,
-          authorizedTransitionPaths: [...finalizeTransaction.transitionPaths],
-        }
-      : {}),
-  });
+  const inspection = inspectSession(
+    routingAdmissionReader,
+    cwd,
+    requestedSessionId,
+    {
+      expectedSession: context.session,
+      ...(projectionApplied
+        ? {
+            projectedTaskIds: [...finalizeTransaction.completedTaskIds],
+            projectionSourceDigest: finalizeTransaction.projectionSourceDigest,
+            authorizedTransitionPaths: [...finalizeTransaction.transitionPaths],
+          }
+        : {}),
+    },
+  );
   return inspectPreparedMechanicalTransformLifecycle(inspection, {
     ...(projectionApplied
       ? { expectedChangedPaths: [...finalizeTransaction.changedPaths] }
@@ -203,6 +208,7 @@ export function inspectPreparedMechanicalTransformLifecycle(
  * overwritten.
  */
 export function resumeTaskMechanicalTransformation(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   options: ResumeTaskMechanicalTransformationOptions = {},
@@ -211,7 +217,11 @@ export function resumeTaskMechanicalTransformation(
   return withRepositoryLifecycleOperation(initial.runtime, (assertOwned) =>
     withSessionOperation(initial.runtime, requestedSessionId, () => {
       assertOwned();
-      const inspection = inspectSession(cwd, requestedSessionId);
+      const inspection = inspectSession(
+        routingAdmissionReader,
+        cwd,
+        requestedSessionId,
+      );
       const task = mechanicalTask(inspection);
       if (task === null) {
         throw workflowError(
@@ -275,7 +285,11 @@ export function resumeTaskMechanicalTransformation(
       }
       options.testAfterProjectionPublish?.();
       assertOwned();
-      const current = inspectSession(cwd, requestedSessionId);
+      const current = inspectSession(
+        routingAdmissionReader,
+        cwd,
+        requestedSessionId,
+      );
       if (!projectionIsCurrent(current, plan)) {
         throw workflowError(
           'TASK_MECHANICAL_TRANSFORMATION_RECOVERY_REQUIRED',

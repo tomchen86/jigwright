@@ -30,7 +30,7 @@ import {
   matchesAllowedPath,
   normalizeExactRepositoryPath,
   normalizePolicyPath,
-} from '../../../../runtime/session-workspace/paths.ts';
+} from '../../../../foundation/repository-path/repository-path.ts';
 
 const MANIFEST_PATH = 'workflow/protected-capabilities.json';
 const LOADER_PATH =

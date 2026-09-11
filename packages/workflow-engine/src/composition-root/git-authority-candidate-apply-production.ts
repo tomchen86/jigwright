@@ -54,11 +54,13 @@ import {
   updateManagedRef,
 } from '../runtime/repository-transaction/git-transitions.ts';
 import {
-  grantRecordDigest,
   grantStorePaths,
-  readGrantRecord,
-  type PreparedGrantRecord,
+  createFileGrantRecordStore,
 } from '../runtime/storage-journal/grant-store.ts';
+import {
+  grantRecordDigest,
+  type PreparedGrantRecord,
+} from '../modules/authority/grant-records.ts';
 import {
   advanceGitAuthorityCandidateApplyJournal,
   createGitAuthorityCandidateApplyJournal,
@@ -596,7 +598,7 @@ function readExactPreparedGrant(
   subject: ApprovalSubject,
   parameters: GitAuthorityCandidateApplyParametersV1,
 ): PreparedGrantRecord {
-  const record = readGrantRecord(paths, challengeId);
+  const record = createFileGrantRecordStore(paths).readGrantRecord(challengeId);
   const choice = record.challenge.choices.find(
     ({ choiceId }) => choiceId === subject.choiceId,
   );

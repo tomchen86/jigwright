@@ -11,23 +11,23 @@ import {
   resolveRecoveryQuarantineMarker,
 } from '../bootstrap/control-plane-trust.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { runHarnessBootstrapCli } from '../src/harness-bootstrap.ts';
+import { runHarnessBootstrapCli } from '../src/entrypoints/cli/harness-bootstrap-cli.ts';
 import {
   recoveryAuthorityDescriptorDigest,
   recoveryAuthorityRepositoryIdentityDigest,
   type RecoveryAuthorityDescriptorPayloadV1,
   type RecoveryAuthorityExpectations,
-} from '../src/recovery-authority.ts';
+} from '../src/modules/authority/recovery-authority-contract.ts';
 import {
   RECOVERY_QUARANTINE_ENTER_NAMESPACE,
   RECOVERY_QUARANTINE_RELEASE_NAMESPACE,
   canonicalRecoveryQuarantineGrantPayload,
   createRecoveryQuarantineEnterGrantPayload,
   createRecoveryQuarantineReleaseGrantPayload,
-  readRecoveryQuarantineMarker,
   type RecoveryQuarantineAuditRecord,
   type RecoveryQuarantineGrantPayload,
-} from '../src/recovery-quarantine.ts';
+} from '../src/modules/authority/recovery-quarantine-contract.ts';
+import { readRecoveryQuarantineMarker } from '../src/runtime/recovery/recovery-quarantine.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 
 const REPOSITORY_ID = 'github:R_recovery_authority_cli_fixture';

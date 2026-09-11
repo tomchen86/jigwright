@@ -1,3 +1,4 @@
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Validates, imports, and adopts implementation patches against sealed RED
  * evidence.
@@ -16,7 +17,7 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import type {
   CrossAgentTddExecution,
   TddSingleAgentExecution,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+} from '../../modules/planning-provider/planning-artifact-types.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { previewExactStaging } from '../../runtime/repository-transaction/git-transitions.ts';
 import {
@@ -28,11 +29,11 @@ import {
   loadActiveSessionContext,
   runSessionOperation,
 } from '../../composition-root/lifecycle-context.ts';
+import { investigationRuntimePaths } from '../../runtime/session-workspace/paths.ts';
 import {
-  investigationRuntimePaths,
   matchesAllowedPath,
   normalizeChangedPath,
-} from '../../runtime/session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import {
   readTaskStrategyTransaction,
   type TaskStrategyTransaction,
@@ -78,10 +79,8 @@ import {
   type TaskStrategyPatchRecord,
   type TaskStrategyPatchReservation,
 } from '../../runtime/storage-journal/task-strategy-patch-store.ts';
-import {
-  inspectSession,
-  type SessionInspection,
-} from '../finalize/verification.ts';
+import { inspectSession } from '../finalize/verification.ts';
+import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 
 const MAX_PATCH_BYTES = 8 * 1024 * 1024;
 const MAX_PATCH_PATHS = 1024;
@@ -154,30 +153,49 @@ type SealedLocalPatchAuthority = Readonly<{
 }>;
 
 export function validateTaskStrategyPatch(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   input: CallerTaskStrategyPatchInput,
 ): TaskStrategyPatchValidation {
-  return validateTaskStrategyPatchWithAuthority(cwd, requestedSessionId, input);
+  return validateTaskStrategyPatchWithAuthority(
+    routingAdmissionReader,
+    cwd,
+    requestedSessionId,
+    input,
+  );
 }
 
 export function validateTaskStrategyProviderPatch(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   input: ProviderTaskStrategyPatchValidationInput,
 ): TaskStrategyPatchValidation {
-  return validateTaskStrategyPatchWithAuthority(cwd, requestedSessionId, input);
+  return validateTaskStrategyPatchWithAuthority(
+    routingAdmissionReader,
+    cwd,
+    requestedSessionId,
+    input,
+  );
 }
 
 export function validateTaskStrategyCallerPatch(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   input: CallerTaskStrategyPatchValidationInput,
 ): TaskStrategyPatchValidation {
-  return validateTaskStrategyPatchWithAuthority(cwd, requestedSessionId, input);
+  return validateTaskStrategyPatchWithAuthority(
+    routingAdmissionReader,
+    cwd,
+    requestedSessionId,
+    input,
+  );
 }
 
 function validateTaskStrategyPatchWithAuthority(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   input:
@@ -189,7 +207,11 @@ function validateTaskStrategyPatchWithAuthority(
   sealedLocalAuthority?: SealedLocalPatchAuthority,
 ): TaskStrategyPatchValidation {
   const patchBytes = normalizePatchBytes(input.patch);
-  const inspection = inspectSession(cwd, requestedSessionId);
+  const inspection = inspectSession(
+    routingAdmissionReader,
+    cwd,
+    requestedSessionId,
+  );
   const task = executionTask(inspection);
   const transaction = readTaskStrategyTransaction(
     investigationRuntimePaths(
@@ -336,6 +358,7 @@ function validateTaskStrategyPatchWithAuthority(
 }
 
 export function importTaskStrategyPatch(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   input: Readonly<{
@@ -346,7 +369,12 @@ export function importTaskStrategyPatch(
   }>,
 ): ImportedTaskStrategyPatch {
   return runSessionOperation(cwd, requestedSessionId, () =>
-    importTaskStrategyPatchUnlocked(cwd, requestedSessionId, input),
+    importTaskStrategyPatchUnlocked(
+      routingAdmissionReader,
+      cwd,
+      requestedSessionId,
+      input,
+    ),
   );
 }
 
@@ -356,6 +384,7 @@ export function importTaskStrategyPatch(
  * implementation identity; ambient resume actors cannot replace it.
  */
 export function adoptCurrentTaskStrategyImplementation(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   options: Readonly<{ testCrashAfter?: TaskStrategyPatchCrashPhase }> = {},
@@ -364,7 +393,11 @@ export function adoptCurrentTaskStrategyImplementation(
   return withRepositoryLifecycleOperation(initial.runtime, (assertOwned) =>
     withSessionOperation(initial.runtime, requestedSessionId, () => {
       assertOwned();
-      const inspection = inspectSession(cwd, requestedSessionId);
+      const inspection = inspectSession(
+        routingAdmissionReader,
+        cwd,
+        requestedSessionId,
+      );
       const task = executionTask(inspection);
       const runtime = investigationRuntimePaths(
         inspection.git.gitCommonDirectory,
@@ -402,6 +435,7 @@ export function adoptCurrentTaskStrategyImplementation(
         '--',
       ]);
       const imported = importTaskStrategyPatchUnlocked(
+        routingAdmissionReader,
         cwd,
         requestedSessionId,
         {
@@ -428,6 +462,7 @@ export function adoptCurrentTaskStrategyImplementation(
  * records remain append-only provenance and are never replaced.
  */
 export function adoptCurrentTaskStrategyCorrection(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   options: Readonly<{ testCrashAfter?: TaskStrategyPatchCrashPhase }> = {},
@@ -436,7 +471,11 @@ export function adoptCurrentTaskStrategyCorrection(
   return withRepositoryLifecycleOperation(initial.runtime, (assertOwned) =>
     withSessionOperation(initial.runtime, requestedSessionId, () => {
       assertOwned();
-      const inspection = inspectSession(cwd, requestedSessionId);
+      const inspection = inspectSession(
+        routingAdmissionReader,
+        cwd,
+        requestedSessionId,
+      );
       const runtime = investigationRuntimePaths(
         inspection.git.gitCommonDirectory,
         inspection.contract.config.runtimeDirectory,
@@ -504,6 +543,7 @@ export function adoptCurrentTaskStrategyCorrection(
         createdAt: new Date().toISOString(),
       });
       const imported = importTaskStrategyPatchUnlocked(
+        routingAdmissionReader,
         cwd,
         requestedSessionId,
         {
@@ -570,13 +610,18 @@ export function adoptCurrentTaskStrategyCorrection(
  * tree and never overwrites ambient bytes.
  */
 export function restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   transaction: TaskStrategyTransaction,
   assertOwned: () => void,
 ): TaskStrategyPatchRecord | null {
   assertOwned();
-  let inspection = inspectSession(cwd, requestedSessionId);
+  let inspection = inspectSession(
+    routingAdmissionReader,
+    cwd,
+    requestedSessionId,
+  );
   const runtime = investigationRuntimePaths(
     inspection.git.gitCommonDirectory,
     inspection.contract.config.runtimeDirectory,
@@ -671,9 +716,14 @@ export function restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock(
         true,
       );
       assertOwned();
-      inspection = inspectSession(cwd, requestedSessionId, {
-        expectedSession: inspection.session,
-      });
+      inspection = inspectSession(
+        routingAdmissionReader,
+        cwd,
+        requestedSessionId,
+        {
+          expectedSession: inspection.session,
+        },
+      );
     }
     if (currentTree() !== record.sourceTree) throw patchStale();
   }
@@ -681,16 +731,23 @@ export function restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock(
 }
 
 export function importTaskStrategyProviderPatch(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   input: ProviderTaskStrategyPatchImportInput,
 ): ImportedTaskStrategyPatch {
   return runSessionOperation(cwd, requestedSessionId, () =>
-    importTaskStrategyPatchUnlocked(cwd, requestedSessionId, input),
+    importTaskStrategyPatchUnlocked(
+      routingAdmissionReader,
+      cwd,
+      requestedSessionId,
+      input,
+    ),
   );
 }
 
 export function importTaskStrategyProviderPatchUnderLifecycleLock(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   input: ProviderTaskStrategyPatchImportInput,
@@ -698,6 +755,7 @@ export function importTaskStrategyProviderPatchUnderLifecycleLock(
 ): ImportedTaskStrategyPatch {
   assertOwned();
   const imported = importTaskStrategyPatchUnlocked(
+    routingAdmissionReader,
     cwd,
     requestedSessionId,
     input,
@@ -707,6 +765,7 @@ export function importTaskStrategyProviderPatchUnderLifecycleLock(
 }
 
 export function importTaskStrategyCallerPatchUnderLifecycleLock(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   input: CallerTaskStrategyPatchImportInput,
@@ -714,6 +773,7 @@ export function importTaskStrategyCallerPatchUnderLifecycleLock(
 ): ImportedTaskStrategyPatch {
   assertOwned();
   const imported = importTaskStrategyPatchUnlocked(
+    routingAdmissionReader,
     cwd,
     requestedSessionId,
     input,
@@ -723,6 +783,7 @@ export function importTaskStrategyCallerPatchUnderLifecycleLock(
 }
 
 function importTaskStrategyPatchUnlocked(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   input: Readonly<{
@@ -738,7 +799,11 @@ function importTaskStrategyPatchUnlocked(
 ): ImportedTaskStrategyPatch {
   const patchBytes = normalizePatchBytes(input.patch);
   const patchDigest = sha256(patchBytes);
-  let inspection = inspectSession(cwd, requestedSessionId);
+  let inspection = inspectSession(
+    routingAdmissionReader,
+    cwd,
+    requestedSessionId,
+  );
   const task = executionTask(inspection);
   const runtime = investigationRuntimePaths(
     inspection.git.gitCommonDirectory,
@@ -776,6 +841,7 @@ function importTaskStrategyPatchUnlocked(
   );
   if (record === null) {
     const validation = validateTaskStrategyPatchWithAuthority(
+      routingAdmissionReader,
       cwd,
       requestedSessionId,
       input,
@@ -861,9 +927,14 @@ function importTaskStrategyPatchUnlocked(
       inspection.git.repositoryRoot,
       Buffer.from(record.patchBase64, 'base64'),
     );
-    inspection = inspectSession(cwd, requestedSessionId, {
-      expectedSession: inspection.session,
-    });
+    inspection = inspectSession(
+      routingAdmissionReader,
+      cwd,
+      requestedSessionId,
+      {
+        expectedSession: inspection.session,
+      },
+    );
     currentTree = previewExactStaging(
       inspection.git.repositoryRoot,
       inspection.session.baseline.head,

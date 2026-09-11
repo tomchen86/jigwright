@@ -1,3 +1,5 @@
+import type { RoleContextSharingGrantOperations } from '../../modules/authority/role-context-sharing-grant.ts';
+import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 /**
  * Creates, reserves, and consumes exact role context sharing authority for
  * PlanReview.
@@ -6,11 +8,11 @@
  * - PlanReview sharing eligibility must prelist exact unique grant
  *   identifiers.
  */
+
 import {
-  bindingFromRoleContextSharingGrantPayloadV1,
   ROLE_CONTEXT_SHARING_DEGRADATION_EFFECT_V1,
   type RoleContextSharingGrantExpectedBindingV1,
-} from '../../modules/authority/optional-grants-package.ts';
+} from '@jigwright/core/role-context-sharing-grant-codec';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -29,18 +31,20 @@ import type {
 import type { MaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import { computeRoleContextSharingResultAdmissionDigestV1 } from '../../modules/authority/role-context-sharing-consumed-replay.ts';
 import { isProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
-import { normalizeRoleContextSharingResultAdmissionBinding } from '../../modules/provider-orchestration/role-scheduler.ts';
 import type {
   RecordedRoleParticipant,
-  RoleContentAdmission,
   RoleContextSharingGrantedRoleAssignment,
+} from '../../modules/provider-orchestration/role-assignment.ts';
+import type {
+  RoleContentAdmission,
   RoleProviderInvocationEvidence,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+} from '../../modules/provider-orchestration/role-admission-contracts.ts';
+
 import type {
   ActualRolePlacementV1,
   RoleTopologyResolutionV1,
 } from '../../modules/provider-orchestration/role-topology-resolution.ts';
-import type { PlanReviewSubject } from '../../modules/assurance/plan-review.ts';
+import type { PlanReviewSubject } from '../../modules/assurance/plan-review-subject.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/u;
 const UUID_V4 =
@@ -188,18 +192,24 @@ export function createRoleContextSharingRequirementEligibilityPort(input: {
   });
 }
 
-export function reserveRoleContextSharingPlanReview(input: {
-  gitCommonDirectory: string;
-  requirementNodeId: string;
-  requirement: RoleContextSharingPlanReviewRequirementV3;
-  grantId: string;
-  policy: MaintainerPolicy;
-  policyBlob: string;
-  verifier: AuthoritativeRoleContextSharingGrantVerifier;
-  lifecycle: RoleContextSharingGrantLifecyclePortV1;
-  now?: Date;
-  assertOwned: () => void;
-}): Readonly<{
+export function reserveRoleContextSharingPlanReview(
+  grants: Pick<
+    RoleContextSharingGrantOperations,
+    'bindingFromRoleContextSharingGrantPayloadV1'
+  >,
+  input: {
+    gitCommonDirectory: string;
+    requirementNodeId: string;
+    requirement: RoleContextSharingPlanReviewRequirementV3;
+    grantId: string;
+    policy: MaintainerPolicy;
+    policyBlob: string;
+    verifier: AuthoritativeRoleContextSharingGrantVerifier;
+    lifecycle: RoleContextSharingGrantLifecyclePortV1;
+    now?: Date;
+    assertOwned: () => void;
+  },
+): Readonly<{
   record: RoleContextSharingLifecycleRecordV1;
   assignment: RoleContextSharingGrantedRoleAssignment;
   authorization: RoleContextSharingPlanReviewAuthorizationV1;
@@ -220,7 +230,9 @@ export function reserveRoleContextSharingPlanReview(input: {
   });
   if (
     canonicalJson(
-      bindingFromRoleContextSharingGrantPayloadV1(available.envelope.payload),
+      grants.bindingFromRoleContextSharingGrantPayloadV1(
+        available.envelope.payload,
+      ),
     ) !== canonicalJson(expected)
   ) {
     throw ineligible(
@@ -287,21 +299,24 @@ export function reserveRoleContextSharingPlanReview(input: {
   });
 }
 
-export function consumeRoleContextSharingPlanReview(input: {
-  gitCommonDirectory: string;
-  requirement: RoleContextSharingPlanReviewRequirementV3;
-  authorization: RoleContextSharingPlanReviewAuthorizationV1;
-  assignment: RoleContextSharingGrantedRoleAssignment;
-  policy: MaintainerPolicy;
-  verifier: AuthoritativeRoleContextSharingGrantVerifier;
-  lifecycle: RoleContextSharingGrantLifecyclePortV1;
-  author: RecordedRoleParticipant;
-  participant: RecordedRoleParticipant;
-  content: RoleContentAdmission;
-  providerInvocation: RoleProviderInvocationEvidence;
-  now?: Date;
-  assertOwned: () => void;
-}): Readonly<{
+export function consumeRoleContextSharingPlanReview(
+  roleAdmission: RoleAdmissionServices,
+  input: {
+    gitCommonDirectory: string;
+    requirement: RoleContextSharingPlanReviewRequirementV3;
+    authorization: RoleContextSharingPlanReviewAuthorizationV1;
+    assignment: RoleContextSharingGrantedRoleAssignment;
+    policy: MaintainerPolicy;
+    verifier: AuthoritativeRoleContextSharingGrantVerifier;
+    lifecycle: RoleContextSharingGrantLifecyclePortV1;
+    author: RecordedRoleParticipant;
+    participant: RecordedRoleParticipant;
+    content: RoleContentAdmission;
+    providerInvocation: RoleProviderInvocationEvidence;
+    now?: Date;
+    assertOwned: () => void;
+  },
+): Readonly<{
   record: RoleContextSharingLifecycleRecordV1;
   use: RoleContextSharingLifecycleUseV1;
   reservationReceiptDigest: string;
@@ -309,13 +324,14 @@ export function consumeRoleContextSharingPlanReview(input: {
   useProjectionDigest: string;
   evidence: ConsumedRoleContextSharingUseEvidenceV1;
 }> {
-  const admission = normalizeRoleContextSharingResultAdmissionBinding({
-    assignment: input.assignment,
-    author: input.author,
-    participant: input.participant,
-    content: input.content,
-    providerInvocation: input.providerInvocation,
-  });
+  const admission =
+    roleAdmission.normalizeRoleContextSharingResultAdmissionBinding({
+      assignment: input.assignment,
+      author: input.author,
+      participant: input.participant,
+      content: input.content,
+      providerInvocation: input.providerInvocation,
+    });
   const expected = input.authorization.expectedBinding;
   const eligibility = createRoleContextSharingRequirementEligibilityPort({
     requirement: input.requirement,

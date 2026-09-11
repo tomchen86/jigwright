@@ -1,3 +1,9 @@
+import { taskMandateOperations } from '../../composition-root/task-mandate-production.ts';
+import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+type TaskMandateDependencies = Pick<
+  TaskMandateOperations,
+  'inspectActiveTaskMandateBinding' | 'withActiveTaskMandateBinding'
+>;
 /**
  * Issues, inspects, and revokes execution budget grants for current
  * execution jobs.
@@ -7,33 +13,30 @@
  */
 import crypto from 'node:crypto';
 
-import type {
-  AuthorityAuditRecordedEvent,
-  AuthorityAuditServiceHooks,
-} from '../../runtime/storage-journal/authority-audit-service.ts';
 import { deriveAuthorityAuditRepositoryId } from '../../runtime/storage-journal/authority-audit-ledger.ts';
 import {
   authorityRefusalDigest,
   withAuthorityRefusalAudit,
-  type AuthorityRefusalAuditBinding,
 } from '../../modules/authority/authority-refusal-audit.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
 import { requireExecutionJobMandateBinding } from '../../modules/provider-orchestration/execution-core.ts';
 import {
   canonicalExecutionBudgetGrantEnvelope,
   canonicalExecutionBudgetGrantSigningBytes,
   createExecutionBudgetGrantEnvelope,
   EXECUTION_BUDGET_GRANT_SIGNATURE_NAMESPACE,
-  inspectExecutionBudgetGrant,
-  inspectExecutionBudgetGrantAuthorization,
   parseExecutionBudgetGrantRequest,
-  revokeExecutionBudgetGrant,
-  storeExecutionBudgetGrant,
   canonicalExecutionBudgetGrantRequest,
   type ExecutionBudgetGrantEnvelope,
   type ExecutionBudgetGrantRequest,
-} from '../../modules/authority/execution-governance.ts';
+} from '../../modules/authority/execution-governance-grant-contracts.ts';
+import {
+  inspectExecutionBudgetGrant,
+  inspectExecutionBudgetGrantAuthorization,
+  revokeExecutionBudgetGrant,
+  storeExecutionBudgetGrant,
+} from '../../runtime/storage-journal/execution-budget-grants.ts';
 import { inspectExecutionJob } from '../../runtime/provider-execution/execution-runtime.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -49,11 +52,7 @@ import {
   runtimePaths,
   withRepositoryLifecycleOperation,
 } from '../../runtime/session-workspace/session-store.ts';
-import {
-  inspectActiveTaskMandateBinding,
-  withActiveTaskMandateBinding,
-  type TaskMandateBinding,
-} from '../../modules/authority/task-mandate.ts';
+import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 
 export type IssueExecutionBudgetGrantOptions = {
   grantId?: string;
@@ -70,7 +69,8 @@ export type IssueExecutionBudgetGrantResult = {
   envelope: ExecutionBudgetGrantEnvelope;
 };
 
-export function issueExecutionBudgetGrant(
+export function issueExecutionBudgetGrantWithMandate(
+  taskMandate: TaskMandateDependencies,
   cwd: string,
   untrustedRequest: ExecutionBudgetGrantRequest,
   options: IssueExecutionBudgetGrantOptions = {},
@@ -94,7 +94,7 @@ export function issueExecutionBudgetGrant(
   const jobBinding = requireExecutionJobMandateBinding(job);
   const now = options.now ?? new Date();
   const grantId = options.grantId ?? crypto.randomUUID();
-  const activeBinding = inspectActiveTaskMandateBinding(
+  const activeBinding = taskMandate.inspectActiveTaskMandateBinding(
     repository.repositoryRoot,
     jobBinding.mandateTaskId,
     { now, signer },
@@ -182,7 +182,7 @@ export function issueExecutionBudgetGrant(
         repository.gitCommonDirectory,
         config.runtimeDirectory,
       );
-      const recordPath = withActiveTaskMandateBinding(
+      const recordPath = taskMandate.withActiveTaskMandateBinding(
         repository.repositoryRoot,
         activeBinding.mandateTaskId,
         { now, signer },
@@ -404,3 +404,12 @@ function executionBudgetCliRefusalBinding(input: {
     refusalIdentity: input.refusalIdentity,
   };
 }
+
+import {
+  type AuthorityAuditRecordedEvent,
+  type AuthorityAuditServiceHooks,
+  type AuthorityRefusalAuditBinding,
+} from '../../modules/authority/authority-audit-contract.ts';
+
+export const issueExecutionBudgetGrant =
+  issueExecutionBudgetGrantWithMandate.bind(undefined, taskMandateOperations);

@@ -1,10 +1,16 @@
+import { productionChangeRoutingInspector } from '../src/composition-root/change-routing-observation-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined, productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import { validateManagedDocuments } from '../src/runtime/managed-documents/validation/managed-documents.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { validateManagedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import {
   createFixtureRepository,
   isWorkflowError,

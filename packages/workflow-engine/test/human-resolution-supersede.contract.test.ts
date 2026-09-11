@@ -9,18 +9,18 @@ import { discoverRepository } from '../src/runtime/repository-transaction/git.ts
 import {
   inspectHumanResolutionGrants,
   revokeHumanResolutionGrant,
-  startInvestigationSession,
-} from '../src/adapters/planning/investigation/investigation-session.ts';
+} from '../src/composition-root/investigation-retry-production.ts';
+import { startInvestigationSession as startInvestigationSessionWithMandate } from '../src/adapters/planning/investigation/investigation-session.ts';
 import {
   assertHumanResolutionDecision,
-  inspectInvestigationResolutionState,
   type HumanResolutionDecision,
-} from '../src/runtime/storage-journal/investigation-session-store.ts';
+} from '../src/modules/investigation/domain/human-resolution-contract.ts';
+import { inspectInvestigationResolutionState } from '../src/runtime/storage-journal/human-resolution-state.ts';
 import {
   canonicalHumanResolutionGrantEnvelope,
-  verifyHumanResolutionGrantEnvelope,
   type HumanResolutionGrantEnvelope,
-} from '../src/modules/authority/maintainer-grant.ts';
+} from '../src/modules/authority/maintainer-grant-contracts.ts';
+import { verifyHumanResolutionGrantEnvelope } from '../src/composition-root/human-revocation-production.ts';
 import type { MaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
@@ -29,8 +29,8 @@ import {
   BLIND_SURVEY_OUTPUT_SCHEMA,
   blindSurveyIntentDigest,
   blindSurveyManifestDigest,
-  type BlindSurveyManifest,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import type { BlindSurveyManifest } from '../src/modules/investigation/manifest/blind-survey-manifest.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 import { issueLegacyHumanResolutionGrantFixture } from './legacy-human-resolution-grant-fixture.ts';
 import {
@@ -38,7 +38,7 @@ import {
   HUMAN_REVOCATION_SIGNATURE_NAMESPACE,
   parseHumanRevocationAuthorization,
   type HumanRevocationAuthorization,
-} from '../src/application/control-plane/human-revocation.ts';
+} from '../src/modules/authority/human-revocation-contract.ts';
 import { maintainerGrantStorePaths } from '../src/runtime/storage-journal/maintainer-store.ts';
 
 const EXECUTION_FAILURE_REASONS = [
@@ -444,3 +444,10 @@ function grantEnvelope(decision: HumanResolutionDecision) {
     ].join('\n'),
   } satisfies HumanResolutionGrantEnvelope;
 }
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+
+const startInvestigationSession = startInvestigationSessionWithMandate.bind(
+  undefined,
+  taskMandateOperations,
+);

@@ -1,3 +1,5 @@
+import { observeChangeRoutingContinuationState } from '../runtime/repository-observation/change-routing.ts';
+import { investigationFailureObservations } from './investigation-failure-production.ts';
 /**
  * Composes production Grant coordinators and routes lifecycle continuation
  * requests.
@@ -6,113 +8,128 @@
  * - A Grant challenge may claim at most one parent continuation.
  */
 import type { CentralGrantRequestPortV1 } from '@jigwright/core/central-grant-port';
-import { isRecord } from '../foundation/canonical-json/contract-values.ts';
+import {
+  inspectMacOsHumanGateRuntime,
+  openMacOsHumanGateApprovalSession,
+} from '../adapters/human/macos/human-gate-macos.ts';
+import { collectSshApprovalProof } from '../adapters/signing/ssh/grant-proof-ssh.ts';
+import { createSystemDocumentGrantService } from '../application/finalize/system-document-grant.ts';
+import { deriveProtectedTaskApplyTaskDiffProviderGrantContinuation } from './task-diff-review-production.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
+import { isRecord } from '../foundation/canonical-json/contract-values.ts';
 import {
   ExitCode,
   WorkflowError,
   workflowError,
 } from '../foundation/errors/errors.ts';
-import { ensurePlainDirectory } from '../runtime/repository-transaction/filesystem-safety.ts';
-import { discoverRepository } from '../runtime/repository-transaction/git.ts';
+import {
+  archivePullRequestGrantTransitionDefinitions,
+  createArchivePullRequestGrantRequest,
+} from '../modules/authority/archive-pr-grant.ts';
+import {
+  assertGitAuthorityCandidateApplyParameters,
+  gitAuthorityCandidateApplyGrantTransitionDefinitions,
+  type GitAuthorityCandidateApplyParametersV1,
+} from '../modules/authority/git-authority-candidate-apply-grant.ts';
 import {
   createGrantCoordinatorKernel,
   type GrantApprovalSession,
   type GrantCoordinator,
 } from '../modules/authority/grant-coordinator.ts';
-import { collectSshApprovalProof } from '../adapters/signing/ssh/grant-proof-ssh.ts';
-import {
-  createInvestigationV3PublicationGrantRequest,
-  createInvestigationV3GrantRequest,
-  investigationV3GrantTransitionDefinitions,
-} from '../modules/investigation/seal/investigation-v3-grant.ts';
-import {
-  createWorkRegistryPromotionGrantRequest,
-  createWorkRegistryReviewGrantRequest,
-  workRegistryGrantTransitionDefinitions,
-} from '../modules/governance-intake/work-registry-grant.ts';
-import {
-  workRegistryTransitionRequiresGrant,
-  type WorkItemReviewV1,
-} from '../modules/governance-intake/work-registry.ts';
-import {
-  archivePullRequestGrantTransitionDefinitions,
-  createArchivePullRequestGrantRequest,
-} from '../modules/authority/archive-pr-grant.ts';
-export type { WorkItemReviewV1 } from '../modules/governance-intake/work-registry.ts';
-import type { InvestigationManifestPublicationFailure } from '../runtime/managed-documents/transaction/investigation-publication.ts';
-import { readCurrentInvestigationV3FailureObservation } from '../runtime/storage-journal/investigation-v3-failure-store.ts';
-import {
-  parseGrantPolicyV2Document,
-  type GrantPolicyV2,
-} from '../modules/authority/grant-policy.ts';
-import {
-  grantStorePaths,
-  grantRecordDigest,
-  readGrantRecord,
-} from '../runtime/storage-journal/grant-store.ts';
 import { approvalSubjectDigest } from '../modules/authority/grant-core.ts';
-import { grantSha256 } from '../modules/authority/grant-primitives.ts';
 import {
   assertGrantParentBindingV1,
   createGrantParentBindingV1,
   type GrantParentBindingV1,
 } from '../modules/authority/grant-parent-binding.ts';
+import {
+  parseGrantPolicyV2Document,
+  type GrantPolicyV2,
+} from '../modules/authority/grant-policy.ts';
+import { grantSha256 } from '../modules/authority/grant-primitives.ts';
 import type { TransitionRegistry } from '../modules/authority/grant-transition-registry.ts';
 import { createTransitionRegistry } from '../modules/authority/grant-transition-registry.ts';
-import { createSystemDocumentGrantService } from '../application/finalize/system-document-grant.ts';
-import {
-  inspectMacOsHumanGateRuntime,
-  openMacOsHumanGateApprovalSession,
-} from '../adapters/human/macos/human-gate-macos.ts';
-import {
-  loadInvestigationRuntimeContext,
-  systemDocumentDispositions,
-} from './lifecycle-context.ts';
-import { assertChangeId } from '../runtime/session-workspace/paths.ts';
-import {
-  runtimePaths,
-  withRepositoryLifecycleOperationAsync,
-  type RepositoryLifecycleOperationOptions,
-} from '../runtime/session-workspace/session-store.ts';
-import { assertOptionalGrantsPackageAvailable } from './optional-grants-package-production.ts';
-import {
-  changeRoutingGrantTransitionDefinitions,
-  createChangeRoutingContinuationGrantRequest,
-} from '../modules/lifecycle/change-routing-grant.ts';
 import {
   createProtectedBaseSelectionGrantRequest,
   protectedBaseSelectionGrantTransitionDefinitions,
 } from '../modules/authority/protected-base-selection-grant.ts';
-import { createProductionProtectedBaseSelectionPort } from './local-protected-base-initialization-production.ts';
 import {
-  createProductionChangeRoleAssignmentGrantPort,
-  observeCurrentChangeRoleAssignmentGrantForInvocation,
-} from './change-role-assignment-grant-production.ts';
-import {
-  changeRoleAssignmentGrantTransitionDefinitions,
-  assertChangeRoleAssignmentGrantParameters,
-  CHANGE_ROLE_ASSIGNMENT_GRANT_TRANSITION_ID,
-  changeRoleAssignmentGrantParentBinding,
-  createChangeRoleAssignmentGrantRequest,
-} from '../modules/provider-orchestration/change-role-assignment-grant.ts';
-import { resolveArchivePullRequestPublicationTarget } from './archive-pr-publication-production.ts';
-import {
-  createProductionProtectedTaskApplyGrantPort,
-  observeCurrentProtectedTaskApply,
-} from './protected-task-apply-grant-production.ts';
+  createProtectedTaskApplyDescendantSettlementGrantRequest,
+  protectedTaskApplyDescendantSettlementTransitionDefinitions,
+  type ProtectedTaskApplyDescendantSettlementGrantRequiredDetailsV1,
+} from '../modules/authority/protected-task-apply-descendant-settlement-grant.ts';
 import {
   createProtectedTaskApplyGrantRequest,
-  protectedTaskApplyGrantTransitionDefinitions,
   PROTECTED_TASK_APPLY_TRANSITION_ID,
+  protectedTaskApplyGrantTransitionDefinitions,
   type ProtectedTaskApplyFailureDetailsV1,
 } from '../modules/authority/protected-task-apply-grant.ts';
-import { deriveProtectedTaskApplyTaskDiffProviderGrantContinuation } from '../application/finalize/task-diff-review-lifecycle.ts';
 import {
   createProtectedTaskApplyRecoveryGrantRequest,
   protectedTaskApplyRecoveryGrantTransitionDefinitions,
   type ProtectedTaskApplyRecoveryGrantRequiredDetailsV1,
 } from '../modules/authority/protected-task-apply-recovery-grant.ts';
+import {
+  createProviderInvocationCancellationGrantRequest,
+  providerInvocationCancellationTransitionDefinitions,
+} from '../modules/authority/provider-invocation-cancellation-grant.ts';
+import type { WorkItemReviewV1 } from '../modules/governance-intake/work-registry-contracts.ts';
+import {
+  createInvestigationV3GrantRequest,
+  createInvestigationV3PublicationGrantRequest,
+  investigationV3GrantTransitionDefinitions,
+} from '../modules/investigation/seal/investigation-v3-grant.ts';
+import {
+  changeRoutingGrantTransitionDefinitions,
+  createChangeRoutingContinuationGrantRequest,
+} from '../modules/lifecycle/change-routing-grant.ts';
+import {
+  assertChangeRoleAssignmentGrantParameters,
+  CHANGE_ROLE_ASSIGNMENT_GRANT_TRANSITION_ID,
+  changeRoleAssignmentGrantParentBinding,
+  changeRoleAssignmentGrantTransitionDefinitions,
+  createChangeRoleAssignmentGrantRequest,
+} from '../modules/provider-orchestration/change-role-assignment-grant.ts';
+import type { InvestigationManifestPublicationFailure } from '../modules/investigation/manifest/investigation-publication-contracts.ts';
+import { ensurePlainDirectory } from '../runtime/repository-transaction/filesystem-safety.ts';
+import { discoverRepository } from '../runtime/repository-transaction/git.ts';
+import { assertChangeId } from '../foundation/repository-path/repository-path.ts';
+import {
+  runtimePaths,
+  withRepositoryLifecycleOperationAsync,
+  type RepositoryLifecycleOperationOptions,
+} from '../runtime/session-workspace/session-store.ts';
+import {
+  grantStorePaths,
+  createFileGrantRecordStore,
+} from '../runtime/storage-journal/grant-store.ts';
+import { grantRecordDigest } from '../modules/authority/grant-records.ts';
+import { readCurrentInvestigationV3FailureObservation } from '../runtime/storage-journal/investigation-v3-failure-store.ts';
+import { resolveArchivePullRequestPublicationTarget } from './archive-pr-publication-production.ts';
+import {
+  createProductionChangeRoleAssignmentGrantPort,
+  observeCurrentChangeRoleAssignmentGrantForInvocation,
+} from './change-role-assignment-grant-production.ts';
+import {
+  createProductionGitAuthorityCandidateApplyPort,
+  readProductionGitAuthorityCandidateBaseGrantPolicyDocument,
+  readProductionGitBaseAuthorityContext,
+} from './git-authority-candidate-apply-production.ts';
+import {
+  loadInvestigationRuntimeContext,
+  systemDocumentDispositions,
+} from './lifecycle-context.ts';
+import { createProductionProtectedBaseSelectionPort } from './local-protected-base-initialization-production.ts';
+import { assertOptionalGrantsPackageAvailable } from './optional-grants-package-production.ts';
+import {
+  createProductionProtectedTaskApplyDescendantSettlementGrantPort,
+  observeCurrentProtectedTaskApplyDescendantSettlementRequest,
+  protectedTaskApplyDescendantSettlementContinuation,
+} from './protected-task-apply-descendant-settlement-grant-production.ts';
+import {
+  createProductionProtectedTaskApplyGrantPort,
+  observeCurrentProtectedTaskApply,
+} from './protected-task-apply-grant-production.ts';
 import {
   createProductionProtectedTaskApplyRecoveryGrantPort,
   observeCurrentProtectedTaskApplyRecoveryRequest,
@@ -120,33 +137,16 @@ import {
   protectedTaskApplyRecoveryParentReference,
 } from './protected-task-apply-recovery-grant-production.ts';
 import {
-  createProductionProtectedTaskApplyDescendantSettlementGrantPort,
-  observeCurrentProtectedTaskApplyDescendantSettlementRequest,
-  protectedTaskApplyDescendantSettlementContinuation,
-} from './protected-task-apply-descendant-settlement-grant-production.ts';
-import {
-  createProtectedTaskApplyDescendantSettlementGrantRequest,
-  protectedTaskApplyDescendantSettlementTransitionDefinitions,
-  type ProtectedTaskApplyDescendantSettlementGrantRequiredDetailsV1,
-} from '../modules/authority/protected-task-apply-descendant-settlement-grant.ts';
-import {
-  createProviderInvocationCancellationGrantRequest,
-  providerInvocationCancellationTransitionDefinitions,
-} from '../modules/authority/provider-invocation-cancellation-grant.ts';
-import {
   createProductionProviderInvocationCancellationGrantPort,
   observeCurrentProviderInvocationCancellationRequest,
 } from './provider-invocation-cancellation-grant-production.ts';
 import {
-  assertGitAuthorityCandidateApplyParameters,
-  gitAuthorityCandidateApplyGrantTransitionDefinitions,
-  type GitAuthorityCandidateApplyParametersV1,
-} from '../modules/authority/git-authority-candidate-apply-grant.ts';
-import {
-  createProductionGitAuthorityCandidateApplyPort,
-  readProductionGitBaseAuthorityContext,
-  readProductionGitAuthorityCandidateBaseGrantPolicyDocument,
-} from './git-authority-candidate-apply-production.ts';
+  createWorkRegistryPromotionGrantRequest,
+  createWorkRegistryReviewGrantRequest,
+  workRegistryGrantTransitionDefinitions,
+} from './work-registry-grant-production.ts';
+import { workRegistryTransitionRequiresGrant } from './work-registry-production.ts';
+export type { WorkItemReviewV1 } from './work-registry-production.ts';
 
 const TASK_DIFF_ROLE_ASSIGNMENT_PARENT_RELATION =
   'task.protected-apply.task-diff-role-assignment.v1' as const;
@@ -186,7 +186,9 @@ function createProductionGrantCoordinatorWithAuthorityContext(
   const policy = exactAuthorityContext.policy;
 
   return createGrantCoordinatorKernel({
-    paths,
+    now: () => new Date(),
+    randomUUID: () => crypto.randomUUID(),
+    store: createFileGrantRecordStore(paths),
     registry,
     policy,
     openApprovalSession(presentation) {
@@ -226,7 +228,7 @@ export async function withProductionGrantLifecycleOperation<T>(
       .runtimeDirectory;
   const runtime = runtimePaths(git.gitCommonDirectory, runtimeDirectory);
   const paths = grantStorePaths(runtime.root);
-  const stored = readGrantRecord(paths, challengeId);
+  const stored = createFileGrantRecordStore(paths).readGrantRecord(challengeId);
   const taskDiffContinuation = taskDiffRoleAssignmentGrantContinuation(
     git.repositoryRoot,
     stored.challenge,
@@ -266,7 +268,8 @@ export async function withProductionGrantLifecycleOperation<T>(
     async (assertLifecycleOwned) => {
       const assertExactContinuationOwned = () => {
         assertLifecycleOwned();
-        const current = readGrantRecord(paths, challengeId);
+        const current =
+          createFileGrantRecordStore(paths).readGrantRecord(challengeId);
         if (
           current.challenge.challengeDigest !==
             stored.challenge.challengeDigest ||
@@ -304,7 +307,9 @@ export async function withProductionGrantLifecycleOperation<T>(
 
 function taskDiffRoleAssignmentGrantContinuation(
   repositoryRoot: string,
-  challenge: ReturnType<typeof readGrantRecord>['challenge'],
+  challenge: ReturnType<
+    import('../modules/authority/grant-record-store.ts').GrantRecordStore['readGrantRecord']
+  >['challenge'],
   exactRuntimeDirectory: string,
 ) {
   if (
@@ -468,7 +473,9 @@ function readRepositoryGrantRecord(
 ) {
   const git = discoverRepository(repositoryRoot);
   const runtime = runtimePaths(git.gitCommonDirectory, exactRuntimeDirectory);
-  return readGrantRecord(grantStorePaths(runtime.root), challengeId);
+  return createFileGrantRecordStore(
+    grantStorePaths(runtime.root),
+  ).readGrantRecord(challengeId);
 }
 
 function productionApprovalSession(
@@ -516,13 +523,19 @@ export function createProductionWorkflowGrantCoordinator(
   const coordinator = createProductionGrantCoordinatorWithAuthorityContext(
     cwd,
     createTransitionRegistry([
-      ...investigationV3GrantTransitionDefinitions(cwd),
+      ...investigationV3GrantTransitionDefinitions(
+        investigationFailureObservations,
+        cwd,
+      ),
       ...workRegistryGrantTransitionDefinitions(cwd),
       ...createProductionSystemDocumentGrantService().systemDocumentGrantTransitionDefinitions(
         cwd,
       ),
       ...archivePullRequestGrantTransitionDefinitions(runtimeRoot),
-      ...changeRoutingGrantTransitionDefinitions(cwd),
+      ...changeRoutingGrantTransitionDefinitions(
+        observeChangeRoutingContinuationState,
+        cwd,
+      ),
       ...protectedBaseSelectionGrantTransitionDefinitions(protectedBase),
       ...changeRoleAssignmentGrantTransitionDefinitions(roleAssignment),
       ...protectedTaskApplyGrantTransitionDefinitions(protectedTaskApply),
@@ -602,13 +615,16 @@ export function coordinateProtectedTaskApplyRecoveryParent(
         .runtimeDirectory;
     const runtime = runtimePaths(git.gitCommonDirectory, runtimeDirectory);
     const paths = grantStorePaths(runtime.root);
-    const before = readGrantRecord(paths, challengeId);
+    const before =
+      createFileGrantRecordStore(paths).readGrantRecord(challengeId);
     const reference = protectedTaskApplyRecoveryParentReference(
       before.challenge,
     );
     const result = await operation();
     if (reference === null || result.outcome !== 'completed') return result;
-    let parent = readGrantRecord(paths, reference.parentChallengeId);
+    let parent = createFileGrantRecordStore(paths).readGrantRecord(
+      reference.parentChallengeId,
+    );
     if (parent.state === 'prepared') {
       const parentResult = await coordinator.recoverChallenge(
         reference.parentChallengeId,
@@ -620,7 +636,9 @@ export function coordinateProtectedTaskApplyRecoveryParent(
           ExitCode.verification,
         );
       }
-      parent = readGrantRecord(paths, reference.parentChallengeId);
+      parent = createFileGrantRecordStore(paths).readGrantRecord(
+        reference.parentChallengeId,
+      );
     }
     if (
       parent.state !== 'failed' ||
@@ -898,6 +916,7 @@ export async function requestChangeRoutingContinuationGrant(
   const repositoryRoot = discoverRepository(cwd).repositoryRoot;
   return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
     createChangeRoutingContinuationGrantRequest(
+      observeChangeRoutingContinuationState,
       repositoryRoot,
       changeId,
       proposedReason,
@@ -930,7 +949,7 @@ export async function requestInvestigationV3Grant(
   }
   const request =
     observation.kind === 'investigation-v3-failure-observation'
-      ? createInvestigationV3GrantRequest({
+      ? createInvestigationV3GrantRequest(investigationFailureObservations, {
           cwd,
           failure: {
             repositoryId: observation.repositoryId,
@@ -943,11 +962,14 @@ export async function requestInvestigationV3Grant(
           emission: observation.emission,
           proposedReason,
         })
-      : createInvestigationV3PublicationGrantRequest({
-          cwd,
-          failure: observation.failure,
-          proposedReason,
-        });
+      : createInvestigationV3PublicationGrantRequest(
+          investigationFailureObservations,
+          {
+            cwd,
+            failure: observation.failure,
+            proposedReason,
+          },
+        );
   return createProductionCentralGrantRequestPort(cwd).requestGrant(request);
 }
 
@@ -968,11 +990,14 @@ export async function requestInvestigationV3PublicationGrant(
     );
   }
   return createProductionCentralGrantRequestPort(cwd).requestGrant(
-    createInvestigationV3PublicationGrantRequest({
-      cwd,
-      failure: input.failure,
-      proposedReason: input.proposedReason,
-    }),
+    createInvestigationV3PublicationGrantRequest(
+      investigationFailureObservations,
+      {
+        cwd,
+        failure: input.failure,
+        proposedReason: input.proposedReason,
+      },
+    ),
   );
 }
 
@@ -1053,7 +1078,9 @@ export async function propagateInvestigationV3PublicationResult<
 }
 
 function humanResolutionLifecycleBinding(
-  challenge: ReturnType<typeof readGrantRecord>['challenge'],
+  challenge: ReturnType<
+    import('../modules/authority/grant-record-store.ts').GrantRecordStore['readGrantRecord']
+  >['challenge'],
 ): RepositoryLifecycleOperationOptions {
   // Historical v2 records retain their narrow lifecycle identity for safe
   // inspection. No v2 transition is registered, so this cannot execute one.

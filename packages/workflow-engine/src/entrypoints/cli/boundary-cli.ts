@@ -1,26 +1,34 @@
 /**
- * Dispatches boundary inventory, conformance vector and authority-remap
- * commands.
+ * Dispatches conformance vector and authority-remap commands.
  *
  * Invariants:
- * - Remap input must be a bounded plain JSON file, and source inventory
- *   loads its TypeScript parser only when requested.
+ * - Remap input must be a bounded plain JSON file.
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
-import { type CommandResult, usage } from './cli-input.ts';
-import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
-import {
-  discoverRepository,
-  projectAuthorityRemap,
-  loadWorkflowConformanceVectorsV2,
-  inspectT3BoundaryInventory,
-  type AuthorityRemapPair,
-  type T3BoundaryTypeScriptApi,
-} from '../../composition-root/cli-operational-services.ts';
 
-const toolingRequire = createRequire(import.meta.url);
+import { type CommandResult, usage } from './cli-input.ts';
+
+import type * as RepositoryInspection from '../../runtime/repository-transaction/git.ts';
+import type * as ConformanceCorpus from '../../runtime/repository-transaction/conformance-vectors.ts';
+import type {
+  AuthorityRemapPair,
+  AuthorityRemapProjector,
+} from '../../modules/authority/authority-remap-contract.ts';
+export type BoundaryCommandOperations = Pick<
+  typeof ConformanceCorpus,
+  'loadWorkflowConformanceVectorsV2'
+> &
+  Readonly<{
+    discoverRepository: (
+      ...args: Parameters<typeof RepositoryInspection.discoverRepository>
+    ) => Pick<
+      ReturnType<typeof RepositoryInspection.discoverRepository>,
+      'repositoryRoot'
+    >;
+    projectAuthorityRemap: AuthorityRemapProjector;
+  }>;
+
 type AuthorityRemapCliInput = Readonly<{
   schemaVersion: 1;
   kind: 'workflow.authority-remap-request.v1';
@@ -94,60 +102,52 @@ function readAuthorityRemapInput(
   }
   return value as AuthorityRemapCliInput;
 }
-function loadT3BoundaryTypeScript(): T3BoundaryTypeScriptApi {
-  try {
-    return toolingRequire('typescript') as T3BoundaryTypeScriptApi;
-  } catch {
-    throw workflowError(
-      'T3_BOUNDARY_SCANNER_UNAVAILABLE',
-      'The T3 boundary inventory is a Jigwright source-repository command and requires its development TypeScript parser.',
-      ExitCode.verification,
-    );
-  }
-}
-export function dispatchBoundaryCommand(
-  rest: string[],
-  cwd: string,
-): CommandResult {
-  const command = 'boundary';
-  const [subcommand, ...options] = rest;
-  if (subcommand === 'remap') {
+
+export function createBoundaryCommand(operations: BoundaryCommandOperations) {
+  const {
+    discoverRepository,
+    projectAuthorityRemap,
+    loadWorkflowConformanceVectorsV2,
+  } = operations;
+  function dispatchBoundaryCommand(rest: string[], cwd: string): CommandResult {
+    const command = 'boundary';
+    const [subcommand, ...options] = rest;
+    if (subcommand === 'remap') {
+      if (
+        options.length !== 2 ||
+        options[0] !== '--input' ||
+        options[1] === undefined
+      ) {
+        throw usage(
+          'Usage: pnpm workflow boundary remap --input <request.json> [--json]',
+        );
+      }
+      const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+      const input = readAuthorityRemapInput(cwd, options[1]);
+      return {
+        command,
+        ok: true,
+        result: projectAuthorityRemap({
+          repositoryRoot,
+          baseCommit: input.baseCommit,
+          moveCommit: input.moveCommit,
+          ...(input.materializationCommit === null
+            ? {}
+            : { materializationCommit: input.materializationCommit }),
+          renamePairs: input.renamePairs,
+          authorityPlan: input.authorityPlan,
+        }),
+      };
+    }
     if (
-      options.length !== 2 ||
-      options[0] !== '--input' ||
-      options[1] === undefined
+      subcommand !== 'vectors' ||
+      (options.length !== 0 &&
+        !(options.length === 1 && options[0] === '--check'))
     ) {
       throw usage(
-        'Usage: pnpm workflow boundary remap --input <request.json> [--json]',
+        'Usage: pnpm workflow boundary vectors [--check] [--json]\n       pnpm workflow boundary remap --input <request.json> [--json]',
       );
     }
-    const repositoryRoot = discoverRepository(cwd).repositoryRoot;
-    const input = readAuthorityRemapInput(cwd, options[1]);
-    return {
-      command,
-      ok: true,
-      result: projectAuthorityRemap({
-        repositoryRoot,
-        baseCommit: input.baseCommit,
-        moveCommit: input.moveCommit,
-        ...(input.materializationCommit === null
-          ? {}
-          : { materializationCommit: input.materializationCommit }),
-        renamePairs: input.renamePairs,
-        authorityPlan: input.authorityPlan,
-      }),
-    };
-  }
-  if (
-    (subcommand !== 'inventory' && subcommand !== 'vectors') ||
-    (options.length !== 0 &&
-      !(options.length === 1 && options[0] === '--check'))
-  ) {
-    throw usage(
-      'Usage: pnpm workflow boundary <inventory|vectors> [--check] [--json]\n       pnpm workflow boundary remap --input <request.json> [--json]',
-    );
-  }
-  if (subcommand === 'vectors') {
     const vectors = loadWorkflowConformanceVectorsV2();
     return {
       command,
@@ -160,13 +160,5 @@ export function dispatchBoundaryCommand(
       },
     };
   }
-  return {
-    command,
-    ok: true,
-    result: inspectT3BoundaryInventory({
-      repositoryRoot: discoverRepository(cwd).repositoryRoot,
-      check: options[0] === '--check',
-      typescript: loadT3BoundaryTypeScript(),
-    }),
-  };
+  return dispatchBoundaryCommand;
 }

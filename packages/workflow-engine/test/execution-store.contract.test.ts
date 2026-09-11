@@ -21,14 +21,14 @@ import {
 } from '../src/runtime/storage-journal/execution-store.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
-import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import {
   createProviderInvocationRequest,
   evaluateProviderProcess,
   type ProviderInvocationRequest,
   type ProviderProcessOutcome,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/modules/provider-orchestration/provider-runtime-evidence.ts';
 import {
   BLIND_SURVEY_OUTPUT_SCHEMA,
@@ -48,10 +48,10 @@ import {
   readProviderInvocationRequest,
   recoverProviderInvocationCompletion,
   storeProviderExecutionPolicySnapshot,
-  type BlindSurveyManifest,
-  type ProviderLeaseClaim,
   type ProviderInvocationAcceptanceBinding,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import type { BlindSurveyManifest } from '../src/modules/investigation/manifest/blind-survey-manifest.ts';
+import type { ProviderLeaseClaim } from '../src/modules/provider-orchestration/provider-invocation-lifecycle.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
 const CHANGE_ID = 'demo-change';

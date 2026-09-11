@@ -20,8 +20,6 @@ import {
   type AuditDestructionGrantPayload,
   type AuthorityAuditAnchorBackend,
   type AuthorityAuditAppendInput,
-  type AuthorityAuditLedgerScope,
-  type Sha256Digest,
 } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import { recordAuthorityAuditEvent } from '../src/runtime/storage-journal/authority-audit-service.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
@@ -835,3 +833,8 @@ function digestCanonicalEnvelope(
 ): Sha256Digest {
   return digest(`${canonicalJson(envelope)}\n`);
 }
+
+import {
+  type AuthorityAuditLedgerScope,
+  type Sha256Digest,
+} from '../src/modules/authority/authority-audit-contract.ts';

@@ -1,3 +1,5 @@
+import type { GitState } from '../../modules/repository-consumer/repository-git-state.ts';
+export type { GitState } from '../../modules/repository-consumer/repository-git-state.ts';
 /**
  * Discovers repository state and fingerprints tracked, changed, and ignored worktree content.
  *
@@ -13,7 +15,7 @@ import {
   workflowError,
   WorkflowError,
 } from '../../foundation/errors/errors.ts';
-import { normalizeChangedPath } from '../session-workspace/paths.ts';
+import { normalizeChangedPath } from '../../foundation/repository-path/repository-path.ts';
 import { runGit } from './git-command.ts';
 import {
   fingerprintIgnoredEntry,
@@ -29,16 +31,6 @@ import {
   listTrackedPathsAtCommit,
   splitNull,
 } from './git-tracked-paths.ts';
-
-export type GitState = {
-  repositoryRoot: string;
-  repositoryRealPath: string;
-  gitCommonDirectory: string;
-  branch: string | null;
-  head: string;
-  tree: string;
-  statusEntries: string[];
-};
 
 export function discoverRepository(cwd: string): GitState {
   const repositoryRoot = runGit(cwd, ['rev-parse', '--show-toplevel']).trim();

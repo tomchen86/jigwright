@@ -20,7 +20,7 @@ import {
   grantTransitionPreconditionChanged,
   type TransitionDefinition,
 } from '../../modules/authority/grant-transition-registry.ts';
-import { assertSessionId } from '@jigwright/core/runtime-path-kernel';
+import { assertSessionId } from '@jigwright/core/workflow-identifiers';
 import {
   SYSTEM_DOCUMENT_DISPOSITION_TRANSITION as TRANSITION,
   SYSTEM_DOCUMENT_DISPOSITION_REQUIRED,

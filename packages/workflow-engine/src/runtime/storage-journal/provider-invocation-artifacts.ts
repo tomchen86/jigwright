@@ -17,23 +17,19 @@ import {
   assertPrivateInvestigationDirectory,
 } from './investigation-private-files.ts';
 import { type ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
-import {
-  type InvestigationRuntimePaths,
-  assertInvocationId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
 import {
   readCompleteProviderRetentionReceipt,
   providerRetentionArtifact,
   providerRetentionReviewRootArtifact,
 } from './provider-retention-receipt.ts';
 import { planReviewSnapshotLineCount } from '../../modules/assurance/plan-review.ts';
-import {
-  type PlanReviewSnapshotRuntime,
-  type BlindSurveyManifest,
-  type ProviderInvocationManifest,
-  type CreateProviderInvocationInput,
-  type ProviderInvocationRecord,
-} from './provider-invocation-types.ts';
+import type { PlanReviewSnapshotRuntime } from '../../modules/assurance/provider-review-manifests.ts';
+import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
+import type { ProviderInvocationManifest } from '../../modules/provider-orchestration/provider-invocation-manifest.ts';
+import type { CreateProviderInvocationInput } from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   providerInvocationDirectory,
   invocationUnsafe,

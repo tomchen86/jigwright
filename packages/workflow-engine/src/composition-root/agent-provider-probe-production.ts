@@ -24,7 +24,7 @@ import {
   type AgentProviderProfileSnapshot,
   type BuiltInReviewedProviderProfileSnapshot,
   type HostWrapperProviderProfileSnapshot,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
 import {
   assertProviderExecutableObservationCurrent,
   inspectProviderExecutable,
@@ -41,7 +41,7 @@ import {
   loadAgentProviderConfigFile,
 } from '../runtime/provider-execution/agent-provider-config-file.ts';
 import { loadAiAdapterPolicy } from '../runtime/provider-execution/ai-adapter-policy.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../runtime/provider-execution/built-in-provider-definition.ts';
+import {resolveBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
 import { createProviderExecutionEnvironment } from '../runtime/provider-execution/execution-environment.ts';
 import {
   projectBuiltInProviderDefinitionIdentity,

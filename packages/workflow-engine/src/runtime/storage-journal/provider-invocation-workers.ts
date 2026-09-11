@@ -17,19 +17,17 @@ import {
   privatePathExists,
   readPrivateCanonicalJson,
 } from './investigation-private-files.ts';
-import {
-  type InvestigationRuntimePaths,
-  assertInvocationId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
 import {
   withRepositoryLifecycleOperation,
   runtimePaths,
 } from '../session-workspace/session-store.ts';
-import {
-  type ProviderLeaseClaim,
-  type ProviderWorkerLeaseClaim,
-  type ProviderInvocationRecord,
-} from './provider-invocation-types.ts';
+import type {
+  ProviderLeaseClaim,
+  ProviderWorkerLeaseClaim,
+} from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import { readProviderInvocationRequest } from './provider-invocation-artifacts.ts';
 import {
   leaseInvalid,

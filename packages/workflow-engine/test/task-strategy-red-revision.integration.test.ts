@@ -1,3 +1,6 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import { startSession } from '../src/application/execute-task/session.ts';
 import path from 'node:path';
@@ -11,7 +14,7 @@ import {
   adoptCurrentTaskStrategyImplementation,
   adoptCurrentTaskStrategyCorrection,
 } from '../src/application/execute-task/task-strategy-patch.ts';
-import { beginTaskStrategyRedRevision } from '../src/application/execute-task/task-strategy-red-revision.ts';
+import { beginTaskStrategyRedRevision } from '../src/composition-root/task-strategy-red-revision-production.ts';
 import { parseTaskStrategyRedRevisionRequest } from '../src/runtime/storage-journal/task-strategy-red-revision-store.ts';
 import { checkSession } from '../src/application/finalize/verification.ts';
 import {
@@ -27,7 +30,12 @@ test('routine resume revises an in-scope sealed RED without a planning revision'
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
@@ -115,19 +123,33 @@ test('ordinary resume discovers every RED revision crash before current-ref publ
       'tdd-single-agent',
     );
     try {
-      const session = startSession(repository, 'demo-change', '1.1');
+      const session = startSession(
+        productionChangeRoutingAdmissionReader,
+        repository,
+        'demo-change',
+        '1.1',
+      );
       const testPath = path.join(repository, 'test/feature.test.mjs');
       fs.mkdirSync(path.dirname(testPath), { recursive: true });
       fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-      const predecessor = sealTaskStrategyRed(repository, session.sessionId, {
-        explicitActor: 'codex',
-        environment: {},
-      });
+      const predecessor = sealTaskStrategyRed(
+        productionChangeRoutingAdmissionReader,
+        repository,
+        session.sessionId,
+        {
+          explicitActor: 'codex',
+          environment: {},
+        },
+      );
       const implementationPath = path.join(repository, 'src/feature.ts');
       fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
       fs.writeFileSync(implementationPath, 'export const feature = true;\n');
       assert.ok(
-        adoptCurrentTaskStrategyImplementation(repository, session.sessionId),
+        adoptCurrentTaskStrategyImplementation(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+        ),
       );
       const request = {
         schemaVersion: 1 as const,
@@ -196,14 +218,24 @@ test('a rejected RED revision preflight cannot poison the next exact request', (
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-    const predecessor = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const predecessor = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
 
     assert.throws(
       () =>
@@ -246,19 +278,33 @@ test('RED revision removes only the exact imported implementation and never acce
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-    sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     assert.ok(
-      adoptCurrentTaskStrategyImplementation(repository, session.sessionId),
+      adoptCurrentTaskStrategyImplementation(
+        productionChangeRoutingAdmissionReader,
+        repository,
+        session.sessionId,
+      ),
     );
     const predecessor = inspectTaskStrategyTransaction(
       repository,
@@ -306,14 +352,24 @@ test('RED revision preserves out-of-scope bytes while refusing to reseal them', 
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-    sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const predecessor = inspectTaskStrategyTransaction(
       repository,
       session.sessionId,
@@ -368,27 +424,53 @@ test('RED revision restores every authenticated correction head in reverse order
     true,
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-    const predecessor = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const predecessor = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     assert.ok(
-      adoptCurrentTaskStrategyImplementation(repository, session.sessionId),
+      adoptCurrentTaskStrategyImplementation(
+        productionChangeRoutingAdmissionReader,
+        repository,
+        session.sessionId,
+      ),
     );
     assert.throws(
-      () => checkSession(repository, session.sessionId, { environment: {} }),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          { environment: {} },
+        ),
       hasCode('CHECK_FAILED'),
     );
     fs.writeFileSync(implementationPath, 'export const corrected = true;\n');
     assert.ok(
-      adoptCurrentTaskStrategyCorrection(repository, session.sessionId),
+      adoptCurrentTaskStrategyCorrection(
+        productionChangeRoutingAdmissionReader,
+        repository,
+        session.sessionId,
+      ),
     );
 
     const opened = beginTaskStrategyRedRevision(repository, {

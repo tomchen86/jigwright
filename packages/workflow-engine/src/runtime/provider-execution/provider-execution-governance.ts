@@ -12,21 +12,25 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import {
   inspectDurableRetentionCatalog,
   storeDurableEvidence,
+} from '../storage-journal/execution-governance-evidence-store.ts';
+import {
   inspectDurableEpochContextStore,
   initializeDurableEpochContextStore,
   rolloverDurableEpochContextStore,
-  type ContextManifest,
-  buildContextManifest,
-  type WorkflowContextState,
   assembleCurrentPromptFromStore,
   withCurrentDurableEpochContextStore,
-} from '../../modules/authority/execution-governance.ts';
+} from '../storage-journal/execution-governance-epoch-store.ts';
+import { type ContextManifest } from '../../modules/authority/execution-governance-context.ts';
+import {
+  buildContextManifest,
+  type WorkflowContextState,
+} from '../../modules/authority/execution-governance-context.ts';
 import {
   WorkflowError,
   workflowError,
   ExitCode,
 } from '../../foundation/errors/errors.ts';
-import { assertInvestigationId } from '../session-workspace/paths.ts';
+import { assertInvestigationId } from '../../foundation/repository-path/repository-path.ts';
 import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import type { ProviderPromptContextBinding } from '../../modules/provider-orchestration/agent-runtime-port.ts';
 import {

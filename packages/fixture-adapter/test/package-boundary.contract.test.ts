@@ -30,6 +30,7 @@ test('@jigwright/fixture-adapter has one-way public package dependencies', () =>
   assert.equal(manifest.name, '@jigwright/fixture-adapter');
   assert.deepEqual(Object.keys(manifest.dependencies ?? {}).sort(), [
     '@jigwright/core',
+    '@jigwright/repository-runtime',
   ]);
   assert.deepEqual(Object.keys(manifest.exports ?? {}).sort(), [
     '.',
@@ -60,7 +61,8 @@ test('@jigwright/fixture-adapter has one-way public package dependencies', () =>
       assert.equal(
         specifier.startsWith('.') ||
           specifier.startsWith('node:') ||
-          specifier.startsWith('@jigwright/core/'),
+          specifier.startsWith('@jigwright/core/') ||
+          specifier === '@jigwright/repository-runtime/paths',
         true,
         `${file} imports undeclared package ${specifier}`,
       );
@@ -235,6 +237,7 @@ test('the public fixture repository-consumer port exposes only current Work Regi
 test('consumer-neutral package sources reject every known expense-app coupling class', () => {
   const sourceRoots = [
     path.resolve(packageRoot, '../core/src'),
+    path.resolve(packageRoot, '../repository-runtime/src'),
     path.resolve(packageRoot, '../agent-runtime/src'),
     path.resolve(packageRoot, '../openspec-adapter/src'),
     path.resolve(packageRoot, '../github-adapter/src'),

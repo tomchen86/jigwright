@@ -8,11 +8,11 @@ Keep canonical facts in their owning records and regenerate their readable views
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.projection-readme v=1 digest=sha256:230e9fffab08a2db74ad2005f531bd54aa910c6ccfc7281c71f3c01a67c851ae -->
+<!-- jigwright:region id=documents.projection-readme v=1 digest=sha256:70e2069cea066344bbb12522a8012323e1670eec27759b7205d4a38d463ff3c0 -->
 
 <!-- prettier-ignore-start -->
 
-8 files changed in this module since confirmation.
+12 files changed in this module since confirmation.
 
 ## Commands
 
@@ -46,9 +46,13 @@ Header history compares Git blame at the explanation confirmation with this sour
 
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
+| [document-refresh-policy.ts](document-refresh-policy.ts) | Pure section, policy and reviewed proposal decisions for curated document refreshes. | 0 | History unavailable |
+| [document-refresh-storage.ts](document-refresh-storage.ts) | Feature storage boundary: writes to a target are only supplied inside its lock. | 0 | History unavailable |
 | [engine-projection-registry.ts](engine-projection-registry.ts) | Declares generated document outputs, their triggers and privileged projection path ownership. | 1 | History unavailable |
+| [handoff.ts](handoff.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [investigation-design-projection.ts](investigation-design-projection.ts) | Projects investigation WHY overlays into the managed ledger region of a design document. | 1 | History unavailable |
 | [investigation-term-projection.ts](investigation-term-projection.ts) | Projects current PlanReview terms into bounded reviewer contribution deltas. | 1 | History unavailable |
+| [managed-documents.ts](managed-documents.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [module-readme-projection.ts](module-readme-projection.ts) | Derives module reference sections from snapshot CLI usage, union types, contracts and source headers. | 1 | Header changed since confirmation |
 | [projection-service.ts](projection-service.ts) | Locates, renders, and conditionally updates engine-owned document regions. | 1 | History unavailable |
 | [system-document-projections.ts](system-document-projections.ts) | Projects the contract map, proof coverage and original requirements as readable text. | 2 | Possibly stale |

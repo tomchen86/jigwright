@@ -6,12 +6,12 @@
  * - Recovery status carries an authority descriptor and an explicit
  *   nullable quarantine marker.
  */
-import type { BootstrapDependencies } from './intervention-control-bootstrap.ts';
+import type { BootstrapDependencies } from '../../modules/authority/intervention-bootstrap-contract.ts';
 import type {
   ControlPlaneRecoveryApprovalSummary,
   ControlPlaneRecoveryExecutorDependencies,
 } from './intervention-control-updater.ts';
-import type { MaintenanceApprovalSummary } from './intervention-maintenance.ts';
+import type { MaintenanceApprovalSummary } from '../../modules/authority/intervention-bootstrap-contract.ts';
 import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
 import type { RecoveryAuthorityDescriptorV1 } from '../../modules/authority/recovery-authority-contract.ts';
 import type {

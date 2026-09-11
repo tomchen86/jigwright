@@ -11,7 +11,7 @@ import type { EvidenceNode } from '@jigwright/core/evidence-node';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { WorkflowError } from '../../foundation/errors/errors.ts';
 import { readPlanReviewNode } from '../../modules/assurance/plan-review.ts';
-import type { CollaborationGrantRequest } from '../../modules/authority/collaboration-grant.ts';
+import type { CollaborationGrantRequest } from '../../modules/authority/collaboration-grant-codec.ts';
 import {
   classSampleSeed,
   planClassSampleAudits,

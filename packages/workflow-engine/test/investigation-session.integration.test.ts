@@ -10,19 +10,21 @@ import {
   getInvestigationStatus,
   publishProviderResultToInvestigation,
   resumeInvestigationSession,
-  startInvestigationSession,
+  startInvestigationSession as startInvestigationSessionWithMandate,
 } from '../src/adapters/planning/investigation/investigation-session.ts';
 import {
   getProposeStatus,
   resumePropose,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
+import { checkpointContributionDigest } from '../src/modules/investigation/domain/investigation-checkpoint-contract.ts';
 import {
-  checkpointContributionDigest,
   compareAndSwapInvestigationSession,
+  readInvestigationSession,
+} from '../src/runtime/storage-journal/investigation-session-records.ts';
+import {
   inspectInvestigationQuarantineState,
   inspectInvestigationResolutionState,
-  readInvestigationSession,
-} from '../src/runtime/storage-journal/investigation-session-store.ts';
+} from '../src/runtime/storage-journal/human-resolution-state.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   claimProviderInvocation,
@@ -1086,3 +1088,10 @@ test('a rejected propose envelope names the envelope and the offending keys', ()
     },
   );
 });
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+
+const startInvestigationSession = startInvestigationSessionWithMandate.bind(
+  undefined,
+  taskMandateOperations,
+);

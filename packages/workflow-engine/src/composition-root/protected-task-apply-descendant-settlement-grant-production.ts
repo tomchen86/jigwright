@@ -20,16 +20,17 @@ import {
   type ProtectedTaskApplyDescendantSettlementParametersV1,
 } from '../modules/authority/protected-task-apply-descendant-settlement-grant.ts';
 import type { TransitionObservationContext } from '../modules/authority/grant-transition-registry.ts';
-import { loadWorkflowConfig } from '../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../runtime/repository-observation/workflow-configuration.ts';
 import { discoverRepository } from '../runtime/repository-transaction/git.ts';
 import {
-  grantRecordDigest,
   grantStorePaths,
-  inspectPreparedGrantDescendantTree,
-  readGrantRecord,
+  createFileGrantRecordStore,
+} from '../runtime/storage-journal/grant-store.ts';
+import {
+  grantRecordDigest,
   type GrantRecord,
   type PreparedGrantRecord,
-} from '../runtime/storage-journal/grant-store.ts';
+} from '../modules/authority/grant-records.ts';
 import { runtimePaths } from '../runtime/session-workspace/session-store.ts';
 import { observeCurrentProtectedTaskApplyRecoveryRequest } from './protected-task-apply-recovery-grant-production.ts';
 
@@ -59,7 +60,10 @@ export function observeCurrentProtectedTaskApplyDescendantSettlementRequest(
     recoveryDetails(details),
   );
   const { paths, parent } = settlementRuntime(cwd, details.parentChallengeId);
-  const currentTree = inspectPreparedGrantDescendantTree(paths, parent);
+  const currentTree =
+    createFileGrantRecordStore(paths).inspectPreparedGrantDescendantTree(
+      parent,
+    );
   if (
     canonicalJson(currentTree) !== canonicalJson(details.preparedDescendantTree)
   ) {
@@ -119,7 +123,9 @@ export function observeCurrentProtectedTaskApplyDescendantSettlement(
     throw settlementChanged('Prepared parent Grant changed during settlement.');
   }
   const descendants = parameters.preparedDescendantTree.nodes.map((node) => {
-    const record = readGrantRecord(paths, node.challengeId);
+    const record = createFileGrantRecordStore(paths).readGrantRecord(
+      node.challengeId,
+    );
     if (record.state === 'prepared') {
       assertExactPreparedNode(record, node);
       return Object.freeze({ node, state: 'prepared' as const });
@@ -147,7 +153,10 @@ export function observeCurrentProtectedTaskApplyDescendantSettlement(
     return Object.freeze({ node, state: 'settled' as const });
   });
   if (descendants.every(({ state }) => state === 'prepared')) {
-    const currentTree = inspectPreparedGrantDescendantTree(paths, parent);
+    const currentTree =
+      createFileGrantRecordStore(paths).inspectPreparedGrantDescendantTree(
+        parent,
+      );
     if (
       canonicalJson(currentTree) !==
       canonicalJson(parameters.preparedDescendantTree)
@@ -206,7 +215,8 @@ function settlementRuntime(cwd: string, parentChallengeId: string) {
   const config = loadWorkflowConfig(git.repositoryRoot);
   const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
   const paths = grantStorePaths(runtime.root);
-  const parent = readGrantRecord(paths, parentChallengeId);
+  const parent =
+    createFileGrantRecordStore(paths).readGrantRecord(parentChallengeId);
   if (parent.state !== 'prepared') {
     throw settlementChanged('Protected Apply parent is no longer prepared.');
   }

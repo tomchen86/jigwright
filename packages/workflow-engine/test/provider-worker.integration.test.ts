@@ -3,14 +3,17 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import os from 'node:os';
-import { runCli, createAsyncCliDispatcherForTesting } from '../src/cli.ts';
+import {
+  runCli,
+  createAsyncCliDispatcherForTesting,
+} from '../src/entrypoints/cli/workflow-cli.ts';
 import {
   ExitCode,
   type WorkflowError,
   workflowError,
 } from '../src/foundation/errors/errors.ts';
 import { createFixtureRepository, git } from './fixture.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
 import {
   runProviderWorker,
   runProviderWorkerAsync,
@@ -22,7 +25,7 @@ import {
   inspectProviderInvocationActivity,
   startProviderInvocationActivityHeartbeat,
 } from '../src/runtime/storage-journal/provider-invocation-activity.ts';
-import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import { digestPrivateDirectoryEntries } from '../src/runtime/storage-journal/provider-runtime-retention.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import {
@@ -40,11 +43,11 @@ import {
   ensureProviderPromptContext,
 } from '../src/runtime/provider-execution/provider-execution-governance.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import { buildContextManifest } from '../src/modules/authority/execution-governance-context.ts';
 import {
-  buildContextManifest,
   inspectDurableEpochContextStore,
   rolloverDurableEpochContextStore,
-} from '../src/modules/authority/execution-governance.ts';
+} from '../src/runtime/storage-journal/execution-governance-epoch-store.ts';
 import { projectProviderInvocationExecution } from '../src/modules/provider-orchestration/execution-core.ts';
 import {
   readExecutionJobState,
@@ -100,7 +103,7 @@ test('synchronous CLI refuses the hidden provider worker before repository acces
     );
 
     const cliSource = fs.readFileSync(
-      new URL('../src/cli.ts', import.meta.url),
+      new URL('../src/entrypoints/cli/workflow-cli.ts', import.meta.url),
       'utf8',
     );
     assert.doesNotMatch(cliSource, /\brunProviderWorker\b/u);

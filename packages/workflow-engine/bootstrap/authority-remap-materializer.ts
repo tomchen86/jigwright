@@ -11,7 +11,7 @@ import {
   projectAuthorityRemapMaintainerPolicy,
   projectAuthorityRemapProfiles,
 } from '../src/composition-root/authority-remap.ts';
-import type { AuthorityRemapManifestV1 } from '../src/composition-root/authority-remap.ts';
+import type { AuthorityRemapManifestV1 } from '../src/modules/authority/authority-remap-contract.ts';
 import { parseAuthorityPlanIntent } from '../src/application/control-plane/authority-plan.ts';
 import { runGitBuffer } from '../src/runtime/repository-transaction/git.ts';
 import { generateBuiltInEngineClosure } from './generate-built-in-engine-closure.ts';

@@ -1,3 +1,28 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
+import { productionPlanningArchiveSourcePolicy } from '../src/composition-root/planning-archive-projection-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { collaborationGrantCodec as productionArchiveGrantCodec } from '../src/runtime/grants/grant-services.ts';
+import { reconcileArchivedWorkItems as productionArchivedWorkItemReconciler } from '../src/composition-root/work-registry-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { renderHandoffFromTrackedFacts as productionTrackedHandoffRenderer } from '../src/composition-root/handoff-production.ts';
+const commitArchiveTransition = commitArchiveTransitionWithHandoff.bind(
+  undefined,
+  productionPlanningExecution,
+  productionPlanningArchiveSourcePolicy,
+  archiveEligibilityReplayServices,
+  productionArchiveGrantCodec,
+  productionTrackedHandoffRenderer,
+  productionArchivedWorkItemReconciler,
+);
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -5,25 +30,23 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { commitArchiveTransition } from '../src/application/archive/archive-transition.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitArchiveTransition as commitArchiveTransitionWithHandoff } from '../src/application/archive/archive-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {
   finalizeSession,
   finalizeTask,
-} from '../src/application/finalize/lifecycle.ts';
+} from '../src/composition-root/finalization-production.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
   beginTaskDiffReview,
   reconcileTaskDiffReview,
-} from '../src/application/finalize/task-diff-review-lifecycle.ts';
+} from '../src/composition-root/task-diff-review-production.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { investigationManifestPublicationNamespace } from '../src/runtime/managed-documents/transaction/investigation-publication.ts';
-import { validateCiArchiveCommit } from '../src/entrypoints/ci/ci-archive.ts';
-import { verifyPullRequest } from '../src/entrypoints/ci/ci.ts';
-import {
-  taskDiffReviewProviderSubmission,
-  type TaskDiffReviewSubmission,
-} from '../src/modules/assurance/task-diff-review-artifact.ts';
+import { investigationManifestPublicationNamespace } from '../src/modules/investigation/manifest/investigation-publication-contracts.ts';
+import { validateCiArchiveCommit } from '../src/composition-root/ci-replay-production.ts';
+import {verifyPullRequest} from '../src/composition-root/ci-verification-production.ts';
+import { taskDiffReviewProviderSubmission } from '../src/modules/assurance/task-diff-review-artifact.ts';
+import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact-record.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
@@ -60,12 +83,23 @@ test.after(() => {
 
 test('CI archive replay reaches planning archive projection only through its port', () => {
   const source = fs.readFileSync(
-    new URL('../src/entrypoints/ci/ci-archive.ts', import.meta.url),
+    new URL(
+      '../src/runtime/repository-validation/commit-replay/ci-archive.ts',
+      import.meta.url,
+    ),
     'utf8',
   );
 
   assert.match(source, /createOpenSpecPlanningArchiveProjectionPort/u);
-  assert.match(source, /preparePlanningArchiveProjection/u);
+  const projectionRules = fs.readFileSync(
+    new URL(
+      '../src/modules/assurance/commit-replay/ci-archive.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  assert.match(source, /prepareArchiveProjectionForReplay/u);
+  assert.match(projectionRules, /preparePlanningArchiveProjection/u);
   assert.doesNotMatch(source, /openspec-adapter\/validation-payload/u);
   assert.doesNotMatch(source, /openspec-executor/u);
   assert.doesNotMatch(source, /\bcreateOpenSpecProcess\b/u);
@@ -501,7 +535,12 @@ function createArchivedFixtureTemplate(): ArchivedFixture {
   writeReadyV3ExemptChange(repository);
   fs.chmodSync(runtimeRoot(repository), 0o700);
   commitPlanningTransition(repository, 'demo-change');
-  const session = startSession(repository, 'demo-change', '1.1');
+  const session = startSession(
+    productionChangeRoutingAdmissionReader,
+    repository,
+    'demo-change',
+    '1.1',
+  );
   fs.writeFileSync(
     path.join(repository, 'src/feature.ts'),
     'export const feature = "archived";\n',

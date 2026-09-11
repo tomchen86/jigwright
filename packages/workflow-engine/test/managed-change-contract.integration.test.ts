@@ -1,3 +1,10 @@
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const loadValidatedChangeContractWithReader =
+  loadValidatedChangeContractWithReaderWithContractReader.bind(
+    undefined,
+    productionChangeContractReader,
+  );
+import { productionPlanningAssurance } from '../src/composition-root/planning-assurance-production.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -18,18 +25,16 @@ import {
   type PlanningProviderChangeResult,
   type PlanningProviderPort,
 } from '../src/modules/planning-provider/planning-provider-port.ts';
-import { loadValidatedChangeContract as loadValidatedChangeContractWithReader } from '../src/adapters/planning/openspec/documents/managed-change-contract.ts';
+import { loadValidatedChangeContract as loadValidatedChangeContractWithReaderWithContractReader } from '../src/adapters/planning/openspec/documents/managed-change-contract.ts';
 import { createOpenSpecPlanningProviderPort } from '../src/composition-root/openspec-planning-provider-production.ts';
-import { repositoryPlanningPolicy } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { repositoryPlanningPolicy } from '../src/runtime/repository-observation/workflow-configuration.ts';
 import { parseValidation } from '../src/adapters/planning/openspec/documents/openspec-payloads.ts';
 import { resolveCurrentOpenSpecProviderBinding } from '../src/adapters/planning/openspec/documents/openspec-provider-binding.ts';
 import { planningProviderBindingReader } from '../src/runtime/repository-transaction/planning-provider-binding-store.ts';
-import {
-  buildInvestigationManifestDraft,
-  sealInvestigationManifestDraft,
-  type InvestigationManifestV3,
-} from '../src/modules/investigation/manifest/investigation-manifest.ts';
-import { investigationManifestPublicationNamespace } from '../src/runtime/managed-documents/transaction/investigation-publication.ts';
+import { sealInvestigationManifestDraft } from '../src/modules/investigation/manifest/investigation-manifest.ts';
+import { buildInvestigationManifestDraft } from '../src/composition-root/investigation-production.ts';
+import { type InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
+import { investigationManifestPublicationNamespace } from '../src/modules/investigation/manifest/investigation-publication-contracts.ts';
 import {
   createFixtureRepository,
   git,
@@ -54,6 +59,7 @@ function loadValidatedChangeContract(
     planningProviderBindingReader,
     ordinaryPlanReviewReplayPortForTest,
     planningProvider,
+    productionPlanningAssurance,
   );
 }
 
@@ -294,6 +300,37 @@ test('validated managed contract consumes the caller-composed planning-provider 
     assert.equal(installationCalls, 1);
     assert.equal(validationCalls, 1);
     assert.equal(inspectionCalls, 1);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('managed validation re-observes through the required live reader after provider evaluation', () => {
+  const repository = createManagedRepository();
+  const changed = new Error('second live observation failed');
+  const observations: string[] = [];
+  try {
+    assert.throws(
+      () =>
+        loadValidatedChangeContractWithReaderWithContractReader(
+          (...args) => {
+            observations.push(args[1]);
+            if (observations.length === 2) throw changed;
+            return productionChangeContractReader(...args);
+          },
+          repository,
+          CHANGE_ID,
+          planningProviderBindingReader,
+          ordinaryPlanReviewReplayPortForTest,
+          createOpenSpecPlanningProviderPort(
+            repository,
+            repositoryPlanningPolicy(repository),
+          ),
+          productionPlanningAssurance,
+        ),
+      (error) => error === changed,
+    );
+    assert.deepEqual(observations, [CHANGE_ID, CHANGE_ID]);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

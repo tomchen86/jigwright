@@ -1,3 +1,14 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -9,10 +20,10 @@ import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { readPinnedAgentRuntimePathRoleSource } from '../src/composition-root/change-role-assignment-production.ts';
 import {
   getSession,
-  startMandatedSession,
+  startMandatedSession as startMandatedSessionWithMandate,
 } from '../src/application/execute-task/session.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import { authorizeTaskMandate } from '../src/modules/authority/task-mandate.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+
 import { resolveTaskAuthorizationRequirement } from '../src/adapters/consumer/repository/work-registry/task-authorization-policy.ts';
 import {
   git,
@@ -50,6 +61,7 @@ test('managed session activation binds the exact top-level mandate without confl
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, CHANGE_ID);
     const session = startMandatedSession(
+      productionChangeRoutingAdmissionReader,
       repository,
       CHANGE_ID,
       '1.1',
@@ -70,7 +82,7 @@ test('ordinary open-task CLI needs no task mandate', () => {
   const repository = prepareRepository();
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/cli.ts',
+    'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
   );
   try {
     enableConditionalTaskAuthorization(repository);
@@ -178,7 +190,7 @@ test('open-task selects the next incomplete task for an already committed plan',
   const repository = prepareRepository(trustedSigner);
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/cli.ts',
+    'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
   );
   const changeId = CHANGE_ID;
   try {
@@ -216,7 +228,7 @@ test('ordinary propose CLI starts without a task mandate', () => {
   );
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/cli.ts',
+    'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
   );
   const changeId = 'ordinary-propose';
   const intentPath = path.join(inputDirectory, 'intent.json');
@@ -281,7 +293,7 @@ test('protected propose CLI requires a task mandate before durable planning', ()
   );
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/cli.ts',
+    'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
   );
   const changeId = 'protected-propose';
   const intentPath = path.join(inputDirectory, 'intent.json');
@@ -329,3 +341,11 @@ test('protected propose CLI requires a task mandate before durable planning', ()
     fs.rmSync(inputDirectory, { recursive: true, force: true });
   }
 });
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const { authorizeTaskMandate } = taskMandateOperations;
+
+const startMandatedSession = startMandatedSessionWithMandate.bind(
+  undefined,
+  taskMandateOperations,
+);

@@ -1,3 +1,11 @@
+import { taskMandateOperations } from '../../composition-root/task-mandate-production.ts';
+import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+type TaskMandateDependencies = Pick<
+  TaskMandateOperations,
+  | 'assertActiveTaskMandateBindingUnderLifecycleLock'
+  | 'recordTaskMandateProviderInvocationUnderLifecycleLock'
+  | 'withActiveTaskMandateBinding'
+>;
 /**
  * Runs provider invocations and publishes their admitted results and
  * terminal follow-ups.
@@ -34,7 +42,7 @@ import type {
   ProviderInvocationAcceptanceBinding,
   ProviderRuntimeProtocolReceipt,
 } from '../../composition-root/agent-runtime-production.ts';
-import { readInvestigationSession } from '../../runtime/storage-journal/investigation-session-store.ts';
+import { readInvestigationSession } from '../../runtime/storage-journal/investigation-session-records.ts';
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
 import {
   createAgentRuntimeHostExecutionBindingV1,
@@ -67,14 +75,14 @@ import {
 import {
   assertTaskDiffReviewProviderOwnerCurrent,
   withTaskDiffReviewProviderLifecycleOperation,
-} from '../../application/finalize/task-diff-review-lifecycle.ts';
+} from '../../composition-root/task-diff-review-production.ts';
 import {
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR,
   TASK_STRATEGY_IMPLEMENTATION_PROVIDER_OUTPUT_SCHEMA,
   taskStrategyImplementationOutputValidator,
 } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
-import { assertTaskStrategyImplementationProviderOwnerCurrent } from '../../application/execute-task/task-strategy-implementation-lifecycle.ts';
+import { assertTaskStrategyImplementationProviderOwnerCurrent } from '../../composition-root/task-strategy-production.ts';
 import {
   BLIND_SURVEY_OUTPUT_SCHEMA,
   BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA,
@@ -99,9 +107,11 @@ import {
   readProviderInvocationCancellationRequestForWorkerClaim,
   readProviderInvocationRuntimeReceipt,
   readProviderInvocationRequest,
-  type ProviderInvocationFailure,
-  type ProviderInvocationRecord,
 } from '../../runtime/storage-journal/provider-invocation-store.ts';
+import type {
+  ProviderInvocationFailure,
+  ProviderInvocationRecord,
+} from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   isProposeExemptionInvestigationId,
   readProposeExemptionSession,
@@ -111,15 +121,10 @@ import {
   processProviderFailureRetry,
   pumpProviderRetrySchedules,
   type ProviderRetrySchedulePumpOptions,
-} from '../../runtime/provider-execution/provider-retry-scheduler.ts';
+} from '../../composition-root/provider-retry-production.ts';
 import { runEvidenceRetentionMaintenance } from '../../runtime/provider-execution/retention-control.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
-import {
-  assertActiveTaskMandateBindingUnderLifecycleLock,
-  recordTaskMandateProviderInvocationUnderLifecycleLock,
-  withActiveTaskMandateBinding,
-  type TaskMandateBinding,
-} from '../../modules/authority/task-mandate.ts';
+import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import { recordProviderWorkerMaintenanceWarning } from '../../runtime/storage-journal/provider-worker-maintenance.ts';
 
 const PROVIDER_CANCELLATION_POLL_INTERVAL_MS = 25;
@@ -211,12 +216,14 @@ export function createProviderWorkerDispatcherForTesting(
  * manufacture replacement work: an already leased or terminal record is
  * rendered from its durable state, while only `prepared` may acquire a lease.
  */
-export function runProviderWorker(
+export function runProviderWorkerWithMandate(
+  taskMandate: TaskMandateDependencies,
   cwd: string,
   requestedInvocationId: string,
   options: ProviderWorkerOptions = {},
 ): ProviderWorkerResult {
   const result = runProviderWorkerWithExecution(
+    taskMandate,
     cwd,
     requestedInvocationId,
     options,
@@ -231,7 +238,8 @@ export function runProviderWorker(
 }
 
 /** Production worker path: async process execution with a typed completion receipt. */
-export async function runProviderWorkerAsync(
+export async function runProviderWorkerAsyncWithMandate(
+  taskMandate: TaskMandateDependencies,
   cwd: string,
   requestedInvocationId: string,
   options: ProviderWorkerOptions = {},
@@ -242,6 +250,7 @@ export async function runProviderWorkerAsync(
   let failureHostExecutionBinding: AgentRuntimeHostExecutionBindingV1 | null =
     null;
   const result = await runProviderWorkerWithExecution(
+    taskMandate,
     cwd,
     requestedInvocationId,
     options,
@@ -304,6 +313,7 @@ type ProviderWorkerExecution = (
 ) => AgentRuntimeSingleShotReport | Promise<AgentRuntimeSingleShotReport>;
 
 function withCurrentTaskDiffReviewProviderLifecycle<T>(
+  taskMandate: TaskMandateDependencies,
   cwd: string,
   invocation: ProviderInvocationRecord,
   sessionId: string,
@@ -337,7 +347,7 @@ function withCurrentTaskDiffReviewProviderLifecycle<T>(
         invocation.mandateBinding !== undefined &&
         invocation.mandateBinding !== null
       ) {
-        assertActiveTaskMandateBindingUnderLifecycleLock(
+        taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock(
           cwd,
           invocation.mandateBinding,
           assertOwned,
@@ -350,6 +360,7 @@ function withCurrentTaskDiffReviewProviderLifecycle<T>(
 }
 
 function runProviderWorkerWithExecution(
+  taskMandate: TaskMandateDependencies,
   cwd: string,
   requestedInvocationId: string,
   options: ProviderWorkerOptions,
@@ -391,6 +402,7 @@ function runProviderWorkerWithExecution(
             { expectedRevision: initial.revision },
           ).record
         : withCurrentTaskDiffReviewProviderLifecycle(
+            taskMandate,
             cwd,
             initial,
             taskDiffReviewOwner.sessionId,
@@ -475,7 +487,7 @@ function runProviderWorkerWithExecution(
         ExitCode.staleState,
       );
     }
-    recordTaskMandateProviderInvocationUnderLifecycleLock(
+    taskMandate.recordTaskMandateProviderInvocationUnderLifecycleLock(
       cwd,
       activeBinding,
       {
@@ -500,7 +512,7 @@ function runProviderWorkerWithExecution(
           taskDiffReviewOwner.sessionId,
           (assertOwned) =>
             claimWithActiveMandate(
-              assertActiveTaskMandateBindingUnderLifecycleLock(
+              taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock(
                 cwd,
                 initial.mandateBinding!,
                 assertOwned,
@@ -508,7 +520,7 @@ function runProviderWorkerWithExecution(
               assertOwned,
             ),
         )
-      : withActiveTaskMandateBinding(
+      : taskMandate.withActiveTaskMandateBinding(
           cwd,
           initial.mandateBinding.mandateTaskId,
           {},
@@ -898,7 +910,7 @@ function createProviderWorkerDispatcher(
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(import.meta.dirname, '../../cli.ts'),
+        path.join(import.meta.dirname, '../cli/workflow-cli.ts'),
         'provider-worker',
         record.invocationId,
         '--json',
@@ -1278,3 +1290,12 @@ function renderWorkerResult(
     failure: record.failure,
   };
 }
+
+export const runProviderWorker = runProviderWorkerWithMandate.bind(
+  undefined,
+  taskMandateOperations,
+);
+export const runProviderWorkerAsync = runProviderWorkerAsyncWithMandate.bind(
+  undefined,
+  taskMandateOperations,
+);

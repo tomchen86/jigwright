@@ -3,13 +3,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import { buildContextManifest } from '../src/modules/authority/execution-governance-context.ts';
 import {
-  buildContextManifest,
   inspectDurableEpochContextStore,
-  inspectDurableRetentionCatalog,
   rolloverDurableEpochContextStore,
+} from '../src/runtime/storage-journal/execution-governance-epoch-store.ts';
+import {
+  inspectDurableRetentionCatalog,
   storeDurableEvidence,
-} from '../src/modules/authority/execution-governance.ts';
+} from '../src/runtime/storage-journal/execution-governance-evidence-store.ts';
 import {
   assembleProviderPromptManifest,
   ensureProviderPromptContext,

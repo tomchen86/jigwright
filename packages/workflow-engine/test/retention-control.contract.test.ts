@@ -4,10 +4,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { inspectDurableRetentionCatalog } from '../src/modules/authority/execution-governance.ts';
-import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import { inspectDurableRetentionCatalog } from '../src/runtime/storage-journal/execution-governance-evidence-store.ts';
+import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
 import { prepareProviderPromptContextForInvocation } from '../src/runtime/provider-execution/provider-execution-governance.ts';
 import {
   readProviderInvocation,
@@ -16,7 +16,7 @@ import {
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import {
   inspectEvidenceRetention,
-  pinWorkflowEvidence,
+  pinWorkflowEvidence as pinWorkflowEvidenceWithMandate,
   runEvidenceRetentionMaintenance,
 } from '../src/runtime/provider-execution/retention-control.ts';
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
@@ -34,7 +34,10 @@ test('main CLI exposes bounded retention inspection without requiring mutation a
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+        ),
         'retention',
         'inspect',
         '--json',
@@ -224,3 +227,10 @@ function prepareWorkflow(changeId: string) {
     },
   };
 }
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+
+const pinWorkflowEvidence = pinWorkflowEvidenceWithMandate.bind(
+  undefined,
+  taskMandateOperations,
+);

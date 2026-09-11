@@ -1,3 +1,7 @@
+import type {
+  CollaborationGrantCodec,
+  DirectHumanReviewAttestationIssuer,
+} from '../../modules/authority/collaboration-grant-codec.ts';
 /**
  * Submits and reconciles external reviews and closures within their grant
  * transactions.
@@ -17,28 +21,22 @@ import {
 } from '../../modules/assurance/task-diff-review-input.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import {
-  type GrantedRoleAssignment,
-  authorizeGrantedOrdinaryRole,
-  admitRoleResult,
-  admitConsumedRoleResultReplay,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+import { type GrantedRoleAssignment } from '../../modules/provider-orchestration/role-assignment.ts';
+import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 import {
   type CollaborationGrantExpectedBinding,
   bindingFromPayload,
-  collaborationGrantEnvelopeDigest,
-  createDirectHumanReviewAttestation,
   type DirectHumanReviewAttestation,
-} from '../../modules/authority/collaboration-grant.ts';
+} from '../../modules/authority/collaboration-grant-codec.ts';
 import { type AuthoritativeCollaborationGrantVerifier } from '../../modules/authority/grant-verifier-port.ts';
 import { WorkflowError } from '../../foundation/errors/errors.ts';
 import {
   createTaskDiffReviewRecord,
-  type TaskDiffReviewChallengeResponseRecord,
   assertTaskDiffReviewContinuationSubmissionCurrent,
   parseTaskDiffReviewContinuationSubmission,
   createTaskDiffReviewChallengeResponse,
 } from '../../modules/assurance/task-diff-review-artifact.ts';
+import type { TaskDiffReviewChallengeResponseRecord } from '../../modules/assurance/task-diff-review-artifact-record.ts';
 import { type MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
 import { type ConsumedRoleResultReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
 import type {
@@ -81,7 +79,24 @@ export function createTaskDiffReviewExternalCommandsModule(
   >,
   lineage: ReturnType<typeof createTaskDiffReviewLineageModule>,
   inspection: ReturnType<typeof createTaskDiffReviewInspectionModule>,
+  collaborationGrants: Pick<
+    CollaborationGrantCodec,
+    'collaborationGrantEnvelopeDigest'
+  >,
+  createDirectHumanReviewAttestation: DirectHumanReviewAttestationIssuer,
+  roleResultAdmission: Pick<
+    RoleAdmissionServices,
+    | 'authorizeGrantedOrdinaryRole'
+    | 'admitRoleResult'
+    | 'admitConsumedRoleResultReplay'
+  >,
 ) {
+  const {
+    authorizeGrantedOrdinaryRole,
+    admitRoleResult,
+    admitConsumedRoleResultReplay,
+  } = roleResultAdmission;
+  const { collaborationGrantEnvelopeDigest } = collaborationGrants;
   const {
     loadActiveSessionContext,
     withRepositoryLifecycleOperation,

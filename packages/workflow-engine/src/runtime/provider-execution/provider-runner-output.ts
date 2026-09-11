@@ -18,7 +18,7 @@ import {
   type ProviderWrapperProtocolReceipt,
   assertProviderWrapperProtocolReceipt,
   ProviderWrapperProtocolError,
-} from '../../modules/provider-orchestration/agent-runtime-protocol.ts';
+} from '@jigwright/core/harness-jsonl-v1-contracts';
 import {
   outputLimitExceeded,
   nativeOutputInvalid,

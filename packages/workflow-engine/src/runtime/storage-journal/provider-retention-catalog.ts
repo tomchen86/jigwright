@@ -19,11 +19,9 @@ import {
   readPrivateCanonicalJson,
   withPrivateRuntimeLock,
   writePrivateCanonicalJsonAtomic,
-} from './investigation-session-store.ts';
-import {
-  assertInvocationId,
-  type InvestigationRuntimePaths,
-} from '../session-workspace/paths.ts';
+} from './investigation-private-files.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
 import { providerRetentionRoot } from './provider-retention-receipt.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;

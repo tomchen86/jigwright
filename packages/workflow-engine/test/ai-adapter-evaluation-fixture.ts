@@ -123,7 +123,10 @@ export function runCli(
     process.execPath,
     [
       '--experimental-strip-types',
-      path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+      path.join(
+        sourceRepositoryRoot,
+        'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+      ),
       ...args,
     ],
     {

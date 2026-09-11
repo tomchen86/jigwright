@@ -14,12 +14,12 @@ import {
   recreateProviderInvocationRequest,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
 import { inspectProviderInvocationSupersessionRelations } from '../provider-execution/provider-invocation-supersession-schema.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import {
-  type InvestigationRuntimePaths,
   assertChangeId,
   assertInvestigationId,
   assertInvocationId,
-} from '../session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import {
   type InvestigationEvidenceRefsClosure,
   readInvestigationEvidenceRefsClosure,
@@ -41,7 +41,7 @@ import {
   isTimestamp,
   providerInvocationUnsafe,
   sha256,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 import {
   assertProviderInvocationOutputManifestBinding,
   assertProviderRuntimeDurableAuthorities,

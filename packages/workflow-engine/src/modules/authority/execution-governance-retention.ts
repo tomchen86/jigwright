@@ -11,7 +11,7 @@ import {
   workflowError,
   type WorkflowError,
 } from '../../foundation/errors/errors.ts';
-import type { ContextManifest } from '../lifecycle/context-manifest-contract.ts';
+import type { ContextManifest } from './execution-governance-context.ts';
 import {
   assertBoundedInteger,
   assertDigest,

@@ -11,7 +11,7 @@
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import type { TaskMandateBinding } from './task-mandate.ts';
+import type { TaskMandateBinding } from './task-mandate-contract.ts';
 import type { GrantRequestInput, StateBinding } from './grant-core.ts';
 import { grantHasExactKeys, grantSha256 } from './grant-primitives.ts';
 import {

@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import test from 'node:test';
 
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
-import { projectPlanReviewTerms } from '../src/modules/projection/investigation-term-projection.ts';
+import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
+import { projectPlanReviewTerms } from '../src/modules/assurance/plan-review-terms.ts';
 import {
   createPlanReviewDispositionNode,
   createPlanReviewNode,
@@ -19,8 +19,8 @@ import {
   createPlanTarget,
   type PlanTargetInput,
 } from '../src/modules/assurance/plan-target.ts';
-import { createPlanningGeneration } from '../src/modules/lifecycle/planning-generation.ts';
-import { admitRoleResult } from '../src/modules/provider-orchestration/role-scheduler.ts';
+import { createPlanningGeneration } from '../src/modules/assurance/planning-generation.ts';
+import { admitRoleResult } from '../src/composition-root/role-admission-production.ts';
 import { createCurrentPlanReviewProviderEvidenceForTest } from './fixture.ts';
 
 test('exact PlanReview composes target, generation, challenge, terms, and advisory eligibility', () => {

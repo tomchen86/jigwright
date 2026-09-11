@@ -7,7 +7,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import type { ProviderWrapperSessionProtocolBinding } from '@jigwright/agent-runtime';
+import type { ProviderWrapperSessionProtocolBinding } from '@jigwright/core/harness-jsonl-v2-contracts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   type ProviderNativeSessionContinuationAuthorityV1,

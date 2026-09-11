@@ -12,9 +12,9 @@ import {
   runCheck,
   runObservedCheck,
   type CheckEvidence,
-  type ObservedCheckFailure,
 } from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
-import type { CheckDefinition } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import type { ObservedCheckFailure } from '../src/modules/assurance/check-evidence.ts';
+import type { CheckDefinition } from '../src/modules/source/check-command.ts';
 import type { InvestigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import {
   DEFAULT_TASK_STRATEGY_CORRECTION_POLICY,

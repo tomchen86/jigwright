@@ -1,3 +1,10 @@
+import { productionChangeRoutingInspector } from '../src/composition-root/change-routing-observation-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
 import { openTask } from '../src/composition-root/open-task-production.ts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -8,15 +15,15 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { validateCiPlanningCommit } from '../src/entrypoints/ci/ci-planning.ts';
+import { validateCiPlanningCommit } from '../src/composition-root/ci-replay-production.ts';
 import { commitFacts } from '../src/runtime/repository-transaction/git-transitions.ts';
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { readOpenTaskJournal } from '../src/application/execute-task/open-task.ts';
 import { readPlanningTransitionReport } from '../src/runtime/storage-journal/planning-report.ts';
-import { preparePlanningDraftWorkspace } from '../src/runtime/session-workspace/planning-workspace.ts';
-import { abortSession } from '../src/application/execute-task/session.ts';
+import { preparePlanningDraftWorkspace } from '../src/composition-root/planning-workspace-production.ts';
+import { abortSession } from '../src/composition-root/task-session-production.ts';
 import { readSessionFile } from '../src/runtime/session-workspace/session-store.ts';
-import { revokeTaskMandate } from '../src/modules/authority/task-mandate.ts';
+
 import { renderPlanningProviderBinding } from '../src/modules/planning-provider/planning-provider-binding.ts';
 import {
   createFixtureRepository,
@@ -1295,7 +1302,10 @@ function runWorkflowCli(repository: string, args: readonly string[]) {
     process.execPath,
     [
       '--experimental-strip-types',
-      path.resolve(import.meta.dirname, '../src/cli.ts'),
+      path.resolve(
+        import.meta.dirname,
+        '../src/entrypoints/cli/workflow-cli.ts',
+      ),
       ...args,
     ],
     {
@@ -1310,3 +1320,6 @@ function runWorkflowCli(repository: string, args: readonly string[]) {
     stderr: result.stderr,
   };
 }
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const { revokeTaskMandate } = taskMandateOperations;

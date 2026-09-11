@@ -23,10 +23,10 @@ import {
   readProviderInvocationEvidence,
   recoverProviderInvocationSupersession,
   storeProviderExecutionPolicySnapshot,
-  type BlindSurveyManifest,
-  type ProviderInvocationRecord,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import type { BlindSurveyManifest } from '../src/modules/investigation/manifest/blind-survey-manifest.ts';
+import type { ProviderInvocationRecord } from '../src/modules/provider-orchestration/provider-invocation-record.ts';
+import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 
 const FIRST_CREATED_AT = '2026-08-04T01:00:00.000Z';

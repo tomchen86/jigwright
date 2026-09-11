@@ -1,3 +1,9 @@
+import { productionChangeRoutingInspector } from './change-routing-observation-production.ts';
+import { loadChangeContract as productionChangeContractReader } from './consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined, productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
 /**
  * Resolves repository and active-task context for governance intake and
  * handoff rendering.
@@ -15,11 +21,11 @@ export {
   isRequirementKind,
 } from '../modules/governance-intake/intake-policy.ts';
 
-import { renderHandoff } from '../adapters/consumer/repository/handoff/handoff.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../adapters/consumer/repository/handoff/handoff.ts';
 import {
   loadWorkflowConfig,
   repositoryHandoffRelativePath,
-} from '../adapters/consumer/repository/work-registry/contracts.ts';
+} from '../runtime/repository-observation/workflow-configuration.ts';
 import type { GovernanceFindingContextV1 } from '../modules/governance-intake/governance-intake.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { discoverRepository } from '../runtime/repository-transaction/git.ts';

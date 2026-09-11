@@ -19,7 +19,7 @@ import {
 import {
   assertProviderRuntimeTerminalAuthorityPreflight,
   assertProviderRuntimeDurableAuthorities,
-} from './investigation-session-store.ts';
+} from './provider-runtime-authority.ts';
 import {
   privatePathExists,
   withPrivateRuntimeLock,
@@ -48,10 +48,8 @@ import {
   assertAgentRuntimeCompletionReceipt,
   assertAgentRuntimeProcessProgress,
 } from '../../modules/provider-orchestration/provider-runtime-evidence.ts';
-import {
-  type InvestigationRuntimePaths,
-  assertInvocationId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
 import { publishProviderNativeSessionContinuationAuthorityV1 } from './provider-native-session-store.ts';
 import {
   providerNativeSessionContinuationAuthorityObjectPathV1,
@@ -62,12 +60,14 @@ import {
   type ProviderRepairFailureInput,
   persistProviderRepairEvidence,
 } from '../provider-execution/provider-execution-governance.ts';
-import {
-  type ProviderInvocationRecord,
-  type ProviderCompletionRecovery,
-  type ProviderCompletionCandidate,
-  type ProviderInvocationFailure,
-} from './provider-invocation-types.ts';
+import type {
+  ProviderInvocationRecord,
+  ProviderInvocationFailure,
+} from '../../modules/provider-orchestration/provider-invocation-record.ts';
+import type {
+  ProviderCompletionRecovery,
+  ProviderCompletionCandidate,
+} from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
 import {
   readProviderInvocation,
   prepareProviderInvocationAcceptanceBinding,

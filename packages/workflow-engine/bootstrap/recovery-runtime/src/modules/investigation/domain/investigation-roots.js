@@ -1,3 +1,4 @@
+import { INVESTIGATION_ROOT_CANONICALIZATION_VERSION, INVESTIGATION_TERM_NORMALIZATION_VERSION, } from "./investigation-schema.js";
 /**
  * Derives canonical investigation commitments from terms, scan hits, groups
  * and dispositions.
@@ -11,8 +12,6 @@ import { canonicalJson } from "../../../foundation/canonical-json/canonical-json
 import { ExitCode, workflowError } from "../../../foundation/errors/errors.js";
 import { normalizeInvestigationTerm, } from "./investigation-terms.js";
 const DIGEST = /^[0-9a-f]{64}$/;
-export const INVESTIGATION_ROOT_CANONICALIZATION_VERSION = 'investigation-root-canonicalization.v3';
-export const INVESTIGATION_TERM_NORMALIZATION_VERSION = 'investigation-term-v1';
 /** Bind canonical terms together with every retained provenance contribution. */
 export function investigationTermSetDigest(terms) {
     const canonicalTerms = terms

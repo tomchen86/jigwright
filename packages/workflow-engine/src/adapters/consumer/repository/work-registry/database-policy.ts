@@ -12,7 +12,7 @@ import {
 } from '../../../../foundation/errors/errors.ts';
 import { createTrustedExecutionEnvironment } from '../../../../runtime/provider-execution/execution-environment.ts';
 import { resolveGitExecutable } from '../../../../runtime/repository-transaction/git.ts';
-import { repositoryDatabasePolicyConfiguration } from '../../../../modules/repository-consumer/repository-consumer-config.ts';
+import { loadRepositoryConsumerConfiguration } from '../../../../runtime/repository-observation/repository-consumer.ts';
 
 export type DisposableDatabaseEvidence = {
   identity: string;
@@ -92,7 +92,8 @@ export function createCheckEnvironmentForRepository(
 
 function assertPostgreSqlPolicyAvailable(repositoryRoot: string): void {
   const policy =
-    repositoryDatabasePolicyConfiguration(repositoryRoot).adapterId;
+    loadRepositoryConsumerConfiguration(repositoryRoot).configuration
+      .databasePolicy.adapterId;
   if (policy === 'postgresql-disposable-v1') return;
   throw workflowError(
     'DESTRUCTIVE_DATABASE_POLICY_UNAVAILABLE',

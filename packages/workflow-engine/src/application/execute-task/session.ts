@@ -1,3 +1,5 @@
+import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Admits, publishes, inspects, and aborts task execution sessions.
  *
@@ -8,7 +10,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -20,8 +22,7 @@ import {
   assertChangeId,
   assertSessionId,
   assertTaskId,
-} from '../../runtime/session-workspace/paths.ts';
-import { createTaskPlanningAssuranceBinding } from '../../modules/assurance/planning-assurance-validator.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import { reclaimDeadChangeTransitionLock } from '../../runtime/session-workspace/planning-lock.ts';
 import {
   acquireTaskSessionIsolationLeases,
@@ -47,15 +48,9 @@ import {
   withSessionOperation,
   writeJsonAtomic,
 } from '../../runtime/session-workspace/session-store.ts';
-import {
-  loadStableValidatedChangeContract,
-  productionChangeRoutingAuthorityPort,
-} from '../../composition-root/validated-contract-context.ts';
-import {
-  authorizeTaskMandateOperation,
-  type TaskMandateBinding,
-  type TaskMandateOptions,
-} from '../../modules/authority/task-mandate.ts';
+import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
+import { type TaskMandateOptions } from '../../modules/authority/task-mandate.ts';
+import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import {
   assertTaskMandateOptional,
   resolveTaskAuthorizationRequirement,
@@ -66,7 +61,7 @@ import {
   completeTaskRevisionAbort,
   prepareTaskRevisionAbort,
 } from '../revise/task-revision.ts';
-import { assertChangeRoutingAdmission } from '../../modules/lifecycle/change-routing.ts';
+
 import {
   assertProtectedTaskApplyRecoveryParameters,
   protectedTaskApplyRecoveryGrantRequired,
@@ -141,23 +136,26 @@ export type {
 } from '../finalize/verification.ts';
 
 export function assertProductionChangeRoutingAdmission(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   repositoryRoot: string,
   changeId: string,
-): ReturnType<typeof assertChangeRoutingAdmission> {
-  return assertChangeRoutingAdmission(
-    repositoryRoot,
-    changeId,
-    productionChangeRoutingAuthorityPort,
-  );
+): ReturnType<ChangeRoutingAdmissionReader> {
+  return routingAdmissionReader(repositoryRoot, changeId);
 }
 
 export function startSession(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedChangeId: string,
   requestedTaskId: string,
   options: SessionStartOptions = {},
 ): WorkflowSession {
-  const initial = inspectSessionStart(cwd, requestedChangeId, requestedTaskId);
+  const initial = inspectSessionStart(
+    routingAdmissionReader,
+    cwd,
+    requestedChangeId,
+    requestedTaskId,
+  );
   const runtime = runtimePaths(
     initial.git.gitCommonDirectory,
     initial.contract.config.runtimeDirectory,
@@ -169,7 +167,12 @@ export function startSession(
       assertRepositoryLock,
     );
     return persistSessionStart(
-      inspectSessionStart(cwd, requestedChangeId, requestedTaskId),
+      inspectSessionStart(
+        routingAdmissionReader,
+        cwd,
+        requestedChangeId,
+        requestedTaskId,
+      ),
       undefined,
       undefined,
       options.environment,
@@ -179,12 +182,14 @@ export function startSession(
 }
 
 export function preflightTaskSession(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedChangeId: string,
   requestedTaskId: string,
   options: SessionStartOptions = {},
 ): TaskSessionPreflightV1 {
   const inspection = inspectSessionStart(
+    routingAdmissionReader,
     cwd,
     requestedChangeId,
     requestedTaskId,
@@ -240,6 +245,8 @@ export function preflightTaskSession(
 }
 
 export function startMandatedSession(
+  taskMandate: Pick<TaskMandateOperations, 'authorizeTaskMandateOperation'>,
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedChangeId: string,
   requestedTaskId: string,
@@ -247,8 +254,13 @@ export function startMandatedSession(
   options: TaskMandateOptions = {},
   environment: NodeJS.ProcessEnv = process.env,
 ): WorkflowSession {
-  const initial = inspectSessionStart(cwd, requestedChangeId, requestedTaskId);
-  const authorization = authorizeTaskMandateOperation(
+  const initial = inspectSessionStart(
+    routingAdmissionReader,
+    cwd,
+    requestedChangeId,
+    requestedTaskId,
+  );
+  const authorization = taskMandate.authorizeTaskMandateOperation(
     cwd,
     requestedMandateTaskId,
     { kind: 'isolated-repository-write' },
@@ -265,7 +277,12 @@ export function startMandatedSession(
       assertRepositoryLock,
     );
     return persistSessionStart(
-      inspectSessionStart(cwd, requestedChangeId, requestedTaskId),
+      inspectSessionStart(
+        routingAdmissionReader,
+        cwd,
+        requestedChangeId,
+        requestedTaskId,
+      ),
       authorization.binding,
       undefined,
       environment,
@@ -274,6 +291,7 @@ export function startMandatedSession(
 }
 
 function inspectSessionStart(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedChangeId: string,
   requestedTaskId: string,
@@ -283,16 +301,18 @@ function inspectSessionStart(
   git: ReturnType<typeof discoverRepository>;
   contract: ValidatedChangeContract;
   branch: string;
-  routingAdmission: ReturnType<typeof assertChangeRoutingAdmission>;
+  routingAdmission: ReturnType<ChangeRoutingAdmissionReader>;
+  planningAssurance: ReturnType<
+    typeof loadStableValidatedChangeContract
+  >['planningAssurance'];
 } {
   const changeId = assertChangeId(requestedChangeId);
   const taskId = assertTaskId(requestedTaskId);
   const discovered = discoverRepository(cwd);
-  const { git, contract } = loadStableValidatedChangeContract(
-    discovered,
-    changeId,
-  );
+  const { git, contract, planningAssurance } =
+    loadStableValidatedChangeContract(discovered, changeId);
   const routingAdmission = assertProductionChangeRoutingAdmission(
+    routingAdmissionReader,
     git.repositoryRoot,
     changeId,
   );
@@ -369,6 +389,7 @@ function inspectSessionStart(
     contract,
     branch: git.branch,
     routingAdmission,
+    planningAssurance,
   };
 }
 
@@ -379,7 +400,8 @@ function persistSessionStart(
   environment: NodeJS.ProcessEnv = process.env,
   testHooks: SessionStartOptions['testHooks'] = {},
 ): WorkflowSession {
-  const { changeId, taskId, git, contract, branch } = inspection;
+  const { changeId, taskId, git, contract, branch, planningAssurance } =
+    inspection;
   const policy = contract.guard.tasks[taskId];
   if (!mandateBinding) {
     assertTaskMandateOptional(
@@ -419,7 +441,7 @@ function persistSessionStart(
       contract.checks,
       policy.requiredChecks,
     ),
-    planningAssurance: createTaskPlanningAssuranceBinding(
+    planningAssurance: planningAssurance.createTaskBinding(
       contract,
       contract.planningAssurance,
     ),
@@ -657,6 +679,7 @@ function inspectTaskSessionAdmission(
  * without ever dropping repository-wide exclusion.
  */
 export function startMandatedSessionUnderLifecycleLock(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedChangeId: string,
   requestedTaskId: string,
@@ -667,6 +690,7 @@ export function startMandatedSessionUnderLifecycleLock(
 ): WorkflowSession {
   assertRepositoryLock();
   const inspection = inspectSessionStart(
+    routingAdmissionReader,
     cwd,
     requestedChangeId,
     requestedTaskId,
@@ -683,6 +707,7 @@ export function startMandatedSessionUnderLifecycleLock(
 }
 
 export function startSessionUnderLifecycleLock(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedChangeId: string,
   requestedTaskId: string,
@@ -692,6 +717,7 @@ export function startSessionUnderLifecycleLock(
 ): WorkflowSession {
   assertRepositoryLock();
   const inspection = inspectSessionStart(
+    routingAdmissionReader,
     cwd,
     requestedChangeId,
     requestedTaskId,
@@ -731,6 +757,9 @@ function sessionLockInvalid() {
 }
 
 export function abortSession(
+  grantRecordStore: (
+    runtimeRoot: string,
+  ) => Parameters<typeof inspectPreparedGrantDescendants>[0],
   cwd: string,
   requestedSessionId: string,
   reason: string,
@@ -758,7 +787,7 @@ export function abortSession(
     initialTransaction?.protectedApply?.challengeId ?? null;
   if (initialTransaction?.protectedApply !== undefined) {
     const descendants = inspectPreparedGrantDescendants(
-      runtime.root,
+      grantRecordStore(runtime.root),
       initialTransaction.protectedApply.challengeId,
     );
     if (descendants !== null && descendants.nodes.length > 0) {

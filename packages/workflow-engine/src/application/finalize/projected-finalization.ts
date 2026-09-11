@@ -1,3 +1,7 @@
+import type {DocumentationReviewCapture} from '../../modules/assurance/documentation-closure.ts';
+import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { ManagedDocumentOperations } from '../../modules/projection/managed-documents.ts';
 /**
  * Applies projected finalize transactions and recovers their checks and
  * reports.
@@ -10,7 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
-import { parseTasks } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
 import { classifyProjectionPaths } from '../../modules/projection/engine-projection-registry.ts';
 import {
   ExitCode,
@@ -47,11 +51,9 @@ import {
   loadActiveSessionContext,
   systemDocumentDispositions,
 } from '../../composition-root/lifecycle-context.ts';
-import {
-  applyGeneratedDocumentMutations,
-  planCompletionDocuments,
-} from '../../runtime/managed-documents/validation/managed-documents.ts';
-import { assertCurrentImplementationReconciliation } from '../../modules/why-knowledge/implementation-reconciliation.ts';
+import { applyGeneratedDocumentMutations } from '../../runtime/managed-documents/validation/managed-documents.ts';
+import type { ImplementationReconciliationGate } from '../reconciliation/implementation-reconciliation.ts';
+import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 import { reconcilePredecessor } from './predecessor-reconciliation.ts';
 import type { WorkflowReport } from '../../runtime/storage-journal/report-store.ts';
 import {
@@ -67,12 +69,11 @@ import {
   restoreTaskProjection,
 } from '../../runtime/managed-documents/transaction/task-projection.ts';
 import {
-  assertTaskDiffReviewCompletionGateSatisfied,
-  loadTaskDiffDocumentationReviewCapture,
+  type TaskDiffReviewOperations,
   type TaskDiffReviewCompletionGateOptions,
 } from './task-diff-review-lifecycle.ts';
-import type { DocumentationReviewCapture } from '../../runtime/managed-documents/contracts/documentation-closure.ts';
-import { assertTaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
+
+
 import { ensureTaskMechanicalTransformationEvidence } from '../execute-task/task-mechanical-transform.ts';
 import {
   executeChecks,
@@ -130,6 +131,15 @@ export type FinalizeTaskOptions = Readonly<{
 }>;
 
 export function finalizeTaskUnlocked(
+  taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  taskDiffReview: Pick<
+    TaskDiffReviewOperations,
+    | 'assertTaskDiffReviewCompletionGateSatisfied'
+    | 'loadTaskDiffDocumentationReviewCapture'
+  >,
+  managedDocuments: Pick<ManagedDocumentOperations, 'planCompletionDocuments'>,
+  assertCurrentImplementationReconciliation: ImplementationReconciliationGate<SessionInspection>,
   cwd: string,
   requestedSessionId: string,
   environment: NodeJS.ProcessEnv,
@@ -145,7 +155,14 @@ export function finalizeTaskUnlocked(
     assertExplicitCheckRequestMatches(active, existing, options);
     assertProtectedApplyRequestMatches(existing, options);
     try {
-      return continueFinalizeTransaction(cwd, existing, environment, options);
+      return continueFinalizeTransaction(
+        routingAdmissionReader,
+        taskDiffReview,
+        cwd,
+        existing,
+        environment,
+        options,
+      );
     } catch (error) {
       if (preservesFinalizeTransaction(error)) throw error;
       rollbackPersistedFinalizeTransaction(cwd, existing.sessionId, error);
@@ -157,11 +174,16 @@ export function finalizeTaskUnlocked(
     cwd,
     requestedSessionId,
   );
-  const initial = inspectSession(cwd, requestedSessionId, {
-    ...(options.protectedApply === undefined
-      ? {}
-      : { protectedApplyAuthorization: options.protectedApply }),
-  });
+  const initial = inspectSession(
+    routingAdmissionReader,
+    cwd,
+    requestedSessionId,
+    {
+      ...(options.protectedApply === undefined
+        ? {}
+        : { protectedApplyAuthorization: options.protectedApply }),
+    },
+  );
   const session = initial.session;
   if (
     session.latestCheckReportId ||
@@ -176,9 +198,14 @@ export function finalizeTaskUnlocked(
   }
   assertCurrentImplementationReconciliation(initial);
   ensureTaskMechanicalTransformationEvidence(initial);
-  assertTaskStrategyExecutionGate(initial, environment);
+  taskStrategyExecutionGate(initial, environment);
 
-  const reconciliation = reconcilePredecessor(cwd, initial, environment);
+  const reconciliation = reconcilePredecessor(
+    routingAdmissionReader,
+    cwd,
+    initial,
+    environment,
+  );
   const completedTaskIds = [
     ...reconciliation.map(({ taskId }) => taskId),
     session.taskId,
@@ -201,7 +228,7 @@ export function finalizeTaskUnlocked(
   let transaction: FinalizeTransaction | null = null;
 
   try {
-    const generatedDocuments = planCompletionDocuments(
+    const generatedDocuments = managedDocuments.planCompletionDocuments(
       initial.git.repositoryRoot,
       { changeId: session.changeId, tasks: projection.after },
     );
@@ -270,7 +297,14 @@ export function finalizeTaskUnlocked(
       }),
     );
     maybeInterrupt(options, 'projection-prepared');
-    return continueFinalizeTransaction(cwd, transaction, environment, options);
+    return continueFinalizeTransaction(
+      routingAdmissionReader,
+      taskDiffReview,
+      cwd,
+      transaction,
+      environment,
+      options,
+    );
   } catch (error) {
     if (preservesFinalizeTransaction(error)) throw error;
     if (transaction !== null) {
@@ -282,6 +316,12 @@ export function finalizeTaskUnlocked(
 }
 
 function continueFinalizeTransaction(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  taskDiffReview: Pick<
+    TaskDiffReviewOperations,
+    | 'assertTaskDiffReviewCompletionGateSatisfied'
+    | 'loadTaskDiffDocumentationReviewCapture'
+  >,
   cwd: string,
   initial: FinalizeTransaction,
   environment: NodeJS.ProcessEnv,
@@ -290,11 +330,20 @@ function continueFinalizeTransaction(
   let transaction = initial;
   while (true) {
     if (transaction.phase === 'projection-prepared') {
-      transaction = applyPreparedFinalizeProjection(cwd, transaction, options);
+      transaction = applyPreparedFinalizeProjection(
+        routingAdmissionReader,
+        cwd,
+        transaction,
+        options,
+      );
       continue;
     }
     assertCandidateTransaction(transaction);
-    const state = inspectFinalizeTransaction(cwd, transaction);
+    const state = inspectFinalizeTransaction(
+      routingAdmissionReader,
+      cwd,
+      transaction,
+    );
     const session = state.inspection.session;
     if (transaction.phase === 'candidate-prepared') {
       if (state.indexState !== 'previous') throw transactionDiverged();
@@ -311,6 +360,7 @@ function continueFinalizeTransaction(
       );
       maybeInterrupt(options, 'checks-running');
       const verified = executeChecks(
+        routingAdmissionReader,
         cwd,
         state.inspection,
         transactionRequiredChecks(transaction, session),
@@ -346,22 +396,27 @@ function continueFinalizeTransaction(
     }
     const checkReport = currentCheckReport(state.inspection, transaction);
     if (transaction.phase === 'checked') {
-      assertTaskDiffReviewCompletionGateSatisfied(cwd, transaction.sessionId, {
-        projectedTaskIds: transaction.completedTaskIds,
-        projectionSourceDigest: transaction.projectionSourceDigest,
-        authorizedTransitionPaths: transaction.transitionPaths,
-        transactionId: transaction.transactionId,
-        candidateTree: transaction.candidateTree,
-        ...(options.consumedRoleResultReplay === undefined
-          ? {}
-          : {
-              consumedRoleResultReplay: options.consumedRoleResultReplay,
-            }),
-      });
-      const documentationReview = loadTaskDiffDocumentationReviewCapture(
+      taskDiffReview.assertTaskDiffReviewCompletionGateSatisfied(
         cwd,
         transaction.sessionId,
+        {
+          projectedTaskIds: transaction.completedTaskIds,
+          projectionSourceDigest: transaction.projectionSourceDigest,
+          authorizedTransitionPaths: transaction.transitionPaths,
+          transactionId: transaction.transactionId,
+          candidateTree: transaction.candidateTree,
+          ...(options.consumedRoleResultReplay === undefined
+            ? {}
+            : {
+                consumedRoleResultReplay: options.consumedRoleResultReplay,
+              }),
+        },
       );
+      const documentationReview =
+        taskDiffReview.loadTaskDiffDocumentationReviewCapture(
+          cwd,
+          transaction.sessionId,
+        );
       if (state.indexState === 'previous') {
         stageExactPaths(
           state.inspection.git.repositoryRoot,
@@ -456,6 +511,7 @@ type CandidateFinalizeTransaction = FinalizeTransaction & {
 };
 
 function applyPreparedFinalizeProjection(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   transaction: FinalizeTransaction,
   options: FinalizeTaskOptions,
@@ -502,15 +558,20 @@ function applyPreparedFinalizeProjection(
   );
   maybeInterrupt(options, 'projection-applied');
 
-  const projected = inspectSession(cwd, transaction.sessionId, {
-    expectedSession: context.session,
-    projectedTaskIds: [...transaction.completedTaskIds],
-    projectionSourceDigest: transaction.projectionSourceDigest,
-    authorizedTransitionPaths: [...transaction.transitionPaths],
-    ...(transaction.protectedApply === undefined
-      ? {}
-      : { protectedApplyAuthorization: transaction.protectedApply }),
-  });
+  const projected = inspectSession(
+    routingAdmissionReader,
+    cwd,
+    transaction.sessionId,
+    {
+      expectedSession: context.session,
+      projectedTaskIds: [...transaction.completedTaskIds],
+      projectionSourceDigest: transaction.projectionSourceDigest,
+      authorizedTransitionPaths: [...transaction.transitionPaths],
+      ...(transaction.protectedApply === undefined
+        ? {}
+        : { protectedApplyAuthorization: transaction.protectedApply }),
+    },
+  );
   assertProjectionBaseCurrent(projected.git, transaction, projectionPaths);
   const preview = previewExactStaging(
     projected.git.repositoryRoot,
@@ -567,6 +628,7 @@ function assertCandidateTransaction(
 }
 
 function inspectFinalizeTransaction(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   transaction: CandidateFinalizeTransaction,
 ) {
@@ -580,15 +642,20 @@ function inspectFinalizeTransaction(
       throw transactionDiverged();
     }
   }
-  const inspection = inspectSession(cwd, transaction.sessionId, {
-    expectedSession: context.session,
-    projectedTaskIds: [...transaction.completedTaskIds],
-    projectionSourceDigest: transaction.projectionSourceDigest,
-    authorizedTransitionPaths: [...transaction.transitionPaths],
-    ...(transaction.protectedApply === undefined
-      ? {}
-      : { protectedApplyAuthorization: transaction.protectedApply }),
-  });
+  const inspection = inspectSession(
+    routingAdmissionReader,
+    cwd,
+    transaction.sessionId,
+    {
+      expectedSession: context.session,
+      projectedTaskIds: [...transaction.completedTaskIds],
+      projectionSourceDigest: transaction.projectionSourceDigest,
+      authorizedTransitionPaths: [...transaction.transitionPaths],
+      ...(transaction.protectedApply === undefined
+        ? {}
+        : { protectedApplyAuthorization: transaction.protectedApply }),
+    },
+  );
   if (
     JSON.stringify(inspection.changedPaths) !==
     JSON.stringify(transaction.changedPaths)

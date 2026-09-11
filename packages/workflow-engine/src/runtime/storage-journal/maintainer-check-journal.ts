@@ -18,7 +18,7 @@ import type {
   MaintainerChecksAttestationV2,
   MaintainerPreapprovalCheck,
 } from '../../modules/authority/maintainer-grant-v2.ts';
-import type { CheckDependency } from '../../modules/authority/maintainer-manifest.ts';
+import type { CheckDependency } from '../../modules/authority/maintainer-manifest-contracts.ts';
 import { writeJsonAtomic } from '../session-workspace/session-store.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;

@@ -38,7 +38,7 @@ import {
   type InvestigationGroupFacts,
   type ReviewedPathRelationship,
 } from '../../modules/investigation/domain/investigation-groups.ts';
-import { type InvestigationScanFacts } from '../../modules/investigation/domain/investigation-scanner.ts';
+import { type InvestigationScanFacts } from '../../modules/investigation/domain/investigation-scan-facts.ts';
 import { INVESTIGATION_LIMITS } from '../../modules/investigation/domain/investigation-terms.ts';
 import {
   buildInvestigationV3WhyAuthoring,
@@ -50,7 +50,8 @@ import {
   parsePathRoleRegistry,
   type PathRoleRegistry,
 } from '../../modules/source/path-role-registry.ts';
-import { type ReuseCoverageRecord } from '../../modules/why-knowledge/semantic-manifest-reuse.ts';
+import { type ReuseCoverageRecord } from '../../modules/assurance/review-coverage.ts';
+
 import { sha256 } from './propose-common.ts';
 import { reportProposeAssuranceAssessment } from './propose-investigation-manifest.ts';
 import {
@@ -62,10 +63,10 @@ import type {
   GroupDispositionsPayload,
   InvestigationCheckpointEnvelope,
   InvestigationSession,
-  NormalizedChangeIntent,
   ProposeRuntime,
   WhyAnswersPayload,
 } from './propose-runtime.ts';
+import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
 import {
   type ProposeOutput,
   type RebuiltInvestigation,

@@ -18,7 +18,7 @@ import {
   resumePropose,
   startPropose,
   startProposeFromFile,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import { readCurrentProposeExemptionSession } from '../src/runtime/storage-journal/propose-exemption-store.ts';
 import { readPlanReviewNode } from '../src/modules/assurance/plan-review.ts';
 import { type ProviderRunnerReport } from '../src/runtime/provider-execution/provider-runner.ts';

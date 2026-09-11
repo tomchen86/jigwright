@@ -13,11 +13,11 @@ import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import type { ProviderInvocationAcceptanceBinding } from '../../modules/provider-orchestration/agent-runtime-port.ts';
 import { assertProviderInvocationAcceptanceBinding } from '../../modules/provider-orchestration/provider-runtime-evidence.ts';
 import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
-import type { TaskMandateBinding } from '../../modules/authority/task-mandate.ts';
-import {
-  type InvestigationStartReservation,
-  type InvestigationStartReservationSnapshot,
-} from './provider-invocation-types.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
+import type {
+  InvestigationStartReservation,
+  InvestigationStartReservationSnapshot,
+} from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
 
 export const DIGEST = /^[0-9a-f]{64}$/;
 

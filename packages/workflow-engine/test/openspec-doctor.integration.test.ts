@@ -425,7 +425,7 @@ test('real workflow doctor reports the pinned local OpenSpec installation', () =
     process.execPath,
     [
       '--experimental-strip-types',
-      'packages/workflow-engine/src/cli.ts',
+      'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
       'doctor',
       '--json',
     ],
@@ -756,7 +756,10 @@ function runWorkflowDoctor(repository: string): {
     process.execPath,
     [
       '--experimental-strip-types',
-      path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+      path.join(
+        sourceRepositoryRoot,
+        'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+      ),
       'doctor',
       '--json',
     ],

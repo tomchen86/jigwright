@@ -6,7 +6,7 @@
  * - Capability lookup requires a registered provider and an exact
  *   purpose/profile pair.
  */
-import { isBuiltInProviderFamily, listBuiltInProviderCapabilityDescriptors, } from '@jigwright/agent-runtime';
+import { isBuiltInProviderFamily, listBuiltInProviderCapabilityDescriptors, } from '@jigwright/core/built-in-provider-catalog';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 const BUILT_IN_PROVIDERS = Object.freeze(listBuiltInProviderCapabilityDescriptors().map(({ providerFamily: id, capabilities }) => Object.freeze({
     id,

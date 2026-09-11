@@ -1,3 +1,4 @@
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Builds implementation subjects, status, and collaboration authority from
  * current RED state.
@@ -14,16 +15,16 @@ import {
   type TaskStrategyCorrectionProjection,
 } from './task-strategy-correction.ts';
 import {
-  type TaskStrategyImplementationSubject,
   createTaskStrategyCorrectionSubject,
   createTaskStrategyImplementationSubject,
 } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
+import type { TaskStrategyImplementationSubject } from '../../modules/provider-orchestration/task-strategy-implementation-manifest.ts';
 import { type ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import {
   type CollaborationGrantRequest,
   type CollaborationGrantExpectedBinding,
   collaborationPolicyDigestForPhase,
-} from '../../modules/authority/collaboration-grant.ts';
+} from '../../modules/authority/collaboration-grant-codec.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import {
   type AuthoritativeCollaborationGrantVerifier,
@@ -44,7 +45,7 @@ import type {
   TaskStrategyRedAuthor,
   TaskStrategyImplementationStatus,
 } from './task-strategy-implementation-lifecycle.ts';
-export function createTaskStrategyImplementationContext(
+export function createTaskStrategyImplementationContext(routingAdmissionReader: ChangeRoutingAdmissionReader,
   runtime: TaskStrategyImplementationRuntimeBindings,
 ) {
   const {
@@ -182,7 +183,7 @@ export function createTaskStrategyImplementationContext(
         ExitCode.guard,
       );
     }
-    const inspection = inspectSession(cwd, context.session.sessionId, {
+    const inspection = inspectSession(routingAdmissionReader, cwd, context.session.sessionId, {
       expectedSession: context.session,
     });
     const preview = previewExactStaging(
@@ -266,7 +267,7 @@ export function createTaskStrategyImplementationContext(
     context: ReturnType<typeof loadActiveSessionContext>,
     transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>,
   ) {
-    const inspection = inspectSession(cwd, context.session.sessionId, {
+    const inspection = inspectSession(routingAdmissionReader, cwd, context.session.sessionId, {
       expectedSession: context.session,
     });
     const task = inspection.contract.execution?.tasks[context.session.taskId];
@@ -295,7 +296,7 @@ export function createTaskStrategyImplementationContext(
     greenFailureRecord: TaskStrategyGreenFailureRecord | null;
   }> {
     const initialSubject = createSubject(transaction);
-    const inspection = inspectSession(cwd, context.session.sessionId, {
+    const inspection = inspectSession(routingAdmissionReader, cwd, context.session.sessionId, {
       expectedSession: context.session,
     });
     const projection = resolveCurrentTaskStrategyCorrection(inspection);

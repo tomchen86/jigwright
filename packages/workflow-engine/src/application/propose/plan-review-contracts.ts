@@ -8,15 +8,13 @@
 import type { ProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  assertPlanReviewSubject,
-  type PlanReviewSubject,
-} from '../../modules/assurance/plan-review.ts';
+import { assertPlanReviewSubject } from '../../modules/assurance/plan-review.ts';
+import type { PlanReviewSubject } from '../../modules/assurance/plan-review-subject.ts';
 import {
   isKnownCollaborationPolicyDigestForPhase,
   type CollaborationGrantExpectedBinding,
   type CollaborationGrantRequest,
-} from '../../modules/authority/collaboration-grant.ts';
+} from '../../modules/authority/collaboration-grant-codec.ts';
 import {
   createProviderInvocationRequest,
   isRoleContextSharingGrantedAssignment,
@@ -26,7 +24,7 @@ import type {
   ProviderRoleAssignment,
   RecordedRoleParticipant,
   RoleParticipant,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+} from '../../modules/provider-orchestration/role-assignment.ts';
 import type { RoleTopologyResolutionV1 } from '../../modules/provider-orchestration/role-topology-resolution.ts';
 import {
   BLIND_SURVEY_GRANT_REASON,

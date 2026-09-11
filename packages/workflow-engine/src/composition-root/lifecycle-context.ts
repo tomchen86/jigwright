@@ -7,7 +7,7 @@
  */
 import path from 'node:path';
 
-import { loadWorkflowConfig } from '../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../runtime/repository-observation/workflow-configuration.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { listStagedPaths } from '../runtime/repository-transaction/git-transitions.ts';
 import {
@@ -16,11 +16,11 @@ import {
   listChangedPaths,
   runGit,
 } from '../runtime/repository-transaction/git.ts';
+import { investigationRuntimePaths } from '../runtime/session-workspace/paths.ts';
 import {
   assertInvestigationId,
   assertSessionId,
-  investigationRuntimePaths,
-} from '../runtime/session-workspace/paths.ts';
+} from '../foundation/repository-path/repository-path.ts';
 import type { WorkflowReport } from '../runtime/storage-journal/report-store.ts';
 import {
   reportString,
@@ -32,7 +32,7 @@ import {
   runtimePaths,
   withSessionOperation,
 } from '../runtime/session-workspace/session-store.ts';
-import type { SessionInspection } from '../application/finalize/verification.ts';
+import type { SessionInspection } from '../modules/lifecycle/session-inspection.ts';
 import {
   createPlanningProviderAuthoringPort,
   planningProviderReviewedAssetMirrors,
@@ -47,7 +47,7 @@ import {
 } from '../runtime/repository-transaction/archive-delta-verifier.ts';
 import {
   grantStorePaths,
-  readGrantRecord,
+  createFileGrantRecordStore,
 } from '../runtime/storage-journal/grant-store.ts';
 import {
   readSystemDocumentReviewRecord,
@@ -157,7 +157,9 @@ export const systemDocumentDispositions =
     readSystemDocumentReviewRecord,
     writeSystemDocumentReviewRecord,
     readCompletedGrant(runtimeRoot, challengeId) {
-      const record = readGrantRecord(grantStorePaths(runtimeRoot), challengeId);
+      const record = createFileGrantRecordStore(
+        grantStorePaths(runtimeRoot),
+      ).readGrantRecord(challengeId);
       return record.state === 'completed' ? record : null;
     },
   });

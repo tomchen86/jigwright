@@ -25,7 +25,7 @@ import {
   type HumanResolutionGrantPublicationStoreInspection,
   type HumanResolutionGrantPublicationStoreState,
   type QuarantinedHumanResolutionGrantPublication,
-} from './human-resolution-grant-publication-contract.ts';
+} from '../../modules/investigation/domain/human-resolution-grant-publication-contract.ts';
 import {
   ACTIVE_HUMAN_RESOLUTION_JOURNAL,
   readActiveHumanResolutionJournal,
@@ -44,16 +44,22 @@ import {
 } from './investigation-private-files.ts';
 import {
   assertHumanResolutionGrantId,
+  humanResolutionGrantUnsafe,
+  isBoundedResolutionText,
+} from '../../modules/investigation/domain/human-resolution-values.ts';
+import {
   humanResolutionGrantPublicationRecoveryAmbiguous,
   humanResolutionGrantPublicationRecoveryInvalid,
-  humanResolutionGrantPublicationRecoveryStale,
-  humanResolutionGrantUnsafe,
   humanResolutionJournalPath,
-  humanResolutionJournalUnsafe,
   humanResolutionPaths,
-  isBoundedResolutionText,
 } from './investigation-resolution-values.ts';
-import { isDigest, isRecord, sha256 } from './investigation-store-values.ts';
+import { humanResolutionGrantPublicationRecoveryStale } from '../../modules/investigation/domain/human-resolution-grant-publication-contract.ts';
+import { humanResolutionJournalUnsafe } from '../../modules/investigation/domain/human-resolution-journal-contract.ts';
+import {
+  isDigest,
+  isRecord,
+  sha256,
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 
 export function inspectInterruptedHumanResolutionGrantPublications(
   paths: InvestigationRuntimePaths,

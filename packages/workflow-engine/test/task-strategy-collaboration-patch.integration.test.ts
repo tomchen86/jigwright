@@ -1,3 +1,6 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import { startSession } from '../src/application/execute-task/session.ts';
 import fs from 'node:fs';
@@ -6,19 +9,17 @@ import { sealTaskStrategyRed } from '../src/application/execute-task/task-strate
 import {
   beginTaskStrategyImplementation,
   inspectTaskStrategyImplementation,
-} from '../src/application/execute-task/task-strategy-implementation-lifecycle.ts';
+} from '../src/composition-root/task-strategy-production.ts';
 import assert from 'node:assert/strict';
-import {
-  type CollaborationGrantRequest,
-  issueCollaborationGrant,
-} from '../src/modules/authority/collaboration-grant.ts';
+import { type CollaborationGrantRequest } from '../src/modules/authority/collaboration-grant-codec.ts';
+import { issueCollaborationGrant } from '../src/runtime/grants/collaboration-grant-issuance.ts';
 import {
   authoritativeCollaborationGrantVerifierForTest,
   runtimeRoot,
 } from './fixture.ts';
 import { readTaskStrategyPatchRecord } from '../src/runtime/storage-journal/task-strategy-patch-store.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
-import { inspectCollaborationGrants } from '../src/runtime/storage-journal/collaboration-grant-store.ts';
+import { inspectCollaborationGrants } from '../src/runtime/storage-journal/collaboration-grant-records.ts';
 import { checkSession } from '../src/application/finalize/verification.ts';
 import {
   createCrossAgentFixture,
@@ -36,16 +37,26 @@ test('zero callable implementers expose only caller-supplied collaboration recov
     { codex: false, claude: false },
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.mkdirSync(path.join(repository, 'test'), { recursive: true });
     fs.writeFileSync(
       path.join(repository, 'test/feature.test.mjs'),
       "throw new Error('feature behavior is not implemented');\n",
     );
-    sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
 
     const paused = beginTaskStrategyImplementation(
       repository,
@@ -77,16 +88,26 @@ test('zero-provider caller patch imports only through an exact consumed collabor
   ) as { trustedSigners: Array<{ identity: string }> };
   const signer = collaborationSigner(policy.trustedSigners[0]!.identity);
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.mkdirSync(path.join(repository, 'test'), { recursive: true });
     fs.writeFileSync(
       path.join(repository, 'test/feature.test.mjs'),
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const red = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const paused = beginTaskStrategyImplementation(
       repository,
       session.sessionId,
@@ -172,13 +193,28 @@ test('zero-provider caller patch imports only through an exact consumed collabor
     const heldCallerResultPath = `${callerResultPath}.held`;
     fs.renameSync(callerResultPath, heldCallerResultPath);
     assert.throws(
-      () => checkSession(repository, session.sessionId, { environment: {} }),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          { environment: {} },
+        ),
       hasCode('TASK_STRATEGY_CORRECTION_STATE_STALE'),
     );
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
     fs.renameSync(heldCallerResultPath, callerResultPath);
     assert.equal(
-      checkSession(repository, session.sessionId, { environment: {} }).passed,
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeRoutingAdmissionReader,
+        repository,
+        session.sessionId,
+        { environment: {} },
+      ).passed,
       true,
     );
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '2');
@@ -202,16 +238,26 @@ test('zero-provider caller patch validates frozen RED bytes before reserving its
   ) as { trustedSigners: Array<{ identity: string }> };
   const signer = collaborationSigner(policy.trustedSigners[0]!.identity);
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     const originalTest =
       "throw new Error('feature behavior is not implemented');\n";
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, originalTest);
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const red = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const paused = beginTaskStrategyImplementation(
       repository,
       session.sessionId,
@@ -277,16 +323,26 @@ test('durable consumed caller grant resumes the exact patch after interruption',
   ) as { trustedSigners: Array<{ identity: string }> };
   const signer = collaborationSigner(policy.trustedSigners[0]!.identity);
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.mkdirSync(path.join(repository, 'test'), { recursive: true });
     fs.writeFileSync(
       path.join(repository, 'test/feature.test.mjs'),
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const red = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const paused = beginTaskStrategyImplementation(
       repository,
       session.sessionId,

@@ -10,7 +10,7 @@ import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
-import type { TrackedTreeSnapshot } from '../../../runtime/repository-transaction/tracked-tree-reader.ts';
+import type { ScanTreeSnapshot } from './investigation-scanner.ts';
 import type { AppliedInvestigationDisposition } from './investigation-domain.ts';
 import type { InvestigationV3WhyRequirement } from '../manifest/investigation-why-domain.ts';
 
@@ -58,7 +58,7 @@ export type InvestigationFullBlobFact = Readonly<{
  * decisions.
  */
 export function deriveInvestigationFullBlobFacts(input: {
-  snapshot: TrackedTreeSnapshot;
+  snapshot: ScanTreeSnapshot;
   requirements: readonly InvestigationV3WhyRequirement[];
   dispositions: readonly AppliedInvestigationDisposition[];
 }): InvestigationFullBlobFact[] {

@@ -10,7 +10,7 @@ import {
   getInvestigationStatus,
 } from '../src/adapters/planning/investigation/investigation-session.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
 import {
   claimProviderInvocation,
   failProviderInvocation,
@@ -20,7 +20,7 @@ import {
 import {
   processProviderFailureRetry,
   readProviderAutomaticRetrySchedule,
-} from '../src/runtime/provider-execution/provider-retry-scheduler.ts';
+} from '../src/composition-root/provider-retry-production.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
 test('an expired provider lease schedules one freshly fenced replacement Attempt', () => {
@@ -166,7 +166,7 @@ function intent() {
     summary: 'Exercise automatic replacement after a provider lease expires.',
     sourceRefs: [],
     explicitPaths: [
-      'packages/workflow-engine/src/runtime/provider-execution/provider-retry-scheduler.ts',
+      'packages/workflow-engine/src/application/provider-retry/provider-failure-retry.ts',
     ],
     explicitSymbols: ['processProviderFailureRetry'],
     explicitConfigKeys: [],

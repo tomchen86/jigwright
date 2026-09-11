@@ -17,7 +17,7 @@ import {
   releaseProviderInvocationWorkerFence,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
 import {
   builtInProviderDefinitionSnapshotForTest,
   createFixtureRepository,

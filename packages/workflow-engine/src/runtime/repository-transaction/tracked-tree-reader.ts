@@ -1,3 +1,7 @@
+import type {
+  TrackedTreePathIdentity,
+  TrackedTreeSkipReason,
+} from '../../modules/source/tracked-path.ts';
 /**
  * Reads bounded pinned Git tree objects into canonical tracked snapshots.
  *
@@ -73,22 +77,6 @@ export type TrackedTreeLimits = {
 export type TrackedTreeOperationalDeadline = {
   expiresAtMonotonicMillis: number;
 };
-
-export type TrackedTreePathIdentity = {
-  rawBase64: string;
-  utf8: string | null;
-};
-
-export type TrackedTreeSkipReason =
-  | 'symlink'
-  | 'submodule'
-  | 'binary'
-  | 'invalid-utf8'
-  | 'oversize'
-  | 'sensitive-path'
-  | 'sensitive-suppressed'
-  | 'total-budget'
-  | 'unsupported';
 
 /**
  * One enumerated tree entry with preserved object identity. Path identity is raw

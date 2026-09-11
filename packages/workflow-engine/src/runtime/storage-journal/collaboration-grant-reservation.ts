@@ -7,15 +7,17 @@
  */
 import {
   type CollaborationGrantEnvelope,
-  parseCollaborationGrantEnvelope,
-  canonicalCollaborationGrantEnvelope,
   assertCollaborationGrantId,
   validateCollaborationGrantPayload,
-  verifyCollaborationGrantCapability,
-  validateCollaborationGrantEnvelope,
   bindingFromPayload,
   type CollaborationGrantExpectedBinding,
 } from '../../modules/authority/collaboration-grant-codec.ts';
+import {
+  parseCollaborationGrantEnvelope,
+  canonicalCollaborationGrantEnvelope,
+  verifyCollaborationGrantCapability,
+  validateCollaborationGrantEnvelope,
+} from '../grants/grant-services.ts';
 import { withRepositoryLifecycleOperation } from '../session-workspace/repository-lifecycle-lock.ts';
 import {
   collaborationGrantStorePaths,
@@ -37,14 +39,13 @@ import type {
   CollaborationGrantSelection,
   CollaborationGrantSelectableDegradedForm,
   CollaborationGrantSelectionCoreBinding,
-} from './collaboration-grant-store-types.ts';
+} from '../../modules/authority/collaboration-grant-records.ts';
+
 import fs from 'node:fs';
 import { assertAuthoritativeCollaborationGrantVerifier } from '../../modules/authority/grant-verifier-port.ts';
-import {
-  executeGrantLifecycleTransitionV1,
-  GRANT_LIFECYCLE_CONTRACT_VERSION_V1,
-  isGrantLifecycleTransitionError,
-} from '../../modules/authority/optional-grants-package.ts';
+import { executeGrantLifecycleTransitionV1 } from '../grants/optional-grants-package.ts';
+import { isGrantLifecycleTransitionError } from '../../modules/authority/grant-errors.ts';
+import { GRANT_LIFECYCLE_CONTRACT_VERSION_V1 } from '@jigwright/core/grant-lifecycle-contracts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
   exactDigest,
@@ -55,7 +56,7 @@ import {
   deepFreeze,
   isRecord,
   hasExactKeys,
-} from './collaboration-grant-store-values.ts';
+} from '../../modules/authority/collaboration-grant-values.ts';
 import {
   readTerminal,
   cleanupNonterminal,

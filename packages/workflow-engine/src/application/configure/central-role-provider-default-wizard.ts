@@ -6,7 +6,7 @@
  * - Saving requires confirmation and the same admitted provider
  *   configuration used to present the choices.
  */
-import type { AgentProviderConfigSnapshot } from '@jigwright/agent-runtime';
+import type { AgentProviderConfigSnapshot } from '@jigwright/core/agent-provider-config';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

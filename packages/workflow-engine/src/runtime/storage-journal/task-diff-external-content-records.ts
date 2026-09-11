@@ -6,17 +6,17 @@
  * - Content records carry no admission, grant, or closure authority.
  */
 import {
-  type TaskDiffReviewChallengeResponseRecord,
   parseTaskDiffReviewChallengeResponseRecord,
-  type TaskDiffReviewSubmission,
   parseTaskDiffReviewSubmission,
-  type TaskDiffReviewContinuationSubmission,
   parseTaskDiffReviewContinuationSubmission,
 } from '../../modules/assurance/task-diff-review-artifact.ts';
-import {
-  type TaskDiffReviewScope,
-  parseTaskDiffReviewScope,
-} from '../../modules/assurance/task-diff-review.ts';
+import type {
+  TaskDiffReviewChallengeResponseRecord,
+  TaskDiffReviewSubmission,
+  TaskDiffReviewContinuationSubmission,
+} from '../../modules/assurance/task-diff-review-artifact-record.ts';
+import { parseTaskDiffReviewScope } from '../../modules/assurance/task-diff-review.ts';
+import type { TaskDiffReviewScope } from '../../modules/assurance/task-diff-review-record.ts';
 import {
   type PrepareTaskDiffExternalChallengeResponseInput,
   type TaskDiffExternalChallengeResponse,

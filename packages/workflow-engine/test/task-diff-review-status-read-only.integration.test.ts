@@ -1,3 +1,22 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import {
+  productionChangeRoutingInspector,
+  productionChangeRoutingAdmissionReader,
+} from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -5,13 +24,13 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { issueCollaborationGrant } from '../src/modules/authority/collaboration-grant.ts';
-import { collaborationGrantStorePaths } from '../src/runtime/storage-journal/collaboration-grant-store.ts';
+import { issueCollaborationGrant } from '../src/runtime/grants/collaboration-grant-issuance.ts';
+import { collaborationGrantStorePaths } from '../src/runtime/storage-journal/collaboration-grant-private-files.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { finalizeTask } from '../src/composition-root/finalization-production.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { productionConsumedRoleResultReplayPort } from '../src/composition-root/grant-verifier-composition.ts';
 import {
@@ -19,8 +38,8 @@ import {
   beginTaskDiffReview,
   inspectTaskDiffReviewStatus,
   submitExternalTaskDiffReview,
-} from '../src/application/finalize/task-diff-review-lifecycle.ts';
-import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact.ts';
+} from '../src/composition-root/task-diff-review-production.ts';
+import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact-record.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
 import {
   authoritativeCollaborationGrantVerifierForTest,
@@ -40,7 +59,12 @@ test('grant-backed TaskDiffReview status is structurally strict and never perfor
   const originalMkdtempSync = fs.mkdtempSync;
   let verificationTemporaryDirectories = 0;
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',

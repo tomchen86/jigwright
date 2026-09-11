@@ -8,7 +8,10 @@ import { createFixtureRepository } from './fixture.ts';
 
 test('the production CLI routes retained-candidate reissue before legacy grant fallback', () => {
   const repository = createFixtureRepository();
-  const cli = path.resolve(import.meta.dirname, '../src/cli.ts');
+  const cli = path.resolve(
+    import.meta.dirname,
+    '../src/entrypoints/cli/workflow-cli.ts',
+  );
   try {
     const result = spawnSync(
       process.execPath,

@@ -14,15 +14,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
+import { createProviderWrapperSessionProtocolParser } from '@jigwright/agent-runtime';
 import {
-  createProviderWrapperSessionProtocolParser,
   parseAgentProviderConfigToml,
+  type AgentProviderConfigSnapshot,
+} from '@jigwright/core/agent-provider-config';
+import {
   providerNativeSessionIdDigest,
   renderProviderWrapperSessionFrame,
-  type AgentProviderConfigSnapshot,
   type ProviderWrapperNativeSessionIdentityObservation,
   type ProviderWrapperSessionProtocolBinding,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/harness-jsonl-v2-contracts';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {

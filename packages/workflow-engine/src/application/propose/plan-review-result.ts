@@ -1,3 +1,4 @@
+import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 /**
  * Admits provider review results and incorporates their investigation consequences.
  *
@@ -25,19 +26,16 @@ import { type InvestigationTermContribution } from '../../modules/investigation/
 import {
   deriveReviewerTermDelta,
   projectPlanReviewTerms,
-} from '../../modules/projection/investigation-term-projection.ts';
+} from '../../modules/assurance/plan-review-terms.ts';
 import {
   isRoleContextSharingGrantedAssignment,
   type ProviderProcessResult,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
+import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
 import {
-  admitRoleContextSharingResult,
-  admitRoleResult,
-  type AdmittedRoleResult,
-  normalizeRoleContextSharingResultAdmissionBinding,
   type ProviderRoleAssignment,
   type RecordedRoleParticipant,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+} from '../../modules/provider-orchestration/role-assignment.ts';
 import {
   readPlanReviewGrantRequirement,
   readTrackedPlanReview,
@@ -51,8 +49,8 @@ import {
 } from './propose-context.ts';
 import { createReviewerTermSourceNode } from './propose-evidence.ts';
 import { rebuildInvestigation } from './propose-investigation-rebuild.ts';
+import type { CollaborationGrantUseProjection } from '../../modules/authority/collaboration-grant-records.ts';
 import type {
-  CollaborationGrantUseProjection,
   EvidenceNode,
   HeldChangeTransitionAuthority,
   InvestigationStatus,
@@ -76,22 +74,27 @@ import {
  * consume and admission in one operation makes crash replay exercise the same
  * one-use transition instead of a test-only lifecycle helper.
  */
-export function completeRoleContextSharingPlanReviewAdmission(input: {
-  gitCommonDirectory: string;
-  requirement: RoleContextSharingPlanReviewRequirementV3;
-  authorization: RoleContextSharingPlanReviewAuthorizationV1;
-  assignment: ProviderRoleAssignment;
-  author: RecordedRoleParticipant;
-  content: Parameters<typeof admitRoleContextSharingResult>[0]['content'];
-  providerInvocation: Parameters<
-    typeof admitRoleContextSharingResult
-  >[0]['providerInvocation'];
-  policy: ReturnType<typeof parseMaintainerPolicy>;
-  verifier: unknown;
-  lifecycle: RoleContextSharingGrantLifecyclePortV1;
-  now?: Date;
-  assertOwned: () => void;
-}): Readonly<{
+export function completeRoleContextSharingPlanReviewAdmission(
+  roleAdmission: RoleAdmissionServices,
+  input: {
+    gitCommonDirectory: string;
+    requirement: RoleContextSharingPlanReviewRequirementV3;
+    authorization: RoleContextSharingPlanReviewAuthorizationV1;
+    assignment: ProviderRoleAssignment;
+    author: RecordedRoleParticipant;
+    content: Parameters<
+      RoleAdmissionServices['admitRoleContextSharingResult']
+    >[0]['content'];
+    providerInvocation: Parameters<
+      RoleAdmissionServices['admitRoleContextSharingResult']
+    >[0]['providerInvocation'];
+    policy: ReturnType<typeof parseMaintainerPolicy>;
+    verifier: unknown;
+    lifecycle: RoleContextSharingGrantLifecyclePortV1;
+    now?: Date;
+    assertOwned: () => void;
+  },
+): Readonly<{
   roleResult: AdmittedRoleResult;
   consumed: ReturnType<typeof consumeRoleContextSharingPlanReview>;
 }> {
@@ -117,13 +120,14 @@ export function completeRoleContextSharingPlanReviewAdmission(input: {
     identityAssurance: 'adapter-assigned' as const,
     engineSpawned: true,
   });
-  const admissionBinding = normalizeRoleContextSharingResultAdmissionBinding({
-    assignment: input.assignment,
-    author: input.author,
-    participant,
-    content: input.content,
-    providerInvocation: input.providerInvocation,
-  });
+  const admissionBinding =
+    roleAdmission.normalizeRoleContextSharingResultAdmissionBinding({
+      assignment: input.assignment,
+      author: input.author,
+      participant,
+      content: input.content,
+      providerInvocation: input.providerInvocation,
+    });
   if (
     canonicalJson(admissionBinding.author) !==
     canonicalJson(input.requirement.author)
@@ -134,7 +138,7 @@ export function completeRoleContextSharingPlanReviewAdmission(input: {
       ExitCode.guard,
     );
   }
-  const consumed = consumeRoleContextSharingPlanReview({
+  const consumed = consumeRoleContextSharingPlanReview(roleAdmission, {
     gitCommonDirectory: input.gitCommonDirectory,
     requirement: input.requirement,
     authorization: input.authorization,
@@ -153,7 +157,7 @@ export function completeRoleContextSharingPlanReviewAdmission(input: {
   });
   return Object.freeze({
     consumed,
-    roleResult: admitRoleContextSharingResult({
+    roleResult: roleAdmission.admitRoleContextSharingResult({
       assignment: admissionBinding.assignment,
       author: admissionBinding.author,
       participant: admissionBinding.participant,
@@ -167,7 +171,13 @@ export function completeRoleContextSharingPlanReviewAdmission(input: {
 export function materializePlanReviewResult(
   services: Pick<
     ProposeRuntime,
-    'evidence' | 'grants' | 'investigation' | 'provider' | 'workspace'
+    | 'evidence'
+    | 'grants'
+    | 'investigation'
+    | 'provider'
+    | 'workspace'
+    | 'roleAdmission'
+    | 'planningEvidence'
   >,
   cwd: string,
   status: ProposeLifecycleStatus,
@@ -297,7 +307,7 @@ export function materializePlanReviewResult(
   };
   let grantUse: CollaborationGrantUseProjection | null = null;
   let grantAdmission: NonNullable<
-    Parameters<typeof admitRoleResult>[0]['grantValidation']
+    Parameters<RoleAdmissionServices['admitRoleResult']>[0]['grantValidation']
   > | null = null;
   const providerInvocation = {
     invocationId: reservation.request.invocationId,
@@ -366,6 +376,7 @@ export function materializePlanReviewResult(
       authorization.expectedBinding.baselineCommit,
     );
     roleContextSharingAdmission = completeRoleContextSharingPlanReviewAdmission(
+      services.roleAdmission,
       {
         gitCommonDirectory: context.git.gitCommonDirectory,
         requirement: durableRequirement.requirement,
@@ -443,7 +454,7 @@ export function materializePlanReviewResult(
     roleContextSharingAssignment !== null &&
     roleContextSharingAdmission !== null
       ? roleContextSharingAdmission.roleResult
-      : admitRoleResult({
+      : services.roleAdmission.admitRoleResult({
           assignment: reservation.assignment,
           author: reservation.author,
           participant:
@@ -507,6 +518,7 @@ export function materializePlanReviewResult(
           roleResult,
         },
         repositoryEvidence: resolvePlanReviewRepositoryEvidence(
+          services.planningEvidence,
           context.git.repositoryRoot,
           reservation.planning.generation.investigationBaseline.tree,
           reviewNode,
@@ -514,6 +526,7 @@ export function materializePlanReviewResult(
         ),
         planningTarget: reservation.manifest.planningTarget,
         planningEvidence: resolvePlanReviewPlanningEvidence(
+          services.planningEvidence,
           context.git.repositoryRoot,
           reservation.manifest.planningTarget,
           reviewNode,

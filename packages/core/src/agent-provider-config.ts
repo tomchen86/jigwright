@@ -1,0 +1,976 @@
+/**
+ * Parses provider configuration into immutable snapshots and resolves
+ * eligible provider profiles for each role.
+ *
+ * Invariants:
+ * - assertAgentProviderConfigSnapshot rebuilds the payload and rejects it
+ *   unless sha256(canonicalJson(payload)) equals the stored configDigest.
+ * - A host-wrapper profile is rejected unless its start_args carry exactly
+ *   the {request_file} placeholder (and, when present, resume_args carry
+ *   {native_session_id, request_file}).
+ */
+import crypto from 'node:crypto';
+import path from 'node:path';
+
+import { canonicalJson } from './canonical-json.ts';
+
+const MAX_DOCUMENT_BYTES = 1_048_576;
+const MAX_PROVIDERS = 32;
+const MAX_ARGUMENTS = 64;
+const MAX_VALUE_BYTES = 4_096;
+const IDENTIFIER = /^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/u;
+const FAMILY = /^[a-z0-9](?:[a-z0-9._/-]{0,126}[a-z0-9])?$/u;
+const PROTOCOL = /^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/u;
+const DIGEST = /^[0-9a-f]{64}$/u;
+const ROLES = ['author', 'builder', 'reviewer'] as const;
+export const AGENT_PROVIDER_CAPABILITIES = [
+  'fresh-session',
+  'plan-review',
+  'resumable-session',
+  'survey',
+  'task-diff-review',
+  'task-implementation',
+] as const;
+const RESERVED_PROFILE_IDS = new Set(['adaptive', 'caller', 'current']);
+
+export type AgentProviderRole = (typeof ROLES)[number];
+export type AgentProviderCapability =
+  (typeof AGENT_PROVIDER_CAPABILITIES)[number];
+export type AgentProviderTrustTier = 'built-in-reviewed' | 'host-wrapper';
+
+type AgentProviderProfileSnapshotBase = Readonly<{
+  schemaVersion: 1;
+  kind: 'agent-provider-profile-snapshot';
+  id: string;
+  logicalProviderId: string;
+  family: string;
+  capabilities: readonly AgentProviderCapability[];
+  trustTier: AgentProviderTrustTier;
+  enabled: boolean;
+  protocol: string;
+  platform: string;
+  executable: string;
+  shell: false;
+  profileDigest: string;
+}>;
+
+export type BuiltInReviewedProviderProfileSnapshot =
+  AgentProviderProfileSnapshotBase &
+    Readonly<{
+      trustTier: 'built-in-reviewed';
+      startArgs: readonly [];
+      resumeArgs: readonly [];
+      promptInput: null;
+      cancel: null;
+    }>;
+
+export type HostWrapperProviderProfileSnapshot =
+  AgentProviderProfileSnapshotBase &
+    Readonly<{
+      trustTier: 'host-wrapper';
+      protocol: 'harness-jsonl-v1' | 'harness-jsonl-v2';
+      startArgs: readonly string[];
+      resumeArgs: readonly string[];
+      promptInput: 'stdin';
+      cancel: 'process-group';
+    }>;
+
+export type AgentProviderProfileSnapshot =
+  BuiltInReviewedProviderProfileSnapshot | HostWrapperProviderProfileSnapshot;
+
+export type AgentProviderPreferences = Readonly<
+  Record<AgentProviderRole, readonly string[]>
+>;
+
+export type AgentProviderConfigSnapshot = Readonly<{
+  schemaVersion: 2;
+  kind: 'agent-provider-config-snapshot';
+  platform: string;
+  providers: readonly AgentProviderProfileSnapshot[];
+  preferences: AgentProviderPreferences;
+  globalRanking: readonly string[];
+  globalRankingSource: 'explicit';
+  configDigest: string;
+}>;
+
+export type AgentProviderProfileResolution = Readonly<{
+  profile: AgentProviderProfileSnapshot;
+  role: AgentProviderRole | null;
+  rank: number | null;
+  selectionReason: 'explicit-profile' | 'role-ranking';
+}>;
+
+export type EligibleAgentProviderProfileResolution = Readonly<{
+  profile: AgentProviderProfileSnapshot;
+  role: AgentProviderRole;
+  rank: number;
+  selectionReason: 'preferred-logical-provider' | 'global-ranking';
+  rankingSource: AgentProviderConfigSnapshot['globalRankingSource'];
+}>;
+
+export type EligibleAgentProviderProfileSelection = Readonly<{
+  role: AgentProviderRole;
+  preferredLogicalProviderIds: readonly string[];
+  requiredCapabilities: readonly AgentProviderCapability[];
+  allowedProviderFamilies: readonly string[];
+  excludedLogicalProviderIds: readonly string[];
+}>;
+
+export class AgentProviderConfigError extends TypeError {
+  readonly code = 'AGENT_PROVIDER_CONFIG_INVALID';
+
+  constructor() {
+    super('Agent provider configuration is invalid.');
+    this.name = 'AgentProviderConfigError';
+  }
+}
+
+/**
+ * Parse and validate the bounded TOML grammar owned by agent-providers.toml.
+ * Unsupported TOML features fail closed instead of being interpreted loosely.
+ */
+export function parseAgentProviderConfigToml(
+  document: string,
+  options: Readonly<{ platform: NodeJS.Platform }>,
+): AgentProviderConfigSnapshot {
+  if (
+    typeof document !== 'string' ||
+    Buffer.byteLength(document) === 0 ||
+    Buffer.byteLength(document) > MAX_DOCUMENT_BYTES ||
+    !isPlatform(options?.platform)
+  ) {
+    throw invalidConfig();
+  }
+  const parsed = parseTomlSubset(document);
+  assertExactKeys(parsed.root, ['global_ranking', 'schema_version']);
+  if (parsed.root.schema_version !== 2 || parsed.providers.length === 0) {
+    throw invalidConfig();
+  }
+  if (parsed.providers.length > MAX_PROVIDERS) throw invalidConfig();
+
+  const providers = parsed.providers
+    .map((provider) => normalizeProvider(provider, options.platform))
+    .sort((left, right) => compareCodeUnits(left.id, right.id));
+  if (new Set(providers.map(({ id }) => id)).size !== providers.length) {
+    throw invalidConfig();
+  }
+  assertLogicalProviderFamilies(providers);
+  const preferences = normalizePreferences(parsed.preferences, providers);
+  const { globalRanking, globalRankingSource } = normalizeGlobalRanking(
+    parsed.root.global_ranking,
+    providers,
+  );
+  const payload = {
+    schemaVersion: 2 as const,
+    kind: 'agent-provider-config-snapshot' as const,
+    platform: options.platform,
+    providers,
+    preferences,
+    globalRanking,
+    globalRankingSource,
+  };
+  return deepFreeze({
+    ...payload,
+    configDigest: sha256(canonicalJson(payload)),
+  });
+}
+
+/**
+ * Resolve a role against immutable host facts. Eligibility constraints are
+ * applied as one hard filter before either preferences or the global rank.
+ */
+export function resolveEligibleAgentProviderProfile(
+  snapshot: AgentProviderConfigSnapshot,
+  selection: EligibleAgentProviderProfileSelection,
+): EligibleAgentProviderProfileResolution {
+  const admitted = assertAgentProviderConfigSnapshot(snapshot);
+  const normalized = assertEligibleSelection(selection);
+  const requiredCapabilities = new Set(normalized.requiredCapabilities);
+  const allowedFamilies = new Set(normalized.allowedProviderFamilies);
+  const excludedLogicalProviderIds = new Set(
+    normalized.excludedLogicalProviderIds,
+  );
+  const eligibleByProfileId = new Map(
+    admitted.providers
+      .filter(
+        (profile) =>
+          profile.enabled &&
+          allowedFamilies.has(profile.family) &&
+          !excludedLogicalProviderIds.has(profile.logicalProviderId) &&
+          [...requiredCapabilities].every((capability) =>
+            profile.capabilities.includes(capability),
+          ),
+      )
+      .map((profile) => [profile.id, profile]),
+  );
+  const globalRankByProfileId = new Map(
+    admitted.globalRanking.map((profileId, rank) => [profileId, rank]),
+  );
+
+  for (const logicalProviderId of normalized.preferredLogicalProviderIds) {
+    for (const profileId of admitted.globalRanking) {
+      const profile = eligibleByProfileId.get(profileId);
+      if (profile?.logicalProviderId === logicalProviderId) {
+        return deepFreeze({
+          profile,
+          role: normalized.role,
+          rank: globalRankByProfileId.get(profile.id)!,
+          selectionReason: 'preferred-logical-provider' as const,
+          rankingSource: admitted.globalRankingSource,
+        });
+      }
+    }
+  }
+
+  for (const profileId of admitted.globalRanking) {
+    const profile = eligibleByProfileId.get(profileId);
+    if (profile !== undefined) {
+      return deepFreeze({
+        profile,
+        role: normalized.role,
+        rank: globalRankByProfileId.get(profile.id)!,
+        selectionReason: 'global-ranking' as const,
+        rankingSource: admitted.globalRankingSource,
+      });
+    }
+  }
+  throw invalidConfig();
+}
+
+/** Resolve only an explicit profile or an explicitly ranked role list. */
+export function resolveAgentProviderProfile(
+  snapshot: AgentProviderConfigSnapshot,
+  selection:
+    Readonly<{ profileId: string }> | Readonly<{ role: AgentProviderRole }>,
+): AgentProviderProfileResolution {
+  const admitted = assertAgentProviderConfigSnapshot(snapshot);
+  if (!isRecord(selection)) throw invalidConfig();
+  const keys = Object.keys(selection);
+  if (keys.length !== 1) throw invalidConfig();
+
+  if ('profileId' in selection) {
+    if (typeof selection.profileId !== 'string') throw invalidConfig();
+    const profile = admitted.providers.find(
+      ({ id }) => id === selection.profileId,
+    );
+    if (profile === undefined) throw invalidConfig();
+    return deepFreeze({
+      profile,
+      role: null,
+      rank: null,
+      selectionReason: 'explicit-profile' as const,
+    });
+  }
+
+  if (!ROLES.includes(selection.role)) throw invalidConfig();
+  const ranking = admitted.preferences[selection.role];
+  for (const [rank, profileId] of ranking.entries()) {
+    const profile = admitted.providers.find(
+      ({ id }) => id === profileId && id !== 'adaptive',
+    );
+    if (profile?.enabled === true) {
+      return deepFreeze({
+        profile,
+        role: selection.role,
+        rank,
+        selectionReason: 'role-ranking' as const,
+      });
+    }
+  }
+  throw invalidConfig();
+}
+
+/** Revalidate an immutable snapshot before using it as a resolution input. */
+export function assertAgentProviderConfigSnapshot(
+  value: unknown,
+): AgentProviderConfigSnapshot {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'configDigest',
+      'globalRanking',
+      'globalRankingSource',
+      'kind',
+      'platform',
+      'preferences',
+      'providers',
+      'schemaVersion',
+    ]) ||
+    value.schemaVersion !== 2 ||
+    value.kind !== 'agent-provider-config-snapshot' ||
+    !isPlatform(value.platform) ||
+    typeof value.configDigest !== 'string' ||
+    !DIGEST.test(value.configDigest) ||
+    !Array.isArray(value.providers) ||
+    value.providers.length === 0 ||
+    value.providers.length > MAX_PROVIDERS ||
+    !isRecord(value.preferences) ||
+    !Array.isArray(value.globalRanking) ||
+    value.globalRankingSource !== 'explicit'
+  ) {
+    throw invalidConfig();
+  }
+  const providers = value.providers.map((profile) =>
+    assertAgentProviderProfileSnapshot(
+      profile,
+      value.platform as NodeJS.Platform,
+    ),
+  );
+  const expectedOrder = [...providers].sort((left, right) =>
+    compareCodeUnits(left.id, right.id),
+  );
+  if (
+    canonicalJson(providers.map(({ id }) => id)) !==
+      canonicalJson(expectedOrder.map(({ id }) => id)) ||
+    new Set(providers.map(({ id }) => id)).size !== providers.length
+  ) {
+    throw invalidConfig();
+  }
+  assertLogicalProviderFamilies(providers);
+  const preferences = normalizePreferences(
+    value.preferences as Record<string, TomlValue>,
+    providers,
+  );
+  const globalRankingSource = 'explicit' as const;
+  const expectedGlobalRanking = normalizeGlobalRankingSnapshot(
+    value.globalRanking,
+    providers,
+  );
+  const payload = {
+    schemaVersion: 2 as const,
+    kind: 'agent-provider-config-snapshot' as const,
+    platform: value.platform,
+    providers,
+    preferences,
+    globalRanking: expectedGlobalRanking,
+    globalRankingSource,
+  };
+  if (sha256(canonicalJson(payload)) !== value.configDigest) {
+    throw invalidConfig();
+  }
+  return deepFreeze({ ...payload, configDigest: value.configDigest });
+}
+
+type ParsedToml = {
+  root: Record<string, TomlValue>;
+  providers: Array<Record<string, TomlValue>>;
+  preferences: Record<string, TomlValue> | null;
+};
+
+type TomlValue = string | boolean | number | string[];
+
+function parseTomlSubset(document: string): ParsedToml {
+  const root: Record<string, TomlValue> = {};
+  const providers: Array<Record<string, TomlValue>> = [];
+  let preferences: Record<string, TomlValue> | null = null;
+  let target = root;
+
+  for (const sourceLine of document.split(/\r?\n/u)) {
+    const line = stripComment(sourceLine).trim();
+    if (line.length === 0) continue;
+    if (line === '[[providers]]') {
+      target = {};
+      providers.push(target);
+      continue;
+    }
+    if (line === '[provider_preferences]') {
+      if (preferences !== null) throw invalidConfig();
+      preferences = {};
+      target = preferences;
+      continue;
+    }
+    if (line.startsWith('[')) throw invalidConfig();
+    const assignment = /^([a-z][a-z0-9_]*)\s*=\s*(.+)$/u.exec(line);
+    if (assignment === null) throw invalidConfig();
+    const [, key, serialized] = assignment;
+    if (Object.hasOwn(target, key)) throw invalidConfig();
+    target[key] = parseTomlValue(serialized.trim());
+  }
+  if (preferences === null) throw invalidConfig();
+  return { root, providers, preferences };
+}
+
+function stripComment(line: string): string {
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (inString && character === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (character === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString && character === '#') return line.slice(0, index);
+  }
+  if (inString || escaped) throw invalidConfig();
+  return line;
+}
+
+function parseTomlValue(serialized: string): TomlValue {
+  if (serialized === 'true') return true;
+  if (serialized === 'false') return false;
+  if (/^(?:0|[1-9][0-9]*)$/u.test(serialized)) {
+    const value = Number(serialized);
+    if (!Number.isSafeInteger(value)) throw invalidConfig();
+    return value;
+  }
+  if (serialized.startsWith('"')) return parseBasicString(serialized);
+  if (serialized.startsWith('[')) return parseStringArray(serialized);
+  throw invalidConfig();
+}
+
+function parseBasicString(serialized: string): string {
+  let value: unknown;
+  try {
+    value = JSON.parse(serialized);
+  } catch {
+    throw invalidConfig();
+  }
+  if (
+    typeof value !== 'string' ||
+    Buffer.byteLength(value) > MAX_VALUE_BYTES ||
+    value.includes('\0')
+  ) {
+    throw invalidConfig();
+  }
+  return value;
+}
+
+function parseStringArray(serialized: string): string[] {
+  if (!serialized.endsWith(']')) throw invalidConfig();
+  const body = serialized.slice(1, -1).trim();
+  if (body.length === 0) return [];
+  const values: string[] = [];
+  let start = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index <= body.length; index += 1) {
+    const character = body[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (inString && character === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (character === '"') {
+      inString = !inString;
+      continue;
+    }
+    if ((character === ',' && !inString) || index === body.length) {
+      const item = body.slice(start, index).trim();
+      if (item.length === 0) throw invalidConfig();
+      values.push(parseBasicString(item));
+      start = index + 1;
+    }
+  }
+  if (inString || escaped || values.length > MAX_ARGUMENTS) {
+    throw invalidConfig();
+  }
+  return values;
+}
+
+function normalizeProvider(
+  value: Record<string, TomlValue>,
+  platform: NodeJS.Platform,
+): AgentProviderProfileSnapshot {
+  const trustTier = value.trust_tier;
+  const commonKeys = [
+    'enabled',
+    'executable',
+    'family',
+    'id',
+    'protocol',
+    'trust_tier',
+  ];
+  if (Object.hasOwn(value, 'logical_provider_id')) {
+    commonKeys.push('logical_provider_id');
+  }
+  if (Object.hasOwn(value, 'capabilities')) {
+    commonKeys.push('capabilities');
+  }
+  if (trustTier === 'built-in-reviewed') {
+    assertExactKeys(value, commonKeys);
+  } else if (trustTier === 'host-wrapper') {
+    assertExactKeys(value, [
+      ...commonKeys,
+      'cancel',
+      'prompt_input',
+      'resume_args',
+      'start_args',
+    ]);
+  } else {
+    throw invalidConfig();
+  }
+  if (
+    !isIdentifier(value.id) ||
+    RESERVED_PROFILE_IDS.has(value.id) ||
+    !isFamily(value.family) ||
+    (Object.hasOwn(value, 'logical_provider_id') &&
+      !isFamily(value.logical_provider_id)) ||
+    typeof value.enabled !== 'boolean' ||
+    !isProtocol(value.protocol) ||
+    typeof value.executable !== 'string' ||
+    !isAbsoluteForPlatform(value.executable, platform)
+  ) {
+    throw invalidConfig();
+  }
+  const capabilities = Object.hasOwn(value, 'capabilities')
+    ? normalizeCapabilities(value.capabilities)
+    : Object.freeze([]);
+
+  const base = {
+    schemaVersion: 1 as const,
+    kind: 'agent-provider-profile-snapshot' as const,
+    id: value.id,
+    logicalProviderId: Object.hasOwn(value, 'logical_provider_id')
+      ? (value.logical_provider_id as string)
+      : value.family,
+    family: value.family,
+    capabilities,
+    trustTier,
+    enabled: value.enabled,
+    protocol: value.protocol,
+    platform,
+    executable: value.executable,
+    shell: false as const,
+  };
+  if (trustTier === 'built-in-reviewed') {
+    return withProfileDigest({
+      ...base,
+      trustTier,
+      startArgs: [] as const,
+      resumeArgs: [] as const,
+      promptInput: null,
+      cancel: null,
+    });
+  }
+
+  if (
+    (value.protocol !== 'harness-jsonl-v1' &&
+      value.protocol !== 'harness-jsonl-v2') ||
+    value.prompt_input !== 'stdin' ||
+    value.cancel !== 'process-group' ||
+    !isArgumentVector(value.start_args) ||
+    !isArgumentVector(value.resume_args) ||
+    value.start_args.length === 0 ||
+    !hasExactPlaceholders(value.start_args, ['request_file']) ||
+    (value.resume_args.length > 0 &&
+      !hasExactPlaceholders(value.resume_args, [
+        'native_session_id',
+        'request_file',
+      ])) ||
+    !hasValidHostWrapperSessionCapabilities(
+      value.protocol,
+      capabilities,
+      value.resume_args,
+    )
+  ) {
+    throw invalidConfig();
+  }
+  return withProfileDigest({
+    ...base,
+    trustTier,
+    protocol: value.protocol as HostWrapperProviderProfileSnapshot['protocol'],
+    startArgs: [...value.start_args],
+    resumeArgs: [...value.resume_args],
+    promptInput: 'stdin' as const,
+    cancel: 'process-group' as const,
+  });
+}
+
+function normalizePreferences(
+  value: Record<string, TomlValue> | null,
+  providers: readonly AgentProviderProfileSnapshot[],
+): AgentProviderPreferences {
+  if (value === null) throw invalidConfig();
+  assertExactKeys(value, ROLES);
+  const enabledIds = providers
+    .filter(({ enabled }) => enabled)
+    .map(({ id }) => id)
+    .sort();
+  if (enabledIds.length === 0) throw invalidConfig();
+  const normalized = Object.fromEntries(
+    ROLES.map((role) => {
+      const ranking = value[role];
+      if (
+        !Array.isArray(ranking) ||
+        ranking.some((id) => RESERVED_PROFILE_IDS.has(id)) ||
+        new Set(ranking).size !== ranking.length ||
+        canonicalJson([...ranking].sort()) !== canonicalJson(enabledIds)
+      ) {
+        throw invalidConfig();
+      }
+      return [role, [...ranking]];
+    }),
+  ) as Record<AgentProviderRole, string[]>;
+  return deepFreeze(normalized);
+}
+
+function normalizeCapabilities(
+  value: TomlValue | undefined,
+): readonly AgentProviderCapability[] {
+  if (
+    !Array.isArray(value) ||
+    value.length > AGENT_PROVIDER_CAPABILITIES.length ||
+    value.some(
+      (capability) =>
+        !AGENT_PROVIDER_CAPABILITIES.includes(
+          capability as AgentProviderCapability,
+        ),
+    ) ||
+    new Set(value).size !== value.length
+  ) {
+    throw invalidConfig();
+  }
+  return Object.freeze(
+    [...value].sort(compareCodeUnits) as AgentProviderCapability[],
+  );
+}
+
+function assertLogicalProviderFamilies(
+  providers: readonly AgentProviderProfileSnapshot[],
+): void {
+  const familyByLogicalProviderId = new Map<string, string>();
+  for (const profile of providers) {
+    const prior = familyByLogicalProviderId.get(profile.logicalProviderId);
+    if (prior !== undefined && prior !== profile.family) {
+      throw invalidConfig();
+    }
+    familyByLogicalProviderId.set(profile.logicalProviderId, profile.family);
+  }
+}
+
+function normalizeGlobalRanking(
+  value: TomlValue | undefined,
+  providers: readonly AgentProviderProfileSnapshot[],
+): Readonly<{
+  globalRanking: readonly string[];
+  globalRankingSource: AgentProviderConfigSnapshot['globalRankingSource'];
+}> {
+  return Object.freeze({
+    globalRanking: assertExactProfileRanking(value, providers),
+    globalRankingSource: 'explicit' as const,
+  });
+}
+
+function normalizeGlobalRankingSnapshot(
+  value: unknown,
+  providers: readonly AgentProviderProfileSnapshot[],
+): readonly string[] {
+  return assertExactProfileRanking(value, providers);
+}
+
+function assertExactProfileRanking(
+  value: unknown,
+  providers: readonly AgentProviderProfileSnapshot[],
+): readonly string[] {
+  if (
+    !Array.isArray(value) ||
+    value.some((id) => !isIdentifier(id) || RESERVED_PROFILE_IDS.has(id)) ||
+    new Set(value).size !== value.length ||
+    canonicalJson([...value].sort(compareCodeUnits)) !==
+      canonicalJson(providers.map(({ id }) => id))
+  ) {
+    throw invalidConfig();
+  }
+  return Object.freeze([...value]);
+}
+
+function assertEligibleSelection(
+  value: unknown,
+): EligibleAgentProviderProfileSelection {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'allowedProviderFamilies',
+      'excludedLogicalProviderIds',
+      'preferredLogicalProviderIds',
+      'requiredCapabilities',
+      'role',
+    ]) ||
+    !ROLES.includes(value.role as AgentProviderRole)
+  ) {
+    throw invalidConfig();
+  }
+  const allowedProviderFamilies = assertIdentifierList(
+    value.allowedProviderFamilies,
+    isFamily,
+  );
+  const excludedLogicalProviderIds = assertIdentifierList(
+    value.excludedLogicalProviderIds,
+    isFamily,
+  );
+  const preferredLogicalProviderIds = assertIdentifierList(
+    value.preferredLogicalProviderIds,
+    isFamily,
+  );
+  const requiredCapabilities = normalizeCapabilities(
+    value.requiredCapabilities as TomlValue,
+  );
+  return deepFreeze({
+    role: value.role as AgentProviderRole,
+    preferredLogicalProviderIds,
+    requiredCapabilities,
+    allowedProviderFamilies,
+    excludedLogicalProviderIds,
+  });
+}
+
+function assertIdentifierList(
+  value: unknown,
+  predicate: (candidate: unknown) => candidate is string,
+): readonly string[] {
+  if (
+    !Array.isArray(value) ||
+    value.length > MAX_PROVIDERS ||
+    value.some((candidate) => !predicate(candidate)) ||
+    new Set(value).size !== value.length
+  ) {
+    throw invalidConfig();
+  }
+  return Object.freeze([...value]);
+}
+
+function withProfileDigest<
+  T extends Omit<AgentProviderProfileSnapshot, 'profileDigest'>,
+>(payload: T): T & Readonly<{ profileDigest: string }> {
+  return deepFreeze({
+    ...payload,
+    profileDigest: sha256(canonicalJson(payload)),
+  });
+}
+
+export function assertAgentProviderProfileSnapshot(
+  value: unknown,
+  platform: NodeJS.Platform,
+): AgentProviderProfileSnapshot {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'cancel',
+      'capabilities',
+      'enabled',
+      'executable',
+      'family',
+      'id',
+      'kind',
+      'logicalProviderId',
+      'platform',
+      'profileDigest',
+      'promptInput',
+      'protocol',
+      'resumeArgs',
+      'schemaVersion',
+      'shell',
+      'startArgs',
+      'trustTier',
+    ]) ||
+    value.schemaVersion !== 1 ||
+    value.kind !== 'agent-provider-profile-snapshot' ||
+    !isIdentifier(value.id) ||
+    RESERVED_PROFILE_IDS.has(value.id) ||
+    !isFamily(value.logicalProviderId) ||
+    !isFamily(value.family) ||
+    !Array.isArray(value.capabilities) ||
+    (value.trustTier !== 'built-in-reviewed' &&
+      value.trustTier !== 'host-wrapper') ||
+    typeof value.enabled !== 'boolean' ||
+    !isProtocol(value.protocol) ||
+    value.platform !== platform ||
+    typeof value.executable !== 'string' ||
+    !isAbsoluteForPlatform(value.executable, platform) ||
+    value.shell !== false ||
+    typeof value.profileDigest !== 'string' ||
+    !DIGEST.test(value.profileDigest) ||
+    !isArgumentVector(value.startArgs) ||
+    !isArgumentVector(value.resumeArgs)
+  ) {
+    throw invalidConfig();
+  }
+  const capabilities = normalizeCapabilities(value.capabilities as string[]);
+  if (canonicalJson(capabilities) !== canonicalJson(value.capabilities)) {
+    throw invalidConfig();
+  }
+  if (
+    value.trustTier === 'built-in-reviewed' &&
+    (value.startArgs.length !== 0 ||
+      value.resumeArgs.length !== 0 ||
+      value.promptInput !== null ||
+      value.cancel !== null)
+  ) {
+    throw invalidConfig();
+  }
+  if (
+    value.trustTier === 'host-wrapper' &&
+    ((value.protocol !== 'harness-jsonl-v1' &&
+      value.protocol !== 'harness-jsonl-v2') ||
+      value.promptInput !== 'stdin' ||
+      value.cancel !== 'process-group' ||
+      value.startArgs.length === 0 ||
+      !hasExactPlaceholders(value.startArgs, ['request_file']) ||
+      (value.resumeArgs.length > 0 &&
+        !hasExactPlaceholders(value.resumeArgs, [
+          'native_session_id',
+          'request_file',
+        ])) ||
+      !hasValidHostWrapperSessionCapabilities(
+        value.protocol,
+        capabilities,
+        value.resumeArgs,
+      ))
+  ) {
+    throw invalidConfig();
+  }
+  const payload = { ...value };
+  delete (payload as { profileDigest?: unknown }).profileDigest;
+  if (sha256(canonicalJson(payload)) !== value.profileDigest) {
+    throw invalidConfig();
+  }
+  return deepFreeze(structuredClone(value)) as AgentProviderProfileSnapshot;
+}
+
+function isArgumentVector(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length <= MAX_ARGUMENTS &&
+    value.every(
+      (entry) =>
+        typeof entry === 'string' &&
+        Buffer.byteLength(entry) <= MAX_VALUE_BYTES &&
+        !entry.includes('\0'),
+    )
+  );
+}
+
+function hasExactPlaceholders(
+  values: readonly string[],
+  expected: readonly string[],
+): boolean {
+  const placeholders: string[] = [];
+  for (const value of values) {
+    const scrubbed = value.replace(/\{([a-z_]+)\}/gu, (_match, name) => {
+      placeholders.push(name as string);
+      return '';
+    });
+    if (/[{}]/u.test(scrubbed)) return false;
+  }
+  return (
+    canonicalJson([...placeholders].sort()) ===
+    canonicalJson([...expected].sort())
+  );
+}
+
+function hasValidHostWrapperSessionCapabilities(
+  protocol: string,
+  capabilities: readonly AgentProviderCapability[],
+  resumeArgs: readonly string[],
+): boolean {
+  const claimsFreshSession = capabilities.includes('fresh-session');
+  const claimsResumableSession = capabilities.includes('resumable-session');
+  return (
+    ((!claimsFreshSession && !claimsResumableSession) ||
+      protocol === 'harness-jsonl-v2') &&
+    (!claimsResumableSession ||
+      (resumeArgs.length > 0 &&
+        hasExactPlaceholders(resumeArgs, [
+          'native_session_id',
+          'request_file',
+        ])))
+  );
+}
+
+function isAbsoluteForPlatform(
+  candidate: string,
+  platform: NodeJS.Platform,
+): boolean {
+  if (
+    candidate.length === 0 ||
+    Buffer.byteLength(candidate) > MAX_VALUE_BYTES ||
+    candidate.includes('\0')
+  ) {
+    return false;
+  }
+  if (platform === 'win32') {
+    return (
+      path.win32.isAbsolute(candidate) &&
+      (/^[a-z]:[\\/]/iu.test(candidate) ||
+        /^\\\\[^\\/]+[\\/][^\\/]+/u.test(candidate) ||
+        /^\/\/[^/]+\/[^/]+/u.test(candidate))
+    );
+  }
+  return path.posix.isAbsolute(candidate);
+}
+
+function isPlatform(value: unknown): value is NodeJS.Platform {
+  return (
+    typeof value === 'string' &&
+    /^[a-z0-9](?:[a-z0-9._-]{0,30}[a-z0-9])?$/u.test(value)
+  );
+}
+
+function isIdentifier(value: unknown): value is string {
+  return typeof value === 'string' && IDENTIFIER.test(value);
+}
+
+function isFamily(value: unknown): value is string {
+  return typeof value === 'string' && FAMILY.test(value);
+}
+
+function isProtocol(value: unknown): value is string {
+  return typeof value === 'string' && PROTOCOL.test(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function assertExactKeys(
+  value: Record<string, unknown>,
+  expected: readonly string[],
+): void {
+  if (
+    canonicalJson(Object.keys(value).sort()) !==
+    canonicalJson([...expected].sort())
+  ) {
+    throw invalidConfig();
+  }
+}
+
+function hasExactKeys(
+  value: Record<string, unknown>,
+  expected: readonly string[],
+): boolean {
+  return (
+    canonicalJson(Object.keys(value).sort()) ===
+    canonicalJson([...expected].sort())
+  );
+}
+
+function compareCodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function sha256(value: string): string {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function invalidConfig(): AgentProviderConfigError {
+  return new AgentProviderConfigError();
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+    for (const child of Object.values(value)) deepFreeze(child);
+    Object.freeze(value);
+  }
+  return value;
+}

@@ -8,12 +8,12 @@
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  deriveTaskDiffReviewCandidatePlan,
-  type TaskDiffReviewCandidatePlan,
-  type TaskDiffReviewScope,
-  type TaskDiffReviewSubject,
-} from './task-diff-review.ts';
+import { deriveTaskDiffReviewCandidatePlan } from './task-diff-review.ts';
+import type {
+  TaskDiffReviewCandidatePlan,
+  TaskDiffReviewScope,
+  TaskDiffReviewSubject,
+} from './task-diff-review-record.ts';
 
 export type TaskDiffReviewLineageEntry = Readonly<{
   source: 'provider' | 'external';

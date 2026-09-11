@@ -25,18 +25,20 @@ import {
 import {
   humanResolutionStateInvalid,
   investigationStartReservationPath,
+} from './investigation-resolution-values.ts';
+import {
   isBoundedResolutionText,
   isEmptyRecord,
-} from './investigation-resolution-values.ts';
+} from '../../modules/investigation/domain/human-resolution-values.ts';
 import { readInvestigationSession } from './investigation-session-records.ts';
-import { type InvestigationSession } from './investigation-session-types.ts';
+import { type InvestigationSession } from '../../modules/investigation/domain/investigation-session-types.ts';
 import {
   hasExactKeys,
   isDigest,
   isRecord,
   isTimestamp,
   sha256,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 import {
   isProposeExemptionInvestigationId,
   type ProposeExemptionSession,

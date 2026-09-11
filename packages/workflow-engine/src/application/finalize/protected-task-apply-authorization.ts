@@ -23,7 +23,7 @@ import {
 } from '../../runtime/repository-transaction/finalize-transaction.ts';
 import {
   grantStorePaths,
-  readGrantRecord,
+  createFileGrantRecordStore,
 } from '../../runtime/storage-journal/grant-store.ts';
 
 export function assertPreparedProtectedTaskApplyAuthorization(
@@ -32,10 +32,9 @@ export function assertPreparedProtectedTaskApplyAuthorization(
   expectedParameters?: ProtectedTaskApplyFinalizationParametersV1,
 ): Readonly<{ parameters: ProtectedTaskApplyFinalizationParametersV1 }> {
   const binding = parseProtectedTaskApplyAuthorizationBinding(candidate);
-  const record = readGrantRecord(
+  const record = createFileGrantRecordStore(
     grantStorePaths(runtimeRoot),
-    binding.challengeId,
-  );
+  ).readGrantRecord(binding.challengeId);
   if (
     record.state !== 'prepared' ||
     record.operationId !== binding.operationId ||

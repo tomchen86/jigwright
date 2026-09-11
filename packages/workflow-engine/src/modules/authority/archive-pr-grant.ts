@@ -21,10 +21,10 @@ import {
   type ArchivePublicationPreparationV1,
 } from '../../runtime/storage-journal/archive-publication-store.ts';
 import {
-  readGrantRecord,
   type GrantStorePaths,
-  type TerminalGrantRecord,
+  createFileGrantRecordStore,
 } from '../../runtime/storage-journal/grant-store.ts';
+import { type TerminalGrantRecord } from './grant-records.ts';
 import type { GrantRequestInput, StateBinding } from './grant-core.ts';
 import {
   grantTransitionPreconditionChanged,
@@ -218,7 +218,7 @@ function authenticateCompletedArchivePullRequestGrantUnsafe(
     runtimeRoot,
     preparationIdentity,
   );
-  const record = readGrantRecord(paths, challengeId);
+  const record = createFileGrantRecordStore(paths).readGrantRecord(challengeId);
   if (record.state !== 'completed') throw grantInvalid();
   const terminal = record as TerminalGrantRecord;
   const choice = terminal.challenge.choices.find(

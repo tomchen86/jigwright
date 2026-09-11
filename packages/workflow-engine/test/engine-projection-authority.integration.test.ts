@@ -1,3 +1,24 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import {
+  productionChangeRoutingInspector,
+  productionChangeRoutingAdmissionReader,
+} from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -9,13 +30,13 @@ import {
   engineProjectionDefinitions,
   engineProjectionPathsForTransition,
 } from '../src/modules/projection/engine-projection-registry.ts';
-import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import {
   completeTask,
   finalizeTask,
-} from '../src/application/finalize/lifecycle.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+} from '../src/composition-root/finalization-production.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {
   readImmutableReport,
   type WorkflowReport,
@@ -82,11 +103,23 @@ test('document policy cannot invent an engine-owned completion projection', () =
     git(repository, ['commit', '-m', 'Add unreviewed projection policy']);
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'UNSUPPORTED_ACTIVE_DOCUMENT_POLICY'),
     );
     assert.equal(
@@ -152,7 +185,10 @@ test('the public handoff command is read-only and refuses render', () => {
       process.execPath,
       [
         '--experimental-strip-types',
-        path.resolve(import.meta.dirname, '../src/cli.ts'),
+        path.resolve(
+          import.meta.dirname,
+          '../src/entrypoints/cli/workflow-cli.ts',
+        ),
         'handoff',
         'render',
         '--json',
@@ -178,7 +214,12 @@ test('completion and finish evidence classify the exact projection union', () =>
     enableCompletionProjection(repository);
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
 
     assert.throws(
@@ -213,10 +254,21 @@ test('the compatible completion sequence cannot bypass documentation review', ()
     enableCompletionProjection(repository);
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
 
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+    );
     const tasksPath = path.join(
       repository,
       'openspec/changes/demo-change/tasks.md',

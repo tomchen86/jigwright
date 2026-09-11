@@ -1,248 +1,72 @@
-/**
- * Proposes, reviews, and applies curated document refreshes under target
- * locks.
- *
- * Invariants:
- * - A refresh review must bind the exact proposal being applied.
- */
+/** Filesystem records and atomic target transactions for curated document refreshes. */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-
 import {
   readContentRecord,
   writeContentRecord,
-  type ContentRecord,
 } from '../../storage-journal/content-record-store.ts';
-import { loadWorkflowConfig } from '../../../adapters/consumer/repository/work-registry/contracts.ts';
+import { ExitCode } from '../../../foundation/errors/errors.ts';
 import {
-  ExitCode,
-  workflowError,
-  type ExitCodeValue,
-} from '../../../foundation/errors/errors.ts';
-import { discoverRepository } from '../../repository-transaction/git.ts';
-import { markdownHeadings } from '../contracts/markdown-sections.ts';
-import { normalizeChangedPath } from '../../session-workspace/paths.ts';
-import { runtimePaths } from '../../session-workspace/session-store.ts';
-import { spliceProjectionRegion } from '../../../modules/projection/projection-service.ts';
+  curatedTarget,
+  digest,
+  refreshError,
+} from '../../../modules/projection/document-refresh-policy.ts';
+import type { DocumentRefreshStorage } from '../../../modules/projection/document-refresh-storage.ts';
 
-type ProposalRecord = ContentRecord & {
-  kind: 'document-refresh-proposal';
-  target: string;
-  section: string;
-  sourceDigest: string;
-  resultDigest: string;
-  policyDigest: string;
-  replacement: string;
-};
-
-type ReviewRecord = ContentRecord & {
-  kind: 'document-refresh-review';
-  proposalId: string;
-  decision: 'approve' | 'reject';
-  reviewer: string;
-};
-
-export function proposeDocumentRefresh(
-  cwd: string,
-  requestedTarget: string,
-  section: string,
-  replacement: string,
-): { proposalId: string; target: string; resultDigest: string } {
-  const context = refreshContext(cwd);
-  const target = assertCuratedTarget(context.repositoryRoot, requestedTarget);
-  const policyDigest = assertReviewedRefreshPolicy(
-    context.repositoryRoot,
-    target,
-  );
-  const current = fs.readFileSync(
-    path.join(context.repositoryRoot, target),
-    'utf8',
-  );
-  const result = replaceSection(current, section, replacement);
-  const record: ProposalRecord = {
-    schemaVersion: 1,
-    kind: 'document-refresh-proposal',
-    createdAt: new Date().toISOString(),
-    target,
-    section,
-    sourceDigest: digest(current),
-    resultDigest: digest(result),
-    policyDigest,
-    replacement,
-  };
-  const proposalId = writeContentRecord(context.proposals, record);
-  return { proposalId, target, resultDigest: record.resultDigest };
-}
-
-export function reviewDocumentRefresh(
-  cwd: string,
-  proposalId: string,
-  decision: 'approve' | 'reject',
-  reviewer: string,
-): { reviewId: string; decision: 'approve' | 'reject' } {
-  if (!['approve', 'reject'].includes(decision) || !isSafeText(reviewer)) {
-    throw refreshError(
-      'DOCUMENT_REVIEW_INVALID',
-      'Review requires an explicit decision and reviewer.',
-      ExitCode.usage,
-    );
-  }
-  const context = refreshContext(cwd);
-  readProposal(context.proposals, proposalId);
-  const record: ReviewRecord = {
-    schemaVersion: 1,
-    kind: 'document-refresh-review',
-    createdAt: new Date().toISOString(),
-    proposalId,
-    decision,
-    reviewer,
-  };
+export function createDocumentRefreshStorage(
+  repositoryRoot: string,
+  gitCommonDirectory: string,
+  runtimeRoot: string,
+): DocumentRefreshStorage {
+  assertSafeRuntimeRoot(gitCommonDirectory, runtimeRoot);
+  const proposals = path.join(runtimeRoot, 'document-proposals');
+  const reviews = path.join(runtimeRoot, 'document-reviews');
+  const locks = path.join(runtimeRoot, 'document-refresh-locks');
   return {
-    reviewId: writeContentRecord(context.reviews, record),
-    decision,
+    readRecord(kind, id) {
+      return readContentRecord(kind === 'proposal' ? proposals : reviews, id);
+    },
+    writeRecord(record) {
+      return writeContentRecord(
+        record.kind === 'document-refresh-proposal' ? proposals : reviews,
+        record,
+      );
+    },
+    openTarget(requestedTarget) {
+      const target = assertCuratedTarget(repositoryRoot, requestedTarget);
+      const targetPath = path.join(repositoryRoot, target);
+      return {
+        target,
+        readPolicy() {
+          try {
+            return fs.readFileSync(
+              path.join(repositoryRoot, 'workflow/document-policy.json'),
+              'utf8',
+            );
+          } catch {
+            throw refreshError(
+              'DOCUMENT_REFRESH_POLICY_INVALID',
+              'Document refresh policy is missing or invalid.',
+              ExitCode.guard,
+            );
+          }
+        },
+        readText() {
+          return fs.readFileSync(targetPath, 'utf8');
+        },
+        withLock(operation) {
+          return withTargetLock(locks, target, () =>
+            operation((content) => writeTextAtomic(targetPath, content)),
+          );
+        },
+      };
+    },
   };
-}
-
-export function inspectDocumentRefreshProposal(
-  cwd: string,
-  proposalId: string,
-): Omit<ProposalRecord, 'schemaVersion' | 'kind'> & { proposalId: string } {
-  const context = refreshContext(cwd);
-  const proposal = readProposal(context.proposals, proposalId);
-  return {
-    proposalId,
-    createdAt: proposal.createdAt,
-    target: proposal.target,
-    section: proposal.section,
-    sourceDigest: proposal.sourceDigest,
-    resultDigest: proposal.resultDigest,
-    policyDigest: proposal.policyDigest,
-    replacement: proposal.replacement,
-  };
-}
-
-export function applyDocumentRefresh(
-  cwd: string,
-  proposalId: string,
-  reviewId: string,
-): { target: string; resultDigest: string } {
-  const context = refreshContext(cwd);
-  const proposal = readProposal(context.proposals, proposalId);
-  const review = readReview(context.reviews, reviewId);
-  if (review.proposalId !== proposalId) {
-    throw refreshError(
-      'DOCUMENT_REVIEW_MISMATCH',
-      'Review is bound to a different proposal.',
-    );
-  }
-  if (review.decision !== 'approve') {
-    throw refreshError(
-      'DOCUMENT_REVIEW_REJECTED',
-      'Document refresh was not approved.',
-    );
-  }
-  const target = assertCuratedTarget(context.repositoryRoot, proposal.target);
-  return withTargetLock(context.locks, target, () => {
-    if (
-      assertReviewedRefreshPolicy(context.repositoryRoot, target) !==
-      proposal.policyDigest
-    ) {
-      throw refreshError(
-        'DOCUMENT_REFRESH_POLICY_CHANGED',
-        'Document refresh policy changed after the proposal was created.',
-        ExitCode.guard,
-      );
-    }
-    const targetPath = path.join(context.repositoryRoot, target);
-    const current = fs.readFileSync(targetPath, 'utf8');
-    if (digest(current) !== proposal.sourceDigest) {
-      throw refreshError(
-        'DOCUMENT_TARGET_STALE',
-        'Target changed after the refresh proposal was created.',
-      );
-    }
-    const result = replaceSection(
-      current,
-      proposal.section,
-      proposal.replacement,
-    );
-    if (digest(result) !== proposal.resultDigest) {
-      throw refreshError(
-        'DOCUMENT_PROPOSAL_INVALID',
-        'Proposal result digest does not match its scoped replacement.',
-      );
-    }
-    writeTextAtomic(targetPath, result);
-    return { target, resultDigest: proposal.resultDigest };
-  });
-}
-
-function replaceSection(
-  current: string,
-  section: string,
-  replacement: string,
-): string {
-  const heading = /^(#{2,6}) [^\n]+$/.exec(section);
-  const replacementHeadings = markdownHeadings(replacement);
-  if (
-    !heading ||
-    replacement.split('\n')[0] !== section ||
-    replacementHeadings[0]?.start !== 0 ||
-    replacementHeadings[0]?.canonical !== section
-  ) {
-    throw refreshError(
-      'DOCUMENT_SECTION_INVALID',
-      'Replacement must begin with the exact scoped heading.',
-      ExitCode.usage,
-    );
-  }
-  const headings = markdownHeadings(current);
-  const matches = headings.filter((item) => item.canonical === section);
-  if (matches.length !== 1) {
-    throw refreshError(
-      'DOCUMENT_SECTION_NOT_UNIQUE',
-      'Target must contain exactly one scoped heading.',
-    );
-  }
-  const start = matches[0].start;
-  const headingEnd = current.indexOf('\n', start);
-  const afterHeading = headingEnd === -1 ? current.length : headingEnd + 1;
-  const nextHeading = headings.find(
-    (item) => item.start >= afterHeading && item.level <= heading[1].length,
-  );
-  const end = nextHeading?.start ?? current.length;
-  const nested = replacementHeadings
-    .slice(1)
-    .some((item) => item.level <= heading[1].length);
-  if (nested) {
-    throw refreshError(
-      'DOCUMENT_REPLACEMENT_ESCAPES_SECTION',
-      'Replacement contains a heading outside the proposed section scope.',
-      ExitCode.usage,
-    );
-  }
-  const normalized = replacement.trimEnd();
-  return spliceProjectionRegion(
-    current,
-    { start, end },
-    `${normalized}${nextHeading !== undefined ? '\n\n' : '\n'}`,
-  );
 }
 
 function assertCuratedTarget(repositoryRoot: string, value: string): string {
-  const target = normalizeChangedPath(value);
-  if (
-    !target.endsWith('.md') ||
-    (!target.startsWith('docs/architecture/') &&
-      !target.startsWith('docs/features/'))
-  ) {
-    throw refreshError(
-      'DOCUMENT_TARGET_NOT_CURATED',
-      'Refresh target must be a Markdown file under architecture or features.',
-      ExitCode.guard,
-    );
-  }
+  const target = curatedTarget(value);
   const targetPath = path.join(repositoryRoot, target);
   assertNoSymlinkSegments(repositoryRoot, target);
   const stats = fs.lstatSync(targetPath, { throwIfNoEntry: false });
@@ -278,89 +102,6 @@ function assertNoSymlinkSegments(repositoryRoot: string, target: string): void {
   }
 }
 
-function assertReviewedRefreshPolicy(
-  repositoryRoot: string,
-  target: string,
-): string {
-  const policyPath = path.join(repositoryRoot, 'workflow/document-policy.json');
-  let content: string;
-  let value: unknown;
-  try {
-    content = fs.readFileSync(policyPath, 'utf8');
-    value = JSON.parse(content);
-  } catch {
-    throw refreshError(
-      'DOCUMENT_REFRESH_POLICY_INVALID',
-      'Document refresh policy is missing or invalid.',
-      ExitCode.guard,
-    );
-  }
-  const policyKey = target.startsWith('docs/architecture/')
-    ? 'docs/architecture/**'
-    : 'docs/features/**';
-  const policy =
-    isRecord(value) && isRecord(value.documents)
-      ? value.documents[policyKey]
-      : undefined;
-  if (
-    !isRecord(value) ||
-    value.schemaVersion !== 1 ||
-    value.enforcementMode !== 'enforced' ||
-    !isRecord(policy) ||
-    policy.mode !== 'curated' ||
-    policy.refresh !== 'reviewed-section'
-  ) {
-    throw refreshError(
-      'DOCUMENT_REFRESH_NOT_AUTHORIZED',
-      'Document policy does not authorize reviewed section refreshes.',
-      ExitCode.guard,
-    );
-  }
-  return digest(content);
-}
-
-function refreshContext(cwd: string) {
-  const git = discoverRepository(cwd);
-  const config = loadWorkflowConfig(git.repositoryRoot);
-  const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
-  assertSafeRuntimeRoot(git.gitCommonDirectory, runtime.root);
-  return {
-    repositoryRoot: git.repositoryRoot,
-    proposals: path.join(runtime.root, 'document-proposals'),
-    reviews: path.join(runtime.root, 'document-reviews'),
-    locks: path.join(runtime.root, 'document-refresh-locks'),
-  };
-}
-
-function readProposal(directory: string, id: string): ProposalRecord {
-  const value = readContentRecord(directory, id);
-  if (
-    value.kind !== 'document-refresh-proposal' ||
-    typeof value.target !== 'string' ||
-    typeof value.section !== 'string' ||
-    typeof value.replacement !== 'string' ||
-    !isDigest(value.sourceDigest) ||
-    !isDigest(value.resultDigest) ||
-    !isDigest(value.policyDigest)
-  ) {
-    throw refreshError('DOCUMENT_PROPOSAL_INVALID', 'Proposal is invalid.');
-  }
-  return value as ProposalRecord;
-}
-
-function readReview(directory: string, id: string): ReviewRecord {
-  const value = readContentRecord(directory, id);
-  if (
-    value.kind !== 'document-refresh-review' ||
-    !isDigest(value.proposalId) ||
-    !['approve', 'reject'].includes(String(value.decision)) ||
-    !isSafeText(value.reviewer)
-  ) {
-    throw refreshError('DOCUMENT_REVIEW_INVALID', 'Review is invalid.');
-  }
-  return value as ReviewRecord;
-}
-
 function writeTextAtomic(filePath: string, content: string): void {
   const stats = fs.lstatSync(filePath);
   const temporary = `${filePath}.${process.pid}.${crypto.randomUUID()}.tmp`;
@@ -379,14 +120,6 @@ function writeTextAtomic(filePath: string, content: string): void {
     fs.rmSync(temporary, { force: true });
     throw error;
   }
-}
-
-function digest(value: string): string {
-  return crypto.createHash('sha256').update(value).digest('hex');
-}
-
-function isDigest(value: unknown): value is string {
-  return typeof value === 'string' && /^[0-9a-f]{64}$/.test(value);
 }
 
 function assertSafeRuntimeRoot(
@@ -468,25 +201,4 @@ function withTargetLock<T>(
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && 'code' in error;
-}
-
-function isSafeText(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    value.trim() === value &&
-    value.length > 0 &&
-    !value.includes('\n')
-  );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function refreshError(
-  code: string,
-  message: string,
-  exitCode: ExitCodeValue = ExitCode.staleState,
-) {
-  return workflowError(code, message, exitCode);
 }

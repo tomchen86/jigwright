@@ -1,3 +1,5 @@
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 /**
  * Admits implementation provider results and reconciles correction round
  * evidence.
@@ -18,10 +20,7 @@ import {
   TASK_STRATEGY_IMPLEMENTATION_POLICY_DIGEST,
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
 } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
-import {
-  type AdmittedRoleResult,
-  admitRoleResult,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import type {
   TaskStrategyImplementationRuntimeBindings,
@@ -46,10 +45,13 @@ import type {
   TaskStrategyImplementationStatus,
 } from './task-strategy-implementation-lifecycle.ts';
 import type { createTaskStrategyImplementationContext } from './task-strategy-implementation-context.ts';
-export function createTaskStrategyProviderResults(
+export function createTaskStrategyProviderResults(routingAdmissionReader: ChangeRoutingAdmissionReader,
+  roleAdmission: Pick<RoleAdmissionServices, 'admitRoleResult'>,
   runtime: TaskStrategyImplementationRuntimeBindings,
   context: ReturnType<typeof createTaskStrategyImplementationContext>,
 ) {
+  const { admitRoleResult } = roleAdmission;
+
   const {
     loadInvestigationRuntimeContext,
     readTaskStrategyTransaction,
@@ -272,7 +274,7 @@ export function createTaskStrategyProviderResults(
       output.sourceTree,
     );
     if (durablePatchRecord === null) {
-      validateTaskStrategyProviderPatch(cwd, context.session.sessionId, {
+      validateTaskStrategyProviderPatch(routingAdmissionReader, cwd, context.session.sessionId, {
         patch: Buffer.from(output.patchBase64, 'base64'),
         implementationReservationDigest: reservation.recordDigest,
         implementationSubjectDigest: reservation.subject.subjectDigest,
@@ -394,7 +396,7 @@ export function createTaskStrategyProviderResults(
       invocation,
       binding,
     );
-    const imported = importTaskStrategyProviderPatchUnderLifecycleLock(
+    const imported = importTaskStrategyProviderPatchUnderLifecycleLock(routingAdmissionReader,
       cwd,
       context.session.sessionId,
       {

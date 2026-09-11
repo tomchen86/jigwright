@@ -8,11 +8,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import {
-  type InvestigationRuntimePaths,
   assertChangeId,
   assertInvestigationId,
-} from '../session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import { readHumanResolutionHead } from './human-resolution-nodes.ts';
 import { inspectInvestigationQuarantineState } from './human-resolution-state.ts';
 import {
@@ -32,13 +32,16 @@ import {
   humanResolutionRefPath,
   humanResolutionRefUnsafe,
   investigationStartReservationPath,
-  isBoundedResolutionText,
   observeUnsafePath,
   refUnsafe,
   startReservationUnsafe,
 } from './investigation-resolution-values.ts';
+import { isBoundedResolutionText } from '../../modules/investigation/domain/human-resolution-values.ts';
 import { readCurrentInvestigationRef } from './investigation-session-records.ts';
-import { isDigest, sha256 } from './investigation-store-values.ts';
+import {
+  isDigest,
+  sha256,
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 
 export function quarantineUnsafeCurrentInvestigationRef(
   paths: InvestigationRuntimePaths,

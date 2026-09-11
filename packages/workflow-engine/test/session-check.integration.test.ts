@@ -1,3 +1,6 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import {
   createFixtureRepository,
@@ -7,16 +10,16 @@ import {
   runtimeRoot,
   addFixtureScripts,
 } from './fixture.ts';
-import { runRegisteredCheck } from '../src/adapters/consumer/repository/work-registry/registered-check.ts';
+import { runRegisteredCheck } from '../src/composition-root/check-execution-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
   startSession,
   checkSession,
-  abortSession,
 } from '../src/application/execute-task/session.ts';
-import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { abortSession } from '../src/composition-root/task-session-production.ts';
+import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
 import os from 'node:os';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
@@ -44,11 +47,29 @@ test('workflow validation and session authority ignore retained Spectra metadata
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentChange(repository);
       const contract = loadChangeContract(repository, 'demo-change');
-      const session = startSession(repository, 'demo-change', '1.1');
-      const checked = checkSession(repository, session.sessionId);
+      const session = startSession(
+        productionChangeRoutingAdmissionReader,
+        repository,
+        'demo-change',
+        '1.1',
+      );
+      const checked = checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeRoutingAdmissionReader,
+        repository,
+        session.sessionId,
+      );
       fs.writeFileSync(path.join(repository, 'outside.txt'), 'out of scope\n');
       assert.throws(
-        () => checkSession(repository, session.sessionId),
+        () =>
+          checkSession(
+            maintainerManifestOperations,
+            productionTaskStrategyExecutionGate,
+            productionChangeRoutingAdmissionReader,
+            repository,
+            session.sessionId,
+          ),
         (error) => isWorkflowError(error, 'OUT_OF_SCOPE_PATHS'),
       );
       observations.push({
@@ -169,7 +190,12 @@ test('check rejects workflow artifacts changed after session start', () => {
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const guardPath = path.join(
       repository,
       'openspec/changes/demo-change/guard.json',
@@ -177,7 +203,14 @@ test('check rejects workflow artifacts changed after session start', () => {
     fs.appendFileSync(guardPath, '\n');
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'ARTIFACTS_CHANGED'),
     );
   } finally {
@@ -190,7 +223,12 @@ test('check rejects a session whose task policy was broadened', () => {
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const sessionPath = path.join(
       runtimeRoot(repository),
       'sessions',
@@ -201,7 +239,14 @@ test('check rejects a session whose task policy was broadened', () => {
     fs.writeFileSync(sessionPath, `${JSON.stringify(tampered, null, 2)}\n`);
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'SESSION_POLICY_TAMPERED'),
     );
   } finally {
@@ -238,9 +283,20 @@ test('check executes required argv literally from the repository root', () => {
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
-    const result = checkSession(repository, session.sessionId);
+    const result = checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+    );
     const captured = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
 
     assert.deepEqual(captured, {
@@ -287,10 +343,22 @@ test('check fails on the first non-zero check and does not run later checks', ()
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+        ),
       (error) => {
         assert.equal(isWorkflowError(error, 'CHECK_FAILED'), true);
         assert.deepEqual((error as WorkflowError).details, {
@@ -334,13 +402,25 @@ test('destructive database preflight runs before any required check', () => {
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
     assert.throws(
       () =>
-        checkSession(repository, session.sessionId, {
-          environment: { ...process.env },
-        }),
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            environment: { ...process.env },
+          },
+        ),
       (error) =>
         isWorkflowError(error, 'DISPOSABLE_DATABASE_CONFIRMATION_REQUIRED'),
     );
@@ -367,17 +447,29 @@ test('destructive check evidence includes only the redacted database identity', 
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
-    const result = checkSession(repository, session.sessionId, {
-      environment: {
-        ...process.env,
-        WORKFLOW_DISPOSABLE_DATABASE: '1',
-        TEST_DATABASE_URL:
-          'postgres://runner:marker-secret@127.0.0.1:5433/expense_test?ssl=false',
-        DATABASE_URL: 'postgres://app:secret@127.0.0.1:5432/expense_dev',
+    const result = checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        environment: {
+          ...process.env,
+          WORKFLOW_DISPOSABLE_DATABASE: '1',
+          TEST_DATABASE_URL:
+            'postgres://runner:marker-secret@127.0.0.1:5433/expense_test?ssl=false',
+          DATABASE_URL: 'postgres://app:secret@127.0.0.1:5432/expense_dev',
+        },
       },
-    });
+    );
 
     assert.equal(
       result.checks[0].databaseIdentity,
@@ -416,10 +508,22 @@ test('check revalidates scope before running the next required check', () => {
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'OUT_OF_SCOPE_PATHS'),
     );
     assert.equal(fs.existsSync(outsidePath), true);
@@ -451,10 +555,22 @@ test('check rejects a lock removed by a passing required check', () => {
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'SESSION_LOCK_INVALID'),
     );
   } finally {
@@ -477,16 +593,28 @@ test('check converts spawn errors without leaking environment values', () => {
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
     assert.throws(
       () =>
-        checkSession(repository, session.sessionId, {
-          environment: {
-            ...process.env,
-            WORKFLOW_TEST_SECRET: 'marker-secret',
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            environment: {
+              ...process.env,
+              WORKFLOW_TEST_SECRET: 'marker-secret',
+            },
           },
-        }),
+        ),
       (error) => {
         assert.equal(isWorkflowError(error, 'CHECK_EXECUTION_FAILED'), true);
         assert.equal((error as Error).message.includes('marker-secret'), false);
@@ -516,7 +644,13 @@ test('change validation rejects inherited object properties as check IDs', () =>
     );
 
     assert.throws(
-      () => startSession(repository, 'demo-change', '1.1'),
+      () =>
+        startSession(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          'demo-change',
+          '1.1',
+        ),
       (error) => isWorkflowError(error, 'UNKNOWN_REQUIRED_CHECK'),
     );
   } finally {
@@ -543,11 +677,23 @@ test(
       fs.chmodSync(fakeNodePath, 0o755);
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentChange(repository);
-      const session = startSession(repository, 'demo-change', '1.1');
+      const session = startSession(
+        productionChangeRoutingAdmissionReader,
+        repository,
+        'demo-change',
+        '1.1',
+      );
 
-      const result = checkSession(repository, session.sessionId, {
-        environment: { ...process.env, PATH: fakeBin },
-      });
+      const result = checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeRoutingAdmissionReader,
+        repository,
+        session.sessionId,
+        {
+          environment: { ...process.env, PATH: fakeBin },
+        },
+      );
 
       assert.equal(result.passed, true);
       assert.equal(fs.existsSync(markerPath), false);
@@ -577,7 +723,13 @@ test('change validation rejects bare executable check runners', () => {
     );
 
     assert.throws(
-      () => startSession(repository, 'demo-change', '1.1'),
+      () =>
+        startSession(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          'demo-change',
+          '1.1',
+        ),
       (error) => isWorkflowError(error, 'INVALID_CHECK_DEFINITION'),
     );
   } finally {

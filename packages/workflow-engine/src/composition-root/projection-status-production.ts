@@ -1,3 +1,9 @@
+import { productionChangeRoutingInspector } from './change-routing-observation-production.ts';
+import { loadChangeContract as productionChangeContractReader } from './consumer-contract-production.ts';
+const projectHandoff = projectHandoffWithContractReader.bind(
+  undefined, productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
 /**
  * Inspects all registered projections and reports current, missing and
  * error states.
@@ -9,13 +15,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import {
-  loadWorkflowConfig,
-  parseCurrentInvestigationManifest,
-} from '../adapters/consumer/repository/work-registry/contracts.ts';
-import { projectHandoff } from '../adapters/consumer/repository/handoff/handoff.ts';
-import { statusAgentGuidance } from '../modules/adoption/agent-guidance.ts';
-import { inspectWorkRegistryProjectionStatus } from '../modules/governance-intake/work-registry.ts';
+import { loadWorkflowConfig } from '../runtime/repository-observation/workflow-configuration.ts';
+import { parseCurrentInvestigationManifest } from '../runtime/repository-observation/change-contract-reader.ts';
+import { projectHandoff as projectHandoffWithContractReader } from '../adapters/consumer/repository/handoff/handoff.ts';
+import { statusAgentGuidance } from './agent-guidance-production.ts';
+import { inspectWorkRegistryProjectionStatus } from './work-registry-production.ts';
 import {
   projectionDefinitions,
   type ProjectionId,
@@ -25,7 +29,7 @@ import {
   createProjectionService,
   type ProjectionStatus,
 } from '../modules/projection/projection-service.ts';
-import { repositoryDocumentConfiguration } from '../modules/repository-consumer/repository-consumer-config.ts';
+import { loadRepositoryConsumerConfiguration } from '../runtime/repository-observation/repository-consumer.ts';
 import { inspectRepositorySystemDocuments } from '../runtime/managed-documents/validation/system-documents.ts';
 import {
   readLedgerIndex,
@@ -102,7 +106,8 @@ export function inspectProjectionStatus(repositoryRoot: string) {
       return statusAgentGuidance(repositoryRoot).targets;
     if (id === 'handoff.current-and-next-steps') {
       const target =
-        repositoryDocumentConfiguration(repositoryRoot).handoffPath;
+        loadRepositoryConsumerConfiguration(repositoryRoot).configuration
+          .documents.handoffPath;
       const content = projectHandoff(repositoryRoot);
       return createProjectionService(
         [

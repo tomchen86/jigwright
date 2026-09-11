@@ -1,3 +1,21 @@
+import { preparePullRequestPreMergeAssurance } from './ci-verification-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from './planning-execution-epoch-production.ts';
+import { archiveEligibilityReplayServices } from './ci-replay-production.ts';
+import { productionPlanningArchiveSourcePolicy } from './planning-archive-projection-production.ts';
+import { collaborationGrantCodec as productionArchiveGrantCodec } from '../runtime/grants/grant-services.ts';
+import { reconcileArchivedWorkItems as productionArchivedWorkItemReconciler } from './work-registry-production.ts';
+import { renderHandoffFromTrackedFacts as productionTrackedHandoffRenderer } from './handoff-production.ts';
+const preparePostMergeArchivePullRequest =
+  preparePostMergeArchivePullRequestWithHandoff.bind(
+    undefined,
+    preparePullRequestPreMergeAssurance,
+    productionPlanningExecution,
+    productionPlanningArchiveSourcePolicy,
+    archiveEligibilityReplayServices,
+    productionArchiveGrantCodec,
+    productionTrackedHandoffRenderer,
+    productionArchivedWorkItemReconciler,
+  );
 /**
  * Assembles archive CLI discovery, preparation, authorization and
  * publication dependencies.
@@ -8,7 +26,7 @@
 import {
   discoverArchivePullRequestCandidates,
   inspectArchivePublicationPreparation,
-  preparePostMergeArchivePullRequest,
+  preparePostMergeArchivePullRequest as preparePostMergeArchivePullRequestWithHandoff,
   publishPostMergeArchivePullRequest,
   type GitHubArchiveAdapterModuleV1,
   type ExactArchiveBranchPublisherPortV1,

@@ -4,11 +4,11 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
-import { readPlanningDraftWorkspace } from '../src/runtime/session-workspace/planning-workspace.ts';
+import { readPlanningDraftWorkspace } from '../src/composition-root/planning-workspace-production.ts';
 import {
   resumePropose,
   startPropose,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   claimProviderInvocation,

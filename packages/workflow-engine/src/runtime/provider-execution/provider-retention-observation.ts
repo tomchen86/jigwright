@@ -17,10 +17,8 @@ import {
   type DurableExecutionJobState,
   readExecutionJobState,
 } from '../storage-journal/execution-store.ts';
-import {
-  type EvidenceRetentionRecord,
-  inspectDurableRetentionCatalog,
-} from '../../modules/authority/execution-governance.ts';
+import { type EvidenceRetentionRecord } from '../../modules/authority/execution-governance-retention.ts';
+import { inspectDurableRetentionCatalog } from '../storage-journal/execution-governance-evidence-store.ts';
 import {
   type ProviderPromptContextRetentionBinding,
   providerRuntimeEvidenceId,
@@ -30,10 +28,10 @@ import { WorkflowError } from '../../foundation/errors/errors.ts';
 import { readProviderInvocationLifecycleProjection } from '../storage-journal/provider-invocation-lifecycle.ts';
 import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import {
-  type ProviderInvocationRecord,
   readProviderInvocationRequest,
   readProviderInvocationManifest,
 } from '../storage-journal/provider-invocation-store.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import { type ProviderRetentionReceipt } from '../storage-journal/provider-retention-receipt.ts';
 import {
   type ProviderRetentionEligibilityInput,

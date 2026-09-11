@@ -4,8 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import type { CurrentInvestigationManifest } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
-import { deriveImplementationTermDelta } from '../src/modules/assurance/implementation-term-floor.ts';
+import type { CurrentInvestigationManifest } from '../src/modules/planning-provider/change-contract.ts';
+import { deriveImplementationTermDelta } from '../src/composition-root/implementation-term-floor-production.ts';
 import { normalizeInvestigationTerm } from '../src/modules/investigation/domain/investigation-terms.ts';
 import { git } from './fixture.ts';
 
@@ -13,7 +13,7 @@ test('implementation term floor derives scan coverage from v3 domain facts only'
   const source = fs.readFileSync(
     path.resolve(
       import.meta.dirname,
-      '../src/modules/assurance/implementation-term-floor.ts',
+      '../src/runtime/repository-observation/implementation-term-floor.ts',
     ),
     'utf8',
   );
@@ -139,3 +139,41 @@ function currentInvestigation(
     },
   } as unknown as CurrentInvestigationManifest;
 }
+
+test('implementation tree stages only selected production paths and leaves the real index unchanged', () => {
+  const fixture = createTermFloorFixture();
+  try {
+    fs.writeFileSync(
+      path.join(fixture.repository, 'outside-selection.txt'),
+      'untracked content',
+    );
+    const indexBefore = git(fixture.repository, ['write-tree']).trim();
+    const delta = deriveImplementationTermDelta({
+      repositoryRoot: fixture.repository,
+      baselineCommit: fixture.baselineCommit,
+      productionPaths: [fixture.productionPath],
+      investigation: currentInvestigation({ kind: 'exemption' }),
+    });
+    assert.deepEqual(
+      git(fixture.repository, [
+        'ls-tree',
+        '-r',
+        '--name-only',
+        delta.implementationTree,
+      ])
+        .trim()
+        .split('\n'),
+      [fixture.productionPath],
+    );
+    assert.equal(
+      git(fixture.repository, [
+        'show',
+        `${delta.implementationTree}:${fixture.productionPath}`,
+      ]),
+      'export const retainedTerm = 1;\n',
+    );
+    assert.equal(git(fixture.repository, ['write-tree']).trim(), indexBefore);
+  } finally {
+    fs.rmSync(fixture.repository, { recursive: true, force: true });
+  }
+});

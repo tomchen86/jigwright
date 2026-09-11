@@ -1,3 +1,4 @@
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -6,10 +7,10 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   createDirectHumanReviewAttestation,
   issueCollaborationGrant,
-} from '../src/modules/authority/collaboration-grant.ts';
-import { inspectCollaborationGrants } from '../src/runtime/storage-journal/collaboration-grant-store.ts';
+} from '../src/runtime/grants/collaboration-grant-issuance.ts';
+import { inspectCollaborationGrants } from '../src/runtime/storage-journal/collaboration-grant-records.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
+import { finalizeTask } from '../src/composition-root/finalization-production.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
   assertCurrentTaskDiffReviewSatisfied,
@@ -17,7 +18,7 @@ import {
   inspectTaskDiffReviewStatus,
   inspectTaskDiffReviewSubject,
   submitExternalTaskDiffReview,
-} from '../src/application/finalize/task-diff-review-lifecycle.ts';
+} from '../src/composition-root/task-diff-review-production.ts';
 import { productionConsumedRoleResultReplayPort } from '../src/composition-root/grant-verifier-composition.ts';
 import {
   authoritativeCollaborationGrantVerifierForTest,
@@ -57,7 +58,12 @@ test('caller-supplied TaskDiffReview consumes exact no-provider authority withou
       ) as { repository: { origin: string } }
     ).repository.origin;
     git(repository, ['remote', 'add', 'origin', repositoryOrigin]);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -342,7 +348,12 @@ test('direct-human TaskDiffReview pauses on exact evidence and resumes by verify
       ) as { repository: { origin: string } }
     ).repository.origin;
     git(repository, ['remote', 'add', 'origin', repositoryOrigin]);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -536,7 +547,12 @@ test('an orphaned common grant reservation is read-only visible and only its exa
       ) as { repository: { origin: string } }
     ).repository.origin;
     git(repository, ['remote', 'add', 'origin', repositoryOrigin]);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',

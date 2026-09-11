@@ -4,27 +4,26 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import {
-  deriveAuthorityAuditRepositoryId,
-  type AuthorityAuditLedgerScope,
-} from '../src/runtime/storage-journal/authority-audit-ledger.ts';
+import { deriveAuthorityAuditRepositoryId } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import {
   showAuthorityAuditTask,
   verifyAuthorityAuditEvents,
 } from '../src/runtime/storage-journal/authority-audit-service.ts';
+import { externalEffectStorePaths } from '../src/runtime/storage-journal/external-effect-grant-store.ts';
 import {
-  externalEffectStorePaths,
   inspectExternalEffectGrant,
-  issueExternalEffectGrant,
   markExternalEffectDispatchIssued,
   reconcileExternalEffectGrant,
   reserveExternalEffectGrant,
   terminalizeExternalEffectGrant,
+} from '../src/composition-root/external-effect-production.ts';
+import {
   type ExternalEffectReconciliationOutcome,
   type Sha256Digest,
 } from '../src/modules/authority/external-effect-grant.ts';
-import { executePublishGrant } from '../src/adapters/remote/github/publish-executor.ts';
-import { revokeTaskMandate } from '../src/modules/authority/task-mandate.ts';
+import { issueExternalEffectGrant } from '../src/composition-root/external-effect-production.ts';
+import { executePublishGrant } from '../src/composition-root/external-effect-production.ts';
+
 import {
   EFFECT_GRANT_ID as GRANT_ID,
   EFFECT_ISSUED_AT as ISSUED_AT,
@@ -366,3 +365,8 @@ function auditScope(fixture: {
     repositoryId: deriveAuthorityAuditRepositoryId('github:R_fixture'),
   };
 }
+
+import { type AuthorityAuditLedgerScope } from '../src/modules/authority/authority-audit-contract.ts';
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const { revokeTaskMandate } = taskMandateOperations;

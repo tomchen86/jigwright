@@ -1,3 +1,5 @@
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 /**
  * Admits caller-supplied implementations and reserves their correction
  * rounds.
@@ -7,16 +9,12 @@
  *   source tree.
  */
 import {
-  type TaskStrategyImplementationSubject,
   assertTaskStrategyImplementationOutput,
   TASK_STRATEGY_IMPLEMENTATION_POLICY_DIGEST,
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
 } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
-import {
-  type RoleParticipant,
-  authorizeGrantedOrdinaryRole,
-  admitRoleResult,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+import type { TaskStrategyImplementationSubject } from '../../modules/provider-orchestration/task-strategy-implementation-manifest.ts';
+import { type RoleParticipant } from '../../modules/provider-orchestration/role-assignment.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
   validateTaskStrategyCallerPatch,
@@ -27,7 +25,7 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import {
   bindingFromPayload,
   type CollaborationGrantRequest,
-} from '../../modules/authority/collaboration-grant.ts';
+} from '../../modules/authority/collaboration-grant-codec.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import type {
   TaskStrategyImplementationRuntimeBindings,
@@ -48,10 +46,16 @@ import type {
   TaskStrategyImplementationStatus,
 } from './task-strategy-implementation-lifecycle.ts';
 import type { createTaskStrategyImplementationContext } from './task-strategy-implementation-context.ts';
-export function createTaskStrategyCallerAdmission(
+export function createTaskStrategyCallerAdmission(routingAdmissionReader: ChangeRoutingAdmissionReader,
+  roleAdmission: Pick<
+    RoleAdmissionServices,
+    'authorizeGrantedOrdinaryRole' | 'admitRoleResult'
+  >,
   runtime: TaskStrategyImplementationRuntimeBindings,
   context: ReturnType<typeof createTaskStrategyImplementationContext>,
 ) {
+  const { authorizeGrantedOrdinaryRole, admitRoleResult } = roleAdmission;
+
   const {
     loadActiveSessionContext,
     loadInvestigationRuntimeContext,
@@ -128,7 +132,7 @@ export function createTaskStrategyCallerAdmission(
       subject.subjectDigest,
     );
     if (reservation === null) {
-      const validation = validateTaskStrategyCallerPatch(
+      const validation = validateTaskStrategyCallerPatch(routingAdmissionReader,
         context.git.repositoryRoot,
         context.session.sessionId,
         {
@@ -404,7 +408,7 @@ export function createTaskStrategyCallerAdmission(
         'Simulated task implementation interruption after caller result persistence.',
       );
     }
-    const imported = importTaskStrategyCallerPatchUnderLifecycleLock(
+    const imported = importTaskStrategyCallerPatchUnderLifecycleLock(routingAdmissionReader,
       context.git.repositoryRoot,
       context.session.sessionId,
       {

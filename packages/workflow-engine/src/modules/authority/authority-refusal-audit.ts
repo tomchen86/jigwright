@@ -11,40 +11,10 @@
  */
 import crypto from 'node:crypto';
 
-import {
-  scanAuthorityAuditLedger,
-  type AuthorityAuditLedgerScope,
-  type Sha256Digest,
-} from '../../runtime/storage-journal/authority-audit-ledger.ts';
-import {
-  recordAuthorityAuditEvent,
-  type AuthorityAuditActor,
-  type AuthorityAuditRecordedEvent,
-  type AuthorityAuditServiceHooks,
-} from '../../runtime/storage-journal/authority-audit-service.ts';
+import { scanAuthorityAuditLedger } from '../../runtime/storage-journal/authority-audit-ledger.ts';
+import { recordAuthorityAuditEvent } from '../../runtime/storage-journal/authority-audit-service.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { WorkflowError } from '../../foundation/errors/errors.ts';
-
-export type AuthorityRefusalAuditBinding = Readonly<{
-  scope: AuthorityAuditLedgerScope;
-  family: string;
-  operation: string;
-  subjectId: string;
-  actor: AuthorityAuditActor;
-  taskId: string | null;
-  changeId: string | null;
-  workflowId: string | null;
-  grantDigest: Sha256Digest | null;
-  candidateBundleDigest?: Sha256Digest | null;
-  bindingDigest: Sha256Digest;
-  refusalIdentity: Readonly<Record<string, unknown>>;
-}>;
-
-export type AuthorityRefusalAuditOptions = Readonly<{
-  now?: Date;
-  serviceHooks?: AuthorityAuditServiceHooks;
-  onRecord?: (entry: AuthorityAuditRecordedEvent) => void;
-}>;
 
 /**
  * Audit one refusal only after a caller has independently verified the
@@ -192,3 +162,20 @@ function exactDate(value: Date): Date {
   }
   return date;
 }
+
+import {
+  type AuthorityRefusalAuditBinding,
+  type AuthorityRefusalAuditOptions,
+} from './authority-audit-contract.ts';
+export {
+  type AuthorityRefusalAuditBinding,
+  type AuthorityRefusalAuditOptions,
+} from './authority-audit-contract.ts';
+
+import {
+  type AuthorityAuditLedgerScope,
+  type Sha256Digest,
+  type AuthorityAuditActor,
+  type AuthorityAuditRecordedEvent,
+  type AuthorityAuditServiceHooks,
+} from './authority-audit-contract.ts';

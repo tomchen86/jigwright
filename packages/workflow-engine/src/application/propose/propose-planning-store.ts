@@ -17,7 +17,7 @@ import {
   type WorkflowPlanDigestTouchedFile,
 } from '../../modules/guidance/renderers/plan-digest.ts';
 import { PROPOSE_POLICY_DIGEST } from '../../modules/provider-orchestration/provider-contracts.ts';
-import { repositoryPlanningConfiguration } from '../../modules/repository-consumer/repository-consumer-config.ts';
+import { loadRepositoryConsumerConfiguration } from '../../runtime/repository-observation/repository-consumer.ts';
 import {
   assertRequiredPlanningArtifacts,
   readMaterializedPlanningArtifactDigests,
@@ -378,7 +378,10 @@ export function readExemptionPlanningMaterializationReceipt(
 }
 
 export function readMaterializedPlanningArtifacts(
-  services: Pick<ProposeRuntime, 'evidence' | 'workspace'>,
+  services: Pick<
+    ProposeRuntime,
+    'evidence' | 'workspace' | 'roleContextSharingGrants'
+  >,
   cwd: string,
   status: InvestigationStatus,
   rebuilt: RebuiltInvestigation,
@@ -388,7 +391,12 @@ export function readMaterializedPlanningArtifacts(
   },
 ): Record<string, string> | null {
   const context = services.workspace.loadInvestigationRuntimeContext(cwd);
-  const manifest = buildProposeInvestigationManifestV3(context, rebuilt);
+  const manifest = buildProposeInvestigationManifestV3(
+    services.workspace.materializeInvestigationEvidenceView,
+    services.roleContextSharingGrants,
+    context,
+    rebuilt,
+  );
   if (manifest.outcome !== 'built') {
     throw investigationV3BuildFailure(manifest.blocker);
   }
@@ -402,6 +410,7 @@ export function readMaterializedPlanningArtifacts(
     return null;
   }
   assertCurrentGovernanceSources(
+    services,
     context.git.repositoryRoot,
     rebuilt.intent.sourceRefs,
   );
@@ -444,7 +453,10 @@ export function readMaterializedPlanningArtifacts(
 }
 
 export function readMaterializedExemptionPlanningArtifacts(
-  services: Pick<ProposeRuntime, 'evidence' | 'workspace'>,
+  services: Pick<
+    ProposeRuntime,
+    'evidence' | 'workspace' | 'roleContextSharingGrants'
+  >,
   cwd: string,
   session: ProposeExemptionSession,
   changeDirectory: string,
@@ -461,6 +473,7 @@ export function readMaterializedExemptionPlanningArtifacts(
     );
   }
   assertCurrentGovernanceSources(
+    services,
     context.git.repositoryRoot,
     session.intent.sourceRefs,
   );
@@ -552,5 +565,6 @@ export function indexBehaviorContracts(
 }
 
 export function currentPlanningSchemaName(repositoryRoot: string): string {
-  return repositoryPlanningConfiguration(repositoryRoot).currentSchemaName;
+  return loadRepositoryConsumerConfiguration(repositoryRoot).configuration
+    .planning.currentSchemaName;
 }

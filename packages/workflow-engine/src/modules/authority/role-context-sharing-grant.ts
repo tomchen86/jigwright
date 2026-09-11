@@ -14,20 +14,19 @@ import crypto from 'node:crypto';
 
 import {
   ROLE_CONTEXT_SHARING_GRANT_READER_CONTRACT_VERSION_V1,
-  bindingFromRoleContextSharingGrantPayloadV1,
-  canonicalRoleContextSharingGrantEnvelopeV1,
-  executeGrantLifecycleTransitionV1,
-  GRANT_LIFECYCLE_CONTRACT_VERSION_V1,
-  isRoleContextSharingGrantError,
-  verifyRoleContextSharingGrantCapabilityV1,
-  type GrantLifecycleClockPortV1,
-  type GrantLifecycleStoragePortV1,
-  type GrantLifecycleTransitionResultV1,
   type RoleContextSharingGrantEnvelopeV1,
   type RoleContextSharingGrantExpectedBindingV1,
   type RoleContextSharingGrantPayloadV1,
-  type VerifiedRoleContextSharingGrantCapabilityV1,
-} from './optional-grants-package.ts';
+} from '@jigwright/core/role-context-sharing-grant-codec';
+import { isRoleContextSharingGrantError } from './grant-errors.ts';
+import type { VerifiedRoleContextSharingGrantCapabilityV1 } from '@jigwright/grants/role-context-sharing-degradation';
+
+import {
+  GRANT_LIFECYCLE_CONTRACT_VERSION_V1,
+  type GrantLifecycleClockPortV1,
+  type GrantLifecycleStoragePortV1,
+  type GrantLifecycleTransitionResultV1,
+} from '@jigwright/core/grant-lifecycle-contracts';
 
 import {
   ExitCode,
@@ -89,148 +88,6 @@ export type RoleContextSharingGrantTransitionRequest = Readonly<{
   options: RoleContextSharingGrantValidationOptions;
   event: 'reserve' | 'consume';
 }>;
-
-export function verifyRoleContextSharingGrantCapability(
-  envelope: RoleContextSharingGrantEnvelopeV1,
-  policy: MaintainerPolicy,
-  options: RoleContextSharingGrantValidationOptions,
-): VerifiedRoleContextSharingGrantCapabilityV1 {
-  assertAuthoritativeRoleContextSharingGrantVerifier(options.verifier);
-  const verifier: AuthoritativeRoleContextSharingGrantVerifier =
-    options.verifier;
-  verifier.assertCurrent();
-  const eligibility = assertEligibilityPort(options.eligibility);
-  try {
-    return verifyRoleContextSharingGrantCapabilityV1({
-      readerContractVersion:
-        ROLE_CONTEXT_SHARING_GRANT_READER_CONTRACT_VERSION_V1,
-      raw: canonicalRoleContextSharingGrantEnvelopeV1(envelope),
-      expected: options.expected,
-      verifier,
-      validatePayload(payload) {
-        validateDomainPayload(payload, policy, options, eligibility);
-      },
-    });
-  } catch (error) {
-    if (error instanceof WorkflowError) throw error;
-    if (isRoleContextSharingGrantError(error)) {
-      if (error.code === 'ROLE_CONTEXT_SHARING_GRANT_BINDING_MISMATCH') {
-        throw bindingMismatch();
-      }
-      if (error.code === 'ROLE_CONTEXT_SHARING_GRANT_SIGNATURE_INVALID') {
-        throw workflowError(
-          'ROLE_CONTEXT_SHARING_GRANT_SIGNATURE_INVALID',
-          'Role-context-sharing grant signature is invalid.',
-          ExitCode.guard,
-          { details: errorDetails(error) },
-        );
-      }
-      throw invalidGrant(error);
-    }
-    throw error;
-  }
-}
-
-export function executeRoleContextSharingGrantTransitionV1<Persisted>(
-  request: RoleContextSharingGrantTransitionRequest,
-  ports: Readonly<{
-    clock: GrantLifecycleClockPortV1;
-    storage: GrantLifecycleStoragePortV1<
-      VerifiedRoleContextSharingGrantCapabilityV1,
-      Persisted
-    >;
-  }>,
-): GrantLifecycleTransitionResultV1<Persisted> {
-  const validation = () =>
-    verifyRoleContextSharingGrantCapability(
-      request.envelope,
-      request.policy,
-      request.options,
-    );
-  return executeGrantLifecycleTransitionV1(
-    {
-      contractVersion: GRANT_LIFECYCLE_CONTRACT_VERSION_V1,
-      grantId: request.envelope.payload.grantId,
-      transitionDigest: request.envelope.payload.targetDigest,
-      maxUses: request.envelope.payload.maxUses,
-      event:
-        request.event === 'reserve'
-          ? {
-              kind: 'reserve',
-              expiresAt: request.envelope.payload.expiresAt,
-              reason: 'Exact role-context-sharing grant reserved',
-              expirationReason:
-                'Role-context-sharing grant expired before reservation',
-            }
-          : {
-              kind: 'consume',
-              reason: 'Exact role-context-sharing grant consumed',
-            },
-      validate: validation,
-      ...(request.event === 'consume'
-        ? {
-            validationFailureReason:
-              'Role-context-sharing grant failed exact consume validation',
-          }
-        : {}),
-    },
-    ports,
-  );
-}
-
-function validateDomainPayload(
-  payload: RoleContextSharingGrantPayloadV1,
-  policy: MaintainerPolicy,
-  options: RoleContextSharingGrantValidationOptions,
-  eligibility: RoleContextSharingEligibilityPortV1,
-): void {
-  if (
-    payload.repositoryId !== policy.repository.id ||
-    payload.repositoryOrigin !== policy.repository.origin ||
-    payload.policyBlob !== options.expected.policyBlob ||
-    !isKnownRoleContextSharingPolicyDigest(
-      payload.roleContextSharingPolicyDigest,
-    ) ||
-    payload.eligibilityPolicyDigest !== eligibility.policyDigest ||
-    policy.maxUses !== 1 ||
-    payload.maxUses !== 1 ||
-    !policy.trustedSigners.some(({ identity }) => identity === payload.signer)
-  ) {
-    throw bindingMismatch();
-  }
-  const now = exactDate(options.now);
-  const issuedAt = exactTimestamp(payload.issuedAt);
-  const expiresAt = exactTimestamp(payload.expiresAt);
-  if (
-    issuedAt === undefined ||
-    expiresAt === undefined ||
-    issuedAt > expiresAt ||
-    issuedAt > now.getTime() + 30_000 ||
-    expiresAt < now.getTime() ||
-    expiresAt - issuedAt >
-      Math.min(policy.maxTtlMinutes, ROLE_CONTEXT_SHARING_MAX_TTL_MINUTES) *
-        60_000
-  ) {
-    throw workflowError(
-      'ROLE_CONTEXT_SHARING_GRANT_EXPIRED',
-      'Role-context-sharing grant is expired or has invalid time bounds.',
-      ExitCode.staleState,
-    );
-  }
-  try {
-    eligibility.assertEligible(
-      bindingFromRoleContextSharingGrantPayloadV1(payload),
-    );
-  } catch (cause) {
-    if (
-      cause instanceof WorkflowError &&
-      cause.code === 'ROLE_CONTEXT_SHARING_GRANT_INELIGIBLE'
-    ) {
-      throw cause;
-    }
-    throw ineligible(cause);
-  }
-}
 
 function assertEligibilityPort(
   value: RoleContextSharingEligibilityPortV1 | undefined,
@@ -300,3 +157,176 @@ function deepFreeze<T>(value: T): T {
   }
   return value;
 }
+
+export type RoleContextSharingGrantOperations = Pick<
+  typeof import('@jigwright/grants/role-context-sharing-degradation'),
+  | 'bindingFromRoleContextSharingGrantPayloadV1'
+  | 'canonicalRoleContextSharingGrantEnvelopeV1'
+  | 'verifyRoleContextSharingGrantCapabilityV1'
+> &
+  Pick<
+    typeof import('@jigwright/grants/grant-lifecycle'),
+    'executeGrantLifecycleTransitionV1'
+  >;
+
+export function createRoleContextSharingGrantServices(
+  operations: RoleContextSharingGrantOperations,
+) {
+  const {
+    bindingFromRoleContextSharingGrantPayloadV1,
+    canonicalRoleContextSharingGrantEnvelopeV1,
+    verifyRoleContextSharingGrantCapabilityV1,
+    executeGrantLifecycleTransitionV1,
+  } = operations;
+
+  function verifyRoleContextSharingGrantCapability(
+    envelope: RoleContextSharingGrantEnvelopeV1,
+    policy: MaintainerPolicy,
+    options: RoleContextSharingGrantValidationOptions,
+  ): VerifiedRoleContextSharingGrantCapabilityV1 {
+    assertAuthoritativeRoleContextSharingGrantVerifier(options.verifier);
+    const verifier: AuthoritativeRoleContextSharingGrantVerifier =
+      options.verifier;
+    verifier.assertCurrent();
+    const eligibility = assertEligibilityPort(options.eligibility);
+    try {
+      return verifyRoleContextSharingGrantCapabilityV1({
+        readerContractVersion:
+          ROLE_CONTEXT_SHARING_GRANT_READER_CONTRACT_VERSION_V1,
+        raw: canonicalRoleContextSharingGrantEnvelopeV1(envelope),
+        expected: options.expected,
+        verifier,
+        validatePayload(payload) {
+          validateDomainPayload(payload, policy, options, eligibility);
+        },
+      });
+    } catch (error) {
+      if (error instanceof WorkflowError) throw error;
+      if (isRoleContextSharingGrantError(error)) {
+        if (error.code === 'ROLE_CONTEXT_SHARING_GRANT_BINDING_MISMATCH') {
+          throw bindingMismatch();
+        }
+        if (error.code === 'ROLE_CONTEXT_SHARING_GRANT_SIGNATURE_INVALID') {
+          throw workflowError(
+            'ROLE_CONTEXT_SHARING_GRANT_SIGNATURE_INVALID',
+            'Role-context-sharing grant signature is invalid.',
+            ExitCode.guard,
+            { details: errorDetails(error) },
+          );
+        }
+        throw invalidGrant(error);
+      }
+      throw error;
+    }
+  }
+
+  function executeRoleContextSharingGrantTransitionV1<Persisted>(
+    request: RoleContextSharingGrantTransitionRequest,
+    ports: Readonly<{
+      clock: GrantLifecycleClockPortV1;
+      storage: GrantLifecycleStoragePortV1<
+        VerifiedRoleContextSharingGrantCapabilityV1,
+        Persisted
+      >;
+    }>,
+  ): GrantLifecycleTransitionResultV1<Persisted> {
+    const validation = () =>
+      verifyRoleContextSharingGrantCapability(
+        request.envelope,
+        request.policy,
+        request.options,
+      );
+    return executeGrantLifecycleTransitionV1(
+      {
+        contractVersion: GRANT_LIFECYCLE_CONTRACT_VERSION_V1,
+        grantId: request.envelope.payload.grantId,
+        transitionDigest: request.envelope.payload.targetDigest,
+        maxUses: request.envelope.payload.maxUses,
+        event:
+          request.event === 'reserve'
+            ? {
+                kind: 'reserve',
+                expiresAt: request.envelope.payload.expiresAt,
+                reason: 'Exact role-context-sharing grant reserved',
+                expirationReason:
+                  'Role-context-sharing grant expired before reservation',
+              }
+            : {
+                kind: 'consume',
+                reason: 'Exact role-context-sharing grant consumed',
+              },
+        validate: validation,
+        ...(request.event === 'consume'
+          ? {
+              validationFailureReason:
+                'Role-context-sharing grant failed exact consume validation',
+            }
+          : {}),
+      },
+      ports,
+    );
+  }
+
+  function validateDomainPayload(
+    payload: RoleContextSharingGrantPayloadV1,
+    policy: MaintainerPolicy,
+    options: RoleContextSharingGrantValidationOptions,
+    eligibility: RoleContextSharingEligibilityPortV1,
+  ): void {
+    if (
+      payload.repositoryId !== policy.repository.id ||
+      payload.repositoryOrigin !== policy.repository.origin ||
+      payload.policyBlob !== options.expected.policyBlob ||
+      !isKnownRoleContextSharingPolicyDigest(
+        payload.roleContextSharingPolicyDigest,
+      ) ||
+      payload.eligibilityPolicyDigest !== eligibility.policyDigest ||
+      policy.maxUses !== 1 ||
+      payload.maxUses !== 1 ||
+      !policy.trustedSigners.some(({ identity }) => identity === payload.signer)
+    ) {
+      throw bindingMismatch();
+    }
+    const now = exactDate(options.now);
+    const issuedAt = exactTimestamp(payload.issuedAt);
+    const expiresAt = exactTimestamp(payload.expiresAt);
+    if (
+      issuedAt === undefined ||
+      expiresAt === undefined ||
+      issuedAt > expiresAt ||
+      issuedAt > now.getTime() + 30_000 ||
+      expiresAt < now.getTime() ||
+      expiresAt - issuedAt >
+        Math.min(policy.maxTtlMinutes, ROLE_CONTEXT_SHARING_MAX_TTL_MINUTES) *
+          60_000
+    ) {
+      throw workflowError(
+        'ROLE_CONTEXT_SHARING_GRANT_EXPIRED',
+        'Role-context-sharing grant is expired or has invalid time bounds.',
+        ExitCode.staleState,
+      );
+    }
+    try {
+      eligibility.assertEligible(
+        bindingFromRoleContextSharingGrantPayloadV1(payload),
+      );
+    } catch (cause) {
+      if (
+        cause instanceof WorkflowError &&
+        cause.code === 'ROLE_CONTEXT_SHARING_GRANT_INELIGIBLE'
+      ) {
+        throw cause;
+      }
+      throw ineligible(cause);
+    }
+  }
+
+  return {
+    verifyRoleContextSharingGrantCapability,
+    executeRoleContextSharingGrantTransitionV1,
+  };
+}
+
+export type RoleContextSharingGrantServices = ReturnType<
+  typeof createRoleContextSharingGrantServices
+>;

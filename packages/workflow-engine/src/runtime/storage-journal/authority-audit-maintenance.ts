@@ -10,8 +10,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
-  type Sha256Digest,
-  type AuthorityAuditProfile,
   type AuthorityAuditRetentionCheckpoint,
   deepFreeze,
   type AuthorityAuditDestructionTombstone,
@@ -610,3 +608,8 @@ export function compactionResult(
     checkpointDigest: checkpointDigest(checkpoint),
   });
 }
+
+import {
+  type Sha256Digest,
+  type AuthorityAuditProfile,
+} from '../../modules/authority/authority-audit-contract.ts';

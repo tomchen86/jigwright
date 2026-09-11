@@ -5,10 +5,8 @@
  * - Immutable publication precedes exact stored session and subject revalidation.
  * - Provider and caller records retain distinct paths, collision errors, and replay checks.
  */
-import {
-  type InvestigationRuntimePaths,
-  assertSessionId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   type TaskStrategyImplementationReservation,

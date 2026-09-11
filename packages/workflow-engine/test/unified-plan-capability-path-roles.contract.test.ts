@@ -9,7 +9,7 @@ import {
   resolvePathRole,
   type PathRole,
 } from '../src/modules/source/path-role-registry.ts';
-import { loadWorkflowConfig } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../src/runtime/repository-observation/workflow-configuration.ts';
 import { resolveTaskAuthorizationRequirement } from '../src/adapters/consumer/repository/work-registry/task-authorization-policy.ts';
 
 const EXPECTED_ROLES: ReadonlyArray<
@@ -23,9 +23,12 @@ const EXPECTED_ROLES: ReadonlyArray<
     'packages/workflow-engine/src/runtime/storage-journal/intervention-engine-artifact-store.ts',
     'control-plane',
   ],
-  ['packages/workflow-engine/src/recovery-trust-root-restore.ts', 'grant'],
   [
-    'packages/workflow-engine/src/adapters/consumer/repository/work-registry/contract-artifacts.ts',
+    'packages/workflow-engine/src/runtime/recovery/recovery-trust-root-restore.ts',
+    'grant',
+  ],
+  [
+    'packages/workflow-engine/src/runtime/repository-observation/workflow-contract-artifacts.ts',
     'control-plane',
   ],
   [

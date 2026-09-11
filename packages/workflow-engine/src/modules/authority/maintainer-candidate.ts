@@ -1,3 +1,22 @@
+import type {
+  CheckReuseClass,
+  CandidateCheckAttestation,
+  CandidateDependencySnapshot,
+  CandidateChecksAttestationV3,
+  CandidateClassification,
+  ImmutableCandidateBundleV2,
+  ImmutableCandidateBundleV2Input,
+  CandidateExternalEffect,
+  CandidateExternalEffectsManifest,
+  CandidateProviderInvocation,
+  CandidateProviderInvocationsManifest,
+  CandidateRecoveryPlan,
+  CandidateSupportingArtifact,
+  CandidateSupportingArtifactSet,
+  StoredCandidateSupportingArtifacts,
+  CandidateV2CheckFreshnessOptions,
+  CandidateChecksFields,
+} from './maintainer-candidate-contracts.ts';
 /**
  * Stores and reads immutable candidate bundles, their supporting artifacts
  * and readable summaries.
@@ -16,12 +35,12 @@ import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   type CheckDependency,
   type PatchManifest,
-} from './maintainer-manifest.ts';
+} from './maintainer-manifest-contracts.ts';
 import {
   runtimePaths,
   withRepositoryLifecycleOperation,
 } from '../../runtime/session-workspace/session-store.ts';
-import type { TaskMandateBinding } from './task-mandate.ts';
+import type { TaskMandateBinding } from './task-mandate-contract.ts';
 import {
   CHANGE_ID,
   DIGEST,
@@ -47,152 +66,7 @@ export {
   assertCandidateV2ChecksFresh,
 } from './maintainer-candidate-contracts.ts';
 
-export type { CandidateChecksFields };
-
-export type CheckReuseClass =
-  'content-pure' | 'toolchain-dependent' | 'external-state';
-
-export type { CheckDependency } from './maintainer-manifest.ts';
-
-export type CandidateCheckAttestation = {
-  checkId: string;
-  definitionDigest: string;
-  commandDigest: string;
-  runnerDigest: string;
-  environmentDigest: string;
-  resultDigest: string;
-  outcome: 'passed';
-  startedAt: string;
-  completedAt: string;
-  reuseClass: CheckReuseClass;
-  maxAgeMs: number | null;
-  externalSnapshotDigest: string | null;
-  dependsOn: CheckDependency[];
-};
-
-export type CandidateDependencySnapshot = {
-  schemaVersion: 1;
-  sourceTree: string;
-  baseCommit: string;
-  harnessEngineDigest: string;
-  policyDigest: string;
-  runnerDigests: Record<string, string>;
-  externalStateDigests: Record<string, string | null>;
-};
-
-export type CandidateChecksAttestationV3 = {
-  schemaVersion: 3;
-  candidateTree: string;
-  patchDigest: string;
-  trustBaseCommit: string;
-  dependencySnapshot: CandidateDependencySnapshot;
-  checks: CandidateCheckAttestation[];
-};
-
-export type CandidateClassification =
-  'ordinary' | 'root-one-shot' | 'control-plane';
-
-type ImmutableCandidateBundleCommon = {
-  mandateBinding: TaskMandateBinding;
-  repositoryId: string;
-  targetRef: string;
-  expectedOldCommit: string;
-  expectedRefGeneration: number;
-  candidateCommit: string;
-  resultTree: string;
-  commitMessage: string;
-  manifest: PatchManifest;
-  manifestDigest: string;
-  checksAttestationDigest: string;
-  effectsManifestDigest: string;
-  providerInvocationsDigest: string;
-  classification: CandidateClassification;
-  recoveryPlanDigest: string;
-  createdAt: string;
-  candidateBundleDigest: string;
-};
-
-export type ImmutableCandidateBundleV2 = ImmutableCandidateBundleCommon & {
-  schemaVersion: 2;
-  checksAttestation: CandidateChecksAttestationV3;
-  humanReadableSummaryDigest: string;
-};
-
-export type ImmutableCandidateBundleV2Input = Omit<
-  ImmutableCandidateBundleV2,
-  | 'schemaVersion'
-  | 'manifestDigest'
-  | 'checksAttestationDigest'
-  | 'humanReadableSummaryDigest'
-  | 'candidateBundleDigest'
-> & {
-  candidateBundleDigest?: string;
-};
-
-export type CandidateExternalEffect = {
-  effectType: string;
-  targetDigest: string;
-  authorizationDigest: string | null;
-  resultDigest: string | null;
-};
-
-export type CandidateExternalEffectsManifest = {
-  schemaVersion: 1;
-  kind: 'candidate-external-effects.v1';
-  changeId: string;
-  mandateBinding: TaskMandateBinding;
-  effects: CandidateExternalEffect[];
-};
-
-export type CandidateProviderInvocation = {
-  invocationId: string;
-  investigationId: string;
-  purpose: 'survey' | 'plan-review' | 'task-diff-review';
-  attempt: number;
-  state: 'prepared' | 'leased' | 'succeeded' | 'failed';
-  requestDigest: string;
-  manifestDigest: string;
-  outputDigest: string | null;
-  failureDigest: string | null;
-};
-
-export type CandidateProviderInvocationsManifest = {
-  schemaVersion: 1;
-  kind: 'candidate-provider-invocations.v1';
-  changeId: string;
-  mandateBinding: TaskMandateBinding;
-  invocations: CandidateProviderInvocation[];
-};
-
-export type CandidateRecoveryPlan = {
-  schemaVersion: 1;
-  kind: 'candidate-recovery-plan.v1';
-  changeId: string;
-  mandateBinding: TaskMandateBinding;
-  targetRef: string;
-  expectedOldCommit: string;
-  expectedRefGeneration: number;
-  candidateCommit: string;
-  rollbackTarget: string;
-};
-
-export type CandidateSupportingArtifact =
-  | CandidateExternalEffectsManifest
-  | CandidateProviderInvocationsManifest
-  | CandidateRecoveryPlan;
-
-export type CandidateSupportingArtifactSet = {
-  effectsManifest: CandidateExternalEffectsManifest;
-  providerInvocations: CandidateProviderInvocationsManifest;
-  recoveryPlan: CandidateRecoveryPlan;
-};
-
-export type StoredCandidateSupportingArtifacts = {
-  effectsManifestDigest: string;
-  providerInvocationsDigest: string;
-  recoveryPlanDigest: string;
-  paths: string[];
-};
+export type { CheckDependency } from './maintainer-manifest-contracts.ts';
 
 /**
  * Publish all candidate-supporting objects before the candidate bundle. An
@@ -678,24 +552,6 @@ function candidateStoreError(message: string) {
   );
 }
 
-export type CandidateV2CheckFreshnessOptions = {
-  now: Date;
-  candidateTree: string;
-  patchDigest: string;
-  trustBaseCommit: string;
-  requiredChecks: string[];
-  waivedFreshnessCheckIds?: string[];
-  environmentDigest: string;
-  currentDependencySnapshot: CandidateDependencySnapshot;
-};
-
-type CandidateChecksFields = {
-  candidateTree: string;
-  patchDigest: string;
-  trustBaseCommit: string;
-  checks: CandidateCheckAttestation[];
-};
-
 export type RefGenerationTransition = {
   fromOid: string;
   toOid: string;
@@ -730,3 +586,23 @@ export const {
   readDurableRefGenerationLedger,
   recordDurableRefGenerationTransitionUnderLifecycleLock,
 } = candidateRefLedger;
+
+export type {
+  CheckReuseClass,
+  CandidateCheckAttestation,
+  CandidateDependencySnapshot,
+  CandidateChecksAttestationV3,
+  CandidateClassification,
+  ImmutableCandidateBundleV2,
+  ImmutableCandidateBundleV2Input,
+  CandidateExternalEffect,
+  CandidateExternalEffectsManifest,
+  CandidateProviderInvocation,
+  CandidateProviderInvocationsManifest,
+  CandidateRecoveryPlan,
+  CandidateSupportingArtifact,
+  CandidateSupportingArtifactSet,
+  StoredCandidateSupportingArtifacts,
+  CandidateV2CheckFreshnessOptions,
+  CandidateChecksFields,
+} from './maintainer-candidate-contracts.ts';

@@ -10,17 +10,12 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  type AuthorityAuditLedgerScope,
   type AuthorityAuditLedgerPaths,
-  type AuthorityAuditProfile,
   type AuthorityAuditLedgerScan,
   deepFreeze,
-  type Sha256Digest,
   PUBLICATION_RECORD_NAME,
   FINAL_RECORD_NAME,
   type AuthorityAuditRetentionCheckpoint,
-  type AuthorityAuditLedgerEntry,
-  type AuthorityAuditRecord,
   UUID_V4,
   type AuthorityAuditAppendOptions,
 } from './authority-audit-contracts.ts';
@@ -315,3 +310,11 @@ export function publishRecord(
     throw error;
   }
 }
+
+import {
+  type AuthorityAuditLedgerScope,
+  type AuthorityAuditProfile,
+  type Sha256Digest,
+  type AuthorityAuditLedgerEntry,
+  type AuthorityAuditRecord,
+} from '../../modules/authority/authority-audit-contract.ts';

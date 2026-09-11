@@ -8,11 +8,11 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:035c6b9c91c48629f1d2165b8226ab81a48b22c859b98184c8020dfc905ca879 -->
+<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:7454e0aaad4fdc8b23e3515c625e2dfecc10b95beb6ac1a5607bd802e6fd8378 -->
 
 <!-- prettier-ignore-start -->
 
-77 files changed in this module since confirmation.
+81 files changed in this module since confirmation.
 
 ## Commands
 
@@ -65,7 +65,6 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 | CollaborationLifecyclePhase | blind-survey, plan-review, task-diff-review, task-implementation | [collaboration-grant-codec.ts](collaboration-grant-codec.ts) |
 | CollaborationAuthorRole | investigation-author, plan-author, task-implementer, red-author | [collaboration-grant-codec.ts](collaboration-grant-codec.ts) |
 | CollaborationConflictingRole | plan-reviewer, task-diff-reviewer, task-implementer | [collaboration-grant-codec.ts](collaboration-grant-codec.ts) |
-| CollaborationDegradedForm | same-provider-fresh-session, caller-supplied, direct-human-review | [collaboration-grant-codec.ts](collaboration-grant-codec.ts) |
 | ControlPlaneRecoverySourceState | RECOVERY_VERIFIED, SWITCHED, ROLLBACK_REQUIRED | [control-plane-recovery-grant.ts](control-plane-recovery-grant.ts) |
 | ControlPlaneRecoveryAuditEvent | authorized, expired, failed, rolled-back, consumed | [control-plane-recovery-grant.ts](control-plane-recovery-grant.ts) |
 | RepairKind | schema, semantic | [execution-governance-repair.ts](execution-governance-repair.ts) |
@@ -121,8 +120,11 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [authority-application-receipt.ts](authority-application-receipt.ts) | Creates, validates, signs and reads portable receipts for an applied authority candidate. | 2 | History unavailable |
 | [authority-attestation.ts](authority-attestation.ts) | Encodes authority attestations and verifies the original and protected- main commit pair. | 2 | History unavailable |
 | [authority-refusal-audit.ts](authority-refusal-audit.ts) | Records durable authority refusals while preserving the original operation error. | 2 | History unavailable |
-| [collaboration-grant-codec.ts](collaboration-grant-codec.ts) | Encodes and verifies collaboration Grants and direct human review attestations. | 2 | Header changed since confirmation |
-| [collaboration-grant.ts](collaboration-grant.ts) | Prepares and issues signed collaboration Grants and direct human review attestations. | 2 | History unavailable |
+| [collaboration-grant-codec.ts](collaboration-grant-codec.ts) | No leading responsibility comment. | 0 | Header changed since confirmation |
+| [collaboration-grant-records.ts](collaboration-grant-records.ts) | Defines collaboration reservation, assignment, consumption, and inspection record shapes. | 2 | History unavailable |
+| [collaboration-grant-use.ts](collaboration-grant-use.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [collaboration-grant-values.ts](collaboration-grant-values.ts) | Defines exact collaboration store values, canonical records, and stable error codes. | 2 | History unavailable |
+| [collaboration-grant.ts](collaboration-grant.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [control-plane-recovery-grant-records.ts](control-plane-recovery-grant-records.ts) | Builds and normalizes recovery Grant payloads, completion receipts and audit records. | 2 | History unavailable |
 | [control-plane-recovery-grant-storage.ts](control-plane-recovery-grant-storage.ts) | Reads and atomically replaces private recovery Grant records while reconciling interrupted writes. | 2 | History unavailable |
 | [control-plane-recovery-grant.ts](control-plane-recovery-grant.ts) | Reserves, prepares, consumes, expires and fails durable one-use recovery Grants. | 2 | History unavailable |
@@ -152,6 +154,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [grant-approval.ts](grant-approval.ts) | Evaluates registered approval proofs against the exact claims required by a Grant profile. | 2 | History unavailable |
 | [grant-coordinator.ts](grant-coordinator.ts) | Requests, inspects, resolves and recovers durable Grant challenges under the supplied lifecycle lock. | 2 | History unavailable |
 | [grant-core.ts](grant-core.ts) | Turns a blocked operation into one bounded, human-decidable Grant challenge and binds the chosen resolution to it. | 4 | History unavailable |
+| [grant-errors.ts](grant-errors.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [grant-parent-binding.ts](grant-parent-binding.ts) | Builds and verifies canonical parent bindings and prepared descendant trees for Grants. | 2 | History unavailable |
 | [grant-policy.ts](grant-policy.ts) | Loads Grant policy and resolves its registered approval modules, profiles and methods. | 2 | History unavailable |
 | [grant-primitives.ts](grant-primitives.ts) | Provides Grant identifier, canonical value, key-set and timestamp primitives. | 2 | History unavailable |
@@ -176,9 +179,9 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [maintainer-grant.ts](maintainer-grant.ts) | Verifies human-resolution Grants and binds their audit tags to the maintainer trust base. | 2 | History unavailable |
 | [maintainer-manifest-contracts.ts](maintainer-manifest-contracts.ts) | Validates capability profiles and canonical patch manifests, including file roles and relationships. | 2 | Header changed since confirmation |
 | [maintainer-manifest.ts](maintainer-manifest.ts) | Builds and verifies exact patch manifests against the pinned trust base and observed worktree. | 2 | History unavailable |
-| [maintainer-policy.ts](maintainer-policy.ts) | Loads maintainer policy, trusted signers and the eligible and sealed authority path sets. | 2 | History unavailable |
+| [maintainer-policy.ts](maintainer-policy.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [maintainer-signer-port.ts](maintainer-signer-port.ts) | Declares the human-presence, identity, signing and verification port used by maintainer operations. | 1 | Header changed since confirmation |
-| [optional-grants-package.ts](optional-grants-package.ts) | Loads optional Grant implementations on demand and exposes their public contract operations. | 2 | History unavailable |
+| [optional-grants-package.ts](optional-grants-package.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [protected-base-initialization-grant.ts](protected-base-initialization-grant.ts) | Requests and records authorization to initialize an exact protected branch on an empty remote. | 2 | History unavailable |
 | [protected-base-selection-grant.ts](protected-base-selection-grant.ts) | Offers exact local or remote protected-base initialization through Grant Core. | 3 | History unavailable |
 | [protected-task-apply-descendant-settlement-grant.ts](protected-task-apply-descendant-settlement-grant.ts) | Settles the prepared child-Grant tree before recovering its protected- task parent. | 2 | History unavailable |
@@ -186,14 +189,14 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [protected-task-apply-recovery-grant.ts](protected-task-apply-recovery-grant.ts) | Defines cancellation and cancellation-with-abort recovery for an in- progress protected-task application. | 2 | History unavailable |
 | [provider-invocation-cancellation-grant.ts](provider-invocation-cancellation-grant.ts) | Defines exact cancellation Grants for prepared or leased provider invocations. | 2 | History unavailable |
 | [recovery-authority-contract.ts](recovery-authority-contract.ts) | Validates recovery authority descriptors against their canonical payload and external expectations. | 2 | Header changed since confirmation |
-| [recovery-authority-store.ts](recovery-authority-store.ts) | Imports and reads the private recovery authority descriptor with exact replay and interrupted-write recovery. | 2 | Header changed since confirmation |
+| [recovery-authority-store.ts](recovery-authority-store.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [recovery-operational-trust-root.ts](recovery-operational-trust-root.ts) | Normalizes the operational trust root and its trusted maintainer signer identities. | 2 | Header changed since confirmation |
 | [recovery-quarantine-contract.ts](recovery-quarantine-contract.ts) | Encodes quarantine Grants, markers, receipts and record chains for recovery state. | 2 | Header changed since confirmation |
-| [recovery-quarantine-store.ts](recovery-quarantine-store.ts) | Publishes immutable private quarantine records and reconciles interrupted publications. | 2 | Header changed since confirmation |
+| [recovery-quarantine-store.ts](recovery-quarantine-store.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [recovery-trust-root-contract.ts](recovery-trust-root-contract.ts) | Encodes trust-root restoration records and checks replacement generations, grant windows and pointer state. | 2 | Header changed since confirmation |
-| [recovery-trust-root-store.ts](recovery-trust-root-store.ts) | Publishes private trust-root restoration records and verifies their stored publication evidence. | 2 | Header changed since confirmation |
+| [recovery-trust-root-store.ts](recovery-trust-root-store.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [recovery-trust-root-values.ts](recovery-trust-root-values.ts) | Defines recovery trust-root values, canonical encoders and structural predicates. | 2 | Header changed since confirmation |
-| [role-context-sharing-consumed-replay.ts](role-context-sharing-consumed-replay.ts) | Verifies consumed role-context-sharing records and replays their stored evidence for matching admission inputs. | 2 | History unavailable |
+| [role-context-sharing-consumed-replay.ts](role-context-sharing-consumed-replay.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [role-context-sharing-grant-lifecycle-port.ts](role-context-sharing-grant-lifecycle-port.ts) | Declares role-context-sharing records, use evidence and the lock-held lifecycle port. | 2 | History unavailable |
 | [role-context-sharing-grant-verifier-port.ts](role-context-sharing-grant-verifier-port.ts) | Seals and checks live and consumed-replay role-context-sharing verifier capabilities. | 2 | History unavailable |
 | [role-context-sharing-grant.ts](role-context-sharing-grant.ts) | Validates role-context-sharing Grants and applies their reserve and consume transitions. | 2 | History unavailable |

@@ -1,3 +1,8 @@
+import {createDocumentationClosureRecord,encodeDocumentationClosure} from '../src/modules/assurance/documentation-closure.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { collaborationGrantCodec as productionArchiveGrantCodec } from '../src/runtime/grants/grant-services.ts';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -6,15 +11,12 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { withArchiveEligibility } from '../src/application/archive/archive-eligibility.ts';
-import { issueAuthorityAttestation } from '../src/application/control-plane/maintainer-attestation.ts';
+import { issueAuthorityAttestation } from '../src/composition-root/maintainer-authority-production.ts';
 import { protectedBranchRef } from '../src/runtime/repository-transaction/git.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import {
-  createDocumentationClosureRecord,
-  encodeDocumentationClosure,
-} from '../src/runtime/managed-documents/contracts/documentation-closure.ts';
+
 import {
   createTaskDiffDocumentationClosureRequirement,
   createTaskDiffReviewSubject,
@@ -36,6 +38,9 @@ test('archive eligibility binds completed task evidence to the configured base',
   const repository = completedFixture();
   try {
     const result = withArchiveEligibility(
+      productionPlanningExecution,
+      archiveEligibilityReplayServices,
+      productionArchiveGrantCodec,
       repository,
       'demo-change',
       (eligibility) => eligibility,
@@ -75,11 +80,60 @@ test('archive eligibility binds completed task evidence to the configured base',
   }
 });
 
+test('archive eligibility propagates injected grant validation failure before the archive operation', () => {
+  const repository = completedFixture();
+  try {
+    const initialHead = git(repository, ['rev-parse', 'HEAD']).trim();
+    const failure = new Error('injected grant validation failure');
+    let validations = 0;
+    let operationCalled = false;
+    assert.throws(
+      () =>
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          {
+            assertUniqueCollaborationGrantUses(uses) {
+              validations += 1;
+              assert.deepEqual(uses, []);
+              throw failure;
+            },
+          },
+          repository,
+          'demo-change',
+          () => {
+            operationCalled = true;
+          },
+        ),
+      (error) => error === failure,
+    );
+    assert.equal(validations, 1);
+    assert.equal(operationCalled, false);
+    assert.equal(git(repository, ['rev-parse', 'HEAD']).trim(), initialHead);
+    assert.equal(
+      fs.existsSync(
+        path.join(runtimeRoot(repository), 'locks', 'demo-change.lock'),
+      ),
+      false,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('archive eligibility rejects a non-managed schema', () => {
   const repository = legacyCompletedFixture();
   try {
     assert.throws(
-      () => withArchiveEligibility(repository, 'demo-change', () => undefined),
+      () =>
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          repository,
+          'demo-change',
+          () => undefined,
+        ),
       (error) => isWorkflowError(error, 'OPENSPEC_MANAGED_SCHEMA_REQUIRED'),
     );
   } finally {
@@ -107,7 +161,15 @@ test('archive eligibility requires documentation closure on the current path', (
     git(repository, ['checkout', '-b', 'work/archive-demo']);
 
     assert.throws(
-      () => withArchiveEligibility(repository, 'demo-change', () => undefined),
+      () =>
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          repository,
+          'demo-change',
+          () => undefined,
+        ),
       (error) => isWorkflowError(error, 'TASK_EXECUTION_GENERATION_INVALID'),
     );
   } finally {
@@ -132,7 +194,15 @@ test('archive eligibility rejects a historical v1 investigation on the current-v
     git(repository, ['checkout', '-b', 'work/archive-demo']);
 
     assert.throws(
-      () => withArchiveEligibility(repository, 'demo-change', () => undefined),
+      () =>
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          repository,
+          'demo-change',
+          () => undefined,
+        ),
       (error) => isWorkflowError(error, 'SCHEMA_V1_FORBIDDEN'),
     );
   } finally {
@@ -146,7 +216,15 @@ test('archive eligibility rejects incomplete and unevidenced task state', () => 
   try {
     git(incomplete, ['checkout', '-b', 'work/archive-demo']);
     assert.throws(
-      () => withArchiveEligibility(incomplete, 'demo-change', () => undefined),
+      () =>
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          incomplete,
+          'demo-change',
+          () => undefined,
+        ),
       (error) => isWorkflowError(error, 'ARCHIVE_TASKS_INCOMPLETE'),
     );
 
@@ -155,7 +233,15 @@ test('archive eligibility rejects incomplete and unevidenced task state', () => 
     git(unevidenced, ['commit', '-m', 'Forge completion']);
     git(unevidenced, ['checkout', '-b', 'work/archive-demo']);
     assert.throws(
-      () => withArchiveEligibility(unevidenced, 'demo-change', () => undefined),
+      () =>
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          unevidenced,
+          'demo-change',
+          () => undefined,
+        ),
       (error) => isWorkflowError(error, 'ARCHIVE_TASK_EVIDENCE_MISSING'),
     );
   } finally {
@@ -172,7 +258,15 @@ test('archive eligibility rejects task evidence not reachable from configured ba
     commitTask(repository);
 
     assert.throws(
-      () => withArchiveEligibility(repository, 'demo-change', () => undefined),
+      () =>
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          repository,
+          'demo-change',
+          () => undefined,
+        ),
       (error) => isWorkflowError(error, 'ARCHIVE_TASK_COMMIT_UNREACHABLE'),
     );
   } finally {
@@ -187,14 +281,35 @@ test('archive eligibility rejects dirty state, active sessions, and lock collisi
   try {
     fs.writeFileSync(path.join(dirty, 'dirty.txt'), 'dirty\n');
     assert.throws(
-      () => withArchiveEligibility(dirty, 'demo-change', () => undefined),
+      () =>
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          dirty,
+          'demo-change',
+          () => undefined,
+        ),
       (error) => isWorkflowError(error, 'ARCHIVE_WORKTREE_DIRTY'),
     );
 
     git(active, ['checkout', '-b', 'work/demo-change']);
-    startSession(active, 'demo-change', '1.1');
+    startSession(
+      productionChangeRoutingAdmissionReader,
+      active,
+      'demo-change',
+      '1.1',
+    );
     assert.throws(
-      () => withArchiveEligibility(active, 'demo-change', () => undefined),
+      () =>
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          active,
+          'demo-change',
+          () => undefined,
+        ),
       (error) => isWorkflowError(error, 'ACTIVE_SESSION_CONFLICT'),
     );
 
@@ -205,7 +320,15 @@ test('archive eligibility rejects dirty state, active sessions, and lock collisi
       '{"transition":"archive"}\n',
     );
     assert.throws(
-      () => withArchiveEligibility(locked, 'demo-change', () => undefined),
+      () =>
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          locked,
+          'demo-change',
+          () => undefined,
+        ),
       (error) => isWorkflowError(error, 'ARCHIVE_TRANSITION_CONFLICT'),
     );
   } finally {
@@ -227,7 +350,15 @@ test('archive eligibility rejects strict-validation failures and unsafe targets'
     commitTask(invalid);
     git(invalid, ['checkout', '-b', 'work/archive-demo']);
     assert.throws(
-      () => withArchiveEligibility(invalid, 'demo-change', () => undefined),
+      () =>
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          invalid,
+          'demo-change',
+          () => undefined,
+        ),
       (error) => isWorkflowError(error, 'OPENSPEC_CHANGE_INVALID'),
     );
 
@@ -242,7 +373,14 @@ test('archive eligibility rejects strict-validation failures and unsafe targets'
     git(unsafeTarget, ['checkout', '-b', 'work/archive-demo']);
     assert.throws(
       () =>
-        withArchiveEligibility(unsafeTarget, 'demo-change', () => undefined),
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          unsafeTarget,
+          'demo-change',
+          () => undefined,
+        ),
       (error) => isWorkflowError(error, 'ARCHIVE_TARGET_UNSAFE'),
     );
   } finally {
@@ -274,6 +412,9 @@ test('archive eligibility rejects an exact dated destination collision', () => {
     assert.throws(
       () =>
         withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
           repository,
           'demo-change',
           () => undefined,
@@ -295,7 +436,15 @@ test('archive eligibility rejects pre-epoch task completions without current evi
     commitPlanRevision(repository);
     git(repository, ['checkout', '-b', 'work/archive-demo']);
     assert.throws(
-      () => withArchiveEligibility(repository, 'demo-change', () => undefined),
+      () =>
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          repository,
+          'demo-change',
+          () => undefined,
+        ),
       (error) => isWorkflowError(error, 'ARCHIVE_TASK_EVIDENCE_MISSING'),
     );
   } finally {
@@ -317,7 +466,15 @@ test('archive eligibility ignores a backdated parallel plan commit as epoch', ()
     git(repository, ['checkout', '-b', 'work/archive-demo']);
 
     assert.throws(
-      () => withArchiveEligibility(repository, 'demo-change', () => undefined),
+      () =>
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          repository,
+          'demo-change',
+          () => undefined,
+        ),
       (error) => isWorkflowError(error, 'ARCHIVE_TASK_EVIDENCE_MISSING'),
     );
   } finally {
@@ -335,7 +492,15 @@ test('archive eligibility keeps canonical-era completions enforced', () => {
     git(repository, ['checkout', '-b', 'work/archive-demo']);
 
     assert.throws(
-      () => withArchiveEligibility(repository, 'demo-change', () => undefined),
+      () =>
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          repository,
+          'demo-change',
+          () => undefined,
+        ),
       (error) => isWorkflowError(error, 'ARCHIVE_TASK_EVIDENCE_MISSING'),
     );
   } finally {
@@ -355,6 +520,9 @@ test('archive eligibility resolves the base from the protected remote-tracking r
     git(repository, ['branch', '-f', 'main', `${integrationTip}~1`]);
 
     const result = withArchiveEligibility(
+      productionPlanningExecution,
+      archiveEligibilityReplayServices,
+      productionArchiveGrantCodec,
       repository,
       'demo-change',
       (eligibility) => eligibility,
@@ -372,7 +540,15 @@ test('archive eligibility fails closed when the remote-tracking base is unresolv
   try {
     git(repository, ['update-ref', '-d', 'refs/remotes/origin/main']);
     assert.throws(
-      () => withArchiveEligibility(repository, 'demo-change', () => undefined),
+      () =>
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          repository,
+          'demo-change',
+          () => undefined,
+        ),
       (error) => isWorkflowError(error, 'ARCHIVE_BASE_UNRESOLVED'),
     );
   } finally {
@@ -410,7 +586,15 @@ test('archive and attestation resolve the same configured protected ref without 
     ]);
 
     assert.throws(
-      () => withArchiveEligibility(repository, 'demo-change', () => undefined),
+      () =>
+        withArchiveEligibility(
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          repository,
+          'demo-change',
+          () => undefined,
+        ),
       (error) => {
         assert.ok(error instanceof WorkflowError);
         assert.equal(error.code, 'ARCHIVE_BASE_UNRESOLVED');

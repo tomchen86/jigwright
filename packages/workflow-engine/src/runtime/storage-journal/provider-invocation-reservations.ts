@@ -19,23 +19,23 @@ import {
 } from './investigation-private-files.ts';
 import { type ProviderExecutionGrantAuthorityInput } from '../provider-execution/provider-execution-policy-authority.ts';
 import { type ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import {
-  type InvestigationRuntimePaths,
   assertChangeId,
   assertInvestigationId,
   assertInvocationId,
-} from '../session-workspace/paths.ts';
-import type { TaskMandateBinding } from '../../modules/authority/task-mandate.ts';
-import {
-  type BlindSurveyManifest,
-  type InvestigationStartReservation,
-  type InvestigationStartReservationSnapshot,
-  type ProviderInvocationManifest,
-  type ProviderRetryDecisionBinding,
-  type ProviderRetryReplacementBinding,
-  type ProviderRetryReservationCurrent,
-  type ProviderExecutionPolicySnapshotCurrent,
-} from './provider-invocation-types.ts';
+} from '../../foundation/repository-path/repository-path.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
+import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
+import type {
+  InvestigationStartReservation,
+  InvestigationStartReservationSnapshot,
+  ProviderRetryDecisionBinding,
+  ProviderRetryReplacementBinding,
+  ProviderRetryReservationCurrent,
+} from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
+import type { ProviderInvocationManifest } from '../../modules/provider-orchestration/provider-invocation-manifest.ts';
+import type { ProviderExecutionPolicySnapshotCurrent } from '../../modules/provider-orchestration/provider-execution-policy-snapshot.ts';
 import {
   assertBlindSurveyManifest,
   assertProviderRequest,

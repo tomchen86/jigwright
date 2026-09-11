@@ -7,12 +7,14 @@ import test from 'node:test';
 
 import {
   buildContextManifest,
+  type WorkflowContextState,
+} from '../src/modules/authority/execution-governance-context.ts';
+import {
   initializeDurableEpochContextStore,
   inspectDurableEpochContextStore,
   rolloverDurableEpochContextStore,
-  type ContextManifest,
-  type WorkflowContextState,
-} from '../src/modules/authority/execution-governance.ts';
+} from '../src/runtime/storage-journal/execution-governance-epoch-store.ts';
+import { type ContextManifest } from '../src/modules/authority/execution-governance-context.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { prepareProviderPromptContextForInvocation } from '../src/runtime/provider-execution/provider-execution-governance.ts';

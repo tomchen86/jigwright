@@ -1,3 +1,6 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -6,7 +9,7 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   completeTask,
   finalizeTask,
-} from '../src/application/finalize/lifecycle.ts';
+} from '../src/composition-root/finalization-production.ts';
 import {
   readFinalizeTransaction,
   removeFinalizeTransaction,
@@ -26,7 +29,7 @@ import {
   inspectTaskDiffReviewSubject,
   reconcileTaskDiffReviewContinuation,
   reconcileTaskDiffReview,
-} from '../src/application/finalize/task-diff-review-lifecycle.ts';
+} from '../src/composition-root/task-diff-review-production.ts';
 import {
   createTaskDiffReviewChallengeResponse,
   taskDiffReviewProviderSubmission,
@@ -48,7 +51,12 @@ import {
 test('advisory dispositions cannot close a challenge until the shared verifier mints Final Assurance', () => {
   const { repository, counterPath } = createReviewFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -305,7 +313,12 @@ test('advisory dispositions cannot close a challenge until the shared verifier m
 test('an accepted continuation decision requires a new candidate and never satisfies finalize', () => {
   const { repository } = createReviewFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -453,12 +466,23 @@ test('an accepted continuation decision requires a new candidate and never satis
 test('legacy complete-task refuses a review-required candidate instead of bypassing Final Assurance', () => {
   const { repository } = createReviewFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
     );
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+    );
     assert.throws(
       () => completeTask(repository, session.sessionId),
       hasCode('TASK_DIFF_REVIEW_REQUIRED'),
@@ -478,12 +502,23 @@ test('compatibility completion refuses a review-triggering projection without a 
     },
   });
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
     );
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+    );
     assert.throws(
       () => completeTask(repository, session.sessionId),
       hasCode('TASK_DIFF_REVIEW_NOT_READY'),

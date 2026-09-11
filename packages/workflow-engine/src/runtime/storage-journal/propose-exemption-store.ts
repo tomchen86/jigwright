@@ -26,23 +26,21 @@ import {
   assertStoredEvidenceNode,
   createEvidenceNode,
   type EvidenceNode,
-} from '../../adapters/planning/investigation/evidence-node.ts';
+} from '../../foundation/evidence-node/evidence-node.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   assertInvestigationApplicability,
   type InvestigationExemption,
 } from '../../modules/investigation/domain/investigation-applicability.ts';
-import type { NormalizedChangeIntent } from './provider-invocation-store.ts';
-import {
-  assertChangeId,
-  type InvestigationRuntimePaths,
-} from '../session-workspace/paths.ts';
+import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
 import {
   assertHeldChangeTransitionAuthority,
   type HeldChangeTransitionAuthority,
 } from '../session-workspace/planning-lock.ts';
 import { PROPOSE_EXEMPTION_SESSION_STORE_POLICY_DIGEST } from '../../modules/provider-orchestration/provider-contracts.ts';
-import type { TaskMandateBinding } from '../../modules/authority/task-mandate.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;

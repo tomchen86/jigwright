@@ -4,20 +4,20 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { captureGovernanceSource } from '../src/modules/governance-intake/governance-intake.ts';
+import { captureGovernanceSource } from '../src/composition-root/governance-sources-production.ts';
 import {
   createWorkRegistryPromotionGrantRequest,
   createWorkRegistryReviewGrantRequest,
   workRegistryGrantTransitionDefinitions,
-} from '../src/modules/governance-intake/work-registry-grant.ts';
+} from '../src/composition-root/work-registry-grant-production.ts';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
-import { createWorkRegistryFailGrantResult } from '../src/cli.ts';
+import { createWorkRegistryFailGrantResult } from '../src/entrypoints/cli/workflow-cli.ts';
 import { createGrantChallenge } from '../src/modules/authority/grant-core.ts';
 import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
   grantStorePaths,
-  readGrantRecord,
+  createFileGrantRecordStore,
 } from '../src/runtime/storage-journal/grant-store.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
@@ -29,7 +29,7 @@ import {
   reconcileArchivedWorkItems,
   showWorkItem,
   workItemDigest,
-} from '../src/modules/governance-intake/work-registry.ts';
+} from '../src/composition-root/work-registry-production.ts';
 import {
   runGitForTest,
   configureRepositoryConsumer,
@@ -608,7 +608,7 @@ function createPromotionFixture() {
     }) => {
       const ids = [options.challengeId, options.operationId];
       return createGrantCoordinatorKernel({
-        paths: grantStorePaths(grantRuntimeRoot),
+        store: createFileGrantRecordStore(grantStorePaths(grantRuntimeRoot)),
         registry: createTransitionRegistry(
           workRegistryGrantTransitionDefinitions(
             repositoryRoot,
@@ -1263,7 +1263,9 @@ describe('registered Central Grant promotion binds an exact conditional survey d
         (error) => error === crash,
       );
       assert.equal(
-        readGrantRecord(grantStorePaths(grantRuntimeRoot), challengeId).state,
+        createFileGrantRecordStore(
+          grantStorePaths(grantRuntimeRoot),
+        ).readGrantRecord(challengeId).state,
         'prepared',
       );
       assert.equal(
@@ -1391,10 +1393,9 @@ describe('registered Central Grant promotion binds an exact conditional survey d
         recoveredResult.poststateDigest,
         actualCurrentPoststate.digest,
       );
-      const completedRecoveryRecord = readGrantRecord(
+      const completedRecoveryRecord = createFileGrantRecordStore(
         grantStorePaths(grantRuntimeRoot),
-        challengeId,
-      );
+      ).readGrantRecord(challengeId);
       assert.equal(completedRecoveryRecord.state, 'completed');
       assert.equal(
         completedRecoveryRecord.poststateDigest,
@@ -1476,8 +1477,9 @@ describe('registered Central Grant promotion binds an exact conditional survey d
         (error) => error === crashAfterPrepare,
       );
       assert.equal(
-        readGrantRecord(grantStorePaths(grantRuntimeRoot), terminalChallengeId)
-          .state,
+        createFileGrantRecordStore(
+          grantStorePaths(grantRuntimeRoot),
+        ).readGrantRecord(terminalChallengeId).state,
         'prepared',
       );
       const terminalSurveyPath = path.join(
@@ -1510,8 +1512,9 @@ describe('registered Central Grant promotion binds an exact conditional survey d
       assert.equal(terminalResult.recovered, true);
       assert.equal(terminalResult.outcome, 'failed');
       assert.equal(
-        readGrantRecord(grantStorePaths(grantRuntimeRoot), terminalChallengeId)
-          .state,
+        createFileGrantRecordStore(
+          grantStorePaths(grantRuntimeRoot),
+        ).readGrantRecord(terminalChallengeId).state,
         'failed',
       );
       assert.equal(

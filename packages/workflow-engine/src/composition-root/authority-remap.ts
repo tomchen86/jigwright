@@ -1,3 +1,26 @@
+import {
+  PATH_ROLES_PATH,
+  CHECKS_PATH,
+  MAINTAINER_POLICY_PATH,
+  MAINTAINER_PROFILES_PATH,
+  REGENERATION_STEPS,
+  PROFILE_PATH_FIELDS,
+  type ProfilePathField,
+  type AuthorityRemapRegenerationStep,
+  type AuthorityRemapPair,
+  type MechanicalMoveProof,
+  type AuthorityRemapPathRoleProjection,
+  type AuthorityRemapCheckProjection,
+  type AuthorityRemapGuardProjection,
+  type AuthorityRemapMaintainerPolicyProjection,
+  type AuthorityRemapProfileProjection,
+  type AuthorityRemapRegenerationDescriptor,
+  type AuthorityRemapManifestV1,
+  type AuthorityRemapProjection,
+  type AuthorityRemapPlanIntent,
+  type AuthorityRemapMutation,
+  type AuthorityRemapProjector,
+} from '../modules/authority/authority-remap-contract.ts';
 /**
  * Verifies mechanical moves and projects reviewed authority paths and
  * policy.
@@ -25,7 +48,7 @@ import {
   matchesAllowedPath,
   normalizeExactRepositoryPath,
   normalizePolicyPath,
-} from '../runtime/session-workspace/paths.ts';
+} from '../foundation/repository-path/repository-path.ts';
 import {
   parsePathRoleRegistry,
   resolvePathRole,
@@ -40,7 +63,7 @@ import {
   parseCapabilityProfile,
   type CapabilityProfile,
   type FileRole,
-} from '../modules/authority/maintainer-manifest.ts';
+} from '../modules/authority/maintainer-manifest-contracts.ts';
 import {
   parseMaintainerPolicy,
   type MaintainerPolicy,
@@ -51,11 +74,9 @@ import { parseProtectedCapabilitiesManifestSource } from '../adapters/consumer/r
 const OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const MAX_RENAME_PAIRS = 10_000;
 const NUL = 0x00;
-const PATH_ROLES_PATH = 'workflow/path-roles.json';
-const CHECKS_PATH = 'workflow/checks.json';
+
 const CONFIG_PATH = 'workflow/config.json';
-const MAINTAINER_POLICY_PATH = 'workflow/maintainer-policy.json';
-const MAINTAINER_PROFILES_PATH = 'workflow/maintainer-profiles.json';
+
 const BUILT_IN_CLOSURE_PATH =
   'packages/workflow-engine/bootstrap/built-in-engine-closure.json';
 const PROTECTED_CAPABILITIES_PATH = 'workflow/protected-capabilities.json';
@@ -64,193 +85,6 @@ const PROTECTED_CAPABILITIES_LOADER_PATH =
 const ENGINE_PROJECTION_REGISTRY_PATH =
   'packages/workflow-engine/src/modules/projection/engine-projection-registry.ts';
 const BOOTSTRAP_ROOT = 'packages/workflow-engine/bootstrap';
-const REGENERATION_STEPS = [
-  'built-in-engine-closure',
-  'harness-bootstrap-runtime',
-  'protected-capabilities',
-] as const;
-const PROFILE_PATH_FIELDS = [
-  'implementationPaths',
-  'evidencePaths',
-  'policyPaths',
-  'verificationInfrastructurePaths',
-  'forbiddenPaths',
-] as const;
-
-type ProfilePathField = (typeof PROFILE_PATH_FIELDS)[number];
-type AuthorityRemapRegenerationStep = (typeof REGENERATION_STEPS)[number];
-
-export type AuthorityRemapPair = Readonly<{ from: string; to: string }>;
-
-export type MechanicalMoveProof = Readonly<{
-  schemaVersion: 1;
-  kind: 'workflow.mechanical-move-proof.v1';
-  baseCommit: string;
-  baseTree: string;
-  moveCommit: string;
-  moveTree: string;
-  moves: readonly Readonly<{
-    from: string;
-    to: string;
-    objectId: string;
-    mode: '100644' | '100755';
-  }>[];
-  proofDigest: `sha256:${string}`;
-}>;
-
-export type AuthorityRemapPathRoleProjection = Readonly<{
-  proof: MechanicalMoveProof;
-  roles: readonly Readonly<{
-    from: string;
-    to: string;
-    role: PathRole;
-    beforePattern: string;
-    afterPattern: string;
-  }>[];
-  mutation: Readonly<{
-    path: typeof PATH_ROLES_PATH;
-    expectedBeforeSha256: string;
-    content: string;
-  }> | null;
-}>;
-
-export type AuthorityRemapCheckProjection = Readonly<{
-  proof: MechanicalMoveProof;
-  checks: readonly Readonly<{
-    checkId: string;
-    from: string;
-    to: string;
-  }>[];
-  mutation: Readonly<{
-    path: typeof CHECKS_PATH;
-    expectedBeforeSha256: string;
-    content: string;
-  }> | null;
-}>;
-
-export type AuthorityRemapGuardProjection = Readonly<{
-  proof: MechanicalMoveProof;
-  guards: readonly Readonly<{
-    path: string;
-    replacements: readonly Readonly<{
-      taskId: string;
-      from: string;
-      to: string;
-    }>[];
-  }>[];
-  mutations: readonly Readonly<{
-    path: string;
-    expectedBeforeSha256: string;
-    content: string;
-  }>[];
-}>;
-
-export type AuthorityRemapMaintainerPolicyProjection = Readonly<{
-  proof: MechanicalMoveProof;
-  paths: readonly Readonly<{
-    field: 'bootstrapEligiblePaths' | 'sealedImmutablePaths';
-    from: string;
-    to: string;
-  }>[];
-  mutation: Readonly<{
-    path: typeof MAINTAINER_POLICY_PATH;
-    expectedBeforeSha256: string;
-    content: string;
-  }> | null;
-}>;
-
-export type AuthorityRemapProfileProjection = Readonly<{
-  proof: MechanicalMoveProof;
-  profiles: readonly Readonly<{
-    profileId: string;
-    from: string;
-    to: string;
-    beforeRole: FileRole;
-    afterRole: FileRole;
-    changedFields: readonly ProfilePathField[];
-  }>[];
-  mutation: Readonly<{
-    path: typeof MAINTAINER_PROFILES_PATH;
-    expectedBeforeSha256: string;
-    content: string;
-  }> | null;
-}>;
-
-export type AuthorityRemapRegenerationDescriptor = Readonly<{
-  schemaVersion: 1;
-  kind: 'workflow.authority-remap-regeneration.v1';
-  mechanicalProofDigest: `sha256:${string}`;
-  moveTree: string;
-  materializationCommit: string;
-  materializationTree: string;
-  affectedMoves: readonly Readonly<{ from: string; to: string }>[];
-  steps: readonly AuthorityRemapRegenerationStep[];
-  descriptorDigest: `sha256:${string}`;
-}>;
-
-export type AuthorityRemapManifestV1 = Readonly<{
-  schemaVersion: 1;
-  kind: 'workflow.authority-remap-manifest.v1';
-  baseCommit: string;
-  baseTree: string;
-  moveCommit: string;
-  moveTree: string;
-  materializationCommit: string;
-  materializationTree: string;
-  mechanicalProofDigest: `sha256:${string}`;
-  moves: readonly Readonly<{
-    from: string;
-    to: string;
-    objectId: string;
-    mode: '100644' | '100755';
-    role: Readonly<{
-      name: PathRole;
-      beforePattern: string;
-      afterPattern: string;
-    }>;
-  }>[];
-  projections: readonly Readonly<{
-    path: string;
-    beforeSha256: `sha256:${string}`;
-    afterSha256: `sha256:${string}`;
-  }>[];
-  regenerationDescriptorDigest: `sha256:${string}` | null;
-  authorityPlanIntentDigest: `sha256:${string}` | null;
-  manifestDigest: `sha256:${string}`;
-}>;
-
-export type AuthorityRemapProjection =
-  | Readonly<{
-      status: 'ready';
-      manifest: AuthorityRemapManifestV1;
-      intent: AuthorityRemapPlanIntent | null;
-      regeneration: null;
-    }>
-  | Readonly<{
-      status: 'requires-regeneration';
-      manifest: AuthorityRemapManifestV1;
-      intent: null;
-      regeneration: AuthorityRemapRegenerationDescriptor;
-    }>;
-
-export type AuthorityRemapPlanIntent = Readonly<{
-  schemaVersion: 1;
-  kind: 'authority-plan-intent.v1';
-  changeId: string;
-  taskId: string;
-  profileId: string;
-  reason: string;
-  message: string;
-  mutations: readonly AuthorityRemapMutation[];
-  externalEffects: readonly [];
-  evidenceWaivers: readonly [];
-}>;
-
-type AuthorityRemapMutation = Readonly<{
-  path: string;
-  expectedBeforeSha256: string | null;
-  content: string | null;
-}>;
 
 /**
  * Prove that one adjacent pinned commit is made only of the caller-declared
@@ -929,142 +763,132 @@ export function projectAuthorityRemapProfiles(request: {
  * a pure reader/projector: it neither writes the worktree nor creates authority.
  * When no authority artifact changes, no empty authority-plan intent is minted.
  */
-export function projectAuthorityRemap(request: {
-  repositoryRoot: string;
-  baseCommit: string;
-  moveCommit: string;
-  materializationCommit?: string;
-  renamePairs: readonly AuthorityRemapPair[];
-  authorityPlan: Readonly<{
-    changeId: string;
-    taskId: string;
-    profileId: string;
-    reason: string;
-    message: string;
-  }>;
-}): AuthorityRemapProjection {
-  validateAuthorityPlanMetadata(request.authorityPlan);
-  const pathRoles = projectAuthorityRemapPathRoles(request);
-  const materialization = resolveMaterializationBoundary(
-    request.repositoryRoot,
-    pathRoles.proof,
-    request.materializationCommit,
-  );
-  assertNoEngineProjectionEndpointMove(pathRoles.proof);
-  const checks = projectAuthorityRemapChecks(request);
-  const guards = projectAuthorityRemapGuards(request);
-  const maintainerPolicy = projectAuthorityRemapMaintainerPolicy(request);
-  const profiles = projectAuthorityRemapProfiles(request);
-  const mutations: AuthorityRemapMutation[] = [
-    ...(pathRoles.mutation === null ? [] : [pathRoles.mutation]),
-    ...(checks.mutation === null ? [] : [checks.mutation]),
-    ...guards.mutations,
-    ...(maintainerPolicy.mutation === null ? [] : [maintainerPolicy.mutation]),
-    ...(profiles.mutation === null ? [] : [profiles.mutation]),
-  ].sort((left, right) => comparePaths(left.path, right.path));
-  if (
-    mutations.length > 64 ||
-    new Set(mutations.map(({ path }) => path)).size !== mutations.length
-  ) {
-    throw remapInvalid(
-      'Authority remap projections exceed the existing authority-plan mutation contract.',
-    );
-  }
-  if (mutations.length > 0) {
-    assertAuthorityPlanProfileAllowsMutations(
+export const projectAuthorityRemap: AuthorityRemapProjector =
+  function projectAuthorityRemap(request) {
+    validateAuthorityPlanMetadata(request.authorityPlan);
+    const pathRoles = projectAuthorityRemapPathRoles(request);
+    const materialization = resolveMaterializationBoundary(
       request.repositoryRoot,
       pathRoles.proof,
-      request.authorityPlan.profileId,
-      mutations,
+      request.materializationCommit,
     );
-  }
-  const regeneration = createRegenerationDescriptor(
-    request.repositoryRoot,
-    pathRoles.proof,
-    materialization,
-  );
-  const candidateIntent: AuthorityRemapPlanIntent | null =
-    mutations.length === 0
-      ? null
-      : Object.freeze({
-          schemaVersion: 1 as const,
-          kind: 'authority-plan-intent.v1' as const,
-          ...request.authorityPlan,
-          mutations: Object.freeze(
-            mutations.map((mutation) => Object.freeze({ ...mutation })),
-          ),
-          externalEffects: Object.freeze([]) as readonly [],
-          evidenceWaivers: Object.freeze([]) as readonly [],
-        });
-  const intent = regeneration === null ? candidateIntent : null;
-  const authorityPlanIntentDigest =
-    intent === null ? null : sha256(canonicalJson(intent));
-  const roleBySource = new Map(
-    pathRoles.roles.map((role) => [role.from, role] as const),
-  );
-  const moves = pathRoles.proof.moves.map((move) => {
-    const role = roleBySource.get(move.from);
-    if (role === undefined) {
+    assertNoEngineProjectionEndpointMove(pathRoles.proof);
+    const checks = projectAuthorityRemapChecks(request);
+    const guards = projectAuthorityRemapGuards(request);
+    const maintainerPolicy = projectAuthorityRemapMaintainerPolicy(request);
+    const profiles = projectAuthorityRemapProfiles(request);
+    const mutations: AuthorityRemapMutation[] = [
+      ...(pathRoles.mutation === null ? [] : [pathRoles.mutation]),
+      ...(checks.mutation === null ? [] : [checks.mutation]),
+      ...guards.mutations,
+      ...(maintainerPolicy.mutation === null
+        ? []
+        : [maintainerPolicy.mutation]),
+      ...(profiles.mutation === null ? [] : [profiles.mutation]),
+    ].sort((left, right) => comparePaths(left.path, right.path));
+    if (
+      mutations.length > 64 ||
+      new Set(mutations.map(({ path }) => path)).size !== mutations.length
+    ) {
       throw remapInvalid(
-        `No role projection exists for moved path ${move.from}.`,
+        'Authority remap projections exceed the existing authority-plan mutation contract.',
       );
     }
-    return Object.freeze({
-      ...move,
-      role: Object.freeze({
-        name: role.role,
-        beforePattern: role.beforePattern,
-        afterPattern: role.afterPattern,
-      }),
-    });
-  });
-  const projections = mutations.map((mutation) => {
-    if (mutation.expectedBeforeSha256 === null || mutation.content === null) {
-      throw remapInvalid(
-        'Authority remap emitted an incomplete file mutation.',
+    if (mutations.length > 0) {
+      assertAuthorityPlanProfileAllowsMutations(
+        request.repositoryRoot,
+        pathRoles.proof,
+        request.authorityPlan.profileId,
+        mutations,
       );
     }
-    return Object.freeze({
-      path: mutation.path,
-      beforeSha256: `sha256:${mutation.expectedBeforeSha256}` as const,
-      afterSha256: sha256(mutation.content),
-    });
-  });
-  const identity = {
-    schemaVersion: 1 as const,
-    kind: 'workflow.authority-remap-manifest.v1' as const,
-    baseCommit: pathRoles.proof.baseCommit,
-    baseTree: pathRoles.proof.baseTree,
-    moveCommit: pathRoles.proof.moveCommit,
-    moveTree: pathRoles.proof.moveTree,
-    materializationCommit: materialization.commit,
-    materializationTree: materialization.tree,
-    mechanicalProofDigest: pathRoles.proof.proofDigest,
-    moves,
-    projections,
-    regenerationDescriptorDigest: regeneration?.descriptorDigest ?? null,
-    authorityPlanIntentDigest,
-  };
-  const manifest = Object.freeze({
-    ...identity,
-    moves: Object.freeze(moves),
-    projections: Object.freeze(projections),
-    manifestDigest: sha256(canonicalJson(identity)),
-  });
-  return regeneration === null
-    ? Object.freeze({
-        status: 'ready' as const,
-        manifest,
-        intent,
-        regeneration: null,
-      })
-    : Object.freeze({
-        status: 'requires-regeneration' as const,
-        manifest,
-        intent: null,
-        regeneration,
+    const regeneration = createRegenerationDescriptor(
+      request.repositoryRoot,
+      pathRoles.proof,
+      materialization,
+    );
+    const candidateIntent: AuthorityRemapPlanIntent | null =
+      mutations.length === 0
+        ? null
+        : Object.freeze({
+            schemaVersion: 1 as const,
+            kind: 'authority-plan-intent.v1' as const,
+            ...request.authorityPlan,
+            mutations: Object.freeze(
+              mutations.map((mutation) => Object.freeze({ ...mutation })),
+            ),
+            externalEffects: Object.freeze([]) as readonly [],
+            evidenceWaivers: Object.freeze([]) as readonly [],
+          });
+    const intent = regeneration === null ? candidateIntent : null;
+    const authorityPlanIntentDigest =
+      intent === null ? null : sha256(canonicalJson(intent));
+    const roleBySource = new Map(
+      pathRoles.roles.map((role) => [role.from, role] as const),
+    );
+    const moves = pathRoles.proof.moves.map((move) => {
+      const role = roleBySource.get(move.from);
+      if (role === undefined) {
+        throw remapInvalid(
+          `No role projection exists for moved path ${move.from}.`,
+        );
+      }
+      return Object.freeze({
+        ...move,
+        role: Object.freeze({
+          name: role.role,
+          beforePattern: role.beforePattern,
+          afterPattern: role.afterPattern,
+        }),
       });
-}
+    });
+    const projections = mutations.map((mutation) => {
+      if (mutation.expectedBeforeSha256 === null || mutation.content === null) {
+        throw remapInvalid(
+          'Authority remap emitted an incomplete file mutation.',
+        );
+      }
+      return Object.freeze({
+        path: mutation.path,
+        beforeSha256: `sha256:${mutation.expectedBeforeSha256}` as const,
+        afterSha256: sha256(mutation.content),
+      });
+    });
+    const identity = {
+      schemaVersion: 1 as const,
+      kind: 'workflow.authority-remap-manifest.v1' as const,
+      baseCommit: pathRoles.proof.baseCommit,
+      baseTree: pathRoles.proof.baseTree,
+      moveCommit: pathRoles.proof.moveCommit,
+      moveTree: pathRoles.proof.moveTree,
+      materializationCommit: materialization.commit,
+      materializationTree: materialization.tree,
+      mechanicalProofDigest: pathRoles.proof.proofDigest,
+      moves,
+      projections,
+      regenerationDescriptorDigest: regeneration?.descriptorDigest ?? null,
+      authorityPlanIntentDigest,
+    };
+    const manifest = Object.freeze({
+      ...identity,
+      moves: Object.freeze(moves),
+      projections: Object.freeze(projections),
+      manifestDigest: sha256(canonicalJson(identity)),
+    });
+    return regeneration === null
+      ? Object.freeze({
+          status: 'ready' as const,
+          manifest,
+          intent,
+          regeneration: null,
+        })
+      : Object.freeze({
+          status: 'requires-regeneration' as const,
+          manifest,
+          intent: null,
+          regeneration,
+        });
+  };
 
 function createRegenerationDescriptor(
   repositoryRoot: string,

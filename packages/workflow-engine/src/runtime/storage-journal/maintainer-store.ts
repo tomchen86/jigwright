@@ -11,7 +11,7 @@ import {
   type MaintainerGrantV2Envelope,
   canonicalMaintainerGrantV2Envelope,
 } from '../../modules/authority/maintainer-grant-v2-codec.ts';
-import { assertMaintainerGrantId } from '../../modules/authority/maintainer-grant.ts';
+import { assertMaintainerGrantId } from '../../modules/authority/maintainer-grant-contracts.ts';
 import {
   listConflictingActiveWorkflowSessionIds,
   withRepositoryLifecycleOperation,

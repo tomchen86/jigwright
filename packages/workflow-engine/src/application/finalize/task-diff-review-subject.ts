@@ -1,3 +1,4 @@
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Reconstructs checked review candidates and their documentation
  * requirements.
@@ -8,23 +9,22 @@
  */
 // Reconstruct the checked candidate and verify its baseline, index, and documentation.
 import {
-  type TaskDiffReviewSubject,
   deriveTaskDiffReviewCandidatePlan,
   createTaskDiffReviewSubject,
-  type TaskDiffReviewRequirement,
-  type TaskDiffDocumentationClosureRequirement,
   createTaskDiffDocumentationClosureRequirement,
-  type TaskDiffDocumentationHint,
   taskDiffReviewRequirement,
-  type TaskDiffPathTransition,
-  type TaskDiffTreeEntry,
 } from '../../modules/assurance/task-diff-review.ts';
-import { type TaskDiffReviewRecord } from '../../modules/assurance/task-diff-review-artifact.ts';
-import {
-  inspectSession,
-  persistSession,
-  type SessionInspection,
-} from './verification.ts';
+import type {
+  TaskDiffReviewSubject,
+  TaskDiffReviewRequirement,
+  TaskDiffDocumentationClosureRequirement,
+  TaskDiffDocumentationHint,
+  TaskDiffPathTransition,
+  TaskDiffTreeEntry,
+} from '../../modules/assurance/task-diff-review-record.ts';
+import type { TaskDiffReviewRecord } from '../../modules/assurance/task-diff-review-artifact-record.ts';
+import { inspectSession, persistSession } from './verification.ts';
+import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
@@ -34,7 +34,7 @@ import {
   resolvePathRole,
 } from '../../modules/source/path-role-registry.ts';
 import { type ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
-import { type RecordedRoleParticipant } from '../../modules/provider-orchestration/role-scheduler.ts';
+import { type RecordedRoleParticipant } from '../../modules/provider-orchestration/role-assignment.ts';
 import { resolveCurrentTaskStrategyCorrection } from '../execute-task/task-strategy-correction.ts';
 import {
   createTaskStrategyImplementationSubject,
@@ -46,6 +46,7 @@ import type { BeginTaskDiffReviewOptions } from './task-diff-review-contracts.ts
 import type { createTaskDiffReviewCommonModule } from './task-diff-review-common.ts';
 
 export function createTaskDiffReviewSubjectModule(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   runtime: TaskDiffReviewRuntimeBindings,
   common: ReturnType<typeof createTaskDiffReviewCommonModule>,
 ) {
@@ -109,12 +110,17 @@ export function createTaskDiffReviewSubjectModule(
     ) {
       throw reviewNotReady();
     }
-    const inspection = inspectSession(cwd, requestedSessionId, {
-      expectedSession: context.session,
-      projectedTaskIds: [...transaction.completedTaskIds],
-      projectionSourceDigest: transaction.projectionSourceDigest,
-      authorizedTransitionPaths: [...transaction.transitionPaths],
-    });
+    const inspection = inspectSession(
+      routingAdmissionReader,
+      cwd,
+      requestedSessionId,
+      {
+        expectedSession: context.session,
+        projectedTaskIds: [...transaction.completedTaskIds],
+        projectionSourceDigest: transaction.projectionSourceDigest,
+        authorizedTransitionPaths: [...transaction.transitionPaths],
+      },
+    );
     const current = inspection.session.documentationRemediation;
     const reviewRecordDigests = [
       ...(current?.reviewRecordDigests ?? []),
@@ -175,12 +181,17 @@ export function createTaskDiffReviewSubjectModule(
       throw candidateDiverged();
     }
 
-    const inspection = inspectSession(cwd, context.session.sessionId, {
-      expectedSession: context.session,
-      projectedTaskIds: [...transaction.completedTaskIds],
-      projectionSourceDigest: transaction.projectionSourceDigest,
-      authorizedTransitionPaths: [...transaction.transitionPaths],
-    });
+    const inspection = inspectSession(
+      routingAdmissionReader,
+      cwd,
+      context.session.sessionId,
+      {
+        expectedSession: context.session,
+        projectedTaskIds: [...transaction.completedTaskIds],
+        projectionSourceDigest: transaction.projectionSourceDigest,
+        authorizedTransitionPaths: [...transaction.transitionPaths],
+      },
+    );
     if (
       canonicalJson(inspection.changedPaths) !==
         canonicalJson(transaction.changedPaths) ||
@@ -393,7 +404,9 @@ export function createTaskDiffReviewSubjectModule(
     };
     for (const changedPath of changedPaths) {
       if (
-        changedPath.startsWith('packages/workflow-engine/src/cli') ||
+        changedPath.startsWith(
+          'packages/workflow-engine/src/entrypoints/cli/workflow-cli',
+        ) ||
         changedPath ===
           'packages/workflow-engine/src/composition-root/lifecycle-context.ts' ||
         changedPath.startsWith(
@@ -540,12 +553,17 @@ export function createTaskDiffReviewSubjectModule(
       throw reviewNotSatisfied();
     }
     if (transaction !== null) {
-      const inspection = inspectSession(cwd, context.session.sessionId, {
-        expectedSession: context.session,
-        projectedTaskIds: [...finalizeTransaction.completedTaskIds],
-        projectionSourceDigest: finalizeTransaction.projectionSourceDigest,
-        authorizedTransitionPaths: [...finalizeTransaction.transitionPaths],
-      });
+      const inspection = inspectSession(
+        routingAdmissionReader,
+        cwd,
+        context.session.sessionId,
+        {
+          expectedSession: context.session,
+          projectedTaskIds: [...finalizeTransaction.completedTaskIds],
+          projectionSourceDigest: finalizeTransaction.projectionSourceDigest,
+          authorizedTransitionPaths: [...finalizeTransaction.transitionPaths],
+        },
+      );
       const correction = resolveCurrentTaskStrategyCorrection(inspection);
       const initialImplementationSubject =
         createTaskStrategyImplementationSubject({
@@ -692,12 +710,17 @@ export function createTaskDiffReviewSubjectModule(
       throw reviewNotSatisfied();
     }
 
-    const task = inspectSession(cwd, context.session.sessionId, {
-      expectedSession: context.session,
-      projectedTaskIds: [...finalizeTransaction.completedTaskIds],
-      projectionSourceDigest: finalizeTransaction.projectionSourceDigest,
-      authorizedTransitionPaths: [...finalizeTransaction.transitionPaths],
-    }).contract.execution?.tasks[context.session.taskId];
+    const task = inspectSession(
+      routingAdmissionReader,
+      cwd,
+      context.session.sessionId,
+      {
+        expectedSession: context.session,
+        projectedTaskIds: [...finalizeTransaction.completedTaskIds],
+        projectionSourceDigest: finalizeTransaction.projectionSourceDigest,
+        authorizedTransitionPaths: [...finalizeTransaction.transitionPaths],
+      },
+    ).contract.execution?.tasks[context.session.taskId];
     if (
       task?.strategy === 'cross-agent-tdd' ||
       task?.strategy === 'tdd-single-agent'

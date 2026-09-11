@@ -13,10 +13,10 @@ import { TextDecoder } from 'node:util';
 import type {
   AgentProviderConfigSnapshot,
   AgentProviderProfileSnapshot,
-  ProviderDefinitionSnapshot,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
+import type { ProviderDefinitionSnapshot } from '@jigwright/core/provider-definition-snapshot';
 
-import { loadChangeContract } from '../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadChangeContract } from './consumer-contract-production.ts';
 import { parseTaskAuthorizationPolicyFromWorkflowConfig } from '../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
@@ -54,7 +54,7 @@ import {
   type LoadedAgentProviderConfigFile,
 } from '../runtime/provider-execution/agent-provider-config-file.ts';
 import { loadAiAdapterPolicy } from '../runtime/provider-execution/ai-adapter-policy.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../runtime/provider-execution/built-in-provider-definition.ts';
+import {resolveBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
 import {
   assertPinnedAgentRolePlanV2Snapshot,
   readPinnedAgentRolePlanV2Snapshot,

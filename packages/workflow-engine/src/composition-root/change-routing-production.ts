@@ -8,15 +8,11 @@
  */
 export { applyManagedChangeRoutingReview } from './change-routing-transaction-production.ts';
 
-import {
-  applyChangeRoutingReview as applyChangeRoutingReviewKernel,
-  assertChangeRoutingAdmission as assertChangeRoutingAdmissionKernel,
-  inspectChangeRouting as inspectChangeRoutingKernel,
-  prepareChangeRoutingReview as prepareChangeRoutingReviewKernel,
-} from '../modules/lifecycle/change-routing.ts';
+import { applyChangeRoutingReview as applyChangeRoutingReviewKernel } from '../runtime/repository-transaction/change-routing.ts';
+import { assertChangeRoutingAdmission as assertChangeRoutingAdmissionKernel, inspectChangeRouting as inspectChangeRoutingKernel, prepareChangeRoutingReview as prepareChangeRoutingReviewKernel } from '../runtime/repository-observation/change-routing.ts';
 import { productionChangeRoutingAuthorityPort } from './validated-contract-context.ts';
 import { productionChangeRoutingContinuationGrantPort } from './change-routing-grant-production.ts';
-import { parseRepositoryConsumerConfiguration } from '../modules/repository-consumer/repository-consumer-config.ts';
+import { parseRepositoryConsumerConfiguration } from '../modules/repository-consumer/repository-consumer-policy.ts';
 
 export const parseCommittedRepositoryConsumerConfiguration = (value: unknown) =>
   parseRepositoryConsumerConfiguration(value);

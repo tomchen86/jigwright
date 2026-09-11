@@ -6,19 +6,17 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../src/modules/provider-orchestration/role-independence.ts';
 import {
-  COLLABORATION_GRANT_AUTHORIZED_EFFECT,
   COLLABORATION_GRANT_REPLAY_SCOPE,
   COLLABORATION_GRANT_RESIDUALS,
   COLLABORATION_GRANT_RETAINED_OBLIGATIONS,
   COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
-} from '../src/modules/authority/collaboration-grant.ts';
+} from '../src/modules/authority/collaboration-grant-codec.ts';
 import type { InvestigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import {
-  admitRoleResult,
-  scheduleOrdinaryRole,
-} from '../src/modules/provider-orchestration/role-scheduler.ts';
+import { admitRoleResult } from '../src/composition-root/role-admission-production.ts';
+import { scheduleOrdinaryRole } from '../src/modules/provider-orchestration/role-assignment.ts';
 import {
   createTaskStrategyPatchCurrentBinding,
   createTaskStrategyPatchImportReceipt,
@@ -34,8 +32,8 @@ import {
   TASK_STRATEGY_IMPLEMENTATION_POLICY_DIGEST,
   createTaskStrategyImplementationManifest,
   createTaskStrategyImplementationSubject,
-  type TaskStrategyImplementationSubject,
 } from '../src/modules/provider-orchestration/task-strategy-provider-contract.ts';
+import type { TaskStrategyImplementationSubject } from '../src/modules/provider-orchestration/task-strategy-implementation-manifest.ts';
 import {
   createTaskStrategyCallerImplementationBinding,
   createTaskStrategyCallerImplementationReservation,

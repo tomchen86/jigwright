@@ -1,3 +1,19 @@
+import {
+  parseObservedCheckFailure,
+  observedFailureInvalid,
+  isDigest,
+  isRecord,
+  sha256,
+  OBSERVED_CHECK_FAILURE_EXCERPT_BYTES,
+} from '../../../../modules/assurance/check-evidence.ts';
+export {
+  parseObservedCheckFailure,
+  observedFailureInvalid,
+  isDigest,
+  isRecord,
+  sha256,
+  OBSERVED_CHECK_FAILURE_EXCERPT_BYTES,
+} from '../../../../modules/assurance/check-evidence.ts';
 /**
  * Executes pinned check runners and records successful, observed-failure
  * and expected-RED evidence.
@@ -10,56 +26,23 @@ import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../../../foundation/canonical-json/canonical-json.ts';
-import type { CheckDefinition } from './contracts.ts';
+import type { CheckDefinition } from '../../../../modules/source/check-command.ts';
 import {
   ExitCode,
   workflowError,
 } from '../../../../foundation/errors/errors.ts';
-import { normalizeChangedPath } from '../../../../runtime/session-workspace/paths.ts';
-import {
-  resolveCheckRunner,
-  type ResolvedCheckRunner,
-} from './runner-resolution.ts';
+import { normalizeChangedPath } from '../../../../foundation/repository-path/repository-path.ts';
+import { resolveCheckRunner } from './runner-resolution.ts';
+import type { ResolvedCheckRunner } from '../../../../modules/source/check-command.ts';
 
-export type CheckEvidence = {
-  checkId: string;
-  outcome: 'passed';
-  exitCode: 0;
-  runner: string;
-  runnerDigest: string;
-  destructiveDatabase: boolean;
-  databaseIdentity?: string;
-  completedAt?: string;
-  externalSnapshotDigest?: string;
-  maxAgeMs?: number;
-};
+import type { CheckEvidence } from '../../../../modules/assurance/check-evidence.ts';
+export type { CheckEvidence } from '../../../../modules/assurance/check-evidence.ts';
 
 export type CheckEvidenceMetadata = {
   completedAt: () => Date;
   externalSnapshotDigest?: string;
   maxAgeMs?: number;
 };
-
-export type PinnedCheckRunner = Readonly<ResolvedCheckRunner>;
-
-export const OBSERVED_CHECK_FAILURE_EXCERPT_BYTES = 8 * 1024;
-
-export type ObservedCheckFailure = Readonly<{
-  checkId: string;
-  outcome: 'failed';
-  exitCode: number;
-  runner: string;
-  runnerDigest: string;
-  stdoutDigest: string;
-  stderrDigest: string;
-  stdoutExcerpt: string;
-  stderrExcerpt: string;
-  stdoutTruncated: boolean;
-  stderrTruncated: boolean;
-  failureFingerprint: string;
-}>;
-
-export type ObservedCheckOutcome = CheckEvidence | ObservedCheckFailure;
 
 export type ExpectedRedCheckResult = Readonly<{
   checkId: string;
@@ -255,81 +238,6 @@ export function runObservedCheck(
   };
 }
 
-export function parseObservedCheckFailure(
-  value: unknown,
-): ObservedCheckFailure {
-  if (
-    !isRecord(value) ||
-    JSON.stringify(Object.keys(value).sort()) !==
-      JSON.stringify(
-        [
-          'checkId',
-          'outcome',
-          'exitCode',
-          'runner',
-          'runnerDigest',
-          'stdoutDigest',
-          'stderrDigest',
-          'stdoutExcerpt',
-          'stderrExcerpt',
-          'stdoutTruncated',
-          'stderrTruncated',
-          'failureFingerprint',
-        ].sort(),
-      ) ||
-    typeof value.checkId !== 'string' ||
-    !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value.checkId) ||
-    value.outcome !== 'failed' ||
-    !Number.isSafeInteger(value.exitCode) ||
-    (value.exitCode as number) < 1 ||
-    (value.exitCode as number) > 255 ||
-    typeof value.runner !== 'string' ||
-    value.runner.trim() !== value.runner ||
-    Buffer.byteLength(value.runner, 'utf8') < 1 ||
-    Buffer.byteLength(value.runner, 'utf8') > 1024 ||
-    !isDigest(value.runnerDigest) ||
-    !isDigest(value.stdoutDigest) ||
-    !isDigest(value.stderrDigest) ||
-    typeof value.stdoutExcerpt !== 'string' ||
-    typeof value.stderrExcerpt !== 'string' ||
-    Buffer.byteLength(value.stdoutExcerpt, 'utf8') >
-      OBSERVED_CHECK_FAILURE_EXCERPT_BYTES ||
-    Buffer.byteLength(value.stderrExcerpt, 'utf8') >
-      OBSERVED_CHECK_FAILURE_EXCERPT_BYTES ||
-    typeof value.stdoutTruncated !== 'boolean' ||
-    typeof value.stderrTruncated !== 'boolean' ||
-    !isDigest(value.failureFingerprint)
-  ) {
-    throw observedFailureInvalid();
-  }
-  const body = {
-    checkId: value.checkId,
-    outcome: value.outcome,
-    exitCode: value.exitCode,
-    runner: value.runner,
-    runnerDigest: value.runnerDigest,
-    stdoutDigest: value.stdoutDigest,
-    stderrDigest: value.stderrDigest,
-    stdoutExcerpt: value.stdoutExcerpt,
-    stderrExcerpt: value.stderrExcerpt,
-    stdoutTruncated: value.stdoutTruncated,
-    stderrTruncated: value.stderrTruncated,
-  };
-  if (
-    value.failureFingerprint !== sha256(canonicalJson(body)) ||
-    (!value.stdoutTruncated &&
-      value.stdoutDigest !== sha256(value.stdoutExcerpt)) ||
-    (!value.stderrTruncated &&
-      value.stderrDigest !== sha256(value.stderrExcerpt))
-  ) {
-    throw observedFailureInvalid();
-  }
-  return Object.freeze({
-    ...body,
-    failureFingerprint: value.failureFingerprint,
-  }) as ObservedCheckFailure;
-}
-
 /**
  * Execute one baseline-pinned RED runner and admit only its structured failure
  * observation. This never treats a provider or test author claim as evidence:
@@ -504,26 +412,6 @@ function boundedExcerpt(value: string): string {
   return bytes.subarray(0, end).toString('utf8');
 }
 
-function observedFailureInvalid() {
-  return workflowError(
-    'OBSERVED_CHECK_FAILURE_INVALID',
-    'Observed check failure evidence is invalid.',
-    ExitCode.staleState,
-  );
-}
-
-function isDigest(value: unknown): value is string {
-  return typeof value === 'string' && /^[0-9a-f]{64}$/u.test(value);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function sha256(value: string): string {
-  return crypto.createHash('sha256').update(value).digest('hex');
-}
-
 function assertRunnerUnchanged(
   checkId: string,
   expected: PinnedCheckRunner,
@@ -563,3 +451,15 @@ function executionFailure(checkId: string, error: unknown) {
     },
   );
 }
+
+import type {
+  ObservedCheckFailure,
+  ObservedCheckOutcome,
+} from '../../../../modules/assurance/check-evidence.ts';
+export type {
+  ObservedCheckFailure,
+  ObservedCheckOutcome,
+} from '../../../../modules/assurance/check-evidence.ts';
+
+import type { PinnedCheckRunner } from '../../../../modules/source/check-command.ts';
+export type { PinnedCheckRunner } from '../../../../modules/source/check-command.ts';

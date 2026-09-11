@@ -1,3 +1,4 @@
+import type { InvestigationV3FailureObservations } from './investigation-v3-failure-source.ts';
 /**
  * Creates source-bound Grants for investigation blockers and stop
  * transitions.
@@ -25,29 +26,26 @@ import type {
 import { grantTransitionPreconditionChanged } from '../../authority/grant-transition-registry.ts';
 import {
   assertInvestigationV3FailureSource,
-  initialInvestigationV3FailureSourceObservation,
   investigationV3PublicationFailureSource,
   investigationV3DirectFailureSource,
-  observeInvestigationV3FailureSource,
   type InvestigationV3FailureSource,
   type InvestigationV3ObservedFailureSource,
 } from './investigation-v3-failure-source.ts';
-import { loadInvestigationRuntimeContext } from '../../../composition-root/lifecycle-context.ts';
+import { parseInvestigationV3Blocker } from '../manifest/investigation-manifest.ts';
 import {
-  parseInvestigationV3Blocker,
   type InvestigationV3Blocker,
   type InvestigationV3FailureCode,
-} from '../manifest/investigation-manifest.ts';
+} from '../manifest/investigation-manifest-types.ts';
 import {
   assertInvestigationManifestPublicationFailure,
   investigationManifestPublicationFailureEmissionDigest,
   type InvestigationManifestPublicationFailure,
-} from '../../../runtime/managed-documents/transaction/investigation-publication.ts';
+} from '../manifest/investigation-publication-contracts.ts';
 import {
   assertChangeId,
   assertInvestigationId,
-} from '../../../runtime/session-workspace/paths.ts';
-import type { InvestigationV3DirectFailureEmission } from '../../../runtime/storage-journal/investigation-v3-failure-store.ts';
+} from '../../../foundation/repository-path/repository-path.ts';
+import type { InvestigationV3DirectFailureEmission } from './investigation-v3-failure-record.ts';
 
 const RAW_DIGEST = /^[0-9a-f]{64}$/;
 const FAILURE_CODE = /^[A-Z][A-Z0-9_]{0,255}$/;
@@ -92,6 +90,7 @@ type InvestigationV3StopTransitionParametersV3 = Readonly<{
  * outside Grant Core merely because a diagnostic catalog was not extended.
  */
 export function createInvestigationV3GrantRequest(
+  observations: InvestigationV3FailureObservations,
   input: Readonly<{
     cwd: string;
     failure: InvestigationV3GrantFailureContext;
@@ -104,7 +103,7 @@ export function createInvestigationV3GrantRequest(
   return createSourceBoundGrantRequest({
     failure,
     source,
-    observation: initialInvestigationV3FailureSourceObservation({
+    observation: observations.initialInvestigationV3FailureSourceObservation({
       cwd: input.cwd,
       identity: failure,
       source,
@@ -114,6 +113,7 @@ export function createInvestigationV3GrantRequest(
 }
 
 export function createInvestigationV3PublicationGrantRequest(
+  observations: InvestigationV3FailureObservations,
   input: Readonly<{
     cwd: string;
     failure: InvestigationManifestPublicationFailure;
@@ -132,11 +132,12 @@ export function createInvestigationV3PublicationGrantRequest(
     );
   }
   const source = investigationV3PublicationFailureSource(emitted);
-  const observation = initialInvestigationV3FailureSourceObservation({
-    cwd: input.cwd,
-    identity: failure,
-    source,
-  });
+  const observation =
+    observations.initialInvestigationV3FailureSourceObservation({
+      cwd: input.cwd,
+      identity: failure,
+      source,
+    });
   if (
     emitted.source.recoveryPolicy === 'idempotent-post-ref' &&
     (observation.publicationRecoveryKind === 'post-ref' ||
@@ -227,6 +228,7 @@ export function investigationV3CentralFailureCode(
 }
 
 export function investigationV3GrantTransitionDefinitions(
+  observations: InvestigationV3FailureObservations,
   cwd: string,
 ): readonly [TransitionDefinition<InvestigationV3StopTransitionParametersV3>] {
   return [
@@ -243,11 +245,12 @@ export function investigationV3GrantTransitionDefinitions(
       validateParameters: assertStopParametersV3,
       renderTrustedChoice: renderStopChoice,
       observeState(parameters) {
-        return observeSourceBoundFailureState(cwd, parameters);
+        return observeSourceBoundFailureState(observations, cwd, parameters);
       },
       async execute(context): Promise<TransitionOutcome> {
         context.assertLifecycleOwned();
         const observed = observeSourceBoundFailureState(
+          observations,
           cwd,
           context.parameters,
         );
@@ -436,17 +439,18 @@ function assertStopParametersV3(
 }
 
 function observeSourceBoundFailureState(
+  observations: InvestigationV3FailureObservations,
   cwd: string,
   parameters: InvestigationV3StopTransitionParametersV3,
 ): StateBinding {
-  const context = loadInvestigationRuntimeContext(cwd);
-  if (context.config.repositoryName !== parameters.repositoryId) {
+  const repositoryId = observations.readRepositoryId(cwd);
+  if (repositoryId !== parameters.repositoryId) {
     throw investigationV3GrantInvalid(
       'INVESTIGATION_V3_GRANT_REPOSITORY_MISMATCH',
       'Investigation v3 Grant transition observed another repository.',
     );
   }
-  const observation = observeInvestigationV3FailureSource({
+  const observation = observations.observeInvestigationV3FailureSource({
     cwd,
     expectedIdentity: {
       repositoryId: parameters.repositoryId,

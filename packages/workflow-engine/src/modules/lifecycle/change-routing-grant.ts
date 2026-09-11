@@ -14,7 +14,7 @@ import type {
   AuthorizedTransitionContext,
   TransitionDefinition,
 } from '../authority/grant-transition-registry.ts';
-import { observeChangeRoutingContinuationState } from './change-routing.ts';
+import type { ChangeRoutingContinuationObserver } from './change-routing.ts';
 import {
   CHANGE_ROUTING_CONTINUATION_CONSEQUENCE_DIGEST,
   CHANGE_ROUTING_CONTINUATION_PARAMETER_SCHEMA_DIGEST,
@@ -26,7 +26,7 @@ type ChangeRoutingContinuationParameters = Readonly<{
   sourceDigest: `sha256:${string}`;
 }>;
 
-export function changeRoutingGrantTransitionDefinitions(
+export function changeRoutingGrantTransitionDefinitions(observeChangeRoutingContinuationState: ChangeRoutingContinuationObserver,
   repositoryRoot: string,
 ): readonly TransitionDefinition<ChangeRoutingContinuationParameters>[] {
   const definition: TransitionDefinition<ChangeRoutingContinuationParameters> =
@@ -92,7 +92,7 @@ export function changeRoutingGrantTransitionDefinitions(
   return Object.freeze([definition]);
 }
 
-export function createChangeRoutingContinuationGrantRequest(
+export function createChangeRoutingContinuationGrantRequest(observeChangeRoutingContinuationState: ChangeRoutingContinuationObserver,
   repositoryRoot: string,
   changeId: string,
   proposedReason: string,

@@ -1,3 +1,22 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import {
+  productionChangeRoutingInspector,
+  productionChangeRoutingAdmissionReader,
+} from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -5,13 +24,13 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import {
   cancelFinalizeRecovery,
-  finalizeTask,
   inspectFinalizeRecoveryStatus,
-} from '../src/application/finalize/lifecycle.ts';
+} from '../src/composition-root/finalization-production.ts';
+import { finalizeTask } from '../src/composition-root/finalization-production.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
@@ -20,12 +39,12 @@ import {
   beginTaskDiffReviewContinuation,
   reconcileTaskDiffReview,
   reconcileTaskDiffReviewContinuation,
-} from '../src/application/finalize/task-diff-review-lifecycle.ts';
+} from '../src/composition-root/task-diff-review-production.ts';
 import {
   createTaskDiffReviewChallengeResponse,
   taskDiffReviewProviderSubmission,
-  type TaskDiffReviewSubmission,
 } from '../src/modules/assurance/task-diff-review-artifact.ts';
+import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact-record.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
 import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
 import {
@@ -42,7 +61,12 @@ import {
 test('authenticated changes-required Final Assurance can cancel its exact checked finalize transaction', () => {
   const { repository } = createReviewFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     const taskPath = path.join(
       repository,
@@ -183,7 +207,12 @@ test('authenticated changes-required Final Assurance can cancel its exact checke
 test('an arbitrary checked finalize transaction remains non-cancellable', () => {
   const { repository } = createReviewFixture({ diffReviewRequired: false });
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',

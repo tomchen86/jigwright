@@ -1,3 +1,4 @@
+import { createAuthorityPlan } from '../src/composition-root/maintainer-authority-production.ts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -7,13 +8,14 @@ import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
-  approveAndApplyAuthorityPlan,
-  attestAuthorityPlan,
-  createAuthorityPlan,
   inspectAuthorityPlan,
-  resumeAuthorityPlan,
   type AuthorityPlanIntent,
 } from '../src/application/control-plane/authority-plan.ts';
+import {
+  attestAuthorityPlan,
+  resumeAuthorityPlan,
+} from '../src/composition-root/maintainer-authority-production.ts';
+import { approveAndApplyAuthorityPlan } from '../src/composition-root/maintainer-authority-production.ts';
 import {
   createFixtureRepository,
   git,
@@ -64,7 +66,10 @@ test('authority plan drives one durable break-glass round without remote or sign
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+        ),
         'authority-plan',
         'prepare',
         '--intent',
@@ -87,7 +92,10 @@ test('authority plan drives one durable break-glass round without remote or sign
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+        ),
         'authority-plan',
         'status',
         prepared.planId,

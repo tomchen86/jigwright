@@ -12,10 +12,10 @@ import {
   TASK_DIFF_REVIEW_OUTPUT_SCHEMA,
   TASK_DIFF_REVIEW_OUTPUT_VALIDATOR,
   TASK_DIFF_REVIEW_PROVIDER_OUTPUT_SCHEMA,
-  type TaskDiffReviewSubmission,
   taskDiffReviewProviderSubmission,
   parseTaskDiffReviewProviderSubmission,
 } from '../src/modules/assurance/task-diff-review-artifact.ts';
+import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact-record.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
 
 test('TaskDiffReview provider output schema and validator bind the complete semantic grammar', () => {

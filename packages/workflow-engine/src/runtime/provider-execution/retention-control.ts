@@ -1,3 +1,8 @@
+import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+type TaskMandateDependencies = Pick<
+  TaskMandateOperations,
+  'withActiveTaskMandateBinding'
+>;
 /**
  * Runs evidence retention maintenance and manages durable workflow evidence
  * pins.
@@ -10,20 +15,24 @@ import { projectProviderInvocationExecution } from '../../modules/provider-orche
 import {
   compactDurableEpochTransitionReceipts,
   inspectDurableEpochContextStore,
+} from '../storage-journal/execution-governance-epoch-store.ts';
+import {
   inspectDurableRetentionCatalog,
   pinDurableEvidence,
-  planEvidencePruning,
   pruneDurableEvidence,
-  type DurablePruneReceipt,
+} from '../storage-journal/execution-governance-evidence-store.ts';
+import {
+  planEvidencePruning,
   type EvidenceRetentionRecord,
-} from '../../modules/authority/execution-governance.ts';
+} from '../../modules/authority/execution-governance-retention.ts';
+import { type DurablePruneReceipt } from '../../modules/authority/execution-governance-store-contracts.ts';
 import {
   ExitCode,
   WorkflowError,
   workflowError,
 } from '../../foundation/errors/errors.ts';
 import { discoverRepository, runGit } from '../repository-transaction/git.ts';
-import { listProviderInvocationLifecycleProjections } from '../storage-journal/investigation-session-store.ts';
+import { listProviderInvocationLifecycleProjections } from '../storage-journal/provider-invocation-lifecycle.ts';
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import {
@@ -43,10 +52,7 @@ import {
   type ProviderRetentionMetrics,
   type ProviderRetentionPassResult,
 } from './provider-retention.ts';
-import {
-  withActiveTaskMandateBinding,
-  type TaskMandateBinding,
-} from '../../modules/authority/task-mandate.ts';
+import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 
 export const RETENTION_MAINTENANCE_MAX_WORKFLOWS = 100;
 
@@ -256,6 +262,7 @@ export function inspectEvidenceRetention(
 }
 
 export function pinWorkflowEvidence(
+  taskMandate: TaskMandateDependencies,
   cwd: string,
   request: { workflowId: string; evidenceId: string; reason: string },
   options: { now?: Date; signer?: MaintainerSignerProvider } = {},
@@ -316,7 +323,7 @@ export function pinWorkflowEvidence(
       ExitCode.verification,
     );
   }
-  return withActiveTaskMandateBinding(
+  return taskMandate.withActiveTaskMandateBinding(
     cwd,
     binding.mandateTaskId,
     {

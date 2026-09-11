@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   ManagedTrailerSyntaxError,
   parseManagedTrailers,
-} from '../src/modules/lifecycle/managed-trailers.ts';
+} from '@jigwright/core/managed-transition-trailers';
 
 const GENERATION = 'a'.repeat(64);
 const AMENDS = 'b'.repeat(64);

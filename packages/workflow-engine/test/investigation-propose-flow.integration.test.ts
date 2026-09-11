@@ -14,7 +14,7 @@ import {
   readInvestigationEvidenceRefsClosure,
   writeEvidenceNode,
 } from '../src/runtime/storage-journal/evidence-object-store.ts';
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
+import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import {
   createInvestigationCheckpointEnvelope,
@@ -25,9 +25,9 @@ import {
   getProposeStatus,
   resumePropose,
   startPropose,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import { productionRoleTopologyResolutionPort } from '../src/composition-root/role-topology-resolution-production.ts';
-import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import {
   createProviderInvocationRequest,

@@ -9,10 +9,8 @@
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { type AttemptRecord } from '../../modules/provider-orchestration/execution-core.ts';
-import {
-  type EvidenceRetentionRecord,
-  readDurableEvidence,
-} from '../../modules/authority/execution-governance.ts';
+import { type EvidenceRetentionRecord } from '../../modules/authority/execution-governance-retention.ts';
+import { readDurableEvidence } from '../storage-journal/execution-governance-evidence-store.ts';
 import { providerRuntimeEvidenceId } from './provider-execution-governance.ts';
 import {
   WorkflowError,
@@ -23,10 +21,8 @@ import { listProviderInvocationLifecycleProjections } from '../storage-journal/p
 import { privatePathExists } from '../storage-journal/investigation-private-files.ts';
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
 import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
-import {
-  type ProviderInvocationRecord,
-  readProviderInvocation,
-} from '../storage-journal/provider-invocation-store.ts';
+import { readProviderInvocation } from '../storage-journal/provider-invocation-store.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   readProviderRetentionReceipt,
   providerRetentionReceiptPath,

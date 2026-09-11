@@ -7,7 +7,7 @@
  *   projection.
  */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import type { InvestigationWhyOverlayV3 } from '../investigation/manifest/investigation-manifest.ts';
+import type { InvestigationWhyOverlayV3 } from '../investigation/manifest/investigation-manifest-types.ts';
 import { markdownLines } from '@jigwright/core/markdown-sections';
 import {
   createProjectionService,

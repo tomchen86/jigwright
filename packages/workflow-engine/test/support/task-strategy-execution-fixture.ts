@@ -1,3 +1,13 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../../src/composition-root/planning-execution-epoch-production.ts';
+import { managedDocuments } from '../../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import {
   createFixtureRepository,
   configureChecks,
@@ -10,7 +20,7 @@ import {
 } from '../fixture.ts';
 import path from 'node:path';
 import fs from 'node:fs';
-import { commitPlanningTransition } from '../../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../../src/application/propose/planning-transition.ts';
 import os from 'node:os';
 import { runGitWithEnvironment } from '../../src/runtime/repository-transaction/git.ts';
 import { createHash } from 'node:crypto';
@@ -20,7 +30,7 @@ import { PROVIDER_RUNNER_RESIDUALS } from '../../src/runtime/provider-execution/
 import { spawnSync } from 'node:child_process';
 import { type MaintainerSignerProvider } from '../../src/adapters/signing/ssh/maintainer-signer.ts';
 import assert from 'node:assert/strict';
-import { type CollaborationGrantRequest } from '../../src/modules/authority/collaboration-grant.ts';
+import { type CollaborationGrantRequest } from '../../src/modules/authority/collaboration-grant-codec.ts';
 
 export function createCrossAgentFixture(
   failureCategory: 'assertion' | 'syntax',
@@ -305,7 +315,10 @@ export function runWorkflowCli(
     process.execPath,
     [
       '--experimental-strip-types',
-      path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+      path.join(
+        sourceRepositoryRoot,
+        'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+      ),
       ...args,
     ],
     {

@@ -3,10 +3,8 @@ import crypto from 'node:crypto';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import type {
-  CheckEvidence,
-  ObservedCheckFailure,
-} from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
+import type { CheckEvidence } from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
+import type { ObservedCheckFailure } from '../src/modules/assurance/check-evidence.ts';
 import { prepareTaskStrategyGreenFailureRecord } from '../src/runtime/storage-journal/task-strategy-correction-store.ts';
 import {
   assertTaskStrategyImplementationManifest,

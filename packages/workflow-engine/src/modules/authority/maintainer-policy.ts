@@ -1,16 +1,3 @@
-/**
- * Loads maintainer policy, trusted signers and the eligible and sealed
- * authority path sets.
- *
- * Invariants:
- * - A policy is accepted only at schemaVersion 1 with maxTtlMinutes fixed
- *   at 30 and maxUses fixed at 1.
- * - Every sealedImmutablePath must also match some bootstrapEligiblePath or
- *   the policy is rejected.
- */
-import fs from 'node:fs';
-import path from 'node:path';
-
 import {
   isRecord,
   isStringArray,
@@ -19,7 +6,7 @@ import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   matchesAllowedPath,
   normalizePolicyPath,
-} from '../../runtime/session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 
 const CHECK_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SIGNER_ID = /^[a-zA-Z0-9][a-zA-Z0-9._@+-]{0,127}$/;
@@ -59,22 +46,6 @@ export type MaintainerPolicy = {
   requiredChecks: string[];
   trustedSigners: TrustedMaintainerSigner[];
 };
-
-export function loadMaintainerPolicy(repositoryRoot: string): MaintainerPolicy {
-  const policyPath = path.join(
-    repositoryRoot,
-    'workflow/maintainer-policy.json',
-  );
-  let value: unknown;
-  try {
-    value = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
-  } catch (error) {
-    throw invalidPolicy('Unable to read workflow/maintainer-policy.json.', {
-      cause: error instanceof Error ? error.message : String(error),
-    });
-  }
-  return parseMaintainerPolicy(value);
-}
 
 export function parseMaintainerPolicy(value: unknown): MaintainerPolicy {
   if (
@@ -229,7 +200,10 @@ function hasExactKeys(value: Record<string, unknown>, keys: string[]): boolean {
   );
 }
 
-function invalidPolicy(message: string, details?: Record<string, unknown>) {
+export function invalidPolicy(
+  message: string,
+  details?: Record<string, unknown>,
+) {
   return workflowError(
     'MAINTAINER_POLICY_INVALID',
     message,

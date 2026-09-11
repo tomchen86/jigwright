@@ -19,9 +19,10 @@ import {
   replayCurrentPlanReviewRoleResult,
 } from '../../modules/assurance/planning-assurance-validator.ts';
 import { normalizeInvestigationTerm } from '../../modules/investigation/domain/investigation-terms.ts';
-import { assertStoredReviewerTermDelta } from '../../modules/projection/investigation-term-projection.ts';
+import { assertStoredReviewerTermDelta } from '../../modules/assurance/plan-review-terms.ts';
 import { PROPOSE_POLICY_DIGEST } from '../../modules/provider-orchestration/provider-contracts.ts';
-import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-scheduler.ts';
+import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+
 import {
   hasExactKeys,
   isBaseline,
@@ -37,7 +38,10 @@ import type {
 import { type ReviewerTermSourceRecord } from './propose-types.ts';
 
 export function readReviewerTermSource(
-  services: Pick<ProposeRuntime, 'evidence' | 'investigation'>,
+  services: Pick<
+    ProposeRuntime,
+    'evidence' | 'investigation' | 'planningEvidence'
+  >,
   paths: ReturnType<
     ProposeRuntime['workspace']['loadInvestigationRuntimeContext']
   >['runtime'],
@@ -77,7 +81,10 @@ export function readReviewerTermSource(
 }
 
 function readReviewerTermSourceV3(
-  services: Pick<ProposeRuntime, 'evidence' | 'investigation'>,
+  services: Pick<
+    ProposeRuntime,
+    'evidence' | 'investigation' | 'planningEvidence'
+  >,
   paths: ReturnType<
     ProposeRuntime['workspace']['loadInvestigationRuntimeContext']
   >['runtime'],
@@ -134,6 +141,7 @@ function readReviewerTermSourceV3(
   let roleResult: AdmittedRoleResult;
   try {
     roleResult = replayCurrentPlanReviewRoleResult(
+      services.planningEvidence,
       output.roleResult,
       {
         repositoryRoot,

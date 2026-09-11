@@ -10,8 +10,8 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   bootstrapInterventionUsage,
   dispatchBootstrapInterventionCommand,
-  type BootstrapInterventionCliDependencies,
 } from '../src/entrypoints/cli/intervention-control-bootstrap-cli.ts';
+import { type BootstrapInterventionCliDependencies } from '../src/modules/authority/intervention-bootstrap-contract.ts';
 import {
   HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE,
   canonicalHarnessMaintenanceGrantPayload,
@@ -26,9 +26,9 @@ import {
   readInterventionEngineArtifact,
   readMaintenanceGrantRecord,
   readMaintenanceGrantForParent,
-  type MaintenanceApprovalSummary,
   type PersistedMaintenanceGrantRecord,
 } from '../src/application/control-plane/intervention-maintenance.ts';
+import { type MaintenanceApprovalSummary } from '../src/modules/authority/intervention-bootstrap-contract.ts';
 import { readPersistedIntervention } from '../src/runtime/storage-journal/intervention-control-persistence.ts';
 import {
   deriveAuthorityAuditRepositoryId,

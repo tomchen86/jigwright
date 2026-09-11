@@ -1,3 +1,12 @@
+import type { HumanResolutionServices } from '../../../modules/authority/maintainer-grant-contracts.ts';
+import type { HumanResolutionGrantRevoker } from '../../../modules/authority/grant-revocation-contract.ts';
+import type { InvestigationHumanActionBlockerFactory } from '../../../modules/investigation/domain/human-resolution-contract.ts';
+import type { TaskMandateOperations } from '../../../modules/authority/task-mandate.ts';
+type TaskMandateDependencies = Pick<
+  TaskMandateOperations,
+  | 'assertActiveTaskMandateBindingUnderLifecycleLock'
+  | 'authorizeTaskMandateProviderReservationUnderLifecycleLock'
+>;
 /**
  * Coordinates investigation sessions, authoring checkpoints, provider
  * results and reviewer-driven reopening.
@@ -6,6 +15,7 @@
  * - Starting a session binds the blind survey request to the current
  *   repository baseline, intent and input manifest.
  */
+import type { ProviderRetryAccountingReader } from '../../../modules/provider-orchestration/provider-retry-accounting.ts';
 import crypto from 'node:crypto';
 
 import {
@@ -34,83 +44,102 @@ import { runGit } from '../../../runtime/repository-transaction/git.ts';
 import { copyGrantDate } from '../../../modules/authority/grant-primitives.ts';
 import {
   assertHumanResolutionDecision,
-  assertInvestigationCheckpointEnvelope,
-  compareAndSwapCurrentInvestigationRef,
-  compareAndSwapHumanResolutionHead,
-  checkpointContributionDigest,
-  checkpointEnvelopeDigest,
-  compareAndSwapInvestigationSession,
-  createInvestigationHumanActionBlocker,
-  createHumanResolutionJournal,
   createHumanResolutionNode,
-  createCurrentInvestigationRef,
-  createInvestigationId,
-  createInvestigationSessionRecord,
-  deriveInvestigationSessionState,
-  inspectInvestigationResolutionState,
-  inspectInvestigationQuarantineState,
-  inspectInterruptedHumanResolutionGrantPublications,
   investigationCurrentRefDigest,
-  investigationCheckpointId,
   investigationResolutionStateDigest,
   humanResolutionDecisionSchemaDigest,
-  investigationSessionExists,
-  inspectStoredHumanResolutionGrants,
-  scanProviderInvocationLifecycles,
-  quarantineUnsafeCurrentInvestigationRef,
-  quarantineUnsafeInvestigationStartReservation,
-  quarantineInterruptedHumanResolutionGrantPublication,
-  quarantineUnsafeHumanResolutionRef,
-  readCurrentInvestigationRef,
-  readHumanResolutionArchive,
-  readHumanResolutionHead,
-  readHumanResolutionJournal,
-  readHumanResolutionNode,
-  readInvestigationSession,
-  archiveHumanResolutionSingleton,
-  revokeStoredHumanResolutionGrant,
-  withHumanResolutionGrantExecution,
-  writeHumanResolutionArchive,
-  writeHumanResolutionJournal,
-  writeHumanResolutionNode,
-  writeHumanResolutionReceipt,
-  type GroupDispositionsPayload,
-  type HumanResolutionGrantPublicationAuditTag,
-  type HumanResolutionGrantPublicationStateBinding,
-  type HumanResolutionGrantPublicationStoreState,
-  type QuarantinedHumanResolutionGrantPublication,
   type HumanResolutionConsequences,
   type HumanResolutionDecision,
   type HumanResolutionExpectedState,
-  type HumanResolutionJournal,
-  type HumanResolutionGrantStoreEntry,
   type HumanResolutionNode,
   type HumanResolutionTarget,
+  type InvestigationResolutionState,
+} from '../../../modules/investigation/domain/human-resolution-contract.ts';
+import {
+  assertInvestigationCheckpointEnvelope,
+  checkpointContributionDigest,
+  checkpointEnvelopeDigest,
+} from '../../../modules/investigation/domain/investigation-checkpoint-contract.ts';
+import {
+  compareAndSwapCurrentInvestigationRef,
+  compareAndSwapInvestigationSession,
+  createCurrentInvestigationRef,
+  createInvestigationId,
+  createInvestigationSessionRecord,
+  investigationSessionExists,
+  readCurrentInvestigationRef,
+  readInvestigationSession,
+} from '../../../runtime/storage-journal/investigation-session-records.ts';
+import {
+  compareAndSwapHumanResolutionHead,
+  readHumanResolutionHead,
+  readHumanResolutionNode,
+  writeHumanResolutionNode,
+} from '../../../runtime/storage-journal/human-resolution-nodes.ts';
+import {
+  createHumanResolutionJournal,
+  type HumanResolutionJournal,
+} from '../../../modules/investigation/domain/human-resolution-journal-contract.ts';
+import {
+  deriveInvestigationSessionState,
+  investigationCheckpointId,
+} from '../../../modules/investigation/domain/investigation-session-contract.ts';
+import {
+  inspectInvestigationResolutionState,
+  inspectInvestigationQuarantineState,
+} from '../../../runtime/storage-journal/human-resolution-state.ts';
+import {
+  inspectInterruptedHumanResolutionGrantPublications,
+  quarantineInterruptedHumanResolutionGrantPublication,
+} from '../../../runtime/storage-journal/human-resolution-grant-publication.ts';
+import {
+  inspectStoredHumanResolutionGrants,
+  withHumanResolutionGrantExecution,
+} from '../../../runtime/storage-journal/human-resolution-grant-store.ts';
+import { scanProviderInvocationLifecycles } from '../../../runtime/storage-journal/provider-invocation-lifecycle.ts';
+import {
+  quarantineUnsafeCurrentInvestigationRef,
+  quarantineUnsafeInvestigationStartReservation,
+  quarantineUnsafeHumanResolutionRef,
+  archiveHumanResolutionSingleton,
+} from '../../../runtime/storage-journal/human-resolution-archive.ts';
+import {
+  readHumanResolutionArchive,
+  readHumanResolutionJournal,
+  writeHumanResolutionArchive,
+  writeHumanResolutionJournal,
+  writeHumanResolutionReceipt,
+} from '../../../runtime/storage-journal/human-resolution-journal.ts';
+import {
+  type GroupDispositionsPayload,
   type InvestigationCheckpointEnvelope,
   type InvestigationCheckpointKind,
-  type InvestigationResolutionState,
   type InvestigationSession,
   type InvestigationSessionState,
   type MainTermsPayload,
   type StoredInvestigationCheckpoint,
   type WhyAnswersPayload,
-} from '../../../runtime/storage-journal/investigation-session-store.ts';
+} from '../../../modules/investigation/domain/investigation-session-types.ts';
+import {
+  type HumanResolutionGrantPublicationAuditTag,
+  type HumanResolutionGrantPublicationStateBinding,
+  type HumanResolutionGrantPublicationStoreState,
+  type QuarantinedHumanResolutionGrantPublication,
+} from '../../../modules/investigation/domain/human-resolution-grant-publication-contract.ts';
+import { type HumanResolutionGrantStoreEntry } from '../../../modules/authority/grant-revocation-contract.ts';
 import { loadInvestigationRuntimeContext } from '../../../composition-root/lifecycle-context.ts';
 import {
   assertResolutionConsequences,
   assertResolutionDecisionAvailable,
-  assertResolutionDecisionTarget,
   humanResolutionBlockerBinding,
-  loadMaintainerPolicyForResolution,
   parseHumanResolutionGrantEnvelope,
-  verifyHumanResolutionGrantForRevocation,
-} from '../../../modules/authority/maintainer-grant.ts';
-import type { HumanRevocationOptions } from '../../../application/control-plane/human-revocation.ts';
+} from '../../../modules/authority/maintainer-grant-contracts.ts';
+import type { HumanRevocationOptions } from '../../../modules/authority/human-revocation-contract.ts';
 import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../../modules/assurance/plan-review-coverage.ts';
 import {
   assertChangeId,
   assertInvestigationId,
-} from '../../../runtime/session-workspace/paths.ts';
+} from '../../../foundation/repository-path/repository-path.ts';
 import {
   assertHeldChangeTransitionAuthority,
   type HeldChangeTransitionAuthority,
@@ -137,11 +166,13 @@ import {
   readProviderInvocationRequest,
   readProviderRetryReservation,
   retireInvestigationStartReservation,
-  type BlindSurveyManifest,
-  type InvestigationStartReservation,
-  type ProviderInvocationFailure,
-  type ProviderInvocationRecord,
 } from '../../../runtime/storage-journal/provider-invocation-store.ts';
+import type { BlindSurveyManifest } from '../../../modules/investigation/manifest/blind-survey-manifest.ts';
+import type { InvestigationStartReservation } from '../../../modules/provider-orchestration/provider-invocation-reservations.ts';
+import type {
+  ProviderInvocationFailure,
+  ProviderInvocationRecord,
+} from '../../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   inspectProviderInvocationActivity,
   type ProviderInvocationActivity,
@@ -151,11 +182,7 @@ import {
   authorizeAutomaticProviderRetry,
   type ProviderExecutionGrantAuthorization,
 } from '../../../modules/provider-orchestration/provider-retry-decision.ts';
-import {
-  assertActiveTaskMandateBindingUnderLifecycleLock,
-  authorizeTaskMandateProviderReservationUnderLifecycleLock,
-  type TaskMandateBinding,
-} from '../../../modules/authority/task-mandate.ts';
+import { type TaskMandateBinding } from '../../../modules/authority/task-mandate-contract.ts';
 import { createHumanResolutionLifecycle } from './human-resolution-lifecycle.ts';
 export { SimulatedHumanResolutionCrash } from './human-resolution-lifecycle.ts';
 export type {
@@ -201,7 +228,6 @@ const humanResolutionRuntime = {
   readHumanResolutionNode,
   readInvestigationSession,
   archiveHumanResolutionSingleton,
-  revokeStoredHumanResolutionGrant,
   withHumanResolutionGrantExecution,
   writeHumanResolutionArchive,
   writeHumanResolutionJournal,
@@ -210,11 +236,8 @@ const humanResolutionRuntime = {
   loadInvestigationRuntimeContext,
   assertResolutionConsequences,
   assertResolutionDecisionAvailable,
-  assertResolutionDecisionTarget,
   humanResolutionBlockerBinding,
-  loadMaintainerPolicyForResolution,
   parseHumanResolutionGrantEnvelope,
-  verifyHumanResolutionGrantForRevocation,
   assertChangeId,
   assertInvestigationId,
   assertHeldChangeTransitionAuthority,
@@ -224,7 +247,14 @@ const humanResolutionRuntime = {
   readInvestigationStartReservationSnapshot,
   retireInvestigationStartReservation,
 };
-export type HumanResolutionRuntimeBindings = typeof humanResolutionRuntime;
+export type HumanResolutionRuntimeBindings = typeof humanResolutionRuntime &
+  InvestigationHumanResolutionServices;
+export type InvestigationHumanResolutionServices = Pick<
+  HumanResolutionServices,
+  | 'assertResolutionDecisionTarget'
+  | 'loadMaintainerPolicyForResolution'
+  | 'verifyHumanResolutionGrantForRevocation'
+> & { revokeStoredHumanResolutionGrant: HumanResolutionGrantRevoker };
 export type HumanResolutionRuntimeTypes = {
   HumanResolutionGrantPublicationAuditTag: HumanResolutionGrantPublicationAuditTag;
   HumanResolutionGrantPublicationStateBinding: HumanResolutionGrantPublicationStateBinding;
@@ -240,19 +270,14 @@ export type HumanResolutionRuntimeTypes = {
   InvestigationResolutionState: InvestigationResolutionState;
   HumanRevocationOptions: HumanRevocationOptions;
 };
-const humanResolutionLifecycle = createHumanResolutionLifecycle(
-  humanResolutionRuntime,
-);
-export const inspectHumanResolutionGrants =
-  humanResolutionLifecycle.inspectHumanResolutionGrants;
-export const inspectHumanResolutionGrantPublicationRecoveries =
-  humanResolutionLifecycle.inspectHumanResolutionGrantPublicationRecoveries;
-export const discardHumanResolutionGrantPublication =
-  humanResolutionLifecycle.discardHumanResolutionGrantPublication;
-export const revokeHumanResolutionGrant =
-  humanResolutionLifecycle.revokeHumanResolutionGrant;
-export const executeGrantCoreHumanResolution =
-  humanResolutionLifecycle.executeGrantCoreHumanResolution;
+export function createInvestigationHumanResolutionOperations(
+  services: InvestigationHumanResolutionServices,
+) {
+  return createHumanResolutionLifecycle({
+    ...humanResolutionRuntime,
+    ...services,
+  });
+}
 
 export type InvestigationStatus = {
   kind: 'investigation';
@@ -313,6 +338,7 @@ export type RetryInvestigationProviderInput = {
 };
 
 export function startInvestigationSession(
+  taskMandate: TaskMandateDependencies,
   cwd: string,
   input: StartInvestigationSessionInput,
 ): InvestigationStatus {
@@ -328,6 +354,7 @@ export function startInvestigationSession(
     changeId,
     (assertOwned) =>
       startInvestigationSessionUnderLifecycleLock(
+        taskMandate,
         cwd,
         input,
         context,
@@ -337,6 +364,7 @@ export function startInvestigationSession(
 }
 
 export function startInvestigationSessionUnderLifecycleLock(
+  taskMandate: TaskMandateDependencies,
   cwd: string,
   input: StartInvestigationSessionInput,
   context: ReturnType<typeof loadInvestigationRuntimeContext>,
@@ -359,7 +387,7 @@ export function startInvestigationSessionUnderLifecycleLock(
     intentDigest,
   );
   if (input.mandateBinding) {
-    assertActiveTaskMandateBindingUnderLifecycleLock(
+    taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock(
       cwd,
       input.mandateBinding,
       assertOwned,
@@ -388,7 +416,13 @@ export function startInvestigationSessionUnderLifecycleLock(
         );
       }
       assertStartReservationSessionBinding(lockedContext, reservation, current);
-      authorizeSurveyReservationMandate(cwd, reservation, assertOwned, false);
+      authorizeSurveyReservationMandate(
+        taskMandate,
+        cwd,
+        reservation,
+        assertOwned,
+        false,
+      );
       return statusFromSession(lockedContext, current);
     }
     throw workflowError(
@@ -432,7 +466,13 @@ export function startInvestigationSessionUnderLifecycleLock(
       ),
     });
   assertStartReservationContext(lockedContext, reservation);
-  authorizeSurveyReservationMandate(cwd, reservation, assertOwned, false);
+  authorizeSurveyReservationMandate(
+    taskMandate,
+    cwd,
+    reservation,
+    assertOwned,
+    false,
+  );
   const reservedInput: StartInvestigationSessionInput = {
     changeId,
     blindManifest: reservation.manifest,
@@ -772,11 +812,13 @@ type HeldInvestigationAuthority = {
 };
 
 export function reopenInvestigationForReviewerTerms(
+  loadMaintainerPolicyForResolution: HumanResolutionServices['loadMaintainerPolicyForResolution'],
   cwd: string,
   requestedInvestigationId: string,
   input: ReopenInvestigationForReviewerTermsInput,
 ): InvestigationStatus {
   return reopenInvestigationForReviewerTermsInternal(
+    loadMaintainerPolicyForResolution,
     cwd,
     requestedInvestigationId,
     input,
@@ -784,6 +826,7 @@ export function reopenInvestigationForReviewerTerms(
 }
 
 export function reopenInvestigationForReviewerTermsUnderAuthority(
+  loadMaintainerPolicyForResolution: HumanResolutionServices['loadMaintainerPolicyForResolution'],
   cwd: string,
   changeId: string,
   requestedInvestigationId: string,
@@ -791,6 +834,7 @@ export function reopenInvestigationForReviewerTermsUnderAuthority(
   assertOwned: () => void,
 ): InvestigationStatus {
   return reopenInvestigationForReviewerTermsInternal(
+    loadMaintainerPolicyForResolution,
     cwd,
     requestedInvestigationId,
     input,
@@ -799,6 +843,7 @@ export function reopenInvestigationForReviewerTermsUnderAuthority(
 }
 
 function reopenInvestigationForReviewerTermsInternal(
+  loadMaintainerPolicyForResolution: HumanResolutionServices['loadMaintainerPolicyForResolution'],
   cwd: string,
   requestedInvestigationId: string,
   input: ReopenInvestigationForReviewerTermsInput,
@@ -828,6 +873,7 @@ function reopenInvestigationForReviewerTermsInternal(
           'INVESTIGATION_REVIEWER_REOPEN_LIMIT_REACHED' &&
         input.authorizationResolutionNodeId !== null &&
         assertReviewerTermResolutionAuthorization(
+          loadMaintainerPolicyForResolution,
           context,
           current,
           input.pendingReviewDigest,
@@ -883,6 +929,7 @@ function reopenInvestigationForReviewerTermsInternal(
 }
 
 function assertReviewerTermResolutionAuthorization(
+  loadMaintainerPolicyForResolution: HumanResolutionServices['loadMaintainerPolicyForResolution'],
   context: ReturnType<typeof loadInvestigationRuntimeContext>,
   session: InvestigationSession,
   pendingReviewDigest: string,
@@ -906,7 +953,11 @@ function assertReviewerTermResolutionAuthorization(
     node.target.changeId !== session.changeId ||
     node.expected.reasonCode !== session.blocker.reasonCode ||
     node.expected.blockedTransition !== session.blocker.blockedTransition ||
-    !humanResolutionNodeBindsCurrentState(context, node)
+    !humanResolutionNodeBindsCurrentState(
+      loadMaintainerPolicyForResolution,
+      context,
+      node,
+    )
   ) {
     return false;
   }
@@ -917,6 +968,7 @@ function assertReviewerTermResolutionAuthorization(
 }
 
 function humanResolutionNodeBindsCurrentState(
+  loadMaintainerPolicyForResolution: HumanResolutionServices['loadMaintainerPolicyForResolution'],
   context: ReturnType<typeof loadInvestigationRuntimeContext>,
   node: HumanResolutionNode,
 ): boolean {
@@ -998,6 +1050,7 @@ export function decideReviewerTermReopen(input: {
 }
 
 export function inspectReviewerTermResolutionAuthorization(
+  loadMaintainerPolicyForResolution: HumanResolutionServices['loadMaintainerPolicyForResolution'],
   cwd: string,
   requestedInvestigationId: string,
   pendingReviewDigest: string,
@@ -1031,7 +1084,11 @@ export function inspectReviewerTermResolutionAuthorization(
     node.target.changeId !== session.changeId ||
     node.expected.reasonCode !== session.blocker.reasonCode ||
     node.expected.blockedTransition !== session.blocker.blockedTransition ||
-    !humanResolutionNodeBindsCurrentState(context, node)
+    !humanResolutionNodeBindsCurrentState(
+      loadMaintainerPolicyForResolution,
+      context,
+      node,
+    )
   ) {
     return {
       outcome: 'none',
@@ -1068,11 +1125,13 @@ type BlockInvestigationForReviewerTermsInput = {
 };
 
 export function blockInvestigationForReviewerTerms(
+  createInvestigationHumanActionBlocker: InvestigationHumanActionBlockerFactory,
   cwd: string,
   requestedInvestigationId: string,
   input: BlockInvestigationForReviewerTermsInput,
 ): InvestigationStatus {
   return blockInvestigationForReviewerTermsInternal(
+    createInvestigationHumanActionBlocker,
     cwd,
     requestedInvestigationId,
     input,
@@ -1080,6 +1139,7 @@ export function blockInvestigationForReviewerTerms(
 }
 
 export function blockInvestigationForReviewerTermsUnderAuthority(
+  createInvestigationHumanActionBlocker: InvestigationHumanActionBlockerFactory,
   cwd: string,
   changeId: string,
   requestedInvestigationId: string,
@@ -1087,6 +1147,7 @@ export function blockInvestigationForReviewerTermsUnderAuthority(
   assertOwned: () => void,
 ): InvestigationStatus {
   return blockInvestigationForReviewerTermsInternal(
+    createInvestigationHumanActionBlocker,
     cwd,
     requestedInvestigationId,
     input,
@@ -1095,6 +1156,7 @@ export function blockInvestigationForReviewerTermsUnderAuthority(
 }
 
 function blockInvestigationForReviewerTermsInternal(
+  createInvestigationHumanActionBlocker: InvestigationHumanActionBlockerFactory,
   cwd: string,
   requestedInvestigationId: string,
   input: BlockInvestigationForReviewerTermsInput,
@@ -1176,6 +1238,7 @@ export type BlockInvestigationForPlanReviewRetryInput = {
  * what an expensive, repeatedly failing retry is supposed to do.
  */
 export function blockInvestigationForPlanReviewRetryUnderAuthority(
+  createInvestigationHumanActionBlocker: InvestigationHumanActionBlockerFactory,
   cwd: string,
   changeId: string,
   requestedInvestigationId: string,
@@ -1242,11 +1305,13 @@ type AcknowledgeReviewerTermInputClosureInput = {
 };
 
 export function acknowledgeReviewerTermInputClosure(
+  loadMaintainerPolicyForResolution: HumanResolutionServices['loadMaintainerPolicyForResolution'],
   cwd: string,
   requestedInvestigationId: string,
   input: AcknowledgeReviewerTermInputClosureInput,
 ): InvestigationStatus {
   return acknowledgeReviewerTermInputClosureInternal(
+    loadMaintainerPolicyForResolution,
     cwd,
     requestedInvestigationId,
     input,
@@ -1254,6 +1319,7 @@ export function acknowledgeReviewerTermInputClosure(
 }
 
 export function acknowledgeReviewerTermInputClosureUnderAuthority(
+  loadMaintainerPolicyForResolution: HumanResolutionServices['loadMaintainerPolicyForResolution'],
   cwd: string,
   changeId: string,
   requestedInvestigationId: string,
@@ -1261,6 +1327,7 @@ export function acknowledgeReviewerTermInputClosureUnderAuthority(
   assertOwned: () => void,
 ): InvestigationStatus {
   return acknowledgeReviewerTermInputClosureInternal(
+    loadMaintainerPolicyForResolution,
     cwd,
     requestedInvestigationId,
     input,
@@ -1269,6 +1336,7 @@ export function acknowledgeReviewerTermInputClosureUnderAuthority(
 }
 
 function acknowledgeReviewerTermInputClosureInternal(
+  loadMaintainerPolicyForResolution: HumanResolutionServices['loadMaintainerPolicyForResolution'],
   cwd: string,
   requestedInvestigationId: string,
   input: AcknowledgeReviewerTermInputClosureInput,
@@ -1281,6 +1349,7 @@ function acknowledgeReviewerTermInputClosureInternal(
       if (
         current.revision !== input.expectedRevision ||
         !assertReviewerTermResolutionAuthorization(
+          loadMaintainerPolicyForResolution,
           context,
           current,
           input.pendingReviewDigest,
@@ -1375,6 +1444,8 @@ function publishProviderResultUnlocked(
 }
 
 export function retryInvestigationProvider(
+  taskMandate: TaskMandateDependencies,
+  readProviderRetryAccountingEvidence: ProviderRetryAccountingReader,
   cwd: string,
   requestedInvestigationId: string,
   input: RetryInvestigationProviderInput,
@@ -1383,7 +1454,14 @@ export function retryInvestigationProvider(
     cwd,
     requestedInvestigationId,
     (context, current, assertOwned) =>
-      retryInvestigationProviderUnlocked(context, current, input, assertOwned),
+      retryInvestigationProviderUnlocked(
+        taskMandate,
+        context,
+        current,
+        input,
+        assertOwned,
+        readProviderRetryAccountingEvidence,
+      ),
   );
 }
 
@@ -1421,10 +1499,12 @@ export function expireInvestigationProviderLease(
 }
 
 function retryInvestigationProviderUnlocked(
+  taskMandate: TaskMandateDependencies,
   context: ReturnType<typeof loadInvestigationRuntimeContext>,
   current: InvestigationSession,
   input: RetryInvestigationProviderInput,
   assertOwned: () => void,
+  readProviderRetryAccountingEvidence: ProviderRetryAccountingReader,
 ): InvestigationStatus {
   const investigationId = current.investigationId;
   if (current.revision !== input.expectedRevision) {
@@ -1435,7 +1515,7 @@ function retryInvestigationProviderUnlocked(
     );
   }
   if (current.mandateBinding) {
-    assertActiveTaskMandateBindingUnderLifecycleLock(
+    taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock(
       context.git.repositoryRealPath,
       current.mandateBinding,
       assertOwned,
@@ -1490,6 +1570,7 @@ function retryInvestigationProviderUnlocked(
       input.replacementRequest,
       currentExecutionPolicy,
       input.executionGrantAuthorization,
+      readProviderRetryAccountingEvidence,
     );
   } else if (existingReservation.schemaVersion !== 2) {
     throw workflowError(
@@ -1533,6 +1614,7 @@ function retryInvestigationProviderUnlocked(
     });
   if (reservation.schemaVersion === 2) {
     authorizeSurveyRetryReservationMandate(
+      taskMandate,
       context,
       current,
       reservation,
@@ -1630,21 +1712,26 @@ function assertProviderRetryExecutionDecision(
   previous: ProviderInvocationRecord,
   replacementRequest: ProviderInvocationRequest,
   replacementExecutionPolicy: ReturnType<typeof loadAiAdapterPolicy>,
-  executionGrantAuthorization?: ProviderExecutionGrantAuthorization,
+  executionGrantAuthorization: ProviderExecutionGrantAuthorization | undefined,
+  readProviderRetryAccountingEvidence: ProviderRetryAccountingReader,
 ): ReturnType<typeof authorizeAutomaticProviderRetry> {
   const previousRequest = readProviderInvocationRequest(
     paths,
     previous.invocationId,
   );
-  const authorization = authorizeAutomaticProviderRetry(paths, {
-    failed: previous,
-    failedRequest: previousRequest,
-    replacementRequest,
-    replacementExecutionPolicy,
-    dataAuthorizationPolicyPort: AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
-    boundedGrantRequest: executionGrantAuthorization?.grantRequest,
-    executionGrantAuthorization,
-  });
+  const authorization = authorizeAutomaticProviderRetry(
+    readProviderRetryAccountingEvidence(paths, previous, previousRequest),
+    {
+      failed: previous,
+      failedRequest: previousRequest,
+      replacementRequest,
+      replacementExecutionPolicy,
+      dataAuthorizationPolicyPort: AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
+      boundedGrantRequest: executionGrantAuthorization?.grantRequest,
+      executionGrantAuthorization,
+      now: new Date().toISOString(),
+    },
+  );
   const prior = authorization;
   const replacementPolicy = providerExecutionPolicySnapshot(replacementRequest);
   const now = authorization.evaluatedAt;
@@ -2188,13 +2275,14 @@ function assertStableStartContext(
 }
 
 function authorizeSurveyReservationMandate(
+  taskMandate: TaskMandateDependencies,
   cwd: string,
   reservation: InvestigationStartReservation,
   assertOwned: () => void,
   retry: boolean,
 ): void {
   if (reservation.mandateBinding === undefined) return;
-  authorizeTaskMandateProviderReservationUnderLifecycleLock(
+  taskMandate.authorizeTaskMandateProviderReservationUnderLifecycleLock(
     cwd,
     reservation.mandateBinding,
     reservation.invocationId,
@@ -2212,6 +2300,7 @@ function authorizeSurveyReservationMandate(
 }
 
 function authorizeSurveyRetryReservationMandate(
+  taskMandate: TaskMandateDependencies,
   context: ReturnType<typeof loadInvestigationRuntimeContext>,
   session: InvestigationSession,
   reservation: Extract<
@@ -2231,7 +2320,7 @@ function authorizeSurveyRetryReservationMandate(
     );
   }
   if (reservation.mandateBinding === undefined) return;
-  authorizeTaskMandateProviderReservationUnderLifecycleLock(
+  taskMandate.authorizeTaskMandateProviderReservationUnderLifecycleLock(
     context.git.repositoryRealPath,
     reservation.mandateBinding,
     reservation.invocationId,

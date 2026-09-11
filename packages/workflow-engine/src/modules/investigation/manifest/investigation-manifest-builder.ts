@@ -17,7 +17,7 @@ import type {
   InvestigationGroupFacts,
   ReviewedPathRelationship,
 } from '../domain/investigation-groups.ts';
-import type { InvestigationScanFacts } from '../domain/investigation-scanner.ts';
+import type { InvestigationScanFacts } from '../domain/investigation-scan-facts.ts';
 import type {
   InvestigationLimits,
   InvestigationTermContribution,
@@ -25,29 +25,29 @@ import type {
 } from '../domain/investigation-terms.ts';
 import type { InvestigationSemanticAuthor } from '../domain/investigation-applicability.ts';
 import type { MutationClassPolicy } from '../../source/mutation-class-policy.ts';
-import type { NormalizedChangeIntent } from '../../../runtime/storage-journal/provider-invocation-store.ts';
+import type { NormalizedChangeIntent } from '../../source/change-intent.ts';
 import {
   buildInvestigationManifestDraft,
   createInvestigationV3Blocker,
   sealInvestigationManifestDraft,
   validateDraftForSeal,
   validateForAuthority,
+} from './investigation-manifest.ts';
+import {
   type InvestigationAssuranceFacts,
   type InvestigationKnowledgeReuseDecision,
   type InvestigationManifestDraftV3,
   type InvestigationManifestV3,
-  type InvestigationRequirementV3,
   type InvestigationSemanticException,
   type InvestigationV3Blocker,
   type InvestigationV3RoleResult,
   type InvestigationWhyOverlayV3,
   type OrdinaryInvestigationAuthoringState,
-} from './investigation-manifest.ts';
-import {
-  materializeInvestigationEvidenceView,
-  type InvestigationScanSaturationDecision,
-  type InvestigationV3Baseline,
-} from './investigation-materializer.ts';
+} from './investigation-manifest-types.ts';
+import type { InvestigationRequirementV3 } from './investigation-requirement-types.ts';
+import type { InvestigationEvidenceReplayer } from './investigation-materializer.ts';
+import { type InvestigationScanSaturationDecision } from './investigation-replay-input.ts';
+import type { InvestigationV3Baseline } from './investigation-baseline.ts';
 
 export type InvestigationManifestV3ExpectedCurrentness = {
   repositoryId: string;
@@ -114,6 +114,7 @@ export type BuildInvestigationManifestV3Result =
  * facts are process-local inputs: pinned replay must reconstruct them exactly.
  */
 export function buildInvestigationManifestV3(
+  materializeInvestigationEvidenceView: InvestigationEvidenceReplayer,
   input: BuildInvestigationManifestV3Input,
 ): BuildInvestigationManifestV3Result {
   const ordinary: OrdinaryInvestigationAuthoringState['ordinary'] = {
@@ -148,25 +149,31 @@ export function buildInvestigationManifestV3(
     return blockedFromError(input, error);
   }
 
-  const built = buildInvestigationManifestDraft({
-    repositoryRoot: input.repositoryRoot,
-    state: {
-      schemaVersion: 1,
-      applicabilityKind: 'ordinary',
-      repositoryId: input.repositoryId,
-      changeId: input.changeId,
-      investigationId: input.investigationId,
-      normalizedIntent: structuredClone(input.normalizedIntent),
-      authoring: structuredClone(input.authoring),
-      ordinary,
+  const built = buildInvestigationManifestDraft(
+    materializeInvestigationEvidenceView,
+    {
+      repositoryRoot: input.repositoryRoot,
+      state: {
+        schemaVersion: 1,
+        applicabilityKind: 'ordinary',
+        repositoryId: input.repositoryId,
+        changeId: input.changeId,
+        investigationId: input.investigationId,
+        normalizedIntent: structuredClone(input.normalizedIntent),
+        authoring: structuredClone(input.authoring),
+        ordinary,
+      },
     },
-  });
+  );
   if (built.outcome !== 'built') return built;
 
-  const draftValidation = validateDraftForSeal({
-    repositoryRoot: input.repositoryRoot,
-    draft: built.draft,
-  });
+  const draftValidation = validateDraftForSeal(
+    materializeInvestigationEvidenceView,
+    {
+      repositoryRoot: input.repositoryRoot,
+      draft: built.draft,
+    },
+  );
   if (draftValidation.outcome !== 'verified') return draftValidation;
 
   const sealed = sealInvestigationManifestDraft({
@@ -175,7 +182,7 @@ export function buildInvestigationManifestV3(
   });
   if (sealed.outcome !== 'sealed') return sealed;
 
-  const authority = validateForAuthority({
+  const authority = validateForAuthority(materializeInvestigationEvidenceView, {
     repositoryRoot: input.repositoryRoot,
     manifest: sealed.manifest,
     expected: structuredClone(input.expected),

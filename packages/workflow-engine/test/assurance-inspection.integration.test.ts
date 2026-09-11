@@ -7,21 +7,21 @@ import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { inspectChangeAssurance } from '../src/runtime/repository-transaction/assurance-inspection.ts';
 import { deriveInvestigationGroupFacts } from '../src/modules/investigation/domain/investigation-groups.ts';
-import { scanInvestigationTreeFacts } from '../src/modules/investigation/domain/investigation-scanner.ts';
+import { scanInvestigationTreeFacts } from '../src/composition-root/investigation-production.ts';
 import {
   previewInvestigationTermUnion,
   type InvestigationTermContribution,
 } from '../src/modules/investigation/domain/investigation-terms.ts';
+import { sealInvestigationManifestDraft } from '../src/modules/investigation/manifest/investigation-manifest.ts';
+import { buildInvestigationManifestDraft } from '../src/composition-root/investigation-production.ts';
 import {
-  buildInvestigationManifestDraft,
-  sealInvestigationManifestDraft,
   type InvestigationAuthoringState,
   type InvestigationManifestV3,
-  type InvestigationRequirementV3,
-} from '../src/modules/investigation/manifest/investigation-manifest.ts';
+} from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
+import type { InvestigationRequirementV3 } from '../src/modules/investigation/manifest/investigation-requirement-types.ts';
 import { buildGlobalPlanReviewCoverageRequirement } from '../src/modules/assurance/plan-review-coverage.ts';
 import { createMutationClassPolicy } from '../src/modules/source/mutation-class-policy.ts';
-import { investigationManifestPublicationNamespace } from '../src/runtime/managed-documents/transaction/investigation-publication.ts';
+import { investigationManifestPublicationNamespace } from '../src/modules/investigation/manifest/investigation-publication-contracts.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 

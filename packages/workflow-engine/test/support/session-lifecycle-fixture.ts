@@ -1,3 +1,22 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../../src/composition-root/planning-execution-epoch-production.ts';
+import {
+  productionChangeRoutingInspector,
+  productionChangeRoutingAdmissionReader,
+} from '../../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
 import {
   writeReadyV3ExemptChange,
   sourceRepositoryRoot,
@@ -6,7 +25,7 @@ import {
   prepareCurrentV3IntroductionFixture,
   runtimeRoot,
 } from '../fixture.ts';
-import { commitPlanningTransition } from '../../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../../src/application/propose/planning-transition.ts';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -14,12 +33,10 @@ import {
   applyChangeRoutingReview,
   prepareChangeRoutingReview,
 } from '../../src/composition-root/change-routing-production.ts';
-import { renderHandoff } from '../../src/adapters/consumer/repository/handoff/handoff.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../../src/adapters/consumer/repository/handoff/handoff.ts';
 import { startSession } from '../../src/application/execute-task/session.ts';
-import {
-  finalizeTask,
-  commitSession,
-} from '../../src/application/finalize/lifecycle.ts';
+import { commitSession } from '../../src/application/finalize/lifecycle.ts';
+import { finalizeTask } from '../../src/composition-root/finalization-production.ts';
 
 export function prepareCurrentChange(
   repository: string,
@@ -234,7 +251,12 @@ export function prepareFinishedNonFinalTaskForBaseUpdate(repository: string) {
   git(repository, ['checkout', 'main']);
   git(repository, ['merge', '--ff-only', 'work/demo-change']);
   const fixture = createTaskWorktreeFromPlannedBase(repository, 'demo-change');
-  const started = startSession(fixture.worktree, 'demo-change', '1.1');
+  const started = startSession(
+    productionChangeRoutingAdmissionReader,
+    fixture.worktree,
+    'demo-change',
+    '1.1',
+  );
   fs.mkdirSync(path.join(fixture.worktree, 'src/task'), { recursive: true });
   fs.writeFileSync(
     path.join(fixture.worktree, 'src/task/feature.ts'),
@@ -242,6 +264,7 @@ export function prepareFinishedNonFinalTaskForBaseUpdate(repository: string) {
   );
   finalizeTask(fixture.worktree, started.sessionId);
   const committed = commitSession(
+    productionChangeRoutingAdmissionReader,
     fixture.worktree,
     started.sessionId,
     'Complete concurrent fixture task',

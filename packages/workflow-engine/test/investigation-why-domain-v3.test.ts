@@ -6,8 +6,8 @@ import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { deriveInvestigationGroupFacts } from '../src/modules/investigation/domain/investigation-groups.ts';
-import { materializeInvestigationEvidenceView } from '../src/modules/investigation/manifest/investigation-materializer.ts';
-import { scanInvestigationTreeFacts } from '../src/modules/investigation/domain/investigation-scanner.ts';
+import { materializeInvestigationEvidenceView } from '../src/composition-root/investigation-production.ts';
+import { scanInvestigationTreeFacts } from '../src/composition-root/investigation-production.ts';
 import {
   buildInvestigationV3WhyAuthoring,
   deriveInvestigationV3WhyRequirements,

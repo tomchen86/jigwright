@@ -1,3 +1,9 @@
+import { productionChangeRoutingInspector } from '../src/composition-root/change-routing-observation-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined, productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
 import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,10 +32,8 @@ import {
 } from '../../../scripts/prepare-current-jigwright-v1-release.ts';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
-import {
-  type WorkItemV1,
-  workItemDigest,
-} from '../src/modules/governance-intake/work-registry.ts';
+import { workItemDigest } from '../src/composition-root/work-registry-production.ts';
+import type { WorkItemV1 } from '../src/modules/governance-intake/work-registry-contracts.ts';
 import {
   createCentralRoleProviderDefault,
   renderCentralRoleProviderDefault,
@@ -40,7 +44,7 @@ import {
   agentRolePlanV2Digest,
 } from '../src/modules/provider-orchestration/agent-role-plan.ts';
 import { agentRolePlanV2Path } from '../src/modules/source/planning-role-policy-paths.ts';
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import {
   loadPortabilityFixtureProfile,
   createPortabilityFixturePlanningProviderV1,
@@ -48,10 +52,8 @@ import {
 import { evaluatePlanningProvider } from '@jigwright/core/planning-provider-port';
 import crypto from 'node:crypto';
 import { canonicalJson } from '@jigwright/core/canonical-json';
-import {
-  type TaskDiffReviewSubmission,
-  taskDiffReviewProviderSubmission,
-} from '../src/modules/assurance/task-diff-review-artifact.ts';
+import { taskDiffReviewProviderSubmission } from '../src/modules/assurance/task-diff-review-artifact.ts';
+import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact-record.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
 import {
   type IntegrationDeltaReviewRequest,
@@ -63,7 +65,7 @@ const sourcePackageRoot = path.resolve(import.meta.dirname, '..');
 
 let cliPackageRoot = sourcePackageRoot;
 
-let cliEntrypoint = 'src/cli.ts';
+let cliEntrypoint = 'src/entrypoints/cli/workflow-cli.ts';
 
 const scenarioReportPath = path.resolve(
   import.meta.dirname,

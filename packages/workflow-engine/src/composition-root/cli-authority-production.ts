@@ -1,3 +1,4 @@
+import { taskMandateOperations } from './task-mandate-production.ts';
 /**
  * Assembles production authority dependencies and grant replay verifiers
  * for the CLI.
@@ -16,10 +17,7 @@ import {
   type MaintainerSignerProvider,
 } from '../adapters/signing/ssh/maintainer-signer.ts';
 import { parseMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
-import {
-  inspectActiveTaskMandateBinding,
-  type TaskMandateBinding,
-} from '../modules/authority/task-mandate.ts';
+import { type TaskMandateBinding } from '../modules/authority/task-mandate-contract.ts';
 import type { ControlPlaneTaskMandateBinding } from '../modules/authority/intervention-control.ts';
 import {
   assertSameControlPlaneTaskMandateBinding,
@@ -28,11 +26,7 @@ import {
   type ControlPlaneUpdaterAuditRecord,
 } from '../application/control-plane/intervention-control-updater.ts';
 import type { ControlPlanePromotionReviewSummaryV3 } from '../application/control-plane/control-plane-promotion-producer.ts';
-import {
-  deriveAuthorityAuditRepositoryId,
-  type AuthorityAuditEventType,
-  type AuthorityAuditResult,
-} from '../runtime/storage-journal/authority-audit-ledger.ts';
+import { deriveAuthorityAuditRepositoryId } from '../runtime/storage-journal/authority-audit-ledger.ts';
 import { recordAuthorityAuditEvent } from '../runtime/storage-journal/authority-audit-service.ts';
 import {
   createConsumedCollaborationGrantReplayVerifier,
@@ -40,7 +34,7 @@ import {
   createCurrentAuthoritativeRoleContextSharingGrantVerifier,
 } from './grant-verifier-composition.ts';
 import { productionRoleContextSharingGrantLifecyclePort } from './role-context-sharing-grant-lifecycle-production.ts';
-import { readCollaborationGrantInspection } from '../runtime/storage-journal/collaboration-grant-store.ts';
+import { readCollaborationGrantInspection } from '../runtime/storage-journal/collaboration-grant-records.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 
 export function interventionControlDependencies(cwd: string) {
@@ -326,3 +320,10 @@ export function taskDiffConsumedCollaborationGrantReplayVerifier(
   );
   return createConsumedCollaborationGrantReplayVerifier(historicalPolicy);
 }
+
+import {
+  type AuthorityAuditEventType,
+  type AuthorityAuditResult,
+} from '../modules/authority/authority-audit-contract.ts';
+
+const { inspectActiveTaskMandateBinding } = taskMandateOperations;

@@ -11,7 +11,8 @@ import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { type WorkflowPlanDigest } from '../../modules/guidance/renderers/plan-digest.ts';
-import { type ReuseCoverageRecord } from '../../modules/why-knowledge/semantic-manifest-reuse.ts';
+import { type ReuseCoverageRecord } from '../../modules/assurance/review-coverage.ts';
+
 import {
   readPlanReviewGrantRequirement,
   readPlanReviewReservation,
@@ -102,7 +103,14 @@ function exemptionAwaitingPlanningOutput(
 export function getExemptionProposeStatus(
   services: Pick<
     ProposeRuntime,
-    'evidence' | 'investigation' | 'provider' | 'publication' | 'workspace'
+    | 'evidence'
+    | 'investigation'
+    | 'provider'
+    | 'publication'
+    | 'workspace'
+    | 'planningEvidence'
+    | 'roleAdmission'
+    | 'roleContextSharingGrants'
   >,
   cwd: string,
   investigationId: string,
@@ -127,7 +135,14 @@ export function getExemptionProposeStatus(
 export function renderExemptionProposeOutput(
   services: Pick<
     ProposeRuntime,
-    'evidence' | 'investigation' | 'provider' | 'publication' | 'workspace'
+    | 'evidence'
+    | 'investigation'
+    | 'provider'
+    | 'publication'
+    | 'workspace'
+    | 'planningEvidence'
+    | 'roleAdmission'
+    | 'roleContextSharingGrants'
   >,
   cwd: string,
   session: ProposeExemptionSession,
@@ -544,7 +559,15 @@ function renderScanSaturationAcceptanceRequired(
 }
 
 function renderMaterializedProposeOutput(
-  services: Pick<ProposeRuntime, 'evidence' | 'provider' | 'workspace'>,
+  services: Pick<
+    ProposeRuntime,
+    | 'evidence'
+    | 'provider'
+    | 'workspace'
+    | 'planningEvidence'
+    | 'roleAdmission'
+    | 'roleContextSharingGrants'
+  >,
   cwd: string,
   status: ProposeLifecycleStatus,
   actorResolution: ProposeOutput['actorResolution'],

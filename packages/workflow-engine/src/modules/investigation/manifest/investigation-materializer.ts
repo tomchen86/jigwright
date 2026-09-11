@@ -1,3 +1,7 @@
+import type {
+  InvestigationReplayAuthoringInput,
+  InvestigationScanSaturationDecision,
+} from './investigation-replay-input.ts';
 /**
  * Materializes canonical investigation evidence from replayable terms and
  * tree facts.
@@ -7,6 +11,7 @@
  *   serialized.
  */
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
+import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import {
   applyInvestigationDispositionDecisions,
   applyInvestigationSemanticGroupDecisions,
@@ -15,70 +20,21 @@ import {
   type InvestigationFinalGroupFact,
   type InvestigationSemanticGroupDecision,
 } from '../domain/investigation-domain.ts';
-import {
-  ExitCode,
-  WorkflowError,
-  workflowError,
-} from '../../../foundation/errors/errors.ts';
-import { runGit } from '../../../runtime/repository-transaction/git.ts';
-import {
-  deriveInvestigationGroupFacts,
-  type DeclaredInvestigationRoot,
-  type InvestigationGroupFacts,
-  type ReviewedPathRelationship,
-} from '../domain/investigation-groups.ts';
+import { type InvestigationGroupFacts } from '../domain/investigation-groups.ts';
 import {
   deriveInvestigationCommitments,
   investigationTermSetDigest,
   type InvestigationDerivedCommitments,
 } from '../domain/investigation-roots.ts';
-import {
-  scanInvestigationTreeFacts,
-  type InvestigationScanFacts,
-} from '../domain/investigation-scanner.ts';
+import { type InvestigationScanFacts } from '../domain/investigation-scan-facts.ts';
 import {
   INVESTIGATION_LIMITS,
-  previewInvestigationTermUnion,
   type InvestigationLimits,
-  type InvestigationTermContribution,
   type PreviewInvestigationTerm,
 } from '../domain/investigation-terms.ts';
-import type { InvestigationSemanticAuthor } from '../domain/investigation-applicability.ts';
-import type { MutationClassPolicy } from '../../source/mutation-class-policy.ts';
 
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const DIGEST = /^[0-9a-f]{64}$/;
-
-export type InvestigationV3Baseline = {
-  commitOid: string;
-  treeOid: string;
-};
-
-export type InvestigationScanSaturationDecision = {
-  saturatedTermIds: string[];
-  acknowledgeIncompleteScan: true;
-  rationale: string;
-  semanticAuthor: InvestigationSemanticAuthor;
-  provenanceDigest: string;
-};
-
-export type InvestigationReplayAuthoringInput = {
-  baseline: InvestigationV3Baseline;
-  termContributions: InvestigationTermContribution[];
-  canonicalTerms: PreviewInvestigationTerm[];
-  scanner: {
-    limits?: InvestigationLimits;
-    allowSaturatedTerms: boolean;
-    saturationDecision: InvestigationScanSaturationDecision | null;
-  };
-  grouping: {
-    mutationPolicy: MutationClassPolicy;
-    declaredRoots: DeclaredInvestigationRoot[];
-    reviewedRelationships: ReviewedPathRelationship[];
-  };
-  semanticGroupDecisions: InvestigationSemanticGroupDecision[];
-  dispositionDecisions: InvestigationDispositionDecision[];
-};
 
 /**
  * Process-local replay result. `toJSON` fails closed so this transient view
@@ -202,124 +158,7 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
-export function materializeInvestigationEvidenceView(input: {
-  repositoryRoot: string;
-  authoring: InvestigationReplayAuthoringInput;
-}): MaterializedEvidenceView {
-  assertBaseline(input.repositoryRoot, input.authoring.baseline);
-  const preview = previewInvestigationTermUnion(
-    input.authoring.termContributions,
-    input.authoring.scanner.limits ?? { ...INVESTIGATION_LIMITS },
-  );
-  if (preview.outcome !== 'ready') {
-    throw workflowError(
-      'TERM_INTEGRITY_MISMATCH',
-      'Persisted term contributions do not produce a replayable canonical union.',
-      ExitCode.guard,
-      { details: { violations: preview.violations } },
-    );
-  }
-  if (
-    canonicalJson(preview.terms) !==
-    canonicalJson(input.authoring.canonicalTerms)
-  ) {
-    throw workflowError(
-      'TERM_INTEGRITY_MISMATCH',
-      'Persisted canonical terms do not match their complete contributions.',
-      ExitCode.guard,
-    );
-  }
-  const limits = input.authoring.scanner.limits ?? { ...INVESTIGATION_LIMITS };
-  const scan = scanInvestigationTreeFacts({
-    repositoryRoot: input.repositoryRoot,
-    treeOid: input.authoring.baseline.treeOid,
-    terms: preview.terms,
-    limits,
-    allowSaturatedTerms: input.authoring.scanner.allowSaturatedTerms,
-  });
-  if (scan.outcome !== 'ready') {
-    throw workflowError(
-      'REPLAY_CLOSURE_UNSUPPORTED',
-      'Pinned scanner replay requires deterministic narrowing.',
-      ExitCode.guard,
-      { details: { violations: scan.violations } },
-    );
-  }
-  assertSaturationDecision(
-    scan.saturatedTermIds ?? [],
-    input.authoring.scanner.saturationDecision,
-  );
-  const grouping = deriveInvestigationGroupFacts({
-    scanFacts: scan.facts,
-    mutationPolicy: input.authoring.grouping.mutationPolicy,
-    declaredRoots: input.authoring.grouping.declaredRoots,
-    reviewedRelationships: input.authoring.grouping.reviewedRelationships,
-  });
-  return materializeInvestigationEvidenceViewFromFacts({
-    scanFacts: scan.facts,
-    grouping,
-    canonicalTerms: structuredClone(preview.terms),
-    limits: structuredClone(limits),
-    semanticGroupDecisions: input.authoring.semanticGroupDecisions,
-    dispositionDecisions: input.authoring.dispositionDecisions,
-  });
-}
-
-function assertBaseline(
-  repositoryRoot: string,
-  baseline: InvestigationV3Baseline,
-): void {
-  if (
-    typeof baseline !== 'object' ||
-    baseline === null ||
-    Object.keys(baseline).length !== 2 ||
-    !Object.keys(baseline).every((key) =>
-      ['commitOid', 'treeOid'].includes(key),
-    ) ||
-    !GIT_OBJECT_ID.test(baseline.commitOid) ||
-    !GIT_OBJECT_ID.test(baseline.treeOid) ||
-    baseline.commitOid.length !== baseline.treeOid.length
-  ) {
-    throw workflowError(
-      'REPLAY_INPUT_MISSING',
-      'Investigation baseline identity is malformed.',
-      ExitCode.guard,
-    );
-  }
-  let commitOid: string;
-  let treeOid: string;
-  try {
-    commitOid = runGit(repositoryRoot, [
-      'rev-parse',
-      '--verify',
-      `${baseline.commitOid}^{commit}`,
-    ]).trim();
-    treeOid = runGit(repositoryRoot, [
-      'rev-parse',
-      '--verify',
-      `${baseline.commitOid}^{tree}`,
-    ]).trim();
-  } catch (error) {
-    if (error instanceof WorkflowError) {
-      throw workflowError(
-        'REPLAY_INPUT_MISSING',
-        'Pinned investigation commit or tree is unavailable.',
-        ExitCode.staleState,
-        { details: { causeCode: error.code } },
-      );
-    }
-    throw error;
-  }
-  if (commitOid !== baseline.commitOid || treeOid !== baseline.treeOid) {
-    throw workflowError(
-      'RECONSTRUCTION_MISMATCH',
-      'Pinned commit does not resolve to the recorded investigation tree.',
-      ExitCode.staleState,
-    );
-  }
-}
-
-function assertSaturationDecision(
+export function assertSaturationDecision(
   saturatedTermIds: string[],
   decision: InvestigationScanSaturationDecision | null,
 ): void {
@@ -350,6 +189,36 @@ function assertSaturationDecision(
     throw workflowError(
       'SEMANTIC_COMPLETENESS_FAILURE',
       'Saturated replay lacks its exact semantic acknowledgement.',
+      ExitCode.guard,
+    );
+  }
+}
+
+import type { InvestigationV3Baseline } from './investigation-baseline.ts';
+export type { InvestigationV3Baseline } from './investigation-baseline.ts';
+
+export type InvestigationEvidenceReplayer = (input: {
+  repositoryRoot: string;
+  authoring: InvestigationReplayAuthoringInput;
+}) => MaterializedEvidenceView;
+
+export function assertInvestigationReplayBaseline(
+  baseline: InvestigationV3Baseline,
+): void {
+  if (
+    typeof baseline !== 'object' ||
+    baseline === null ||
+    Object.keys(baseline).length !== 2 ||
+    !Object.keys(baseline).every((key) =>
+      ['commitOid', 'treeOid'].includes(key),
+    ) ||
+    !GIT_OBJECT_ID.test(baseline.commitOid) ||
+    !GIT_OBJECT_ID.test(baseline.treeOid) ||
+    baseline.commitOid.length !== baseline.treeOid.length
+  ) {
+    throw workflowError(
+      'REPLAY_INPUT_MISSING',
+      'Investigation baseline identity is malformed.',
       ExitCode.guard,
     );
   }

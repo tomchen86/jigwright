@@ -325,7 +325,10 @@ test('approve-and-apply derives the summary, signs exact bytes, promotes, and re
         process.execPath,
         [
           '--experimental-strip-types',
-          path.resolve(import.meta.dirname, '../src/cli.ts'),
+          path.resolve(
+            import.meta.dirname,
+            '../src/entrypoints/cli/workflow-cli.ts',
+          ),
           'control-plane',
           'status',
           promoted.grantId,
@@ -517,7 +520,10 @@ test('main CLI routes approve-and-apply through Task Mandate preflight', async (
       process.execPath,
       [
         '--experimental-strip-types',
-        path.resolve(import.meta.dirname, '../src/cli.ts'),
+        path.resolve(
+          import.meta.dirname,
+          '../src/entrypoints/cli/workflow-cli.ts',
+        ),
         'control-plane',
         'approve-and-apply',
         value.produced.candidate.candidateId,

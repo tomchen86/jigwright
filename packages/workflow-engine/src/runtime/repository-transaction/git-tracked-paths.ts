@@ -5,7 +5,7 @@
  * - NUL-delimited Git output and ignored-path normalization preserve exact path identities.
  * - Hidden index flags keep their current rejection interpretation.
  */
-import { normalizeChangedPath } from '../session-workspace/paths.ts';
+import { normalizeChangedPath } from '../../foundation/repository-path/repository-path.ts';
 import { runGit } from './git-command.ts';
 
 export function hasHiddenIndexFlag(entry: string): boolean {

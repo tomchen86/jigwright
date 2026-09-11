@@ -8,9 +8,11 @@ import {
 import {
   createTaskDiffReviewSubject,
   deriveTaskDiffReviewCandidatePlan,
-  type TaskDiffReviewScope,
-  type TaskDiffReviewSubject,
 } from '../src/modules/assurance/task-diff-review.ts';
+import type {
+  TaskDiffReviewScope,
+  TaskDiffReviewSubject,
+} from '../src/modules/assurance/task-diff-review-record.ts';
 
 const DIGEST = {
   baseCommit: 'a'.repeat(40),

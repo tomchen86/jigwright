@@ -563,7 +563,7 @@ test('repository publishes the complete typed control-plane capability closure',
     (
       byCapability.get('authorization.verify')?.entrypoints as unknown[]
     ).includes(
-      'packages/workflow-engine/src/entrypoints/ci/pre-merge-assurance-git.ts',
+      'packages/workflow-engine/src/application/assurance/pre-merge-verification.ts',
     ),
     true,
   );
@@ -612,13 +612,36 @@ test('protected generator refuses to synthesize a missing Grant verifier composi
   );
   const generator = path.join(SOURCE_REPOSITORY_ROOT, GENERATOR_PATH);
   const compositionSources = [
+    'packages/core/src/collaboration-grant-envelope-codec.ts',
+    'packages/core/src/grant-envelope-contracts.ts',
+    'packages/core/src/grant-lifecycle-contracts.ts',
+    'packages/core/src/role-context-sharing-grant-codec.ts',
+    'packages/core/src/signed-attestation-envelope-codec.ts',
     'packages/grants/package.json',
     'packages/grants/src/collaboration-grant-envelope-reader.ts',
     'packages/grants/src/grant-envelope-verifier.ts',
     'packages/grants/src/grant-lifecycle.ts',
+    'packages/grants/src/role-context-sharing-degradation.ts',
+    'packages/grants/src/signed-attestation-envelope-reader.ts',
+    'packages/workflow-engine/src/application/control-plane/collaboration-grant-revocation.ts',
+    'packages/workflow-engine/src/composition-root/collaboration-grant-production.ts',
     'packages/workflow-engine/src/composition-root/grant-verifier-composition.ts',
-    'packages/workflow-engine/src/modules/authority/collaboration-grant.ts',
-    'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-store.ts',
+    'packages/workflow-engine/src/modules/authority/collaboration-grant-codec.ts',
+    'packages/workflow-engine/src/modules/authority/collaboration-grant-records.ts',
+    'packages/workflow-engine/src/modules/authority/collaboration-grant-use.ts',
+    'packages/workflow-engine/src/modules/authority/grant-errors.ts',
+    'packages/workflow-engine/src/modules/authority/grant-revocation-contract.ts',
+    'packages/workflow-engine/src/modules/authority/role-context-sharing-consumed-replay.ts',
+    'packages/workflow-engine/src/modules/authority/role-context-sharing-grant-lifecycle-port.ts',
+    'packages/workflow-engine/src/modules/authority/role-context-sharing-grant.ts',
+    'packages/workflow-engine/src/runtime/grants/collaboration-grant-issuance.ts',
+    'packages/workflow-engine/src/runtime/grants/grant-services.ts',
+    'packages/workflow-engine/src/runtime/grants/optional-grants-package.ts',
+    'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-consumption.ts',
+    'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-private-files.ts',
+    'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-records.ts',
+    'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-reservation.ts',
+    'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-revocation-store.ts',
   ];
   try {
     git(repository, ['init', '--quiet']);
@@ -667,6 +690,45 @@ test('protected generator refuses to synthesize a missing Grant verifier composi
       /reviewed protected manifest does not declare/i,
     );
     assert.equal(fs.readFileSync(manifestPath, 'utf8'), reviewedBytes);
+    // Each real owner that replaced the old store remains mandatory.
+    for (const omitted of [
+      'packages/workflow-engine/src/application/control-plane/collaboration-grant-revocation.ts',
+      'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-revocation-store.ts',
+      'packages/workflow-engine/src/composition-root/collaboration-grant-production.ts',
+      'packages/workflow-engine/src/modules/authority/grant-revocation-contract.ts',
+      'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-consumption.ts',
+      'packages/workflow-engine/src/modules/authority/collaboration-grant-records.ts',
+      'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-private-files.ts',
+      'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-reservation.ts',
+      'packages/workflow-engine/src/runtime/grants/grant-services.ts',
+      'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-records.ts',
+    ]) {
+      const incomplete = structuredClone(manifest);
+      const authorization = incomplete.entries.find(
+        ({ capability }) => capability === 'authorization.verify',
+      )!;
+      authorization.dependencies = authorization.dependencies.filter(
+        (dependency) => dependency !== omitted,
+      );
+      const incompleteBytes = `${JSON.stringify(incomplete, null, 2)}\n`;
+      fs.writeFileSync(manifestPath, incompleteBytes);
+      const rejected = runProtectedCapabilityGenerator(
+        generator,
+        repository,
+        '--write',
+      );
+      assert.notEqual(rejected.status, 0, omitted);
+      assert.match(
+        `${rejected.stdout}${rejected.stderr}`,
+        /reviewed authorization\.verify closure does not declare/i,
+        omitted,
+      );
+      assert.equal(
+        fs.readFileSync(manifestPath, 'utf8'),
+        incompleteBytes,
+        omitted,
+      );
+    }
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

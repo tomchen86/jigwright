@@ -1,3 +1,11 @@
+import type {DocumentationReviewCapture} from '../../modules/assurance/documentation-closure.ts';
+import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
+import type {
+  CollaborationGrantCodec,
+  DirectHumanReviewAttestationIssuer,
+} from '../../modules/authority/collaboration-grant-codec.ts';
 /**
  * Composes task diff review modules and exposes their production
  * entrypoints.
@@ -12,24 +20,30 @@ import { parseAiAdapterPolicyDocument } from '../../runtime/provider-execution/a
 import {
   consumeCollaborationGrantUnderLifecycleLock,
   failCollaborationReservationUnderLifecycleLock,
+  readExactConsumedCollaborationGrantUse,
+  verifyExactConsumedCollaborationGrantCrashReplay,
+} from '../../runtime/storage-journal/collaboration-grant-consumption.ts';
+import {
   listCollaborationGrantInspections,
   readCollaborationGrantInspection,
-  readExactConsumedCollaborationGrantUse,
+} from '../../runtime/storage-journal/collaboration-grant-records.ts';
+import {
   readReservedCollaborationGrant,
   reserveCollaborationGrantUnderLifecycleLock,
   selectAndReserveCollaborationGrantUnderLifecycleLock,
-  verifyExactConsumedCollaborationGrantCrashReplay,
-  validateCollaborationGrantUseProjection,
+} from '../../runtime/storage-journal/collaboration-grant-reservation.ts';
+import { validateCollaborationGrantUseProjection } from '../../runtime/grants/grant-services.ts';
+import {
   type CollaborationGrantUseProjection,
   type CollaborationGrantSelectionCoreBinding,
   type VerifiedConsumedCollaborationGrantReplay,
-} from '../../runtime/storage-journal/collaboration-grant-store.ts';
+} from '../../modules/authority/collaboration-grant-records.ts';
 import {
   readEvidenceNode,
   writeEvidenceNode,
 } from '../../runtime/storage-journal/evidence-object-store.ts';
-import { createEvidenceNode } from '../../adapters/planning/investigation/evidence-node.ts';
-import type { DocumentationReviewCapture } from '../../runtime/managed-documents/contracts/documentation-closure.ts';
+import { createEvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';
+
 import { readFinalizeTransaction } from '../../runtime/repository-transaction/finalize-transaction.ts';
 import {
   findCurrentExecutionTaskCommits,
@@ -53,9 +67,11 @@ import {
   readProviderInvocationManifest,
   readProviderInvocationRequest,
   storeProviderExecutionPolicySnapshot,
-  type TaskDiffReviewContinuationManifest,
-  type TaskDiffReviewManifest,
 } from '../../runtime/storage-journal/provider-invocation-store.ts';
+import type {
+  TaskDiffReviewContinuationManifest,
+  TaskDiffReviewManifest,
+} from '../../modules/assurance/provider-review-manifests.ts';
 import {
   assertInspectionReport,
   assertReportChecks,
@@ -249,112 +265,178 @@ export type TaskDiffReviewRuntimeData = {
   TaskDiffReviewReservationRecord: TaskDiffReviewReservationRecord;
   TaskDiffReviewResultBinding: TaskDiffReviewResultBinding;
 };
-const common = createTaskDiffReviewCommonModule(runtime);
-const subject = createTaskDiffReviewSubjectModule(runtime, common);
-const externalBinding = createTaskDiffReviewExternalBindingModule(
-  runtime,
-  common,
-  subject,
-);
-const externalContinuationBinding =
-  createTaskDiffReviewExternalContinuationBindingModule(
+export type TaskDiffReviewGrantServices = Readonly<{
+  taskMandate: Pick<
+    TaskMandateOperations,
+    'authorizeTaskMandateProviderReservationUnderLifecycleLock'
+  >;
+  roleResultAdmission: Pick<
+    RoleAdmissionServices,
+    | 'authorizeGrantedOrdinaryRole'
+    | 'admitRoleResult'
+    | 'admitConsumedRoleResultReplay'
+  >;
+  collaborationGrants: Pick<
+    CollaborationGrantCodec,
+    | 'collaborationGrantEnvelopeDigest'
+    | 'parseCollaborationGrantEnvelope'
+    | 'canonicalCollaborationGrantEnvelope'
+  >;
+  createDirectHumanReviewAttestation: DirectHumanReviewAttestationIssuer;
+}>;
+
+export function createTaskDiffReviewLifecycle(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  services: TaskDiffReviewGrantServices,
+) {
+  const common = createTaskDiffReviewCommonModule(runtime);
+  const subject = createTaskDiffReviewSubjectModule(
+    routingAdmissionReader,
     runtime,
     common,
-    externalBinding,
   );
-const providerBinding = createTaskDiffReviewProviderBindingModule(
-  runtime,
-  common,
-  subject,
-);
-const lineage = createTaskDiffReviewLineageModule(
-  runtime,
-  common,
-  subject,
-  externalBinding,
-  externalContinuationBinding,
-  providerBinding,
-);
-const inspection = createTaskDiffReviewInspectionModule(
-  runtime,
-  common,
-  subject,
-  externalBinding,
-  externalContinuationBinding,
-  providerBinding,
-  lineage,
-);
-const providerReservations = createTaskDiffReviewProviderReservationsModule(
-  runtime,
-  common,
-  providerBinding,
-);
-const providerCommands = createTaskDiffReviewProviderCommandsModule(
-  runtime,
-  common,
-  subject,
-  externalBinding,
-  providerBinding,
-  lineage,
-  inspection,
-  providerReservations,
-);
-const externalCommands = createTaskDiffReviewExternalCommandsModule(
-  runtime,
-  common,
-  subject,
-  externalBinding,
-  externalContinuationBinding,
-  lineage,
-  inspection,
-);
-const completion = createTaskDiffReviewCompletionModule(
-  runtime,
-  common,
-  subject,
-  externalBinding,
-  externalContinuationBinding,
-  providerBinding,
-  lineage,
-  inspection,
-);
-export const withTaskDiffReviewProviderLifecycleOperation =
-  common.withTaskDiffReviewProviderLifecycleOperation;
-export const beginTaskDiffReview = providerCommands.beginTaskDiffReview;
-export const submitExternalTaskDiffReview =
-  externalCommands.submitExternalTaskDiffReview;
-export const submitExternalTaskDiffReviewContinuation =
-  externalCommands.submitExternalTaskDiffReviewContinuation;
-export const reconcileExternalTaskDiffReview =
-  externalCommands.reconcileExternalTaskDiffReview;
-export const resumeDirectHumanTaskDiffReview =
-  externalCommands.resumeDirectHumanTaskDiffReview;
-export const loadCurrentExternalTaskDiffTerminalAssurance =
-  lineage.loadCurrentExternalTaskDiffTerminalAssurance;
-export const loadAuthenticatedExternalTaskDiffTerminalAssurance =
-  externalContinuationBinding.loadAuthenticatedExternalTaskDiffTerminalAssurance;
-export const inspectTaskDiffReviewStatus =
-  inspection.inspectTaskDiffReviewStatus;
-export const loadCurrentAuthenticatedTaskDiffReview =
-  lineage.loadCurrentAuthenticatedTaskDiffReview;
-export const beginTaskDiffReviewContinuationFromInput =
-  providerCommands.beginTaskDiffReviewContinuationFromInput;
-export const beginTaskDiffReviewContinuation =
-  providerCommands.beginTaskDiffReviewContinuation;
-export const reconcileTaskDiffReviewContinuation =
-  providerCommands.reconcileTaskDiffReviewContinuation;
-export const reconcileTaskDiffReview = providerCommands.reconcileTaskDiffReview;
-export const assertCurrentTaskDiffReviewSatisfied =
-  completion.assertCurrentTaskDiffReviewSatisfied;
-export const assertTaskDiffReviewCompletionGateSatisfied =
-  completion.assertTaskDiffReviewCompletionGateSatisfied;
-export const loadTaskDiffDocumentationReviewCapture =
-  completion.loadTaskDiffDocumentationReviewCapture;
-export const assertTaskDiffReviewProviderOwnerCurrent =
-  completion.assertTaskDiffReviewProviderOwnerCurrent;
-export const inspectTaskDiffReviewSubject =
-  subject.inspectTaskDiffReviewSubject;
-export const deriveProtectedTaskApplyTaskDiffProviderGrantContinuation =
-  completion.deriveProtectedTaskApplyTaskDiffProviderGrantContinuation;
-export const deriveProtectedTaskApplyTaskDiffGrantContinuation =
-  completion.deriveProtectedTaskApplyTaskDiffGrantContinuation;
+  const externalBinding = createTaskDiffReviewExternalBindingModule(
+    runtime,
+    common,
+    subject,
+    services.collaborationGrants,
+    services.roleResultAdmission,
+  );
+  const externalContinuationBinding =
+    createTaskDiffReviewExternalContinuationBindingModule(
+      runtime,
+      common,
+      externalBinding,
+      services.roleResultAdmission,
+    );
+  const providerBinding = createTaskDiffReviewProviderBindingModule(
+    runtime,
+    common,
+    subject,
+    services.collaborationGrants,
+    services.roleResultAdmission,
+  );
+  const lineage = createTaskDiffReviewLineageModule(
+    runtime,
+    common,
+    subject,
+    externalBinding,
+    externalContinuationBinding,
+    providerBinding,
+  );
+  const inspection = createTaskDiffReviewInspectionModule(
+    runtime,
+    common,
+    subject,
+    externalBinding,
+    externalContinuationBinding,
+    providerBinding,
+    lineage,
+  );
+  const providerReservations = createTaskDiffReviewProviderReservationsModule(
+    runtime,
+    common,
+    providerBinding,
+    services.roleResultAdmission,
+    services.taskMandate,
+  );
+  const providerCommands = createTaskDiffReviewProviderCommandsModule(
+    runtime,
+    common,
+    subject,
+    externalBinding,
+    providerBinding,
+    lineage,
+    inspection,
+    providerReservations,
+    services.roleResultAdmission,
+  );
+  const externalCommands = createTaskDiffReviewExternalCommandsModule(
+    runtime,
+    common,
+    subject,
+    externalBinding,
+    externalContinuationBinding,
+    lineage,
+    inspection,
+    services.collaborationGrants,
+    services.createDirectHumanReviewAttestation,
+    services.roleResultAdmission,
+  );
+  const completion = createTaskDiffReviewCompletionModule(
+    routingAdmissionReader,
+    runtime,
+    common,
+    subject,
+    externalBinding,
+    externalContinuationBinding,
+    providerBinding,
+    lineage,
+    inspection,
+  );
+  const withTaskDiffReviewProviderLifecycleOperation =
+    common.withTaskDiffReviewProviderLifecycleOperation;
+  const beginTaskDiffReview = providerCommands.beginTaskDiffReview;
+  const submitExternalTaskDiffReview =
+    externalCommands.submitExternalTaskDiffReview;
+  const submitExternalTaskDiffReviewContinuation =
+    externalCommands.submitExternalTaskDiffReviewContinuation;
+  const reconcileExternalTaskDiffReview =
+    externalCommands.reconcileExternalTaskDiffReview;
+  const resumeDirectHumanTaskDiffReview =
+    externalCommands.resumeDirectHumanTaskDiffReview;
+  const loadCurrentExternalTaskDiffTerminalAssurance =
+    lineage.loadCurrentExternalTaskDiffTerminalAssurance;
+  const loadAuthenticatedExternalTaskDiffTerminalAssurance =
+    externalContinuationBinding.loadAuthenticatedExternalTaskDiffTerminalAssurance;
+  const inspectTaskDiffReviewStatus = inspection.inspectTaskDiffReviewStatus;
+  const loadCurrentAuthenticatedTaskDiffReview =
+    lineage.loadCurrentAuthenticatedTaskDiffReview;
+  const beginTaskDiffReviewContinuationFromInput =
+    providerCommands.beginTaskDiffReviewContinuationFromInput;
+  const beginTaskDiffReviewContinuation =
+    providerCommands.beginTaskDiffReviewContinuation;
+  const reconcileTaskDiffReviewContinuation =
+    providerCommands.reconcileTaskDiffReviewContinuation;
+  const reconcileTaskDiffReview = providerCommands.reconcileTaskDiffReview;
+  const assertCurrentTaskDiffReviewSatisfied =
+    completion.assertCurrentTaskDiffReviewSatisfied;
+  const assertTaskDiffReviewCompletionGateSatisfied =
+    completion.assertTaskDiffReviewCompletionGateSatisfied;
+  const loadTaskDiffDocumentationReviewCapture =
+    completion.loadTaskDiffDocumentationReviewCapture;
+  const assertTaskDiffReviewProviderOwnerCurrent =
+    completion.assertTaskDiffReviewProviderOwnerCurrent;
+  const inspectTaskDiffReviewSubject = subject.inspectTaskDiffReviewSubject;
+  const deriveProtectedTaskApplyTaskDiffProviderGrantContinuation =
+    completion.deriveProtectedTaskApplyTaskDiffProviderGrantContinuation;
+  const deriveProtectedTaskApplyTaskDiffGrantContinuation =
+    completion.deriveProtectedTaskApplyTaskDiffGrantContinuation;
+
+  return {
+    withTaskDiffReviewProviderLifecycleOperation,
+    beginTaskDiffReview,
+    submitExternalTaskDiffReview,
+    submitExternalTaskDiffReviewContinuation,
+    reconcileExternalTaskDiffReview,
+    resumeDirectHumanTaskDiffReview,
+    loadCurrentExternalTaskDiffTerminalAssurance,
+    loadAuthenticatedExternalTaskDiffTerminalAssurance,
+    inspectTaskDiffReviewStatus,
+    loadCurrentAuthenticatedTaskDiffReview,
+    beginTaskDiffReviewContinuationFromInput,
+    beginTaskDiffReviewContinuation,
+    reconcileTaskDiffReviewContinuation,
+    reconcileTaskDiffReview,
+    assertCurrentTaskDiffReviewSatisfied,
+    assertTaskDiffReviewCompletionGateSatisfied,
+    loadTaskDiffDocumentationReviewCapture,
+    assertTaskDiffReviewProviderOwnerCurrent,
+    inspectTaskDiffReviewSubject,
+    deriveProtectedTaskApplyTaskDiffProviderGrantContinuation,
+    deriveProtectedTaskApplyTaskDiffGrantContinuation,
+  };
+}
+export type TaskDiffReviewOperations = ReturnType<
+  typeof createTaskDiffReviewLifecycle
+>;

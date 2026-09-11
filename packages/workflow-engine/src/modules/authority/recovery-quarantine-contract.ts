@@ -1225,3 +1225,101 @@ export function isNodeCode(error: unknown, code: string): boolean {
     error.code === code
   );
 }
+
+export function assertDependencies(
+  dependencies: RecoveryQuarantineDependencies,
+): void {
+  if (
+    !isRecord(dependencies) ||
+    !isExactAbsolutePath(dependencies.externalAuditRoot) ||
+    !(dependencies.now instanceof Date) ||
+    !Number.isFinite(dependencies.now.getTime()) ||
+    typeof dependencies.verifyHumanSignature !== 'function' ||
+    typeof dependencies.appendAudit !== 'function' ||
+    (dependencies.hooks !== undefined &&
+      (!isRecord(dependencies.hooks) ||
+        !hasExactKeys(dependencies.hooks, ['afterPhase']) ||
+        typeof dependencies.hooks.afterPhase !== 'function'))
+  ) {
+    throw quarantineError(
+      'RECOVERY_QUARANTINE_DEPENDENCIES_INVALID',
+      'Recovery Quarantine requires exact out-of-band authority, time, signature, and audit dependencies.',
+      ExitCode.unsafeEnvironment,
+    );
+  }
+}
+
+export function assertGrantWindow(
+  payload: RecoveryQuarantineGrantPayload,
+  nowValue: Date,
+): void {
+  const now = exactDate(nowValue).getTime();
+  const issuedAtValue = Date.parse(payload.issuedAt);
+  const expiresAtValue = Date.parse(payload.expiresAt);
+  if (now < issuedAtValue) {
+    throw quarantineError(
+      'RECOVERY_QUARANTINE_GRANT_NOT_YET_VALID',
+      'Recovery Quarantine Grant is not yet valid.',
+      ExitCode.staleState,
+    );
+  }
+  if (now >= expiresAtValue) {
+    throw quarantineError(
+      'RECOVERY_QUARANTINE_GRANT_EXPIRED',
+      'Recovery Quarantine Grant has expired.',
+      ExitCode.staleState,
+    );
+  }
+}
+
+export function prepareRecoveryQuarantineEnvelope(
+  envelope: unknown,
+  dependencies: RecoveryQuarantineDependencies,
+  expectedOperation: RecoveryQuarantineGrantPayload['operation'],
+) {
+  if (
+    !isRecord(envelope) ||
+    !hasExactKeys(envelope, ['payload', 'signature']) ||
+    typeof envelope.signature !== 'string' ||
+    envelope.signature.length === 0
+  ) {
+    throw grantInvalid();
+  }
+  const payload = normalizeGrantPayload(envelope.payload);
+  if (payload.operation !== expectedOperation) {
+    throw quarantineError(
+      'RECOVERY_QUARANTINE_OPERATION_MISMATCH',
+      'Recovery Quarantine Grant cannot be replayed into another operation.',
+      ExitCode.guard,
+    );
+  }
+  const descriptor = dependencies.authorityDescriptor;
+  if (
+    payload.repositoryId !== descriptor.repositoryIdentity.repositoryId ||
+    payload.authorityDescriptorDigest !== descriptor.descriptorDigest ||
+    payload.authorityGeneration !== descriptor.generation ||
+    payload.recoveryRuntimeDigest !== descriptor.sealedRuntime.closureDigest ||
+    payload.externalAuditRoot !== dependencies.externalAuditRoot ||
+    payload.humanSigner !== descriptor.signer.identity ||
+    payload.signerFingerprint !== descriptor.signer.fingerprint
+  ) {
+    throw quarantineError(
+      'RECOVERY_QUARANTINE_AUTHORITY_BINDING_MISMATCH',
+      'Recovery Quarantine Grant does not bind the exact loaded Recovery Authority and runtime.',
+      ExitCode.verification,
+    );
+  }
+  const namespace =
+    payload.operation === 'enter-quarantine'
+      ? RECOVERY_QUARANTINE_ENTER_NAMESPACE
+      : RECOVERY_QUARANTINE_RELEASE_NAMESPACE;
+  assertRecoveryAuthorityDomain(
+    descriptor,
+    dependencies.authorityExpectations,
+    namespace,
+    payload.signerFingerprint,
+  );
+  return { payload, namespace };
+}
+
+import { assertRecoveryAuthorityDomain } from './recovery-authority-contract.ts';

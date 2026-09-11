@@ -5,7 +5,7 @@
  * - Lifecycle admission precedes ownership transfer and rechecks durable barriers under the lease.
  * - Operation errors keep precedence over release errors and lock cleanup preserves ownership.
  */
-import { assertChangeId } from "./paths.js";
+import { assertChangeId } from "../../foundation/repository-path/repository-path.js";
 import { assertGrantLifecycleBarrier } from "../storage-journal/grant-store.js";
 import { assertHumanResolutionLifecycleBarrier, reclaimHumanResolutionJournalTemporaries, } from "../storage-journal/human-resolution-journal.js";
 import fs from 'node:fs';

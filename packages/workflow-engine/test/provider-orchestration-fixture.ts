@@ -1,11 +1,11 @@
 /** Exact provider participants, assignments, request/result envelopes, and validators for provider contracts. */
-import { scheduleOrdinaryRole } from '../src/modules/provider-orchestration/role-scheduler.ts';
+import { scheduleOrdinaryRole } from '../src/modules/provider-orchestration/role-assignment.ts';
 import type {
   RoleParticipant,
   RoleAssignment,
   ProviderRoleAssignment,
   GrantedSameProviderRoleAssignment,
-} from '../src/modules/provider-orchestration/role-scheduler.ts';
+} from '../src/modules/provider-orchestration/role-assignment.ts';
 import type {
   ProviderInvocationRequest,
   ProviderProcessOutcome,

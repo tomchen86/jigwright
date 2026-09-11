@@ -1,3 +1,4 @@
+import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
 /**
  * Journals authority commits and recovers their durable completion phases.
  *
@@ -17,22 +18,16 @@ import {
   authorityAuditLedgerPaths,
   scanAuthorityAuditLedger,
   type AuthorityAuditAppendInput,
-  type AuthorityAuditEventType,
-  type AuthorityAuditLedgerEntry,
-  type AuthorityAuditLedgerScope,
-  type Sha256Digest,
 } from '../../runtime/storage-journal/authority-audit-ledger.ts';
 import {
   authorityAuditAppendInputForEvent,
   buildAuthorityAuditEvent,
   recordAuthorityAuditEvent,
   verifyAuthorityAuditEvents,
-  type AuthorityAuditEventInput,
 } from '../../runtime/storage-journal/authority-audit-service.ts';
 import {
   authorityApplicationReceiptTagRef,
   createAuthorityApplicationReceiptPayload,
-  publishAuthorityApplicationReceipt,
   signedGrantEnvelopeDigest,
 } from '../../modules/authority/authority-application-receipt.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
@@ -70,8 +65,8 @@ import {
   failAuthoritySession,
   markAuthoritySessionCommitted,
   readAuthoritySession,
-  type AuthoritySession,
 } from './maintainer-session.ts';
+import type { AuthoritySession } from '../../modules/authority/authority-session-contract.ts';
 import {
   acceptApplyPrestate,
   readDurableRefGenerationLedger,
@@ -86,13 +81,10 @@ import {
   terminallyFailMaintainerReservationUnderLifecycleLock,
   terminallyInvalidateMaintainerReservationUnderLifecycleLock,
 } from '../../runtime/storage-journal/maintainer-store.ts';
-import { parseManagedTrailers } from '../../modules/lifecycle/managed-trailers.ts';
-import { assertSessionId } from '../../runtime/session-workspace/paths.ts';
+import { parseManagedTrailers } from '@jigwright/core/managed-transition-trailers';
+import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
-import {
-  assertActiveTaskMandateBindingUnderLifecycleLock,
-  type TaskMandateBinding,
-} from '../../modules/authority/task-mandate.ts';
+import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 
 /**
  * The normative apply crash journal.
@@ -284,6 +276,8 @@ export function recordAuthorityCasPrepared(
 }
 
 export function recoverAuthorityCommit(
+  authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
+  taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
   requestedSessionId: string,
   now = new Date(),
@@ -322,10 +316,17 @@ export function recoverAuthorityCommit(
       armPostApprovalAdmissionDeadline(deadline);
     }
     return withPostApprovalAdmissionDeadline(deadline, () =>
-      recoverAuthorityCommitWithDeadline(cwd, requestedSessionId, now, {
-        ...options,
-        postApprovalDeadline: deadline,
-      }),
+      recoverAuthorityCommitWithDeadline(
+        authorityApplicationReceipts,
+        taskMandate,
+        cwd,
+        requestedSessionId,
+        now,
+        {
+          ...options,
+          postApprovalDeadline: deadline,
+        },
+      ),
     );
   } catch (error) {
     if (isPostApprovalAdmissionFailure(error)) {
@@ -344,6 +345,8 @@ export function recoverAuthorityCommit(
 }
 
 function recoverAuthorityCommitWithDeadline(
+  authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
+  taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
   requestedSessionId: string,
   now: Date,
@@ -445,6 +448,7 @@ function recoverAuthorityCommitWithDeadline(
         }
         if (currentJournal.state === 'audited') {
           return finalizeAudited(
+            authorityApplicationReceipts,
             cwd,
             currentSession,
             currentJournal,
@@ -455,6 +459,7 @@ function recoverAuthorityCommitWithDeadline(
         }
         if (currentJournal.state === 'consumed') {
           return finalizeConsumed(
+            authorityApplicationReceipts,
             cwd,
             currentSession,
             currentJournal,
@@ -493,7 +498,7 @@ function recoverAuthorityCommitWithDeadline(
               'Pre-CAS recovery requires the durable Task Mandate binding.',
             );
           }
-          assertActiveTaskMandateBindingUnderLifecycleLock(
+          taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock(
             cwd,
             currentSession.mandateBinding,
             assertOwned,
@@ -655,6 +660,7 @@ function recoverAuthorityCommitWithDeadline(
           },
         );
         return finalizeConsumed(
+          authorityApplicationReceipts,
           cwd,
           currentSession,
           consumed,
@@ -714,6 +720,7 @@ function recoverAuthorityCommitWithDeadline(
 }
 
 function finalizeConsumed(
+  authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   cwd: string,
   session: AuthoritySession,
   journal: AuthorityCommitJournal,
@@ -794,10 +801,19 @@ function finalizeConsumed(
       updatedAt: exactDate(now).toISOString(),
     },
   );
-  return finalizeAudited(cwd, session, audited, auditScope, now, options);
+  return finalizeAudited(
+    authorityApplicationReceipts,
+    cwd,
+    session,
+    audited,
+    auditScope,
+    now,
+    options,
+  );
 }
 
 function finalizeAudited(
+  authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   cwd: string,
   session: AuthoritySession,
   journal: AuthorityCommitJournal,
@@ -853,6 +869,7 @@ function finalizeAudited(
     now,
   );
   ensurePortableApplicationReceipt(
+    authorityApplicationReceipts,
     session,
     verified,
     auditScope,
@@ -1044,7 +1061,6 @@ export type MaintainerRecoveryAuditBindings = {
   canonicalMaintainerGrantV2Envelope: typeof canonicalMaintainerGrantV2Envelope;
   authorityApplicationReceiptTagRef: typeof authorityApplicationReceiptTagRef;
   createInteractiveSshSigner: typeof createInteractiveSshSigner;
-  publishAuthorityApplicationReceipt: typeof publishAuthorityApplicationReceipt;
   canonicalJson: typeof canonicalJson;
   authorityAuditLedgerPaths: typeof authorityAuditLedgerPaths;
   authorityAuditAppendInputForEvent: typeof authorityAuditAppendInputForEvent;
@@ -1088,7 +1104,6 @@ const {
   canonicalMaintainerGrantV2Envelope,
   authorityApplicationReceiptTagRef,
   createInteractiveSshSigner,
-  publishAuthorityApplicationReceipt,
   canonicalJson,
   authorityAuditLedgerPaths,
   authorityAuditAppendInputForEvent,
@@ -1218,3 +1233,13 @@ export {
   failAuthorityCommitBeforeCas,
   rollbackAuthorityCommitAfterCas,
 };
+
+import {
+  type AuthorityAuditEventType,
+  type AuthorityAuditLedgerEntry,
+  type AuthorityAuditLedgerScope,
+  type Sha256Digest,
+  type AuthorityAuditEventInput,
+} from '../../modules/authority/authority-audit-contract.ts';
+
+import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';

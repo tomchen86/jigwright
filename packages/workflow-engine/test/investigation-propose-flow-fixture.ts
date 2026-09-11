@@ -17,13 +17,13 @@ import {
   getProposeStatus,
   resumePropose,
   startPropose,
-} from '../src/application/propose/propose-orchestrator.ts';
-import { captureGovernanceSource } from '../src/modules/governance-intake/governance-intake.ts';
+} from '../src/composition-root/propose-production.ts';
+import { captureGovernanceSource } from '../src/composition-root/governance-sources-production.ts';
 import { productionRoleTopologyResolutionPort } from '../src/composition-root/role-topology-resolution-production.ts';
 import { planningInvestigationRoleResultDependency } from '../src/modules/assurance/planning-assurance-validator.ts';
 import { type ProviderRunnerReport } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
-import { readInvestigationSession } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import { readInvestigationSession } from '../src/runtime/storage-journal/investigation-session-records.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import { renderPlanningProviderBinding } from '../src/modules/planning-provider/planning-provider-binding.ts';
 import {

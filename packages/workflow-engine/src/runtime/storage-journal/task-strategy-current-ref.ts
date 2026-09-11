@@ -17,10 +17,8 @@ import {
   revisionStateCorrupt,
   DIGEST,
 } from './task-strategy-red-revision-values.ts';
-import {
-  type InvestigationRuntimePaths,
-  assertSessionId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import {
   privatePathExists,
   readPrivateCanonicalJson,

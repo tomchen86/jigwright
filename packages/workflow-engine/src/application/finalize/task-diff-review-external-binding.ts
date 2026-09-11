@@ -1,3 +1,4 @@
+import type { CollaborationGrantCodec } from '../../modules/authority/collaboration-grant-codec.ts';
 /**
  * Authenticates initial external task diff reviews and their recorded grant
  * use.
@@ -9,30 +10,31 @@
 // Authenticate stored initial external reviews and replay their exact grant use.
 import {
   type RecordedRoleParticipant,
-  type AdmittedRoleResult,
   type RoleParticipant,
   type GrantedRoleAssignment,
-  admitConsumedRoleResultReplay,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+} from '../../modules/provider-orchestration/role-assignment.ts';
+import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import {
-  type TaskDiffReviewSubject,
-  type TaskDiffReviewCandidatePlan,
-} from '../../modules/assurance/task-diff-review.ts';
+import type {
+  TaskDiffReviewSubject,
+  TaskDiffReviewCandidatePlan,
+} from '../../modules/assurance/task-diff-review-record.ts';
 import { type TaskDiffReviewExternalSubmissionInput } from '../../modules/assurance/task-diff-review-input.ts';
 import {
   createTaskDiffReviewRecord,
-  type TaskDiffReviewRecord,
   TASK_DIFF_REVIEW_OUTPUT_SCHEMA,
   parseTaskDiffReviewRecord,
-  type TaskDiffAuthenticatedReviewerAuthority,
 } from '../../modules/assurance/task-diff-review-artifact.ts';
+import type {
+  TaskDiffReviewRecord,
+  TaskDiffAuthenticatedReviewerAuthority,
+} from '../../modules/assurance/task-diff-review-artifact-record.ts';
 import {
   type CollaborationGrantExpectedBinding,
   collaborationPolicyDigestForPhase,
-  collaborationGrantEnvelopeDigest,
   bindingFromPayload,
-} from '../../modules/authority/collaboration-grant.ts';
+} from '../../modules/authority/collaboration-grant-codec.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import type {
@@ -65,7 +67,17 @@ export function createTaskDiffReviewExternalBindingModule(
   runtime: TaskDiffReviewRuntimeBindings,
   common: ReturnType<typeof createTaskDiffReviewCommonModule>,
   subject: ReturnType<typeof createTaskDiffReviewSubjectModule>,
+  collaborationGrants: Pick<
+    CollaborationGrantCodec,
+    'collaborationGrantEnvelopeDigest'
+  >,
+  roleResultAdmission: Pick<
+    RoleAdmissionServices,
+    'admitConsumedRoleResultReplay'
+  >,
 ) {
+  const { admitConsumedRoleResultReplay } = roleResultAdmission;
+  const { collaborationGrantEnvelopeDigest } = collaborationGrants;
   const {
     createTaskDiffExternalReviewSubmission,
     createEvidenceNode,

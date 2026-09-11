@@ -7,23 +7,21 @@ import {
   type ProviderInvocationRequest,
   type ProviderProcessOutcome,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import {
-  providerInvocationManifestDigest,
-  type TaskDiffReviewManifest,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { providerInvocationManifestDigest } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import type { TaskDiffReviewManifest } from '../src/modules/assurance/provider-review-manifests.ts';
 import { requireProviderCapability } from '../src/modules/provider-orchestration/provider-registry.ts';
+import { admitRoleResult } from '../src/composition-root/role-admission-production.ts';
 import {
-  admitRoleResult,
   scheduleOrdinaryRole,
   type RoleAssignment,
   type RoleParticipant,
-} from '../src/modules/provider-orchestration/role-scheduler.ts';
+} from '../src/modules/provider-orchestration/role-assignment.ts';
 import {
   TASK_DIFF_REVIEW_OUTPUT_SCHEMA,
   TASK_DIFF_REVIEW_OUTPUT_VALIDATOR,
   taskDiffReviewProviderSubmission,
-  type TaskDiffReviewSubmission,
 } from '../src/modules/assurance/task-diff-review-artifact.ts';
+import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact-record.ts';
 import {
   createTaskDiffReviewSubject,
   deriveTaskDiffReviewCandidatePlan,

@@ -1,19 +1,20 @@
+import { assertPlanningPaths } from '../src/composition-root/planning-provider-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import {
-  assertPlanningPaths,
-  assertPlanningTaskHistory,
-} from '../src/application/propose/planning-transition.ts';
+import { assertPlanningTaskHistory } from '../src/application/propose/planning-transition.ts';
 import { ExitCode, WorkflowError } from '../src/foundation/errors/errors.ts';
 import { planningProviderBindingPath } from '../src/modules/source/planning-paths.ts';
 import { isWorkflowError } from './fixture.ts';
 
 test('OpenSpec planning path grammar is package-owned behind the engine facade', () => {
   const facade = fs.readFileSync(
-    path.join(import.meta.dirname, '../src/modules/source/planning-paths.ts'),
+    path.join(
+      import.meta.dirname,
+      '../src/adapters/planning/openspec/documents/planning-path-policy.ts',
+    ),
     'utf8',
   );
 

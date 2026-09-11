@@ -31,7 +31,7 @@ import {
   createProviderRunnerForTesting,
   preflightBuiltInProvider,
 } from '../src/runtime/provider-execution/provider-runner.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
+import {resolveBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
 import type { ProviderExecutableObservation } from '@jigwright/agent-runtime/provider-executable-identity';
 import { createFixtureRepository } from './fixture.ts';
 import {

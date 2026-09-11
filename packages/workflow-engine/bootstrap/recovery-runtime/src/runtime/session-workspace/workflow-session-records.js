@@ -5,14 +5,14 @@
  * - Stored sessions retain exact identity, planning assurance, check evidence, and isolation fields.
  * - Reads preserve file metadata and canonical validation; writes keep rename and fsync order.
  */
-import { isPlanningAssuranceBinding, } from "../../modules/assurance/planning-assurance-binding.js";
+import { isPlanningAssuranceBinding } from "../../modules/assurance/planning-assurance-binding.js";
 import { defaultSessionRuntimeLayoutPort } from '@jigwright/core/session-runtime-layout-port';
 import fs from 'node:fs';
 import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fsyncDirectory, isRecord, isStringRecord, isStringArray, isDigest, isCanonicalStringSet, isSha256Digest, isCommitHash, } from "./session-store-values.js";
-import { normalizePolicyPath } from "./paths.js";
+import { normalizePolicyPath } from "../../foundation/repository-path/repository-path.js";
 const TASK_REVISION_LEASE_ID = /^revision-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 export function runtimePaths(gitCommonDirectory, runtimeDirectory) {
     return defaultSessionRuntimeLayoutPort.resolve({

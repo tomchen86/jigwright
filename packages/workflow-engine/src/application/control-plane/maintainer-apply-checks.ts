@@ -1,3 +1,4 @@
+import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
 /**
  * Prepares candidate checks and verifies maintainer apply preconditions.
  *
@@ -27,6 +28,7 @@ export function createMaintainerApplyChecks(
   bindings: () => MaintainerApplyChecksBindings,
 ) {
   function prepareMaintainerGrantV2Checks(
+    manifestOperations: MaintainerManifestOperations,
     cwd: string,
     preflight: MaintainerGrantV2PreflightResult,
     environment: NodeJS.ProcessEnv = process.env,
@@ -45,7 +47,7 @@ export function createMaintainerApplyChecks(
       maintainerChecksEnvironmentDigest,
       parseMaintainerPolicy,
       runGit,
-      loadCapabilityProfileFromTrustBase,
+
       resolveCandidateHarnessEngineDigest,
       digest,
       maintainerGrantStorePaths,
@@ -72,7 +74,7 @@ export function createMaintainerApplyChecks(
         ExitCode.staleState,
       );
     }
-    const refreshed = preflightMaintainerGrantV2(cwd, {
+    const refreshed = preflightMaintainerGrantV2(manifestOperations, cwd, {
       profileId: preflight.manifest.profile,
     });
     if (canonicalJson(refreshed) !== canonicalJson(preflight)) {
@@ -120,7 +122,7 @@ export function createMaintainerApplyChecks(
         ]),
       ),
     );
-    const profile = loadCapabilityProfileFromTrustBase(
+    const profile = manifestOperations.loadCapabilityProfileFromTrustBase(
       initial.repositoryRoot,
       preflight.trustBaseCommit,
       preflight.manifest.profile,

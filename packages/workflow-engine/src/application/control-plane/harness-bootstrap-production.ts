@@ -19,7 +19,7 @@ import type {
 import type { ControlPlaneRecoveryExecutorDependencies } from './intervention-control-updater.ts';
 import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
-import type { BootstrapDependencies } from './intervention-control-bootstrap.ts';
+import type { BootstrapDependencies } from '../../modules/authority/intervention-bootstrap-contract.ts';
 import type { createHarnessBootstrapAudit } from './harness-bootstrap-audit.ts';
 export interface HarnessBootstrapRecoveryProductionBindings extends Pick<
   ReturnType<typeof createHarnessBootstrapAudit>,

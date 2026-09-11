@@ -15,8 +15,8 @@ import {
   type AgentProviderConfigSnapshot,
   type AgentProviderProfileResolution,
   type AgentProviderRole,
-  type ProviderDefinitionSnapshot,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
+import { type ProviderDefinitionSnapshot } from '@jigwright/core/provider-definition-snapshot';
 
 import type { ProviderInvocationPlan } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {

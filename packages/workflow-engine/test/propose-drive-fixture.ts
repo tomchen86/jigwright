@@ -15,7 +15,7 @@ import {
   resumePropose,
   startPropose,
   type OrdinaryProposeOutput,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import { renderPlanningProviderBinding } from '../src/modules/planning-provider/planning-provider-binding.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 

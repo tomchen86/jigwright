@@ -5,7 +5,7 @@
  * - The ordered revision phases and all identity bounds retain their original values.
  * - Canonical digests and corruption, request, and phase errors remain unchanged.
  */
-import { assertSessionId } from '../session-workspace/paths.ts';
+import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import crypto from 'node:crypto';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';

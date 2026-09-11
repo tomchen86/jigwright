@@ -172,7 +172,9 @@ test('trusted workflow launcher selection is independent of a tampered src tree'
     const bootstrap = path.join(enginePackage, 'bootstrap');
     const mutableSource = path.join(enginePackage, 'src');
     fs.mkdirSync(bootstrap, { recursive: true });
-    fs.mkdirSync(mutableSource, { recursive: true });
+    fs.mkdirSync(path.join(mutableSource, 'entrypoints/cli'), {
+      recursive: true,
+    });
     fs.writeFileSync(
       path.join(enginePackage, 'package.json'),
       `${JSON.stringify({ type: 'module' })}\n`,
@@ -192,7 +194,7 @@ export function resolveControlPlaneEngineSelection() { return null; }
       maliciousModule,
     );
     fs.writeFileSync(
-      path.join(mutableSource, 'cli.ts'),
+      path.join(mutableSource, 'entrypoints/cli/workflow-cli.ts'),
       `throw new Error('mutable built-in engine must not run');\n`,
     );
 

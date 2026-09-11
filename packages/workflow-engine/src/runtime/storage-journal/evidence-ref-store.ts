@@ -9,10 +9,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import {
-  type InvestigationRuntimePaths,
-  assertChangeId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
 import { readEvidenceNode } from './evidence-node-store.ts';
 import {
   assertNoFollowDirectory,

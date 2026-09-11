@@ -34,8 +34,8 @@ import {
   parseAgentProviderConfigToml,
   type BuiltInReviewedProviderProfileSnapshot,
   type HostWrapperProviderProfileSnapshot,
-  type ProviderWrapperSessionProtocolBinding,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
+import { type ProviderWrapperSessionProtocolBinding } from '@jigwright/core/harness-jsonl-v2-contracts';
 import type {
   AgentRuntimeAssignmentBindingV1,
   AgentRuntimeNativeSessionTurnControllerV1,

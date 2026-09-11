@@ -21,7 +21,7 @@ import {
   OPENSPEC_ASSET_DEFINITIONS,
   OPENSPEC_ASSET_MANIFEST_PATH,
 } from '../../../adapters/planning/openspec/documents/openspec-planning-asset-contract.ts';
-import { normalizePolicyPath } from '../../session-workspace/paths.ts';
+import { normalizePolicyPath } from '../../../foundation/repository-path/repository-path.ts';
 import type { TrackedTreeSnapshot } from '../../repository-transaction/tracked-tree-reader.ts';
 
 const DOCUMENT_POLICY_MODES = new Set([

@@ -40,12 +40,12 @@ import {
   assertDurableProviderExecutionBudgetAuthority,
   validateProviderExecutionBudgetAuthority,
 } from '../provider-execution/provider-execution-policy-authority.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import {
   assertChangeId,
   assertInvestigationId,
   assertInvocationId,
-  type InvestigationRuntimePaths,
-} from '../session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import {
   deepFreeze,
   hasExactKeys,
@@ -55,7 +55,7 @@ import {
   isTimestamp,
   providerInvocationUnsafe,
   sha256,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 
 export type ProviderInvocationLifecycleProjection = Readonly<{
   invocationId: string;

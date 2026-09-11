@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   createAsyncCliDispatcherForTesting,
   createRoleAssignmentFailGrantResult,
-} from '../src/cli.ts';
+} from '../src/entrypoints/cli/workflow-cli.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
 

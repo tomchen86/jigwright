@@ -8,7 +8,7 @@ Keep first-time setup incremental so a repository can adopt the harness without 
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.adoption-readme v=1 digest=sha256:ea802154e937d42466b8670c215819b9fb9f75dba20ff2863700c36eaf186b22 -->
+<!-- jigwright:region id=documents.adoption-readme v=1 digest=sha256:eaab17f8075a6565205e52c4dcbf657bbfdccec73d8262c3eecb4602e8bba132 -->
 
 <!-- prettier-ignore-start -->
 
@@ -38,8 +38,8 @@ Header history compares Git blame at the explanation confirmation with this sour
 
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
-| [agent-guidance.ts](agent-guidance.ts) | Installs, refreshes, removes, and inspects configured agent guidance projections. | 1 | History unavailable |
-| [setup-questions.ts](setup-questions.ts) | Collects setup answers and initializes consumer and host provider configuration. | 1 | History unavailable |
+| [agent-guidance.ts](agent-guidance.ts) | Explicit guidance target, configuration and exact Source wording policy. | 0 | History unavailable |
+| [setup-questions.ts](setup-questions.ts) | Setup question, answer, defaults and provider-document policy without host or repository IO. | 0 | History unavailable |
 
 <!-- prettier-ignore-end -->
 

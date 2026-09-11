@@ -1,43 +1,44 @@
-/**
- * Derives implementation term changes and checks their bounded review
- * dispositions.
- *
- * Invariants:
- * - Implementation term review escalates when the bounded term limit is
- *   exceeded.
- */
+/** Pure hunk extraction and bounded implementation-term delta decisions. */
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import type { CurrentInvestigationManifest } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  runGit,
-  runGitWithEnvironment,
-} from '../../runtime/repository-transaction/git.ts';
-import { deriveInvestigationGroupFacts } from '../investigation/domain/investigation-groups.ts';
-import {
-  scanInvestigationTreeFacts,
-  type ScanInvestigationTerm,
-} from '../investigation/domain/investigation-scanner.ts';
-import {
-  normalizeInvestigationTerm,
-  type InvestigationTermKind,
-  type NormalizedInvestigationTerm,
-} from '../investigation/domain/investigation-terms.ts';
-import { createMutationClassPolicy } from '../source/mutation-class-policy.ts';
-
+import { normalizeInvestigationTerm } from '../investigation/domain/investigation-terms.ts';
+import type {
+  SearchTermKind as InvestigationTermKind,
+  NormalizedSearchTerm as NormalizedInvestigationTerm,
+} from '../source/search-term.ts';
+import type {
+  ImplementationTermOrigin,
+  ImplementationDeltaTerm,
+  ImplementationAffectedGroup,
+  ImplementationTermDelta,
+} from './implementation-term-dispositions.ts';
+export { assertImplementationTermDispositions } from './implementation-term-dispositions.ts';
+export type {
+  ImplementationTermOrigin,
+  ImplementationDeltaTerm,
+  ImplementationAffectedGroup,
+  ImplementationTermDelta,
+  ImplementationTermDisposition,
+} from './implementation-term-dispositions.ts';
+/** The facts consumed by finalization, independent of scanner storage and grouping implementation. */
+export type ImplementationTermScanObservation =
+  | Readonly<{ outcome: 'requires-narrowing'; violations: unknown }>
+  | Readonly<{
+      outcome: 'ready';
+      facts: unknown;
+      groups: readonly Readonly<{
+        key: string;
+        selector: Pick<
+          ImplementationAffectedGroup,
+          'termId' | 'rootId' | 'extension' | 'mutationClass'
+        >;
+        hits: readonly Readonly<{
+          path: Readonly<{ rawBase64: string; utf8: string | null }>;
+        }>[];
+      }>[];
+    }>;
 const MAX_FINALIZATION_TERMS = 64;
-const DISPOSITION_CLASSIFICATIONS = new Set([
-  'load-bearing',
-  'test-or-mirror',
-  'generated',
-  'incidental-reference',
-  'irrelevant',
-]);
 const TERM_ORIGINS = new Set<ImplementationTermOrigin>([
   'added-identifier',
   'deleted-identifier',
@@ -101,58 +102,10 @@ const LANGUAGE_KEYWORDS = new Set([
   'yield',
 ]);
 
-export type ImplementationTermOrigin =
-  | 'added-identifier'
-  | 'deleted-identifier'
-  | 'added-literal'
-  | 'deleted-literal'
-  | 'modified-outer-symbol'
-  | 'alias-one-hop';
-
-export type ImplementationDeltaTerm = NormalizedInvestigationTerm &
-  Readonly<{ origins: readonly ImplementationTermOrigin[] }>;
-
-export type ImplementationAffectedGroup = Readonly<{
-  groupId: string;
-  termId: string;
-  rootId: string;
-  extension: Readonly<{ rawBase64: string; utf8: string | null }>;
-  mutationClass: string;
-  hitCount: number;
-  paths: readonly string[];
-}>;
-
-export type ImplementationTermDelta = Readonly<{
-  schemaVersion: 1;
-  kind: 'implementation-term-delta';
-  baselineCommit: string;
-  implementationTree: string;
-  knownTermIds: readonly string[];
-  newTerms: readonly ImplementationDeltaTerm[];
-  scanEvidenceDigest: string;
-  affectedGroups: readonly ImplementationAffectedGroup[];
-}>;
-
-export type ImplementationTermDisposition = Readonly<{
-  groupId: string;
-  classification: string;
-  rationale: string;
-  author: string;
-}>;
-
-/**
- * Recompute M-A at the second authority boundary. Only terms extracted from
- * exact implementation hunks are candidates; known planning terms are removed,
- * and the remainder receives one deterministic full-tree scan over a temporary
- * Git tree built from the session baseline plus the exact production paths.
- */
-export function deriveImplementationTermDelta(input: {
-  repositoryRoot: string;
-  baselineCommit: string;
-  productionPaths: readonly string[];
-  investigation: CurrentInvestigationManifest;
-}): ImplementationTermDelta {
-  const knownTermIds = readKnownPlanningTermIds(input.investigation);
+export function extractImplementationDeltaTerms(
+  diffs: readonly string[],
+  knownTermIds: readonly string[],
+): ImplementationDeltaTerm[] {
   const extracted = new Map<
     string,
     {
@@ -160,16 +113,7 @@ export function deriveImplementationTermDelta(input: {
       origins: Set<ImplementationTermOrigin>;
     }
   >();
-  for (const candidatePath of [...input.productionPaths].sort()) {
-    const diff = runGit(input.repositoryRoot, [
-      'diff',
-      '--no-color',
-      '--no-renames',
-      '--unified=3',
-      input.baselineCommit,
-      '--',
-      candidatePath,
-    ]);
+  for (const diff of diffs) {
     collectHunkTerms(diff, extracted);
   }
   const newTerms = [...extracted.values()]
@@ -189,7 +133,16 @@ export function deriveImplementationTermDelta(input: {
       { details: { observed: newTerms.length, limit: MAX_FINALIZATION_TERMS } },
     );
   }
-  const implementationTree = materializeImplementationTree(input);
+  return newTerms;
+}
+export function buildImplementationTermDelta(input: {
+  baselineCommit: string;
+  implementationTree: string;
+  knownTermIds: readonly string[];
+  newTerms: readonly ImplementationDeltaTerm[];
+  scan: ImplementationTermScanObservation;
+}): ImplementationTermDelta {
+  const { implementationTree, knownTermIds, newTerms } = input;
   if (newTerms.length === 0) {
     return deepFreeze({
       schemaVersion: 1,
@@ -202,25 +155,7 @@ export function deriveImplementationTermDelta(input: {
       affectedGroups: [],
     });
   }
-  const scanTerms: ScanInvestigationTerm[] = newTerms.map((term) => ({
-    termId: term.termId,
-    kind: term.kind,
-    value: term.value,
-    matching: term.matching,
-    provenance: [
-      {
-        source: 'engine',
-        reference: 'implementation-finalization-hunk-floor.v1',
-        rationale: null,
-        expectedRelationship: null,
-      },
-    ],
-  }));
-  const scan = scanInvestigationTreeFacts({
-    repositoryRoot: input.repositoryRoot,
-    treeOid: implementationTree,
-    terms: scanTerms,
-  });
+  const scan = input.scan;
   if (scan.outcome !== 'ready') {
     throw workflowError(
       'IMPLEMENTATION_TERM_ESCALATION_REQUIRED',
@@ -229,13 +164,7 @@ export function deriveImplementationTermDelta(input: {
       { details: { violations: scan.violations } },
     );
   }
-  const grouped = deriveInvestigationGroupFacts({
-    scanFacts: scan.facts,
-    mutationPolicy: createMutationClassPolicy({ rules: [] }),
-    declaredRoots: [{ rootId: 'repository', path: '' }],
-    reviewedRelationships: [],
-  });
-  const affectedGroups = grouped.groups
+  const affectedGroups = scan.groups
     .map((group): ImplementationAffectedGroup => {
       return Object.freeze({
         groupId: group.key,
@@ -295,75 +224,6 @@ export function deriveImplementationTermDelta(input: {
     affectedGroups,
   });
 }
-
-export function assertImplementationTermDispositions(
-  delta: ImplementationTermDelta,
-  value: unknown,
-): readonly ImplementationTermDisposition[] {
-  if (!Array.isArray(value)) {
-    throw termInvalid('Implementation term dispositions must be an array.');
-  }
-  const expected = new Set(delta.affectedGroups.map(({ groupId }) => groupId));
-  const seen = new Set<string>();
-  const dispositions = value.map((entry): ImplementationTermDisposition => {
-    if (
-      !isPlainRecord(entry) ||
-      !hasExactKeys(entry, [
-        'groupId',
-        'classification',
-        'rationale',
-        'author',
-      ]) ||
-      typeof entry.groupId !== 'string' ||
-      !expected.has(entry.groupId) ||
-      seen.has(entry.groupId) ||
-      typeof entry.classification !== 'string' ||
-      !DISPOSITION_CLASSIFICATIONS.has(entry.classification) ||
-      typeof entry.rationale !== 'string' ||
-      entry.rationale.trim() !== entry.rationale ||
-      entry.rationale.length === 0 ||
-      typeof entry.author !== 'string' ||
-      entry.author.trim() !== entry.author ||
-      entry.author.length === 0
-    ) {
-      throw workflowError(
-        'IMPLEMENTATION_TERM_DISPOSITION_REQUIRED',
-        'Every affected implementation-term group requires one typed disposition.',
-        ExitCode.verification,
-      );
-    }
-    seen.add(entry.groupId);
-    return Object.freeze({
-      groupId: entry.groupId,
-      classification: entry.classification,
-      rationale: entry.rationale,
-      author: entry.author,
-    });
-  });
-  dispositions.sort((left, right) => left.groupId.localeCompare(right.groupId));
-  if (
-    seen.size !== expected.size ||
-    canonicalJson(dispositions) !== canonicalJson(value)
-  ) {
-    throw workflowError(
-      'IMPLEMENTATION_TERM_DISPOSITION_REQUIRED',
-      'Every affected implementation-term group requires one canonical typed disposition.',
-      ExitCode.verification,
-    );
-  }
-  return Object.freeze(dispositions);
-}
-
-function readKnownPlanningTermIds(
-  investigation: CurrentInvestigationManifest,
-): string[] {
-  const applicability = investigation.manifest.applicability;
-  if (applicability.kind === 'exemption') return [];
-  return applicability.replayContract.canonicalTerms.map(
-    ({ termId }) => termId,
-  );
-}
-
 function collectHunkTerms(
   diff: string,
   target: Map<
@@ -480,59 +340,6 @@ function declarationName(source: string): string | null {
       source,
     )?.[1] ?? null
   );
-}
-
-function materializeImplementationTree(input: {
-  repositoryRoot: string;
-  baselineCommit: string;
-  productionPaths: readonly string[];
-}): string {
-  const temporary = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'workflow-implementation-tree-'),
-  );
-  const indexPath = path.join(temporary, 'index');
-  const environment: NodeJS.ProcessEnv = {
-    ...process.env,
-    GIT_INDEX_FILE: indexPath,
-    GIT_WORK_TREE: input.repositoryRoot,
-  };
-  try {
-    runGitWithEnvironment(
-      input.repositoryRoot,
-      ['read-tree', input.baselineCommit],
-      environment,
-    );
-    if (input.productionPaths.length > 0) {
-      runGitWithEnvironment(
-        input.repositoryRoot,
-        ['add', '--all', '--', ...input.productionPaths],
-        environment,
-      );
-    }
-    return runGitWithEnvironment(
-      input.repositoryRoot,
-      ['write-tree'],
-      environment,
-    ).trim();
-  } finally {
-    fs.rmSync(temporary, { recursive: true, force: true });
-  }
-}
-
-function hasExactKeys(
-  value: Record<string, unknown>,
-  expected: readonly string[],
-): boolean {
-  return (
-    Object.keys(value).sort().join('\0') === [...expected].sort().join('\0')
-  );
-}
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value))
-    return false;
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
 }
 
 function sha256(value: string): string {

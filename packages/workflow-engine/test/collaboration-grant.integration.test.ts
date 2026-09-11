@@ -8,41 +8,49 @@ import {
 } from './fixture.ts';
 import {
   issueCollaborationGrant,
+  prepareCollaborationGrantIssue,
+} from '../src/runtime/grants/collaboration-grant-issuance.ts';
+import {
   canonicalCollaborationGrantPayload,
   canonicalCollaborationGrantEnvelope,
   parseCollaborationGrantEnvelope,
-  DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE,
-  COLLABORATION_GRANT_AUTHORIZED_EFFECT,
-  prepareCollaborationGrantIssue,
   collaborationGrantEnvelopeDigest,
   validateCollaborationGrantEnvelope,
+} from '../src/runtime/grants/grant-services.ts';
+import {
+  DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE,
   COLLABORATION_GRANT_RETAINED_OBLIGATIONS,
   COLLABORATION_GRANT_REPLAY_SCOPE,
   COLLABORATION_GRANT_RESIDUALS,
-} from '../src/modules/authority/collaboration-grant.ts';
+} from '../src/modules/authority/collaboration-grant-codec.ts';
+import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../src/modules/provider-orchestration/role-independence.ts';
 import type {
   CollaborationGrantEnvelope,
   CollaborationGrantPayload,
   CollaborationGrantExpectedBinding,
-} from '../src/modules/authority/collaboration-grant.ts';
+} from '../src/modules/authority/collaboration-grant-codec.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { collaborationGrantStorePaths } from '../src/runtime/storage-journal/collaboration-grant-private-files.ts';
 import {
-  collaborationGrantStorePaths,
   storeAvailableCollaborationGrant,
   reserveCollaborationGrant,
+  reserveCollaborationGrantUnderLifecycleLock,
+  readReservedCollaborationGrantUnderLifecycleLock,
+} from '../src/runtime/storage-journal/collaboration-grant-reservation.ts';
+import {
   consumeCollaborationGrant,
   readExactConsumedCollaborationGrantUse,
-  reserveCollaborationGrantUnderLifecycleLock,
   consumeCollaborationGrantUnderLifecycleLock,
-  readReservedCollaborationGrantUnderLifecycleLock,
   failCollaborationReservationUnderLifecycleLock,
-  revokeCollaborationGrant,
+} from '../src/runtime/storage-journal/collaboration-grant-consumption.ts';
+import { revokeCollaborationGrant } from '../src/composition-root/collaboration-grant-production.ts';
+import {
   inspectCollaborationGrants,
   readCollaborationGrantInspection,
-} from '../src/runtime/storage-journal/collaboration-grant-store.ts';
-import type { CollaborationConsumptionRequest } from '../src/runtime/storage-journal/collaboration-grant-store.ts';
+} from '../src/runtime/storage-journal/collaboration-grant-records.ts';
+import type { CollaborationConsumptionRequest } from '../src/modules/authority/collaboration-grant-records.ts';
 import { loadWorkflowConformanceVectors } from './support/conformance-vectors.ts';
 import type { GrantVerifierPort } from '../src/modules/authority/grant-verifier-port.ts';
 import { spawnSync } from 'node:child_process';
@@ -51,7 +59,7 @@ import os from 'node:os';
 import {
   authorizeGrantedOrdinaryRole,
   admitRoleResult,
-} from '../src/modules/provider-orchestration/role-scheduler.ts';
+} from '../src/composition-root/role-admission-production.ts';
 import crypto from 'node:crypto';
 import { withRepositoryLifecycleOperation } from '../src/runtime/session-workspace/session-store.ts';
 import {
@@ -338,7 +346,7 @@ test('collaboration grant CLI requires a controlling TTY and has no unattended e
     const request = sameProviderRequest(repository);
     const cli = path.join(
       sourceRepositoryRoot,
-      'packages/workflow-engine/src/cli.ts',
+      'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
     );
     const args = collaborationCliArguments(cli, request);
     const nonInteractive = spawnSync(process.execPath, args, {
@@ -375,7 +383,7 @@ test('collaboration grant CLI validates the base object ID before invoking Git',
     const request = sameProviderRequest(repository);
     const cli = path.join(
       sourceRepositoryRoot,
-      'packages/workflow-engine/src/cli.ts',
+      'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
     );
     const args = collaborationCliArguments(cli, request).slice(3, -1);
     const baselineIndex = args.indexOf('--base') + 1;

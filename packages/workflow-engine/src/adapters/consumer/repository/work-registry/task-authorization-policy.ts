@@ -15,7 +15,10 @@ import {
   isRecord,
   isStringArray,
 } from '../../../../foundation/canonical-json/contract-values.ts';
-import type { TaskAuthorizationPolicy, WorkflowConfig } from './contracts.ts';
+import type {
+  TaskAuthorizationPolicy,
+  WorkflowConfig,
+} from '../../../../modules/repository-consumer/workflow-config.ts';
 import {
   ExitCode,
   workflowError,
@@ -30,7 +33,7 @@ import {
 import {
   matchesAllowedPath,
   normalizePolicyPath,
-} from '../../../../runtime/session-workspace/paths.ts';
+} from '../../../../foundation/repository-path/repository-path.ts';
 
 export type TaskAuthorizationRequirement = Readonly<{
   requiresMandate: boolean;

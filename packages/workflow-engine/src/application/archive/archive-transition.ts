@@ -1,3 +1,9 @@
+import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
+import type { ArchiveEligibilityReplayServices } from '../../modules/assurance/commit-replay/ci-archive.ts';
+import type { PlanningArchiveSourcePolicy } from '../../modules/planning-provider/planning-archive-projection-port.ts';
+import type { ReadSystemSpecDeltaInputs } from '../../modules/source/system-spec-deltas.ts';
+import type { CollaborationGrantCodec } from '../../modules/authority/collaboration-grant-codec.ts';
+import type { ArchivedWorkItemReconciler } from '../../modules/governance-intake/work-registry-contracts.ts';
 /**
  * Commits verified archive transformations and recovers their immutable
  * transition evidence.
@@ -26,7 +32,7 @@ import {
   type ArchiveTransformationTestHooks,
   type ArchiveTransformation,
 } from './archive-transformation.ts';
-import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
 import {
   ExitCode,
   WorkflowError,
@@ -90,6 +96,15 @@ export type VerifiedArchiveTransitionEvidence = Readonly<{
 }>;
 
 export function commitArchiveTransition(
+  planningExecution: PlanningTransitionExecutionServices,
+  sourcePolicy: PlanningArchiveSourcePolicy,
+  archiveReplayServices: ArchiveEligibilityReplayServices,
+  collaborationGrants: Pick<
+    CollaborationGrantCodec,
+    'assertUniqueCollaborationGrantUses'
+  >,
+  renderTrackedHandoff: (repositoryRoot: string) => string,
+  reconcileArchivedWorkItems: ArchivedWorkItemReconciler,
   cwd: string,
   requestedChangeId: string,
   environment: NodeJS.ProcessEnv = process.env,
@@ -99,12 +114,18 @@ export function commitArchiveTransition(
   if (existing) return existing;
   const now = testHooks.now ?? (() => new Date());
   return withArchiveEligibility(
+    planningExecution,
+    archiveReplayServices,
+    collaborationGrants,
     cwd,
     requestedChangeId,
     (eligibility, assertOwned, refreshEligibility) => {
       assertExpectedRemoteBase(eligibility, testHooks.expectedRemoteBase);
       try {
         return commitEligibleArchive(
+          sourcePolicy,
+          renderTrackedHandoff,
+          reconcileArchivedWorkItems,
           eligibility,
           environment,
           testHooks,
@@ -118,6 +139,9 @@ export function commitArchiveTransition(
           new Date(`${rolloverDate}T00:00:00.000Z`),
         );
         return commitEligibleArchive(
+          sourcePolicy,
+          renderTrackedHandoff,
+          reconcileArchivedWorkItems,
           refreshed,
           environment,
           testHooks,
@@ -197,6 +221,9 @@ export function inspectExistingArchiveTransition(
 }
 
 function commitEligibleArchive(
+  sourcePolicy: PlanningArchiveSourcePolicy,
+  renderTrackedHandoff: (repositoryRoot: string) => string,
+  reconcileArchivedWorkItems: ArchivedWorkItemReconciler,
   eligibility: ArchiveEligibility,
   environment: NodeJS.ProcessEnv,
   testHooks: ArchiveTransitionTestHooks,
@@ -204,11 +231,18 @@ function commitEligibleArchive(
   now: () => Date,
 ): ArchiveTransitionResult {
   assertExpectedRemoteBase(eligibility, testHooks.expectedRemoteBase);
-  const transformation = createArchiveTransformation(eligibility, {
-    now,
-    testHooks,
-  });
+  const transformation = createArchiveTransformation(
+    sourcePolicy,
+    renderTrackedHandoff,
+    reconcileArchivedWorkItems,
+    eligibility,
+    {
+      now,
+      testHooks,
+    },
+  );
   const delta = verifyArchiveDeltaOutcomesForTransition(
+    sourcePolicy.readSystemSpecDeltaInputs,
     eligibility,
     transformation,
   );
@@ -415,11 +449,13 @@ function archiveRolloverDate(error: unknown): string | undefined {
  * its stable outer outcome code while retaining the structured inner fault.
  */
 function verifyArchiveDeltaOutcomesForTransition(
+  readSystemSpecDeltaInputs: ReadSystemSpecDeltaInputs,
   eligibility: ArchiveEligibility,
   transformation: ArchiveTransformation,
 ) {
   try {
     return verifyArchiveDeltaOutcomes(
+      readSystemSpecDeltaInputs,
       eligibility.repositoryRoot,
       eligibility,
       transformation,

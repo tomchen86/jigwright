@@ -1,3 +1,19 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionChangeRoutingInspector } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 /** Shared task-diff-review-inspection fixtures; this module registers no tests. */
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -6,21 +22,21 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { loadWorkflowConfig } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../src/runtime/repository-observation/workflow-configuration.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import {
   verifySshSignatureWithPublicKey,
   type MaintainerSignerProvider,
 } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import {
   inspectTaskDiffReviewStatus,
   inspectTaskDiffReviewSubject,
-} from '../src/application/finalize/task-diff-review-lifecycle.ts';
-import { type TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact.ts';
+} from '../src/composition-root/task-diff-review-production.ts';
+import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact-record.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
 import {
   configureChecks,
@@ -406,7 +422,10 @@ export function runCli(
     process.execPath,
     [
       '--experimental-strip-types',
-      path.resolve(import.meta.dirname, '../src/cli.ts'),
+      path.resolve(
+        import.meta.dirname,
+        '../src/entrypoints/cli/workflow-cli.ts',
+      ),
       ...args,
     ],
     {

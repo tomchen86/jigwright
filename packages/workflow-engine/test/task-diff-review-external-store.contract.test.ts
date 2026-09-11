@@ -46,12 +46,12 @@ import type {
   TaskDiffReviewChallengeResponseRecord,
   TaskDiffReviewContinuationSubmission,
   TaskDiffReviewSubmission,
-} from '../src/modules/assurance/task-diff-review-artifact.ts';
+} from '../src/modules/assurance/task-diff-review-artifact-record.ts';
 import {
   createTaskDiffReviewSubject,
   deriveTaskDiffReviewCandidatePlan,
-  type TaskDiffReviewSubject,
 } from '../src/modules/assurance/task-diff-review.ts';
+import type { TaskDiffReviewSubject } from '../src/modules/assurance/task-diff-review-record.ts';
 
 test('external review reservation and binding are session-free exact authority references', () => {
   for (const degradedForm of [

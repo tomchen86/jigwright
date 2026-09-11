@@ -8,10 +8,9 @@
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { readFileAtCommit } from '../../entrypoints/ci/ci-git.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import type { PlanReviewReport } from './plan-review.ts';
-import { normalizeExactRepositoryPath } from '../../runtime/session-workspace/paths.ts';
+import type { PlanReviewReport } from './plan-review-report.ts';
+import { normalizeExactRepositoryPath } from '../../foundation/repository-path/repository-path.ts';
 import {
   assertReviewSetHonoured,
   buildCoverageManifest,
@@ -20,18 +19,24 @@ import {
   type ReviewTarget,
 } from './review-coverage.ts';
 import { deltaReviewRequired } from './review-challenge.ts';
-import type { ReuseCoverageRecord } from '../why-knowledge/semantic-manifest-reuse.ts';
-import { readLedgerEntry } from '../../runtime/storage-journal/semantic-ledger-store.ts';
+import type { ReuseCoverageRecord } from './review-coverage.ts';
 import type { CoverageTier } from './assurance-assessment-chain.ts';
-import {
-  assertInvestigationRequirementV3,
-  type InvestigationPlanReviewCoveragePayloadV3,
-  type InvestigationPlanReviewCoverageRequirementV3,
-  type InvestigationPlanReviewCoverageTargetBindingV3,
-} from '../investigation/manifest/investigation-manifest.ts';
+import { assertInvestigationRequirementV3 } from '../investigation/manifest/investigation-manifest.ts';
+import type {
+  InvestigationPlanReviewCoveragePayloadV3,
+  InvestigationPlanReviewCoverageRequirementV3,
+  InvestigationPlanReviewCoverageTargetBindingV3,
+} from '../investigation/manifest/investigation-requirement-types.ts';
 import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from './plan-review-coverage-policy.ts';
 
 export { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from './plan-review-coverage-policy.ts';
+
+/** Observe each reviewed target when the coverage rule reaches its currentness check. */
+export type PlanReviewCoverageTargetReader = (
+  repositoryRoot: string,
+  requirement: InvestigationPlanReviewCoveragePayloadV3,
+  binding: InvestigationPlanReviewCoverageTargetBindingV3,
+) => string;
 
 const HEX64 = /^[0-9a-f]{64}$/;
 const PREFIXED_DIGEST = /^sha256:[0-9a-f]{64}$/;
@@ -138,14 +143,17 @@ export function buildGlobalPlanReviewCoverageRequirement(input: {
  * Enforce the current-v3 required-target and delta checks after ordinary
  * PlanReview validation proves every citation against the immutable snapshot.
  */
-export function assertInvestigationPlanReviewCoverageRequirementSatisfied(input: {
-  repositoryRoot: string;
-  requirement: InvestigationPlanReviewCoverageRequirementV3;
-  review: PlanReviewReport;
-  expectedInvestigationId: string;
-  expectedChangeId: string;
-  expectedBaseline: { head: string; tree: string };
-}): void {
+export function assertInvestigationPlanReviewCoverageRequirementSatisfied(
+  readTarget: PlanReviewCoverageTargetReader,
+  input: {
+    repositoryRoot: string;
+    requirement: InvestigationPlanReviewCoverageRequirementV3;
+    review: PlanReviewReport;
+    expectedInvestigationId: string;
+    expectedChangeId: string;
+    expectedBaseline: { head: string; tree: string };
+  },
+): void {
   const requirement = assertInvestigationRequirementV3(input.requirement);
   if (requirement.kind !== 'plan-review-coverage-requirement') {
     throw coverageInvalid();
@@ -153,7 +161,7 @@ export function assertInvestigationPlanReviewCoverageRequirementSatisfied(input:
   if (requirement.coverage.investigationId !== input.expectedInvestigationId) {
     throw coverageInvalid();
   }
-  assertCoverageRequirementSatisfied({
+  assertCoverageRequirementSatisfied(readTarget, {
     repositoryRoot: input.repositoryRoot,
     requirement: requirement.coverage,
     review: input.review,
@@ -162,13 +170,16 @@ export function assertInvestigationPlanReviewCoverageRequirementSatisfied(input:
   });
 }
 
-function assertCoverageRequirementSatisfied(input: {
-  repositoryRoot: string;
-  requirement: InvestigationPlanReviewCoveragePayloadV3;
-  review: PlanReviewReport;
-  expectedChangeId: string;
-  expectedBaseline: { head: string; tree: string };
-}): void {
+function assertCoverageRequirementSatisfied(
+  readTarget: PlanReviewCoverageTargetReader,
+  input: {
+    repositoryRoot: string;
+    requirement: InvestigationPlanReviewCoveragePayloadV3;
+    review: PlanReviewReport;
+    expectedChangeId: string;
+    expectedBaseline: { head: string; tree: string };
+  },
+): void {
   const requirement = input.requirement;
   if (
     requirement.changeId !== input.expectedChangeId ||
@@ -204,7 +215,7 @@ function assertCoverageRequirementSatisfied(input: {
   const currentDigests = Object.fromEntries(
     requirement.targetBindings.map((binding) => [
       binding.targetId,
-      currentTargetDigest(input.repositoryRoot, requirement, binding),
+      readTarget(input.repositoryRoot, requirement, binding),
     ]),
   );
   const changed = deltaReviewRequired(reviewedDigests, currentDigests);
@@ -215,39 +226,6 @@ function assertCoverageRequirementSatisfied(input: {
       ExitCode.verification,
       { details: { changed } },
     );
-  }
-}
-
-function currentTargetDigest(
-  repositoryRoot: string,
-  requirement: InvestigationPlanReviewCoveragePayloadV3,
-  binding: InvestigationPlanReviewCoverageTargetBindingV3,
-): string {
-  if (!binding.reusedFromLedger) {
-    const content = readFileAtCommit(
-      repositoryRoot,
-      requirement.baselineCommit,
-      binding.path,
-    );
-    return content === undefined ? 'missing' : `sha256:${sha256(content)}`;
-  }
-  try {
-    const entry = readLedgerEntry(repositoryRoot, binding.ledgerEntryId!);
-    if (
-      entry.subject.subjectId !== binding.subjectId ||
-      entry.subject.path !== binding.path ||
-      entry.binding.sourceDigest !== binding.targetDigest
-    ) {
-      return 'mismatched-ledger-subject';
-    }
-    const content = readFileAtCommit(
-      repositoryRoot,
-      requirement.baselineCommit,
-      binding.path,
-    );
-    return content === undefined ? 'missing' : `sha256:${sha256(content)}`;
-  } catch {
-    return 'missing-ledger-subject';
   }
 }
 

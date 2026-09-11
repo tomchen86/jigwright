@@ -1,3 +1,4 @@
+import type { RepositoryValidation } from '../modules/repository-consumer/repository-validation.ts';
 /**
  * Validates repository changes and documents against worktree or exact
  * committed sources.
@@ -10,13 +11,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
 
+import { assertCommittedCheckoutDirectoryProjection } from '../runtime/repository-observation/committed-checkout.ts';
 import {
-  assertCommittedCheckoutDirectoryProjection,
   loadChangeContract,
   loadCommittedChangeContract,
-  loadWorkflowConfig,
-  type ChangeContract,
-} from '../adapters/consumer/repository/work-registry/contracts.ts';
+} from './consumer-contract-production.ts';
+import { loadWorkflowConfig } from '../runtime/repository-observation/workflow-configuration.ts';
+import { type ChangeContract } from '../modules/planning-provider/change-contract.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { normalizeExactRepositoryPath } from '../foundation/repository-path/repository-path.ts';
 import {
@@ -24,10 +25,8 @@ import {
   fingerprintWorkingState,
   runGitBuffer,
 } from '../runtime/repository-transaction/git.ts';
-import {
-  validateManagedDocuments,
-  type ManagedDocumentValidationContext,
-} from '../runtime/managed-documents/validation/managed-documents.ts';
+import { validateManagedDocuments } from './managed-documents-production.ts';
+import { type ManagedDocumentValidationContext } from '../modules/projection/managed-documents.ts';
 import { changeLifecycleRelativePath } from '../modules/lifecycle/change-routing.ts';
 import { readSystemDescriptionSnapshot } from '../runtime/repository-transaction/system-description-snapshot.ts';
 
@@ -43,11 +42,7 @@ const COMMITTED_DOCUMENT_PATHS = new Set([
 ]);
 const COMMITTED_WORKFLOW_PROJECTION = ['workflow'] as const;
 
-export type RepositoryValidation = {
-  repositoryRoot: string;
-  changes: string[];
-  documents: string[];
-};
+
 
 export function validateRepositoryState(cwd: string): RepositoryValidation {
   const git = discoverRepository(cwd);

@@ -1,3 +1,5 @@
+import type {CandidateSupportingArtifactSet} from '../src/modules/authority/maintainer-candidate-contracts.ts';
+import { buildMaintainerPatchManifest } from '../src/composition-root/maintainer-manifest-production.ts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -23,17 +25,9 @@ import {
   type ControlPlaneApprovalSummaryV3,
 } from '../src/application/control-plane/intervention-control-updater.ts';
 import { persistInterventionEngineArtifact } from '../src/application/control-plane/intervention-maintenance.ts';
-import {
-  buildImmutableCandidateBundleV2,
-  storeCandidateHumanReadableSummary,
-  storeCandidateSupportingArtifacts,
-  storeImmutableCandidateBundle,
-  type CandidateSupportingArtifactSet,
-} from '../src/modules/authority/maintainer-candidate.ts';
-import {
-  buildMaintainerPatchManifest,
-  type CapabilityProfile,
-} from '../src/modules/authority/maintainer-manifest.ts';
+import {buildImmutableCandidateBundleV2,storeCandidateHumanReadableSummary,storeCandidateSupportingArtifacts,storeImmutableCandidateBundle} from '../src/modules/authority/maintainer-candidate.ts';
+
+import { type CapabilityProfile } from '../src/modules/authority/maintainer-manifest-contracts.ts';
 import type { TrustedMaintainerSigner } from '../src/modules/authority/maintainer-policy.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import { loadProtectedCapabilitiesFromTrustBase } from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
@@ -627,7 +621,7 @@ function createSealedEnginePackage(builtInEntrypointBytes?: string): string {
     path.join(os.tmpdir(), 'control-plane-producer-engine-'),
   );
   const bootstrap = path.join(root, 'bootstrap');
-  const source = path.join(root, 'src');
+  const source = path.join(root, 'src/entrypoints/cli');
   fs.mkdirSync(bootstrap, { recursive: true });
   fs.mkdirSync(source, { recursive: true });
   for (const name of [
@@ -649,8 +643,8 @@ function createSealedEnginePackage(builtInEntrypointBytes?: string): string {
   const entrypointBytes =
     builtInEntrypointBytes ??
     [
-      "import { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST } from '../bootstrap/built-in-engine-closure-pin.ts';",
-      "import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';",
+      "import { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST } from '../../../bootstrap/built-in-engine-closure-pin.ts';",
+      "import { bootstrapInterventionStateRoot } from '../../../bootstrap/control-plane-trust.ts';",
       'void BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST;',
       'void bootstrapInterventionStateRoot;',
       "process.stdout.write('fixture built-in engine\\n');",
@@ -659,7 +653,7 @@ function createSealedEnginePackage(builtInEntrypointBytes?: string): string {
   const protectedLoaderBytes =
     "export const fixtureProtectedCapabilitiesLoader = 'v1';\n";
   fs.writeFileSync(path.join(root, 'package.json'), packageBytes);
-  fs.writeFileSync(path.join(source, 'cli.ts'), entrypointBytes);
+  fs.writeFileSync(path.join(source, 'workflow-cli.ts'), entrypointBytes);
   const protectedLoaderPath = path.join(
     root,
     FIXTURE_PROTECTED_CAPABILITY_LOADER_PATH,
@@ -668,7 +662,7 @@ function createSealedEnginePackage(builtInEntrypointBytes?: string): string {
   fs.writeFileSync(protectedLoaderPath, protectedLoaderBytes);
   const manifest = {
     kind: 'built-in-engine-closure-manifest.v2',
-    entrypoint: 'src/cli.ts',
+    entrypoint: 'src/entrypoints/cli/workflow-cli.ts',
     scope: 'workspace-runtime-source-closure',
     packages: [
       {
@@ -689,7 +683,7 @@ function createSealedEnginePackage(builtInEntrypointBytes?: string): string {
         digest: controlPlaneFixtureDigest(protectedLoaderBytes),
       },
       {
-        path: 'src/cli.ts',
+        path: 'src/entrypoints/cli/workflow-cli.ts',
         mode: '100644',
         digest: controlPlaneFixtureDigest(entrypointBytes),
       },

@@ -1,10 +1,12 @@
+import { planningAssuranceDependencies } from '../src/composition-root/planning-assurance-production.ts';
+import { readCurrentPlanningRoleOverridePolicy } from '../src/runtime/repository-transaction/planning-role-provider-policy-reader.ts';
 import test from 'node:test';
 import {
   createFixtureRepository,
   writeManagedChangeArtifacts,
 } from './fixture.ts';
 import assert from 'node:assert/strict';
-import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
 import crypto from 'node:crypto';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import path from 'node:path';
@@ -128,8 +130,10 @@ test('the configured current schema owns investigation-first contract semantics'
       );
     }
     const subject = deriveInvestigationFirstPlanningSubject(
+      planningAssuranceDependencies,
       repository,
       contract,
+      readCurrentPlanningRoleOverridePolicy(repository, contract.changeId),
     );
     assert.equal(subject.target.schemaName, 'orbit-spec-v1');
     assert.equal(

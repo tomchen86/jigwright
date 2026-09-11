@@ -1,3 +1,5 @@
+import { materializeInvestigationEvidenceView } from '../repository-observation/investigation-replay.ts';
+import type { ImmutableGitTreeInvestigationObservation } from '../../modules/investigation/manifest/investigation-observation.ts';
 /**
  * Reads and replays an investigation manifest from an exact immutable
  * commit tree.
@@ -13,25 +15,14 @@ import { TextDecoder } from 'node:util';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { normalizeExactRepositoryPath } from '../../foundation/repository-path/repository-path.ts';
-import {
-  validateForAuthority,
-  type InvestigationManifestV3,
-} from '../../modules/investigation/manifest/investigation-manifest.ts';
-import { assertChangeId } from '../session-workspace/paths.ts';
+import { validateForAuthority } from '../../modules/investigation/manifest/investigation-manifest.ts';
+import { type InvestigationManifestV3 } from '../../modules/investigation/manifest/investigation-manifest-types.ts';
+import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
 import { runGitBuffer } from './git.ts';
 
 const TREE_ENTRY = /^(100644) blob ([0-9a-f]{40}|[0-9a-f]{64})\t([^\0]+)\0$/u;
 const MAX_MANIFEST_BYTES = 16 * 1024 * 1024;
 const UTF8 = new TextDecoder('utf-8', { fatal: true });
-
-export type ImmutableGitTreeInvestigationObservation = Readonly<{
-  kind: 'immutable-git-tree';
-  commit: string;
-  tree: string;
-  path: string;
-  blob: string;
-  contentDigest: string;
-}>;
 
 export type CommittedInvestigationManifestV3 = Readonly<{
   manifest: InvestigationManifestV3;
@@ -117,26 +108,29 @@ export function readCommittedInvestigationManifestV3(input: {
   }
 
   const authoring = record(value)?.authoring;
-  const validation = validateForAuthority({
-    repositoryRoot,
-    manifest: value,
-    expected: {
-      repositoryId: input.expectedRepositoryId,
-      changeId,
-      investigationId:
-        typeof record(value)?.investigationId === 'string'
-          ? (record(value)!.investigationId as string)
-          : '',
-      sessionRevision:
-        typeof record(authoring)?.sessionRevision === 'number'
-          ? (record(authoring)!.sessionRevision as number)
-          : -1,
-      sessionSnapshotDigest:
-        typeof record(authoring)?.sessionSnapshotDigest === 'string'
-          ? (record(authoring)!.sessionSnapshotDigest as string)
-          : '',
+  const validation = validateForAuthority(
+    materializeInvestigationEvidenceView,
+    {
+      repositoryRoot,
+      manifest: value,
+      expected: {
+        repositoryId: input.expectedRepositoryId,
+        changeId,
+        investigationId:
+          typeof record(value)?.investigationId === 'string'
+            ? (record(value)!.investigationId as string)
+            : '',
+        sessionRevision:
+          typeof record(authoring)?.sessionRevision === 'number'
+            ? (record(authoring)!.sessionRevision as number)
+            : -1,
+        sessionSnapshotDigest:
+          typeof record(authoring)?.sessionSnapshotDigest === 'string'
+            ? (record(authoring)!.sessionSnapshotDigest as string)
+            : '',
+      },
     },
-  });
+  );
   if (validation.outcome !== 'verified') {
     throw workflowError(
       validation.blocker.failureCode,

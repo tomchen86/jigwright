@@ -17,7 +17,6 @@ import {
 } from '../../modules/provider-orchestration/execution-core.ts';
 import {
   type RepairKind,
-  type JsonValue,
   type StructuredValidationError,
   buildRepairContext,
   type RepairBudget,
@@ -27,7 +26,8 @@ import {
   parseRepairContext,
   canonicalRepairContext,
   parseRepairBudget,
-} from '../../modules/authority/execution-governance.ts';
+} from '../../modules/authority/execution-governance-repair.ts';
+import { type JsonValue } from '../../modules/authority/execution-governance-values.ts';
 import {
   workflowError,
   ExitCode,
@@ -44,7 +44,7 @@ import type { ProviderRepairAuthorityBinding } from '../../modules/provider-orch
 import type {
   ProviderInvocationRecord,
   ProviderInvocationFailure,
-} from '../storage-journal/provider-invocation-store.ts';
+} from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   providerRepairUnsafe,
   isRecord,

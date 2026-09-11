@@ -35,12 +35,8 @@ export type ProviderReadOnlyProbeContext = Readonly<{
   failureCode: string;
 }>;
 
-export type ProviderReadOnlyProbeExecutionResult = Readonly<{
-  state: 'succeeded' | 'failed';
-  code: string;
-  observationDigest: string;
-  elapsedMs: number;
-}>;
+import type { ProviderReadOnlyProbeExecutionResult } from '../../modules/provider-orchestration/provider-retry-service-port.ts';
+export type { ProviderReadOnlyProbeExecutionResult } from '../../modules/provider-orchestration/provider-retry-service-port.ts';
 
 /**
  * Execute one code-owned read-only probe. No probe kind launches a provider,

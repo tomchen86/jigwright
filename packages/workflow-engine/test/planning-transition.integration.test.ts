@@ -1,3 +1,16 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { planningAssuranceDependencies } from '../src/composition-root/planning-assurance-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
+import { readCurrentPlanningRoleOverridePolicy } from '../src/runtime/repository-transaction/planning-role-provider-policy-reader.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -11,19 +24,17 @@ import {
   readContentRecord,
   writeContentRecord,
 } from '../src/runtime/storage-journal/content-record-store.ts';
-import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
 import { commitFacts } from '../src/runtime/repository-transaction/git-transitions.ts';
 import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
 import { readPlanningTransitionReport } from '../src/runtime/storage-journal/planning-report.ts';
 import {
-  commitPlanningTransition,
+  commitPlanningTransition as commitPlanningTransitionWithContractReader,
   type PlanningTransitionTestHooks,
 } from '../src/application/propose/planning-transition.ts';
 import { inspectPlanningTransition } from '../src/composition-root/planning-provider-production.ts';
-import {
-  abortSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
+import { abortSession } from '../src/composition-root/task-session-production.ts';
 import {
   createFixtureRepository,
   git,
@@ -105,8 +116,11 @@ test('propose immutable Git reads cross the repository transaction boundary', ()
     ),
     'utf8',
   );
-  const ciGitSource = fs.readFileSync(
-    new URL('../src/entrypoints/ci/ci-git.ts', import.meta.url),
+  const ciPlanningReplaySource = fs.readFileSync(
+    new URL(
+      '../src/runtime/repository-validation/commit-replay/ci-planning.ts',
+      import.meta.url,
+    ),
     'utf8',
   );
   const gitSource = fs.readFileSync(
@@ -131,8 +145,8 @@ test('propose immutable Git reads cross the repository transaction boundary', ()
   );
   assert.match(gitSource, /export function readFileAtCommit\(/u);
   assert.match(
-    ciGitSource,
-    /export \{ readFileAtCommit \} from '\.\.\/\.\.\/runtime\/repository-transaction\/git\.ts';/u,
+    ciPlanningReplaySource,
+    /import \{ readFileAtCommit \} from '\.\.\/\.\.\/repository-transaction\/git-command\.ts';/u,
   );
 });
 
@@ -381,8 +395,10 @@ test('plan-commit authorizes an exact reviewed current investigation exemption a
     git(repository, ['checkout', '-b', 'work/demo-change']);
     const ready = writeReadyV3ExemptChange(repository);
     const subject = deriveInvestigationFirstPlanningSubject(
+      planningAssuranceDependencies,
       repository,
       loadChangeContract(repository, 'demo-change'),
+      readCurrentPlanningRoleOverridePolicy(repository, 'demo-change'),
     );
     assert.equal(
       subject.policies.rendererPolicyDigest,
@@ -661,7 +677,12 @@ test('plan-commit shares the change lock with active task sessions', () => {
   try {
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.appendFileSync(
       path.join(repository, 'openspec/changes/demo-change/proposal.md'),
       '\nBlocked revision.\n',
@@ -686,7 +707,12 @@ test('plan-commit proceeds in an independent change worktree while another chang
   try {
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     linkedWorktree = fs.mkdtempSync(
       path.join(path.dirname(repository), 'planning-concurrent-change-'),
     );

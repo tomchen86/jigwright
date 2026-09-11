@@ -1,3 +1,7 @@
+import type {
+  LedgerIndex,
+  SemanticLedgerReader,
+} from '../../modules/why-knowledge/semantic-ledger-reader.ts';
 /**
  * Persists semantic ledger objects and their validated mutable index.
  *
@@ -35,12 +39,6 @@ import {
 
 export const LEDGER_ROOT = 'workflow/semantic-ledger';
 const LEDGER_ENTRY_ID = /^sha256:[0-9a-f]{64}$/;
-
-export type LedgerIndex = Readonly<{
-  schemaVersion: 1;
-  kind: 'semantic-ledger-index';
-  subjects: Readonly<Record<string, Readonly<{ currentEntryId: string }>>>;
-}>;
 
 export function ledgerObjectPath(entryId: string): string {
   if (!LEDGER_ENTRY_ID.test(entryId)) {
@@ -88,10 +86,10 @@ export function writeLedgerEntry(
   return relative;
 }
 
-export function readLedgerEntry(
-  repositoryRoot: string,
-  entryId: string,
-): LedgerEntry {
+export const readLedgerEntry: SemanticLedgerReader['readLedgerEntry'] = (
+  repositoryRoot,
+  entryId,
+) => {
   const absolute = path.join(repositoryRoot, ledgerObjectPath(entryId));
   assertSafeLedgerParents(repositoryRoot, absolute);
   const existing = fs.lstatSync(absolute, { throwIfNoEntry: false });
@@ -124,9 +122,11 @@ export function readLedgerEntry(
     throw ledgerStoreInvalid(`Ledger object ${entryId} is not canonical.`);
   }
   return entry;
-}
+};
 
-export function readLedgerIndex(repositoryRoot: string): LedgerIndex {
+export const readLedgerIndex: SemanticLedgerReader['readLedgerIndex'] = (
+  repositoryRoot,
+) => {
   const absolute = path.join(repositoryRoot, ledgerIndexPath());
   assertSafeLedgerParents(repositoryRoot, absolute);
   const existing = fs.lstatSync(absolute, { throwIfNoEntry: false });
@@ -152,7 +152,7 @@ export function readLedgerIndex(repositoryRoot: string): LedgerIndex {
     throw ledgerStoreInvalid('Ledger index is not canonical.');
   }
   return index;
-}
+};
 
 /**
  * Points a subject at a new current entry. The previous entry is not removed;

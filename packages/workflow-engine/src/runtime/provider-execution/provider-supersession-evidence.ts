@@ -15,7 +15,7 @@ import {
 } from '../storage-journal/investigation-private-files.ts';
 import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
-import type { ProviderInvocationRecord } from '../storage-journal/provider-invocation-store.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   readCompleteProviderRetentionReceipt,
   providerRetentionArtifact,

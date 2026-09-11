@@ -1,3 +1,6 @@
+import type { BootstrapInterventionCliDependencies } from '../../modules/authority/intervention-bootstrap-contract.ts';
+export type { BootstrapInterventionCliDependencies } from '../../modules/authority/intervention-bootstrap-contract.ts';
+export type { DurableInterventionParentState } from '../../modules/authority/intervention-bootstrap-contract.ts';
 /**
  * Dispatches durable local intervention and engine adoption commands.
  *
@@ -23,11 +26,7 @@ import {
   recordAuthorityAuditEvent,
   verifyAuthorityAuditEvents,
 } from '../../runtime/storage-journal/authority-audit-service.ts';
-import {
-  deriveAuthorityAuditRepositoryId,
-  type AuthorityAuditLedgerScope,
-  type AuthorityAuditResult,
-} from '../../runtime/storage-journal/authority-audit-ledger.ts';
+import { deriveAuthorityAuditRepositoryId } from '../../runtime/storage-journal/authority-audit-ledger.ts';
 import {
   abandonPersistedIntervention,
   assertPersistedInterventionAbandonable,
@@ -39,9 +38,9 @@ import {
   materializeInterventionChildWorktree,
   readLocalEngineBinding,
   rebindLocalEngineAfterRolledBackAdoption,
-  type BootstrapDependencies,
   type LocalEngineBinding,
 } from '../../application/control-plane/intervention-control-bootstrap.ts';
+import { type BootstrapDependencies } from '../../modules/authority/intervention-bootstrap-contract.ts';
 import {
   engineAdoptionRecordPath,
   recordBootstrapSidecarAdopted,
@@ -58,7 +57,6 @@ import {
   HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE,
   verifyHarnessMaintenanceGrant,
   type HarnessMaintenanceGrantEnvelope,
-  type ParentChangeState,
   type Sha256Digest,
 } from '../../modules/authority/intervention-control.ts';
 import {
@@ -69,12 +67,12 @@ import {
   preparePersistedEngineAdoptionFromArtifactRecord,
   readInterventionEngineArtifact,
   readMaintenanceGrantForParent,
-  revokeMaintenanceGrantForParent,
   terminalizeExpiredMaintenanceGrantForParent,
-  type MaintenanceApprovalSummary,
   type PersistedInterventionEngineArtifact,
   type PersistedMaintenanceGrantRecord,
 } from '../../application/control-plane/intervention-maintenance.ts';
+import { revokeMaintenanceGrantForParent } from '../../composition-root/human-revocation-production.ts';
+import { type MaintenanceApprovalSummary } from '../../modules/authority/intervention-bootstrap-contract.ts';
 import type { MaintainerSignerProvider } from '../../composition-root/maintainer-signer.ts';
 import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
 
@@ -85,31 +83,6 @@ export type BootstrapInterventionCliAction =
   | 'engine-build-artifact'
   | 'status'
   | 'recover';
-
-export interface DurableInterventionParentState {
-  parent: ParentChangeState;
-  sessionSnapshotPath: string;
-  pendingIntent: string;
-  policyDigest: Sha256Digest;
-}
-
-export interface BootstrapInterventionCliDependencies extends BootstrapDependencies {
-  resolveParentDurableState?: (input: {
-    parentChangeId: string;
-    repositoryRoot: string;
-    stateRoot: string;
-    reason: string;
-  }) => DurableInterventionParentState;
-  maintenanceSigner?: MaintainerSignerProvider;
-  presentMaintenanceSummary?: (summary: MaintenanceApprovalSummary) => void;
-  testHooks?: {
-    afterMaintenanceGrantPersisted?: () => void;
-    afterAdoptionStep?: () => void;
-    afterAuthorityAuditRecorded?: () => void;
-    afterBindingUpdatedBeforeJournal?: () => void;
-    afterAbandonmentIntentPersisted?: () => void;
-  };
-}
 
 export interface BootstrapInterventionCliResult {
   kind: 'bootstrap-intervention-cli-result.v1';
@@ -1576,3 +1549,8 @@ function bootstrapInterventionUsageError(): WorkflowError {
     ExitCode.usage,
   );
 }
+
+import {
+  type AuthorityAuditLedgerScope,
+  type AuthorityAuditResult,
+} from '../../modules/authority/authority-audit-contract.ts';

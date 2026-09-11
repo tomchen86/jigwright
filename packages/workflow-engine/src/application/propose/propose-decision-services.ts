@@ -1,0 +1,71 @@
+import type { HumanResolutionServices } from '../../modules/authority/maintainer-grant-contracts.ts';
+import type { InvestigationHumanActionBlockerFactory } from '../../modules/investigation/domain/human-resolution-contract.ts';
+import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+import type { ReadPinnedPathDiff } from '../../modules/investigation/domain/investigation-floor.ts';
+import type { SemanticLedgerReader } from '../../modules/why-knowledge/semantic-ledger-reader.ts';
+import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
+import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
+import type { RoleContextSharingGrantOperations } from '../../modules/authority/role-context-sharing-grant.ts';
+import type { PlanReviewArtifactParser } from '../../modules/assurance/plan-review-artifact.ts';
+import type { PlanningAssuranceDependencies } from '../../modules/assurance/planning-assurance-observations.ts';
+import type { InvestigationV3FailureObservations } from '../../modules/investigation/seal/investigation-v3-failure-source.ts';
+import type { WorkRegistryChangePreparation } from '../../modules/governance-intake/work-registry-contracts.ts';
+import type { InvestigationTreeScanner } from '../../modules/investigation/domain/investigation-scanner.ts';
+import type { InvestigationEvidenceReplayer } from '../../modules/investigation/manifest/investigation-materializer.ts';
+import type { ManagedDocumentOperations } from '../../modules/projection/managed-documents.ts';
+import type { ChangeContractReader } from '../../modules/planning-provider/change-contract.ts';
+import type { createGovernanceSourceServices } from '../governance-intake/governance-sources.ts';
+import type { PlanningDraftWorkspacePort } from '../../modules/planning-provider/planning-workspace.ts';
+/** Required planning and retry observations supplied by production composition. */
+import type { PlanningAssurancePort } from '../../modules/assurance/planning-assurance-port.ts';
+import type { ProviderRetryAccountingReader } from '../../modules/provider-orchestration/provider-retry-accounting.ts';
+
+export type ProposeDecisionServices = Readonly<{
+  loadMaintainerPolicyForResolution: HumanResolutionServices['loadMaintainerPolicyForResolution'];
+  createInvestigationHumanActionBlocker: InvestigationHumanActionBlockerFactory;
+  taskMandate: Pick<
+    TaskMandateOperations,
+    | 'assertActiveTaskMandateBindingUnderLifecycleLock'
+    | 'authorizeTaskMandateOperation'
+    | 'authorizeTaskMandateProviderReservationUnderLifecycleLock'
+    | 'recordTaskMandateProviderInvocationUnderLifecycleLock'
+    | 'withActiveTaskMandateBinding'
+  >;
+  semanticLedger: SemanticLedgerReader;
+  planningExecution: PlanningTransitionExecutionServices;
+  roleAdmission: RoleAdmissionServices;
+  roleContextSharingGrants: Pick<
+    RoleContextSharingGrantOperations,
+    | 'bindingFromRoleContextSharingGrantPayloadV1'
+    | 'canonicalRoleContextSharingGrantEnvelopeV1'
+  >;
+  parsePlanReviewArtifact: PlanReviewArtifactParser;
+  failureObservations: Pick<
+    InvestigationV3FailureObservations,
+    'captureInvestigationV3DirectFailureEmission'
+  >;
+  workRegistry: WorkRegistryChangePreparation;
+  investigationEvidence: Readonly<{
+    readPinnedPathDiff: ReadPinnedPathDiff;
+    scanInvestigationTreeFacts: InvestigationTreeScanner;
+    materializeInvestigationEvidenceView: InvestigationEvidenceReplayer;
+  }>;
+  managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>;
+  loadChangeContract: ChangeContractReader;
+  sources: Pick<
+    ReturnType<typeof createGovernanceSourceServices>,
+    'readGovernanceSource' | 'captureGovernanceSource'
+  >;
+  planningWorkspace: PlanningDraftWorkspacePort;
+  planningAssurance: PlanningAssurancePort;
+  planningEvidence: Pick<
+    PlanningAssuranceDependencies,
+    | 'readRepositoryCitation'
+    | 'readPlanningSnapshotOrigin'
+    | 'readPlanningSnapshotArtifact'
+    | 'roleAdmission'
+    | 'grantCodec'
+    | 'verifyChallengeClosureSignature'
+  >;
+  readProviderRetryAccountingEvidence: ProviderRetryAccountingReader;
+}>;

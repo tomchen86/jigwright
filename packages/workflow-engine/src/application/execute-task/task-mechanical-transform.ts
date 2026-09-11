@@ -14,11 +14,11 @@ import type {
   MechanicalTransformExecution,
   TransformationRetainedDisposition,
   TransformationTerm,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+} from '../../modules/planning-provider/planning-artifact-types.ts';
 import {
   createEvidenceNode,
   type EvidenceNode,
-} from '../../adapters/planning/investigation/evidence-node.ts';
+} from '../../foundation/evidence-node/evidence-node.ts';
 import {
   readEvidenceNode,
   writeEvidenceNode,
@@ -29,22 +29,22 @@ import {
   createPrivateCanonicalJson,
   privatePathExists,
   readPrivateCanonicalJson,
-} from '../../runtime/storage-journal/investigation-session-store.ts';
+} from '../../runtime/storage-journal/investigation-private-files.ts';
 import {
   classifyMutationPath,
   type MutationClass,
 } from '../../modules/source/mutation-class-policy.ts';
+import { investigationRuntimePaths } from '../../runtime/session-workspace/paths.ts';
 import {
-  investigationRuntimePaths,
   matchesAllowedPath,
   normalizeChangedPath,
-} from '../../runtime/session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import { deriveReviewedMutationClassPolicy } from '../../runtime/managed-documents/ownership/reviewed-mutation-policy.ts';
 import {
   readPinnedTrackedTree,
   type TrackedTreeEntry,
 } from '../../runtime/repository-transaction/tracked-tree-reader.ts';
-import type { SessionInspection } from '../finalize/verification.ts';
+import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;
 const GIT_OBJECT = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;

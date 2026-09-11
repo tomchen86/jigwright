@@ -1,3 +1,4 @@
+import {type DocumentationClosureRecord,encodeDocumentationClosure} from '../../modules/assurance/documentation-closure.ts';
 /**
  * Creates managed commit objects and performs guarded managed ref updates.
  *
@@ -6,10 +7,7 @@
  * - Ref updates keep compare-and-swap expectations and current failure behavior.
  */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  type DocumentationClosureRecord,
-  encodeDocumentationClosure,
-} from '../managed-documents/contracts/documentation-closure.ts';
+
 import {
   type AmendmentProvenance,
   amendPlanCommitTrailers,

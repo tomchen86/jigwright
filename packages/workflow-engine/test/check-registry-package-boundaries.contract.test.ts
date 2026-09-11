@@ -1,3 +1,9 @@
+import { productionChangeRoutingInspector } from '../src/composition-root/change-routing-observation-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined, productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -8,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 import { renderBuiltInEngineClosure } from '../bootstrap/generate-built-in-engine-closure.ts';
 import { resolveCheckRunner } from '../src/adapters/consumer/repository/work-registry/runner-resolution.ts';
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import {
   createFixtureRepository,
   git,
@@ -70,7 +76,7 @@ test('repository adapter pins the landed registry DTOs to the public contract', 
   );
 });
 
-test('fixture adapter depends only on public core contracts', () => {
+test('fixture adapter depends only on public contracts and shared repository I/O', () => {
   const fixtureSource = sourceFiles(
     path.join(repositoryRoot, 'packages/fixture-adapter/src'),
   )
@@ -98,6 +104,8 @@ test('fixture adapter depends only on public core contracts', () => {
     '@jigwright/core/runtime-path-kernel',
     '@jigwright/core/session-runtime-layout-port',
     '@jigwright/core/tracked-object-reader-port',
+    '@jigwright/core/workflow-identifiers',
+    '@jigwright/repository-runtime/paths',
   ]);
   assert.match(
     fixtureSource,
@@ -139,6 +147,7 @@ test('workflow-engine value-imports core only through the sealed runtime closure
         return (
           [
             '@jigwright/core/agent-runtime-port',
+            '@jigwright/core/built-in-provider-catalog',
             '@jigwright/core/canonical-json',
             '@jigwright/core/check-command',
             '@jigwright/core/conformance-vectors',
@@ -160,6 +169,7 @@ test('workflow-engine value-imports core only through the sealed runtime closure
             '@jigwright/core/repository-path',
             '@jigwright/core/runtime-path-kernel',
             '@jigwright/core/session-runtime-layout-port',
+            '@jigwright/core/workflow-identifiers',
             '@jigwright/core/workflow-namespace',
           ].includes(specifier ?? '') &&
           /^(?:import|export)\s+\{/.test(statement)
@@ -201,6 +211,7 @@ test('workflow-engine value-imports core only through the sealed runtime closure
     ),
   );
   for (const coreModule of [
+    'built-in-provider-catalog',
     'conformance-vectors',
     'evidence-node',
     'governance-source',
@@ -210,6 +221,7 @@ test('workflow-engine value-imports core only through the sealed runtime closure
     'planning-provider-port',
     'runtime-path-kernel',
     'session-runtime-layout-port',
+    'workflow-identifiers',
     'workflow-namespace',
   ]) {
     assert.ok(
@@ -219,6 +231,11 @@ test('workflow-engine value-imports core only through the sealed runtime closure
       coreModule,
     );
   }
+  assert.ok(
+    closurePaths.includes(
+      'node_modules/@jigwright/repository-runtime/src/paths.ts',
+    ),
+  );
 });
 
 test('registered OpenSpec asset validation runs the read-only authority without an alternate formatter', () => {
@@ -368,10 +385,14 @@ test('required-check runners remain pinned across workflow CLI edits', () => {
 
     const scratchCli = path.join(
       scratch,
-      'packages/workflow-engine/src/cli.ts',
+      'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
     );
+    fs.mkdirSync(path.dirname(scratchCli), { recursive: true });
     fs.copyFileSync(
-      path.join(repositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+      path.join(
+        repositoryRoot,
+        'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+      ),
       scratchCli,
     );
     const before = Object.fromEntries(

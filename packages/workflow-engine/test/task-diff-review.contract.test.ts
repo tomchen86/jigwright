@@ -11,8 +11,8 @@ import {
   taskDiffReviewRequirement,
   taskDiffReviewCandidateIdentityDigest,
   TASK_DIFF_REVIEW_POLICY_DIGEST,
-  type CreateTaskDiffReviewSubjectInput,
 } from '../src/modules/assurance/task-diff-review.ts';
+import type { CreateTaskDiffReviewSubjectInput } from '../src/modules/assurance/task-diff-review-record.ts';
 
 const OID = {
   baseCommit: 'a'.repeat(40),

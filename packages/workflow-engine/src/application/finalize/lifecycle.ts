@@ -1,3 +1,9 @@
+import {createDocumentationClosureRecord,parseDocumentationReviewCapture,parseDocumentationClosureFromCommitMessage,type DocumentationReviewCapture} from '../../modules/assurance/documentation-closure.ts';
+import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
+import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { ManagedDocumentOperations } from '../../modules/projection/managed-documents.ts';
+import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 /**
  * Coordinates task finalization, completion, rollback, finish, and commit.
  *
@@ -11,16 +17,9 @@ import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { assertCommitObject } from '../../runtime/repository-transaction/commit-object-validation.ts';
-import {
-  createDocumentationClosureRecord,
-  parseDocumentationReviewCapture,
-  parseDocumentationClosureFromCommitMessage,
-  type DocumentationReviewCapture,
-} from '../../runtime/managed-documents/contracts/documentation-closure.ts';
-import {
-  loadWorkflowConfig,
-  parseTasks,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+
+import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
+import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
 import {
   finalizeCommittedSession,
   resumePendingCommit,
@@ -65,7 +64,7 @@ import {
 import {
   assertChangeId,
   assertTaskId,
-} from '../../runtime/session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import {
   assertFinishProjection,
   systemDocumentDispositions,
@@ -88,7 +87,7 @@ import {
   type FinalizeTaskOptions,
   type FinalizeTaskResult,
 } from './projected-finalization.ts';
-import { assertCurrentImplementationReconciliation } from '../../modules/why-knowledge/implementation-reconciliation.ts';
+import type { ImplementationReconciliationGate } from '../reconciliation/implementation-reconciliation.ts';
 import {
   readImmutableReport,
   type WorkflowReport,
@@ -121,11 +120,9 @@ import {
 } from './verification.ts';
 import {
   completionDocumentPaths,
-  refreshCompletionDocuments,
   rollbackGeneratedDocuments,
-  validateManagedDocuments,
-  type GeneratedDocumentMutation,
 } from '../../runtime/managed-documents/validation/managed-documents.ts';
+import { type GeneratedDocumentMutation } from '../../modules/projection/managed-documents.ts';
 import {
   assertExactTaskProjection,
   projectTasksCompleted,
@@ -133,8 +130,7 @@ import {
   restoreTaskProjection,
 } from '../../runtime/managed-documents/transaction/task-projection.ts';
 import {
-  assertTaskDiffReviewCompletionGateSatisfied,
-  loadTaskDiffDocumentationReviewCapture,
+  type TaskDiffReviewOperations,
   type TaskDiffReviewCompletionGateOptions,
 } from './task-diff-review-lifecycle.ts';
 import {
@@ -245,6 +241,10 @@ export type FinalizeCancellationOptions = Readonly<{
 }>;
 
 export function cancelFinalizeRecovery(
+  taskDiffReview: Pick<
+    TaskDiffReviewOperations,
+    'assertTaskDiffReviewCompletionGateSatisfied'
+  >,
   cwd: string,
   requestedSessionId: string,
   transactionId: string,
@@ -252,6 +252,7 @@ export function cancelFinalizeRecovery(
   options: FinalizeCancellationOptions = {},
 ): FinalizeCancellationResult {
   return cancelFinalizeRecoveryInternal(
+    taskDiffReview,
     cwd,
     requestedSessionId,
     transactionId,
@@ -262,6 +263,10 @@ export function cancelFinalizeRecovery(
 }
 
 export function cancelProtectedTaskApplyRecoveryUnderGrant(
+  taskDiffReview: Pick<
+    TaskDiffReviewOperations,
+    'assertTaskDiffReviewCompletionGateSatisfied'
+  >,
   cwd: string,
   candidate: ProtectedTaskApplyRecoveryParametersV1,
   candidateAuthorization: ProtectedTaskApplyRecoveryAuthorizationBinding,
@@ -291,6 +296,7 @@ export function cancelProtectedTaskApplyRecoveryUnderGrant(
     );
   }
   return cancelFinalizeRecoveryInternal(
+    taskDiffReview,
     cwd,
     parameters.sessionId,
     parameters.transactionId,
@@ -307,6 +313,10 @@ type ProtectedFinalizeRecoveryContext = Readonly<{
 }>;
 
 function cancelFinalizeRecoveryInternal(
+  taskDiffReview: Pick<
+    TaskDiffReviewOperations,
+    'assertTaskDiffReviewCompletionGateSatisfied'
+  >,
   cwd: string,
   requestedSessionId: string,
   transactionId: string,
@@ -377,6 +387,7 @@ function cancelFinalizeRecoveryInternal(
         protectedRecovery === null &&
         transaction.phase !== 'checks-running' &&
         !isAuthenticatedCheckedFinalizeCancellation(
+          taskDiffReview,
           cwd,
           session.sessionId,
           transaction,
@@ -428,6 +439,10 @@ function cancelFinalizeRecoveryInternal(
 }
 
 export function inspectFinalizeRecoveryStatus(
+  taskDiffReview: Pick<
+    TaskDiffReviewOperations,
+    'assertTaskDiffReviewCompletionGateSatisfied'
+  >,
   cwd: string,
   requestedSessionId: string,
   options: TaskDiffReviewReplayOptions = {},
@@ -462,6 +477,7 @@ export function inspectFinalizeRecoveryStatus(
   }
   if (
     isAuthenticatedCheckedFinalizeCancellation(
+      taskDiffReview,
       cwd,
       session.sessionId,
       transaction,
@@ -488,6 +504,10 @@ export function inspectFinalizeRecoveryStatus(
 }
 
 function isAuthenticatedCheckedFinalizeCancellation(
+  taskDiffReview: Pick<
+    TaskDiffReviewOperations,
+    'assertTaskDiffReviewCompletionGateSatisfied'
+  >,
   cwd: string,
   sessionId: string,
   transaction: FinalizeTransaction,
@@ -497,7 +517,7 @@ function isAuthenticatedCheckedFinalizeCancellation(
     return false;
   }
   try {
-    assertTaskDiffReviewCompletionGateSatisfied(cwd, sessionId, {
+    taskDiffReview.assertTaskDiffReviewCompletionGateSatisfied(cwd, sessionId, {
       projectedTaskIds: transaction.completedTaskIds,
       projectionSourceDigest: transaction.projectionSourceDigest,
       authorizedTransitionPaths: transaction.transitionPaths,
@@ -522,188 +542,6 @@ function isAuthenticatedCheckedFinalizeCancellation(
     }
     throw error;
   }
-}
-
-export function recoverFinalize(
-  cwd: string,
-  requestedSessionId: string,
-  environment: NodeJS.ProcessEnv = process.env,
-  options: FinalizeTaskOptions = {},
-): FinalizeTaskResult {
-  return runSessionOperation(cwd, requestedSessionId, () => {
-    const session = getSession(cwd, requestedSessionId);
-    const git = discoverRepository(cwd);
-    const config = loadWorkflowConfig(git.repositoryRoot);
-    const runtime = runtimePaths(
-      git.gitCommonDirectory,
-      config.runtimeDirectory,
-    );
-    const transaction = readFinalizeTransaction(
-      runtime.root,
-      session.sessionId,
-    );
-    if (transaction === null) {
-      throw workflowError(
-        'FINALIZE_TRANSACTION_NOT_FOUND',
-        'No durable finalize transaction exists for this session.',
-        ExitCode.staleState,
-      );
-    }
-    assertProtectedTaskApplyNotRequired(
-      git.repositoryRoot,
-      config,
-      session,
-      finalizeTransactionTaskPaths(transaction, session),
-    );
-    return session.state === 'committed'
-      ? replayCompletedFinalize(cwd, session)
-      : finalizeTaskUnlocked(cwd, requestedSessionId, environment, options);
-  });
-}
-
-export function finalizeSession(
-  cwd: string,
-  requestedSessionId: string,
-  subject: string,
-  environment: NodeJS.ProcessEnv = process.env,
-  options: FinalizeSessionOptions = {},
-): FinalizeSessionResult {
-  validateCommitSubject(subject);
-  return runSessionOperation(cwd, requestedSessionId, () =>
-    finalizeSessionUnlocked(
-      cwd,
-      requestedSessionId,
-      subject,
-      environment,
-      options,
-      null,
-    ),
-  );
-}
-
-export function finalizeProtectedTaskApplyUnderGrant(
-  cwd: string,
-  parameters: ProtectedTaskApplyFinalizationParametersV1,
-  authorization: ProtectedTaskApplyAuthorizationBinding,
-  assertLifecycleOwned: () => void,
-  environment: NodeJS.ProcessEnv = process.env,
-): FinalizeSessionResult {
-  validateCommitSubject(parameters.commitMessage);
-  assertProtectedApplyAuthorizationMatchesParameters(authorization, parameters);
-  const repository = discoverRepository(cwd);
-  const workflowConfig = loadWorkflowConfig(repository.repositoryRoot);
-  assertPreparedProtectedTaskApplyAuthorization(
-    runtimePaths(repository.gitCommonDirectory, workflowConfig.runtimeDirectory)
-      .root,
-    authorization,
-    parameters,
-  );
-  return runSessionOperation(cwd, parameters.sessionId, () => {
-    assertLifecycleOwned();
-    assertProtectedTaskApplyParametersCurrent(cwd, parameters);
-    assertLifecycleOwned();
-    const result = finalizeSessionUnlocked(
-      cwd,
-      parameters.sessionId,
-      parameters.commitMessage,
-      environment,
-      {
-        ...(parameters.fullGate === true ? { fullGate: true } : {}),
-        consumedRoleResultReplay: undefined,
-      },
-      { parameters, authorization },
-    );
-    assertLifecycleOwned();
-    return result;
-  });
-}
-
-function finalizeSessionUnlocked(
-  cwd: string,
-  requestedSessionId: string,
-  subject: string,
-  environment: NodeJS.ProcessEnv,
-  options: FinalizeSessionOptions,
-  protectedApply: Readonly<{
-    parameters: ProtectedTaskApplyFinalizationParametersV1;
-    authorization: ProtectedTaskApplyAuthorizationBinding;
-  }> | null,
-): FinalizeSessionResult {
-  const observed = getSession(cwd, requestedSessionId);
-  let finalized: FinalizeTaskResult;
-  if (observed.state === 'committed') {
-    if (protectedApply !== null) {
-      assertProtectedApplyTransactionAuthorization(
-        cwd,
-        observed,
-        protectedApply.authorization,
-      );
-    }
-    finalized = replayCompletedFinalize(cwd, observed);
-  } else {
-    if (protectedApply === null) {
-      assertCurrentTaskMayUseOrdinaryFinalize(cwd, requestedSessionId);
-    } else {
-      assertProtectedTaskApplyParametersCurrent(cwd, protectedApply.parameters);
-    }
-    finalized = finalizeTaskUnlocked(cwd, requestedSessionId, environment, {
-      ...(options.fullGate === true ? { fullGate: true } : {}),
-      ...(options.consumedRoleResultReplay === undefined
-        ? {}
-        : {
-            consumedRoleResultReplay: options.consumedRoleResultReplay,
-          }),
-      ...(options.onCheckEscalation
-        ? { onCheckEscalation: options.onCheckEscalation }
-        : {}),
-      ...(options.testCrashAfter && options.testCrashAfter !== 'finalized'
-        ? { testCrashAfter: options.testCrashAfter }
-        : {}),
-      ...(protectedApply === null
-        ? {}
-        : { protectedApply: protectedApply.authorization }),
-    });
-    if (options.testCrashAfter === 'finalized') {
-      throw new Error('Simulated finalize interruption after finalized.');
-    }
-  }
-  const committed = commitSessionUnlocked(
-    cwd,
-    requestedSessionId,
-    subject,
-    environment,
-    protectedApply?.authorization ?? null,
-  );
-  const facts = commitFacts(
-    finalized.session.repositoryRoot,
-    committed.commitHash,
-  );
-  if (facts.tree !== finalized.tree) {
-    throw workflowError(
-      'FINALIZE_TRANSACTION_DIVERGED',
-      'Managed finalize commit does not match its checked candidate tree.',
-      ExitCode.staleState,
-    );
-  }
-  const { session: _activeSession, ...result } = finalized;
-  return {
-    ...result,
-    session: committed.session,
-    commitReportId: committed.reportId,
-    commitHash: committed.commitHash,
-  };
-}
-
-export function finalizeTask(
-  cwd: string,
-  requestedSessionId: string,
-  environment: NodeJS.ProcessEnv = process.env,
-  options: FinalizeTaskOptions = {},
-): FinalizeTaskResult {
-  return runSessionOperation(cwd, requestedSessionId, () => {
-    assertCurrentTaskMayUseOrdinaryFinalize(cwd, requestedSessionId);
-    return finalizeTaskUnlocked(cwd, requestedSessionId, environment, options);
-  });
 }
 
 function assertCurrentTaskMayUseOrdinaryFinalize(
@@ -1182,223 +1020,6 @@ function protectedTaskApplyAuthorizationInvalid(message: string) {
   );
 }
 
-export function completeTask(
-  cwd: string,
-  requestedSessionId: string,
-  environment: NodeJS.ProcessEnv = process.env,
-  options: TaskDiffReviewReplayOptions = {},
-): CompleteTaskResult {
-  return runSessionOperation(cwd, requestedSessionId, () =>
-    completeTaskUnlocked(cwd, requestedSessionId, environment, options),
-  );
-}
-
-export function rollbackCompletion(
-  cwd: string,
-  requestedSessionId: string,
-  reason: string,
-): RollbackCompletionResult {
-  const normalizedReason = reason.trim();
-  if (!normalizedReason) {
-    throw workflowError(
-      'ROLLBACK_REASON_REQUIRED',
-      'Rolling back a completion projection requires a non-empty reason.',
-      ExitCode.usage,
-    );
-  }
-  if (/\p{Cc}/u.test(normalizedReason)) {
-    throw workflowError(
-      'ROLLBACK_REASON_INVALID',
-      'Completion rollback reason contains control characters.',
-      ExitCode.usage,
-    );
-  }
-
-  return runSessionOperation(cwd, requestedSessionId, () =>
-    rollbackCompletionUnlocked(cwd, requestedSessionId, normalizedReason),
-  );
-}
-
-function rollbackCompletionUnlocked(
-  cwd: string,
-  requestedSessionId: string,
-  reason: string,
-): RollbackCompletionResult {
-  const context = loadActiveSessionContext(cwd, requestedSessionId);
-  const { git, runtime, session } = context;
-  if (
-    !session.completionReportId ||
-    session.finishReportId ||
-    session.commitReportId
-  ) {
-    throw workflowError(
-      'ROLLBACK_REQUIRES_PROJECTED_SESSION',
-      'Completion rollback requires an active projected session that has not been finished or committed.',
-      ExitCode.staleState,
-    );
-  }
-  assertPinnedRollbackState(context);
-
-  const completionReport = readImmutableReport(
-    runtime.reports,
-    session.sessionId,
-    session.completionReportId,
-  );
-  if (
-    completionReport.kind !== 'completion' ||
-    completionReport.changeId !== session.changeId ||
-    completionReport.taskId !== session.taskId ||
-    completionReport.parentReportId !== session.latestCheckReportId
-  ) {
-    throw staleReport('COMPLETION_REPORT_STALE');
-  }
-  const completedTaskIds = reportTaskIds(
-    completionReport,
-    'COMPLETION_REPORT_STALE',
-  );
-  const transitionPaths = reportStringArray(
-    completionReport,
-    'transitionPaths',
-    'COMPLETION_REPORT_STALE',
-  );
-  const configuredTransitionPaths = completionDocumentPaths(git.repositoryRoot);
-  if (
-    transitionPaths.some(
-      (documentPath) => !configuredTransitionPaths.includes(documentPath),
-    )
-  ) {
-    throw staleReport('COMPLETION_REPORT_STALE');
-  }
-
-  const tasksPathRelative = `${context.config.changeRoot}/${session.changeId}/tasks.md`;
-  assertProjectionPathClassification(
-    completionReport,
-    classifyProjectionPaths(
-      reportStringArray(
-        completionReport,
-        'changedPaths',
-        'COMPLETION_REPORT_STALE',
-      ),
-      [tasksPathRelative],
-      transitionPaths,
-    ),
-    'COMPLETION_REPORT_STALE',
-  );
-  const tasksPath = path.join(git.repositoryRoot, tasksPathRelative);
-  const baselineTasks = readFileAtCommit(
-    git.repositoryRoot,
-    session.baseline.head,
-    tasksPathRelative,
-  );
-  if (baselineTasks === undefined) {
-    throw staleReport('COMPLETION_REPORT_STALE');
-  }
-  const projectedTasks = fs.readFileSync(tasksPath, 'utf8');
-  assertExactTaskProjection(baselineTasks, projectedTasks, completedTaskIds);
-  if (
-    reportString(
-      completionReport,
-      'projectionSourceDigest',
-      'COMPLETION_REPORT_STALE',
-    ) !== digestTaskContent(baselineTasks)
-  ) {
-    throw staleReport('COMPLETION_REPORT_STALE');
-  }
-  validateManagedDocuments(git.repositoryRoot);
-
-  const documentMutations = transitionPaths.map((documentPath) => {
-    const absolutePath = path.join(git.repositoryRoot, documentPath);
-    return {
-      path: documentPath,
-      before: readFileAtCommit(
-        git.repositoryRoot,
-        session.baseline.head,
-        documentPath,
-      ),
-      after: fs.readFileSync(absolutePath, 'utf8'),
-    } satisfies GeneratedDocumentMutation;
-  });
-  const restoredPaths = [...transitionPaths, tasksPathRelative].sort();
-  const rolledBackAt = new Date().toISOString();
-  const completionReportId = session.completionReportId;
-  const {
-    latestCheckReportId: _check,
-    completionReportId: _completion,
-    ...reset
-  } = session;
-  const resetSession: WorkflowSession = reset;
-  const sessionPath = path.join(runtime.sessions, `${session.sessionId}.json`);
-  let rollbackRecordPath: string | undefined;
-
-  try {
-    restoreTaskProjection(tasksPath, projectedTasks, baselineTasks);
-    rollbackGeneratedDocuments(git.repositoryRoot, documentMutations);
-    assertPinnedRollbackState(context);
-    if (
-      JSON.stringify(readSessionFile(sessionPath)) !== JSON.stringify(session)
-    ) {
-      throw workflowError(
-        'SESSION_CHANGED_DURING_TRANSITION',
-        'The session changed before its completion rollback could be persisted.',
-        ExitCode.staleState,
-      );
-    }
-
-    const record = {
-      schemaVersion: 1,
-      kind: 'completion-rollback',
-      sessionId: session.sessionId,
-      changeId: session.changeId,
-      taskId: session.taskId,
-      completionReportId,
-      rolledBackAt,
-      reason,
-      restoredPaths,
-    } as const;
-    const recordContent = `${JSON.stringify(record, null, 2)}\n`;
-    const rollbackRecordId = crypto
-      .createHash('sha256')
-      .update(recordContent)
-      .digest('hex');
-    const rollbackDirectory = path.join(
-      runtime.root,
-      'completion-rollbacks',
-      session.sessionId,
-    );
-    fs.mkdirSync(rollbackDirectory, { recursive: true });
-    assertPlainDirectory(runtime.root);
-    assertPlainDirectory(path.join(runtime.root, 'completion-rollbacks'));
-    assertPlainDirectory(rollbackDirectory);
-    rollbackRecordPath = path.join(
-      rollbackDirectory,
-      `${rollbackRecordId}.json`,
-    );
-    writeJsonAtomic(rollbackRecordPath, record);
-    writeJsonAtomic(sessionPath, resetSession);
-
-    return {
-      session: resetSession,
-      completionReportId,
-      rollbackRecordId,
-      restoredPaths,
-      rolledBackAt,
-      reason,
-    };
-  } catch (error) {
-    if (rollbackRecordPath) {
-      fs.rmSync(rollbackRecordPath, { force: true });
-    }
-    writePlainFile(tasksPath, projectedTasks);
-    for (const mutation of documentMutations) {
-      writePlainFile(
-        path.join(git.repositoryRoot, mutation.path),
-        mutation.after,
-      );
-    }
-    throw error;
-  }
-}
-
 function assertPinnedRollbackState(
   context: ReturnType<typeof loadActiveSessionContext>,
 ): void {
@@ -1454,319 +1075,26 @@ function writePlainFile(filePath: string, content: string): void {
   fs.writeFileSync(filePath, content, 'utf8');
 }
 
-function completeTaskUnlocked(
-  cwd: string,
-  requestedSessionId: string,
-  environment: NodeJS.ProcessEnv,
-  options: TaskDiffReviewReplayOptions,
-): CompleteTaskResult {
-  assertCurrentTaskMayUseOrdinaryFinalize(cwd, requestedSessionId);
-  reconcileSessionChecksAfterLocalEngineAdoption(cwd, requestedSessionId, {
-    environment,
-  });
-  const initial = inspectSession(cwd, requestedSessionId);
-  assertProtectedTaskApplyNotRequired(
-    initial.git.repositoryRoot,
-    initial.contract.config,
-    initial.session,
-    initial.changedPaths,
-  );
-  if (initial.session.completionReportId) {
-    throw workflowError(
-      'TASK_ALREADY_PROJECTED',
-      'The active session already has a completion report.',
-      ExitCode.staleState,
-    );
-  }
-  const checkReportId = initial.session.latestCheckReportId;
-  if (!checkReportId) {
-    throw workflowError(
-      'CURRENT_CHECK_REPORT_REQUIRED',
-      'A current passing check report is required before completion.',
-      ExitCode.verification,
-    );
-  }
-  const checkReport = readSessionReport(initial, checkReportId);
-  assertInspectionReport(checkReport, initial, 'check', 'CHECK_REPORT_STALE');
-  assertReportChecks(
-    checkReport,
-    initial,
-    initial.session.requiredChecks,
-    'CHECK_REPORT_STALE',
-  );
-  if (checkReport.parentReportId !== undefined) {
-    throw staleReport('CHECK_REPORT_STALE');
-  }
-  assertCurrentImplementationReconciliation(initial);
-  assertTaskDiffReviewCompletionGateSatisfied(cwd, requestedSessionId, {
-    ...(options.consumedRoleResultReplay === undefined
-      ? {}
-      : { consumedRoleResultReplay: options.consumedRoleResultReplay }),
-  });
-  const reconciliation = reconcilePredecessor(cwd, initial, environment);
-  const completedTaskIds = [
-    ...reconciliation.map(({ taskId }) => taskId),
-    initial.session.taskId,
-  ];
-  const completesChange = initial.contract.tasks.every(
-    ({ id, completed }) => completed || completedTaskIds.includes(id),
-  );
-  const documentationReview = completesChange
-    ? loadTaskDiffDocumentationReviewCapture(cwd, requestedSessionId)
-    : null;
-  const projection = projectTasksCompleted(initial.tasksPath, completedTaskIds);
-  const projectionSourceDigest = digestTaskContent(projection.before);
-  let generatedDocuments: GeneratedDocumentMutation[] = [];
-
-  try {
-    generatedDocuments = refreshCompletionDocuments(initial.git.repositoryRoot);
-    const transitionPaths = generatedDocuments.map(({ path }) => path).sort();
-    const projected = inspectSession(cwd, initial.session.sessionId, {
-      expectedSession: initial.session,
-      projectedTaskIds: completedTaskIds,
-      projectionSourceDigest,
-      authorizedTransitionPaths: transitionPaths,
-    });
-    const pathClassification = classifyProjectionPaths(
-      projected.changedPaths,
-      [path.relative(projected.git.repositoryRoot, projected.tasksPath)],
-      transitionPaths,
-    );
-    const report: WorkflowReport = {
-      schemaVersion: 1,
-      kind: 'completion',
-      sessionId: initial.session.sessionId,
-      changeId: initial.session.changeId,
-      taskId: initial.session.taskId,
-      createdAt: new Date().toISOString(),
-      parentReportId: checkReportId,
-      baseline: initial.session.baseline,
-      branch: initial.session.branch,
-      artifactDigests: projected.artifactDigests,
-      allowedPaths: initial.session.allowedPaths,
-      requiredChecks: initial.session.requiredChecks,
-      requiredCheckDigests: digestRequiredCheckDefinitions(
-        projected.contract.checks,
-        initial.session.requiredChecks,
-      ),
-      ...pathClassification,
-      fingerprint: projected.fingerprint,
-      completedTaskIds,
-      projectionSourceDigest,
-      transitionPaths,
-      reconciledTasks: reconciliation,
-      ...(documentationReview === null ? {} : { documentationReview }),
-    };
-    const reportId = writeSessionReport(projected, report);
-    const session: WorkflowSession = {
-      ...initial.session,
-      completionReportId: reportId,
-    };
-    persistSession(projected, session);
-    return { session, reportId, completedTaskIds };
-  } catch (error) {
-    try {
-      rollbackGeneratedDocuments(
-        initial.git.repositoryRoot,
-        generatedDocuments,
-      );
-    } finally {
-      restoreTaskProjection(
-        initial.tasksPath,
-        projection.after,
-        projection.before,
-      );
-    }
-    throw error;
-  }
-}
-
-export function finishSession(
-  cwd: string,
-  requestedSessionId: string,
-  environment: NodeJS.ProcessEnv = process.env,
-  options: TaskDiffReviewReplayOptions = {},
-): FinishSessionResult {
-  return runSessionOperation(cwd, requestedSessionId, () =>
-    finishSessionUnlocked(cwd, requestedSessionId, environment, options),
-  );
-}
-
-function finishSessionUnlocked(
-  cwd: string,
-  requestedSessionId: string,
-  environment: NodeJS.ProcessEnv,
-  options: TaskDiffReviewReplayOptions,
-): FinishSessionResult {
-  const context = loadActiveSessionContext(cwd, requestedSessionId);
-  const session = context.session;
-  if (session.finishReportId) {
-    throw workflowError(
-      'SESSION_ALREADY_FINISHED',
-      'The active session already has a finish report.',
-      ExitCode.staleState,
-    );
-  }
-  if (!session.completionReportId) {
-    throw workflowError(
-      'COMPLETION_REPORT_REQUIRED',
-      'An authorized completion report is required before finish.',
-      ExitCode.verification,
-    );
-  }
-  const completionReport = readImmutableReport(
-    context.runtime.reports,
-    session.sessionId,
-    session.completionReportId,
-  );
-  const completedTaskIds = reportTaskIds(
-    completionReport,
-    'COMPLETION_REPORT_STALE',
-  );
-  const projectionSourceDigest = reportString(
-    completionReport,
-    'projectionSourceDigest',
-    'COMPLETION_REPORT_STALE',
-  );
-  const transitionPaths = reportStringArray(
-    completionReport,
-    'transitionPaths',
-    'COMPLETION_REPORT_STALE',
-  );
-  const unprojected = inspectSession(cwd, requestedSessionId, {
-    projectedTaskIds: completedTaskIds,
-    projectionSourceDigest,
-    authorizedTransitionPaths: transitionPaths,
-  });
-  const pathClassification = classifyProjectionPaths(
-    unprojected.changedPaths,
-    [path.relative(unprojected.git.repositoryRoot, unprojected.tasksPath)],
-    transitionPaths,
-  );
-  assertProtectedTaskApplyNotRequired(
-    unprojected.git.repositoryRoot,
-    unprojected.contract.config,
-    unprojected.session,
-    pathClassification.taskPaths,
-  );
-  assertProjectionPathClassification(
-    completionReport,
-    pathClassification,
-    'COMPLETION_REPORT_STALE',
-  );
-  assertInspectionReport(
-    completionReport,
-    unprojected,
-    'completion',
-    'COMPLETION_REPORT_STALE',
-  );
-  assertCompletionTaskIds(
-    completionReport,
-    unprojected,
-    'COMPLETION_REPORT_STALE',
-  );
-  if (completionReport.parentReportId !== session.latestCheckReportId) {
-    throw staleReport('COMPLETION_REPORT_STALE');
-  }
-  assertCurrentImplementationReconciliation(unprojected);
-  assertTaskDiffReviewCompletionGateSatisfied(cwd, requestedSessionId, {
-    projectedTaskIds: completedTaskIds,
-    projectionSourceDigest,
-    authorizedTransitionPaths: transitionPaths,
-    ...(options.consumedRoleResultReplay === undefined
-      ? {}
-      : { consumedRoleResultReplay: options.consumedRoleResultReplay }),
-  });
-
-  const checkPolicy = resolveFinalizeCheckPolicy(
-    parseTasks(fs.readFileSync(unprojected.tasksPath, 'utf8')),
-    session.requiredChecks,
-    unprojected.contract.config,
-  );
-  const verified = executeChecks(
-    cwd,
-    unprojected,
-    [...checkPolicy.requiredChecks],
-    environment,
-    completedTaskIds,
-    projectionSourceDigest,
-    transitionPaths,
-  );
-  const staged = stageExactPaths(
-    verified.inspection.git.repositoryRoot,
-    session.baseline.head,
-    verified.inspection.changedPaths,
-  );
-  try {
-    const finished = inspectSession(cwd, session.sessionId, {
-      expectedSession: session,
-      projectedTaskIds: completedTaskIds,
-      projectionSourceDigest,
-      authorizedTransitionPaths: transitionPaths,
-    });
-    const report: WorkflowReport = {
-      schemaVersion: 1,
-      kind: 'finish',
-      sessionId: session.sessionId,
-      changeId: session.changeId,
-      taskId: session.taskId,
-      createdAt: new Date().toISOString(),
-      parentReportId: session.completionReportId,
-      baseline: session.baseline,
-      branch: session.branch,
-      artifactDigests: finished.artifactDigests,
-      allowedPaths: session.allowedPaths,
-      requiredChecks: [...checkPolicy.requiredChecks],
-      requiredCheckDigests: digestRequiredCheckDefinitions(
-        finished.contract.checks,
-        [...checkPolicy.requiredChecks],
-      ),
-      checkEscalation: checkPolicy.checkEscalation,
-      ...classifyProjectionPaths(
-        finished.changedPaths,
-        pathClassification.taskProjectionPaths,
-        transitionPaths,
-      ),
-      fingerprint: finished.fingerprint,
-      completedTaskIds,
-      projectionSourceDigest,
-      transitionPaths,
-      checks: verified.checks,
-      stagedPaths: staged.stagedPaths,
-      tree: staged.tree,
-    };
-    const reportId = writeSessionReport(finished, report);
-    const updated: WorkflowSession = { ...session, finishReportId: reportId };
-    persistSession(finished, updated);
-    return {
-      session: updated,
-      reportId,
-      stagedPaths: staged.stagedPaths,
-      tree: staged.tree,
-    };
-  } catch (error) {
-    rollbackExactStaging(
-      verified.inspection.git.repositoryRoot,
-      staged.previousIndexTree,
-      staged.tree,
-      error,
-    );
-    throw error;
-  }
-}
-
 export function commitSession(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   subject: string,
   environment: NodeJS.ProcessEnv = process.env,
 ): CommitSessionResult {
   return runSessionOperation(cwd, requestedSessionId, () =>
-    commitSessionUnlocked(cwd, requestedSessionId, subject, environment),
+    commitSessionUnlocked(
+      routingAdmissionReader,
+      cwd,
+      requestedSessionId,
+      subject,
+      environment,
+    ),
   );
 }
 
 function commitSessionUnlocked(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   subject: string,
@@ -1815,11 +1143,16 @@ function commitSessionUnlocked(
     'transitionPaths',
     'COMPLETION_REPORT_STALE',
   );
-  const inspection = inspectSession(cwd, requestedSessionId, {
-    projectedTaskIds: completedTaskIds,
-    projectionSourceDigest,
-    authorizedTransitionPaths: transitionPaths,
-  });
+  const inspection = inspectSession(
+    routingAdmissionReader,
+    cwd,
+    requestedSessionId,
+    {
+      projectedTaskIds: completedTaskIds,
+      projectionSourceDigest,
+      authorizedTransitionPaths: transitionPaths,
+    },
+  );
   const pathClassification = classifyProjectionPaths(
     inspection.changedPaths,
     [path.relative(inspection.git.repositoryRoot, inspection.tasksPath)],
@@ -2352,4 +1685,818 @@ export function findTaskCommits(
     changeId,
     taskId,
   );
+}
+
+/** Required reconciliation capability is bound once at the production boundary. */
+export function createFinalizationService(
+  manifestOperations: MaintainerManifestOperations,
+  taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  taskDiffReview: Pick<
+    TaskDiffReviewOperations,
+    | 'assertTaskDiffReviewCompletionGateSatisfied'
+    | 'loadTaskDiffDocumentationReviewCapture'
+  >,
+  managedDocuments: ManagedDocumentOperations,
+  assertCurrentImplementationReconciliation: ImplementationReconciliationGate<SessionInspection>,
+) {
+  function rollbackCompletion(
+    cwd: string,
+    requestedSessionId: string,
+    reason: string,
+  ): RollbackCompletionResult {
+    const normalizedReason = reason.trim();
+    if (!normalizedReason) {
+      throw workflowError(
+        'ROLLBACK_REASON_REQUIRED',
+        'Rolling back a completion projection requires a non-empty reason.',
+        ExitCode.usage,
+      );
+    }
+    if (/\p{Cc}/u.test(normalizedReason)) {
+      throw workflowError(
+        'ROLLBACK_REASON_INVALID',
+        'Completion rollback reason contains control characters.',
+        ExitCode.usage,
+      );
+    }
+
+    return runSessionOperation(cwd, requestedSessionId, () =>
+      rollbackCompletionUnlocked(cwd, requestedSessionId, normalizedReason),
+    );
+  }
+
+  function rollbackCompletionUnlocked(
+    cwd: string,
+    requestedSessionId: string,
+    reason: string,
+  ): RollbackCompletionResult {
+    const context = loadActiveSessionContext(cwd, requestedSessionId);
+    const { git, runtime, session } = context;
+    if (
+      !session.completionReportId ||
+      session.finishReportId ||
+      session.commitReportId
+    ) {
+      throw workflowError(
+        'ROLLBACK_REQUIRES_PROJECTED_SESSION',
+        'Completion rollback requires an active projected session that has not been finished or committed.',
+        ExitCode.staleState,
+      );
+    }
+    assertPinnedRollbackState(context);
+
+    const completionReport = readImmutableReport(
+      runtime.reports,
+      session.sessionId,
+      session.completionReportId,
+    );
+    if (
+      completionReport.kind !== 'completion' ||
+      completionReport.changeId !== session.changeId ||
+      completionReport.taskId !== session.taskId ||
+      completionReport.parentReportId !== session.latestCheckReportId
+    ) {
+      throw staleReport('COMPLETION_REPORT_STALE');
+    }
+    const completedTaskIds = reportTaskIds(
+      completionReport,
+      'COMPLETION_REPORT_STALE',
+    );
+    const transitionPaths = reportStringArray(
+      completionReport,
+      'transitionPaths',
+      'COMPLETION_REPORT_STALE',
+    );
+    const configuredTransitionPaths = completionDocumentPaths(
+      git.repositoryRoot,
+    );
+    if (
+      transitionPaths.some(
+        (documentPath) => !configuredTransitionPaths.includes(documentPath),
+      )
+    ) {
+      throw staleReport('COMPLETION_REPORT_STALE');
+    }
+
+    const tasksPathRelative = `${context.config.changeRoot}/${session.changeId}/tasks.md`;
+    assertProjectionPathClassification(
+      completionReport,
+      classifyProjectionPaths(
+        reportStringArray(
+          completionReport,
+          'changedPaths',
+          'COMPLETION_REPORT_STALE',
+        ),
+        [tasksPathRelative],
+        transitionPaths,
+      ),
+      'COMPLETION_REPORT_STALE',
+    );
+    const tasksPath = path.join(git.repositoryRoot, tasksPathRelative);
+    const baselineTasks = readFileAtCommit(
+      git.repositoryRoot,
+      session.baseline.head,
+      tasksPathRelative,
+    );
+    if (baselineTasks === undefined) {
+      throw staleReport('COMPLETION_REPORT_STALE');
+    }
+    const projectedTasks = fs.readFileSync(tasksPath, 'utf8');
+    assertExactTaskProjection(baselineTasks, projectedTasks, completedTaskIds);
+    if (
+      reportString(
+        completionReport,
+        'projectionSourceDigest',
+        'COMPLETION_REPORT_STALE',
+      ) !== digestTaskContent(baselineTasks)
+    ) {
+      throw staleReport('COMPLETION_REPORT_STALE');
+    }
+    managedDocuments.validateManagedDocuments(git.repositoryRoot);
+
+    const documentMutations = transitionPaths.map((documentPath) => {
+      const absolutePath = path.join(git.repositoryRoot, documentPath);
+      return {
+        path: documentPath,
+        before: readFileAtCommit(
+          git.repositoryRoot,
+          session.baseline.head,
+          documentPath,
+        ),
+        after: fs.readFileSync(absolutePath, 'utf8'),
+      } satisfies GeneratedDocumentMutation;
+    });
+    const restoredPaths = [...transitionPaths, tasksPathRelative].sort();
+    const rolledBackAt = new Date().toISOString();
+    const completionReportId = session.completionReportId;
+    const {
+      latestCheckReportId: _check,
+      completionReportId: _completion,
+      ...reset
+    } = session;
+    const resetSession: WorkflowSession = reset;
+    const sessionPath = path.join(
+      runtime.sessions,
+      `${session.sessionId}.json`,
+    );
+    let rollbackRecordPath: string | undefined;
+
+    try {
+      restoreTaskProjection(tasksPath, projectedTasks, baselineTasks);
+      rollbackGeneratedDocuments(git.repositoryRoot, documentMutations);
+      assertPinnedRollbackState(context);
+      if (
+        JSON.stringify(readSessionFile(sessionPath)) !== JSON.stringify(session)
+      ) {
+        throw workflowError(
+          'SESSION_CHANGED_DURING_TRANSITION',
+          'The session changed before its completion rollback could be persisted.',
+          ExitCode.staleState,
+        );
+      }
+
+      const record = {
+        schemaVersion: 1,
+        kind: 'completion-rollback',
+        sessionId: session.sessionId,
+        changeId: session.changeId,
+        taskId: session.taskId,
+        completionReportId,
+        rolledBackAt,
+        reason,
+        restoredPaths,
+      } as const;
+      const recordContent = `${JSON.stringify(record, null, 2)}\n`;
+      const rollbackRecordId = crypto
+        .createHash('sha256')
+        .update(recordContent)
+        .digest('hex');
+      const rollbackDirectory = path.join(
+        runtime.root,
+        'completion-rollbacks',
+        session.sessionId,
+      );
+      fs.mkdirSync(rollbackDirectory, { recursive: true });
+      assertPlainDirectory(runtime.root);
+      assertPlainDirectory(path.join(runtime.root, 'completion-rollbacks'));
+      assertPlainDirectory(rollbackDirectory);
+      rollbackRecordPath = path.join(
+        rollbackDirectory,
+        `${rollbackRecordId}.json`,
+      );
+      writeJsonAtomic(rollbackRecordPath, record);
+      writeJsonAtomic(sessionPath, resetSession);
+
+      return {
+        session: resetSession,
+        completionReportId,
+        rollbackRecordId,
+        restoredPaths,
+        rolledBackAt,
+        reason,
+      };
+    } catch (error) {
+      if (rollbackRecordPath) {
+        fs.rmSync(rollbackRecordPath, { force: true });
+      }
+      writePlainFile(tasksPath, projectedTasks);
+      for (const mutation of documentMutations) {
+        writePlainFile(
+          path.join(git.repositoryRoot, mutation.path),
+          mutation.after,
+        );
+      }
+      throw error;
+    }
+  }
+
+  function recoverFinalize(
+    cwd: string,
+    requestedSessionId: string,
+    environment: NodeJS.ProcessEnv = process.env,
+    options: FinalizeTaskOptions = {},
+  ): FinalizeTaskResult {
+    return runSessionOperation(cwd, requestedSessionId, () => {
+      const session = getSession(cwd, requestedSessionId);
+      const git = discoverRepository(cwd);
+      const config = loadWorkflowConfig(git.repositoryRoot);
+      const runtime = runtimePaths(
+        git.gitCommonDirectory,
+        config.runtimeDirectory,
+      );
+      const transaction = readFinalizeTransaction(
+        runtime.root,
+        session.sessionId,
+      );
+      if (transaction === null) {
+        throw workflowError(
+          'FINALIZE_TRANSACTION_NOT_FOUND',
+          'No durable finalize transaction exists for this session.',
+          ExitCode.staleState,
+        );
+      }
+      assertProtectedTaskApplyNotRequired(
+        git.repositoryRoot,
+        config,
+        session,
+        finalizeTransactionTaskPaths(transaction, session),
+      );
+      return session.state === 'committed'
+        ? replayCompletedFinalize(cwd, session)
+        : finalizeTaskUnlocked(
+            taskStrategyExecutionGate,
+            routingAdmissionReader,
+            taskDiffReview,
+            managedDocuments,
+            assertCurrentImplementationReconciliation,
+            cwd,
+            requestedSessionId,
+            environment,
+            options,
+          );
+    });
+  }
+
+  function finalizeSession(
+    cwd: string,
+    requestedSessionId: string,
+    subject: string,
+    environment: NodeJS.ProcessEnv = process.env,
+    options: FinalizeSessionOptions = {},
+  ): FinalizeSessionResult {
+    validateCommitSubject(subject);
+    return runSessionOperation(cwd, requestedSessionId, () =>
+      finalizeSessionUnlocked(
+        cwd,
+        requestedSessionId,
+        subject,
+        environment,
+        options,
+        null,
+      ),
+    );
+  }
+
+  function finalizeProtectedTaskApplyUnderGrant(
+    cwd: string,
+    parameters: ProtectedTaskApplyFinalizationParametersV1,
+    authorization: ProtectedTaskApplyAuthorizationBinding,
+    assertLifecycleOwned: () => void,
+    environment: NodeJS.ProcessEnv = process.env,
+  ): FinalizeSessionResult {
+    validateCommitSubject(parameters.commitMessage);
+    assertProtectedApplyAuthorizationMatchesParameters(
+      authorization,
+      parameters,
+    );
+    const repository = discoverRepository(cwd);
+    const workflowConfig = loadWorkflowConfig(repository.repositoryRoot);
+    assertPreparedProtectedTaskApplyAuthorization(
+      runtimePaths(
+        repository.gitCommonDirectory,
+        workflowConfig.runtimeDirectory,
+      ).root,
+      authorization,
+      parameters,
+    );
+    return runSessionOperation(cwd, parameters.sessionId, () => {
+      assertLifecycleOwned();
+      assertProtectedTaskApplyParametersCurrent(cwd, parameters);
+      assertLifecycleOwned();
+      const result = finalizeSessionUnlocked(
+        cwd,
+        parameters.sessionId,
+        parameters.commitMessage,
+        environment,
+        {
+          ...(parameters.fullGate === true ? { fullGate: true } : {}),
+          consumedRoleResultReplay: undefined,
+        },
+        { parameters, authorization },
+      );
+      assertLifecycleOwned();
+      return result;
+    });
+  }
+
+  function finalizeSessionUnlocked(
+    cwd: string,
+    requestedSessionId: string,
+    subject: string,
+    environment: NodeJS.ProcessEnv,
+    options: FinalizeSessionOptions,
+    protectedApply: Readonly<{
+      parameters: ProtectedTaskApplyFinalizationParametersV1;
+      authorization: ProtectedTaskApplyAuthorizationBinding;
+    }> | null,
+  ): FinalizeSessionResult {
+    const observed = getSession(cwd, requestedSessionId);
+    let finalized: FinalizeTaskResult;
+    if (observed.state === 'committed') {
+      if (protectedApply !== null) {
+        assertProtectedApplyTransactionAuthorization(
+          cwd,
+          observed,
+          protectedApply.authorization,
+        );
+      }
+      finalized = replayCompletedFinalize(cwd, observed);
+    } else {
+      if (protectedApply === null) {
+        assertCurrentTaskMayUseOrdinaryFinalize(cwd, requestedSessionId);
+      } else {
+        assertProtectedTaskApplyParametersCurrent(
+          cwd,
+          protectedApply.parameters,
+        );
+      }
+      finalized = finalizeTaskUnlocked(
+        taskStrategyExecutionGate,
+        routingAdmissionReader,
+        taskDiffReview,
+        managedDocuments,
+        assertCurrentImplementationReconciliation,
+        cwd,
+        requestedSessionId,
+        environment,
+        {
+          ...(options.fullGate === true ? { fullGate: true } : {}),
+          ...(options.consumedRoleResultReplay === undefined
+            ? {}
+            : {
+                consumedRoleResultReplay: options.consumedRoleResultReplay,
+              }),
+          ...(options.onCheckEscalation
+            ? { onCheckEscalation: options.onCheckEscalation }
+            : {}),
+          ...(options.testCrashAfter && options.testCrashAfter !== 'finalized'
+            ? { testCrashAfter: options.testCrashAfter }
+            : {}),
+          ...(protectedApply === null
+            ? {}
+            : { protectedApply: protectedApply.authorization }),
+        },
+      );
+      if (options.testCrashAfter === 'finalized') {
+        throw new Error('Simulated finalize interruption after finalized.');
+      }
+    }
+    const committed = commitSessionUnlocked(
+      routingAdmissionReader,
+      cwd,
+      requestedSessionId,
+      subject,
+      environment,
+      protectedApply?.authorization ?? null,
+    );
+    const facts = commitFacts(
+      finalized.session.repositoryRoot,
+      committed.commitHash,
+    );
+    if (facts.tree !== finalized.tree) {
+      throw workflowError(
+        'FINALIZE_TRANSACTION_DIVERGED',
+        'Managed finalize commit does not match its checked candidate tree.',
+        ExitCode.staleState,
+      );
+    }
+    const { session: _activeSession, ...result } = finalized;
+    return {
+      ...result,
+      session: committed.session,
+      commitReportId: committed.reportId,
+      commitHash: committed.commitHash,
+    };
+  }
+
+  function finalizeTask(
+    cwd: string,
+    requestedSessionId: string,
+    environment: NodeJS.ProcessEnv = process.env,
+    options: FinalizeTaskOptions = {},
+  ): FinalizeTaskResult {
+    return runSessionOperation(cwd, requestedSessionId, () => {
+      assertCurrentTaskMayUseOrdinaryFinalize(cwd, requestedSessionId);
+      return finalizeTaskUnlocked(
+        taskStrategyExecutionGate,
+        routingAdmissionReader,
+        taskDiffReview,
+        managedDocuments,
+        assertCurrentImplementationReconciliation,
+        cwd,
+        requestedSessionId,
+        environment,
+        options,
+      );
+    });
+  }
+
+  function completeTask(
+    cwd: string,
+    requestedSessionId: string,
+    environment: NodeJS.ProcessEnv = process.env,
+    options: TaskDiffReviewReplayOptions = {},
+  ): CompleteTaskResult {
+    return runSessionOperation(cwd, requestedSessionId, () =>
+      completeTaskUnlocked(cwd, requestedSessionId, environment, options),
+    );
+  }
+
+  function completeTaskUnlocked(
+    cwd: string,
+    requestedSessionId: string,
+    environment: NodeJS.ProcessEnv,
+    options: TaskDiffReviewReplayOptions,
+  ): CompleteTaskResult {
+    assertCurrentTaskMayUseOrdinaryFinalize(cwd, requestedSessionId);
+    reconcileSessionChecksAfterLocalEngineAdoption(
+      manifestOperations,
+      routingAdmissionReader,
+      cwd,
+      requestedSessionId,
+      {
+        environment,
+      },
+    );
+    const initial = inspectSession(
+      routingAdmissionReader,
+      cwd,
+      requestedSessionId,
+    );
+    assertProtectedTaskApplyNotRequired(
+      initial.git.repositoryRoot,
+      initial.contract.config,
+      initial.session,
+      initial.changedPaths,
+    );
+    if (initial.session.completionReportId) {
+      throw workflowError(
+        'TASK_ALREADY_PROJECTED',
+        'The active session already has a completion report.',
+        ExitCode.staleState,
+      );
+    }
+    const checkReportId = initial.session.latestCheckReportId;
+    if (!checkReportId) {
+      throw workflowError(
+        'CURRENT_CHECK_REPORT_REQUIRED',
+        'A current passing check report is required before completion.',
+        ExitCode.verification,
+      );
+    }
+    const checkReport = readSessionReport(initial, checkReportId);
+    assertInspectionReport(checkReport, initial, 'check', 'CHECK_REPORT_STALE');
+    assertReportChecks(
+      checkReport,
+      initial,
+      initial.session.requiredChecks,
+      'CHECK_REPORT_STALE',
+    );
+    if (checkReport.parentReportId !== undefined) {
+      throw staleReport('CHECK_REPORT_STALE');
+    }
+    assertCurrentImplementationReconciliation(initial);
+    taskDiffReview.assertTaskDiffReviewCompletionGateSatisfied(
+      cwd,
+      requestedSessionId,
+      {
+        ...(options.consumedRoleResultReplay === undefined
+          ? {}
+          : { consumedRoleResultReplay: options.consumedRoleResultReplay }),
+      },
+    );
+    const reconciliation = reconcilePredecessor(
+      routingAdmissionReader,
+      cwd,
+      initial,
+      environment,
+    );
+    const completedTaskIds = [
+      ...reconciliation.map(({ taskId }) => taskId),
+      initial.session.taskId,
+    ];
+    const completesChange = initial.contract.tasks.every(
+      ({ id, completed }) => completed || completedTaskIds.includes(id),
+    );
+    const documentationReview = completesChange
+      ? taskDiffReview.loadTaskDiffDocumentationReviewCapture(
+          cwd,
+          requestedSessionId,
+        )
+      : null;
+    const projection = projectTasksCompleted(
+      initial.tasksPath,
+      completedTaskIds,
+    );
+    const projectionSourceDigest = digestTaskContent(projection.before);
+    let generatedDocuments: GeneratedDocumentMutation[] = [];
+
+    try {
+      generatedDocuments = managedDocuments.refreshCompletionDocuments(
+        initial.git.repositoryRoot,
+      );
+      const transitionPaths = generatedDocuments.map(({ path }) => path).sort();
+      const projected = inspectSession(
+        routingAdmissionReader,
+        cwd,
+        initial.session.sessionId,
+        {
+          expectedSession: initial.session,
+          projectedTaskIds: completedTaskIds,
+          projectionSourceDigest,
+          authorizedTransitionPaths: transitionPaths,
+        },
+      );
+      const pathClassification = classifyProjectionPaths(
+        projected.changedPaths,
+        [path.relative(projected.git.repositoryRoot, projected.tasksPath)],
+        transitionPaths,
+      );
+      const report: WorkflowReport = {
+        schemaVersion: 1,
+        kind: 'completion',
+        sessionId: initial.session.sessionId,
+        changeId: initial.session.changeId,
+        taskId: initial.session.taskId,
+        createdAt: new Date().toISOString(),
+        parentReportId: checkReportId,
+        baseline: initial.session.baseline,
+        branch: initial.session.branch,
+        artifactDigests: projected.artifactDigests,
+        allowedPaths: initial.session.allowedPaths,
+        requiredChecks: initial.session.requiredChecks,
+        requiredCheckDigests: digestRequiredCheckDefinitions(
+          projected.contract.checks,
+          initial.session.requiredChecks,
+        ),
+        ...pathClassification,
+        fingerprint: projected.fingerprint,
+        completedTaskIds,
+        projectionSourceDigest,
+        transitionPaths,
+        reconciledTasks: reconciliation,
+        ...(documentationReview === null ? {} : { documentationReview }),
+      };
+      const reportId = writeSessionReport(projected, report);
+      const session: WorkflowSession = {
+        ...initial.session,
+        completionReportId: reportId,
+      };
+      persistSession(projected, session);
+      return { session, reportId, completedTaskIds };
+    } catch (error) {
+      try {
+        rollbackGeneratedDocuments(
+          initial.git.repositoryRoot,
+          generatedDocuments,
+        );
+      } finally {
+        restoreTaskProjection(
+          initial.tasksPath,
+          projection.after,
+          projection.before,
+        );
+      }
+      throw error;
+    }
+  }
+
+  function finishSession(
+    cwd: string,
+    requestedSessionId: string,
+    environment: NodeJS.ProcessEnv = process.env,
+    options: TaskDiffReviewReplayOptions = {},
+  ): FinishSessionResult {
+    return runSessionOperation(cwd, requestedSessionId, () =>
+      finishSessionUnlocked(cwd, requestedSessionId, environment, options),
+    );
+  }
+
+  function finishSessionUnlocked(
+    cwd: string,
+    requestedSessionId: string,
+    environment: NodeJS.ProcessEnv,
+    options: TaskDiffReviewReplayOptions,
+  ): FinishSessionResult {
+    const context = loadActiveSessionContext(cwd, requestedSessionId);
+    const session = context.session;
+    if (session.finishReportId) {
+      throw workflowError(
+        'SESSION_ALREADY_FINISHED',
+        'The active session already has a finish report.',
+        ExitCode.staleState,
+      );
+    }
+    if (!session.completionReportId) {
+      throw workflowError(
+        'COMPLETION_REPORT_REQUIRED',
+        'An authorized completion report is required before finish.',
+        ExitCode.verification,
+      );
+    }
+    const completionReport = readImmutableReport(
+      context.runtime.reports,
+      session.sessionId,
+      session.completionReportId,
+    );
+    const completedTaskIds = reportTaskIds(
+      completionReport,
+      'COMPLETION_REPORT_STALE',
+    );
+    const projectionSourceDigest = reportString(
+      completionReport,
+      'projectionSourceDigest',
+      'COMPLETION_REPORT_STALE',
+    );
+    const transitionPaths = reportStringArray(
+      completionReport,
+      'transitionPaths',
+      'COMPLETION_REPORT_STALE',
+    );
+    const unprojected = inspectSession(
+      routingAdmissionReader,
+      cwd,
+      requestedSessionId,
+      {
+        projectedTaskIds: completedTaskIds,
+        projectionSourceDigest,
+        authorizedTransitionPaths: transitionPaths,
+      },
+    );
+    const pathClassification = classifyProjectionPaths(
+      unprojected.changedPaths,
+      [path.relative(unprojected.git.repositoryRoot, unprojected.tasksPath)],
+      transitionPaths,
+    );
+    assertProtectedTaskApplyNotRequired(
+      unprojected.git.repositoryRoot,
+      unprojected.contract.config,
+      unprojected.session,
+      pathClassification.taskPaths,
+    );
+    assertProjectionPathClassification(
+      completionReport,
+      pathClassification,
+      'COMPLETION_REPORT_STALE',
+    );
+    assertInspectionReport(
+      completionReport,
+      unprojected,
+      'completion',
+      'COMPLETION_REPORT_STALE',
+    );
+    assertCompletionTaskIds(
+      completionReport,
+      unprojected,
+      'COMPLETION_REPORT_STALE',
+    );
+    if (completionReport.parentReportId !== session.latestCheckReportId) {
+      throw staleReport('COMPLETION_REPORT_STALE');
+    }
+    assertCurrentImplementationReconciliation(unprojected);
+    taskDiffReview.assertTaskDiffReviewCompletionGateSatisfied(
+      cwd,
+      requestedSessionId,
+      {
+        projectedTaskIds: completedTaskIds,
+        projectionSourceDigest,
+        authorizedTransitionPaths: transitionPaths,
+        ...(options.consumedRoleResultReplay === undefined
+          ? {}
+          : { consumedRoleResultReplay: options.consumedRoleResultReplay }),
+      },
+    );
+
+    const checkPolicy = resolveFinalizeCheckPolicy(
+      parseTasks(fs.readFileSync(unprojected.tasksPath, 'utf8')),
+      session.requiredChecks,
+      unprojected.contract.config,
+    );
+    const verified = executeChecks(
+      routingAdmissionReader,
+      cwd,
+      unprojected,
+      [...checkPolicy.requiredChecks],
+      environment,
+      completedTaskIds,
+      projectionSourceDigest,
+      transitionPaths,
+    );
+    const staged = stageExactPaths(
+      verified.inspection.git.repositoryRoot,
+      session.baseline.head,
+      verified.inspection.changedPaths,
+    );
+    try {
+      const finished = inspectSession(
+        routingAdmissionReader,
+        cwd,
+        session.sessionId,
+        {
+          expectedSession: session,
+          projectedTaskIds: completedTaskIds,
+          projectionSourceDigest,
+          authorizedTransitionPaths: transitionPaths,
+        },
+      );
+      const report: WorkflowReport = {
+        schemaVersion: 1,
+        kind: 'finish',
+        sessionId: session.sessionId,
+        changeId: session.changeId,
+        taskId: session.taskId,
+        createdAt: new Date().toISOString(),
+        parentReportId: session.completionReportId,
+        baseline: session.baseline,
+        branch: session.branch,
+        artifactDigests: finished.artifactDigests,
+        allowedPaths: session.allowedPaths,
+        requiredChecks: [...checkPolicy.requiredChecks],
+        requiredCheckDigests: digestRequiredCheckDefinitions(
+          finished.contract.checks,
+          [...checkPolicy.requiredChecks],
+        ),
+        checkEscalation: checkPolicy.checkEscalation,
+        ...classifyProjectionPaths(
+          finished.changedPaths,
+          pathClassification.taskProjectionPaths,
+          transitionPaths,
+        ),
+        fingerprint: finished.fingerprint,
+        completedTaskIds,
+        projectionSourceDigest,
+        transitionPaths,
+        checks: verified.checks,
+        stagedPaths: staged.stagedPaths,
+        tree: staged.tree,
+      };
+      const reportId = writeSessionReport(finished, report);
+      const updated: WorkflowSession = { ...session, finishReportId: reportId };
+      persistSession(finished, updated);
+      return {
+        session: updated,
+        reportId,
+        stagedPaths: staged.stagedPaths,
+        tree: staged.tree,
+      };
+    } catch (error) {
+      rollbackExactStaging(
+        verified.inspection.git.repositoryRoot,
+        staged.previousIndexTree,
+        staged.tree,
+        error,
+      );
+      throw error;
+    }
+  }
+  return Object.freeze({
+    rollbackCompletion,
+    recoverFinalize,
+    finalizeSession,
+    finalizeProtectedTaskApplyUnderGrant,
+    finalizeTask,
+    completeTask,
+    finishSession,
+  });
 }

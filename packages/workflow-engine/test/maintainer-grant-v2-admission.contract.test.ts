@@ -4,12 +4,12 @@ import { sourceRepositoryRoot, git, isWorkflowError } from './fixture.ts';
 import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { issueMaintainerGrantV2 } from '../src/modules/authority/maintainer-grant-v2.ts';
+import { issueMaintainerGrantV2 } from '../src/composition-root/maintainer-authority-production.ts';
+import { readAuthoritySession } from '../src/application/control-plane/maintainer-session.ts';
 import {
   startAuthoritySession,
-  readAuthoritySession,
   checkAuthoritySession,
-} from '../src/application/control-plane/maintainer-session.ts';
+} from '../src/composition-root/maintainer-authority-production.ts';
 import {
   maintainerGrantStorePaths,
   inspectMaintainerGrants,
@@ -31,7 +31,7 @@ test('CLI disables manual v2 issue and requires an exact task binding', () => {
   const repository = prepareCandidate();
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/cli.ts',
+    'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
   );
   try {
     const manualV2 = spawnSync(

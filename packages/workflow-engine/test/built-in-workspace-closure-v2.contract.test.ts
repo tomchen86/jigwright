@@ -100,7 +100,10 @@ test('V2 control-plane closure maps workspace sources, materializes bare imports
           'packages/core/src/value.ts',
         ],
         ['package.json', 'packages/workflow-engine/package.json'],
-        ['src/cli.ts', 'packages/workflow-engine/src/cli.ts'],
+        [
+          'src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+        ],
       ],
     );
     const headOid = commitFixture(fixture.root);
@@ -218,7 +221,7 @@ function createWorkspaceClosureFixture(): {
   );
   const workflowEngineRoot = path.join(root, 'packages/workflow-engine');
   const workflowBootstrap = path.join(workflowEngineRoot, 'bootstrap');
-  const workflowSource = path.join(workflowEngineRoot, 'src');
+  const workflowSource = path.join(workflowEngineRoot, 'src/entrypoints/cli');
   const coreRoot = path.join(root, 'packages/core');
   const coreSource = path.join(coreRoot, 'src');
   fs.mkdirSync(workflowBootstrap, { recursive: true });
@@ -260,9 +263,13 @@ function createWorkspaceClosureFixture(): {
     workflowPackageBytes,
     { mode: 0o644 },
   );
-  fs.writeFileSync(path.join(workflowSource, 'cli.ts'), workflowSourceBytes, {
-    mode: 0o644,
-  });
+  fs.writeFileSync(
+    path.join(workflowSource, 'workflow-cli.ts'),
+    workflowSourceBytes,
+    {
+      mode: 0o644,
+    },
+  );
   fs.writeFileSync(path.join(coreRoot, 'package.json'), corePackageBytes, {
     mode: 0o644,
   });
@@ -299,14 +306,14 @@ function createWorkspaceClosureFixture(): {
       digest: digest(workflowPackageBytes),
     },
     {
-      path: 'src/cli.ts',
+      path: 'src/entrypoints/cli/workflow-cli.ts',
       mode: '100644',
       digest: digest(workflowSourceBytes),
     },
   ];
   const manifest = {
     kind: 'built-in-engine-closure-manifest.v2',
-    entrypoint: 'src/cli.ts',
+    entrypoint: 'src/entrypoints/cli/workflow-cli.ts',
     scope: 'workspace-runtime-source-closure',
     packages,
     files,
@@ -404,7 +411,7 @@ function assertRetiredV1ManifestRejected(surface: TestSurface): void {
     () =>
       surface.verifyClosureManifest({
         kind: 'built-in-engine-closure-manifest.v1',
-        entrypoint: 'src/cli.ts',
+        entrypoint: 'src/entrypoints/cli/workflow-cli.ts',
         scope: 'package-json-and-all-src-typescript',
         files: [
           {
@@ -413,7 +420,7 @@ function assertRetiredV1ManifestRejected(surface: TestSurface): void {
             digest: `sha256:${'1'.repeat(64)}`,
           },
           {
-            path: 'src/cli.ts',
+            path: 'src/entrypoints/cli/workflow-cli.ts',
             mode: '100644',
             digest: `sha256:${'2'.repeat(64)}`,
           },

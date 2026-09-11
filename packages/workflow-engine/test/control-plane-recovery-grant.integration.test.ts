@@ -21,7 +21,7 @@ import {
   type ControlPlaneRecoveryAuditRecord,
   type ControlPlaneRecoveryGrantEnvelope,
 } from '../src/modules/authority/control-plane-recovery-grant.ts';
-import { runHarnessBootstrapCli } from '../src/harness-bootstrap.ts';
+import { runHarnessBootstrapCli } from '../src/entrypoints/cli/harness-bootstrap-cli.ts';
 import {
   CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3,
   CONTROL_PLANE_SIGNATURE_NAMESPACE_V3,

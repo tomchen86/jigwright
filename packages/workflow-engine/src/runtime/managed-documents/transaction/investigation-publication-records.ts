@@ -1,3 +1,4 @@
+import { materializeInvestigationEvidenceView } from '../../repository-observation/investigation-replay.ts';
 /**
  * Reconciles publication candidates, journal records, and installed manifest authority.
  *
@@ -18,7 +19,7 @@ import {
   parseCurrentManifestRef,
   isSameTrackedInvestigationLifecycle,
   assertPublicationSnapshot,
-} from './investigation-publication-contracts.ts';
+} from '../../../modules/investigation/manifest/investigation-publication-contracts.ts';
 import {
   resolveRelative,
   readJson,
@@ -37,11 +38,9 @@ import {
   publicationFailure,
   DIGEST,
   digest,
-} from './investigation-publication-values.ts';
-import {
-  validateForAuthority,
-  type InvestigationManifestV3,
-} from '../../../modules/investigation/manifest/investigation-manifest.ts';
+} from '../../../modules/investigation/manifest/investigation-publication-values.ts';
+import { validateForAuthority } from '../../../modules/investigation/manifest/investigation-manifest.ts';
+import { type InvestigationManifestV3 } from '../../../modules/investigation/manifest/investigation-manifest-types.ts';
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 
 export function normalizePaths(
@@ -181,7 +180,7 @@ export function validatedCandidateResidue(
     ...lifecycle,
     currentRefDigest: publicationRefDigest(privateRoot, paths.currentRefPath),
   };
-  const validated = validateForAuthority({
+  const validated = validateForAuthority(materializeInvestigationEvidenceView, {
     repositoryRoot,
     manifest: candidate,
     expected: authorityExpected(expected),
@@ -366,7 +365,7 @@ export function assertManifestMatchesJournal(
   repositoryRoot: string = publicationRepositoryRoot(filePath),
 ): InvestigationManifestV3 {
   const parsed = readJson(filePath);
-  const validated = validateForAuthority({
+  const validated = validateForAuthority(materializeInvestigationEvidenceView, {
     repositoryRoot,
     manifest: parsed,
     expected: authorityExpected(journal.expected),
@@ -502,7 +501,7 @@ export function readJournal(
   const journal = record as unknown as PublicationJournal;
   const currentRef = parseCurrentManifestRef(journal.currentRef);
   assertPublicationSnapshot(journal.expected);
-  const validated = validateForAuthority({
+  const validated = validateForAuthority(materializeInvestigationEvidenceView, {
     repositoryRoot,
     manifest: journal.manifest,
     expected: authorityExpected(journal.expected),

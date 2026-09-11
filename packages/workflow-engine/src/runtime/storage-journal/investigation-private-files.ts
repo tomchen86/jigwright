@@ -24,7 +24,7 @@ import {
   isNodeError,
   isRecord,
   isTimestamp,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 
 export const MAX_HUMAN_RESOLUTION_BYTES = 1_048_576;
 

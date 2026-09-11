@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { parseRepositoryConsumerConfiguration } from '../src/modules/repository-consumer/repository-consumer-policy.ts';
 import { createFixtureRepositoryConsumerPortV1 } from '../../fixture-adapter/src/repository-consumer.ts';
 import assert from 'node:assert/strict';
 import path from 'node:path';
@@ -6,9 +7,9 @@ import fs from 'node:fs';
 import {
   loadRepositoryConsumerConfiguration,
   repositoryConsumerPath,
-} from '../src/modules/repository-consumer/repository-consumer-config.ts';
-import { readChangeSchemaName } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
-import { createWorkItem } from '../src/modules/governance-intake/work-registry.ts';
+} from '../src/runtime/repository-observation/repository-consumer.ts';
+import { readChangeSchemaName } from '../src/runtime/repository-observation/change-metadata.ts';
+import { createWorkItem } from '../src/composition-root/work-registry-production.ts';
 import { assertDisposableDatabaseForRepository } from '../src/adapters/consumer/repository/work-registry/database-policy.ts';
 import os from 'node:os';
 import { createOpenSpecPlanningProviderPort } from '../src/composition-root/openspec-planning-provider-production.ts';
@@ -401,3 +402,36 @@ function hasWorkflowCode(expected: string): (error: unknown) => boolean {
     'code' in error &&
     (error as Error & { code: unknown }).code === expected;
 }
+
+test('consumer policy validates supplied values without reading repository files', (t) => {
+  const supplied = orbitConsumerConfiguration();
+  const forbidden = () => {
+    throw new Error('Consumer policy attempted filesystem I/O');
+  };
+  t.mock.method(fs, 'readFileSync', forbidden);
+  t.mock.method(fs, 'lstatSync', forbidden);
+  t.mock.method(fs, 'realpathSync', forbidden);
+  const parsed = parseRepositoryConsumerConfiguration(supplied);
+  assert.deepEqual(parsed, supplied);
+  assert.ok(Object.isFrozen(parsed.planning.supportedSchemaNames));
+  assert.ok(Object.isFrozen(parsed.workRegistry));
+  assert.throws(
+    () =>
+      parseRepositoryConsumerConfiguration({
+        ...supplied,
+        documents: {
+          ...supplied.documents,
+          handoffPath: supplied.workRegistry.backlogPath,
+        },
+      }),
+    hasWorkflowCode('REPOSITORY_CONSUMER_CONFIG_INVALID'),
+  );
+  assert.throws(
+    () =>
+      parseRepositoryConsumerConfiguration({
+        ...supplied,
+        databasePolicy: { adapterId: 'unregistered-database-v1' },
+      }),
+    hasWorkflowCode('REPOSITORY_CONSUMER_CONFIG_UNSUPPORTED'),
+  );
+});

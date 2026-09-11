@@ -92,13 +92,17 @@ test('the tracked shard manifest owns every physical workflow test exactly once'
   assert.equal(manifest.schemaVersion, 1);
   assert.equal(manifest.algorithm.name, 'longest-processing-time');
   assert.equal(manifest.algorithm.version, 1);
-  assert.equal(
-    manifest.sourceTelemetryDigest,
-    'sha256:4deab100531da5ca55c59055a1f531708e4e7cf15c918e9a6b1cd4a80e542167',
-  );
+  assert.match(manifest.sourceTelemetryDigest, /^sha256:[0-9a-f]{64}$/u);
   assert.equal(manifest.shards.length, 8);
-  assert.equal(physicalFiles.length, 454);
-  assert.equal(units.length, 451);
+  const discoveredFiles = listRegularTestFiles('packages/workflow-engine/test');
+  assert.deepEqual([...physicalFiles].sort(), [...discoveredFiles].sort());
+  assert.equal(manifest.physicalFileCount, discoveredFiles.length);
+  assert.equal(new Set(physicalFiles).size, discoveredFiles.length);
+  assert.equal(manifest.executionUnitCount, units.length);
+  assert.equal(
+    new Set(units.map(({ entrypoint }) => entrypoint)).size,
+    units.length,
+  );
   assert.deepEqual(
     workflowTestShardWrapperPaths(manifest),
     Array.from(

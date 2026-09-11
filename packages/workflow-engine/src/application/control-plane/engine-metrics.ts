@@ -14,7 +14,7 @@ import type {
   AttemptRecord,
   WorkflowRecord,
 } from '../../modules/provider-orchestration/execution-core.ts';
-import { listExecutionBudgetGrantMetrics } from '../../modules/authority/execution-governance.ts';
+import { listExecutionBudgetGrantMetrics } from '../../runtime/storage-journal/execution-budget-grants.ts';
 import { listExecutionReplacementGrantRequestDigests } from './execution-replacement.ts';
 import {
   listExecutionJobs,
@@ -22,18 +22,16 @@ import {
 } from '../../runtime/provider-execution/execution-runtime.ts';
 import {
   privatePathExists,
-  readHumanResolutionNode,
   readPrivateCanonicalJson,
-} from '../../runtime/storage-journal/investigation-session-store.ts';
+} from '../../runtime/storage-journal/investigation-private-files.ts';
+import { readHumanResolutionNode } from '../../runtime/storage-journal/human-resolution-nodes.ts';
 import {
   WORKFLOW_SUPERSEDE_REASONS,
   type WorkflowSupersedeReason,
 } from '../../modules/authority/intervention-control.ts';
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
-import {
-  assertInvestigationId,
-  type InvestigationRuntimePaths,
-} from '../../runtime/session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../../runtime/session-workspace/paths.ts';
+import { assertInvestigationId } from '../../foundation/repository-path/repository-path.ts';
 import {
   inspectProviderRetentionMetrics,
   type ProviderRetentionMetrics,

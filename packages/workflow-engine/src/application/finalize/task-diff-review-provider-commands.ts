@@ -11,20 +11,20 @@ import { type TaskDiffReviewChallengeResponseInput } from '../../modules/assuran
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
   createTaskDiffReviewChallengeResponse,
-  type TaskDiffReviewChallengeResponseRecord,
   assertTaskDiffReviewChallengeResponseCurrent,
-  type TaskDiffReviewRecord,
   assertTaskDiffReviewContinuationSubmissionCurrent,
   parseTaskDiffReviewContinuationSubmission,
   createTaskDiffReviewRecord,
   completeTaskDiffReviewProviderSubmission,
   TASK_DIFF_REVIEW_OUTPUT_SCHEMA,
 } from '../../modules/assurance/task-diff-review-artifact.ts';
+import type {
+  TaskDiffReviewChallengeResponseRecord,
+  TaskDiffReviewRecord,
+} from '../../modules/assurance/task-diff-review-artifact-record.ts';
 import { TASK_DIFF_REVIEW_POLICY_DIGEST } from '../../modules/assurance/task-diff-review.ts';
-import {
-  type AdmittedRoleResult,
-  admitRoleResult,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import type {
   TaskDiffReviewRuntimeBindings,
@@ -63,7 +63,9 @@ export function createTaskDiffReviewProviderCommandsModule(
   providerReservations: ReturnType<
     typeof createTaskDiffReviewProviderReservationsModule
   >,
+  roleResultAdmission: Pick<RoleAdmissionServices, 'admitRoleResult'>,
 ) {
+  const { admitRoleResult } = roleResultAdmission;
   const {
     loadActiveSessionContext,
     withRepositoryLifecycleOperation,

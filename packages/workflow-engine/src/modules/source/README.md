@@ -8,11 +8,11 @@ Use the directory tree to locate governing contracts and source imports to disco
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.source-readme v=1 digest=sha256:52d09b2254cfb33eec04b6f22d40493426e0348b86967b27b4431b10edc6a1c2 -->
+<!-- jigwright:region id=documents.source-readme v=1 digest=sha256:456d08b3bb43305d7a01cdb991ca0955b6d60067715aad58b945cd7a2fa8382d -->
 
 <!-- prettier-ignore-start -->
 
-15 files changed in this module since confirmation.
+19 files changed in this module since confirmation.
 
 ## Commands
 
@@ -27,8 +27,9 @@ Use the directory tree to locate governing contracts and source imports to disco
 
 | Type | Values | Source |
 | --- | --- | --- |
-| PolicyKind | agent-role-plan, central-role-provider-default | [planning-role-provider-policy-reader.ts](planning-role-provider-policy-reader.ts) |
+| SearchTermKind | literal-content, literal-path, symbol, config-key | [search-term.ts](search-term.ts) |
 | SystemTestOutcome | passed, not-passed, skipped, todo, missing, stale | [system-documents.ts](system-documents.ts) |
+| TrackedTreeSkipReason | symlink, submodule, binary, invalid-utf8, oversize, sensitive-path, sensitive-suppressed, total-budget, unsupported | [tracked-path.ts](tracked-path.ts) |
 
 ## Contracts
 
@@ -43,23 +44,26 @@ Header history compares Git blame at the explanation confirmation with this sour
 
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
+| [change-intent.ts](change-intent.ts) | Canonical change intent DTOs; field and wire semantics are unchanged. | 0 | History unavailable |
 | [check-command.ts](check-command.ts) | Exposes shared check-command parsing and registry types to source consumers. | 1 | History unavailable |
 | [declared-path-symbols.ts](declared-path-symbols.ts) | Lexically extracts published names from declared source paths for investigation search. | 1 | Header changed since confirmation |
 | [document-disposition.ts](document-disposition.ts) | Finds the contracts and design explanations that a module change must disposition. | 2 | Possibly stale |
 | [file-header.ts](file-header.ts) | Reads a file's responsibility and invariant bullets for document projections. | 2 | Header changed since confirmation |
-| [import-dependencies.ts](import-dependencies.ts) | Derives file dependency bindings from literal JavaScript and TypeScript imports. | 2 | No newer code observed |
+| [import-dependencies.ts](import-dependencies.ts) | Derives file dependency bindings from literal JavaScript and TypeScript imports. | 2 | Possibly stale |
 | [module-readme.ts](module-readme.ts) | Reads the handwritten module explanation and its confirmation marker. | 1 | Header changed since confirmation |
 | [mutation-class-policy.ts](mutation-class-policy.ts) | Canonicalizes mutation-class rules and classifies exact repository path identities. | 1 | History unavailable |
 | [path-role-registry.ts](path-role-registry.ts) | Classifies repository paths by planning evidence responsibility and compression eligibility. | 1 | History unavailable |
 | [planning-paths.ts](planning-paths.ts) | Checks planning artifact boundaries and maps cited Sources to immutable ledger paths. | 1 | History unavailable |
 | [planning-role-policy-paths.ts](planning-role-policy-paths.ts) | Separates the change-bound role policy path from planning provider changes. | 1 | History unavailable |
-| [planning-role-provider-policy-reader.ts](planning-role-provider-policy-reader.ts) | Reads stable current role plans and their central provider policy bytes. | 1 | History unavailable |
+| [planning-role-provider-policy-reader.ts](planning-role-provider-policy-reader.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [search-term.ts](search-term.ts) | Shared source-matching value used by investigation and implementation review. | 0 | History unavailable |
 | [spec-ownership.ts](spec-ownership.ts) | Resolves colocated contracts and their proof references from a caller's snapshot. | 2 | Possibly stale |
 | [system-description-snapshot.ts](system-description-snapshot.ts) | Projects an already-read tracked tree into system document snapshot accessors. | 1 | Header changed since confirmation |
 | [system-document-context.ts](system-document-context.ts) | Presents the task's inherited contracts, original requirements and file invariants. | 2 | No newer code observed |
 | [system-documents.ts](system-documents.ts) | Joins colocated contracts to Source wording, file invariants and observed tests. | 2 | Possibly stale |
 | [system-spec-catalog.ts](system-spec-catalog.ts) | Resolves planning capability names and aliases to their colocated canonical contracts. | 1 | Header changed since confirmation |
 | [system-spec-deltas.ts](system-spec-deltas.ts) | Groups planning deltas by their canonical colocated specification. | 1 | Header changed since confirmation |
+| [tracked-path.ts](tracked-path.ts) | Mutable tracked path observations and exact skip reasons. | 0 | History unavailable |
 
 <!-- prettier-ignore-end -->
 

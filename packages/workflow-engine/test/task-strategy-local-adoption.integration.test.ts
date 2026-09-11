@@ -1,3 +1,14 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import test from 'node:test';
 import { startSession } from '../src/application/execute-task/session.ts';
 import path from 'node:path';
@@ -16,7 +27,7 @@ import {
   writeReadyV3ExemptChange,
   runtimeRoot,
 } from './fixture.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {
   createCrossAgentFixture,
   runWorkflowCli,
@@ -29,7 +40,12 @@ test('routine resume adopts exact single-agent implementation bytes without prov
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
@@ -111,7 +127,12 @@ test('single-agent resume refuses frozen RED drift before minting a patch receip
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     const originalTest =
       "throw new Error('feature behavior is not implemented');\n";
@@ -170,17 +191,27 @@ test('single-agent local adoption replays every durable publication cut without 
       'tdd-single-agent',
     );
     try {
-      const session = startSession(repository, 'demo-change', '1.1');
+      const session = startSession(
+        productionChangeRoutingAdmissionReader,
+        repository,
+        'demo-change',
+        '1.1',
+      );
       const testPath = path.join(repository, 'test/feature.test.mjs');
       fs.mkdirSync(path.dirname(testPath), { recursive: true });
       fs.writeFileSync(
         testPath,
         "throw new Error('feature behavior is not implemented');\n",
       );
-      sealTaskStrategyRed(repository, session.sessionId, {
-        explicitActor: 'codex',
-        environment: {},
-      });
+      sealTaskStrategyRed(
+        productionChangeRoutingAdmissionReader,
+        repository,
+        session.sessionId,
+        {
+          explicitActor: 'codex',
+          environment: {},
+        },
+      );
       const implementationPath = path.join(repository, 'src/feature.ts');
       fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
       const implementationBytes = Buffer.from('export const feature = true;\n');
@@ -189,6 +220,7 @@ test('single-agent local adoption replays every durable publication cut without 
       assert.throws(
         () =>
           adoptCurrentTaskStrategyImplementation(
+            productionChangeRoutingAdmissionReader,
             repository,
             session.sessionId,
             { testCrashAfter: phase },
@@ -201,6 +233,7 @@ test('single-agent local adoption replays every durable publication cut without 
       );
 
       const replayed = adoptCurrentTaskStrategyImplementation(
+        productionChangeRoutingAdmissionReader,
         repository,
         session.sessionId,
       );
@@ -229,31 +262,50 @@ test('single-agent reservation replay never resurrects implementation bytes reve
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const red = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     assert.throws(
       () =>
-        adoptCurrentTaskStrategyImplementation(repository, session.sessionId, {
-          testCrashAfter: 'record-persisted',
-        }),
+        adoptCurrentTaskStrategyImplementation(
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          {
+            testCrashAfter: 'record-persisted',
+          },
+        ),
       /record-persisted/,
     );
     fs.rmSync(implementationPath);
 
     assert.equal(
-      adoptCurrentTaskStrategyImplementation(repository, session.sessionId),
+      adoptCurrentTaskStrategyImplementation(
+        productionChangeRoutingAdmissionReader,
+        repository,
+        session.sessionId,
+      ),
       null,
     );
     assert.equal(fs.existsSync(implementationPath), false);
@@ -276,7 +328,12 @@ test('routine strategy resume leaves ordinary tasks outside Mode A ceremony', ()
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository, 'demo-change');
     commitPlanningTransition(repository, 'demo-change');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const before = snapshotPersistentTree(runtimeRoot(repository));
 
     const resumed = runWorkflowCli(repository, [

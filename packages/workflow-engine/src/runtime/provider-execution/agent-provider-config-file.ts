@@ -14,7 +14,7 @@ import { TextDecoder } from 'node:util';
 import {
   parseAgentProviderConfigToml,
   type AgentProviderConfigSnapshot,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
 
 const MAX_CONFIG_BYTES = 1_048_576;
 type ConfigFileIdentity = Readonly<{

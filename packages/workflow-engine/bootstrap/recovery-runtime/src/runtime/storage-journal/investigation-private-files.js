@@ -11,7 +11,7 @@ import path from 'node:path';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError, } from "../../foundation/errors/errors.js";
 import { publishPreparedExclusiveLock, reclaimDeadPreparedLock, } from "../repository-transaction/filesystem-safety.js";
-import { hasExactKeys, isNodeError, isRecord, isTimestamp, } from "./investigation-store-values.js";
+import { hasExactKeys, isNodeError, isRecord, isTimestamp, } from "../../modules/investigation/domain/investigation-store-values.js";
 export const MAX_HUMAN_RESOLUTION_BYTES = 1_048_576;
 const NO_FOLLOW_CREATE = fs.constants.O_RDWR |
     fs.constants.O_CREAT |

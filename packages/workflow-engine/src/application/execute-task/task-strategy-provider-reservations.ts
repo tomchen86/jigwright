@@ -1,3 +1,5 @@
+import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 /**
  * Reserves implementation providers and authorizes their retry attempts.
  *
@@ -5,24 +7,21 @@
  * - A retry reservation requires the same failed attempt with a retryable
  *   failure.
  */
+import type { ProviderRetryAccountingReader } from '../../modules/provider-orchestration/provider-retry-accounting.ts';
 import {
-  type TaskStrategyImplementationSubject,
   TASK_STRATEGY_IMPLEMENTATION_POLICY_DIGEST,
   createTaskStrategyImplementationManifest,
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
 } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
+import type { TaskStrategyImplementationSubject } from '../../modules/provider-orchestration/task-strategy-implementation-manifest.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   type RoleParticipant,
   scheduleOrdinaryRole,
   type ProviderRoleAssignment,
-  authorizeGrantedOrdinaryRole,
   type GrantedSameProviderRoleAssignment,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
-import {
-  type TaskMandateBinding,
-  authorizeTaskMandateProviderReservationUnderLifecycleLock,
-} from '../../modules/authority/task-mandate.ts';
+} from '../../modules/provider-orchestration/role-assignment.ts';
+import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import { createProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import { authorizeAutomaticProviderRetry } from '../../modules/provider-orchestration/provider-retry-decision.ts';
 import {
@@ -30,7 +29,7 @@ import {
   providerExecutionPolicySnapshot,
   providerExecutionEnvironmentDigest,
 } from '../../modules/provider-orchestration/execution-core.ts';
-import { bindingFromPayload } from '../../modules/authority/collaboration-grant.ts';
+import { bindingFromPayload } from '../../modules/authority/collaboration-grant-codec.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import type {
   TaskStrategyImplementationRuntimeBindings,
@@ -51,10 +50,19 @@ import type {
 import type { createTaskStrategyImplementationContext } from './task-strategy-implementation-context.ts';
 import type { createTaskStrategyCallerAdmission } from './task-strategy-caller-admission.ts';
 export function createTaskStrategyProviderReservations(
+  roleAdmission: Pick<RoleAdmissionServices, 'authorizeGrantedOrdinaryRole'>,
   runtime: TaskStrategyImplementationRuntimeBindings,
   context: ReturnType<typeof createTaskStrategyImplementationContext>,
   callerAdmission: ReturnType<typeof createTaskStrategyCallerAdmission>,
+  taskMandate: Pick<
+    TaskMandateOperations,
+    'authorizeTaskMandateProviderReservationUnderLifecycleLock'
+  >,
 ) {
+  const { authorizeTaskMandateProviderReservationUnderLifecycleLock } =
+    taskMandate;
+  const { authorizeGrantedOrdinaryRole } = roleAdmission;
+
   const {
     loadActiveSessionContext,
     loadInvestigationRuntimeContext,
@@ -344,6 +352,7 @@ export function createTaskStrategyProviderReservations(
     failedAttempt: TaskStrategyImplementationProviderAttempt,
     options: BeginTaskStrategyImplementationOptions,
     assertOwned: () => void,
+    readProviderRetryAccountingEvidence: ProviderRetryAccountingReader,
   ):
     | TaskStrategyImplementationProviderAttempt
     | TaskStrategyImplementationStatus {
@@ -390,13 +399,21 @@ export function createTaskStrategyProviderReservations(
       policy,
       retrySeed,
     });
-    let authorization = authorizeAutomaticProviderRetry(runtime, {
-      failed,
-      failedRequest: failedAttempt.request,
-      replacementRequest,
-      replacementExecutionPolicy: policy,
-      dataAuthorizationPolicyPort: AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
-    });
+    let authorization = authorizeAutomaticProviderRetry(
+      readProviderRetryAccountingEvidence(
+        runtime,
+        failed,
+        failedAttempt.request,
+      ),
+      {
+        failed,
+        failedRequest: failedAttempt.request,
+        replacementRequest,
+        replacementExecutionPolicy: policy,
+        dataAuthorizationPolicyPort: AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
+        now: new Date().toISOString(),
+      },
+    );
     let strategyChanges: string[] = [];
     if (authorization.decision.retryMode === 'strategy-change') {
       const changed = authorizeTaskStrategyRetryStrategyChange({
@@ -430,13 +447,22 @@ export function createTaskStrategyProviderReservations(
         policy,
         retrySeed,
       });
-      authorization = authorizeAutomaticProviderRetry(runtime, {
-        failed,
-        failedRequest: failedAttempt.request,
-        replacementRequest,
-        replacementExecutionPolicy: policy,
-        dataAuthorizationPolicyPort: AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
-      });
+      authorization = authorizeAutomaticProviderRetry(
+        readProviderRetryAccountingEvidence(
+          runtime,
+          failed,
+          failedAttempt.request,
+        ),
+        {
+          failed,
+          failedRequest: failedAttempt.request,
+          replacementRequest,
+          replacementExecutionPolicy: policy,
+          dataAuthorizationPolicyPort:
+            AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
+          now: new Date().toISOString(),
+        },
+      );
     } else if (options.collaborationGrant !== undefined) {
       if (
         !('grantId' in root.assignment) ||

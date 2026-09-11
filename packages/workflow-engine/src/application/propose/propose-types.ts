@@ -10,11 +10,9 @@
 import type { ProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
 import { type AssuranceAssessmentReport } from '../../modules/assurance/assurance-assessment-chain.ts';
 import { type GlobalPlanReviewCoverageRequirement } from '../../modules/assurance/plan-review-coverage.ts';
-import {
-  type PlanReviewDispositionSubmission,
-  type PlanReviewSubject,
-  type PlanReviewTargetSnapshot,
-} from '../../modules/assurance/plan-review.ts';
+import { type PlanReviewDispositionSubmission } from '../../modules/assurance/plan-review.ts';
+import type { PlanReviewSubject } from '../../modules/assurance/plan-review-subject.ts';
+import type { PlanReviewTargetSnapshot } from '../../modules/assurance/plan-review-target-snapshot-record.ts';
 import {
   type ConsumedPlanReviewReplayPort,
   type ConsumedRoleResultReplayPort,
@@ -37,7 +35,7 @@ import {
   type InvestigationGroupFacts,
   type ReviewedPathRelationship,
 } from '../../modules/investigation/domain/investigation-groups.ts';
-import { type InvestigationScanFacts } from '../../modules/investigation/domain/investigation-scanner.ts';
+import { type InvestigationScanFacts } from '../../modules/investigation/domain/investigation-scan-facts.ts';
 import {
   type InvestigationTermContribution,
   type InvestigationTermRawCounts,
@@ -48,16 +46,18 @@ import { buildInvestigationV3WhyAuthoring } from '../../modules/investigation/ma
 import { type ActorSignal } from '../../modules/provider-orchestration/actor-identity.ts';
 import { type ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import { type ProviderExecutionGrantAuthorization } from '../../modules/provider-orchestration/provider-retry-decision.ts';
+import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+
 import {
-  type AdmittedRoleResult,
   type ProviderRoleAssignment,
   type RecordedRoleParticipant,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+} from '../../modules/provider-orchestration/role-assignment.ts';
 import {
   type RoleTopologyResolutionDependencyPortV1,
   type RoleTopologyResolutionV1,
 } from '../../modules/provider-orchestration/role-topology-resolution.ts';
-import { type ReuseCoverageRecord } from '../../modules/why-knowledge/semantic-manifest-reuse.ts';
+import { type ReuseCoverageRecord } from '../../modules/assurance/review-coverage.ts';
+
 import { type ProposeGrantAuthorization } from './plan-review-contracts.ts';
 import { type PlanningTransitionResult } from './planning-transition.ts';
 import type {
@@ -69,14 +69,14 @@ import type {
   InvestigationSession,
   InvestigationStatus,
   MaintainerSignerProvider,
-  NormalizedChangeIntent,
-  PlanReviewManifest,
   ProposeExemptionSession,
   ProposeRuntime,
-  ProviderExecutionPolicySnapshotCurrent,
-  ProviderRetryDecisionBinding,
   StoredInvestigationCheckpoint,
 } from './propose-runtime.ts';
+import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
+import type { PlanReviewManifest } from '../../modules/assurance/provider-review-manifests.ts';
+import type { ProviderExecutionPolicySnapshotCurrent } from '../../modules/provider-orchestration/provider-execution-policy-snapshot.ts';
+import type { ProviderRetryDecisionBinding } from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
 
 export type ProposeProviderDriver = (input: {
   paths: ReturnType<

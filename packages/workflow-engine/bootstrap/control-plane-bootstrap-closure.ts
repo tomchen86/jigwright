@@ -489,7 +489,7 @@ function verifyClosureManifestV2(
       'scope',
     ]) ||
     value.kind !== 'built-in-engine-closure-manifest.v2' ||
-    value.entrypoint !== 'src/cli.ts' ||
+    value.entrypoint !== 'src/entrypoints/cli/workflow-cli.ts' ||
     value.scope !== 'workspace-runtime-source-closure' ||
     !Array.isArray(value.packages) ||
     value.packages.length === 0 ||

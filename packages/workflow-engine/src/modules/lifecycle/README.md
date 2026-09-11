@@ -8,7 +8,7 @@ Keep repository routing in one controlled source and derive the visible inventor
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:eeca8dba68cbafba42e18b986ebaefb534783e7c4699857e157c908e5167780d -->
+<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:a12726245d02df63f5de2d666efd31a3a5b76cf53a2a8f7d9b79523d173cd7e4 -->
 
 <!-- prettier-ignore-start -->
 
@@ -44,6 +44,7 @@ Keep repository routing in one controlled source and derive the visible inventor
 | Type | Values | Source |
 | --- | --- | --- |
 | ChangeRoutingState | primary, concurrent, ready, blocked, resume-available, parked, completed-awaiting-archive, archived, revising, recovery-required | [change-routing.ts](change-routing.ts) |
+| ChangeRoutingRuntimeState | revising, recovery-required, null | [change-routing.ts](change-routing.ts) |
 | ManagedTaskStrategyState | not-required, session-terminal, transformation-required, transformation-produced, red-authoring, implementation-required, ready, reservation-persisted, collaboration-grant-required, waiting-for-provider, provider-succeeded-awaiting-import, provider-failed, correction-required, correction-exhausted, caller-supplied-awaiting-import, patch-imported | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
 | ManagedTaskDiffReviewState | not-required, ready, collaboration-grant-required, external-grant-resume-required, direct-human-attestation-required, external-reconciliation-required, satisfied, challenge-response-required, challenge-closure-required, changes-required, waiting-for-provider, provider-succeeded-awaiting-reconciliation, provider-failed | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
 
@@ -65,14 +66,14 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [change-routing-grant-contract.ts](change-routing-grant-contract.ts) | Defines the stable identity and schema bindings of routing continuation Grants. | 1 | History unavailable |
 | [change-routing-grant.ts](change-routing-grant.ts) | Defines and requests authorization to continue a parked or manually blocked change. | 1 | History unavailable |
 | [change-routing-transaction.ts](change-routing-transaction.ts) | Builds and validates reports binding a routing review to its lifecycle Source update. | 1 | History unavailable |
-| [change-routing.ts](change-routing.ts) | Reviews and applies change routing, dependencies, blockers, and protected continuations. | 1 | History unavailable |
+| [change-routing.ts](change-routing.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [context-manifest-contract.ts](context-manifest-contract.ts) | Declares the context manifest binding an execution epoch to its planned inputs. | 1 | History unavailable |
 | [contract-digests.ts](contract-digests.ts) | Computes identities for the required registered check definitions. | 1 | History unavailable |
-| [managed-trailers.ts](managed-trailers.ts) | Exposes the shared managed commit trailer grammar to lifecycle callers. | 1 | Header changed since confirmation |
+| [managed-trailers.ts](managed-trailers.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) | Defines shared task strategy, review and authority-plan state names. | 1 | Header changed since confirmation |
 | [planning-amendment-decision.ts](planning-amendment-decision.ts) | Creates, reads and replaces canonical amendment decisions embedded in proposal markers. | 1 | History unavailable |
 | [planning-execution-epoch.ts](planning-execution-epoch.ts) | Advances and recovers execution epochs across planning amendments. | 1 | History unavailable |
-| [planning-generation.ts](planning-generation.ts) | Creates canonical planning generations from targets, investigation evidence, and policies. | 1 | History unavailable |
+| [planning-generation.ts](planning-generation.ts) | No leading responsibility comment. | 0 | History unavailable |
 
 <!-- prettier-ignore-end -->
 

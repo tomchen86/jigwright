@@ -1,3 +1,4 @@
+import { inspectReviewerTermResolutionAuthorization } from '../src/composition-root/investigation-retry-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -9,12 +10,11 @@ import {
   readInvestigationEvidenceRefsClosure,
   writeEvidenceNode,
 } from '../src/runtime/storage-journal/evidence-object-store.ts';
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
+import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import {
   createInvestigationCheckpointEnvelope,
   getInvestigationStatus,
-  inspectReviewerTermResolutionAuthorization,
   SimulatedHumanResolutionCrash,
 } from '../src/adapters/planning/investigation/investigation-session.ts';
 import {
@@ -23,17 +23,19 @@ import {
   getProposeStatus,
   resumePropose,
   startPropose,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import { type ProviderRunnerReport } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
+import { checkpointContributionDigest } from '../src/modules/investigation/domain/investigation-checkpoint-contract.ts';
 import {
-  checkpointContributionDigest,
   compareAndSwapInvestigationSession,
+  readInvestigationSession,
+} from '../src/runtime/storage-journal/investigation-session-records.ts';
+import {
   inspectInvestigationQuarantineState,
   inspectInvestigationResolutionState,
-  readHumanResolutionJournal,
-  readInvestigationSession,
-} from '../src/runtime/storage-journal/investigation-session-store.ts';
+} from '../src/runtime/storage-journal/human-resolution-state.ts';
+import { readHumanResolutionJournal } from '../src/runtime/storage-journal/human-resolution-journal.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import { PROPOSE_POLICY_DIGEST } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {

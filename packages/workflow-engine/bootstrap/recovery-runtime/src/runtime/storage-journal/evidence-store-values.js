@@ -8,7 +8,7 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
-import { assertInvestigationId, } from "../session-workspace/paths.js";
+import { assertInvestigationId } from "../../foundation/repository-path/repository-path.js";
 export const DIGEST_PATTERN = /^[0-9a-f]{64}$/;
 export const GIT_OBJECT_ID_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 export const REF_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*$/;

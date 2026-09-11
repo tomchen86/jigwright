@@ -14,10 +14,8 @@ import {
   readPrivateCanonicalJson,
   assertPrivateInvestigationDirectory,
 } from './investigation-private-files.ts';
-import {
-  type InvestigationRuntimePaths,
-  assertSessionId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import {
   type TaskDiffReviewReservationRecord,
   sha256,

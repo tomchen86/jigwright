@@ -29,13 +29,12 @@ import {
   type InvestigationDispositionInput,
   deriveInvestigationGroupFacts,
 } from '../../modules/investigation/domain/investigation-groups.ts';
-import { scanInvestigationTreeFacts } from '../../modules/investigation/domain/investigation-scanner.ts';
 import {
   type InvestigationTermContribution,
   type InvestigationTermRawCounts,
   previewInvestigationTermUnion,
 } from '../../modules/investigation/domain/investigation-terms.ts';
-import { type InvestigationWhyOverlayV3 } from '../../modules/investigation/manifest/investigation-manifest.ts';
+import { type InvestigationWhyOverlayV3 } from '../../modules/investigation/manifest/investigation-manifest-types.ts';
 import {
   type MaterializedEvidenceView,
   materializeInvestigationEvidenceViewFromFacts,
@@ -46,8 +45,8 @@ import {
   mapInvestigationWhyCheckpointToV3Sources,
 } from '../../modules/investigation/manifest/investigation-why-domain.ts';
 import { PROPOSE_POLICY_DIGEST } from '../../modules/provider-orchestration/provider-contracts.ts';
+import { type ReuseCoverageRecord } from '../../modules/assurance/review-coverage.ts';
 import {
-  type ReuseCoverageRecord,
   applyLedgerToFullBlobManifest,
   recordReuseCoverage,
 } from '../../modules/why-knowledge/semantic-manifest-reuse.ts';
@@ -76,10 +75,10 @@ import {
 import type {
   EvidenceNode,
   InvestigationSession,
-  NormalizedChangeIntent,
   ProposeRuntime,
   TrackedTreeSnapshot,
 } from './propose-runtime.ts';
+import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
 import {
   type CollaborationGrantAccessMode,
   type ProposeResumeOptions,
@@ -254,7 +253,13 @@ function isDegradedCoveragePath(targetPath: string): boolean {
 export function rebuildInvestigation(
   services: Pick<
     ProposeRuntime,
-    'evidence' | 'grants' | 'investigation' | 'provider' | 'workspace'
+    | 'evidence'
+    | 'grants'
+    | 'investigation'
+    | 'provider'
+    | 'workspace'
+    | 'planningEvidence'
+    | 'roleAdmission'
   >,
   cwd: string,
   investigationId: string,
@@ -286,11 +291,14 @@ export function rebuildInvestigation(
     session.currentBlindInvocationId,
   );
   const intent = manifest.normalizedIntent;
-  const changedPaths = derivePinnedDiffPathFacts({
-    repositoryRoot: context.git.repositoryRoot,
-    baseCommit: authorization.protectedBase.commit,
-    targetCommit: session.baseline.head,
-  });
+  const changedPaths = derivePinnedDiffPathFacts(
+    services.workspace.readPinnedPathDiff,
+    {
+      repositoryRoot: context.git.repositoryRoot,
+      baseCommit: authorization.protectedBase.commit,
+      targetCommit: session.baseline.head,
+    },
+  );
   const reviewedRelationships = deriveReviewedAssetRelationships(
     services,
     context,
@@ -463,7 +471,7 @@ export function rebuildInvestigation(
     grantValidation,
     assertOwned,
   );
-  const scanFactsResult = scanInvestigationTreeFacts({
+  const scanFactsResult = services.workspace.scanInvestigationTreeFacts({
     repositoryRoot: context.git.repositoryRoot,
     treeOid: session.baseline.tree,
     terms: preview.terms,
@@ -472,7 +480,7 @@ export function rebuildInvestigation(
       session.scanSaturationAcceptance !== undefined,
   });
   if (scanFactsResult.outcome !== 'ready') {
-    const acceptedScan = scanInvestigationTreeFacts({
+    const acceptedScan = services.workspace.scanInvestigationTreeFacts({
       repositoryRoot: context.git.repositoryRoot,
       treeOid: session.baseline.tree,
       terms: preview.terms,
@@ -591,6 +599,7 @@ export function rebuildInvestigation(
   // Everything it carries keeps its group and its disposition; what it loses is
   // the obligation to be explained again by someone with nothing new to say.
   const manifestReuse = applyLedgerToFullBlobManifest(
+    services.workspace,
     context.git.repositoryRoot,
     derivedFullBlobManifest,
     // Naming the policy that judges this propose is what makes a raised policy

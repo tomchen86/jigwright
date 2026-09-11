@@ -1,3 +1,13 @@
+import type {
+  TaskStrategyFrozenFile,
+  TaskStrategyTransaction,
+  TaskStrategyTransactionInput,
+} from '../../modules/assurance/task-strategy-evidence.ts';
+export type {
+  TaskStrategyFrozenFile,
+  TaskStrategyTransaction,
+  TaskStrategyTransactionInput,
+} from '../../modules/assurance/task-strategy-evidence.ts';
 /**
  * Validates and persists immutable task strategy RED transactions by content digest.
  *
@@ -13,11 +23,11 @@ import {
   type EvidenceNode,
   assertStoredEvidenceNode,
 } from '../../foundation/evidence-node/evidence-node.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import {
-  type InvestigationRuntimePaths,
   assertSessionId,
   normalizeChangedPath,
-} from '../session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   createPrivateCanonicalJson,
@@ -35,54 +45,6 @@ const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const TASK_ID = /^\d+(?:\.\d+)+$/;
 
 const CHANGE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
-export type TaskStrategyFrozenFile = Readonly<{
-  path: string;
-  mode: '100644' | '100755';
-  objectId: string;
-}>;
-
-export type TaskStrategyTransaction = Readonly<{
-  schemaVersion: 1;
-  kind: 'task-strategy-transaction.v1';
-  recordDigest: string;
-  sessionId: string;
-  changeId: string;
-  taskId: string;
-  baseline: Readonly<{ head: string; tree: string }>;
-  strategy: 'cross-agent-tdd' | 'tdd-single-agent';
-  phase: 'red-sealed';
-  taskContractDigest: string;
-  author: Readonly<{
-    providerId: ProviderId;
-    assurance: 'self-declared' | 'runtime-hint' | 'adapter-assigned';
-  }>;
-  red: Readonly<{
-    candidateTree: string;
-    changedPaths: readonly string[];
-    checkId: string;
-    runner: string;
-    runnerDigest: string;
-    exitCode: number;
-    failureCategory: 'assertion' | 'behavior-mismatch';
-    selector: string;
-    testPaths: readonly string[];
-    fixturePaths: readonly string[];
-    files: readonly TaskStrategyFrozenFile[];
-    stdoutDigest: string;
-    stderrDigest: string;
-    failureFingerprint: string;
-    evidenceNodeId: string;
-    evidenceResultDigest: string;
-    evidenceNode: EvidenceNode;
-  }>;
-  createdAt: string;
-}>;
-
-export type TaskStrategyTransactionInput = Omit<
-  TaskStrategyTransaction,
-  'schemaVersion' | 'kind' | 'recordDigest'
->;
 
 /**
  * Persist a successor RED transaction without publishing it as current.

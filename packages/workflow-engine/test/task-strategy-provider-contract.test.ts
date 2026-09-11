@@ -7,7 +7,7 @@ import { parseCollaborationGrantArguments } from '../src/entrypoints/cli/collabo
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { providerOutputSchemaGeneration } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import { runGit } from '../src/runtime/repository-transaction/git.ts';
-import { scheduleOrdinaryRole } from '../src/modules/provider-orchestration/role-scheduler.ts';
+import { scheduleOrdinaryRole } from '../src/modules/provider-orchestration/role-assignment.ts';
 import {
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR,

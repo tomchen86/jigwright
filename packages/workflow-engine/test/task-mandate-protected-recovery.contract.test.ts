@@ -6,11 +6,11 @@ import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import {
   grantStorePaths,
-  readGrantRecord,
+  createFileGrantRecordStore,
 } from '../src/runtime/storage-journal/grant-store.ts';
 import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
-import { loadGrantPolicyV2 } from '../src/modules/authority/grant-policy.ts';
+import { loadGrantPolicyV2 } from '../src/runtime/repository-observation/grant-policy-reader.ts';
 import { protectedTaskApplyGrantTransitionDefinitions } from '../src/modules/authority/protected-task-apply-grant.ts';
 import { createProductionProtectedTaskApplyGrantPort } from '../src/composition-root/protected-task-apply-grant-production.ts';
 import {
@@ -18,7 +18,7 @@ import {
   requestChangeRoleAssignmentGrant,
   withProductionGrantLifecycleOperation,
 } from '../src/composition-root/grant-production.ts';
-import { dispatchAsync } from '../src/cli.ts';
+import { dispatchAsync } from '../src/entrypoints/cli/workflow-cli.ts';
 import {
   assertProtectedTaskApplyRecoveryGrantRequiredDetails,
   protectedTaskApplyRecoveryGrantTransitionDefinitions,
@@ -44,9 +44,9 @@ import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts'
 import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import {
   abortSessionAfterProtectedTaskApplyRecoveryUnderGrant,
-  abortSession,
   getSession,
 } from '../src/application/execute-task/session.ts';
+import { abortSession } from '../src/composition-root/task-session-production.ts';
 import {
   createProtectedReviewFixture,
   createPreparedRoleGrantFixture,
@@ -122,7 +122,9 @@ test('prepares a below-floor role Grant without launching the protected reviewer
     ]);
 
     const roleAssignmentCoordinator = createGrantCoordinatorKernel({
-      paths: grantStorePaths(lifecycleRuntime.root),
+      now: () => new Date(),
+      randomUUID: () => crypto.randomUUID(),
+      store: createFileGrantRecordStore(grantStorePaths(lifecycleRuntime.root)),
       registry: createTransitionRegistry(
         changeRoleAssignmentGrantTransitionDefinitions({
           observe: (parameters) => roleAssignmentPort.observe(parameters),
@@ -194,10 +196,9 @@ test('prepares a below-floor role Grant without launching the protected reviewer
     }
 
     assert.equal(
-      readGrantRecord(
+      createFileGrantRecordStore(
         grantStorePaths(lifecycleRuntime.root),
-        roleAssignmentGrant.challengeId,
-      ).state,
+      ).readGrantRecord(roleAssignmentGrant.challengeId).state,
       'pending',
     );
 
@@ -209,10 +210,9 @@ test('prepares a below-floor role Grant without launching the protected reviewer
     );
 
     assert.equal(
-      readGrantRecord(
+      createFileGrantRecordStore(
         grantStorePaths(lifecycleRuntime.root),
-        roleAssignmentGrant.challengeId,
-      ).state,
+      ).readGrantRecord(roleAssignmentGrant.challengeId).state,
       'prepared',
     );
 
@@ -237,18 +237,16 @@ test('prepares a below-floor role Grant without launching the protected reviewer
     );
 
     assert.equal(
-      readGrantRecord(
+      createFileGrantRecordStore(
         grantStorePaths(lifecycleRuntime.root),
-        protectedGrant.result.grant.challengeId,
-      ).state,
+      ).readGrantRecord(protectedGrant.result.grant.challengeId).state,
       'prepared',
     );
 
     assert.equal(
-      readGrantRecord(
+      createFileGrantRecordStore(
         grantStorePaths(lifecycleRuntime.root),
-        roleAssignmentGrant.challengeId,
-      ).state,
+      ).readGrantRecord(roleAssignmentGrant.challengeId).state,
       'prepared',
     );
   } finally {
@@ -361,10 +359,9 @@ test('settles prepared descendants before exact protected cancellation and repla
     );
 
     assert.equal(
-      readGrantRecord(
+      createFileGrantRecordStore(
         grantStorePaths(lifecycleRuntime.root),
-        protectedGrant.result.grant.challengeId,
-      ).state,
+      ).readGrantRecord(protectedGrant.result.grant.challengeId).state,
       'prepared',
     );
 
@@ -412,7 +409,9 @@ test('settles prepared descendants before exact protected cancellation and repla
     const settlementGrant = settlementFailGrant.result.grant;
 
     const settlementCoordinator = createGrantCoordinatorKernel({
-      paths: grantStorePaths(lifecycleRuntime.root),
+      now: () => new Date(),
+      randomUUID: () => crypto.randomUUID(),
+      store: createFileGrantRecordStore(grantStorePaths(lifecycleRuntime.root)),
       registry: createTransitionRegistry([
         ...changeRoleAssignmentGrantTransitionDefinitions(roleAssignmentPort),
         ...protectedTaskApplyDescendantSettlementTransitionDefinitions(
@@ -467,10 +466,9 @@ test('settles prepared descendants before exact protected cancellation and repla
 
     assert.equal(settlementResult.outcome, 'completed');
 
-    const settledRoleGrant = readGrantRecord(
+    const settledRoleGrant = createFileGrantRecordStore(
       grantStorePaths(lifecycleRuntime.root),
-      roleAssignmentGrant.challengeId,
-    );
+    ).readGrantRecord(roleAssignmentGrant.challengeId);
 
     assert.equal(settledRoleGrant.state, 'failed');
 
@@ -534,10 +532,9 @@ test('settles prepared descendants before exact protected cancellation and repla
 
     const recoveryGrant = recoveryFailGrant.result.grant;
 
-    const recoveryRecord = readGrantRecord(
+    const recoveryRecord = createFileGrantRecordStore(
       grantStorePaths(lifecycleRuntime.root),
-      recoveryGrant.challengeId,
-    );
+    ).readGrantRecord(recoveryGrant.challengeId);
 
     assert.equal(recoveryRecord.state, 'pending');
 
@@ -567,7 +564,11 @@ test('settles prepared descendants before exact protected cancellation and repla
     const recoveryCoordinator = coordinateProtectedTaskApplyRecoveryParent(
       protectedRepository,
       createGrantCoordinatorKernel({
-        paths: grantStorePaths(lifecycleRuntime.root),
+        now: () => new Date(),
+        randomUUID: () => crypto.randomUUID(),
+        store: createFileGrantRecordStore(
+          grantStorePaths(lifecycleRuntime.root),
+        ),
         registry: createTransitionRegistry([
           ...protectedTaskApplyGrantTransitionDefinitions(
             createProductionProtectedTaskApplyGrantPort(protectedRepository),
@@ -625,10 +626,9 @@ test('settles prepared descendants before exact protected cancellation and repla
     assert.equal(recoveryResult.outcome, 'completed');
 
     assert.equal(
-      readGrantRecord(
+      createFileGrantRecordStore(
         grantStorePaths(lifecycleRuntime.root),
-        recoveryGrant.challengeId,
-      ).state,
+      ).readGrantRecord(recoveryGrant.challengeId).state,
       'completed',
     );
 
@@ -651,10 +651,9 @@ test('settles prepared descendants before exact protected cancellation and repla
 
     assert.equal(cancellation?.reason, recoveryDetails.reason);
 
-    const failedParent = readGrantRecord(
+    const failedParent = createFileGrantRecordStore(
       grantStorePaths(lifecycleRuntime.root),
-      protectedGrant.result.grant.challengeId,
-    );
+    ).readGrantRecord(protectedGrant.result.grant.challengeId);
 
     assert.equal(failedParent.state, 'failed');
 

@@ -14,7 +14,7 @@ import {
   projectLogicalProviderCatalog,
   type CentralRoleProviderDefaultWizardPromptPort,
 } from '../src/application/configure/central-role-provider-default-wizard.ts';
-import type { AgentProviderConfigSnapshot } from '@jigwright/agent-runtime';
+import type { AgentProviderConfigSnapshot } from '@jigwright/core/agent-provider-config';
 
 const current = createCentralRoleProviderDefault({
   schemaVersion: 1,

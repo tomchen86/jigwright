@@ -8,13 +8,13 @@ import { discoverRepository } from '../src/runtime/repository-transaction/git.ts
 import {
   discardHumanResolutionGrantPublication,
   inspectHumanResolutionGrantPublicationRecoveries,
-} from '../src/adapters/planning/investigation/investigation-session.ts';
+} from '../src/composition-root/investigation-retry-production.ts';
+import { createHumanResolutionJournal } from '../src/modules/investigation/domain/human-resolution-journal-contract.ts';
 import {
-  createHumanResolutionJournal,
   inspectStoredHumanResolutionGrants,
   storeAvailableHumanResolutionGrant,
-  writeHumanResolutionJournal,
-} from '../src/runtime/storage-journal/investigation-session-store.ts';
+} from '../src/runtime/storage-journal/human-resolution-grant-store.ts';
+import { writeHumanResolutionJournal } from '../src/runtime/storage-journal/human-resolution-journal.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 import {

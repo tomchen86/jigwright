@@ -1,3 +1,8 @@
+import type { ArchiveApplicabilityProjectionInput } from '../../modules/planning-provider/planning-archive-projection-port.ts';
+export type { ArchiveApplicabilityProjectionInput } from '../../modules/planning-provider/planning-archive-projection-port.ts';
+import type { PlanningArchiveSourcePolicy } from '../../modules/planning-provider/planning-archive-projection-port.ts';
+import type { PlanningPathPolicy } from '../../modules/source/planning-paths.ts';
+import type { ArchivedWorkItemReconciler } from '../../modules/governance-intake/work-registry-contracts.ts';
 /**
  * Builds and verifies an archive transformation in a temporary detached
  * worktree.
@@ -17,7 +22,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { isBaseSpecificationPath } from '../../modules/source/system-spec-catalog.ts';
 import type { SystemDescriptionSnapshot } from '../../modules/source/spec-ownership.ts';
-import { readSystemSpecDeltaInputs } from '../../modules/source/system-spec-deltas.ts';
+import type { ReadSystemSpecDeltaInputs } from '../../modules/source/system-spec-deltas.ts';
 
 import type { ArchiveEligibility } from './archive-eligibility.ts';
 import {
@@ -58,18 +63,15 @@ import {
   readFileAtCommit,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
-import { renderHandoffFromTrackedFacts } from '../../adapters/consumer/repository/handoff/handoff.ts';
-import { repositoryHandoffRelativePath } from '../../adapters/consumer/repository/work-registry/contracts.ts';
-import {
-  assertPlanningPaths,
-  requiredPlanningArtifactPaths,
-} from '../../modules/source/planning-paths.ts';
-import { reconcileArchivedWorkItems } from '../../modules/governance-intake/work-registry.ts';
+
+import { repositoryHandoffRelativePath } from '../../runtime/repository-observation/workflow-configuration.ts';
+import { assertPlanningPaths } from '../../modules/source/planning-paths.ts';
+
 import { completionDocumentPaths } from '../../runtime/managed-documents/validation/managed-documents.ts';
 import {
   assertChangeId,
   normalizeChangedPath,
-} from '../../runtime/session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import type { ResolvedPlanningProviderBinding } from '../../modules/planning-provider/planning-provider-binding.ts';
 
 export type ArchiveTransformation = {
@@ -84,18 +86,6 @@ export type ArchiveTransformation = {
   archivedArtifactDigests: Record<string, string>;
   providerVersion: string;
   totals?: ArchiveTotals;
-};
-
-export type ArchiveApplicabilityProjectionInput = {
-  repositoryRoot: string;
-  changeRoot: string;
-  changeId: string;
-  baselineCommit: string;
-  sourceCommit: string;
-  activeArtifactPaths: string[];
-  planningProvider: ResolvedPlanningProviderBinding;
-  source: 'worktree' | 'commit';
-  now?: Date;
 };
 
 export type ArchiveTransformationTestHooks = {
@@ -119,6 +109,9 @@ type ArchivePayload = {
 type PublicArchivePayload = ArchivePayload & { archivePath: string };
 
 export function createArchiveTransformation(
+  sourcePolicy: PlanningArchiveSourcePolicy,
+  renderTrackedHandoff: (repositoryRoot: string) => string,
+  reconcileArchivedWorkItems: ArchivedWorkItemReconciler,
   eligibility: ArchiveEligibility,
   options: {
     now?: () => Date;
@@ -127,7 +120,7 @@ export function createArchiveTransformation(
   } = {},
 ): ArchiveTransformation {
   assertEligibilityCurrent(eligibility);
-  assertEligibilityArtifactManifest(eligibility);
+  assertEligibilityArtifactManifest(sourcePolicy.planningPaths, eligibility);
   const archiveProjectionPort =
     options.archiveProjectionPort ??
     createOpenSpecPlanningArchiveProjectionPort();
@@ -193,6 +186,7 @@ export function createArchiveTransformation(
       archiveReconciliationTimestamp(worktree, eligibility.head),
     );
     const handoffOutputPaths = refreshArchiveManagedHandoff(
+      renderTrackedHandoff,
       worktree,
       eligibility.head,
     );
@@ -262,6 +256,7 @@ export function archiveReconciliationTimestamp(
 }
 
 export function refreshArchiveManagedHandoff(
+  renderTrackedHandoff: (repositoryRoot: string) => string,
   repositoryRoot: string,
   parentCommit: string,
 ): readonly string[] {
@@ -269,7 +264,7 @@ export function refreshArchiveManagedHandoff(
   if (!completionDocumentPaths(repositoryRoot).includes(handoffPath)) {
     return Object.freeze([]);
   }
-  const rendered = renderHandoffFromTrackedFacts(repositoryRoot);
+  const rendered = renderTrackedHandoff(repositoryRoot);
   return readFileAtCommit(repositoryRoot, parentCommit, handoffPath) ===
     rendered
     ? Object.freeze([])
@@ -343,6 +338,7 @@ export function createArchiveApplicabilityProjection(
     }
 
     const specInputs = readProjectionSpecInputs(
+      dependencies.sourcePolicy.readSystemSpecDeltaInputs,
       worktree,
       activeRoot,
       activeArtifactPaths,
@@ -766,6 +762,7 @@ function assertArchivedProjectionArtifacts(
 }
 
 function readProjectionSpecInputs(
+  readSystemSpecDeltaInputs: ReadSystemSpecDeltaInputs,
   worktree: string,
   activeRoot: string,
   activeArtifactPaths: readonly string[],
@@ -1386,10 +1383,11 @@ function assertEligibilityCurrent(eligibility: ArchiveEligibility): void {
 }
 
 function assertEligibilityArtifactManifest(
+  planningPaths: PlanningPathPolicy,
   eligibility: ArchiveEligibility,
 ): void {
   const activeRoot = `${eligibility.changeRoot}/${eligibility.changeId}`;
-  const required = requiredPlanningArtifactPaths(
+  const required = planningPaths.requiredArtifactPaths(
     eligibility.changeRoot,
     eligibility.changeId,
     eligibility.schemaName,
@@ -1397,6 +1395,7 @@ function assertEligibilityArtifactManifest(
   );
   try {
     assertPlanningPaths(
+      planningPaths.admit,
       eligibility.changeRoot,
       eligibility.changeId,
       eligibility.activeArtifactPaths,

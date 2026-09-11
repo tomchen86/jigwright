@@ -1,3 +1,13 @@
+import { taskMandateOperations } from './task-mandate-production.ts';
+import { planningTransitionExecution as planningExecution } from './planning-execution-epoch-production.ts';
+import {
+  productionChangeRoutingAdmissionReader,
+  productionChangeRoutingInspector,
+} from './change-routing-observation-production.ts';
+import { ciPlanningReplay } from './ci-replay-production.ts';
+import { managedDocuments } from './managed-documents-production.ts';
+import { loadChangeContract } from './consumer-contract-production.ts';
+import { planningDraftWorkspace } from './planning-workspace-production.ts';
 /**
  * Supplies system document context to task activation and journal recovery.
  *
@@ -19,7 +29,17 @@ export function openTask(
   options: OpenTaskOptions = {},
 ) {
   return openTaskWithPorts(
-    { readSystemDocuments: taskSystemDocumentContext },
+    {
+      planningExecution,
+      planningReplay: ciPlanningReplay,
+      taskMandate: taskMandateOperations,
+      routingAdmissionReader: productionChangeRoutingAdmissionReader,
+      routingInspector: productionChangeRoutingInspector,
+      managedDocuments,
+      loadChangeContract,
+      readSystemDocuments: taskSystemDocumentContext,
+      planningWorkspace: planningDraftWorkspace,
+    },
     cwd,
     requestedChangeId,
     requestedTaskId,

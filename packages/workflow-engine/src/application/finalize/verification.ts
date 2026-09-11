@@ -1,3 +1,6 @@
+import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
+import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Inspects task sessions, executes checks, and reconciles evidence after
  * engine adoption.
@@ -15,12 +18,10 @@ import {
   resolveLocalEngineSelection,
 } from '../../../bootstrap/control-plane-trust.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import {
-  digestArtifacts,
-  loadWorkflowConfig,
-  parseTasks,
-  type TaskPolicy,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import { digestArtifacts } from '../../runtime/repository-observation/contract-artifact-observation.ts';
+import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
+import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
+import { type TaskPolicy } from '../../modules/planning-provider/planning-artifact-types.ts';
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
 import {
   pinCheckRunner,
@@ -39,10 +40,8 @@ import {
   readPersistedWipBundle,
 } from '../control-plane/intervention-control-bootstrap.ts';
 import { readPersistedEngineAdoption } from '../../runtime/storage-journal/intervention-control-persistence.ts';
-import {
-  loadCapabilityProfileFromTrustBase,
-  type CheckDependency,
-} from '../../modules/authority/maintainer-manifest.ts';
+
+import { type CheckDependency } from '../../modules/authority/maintainer-manifest-contracts.ts';
 import {
   discoverRepository,
   fingerprintRepositoryProjection,
@@ -54,8 +53,7 @@ import {
 import {
   assertSessionId,
   matchesAllowedPath,
-} from '../../runtime/session-workspace/paths.ts';
-import { createTaskPlanningAssuranceBinding } from '../../modules/assurance/planning-assurance-validator.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import {
   readImmutableReport,
   writeImmutableReport,
@@ -74,24 +72,19 @@ import {
   withSessionOperation,
   writeJsonAtomic,
 } from '../../runtime/session-workspace/session-store.ts';
-import { assertTaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
+
 import { recordTaskStrategyGreenFailure } from '../execute-task/task-strategy-correction.ts';
 import { ensureTaskMechanicalTransformationEvidence } from '../execute-task/task-mechanical-transform.ts';
 import { assertTaskProjectionSourceDigest } from '../../runtime/managed-documents/transaction/task-projection.ts';
-import {
-  loadStableValidatedChangeContract,
-  productionChangeRoutingAuthorityPort,
-} from '../../composition-root/validated-contract-context.ts';
-import { assertChangeRoutingAdmission } from '../../modules/lifecycle/change-routing.ts';
+import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
+
 import {
   readFinalizeTransaction,
   type ProtectedTaskApplyAuthorizationBinding,
 } from '../../runtime/repository-transaction/finalize-transaction.ts';
 import { assertPreparedProtectedTaskApplyAuthorization } from './protected-task-apply-authorization.ts';
 
-type ValidatedChangeContract = ReturnType<
-  typeof loadStableValidatedChangeContract
->['contract'];
+import type { ValidatedChangeContract } from '../../modules/planning-provider/validated-change-contract.ts';
 
 export type SessionCheck = {
   sessionId: string;
@@ -125,20 +118,10 @@ type TrustedCheckPolicy = {
   externalStateFreshness: Record<string, { maxAgeMs: number }>;
 };
 
-export type SessionInspection = {
-  git: GitState;
-  session: WorkflowSession;
-  contract: ValidatedChangeContract;
-  policy: TaskPolicy;
-  artifactDigests: Record<string, string>;
-  changedPaths: string[];
-  unexpectedPaths: string[];
-  fingerprint: string;
-  tasksPath: string;
-  baselineTasks: string;
-};
-
 export function checkSession(
+  manifestOperations: MaintainerManifestOperations,
+  taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   options: SessionCheckOptions = {},
@@ -151,25 +134,42 @@ export function checkSession(
   );
   const sessionId = assertSessionId(requestedSessionId);
   return withSessionOperation(runtime, sessionId, () =>
-    checkSessionUnlocked(cwd, sessionId, options),
+    checkSessionUnlocked(
+      manifestOperations,
+      taskStrategyExecutionGate,
+      routingAdmissionReader,
+      cwd,
+      sessionId,
+      options,
+    ),
   );
 }
 
 function checkSessionUnlocked(
+  manifestOperations: MaintainerManifestOperations,
+  taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   options: SessionCheckOptions,
 ): SessionCheck {
   const reconciled = reconcileSessionChecksAfterLocalEngineAdoption(
+    manifestOperations,
+    routingAdmissionReader,
     cwd,
     requestedSessionId,
     options,
   );
   if (reconciled !== null) return reconciled;
-  const initial = inspectSession(cwd, requestedSessionId);
+  const initial = inspectSession(
+    routingAdmissionReader,
+    cwd,
+    requestedSessionId,
+  );
   ensureTaskMechanicalTransformationEvidence(initial);
-  assertTaskStrategyExecutionGate(initial, options.environment ?? process.env);
+  taskStrategyExecutionGate(initial, options.environment ?? process.env);
   const trustedPolicy = tryLoadTrustedCheckPolicy(
+    manifestOperations,
     initial.git.repositoryRoot,
     initial.session.baseline.head,
     initial.session.requiredChecks,
@@ -182,6 +182,7 @@ function checkSessionUnlocked(
       )
     : undefined;
   const verified = executeChecks(
+    routingAdmissionReader,
     cwd,
     initial,
     initial.session.requiredChecks,
@@ -261,11 +262,17 @@ type VerifiedLocalAdoption = {
  * session CAS replays to the same content-addressed report ID.
  */
 export function reconcileSessionChecksAfterLocalEngineAdoption(
+  manifestOperations: MaintainerManifestOperations,
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   options: SessionCheckOptions = {},
 ): SessionCheck | null {
-  const initial = inspectSession(cwd, requestedSessionId);
+  const initial = inspectSession(
+    routingAdmissionReader,
+    cwd,
+    requestedSessionId,
+  );
   const adoption = resolveVerifiedLocalAdoption(
     initial,
     options.environment ?? process.env,
@@ -324,6 +331,7 @@ export function reconcileSessionChecksAfterLocalEngineAdoption(
   }
 
   const trustedPolicy = loadTrustedCheckPolicy(
+    manifestOperations,
     initial.git.repositoryRoot,
     initial.session.baseline.head,
     initial.session.requiredChecks,
@@ -397,6 +405,7 @@ export function reconcileSessionChecksAfterLocalEngineAdoption(
     (checkId) => !invalidated.has(checkId),
   );
   const rerun = executeChecks(
+    routingAdmissionReader,
     cwd,
     initial,
     invalidatedCheckIds,
@@ -609,6 +618,7 @@ function isWorkflowSessionSnapshot(
 }
 
 function loadTrustedCheckPolicy(
+  manifestOperations: MaintainerManifestOperations,
   repositoryRoot: string,
   trustBaseCommit: string,
   requiredChecks: string[],
@@ -639,7 +649,7 @@ function loadTrustedCheckPolicy(
   const profiles = Object.keys(value.profiles)
     .sort()
     .map((profileId) =>
-      loadCapabilityProfileFromTrustBase(
+      manifestOperations.loadCapabilityProfileFromTrustBase(
         repositoryRoot,
         trustBaseCommit,
         profileId,
@@ -687,6 +697,7 @@ function loadTrustedCheckPolicy(
 }
 
 function tryLoadTrustedCheckPolicy(
+  manifestOperations: MaintainerManifestOperations,
   repositoryRoot: string,
   trustBaseCommit: string,
   requiredChecks: string[],
@@ -701,6 +712,7 @@ function tryLoadTrustedCheckPolicy(
     return undefined;
   }
   return loadTrustedCheckPolicy(
+    manifestOperations,
     repositoryRoot,
     trustBaseCommit,
     requiredChecks,
@@ -779,6 +791,7 @@ function isRecordValue(value: unknown): value is Record<string, unknown> {
 }
 
 export function inspectSession(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   options: {
@@ -819,10 +832,9 @@ export function inspectSession(
   assertPinnedGit(discovered, session);
 
   if (session.isolation !== undefined) {
-    const routingAdmission = assertChangeRoutingAdmission(
+    const routingAdmission = routingAdmissionReader(
       discovered.repositoryRoot,
       session.changeId,
-      productionChangeRoutingAuthorityPort,
     );
     if (
       routingAdmission.role !== session.isolation.routingRole ||
@@ -840,14 +852,12 @@ export function inspectSession(
     assertTaskSessionIsolationLeasesOwned(runtime, session);
   }
 
-  const { git, contract } = loadStableValidatedChangeContract(
-    discovered,
-    session.changeId,
-  );
+  const { git, contract, planningAssurance } =
+    loadStableValidatedChangeContract(discovered, session.changeId);
   if (
     JSON.stringify(session.planningAssurance ?? null) !==
     JSON.stringify(
-      createTaskPlanningAssuranceBinding(contract, contract.planningAssurance),
+      planningAssurance.createTaskBinding(contract, contract.planningAssurance),
     )
   ) {
     throw workflowError(
@@ -973,6 +983,7 @@ export function inspectSession(
 }
 
 export function executeChecks(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   initial: SessionInspection,
   checkIds: string[],
@@ -1021,15 +1032,20 @@ export function executeChecks(
       definition.destructiveDatabase ? databaseEvidence?.identity : undefined,
       evidenceMetadata[checkId],
     );
-    inspection = inspectSession(cwd, initial.session.sessionId, {
-      expectedSession: initial.session,
-      projectedTaskIds,
-      projectionSourceDigest,
-      authorizedTransitionPaths,
-      ...(protectedApplyAuthorization === undefined
-        ? {}
-        : { protectedApplyAuthorization }),
-    });
+    inspection = inspectSession(
+      routingAdmissionReader,
+      cwd,
+      initial.session.sessionId,
+      {
+        expectedSession: initial.session,
+        projectedTaskIds,
+        projectionSourceDigest,
+        authorizedTransitionPaths,
+        ...(protectedApplyAuthorization === undefined
+          ? {}
+          : { protectedApplyAuthorization }),
+      },
+    );
     if (
       fingerprintWorkingState(
         inspection.git.repositoryRoot,
@@ -1288,3 +1304,6 @@ function artifactsChanged() {
 function relative(root: string, target: string): string {
   return path.relative(root, target).split(path.sep).join('/');
 }
+
+import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
+export type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';

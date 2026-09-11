@@ -6,10 +6,10 @@
  * - Providers are sorted by logical identity, and enabled is true only for
  *   an explicit true policy value.
  */
-import { resolveBuiltInProviderDefinitionSnapshot } from '../adapters/providers/built-in-provider-definition.ts';
+import {resolveBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
 import { listBuiltInProviders } from '../modules/provider-orchestration/provider-registry.ts';
 import type { RoleTopologyResolutionDependencyPortV1 } from '../modules/provider-orchestration/role-topology-resolution.ts';
-import { readCurrentPlanningAgentRolePlanV2 } from '../modules/source/planning-role-provider-policy-reader.ts';
+import { readCurrentPlanningAgentRolePlanV2 } from '../runtime/repository-transaction/planning-role-provider-policy-reader.ts';
 
 /**
  * Bind the application-owned topology port to the current repository reader

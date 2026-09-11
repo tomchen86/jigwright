@@ -8,18 +8,16 @@ import { projectAuthorityRemap } from '../src/composition-root/authority-remap.t
 import type {
   AuthorityRemapPlanIntent,
   AuthorityRemapProjection,
-} from '../src/composition-root/authority-remap.ts';
-import {
-  loadCapabilityProfileFromTrustBase,
-  classifyFileRole,
-} from '../src/modules/authority/maintainer-manifest.ts';
+} from '../src/modules/authority/authority-remap-contract.ts';
+import { classifyFileRole } from '../src/modules/authority/maintainer-manifest-contracts.ts';
+import { loadCapabilityProfileFromTrustBase } from '../src/composition-root/maintainer-manifest-production.ts';
 import { parseProtectedCapabilitiesManifestSource } from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 import type { ProtectedCapabilitiesManifestSource } from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 import { runGitBuffer } from '../src/runtime/repository-transaction/git.ts';
 import {
   normalizeExactRepositoryPath,
   matchesAllowedPath,
-} from '../src/runtime/session-workspace/paths.ts';
+} from '../src/foundation/repository-path/repository-path.ts';
 
 const MAX_MUTATIONS = 64;
 

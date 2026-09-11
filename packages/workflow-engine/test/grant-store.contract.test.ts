@@ -24,17 +24,16 @@ import {
 } from '../src/modules/authority/grant-approval.ts';
 import {
   assertGrantLifecycleBarrier,
-  grantRecordDigest,
   grantStorePaths,
-  parseGrantRecord,
-  persistGrantChallenge,
-  prepareGrantTransition,
-  projectPreparedGrantRecord,
-  readGrantRecord,
-  recordGrantTransitionOutcome,
-  type GrantRecord,
   type GrantStorePaths,
+  createFileGrantRecordStore,
 } from '../src/runtime/storage-journal/grant-store.ts';
+import {
+  grantRecordDigest,
+  parseGrantRecord,
+  projectPreparedGrantRecord,
+  type GrantRecord,
+} from '../src/modules/authority/grant-records.ts';
 import {
   createTransitionRegistry,
   type TransitionDefinition,
@@ -56,10 +55,13 @@ test('a challenge remains canonical and readable after a new store instance', ()
 
     assert.deepEqual(Object.keys(paths).sort(), ['records', 'root']);
 
-    const stored = persistGrantChallenge(paths, challenge);
+    const stored =
+      createFileGrantRecordStore(paths).persistGrantChallenge(challenge);
     assert.equal(stored.state, 'pending');
     assert.deepEqual(
-      readGrantRecord(grantStorePaths(runtimeRoot), challenge.challengeId),
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        challenge.challengeId,
+      ),
       stored,
     );
 
@@ -70,7 +72,10 @@ test('a challenge remains canonical and readable after a new store instance', ()
     tampered.challenge.failureCode = 'agent-substituted-failure';
     fs.writeFileSync(filePath, `${JSON.stringify(tampered)}\n`);
     assert.throws(
-      () => readGrantRecord(paths, challenge.challengeId),
+      () =>
+        createFileGrantRecordStore(paths).readGrantRecord(
+          challenge.challengeId,
+        ),
       (error) => isWorkflowError(error, 'GRANT_STORE_UNSAFE'),
     );
   });
@@ -80,7 +85,7 @@ test('one atomic record moves from pending to prepared to terminal exactly once'
   withRuntime((runtimeRoot) => {
     const paths = grantStorePaths(runtimeRoot);
     const challenge = fixtureChallenge();
-    persistGrantChallenge(paths, challenge);
+    createFileGrantRecordStore(paths).persistGrantChallenge(challenge);
     const subject = createApprovalSubject(
       challenge,
       {
@@ -92,7 +97,7 @@ test('one atomic record moves from pending to prepared to terminal exactly once'
       },
       { now: NOW },
     );
-    const prepared = prepareGrantTransition(paths, {
+    const prepared = createFileGrantRecordStore(paths).prepareGrantTransition({
       operationId: '77777777-7777-4777-8777-777777777777',
       challenge,
       subject,
@@ -121,7 +126,10 @@ test('one atomic record moves from pending to prepared to terminal exactly once'
       'schemaVersion',
       'state',
     ]);
-    assert.deepEqual(readGrantRecord(paths, challenge.challengeId), prepared);
+    assert.deepEqual(
+      createFileGrantRecordStore(paths).readGrantRecord(challenge.challengeId),
+      prepared,
+    );
     assert.deepEqual(
       fs.readdirSync(paths.records).filter((name) => name.endsWith('.json')),
       [`${challenge.challengeId}.json`],
@@ -134,7 +142,9 @@ test('one atomic record moves from pending to prepared to terminal exactly once'
       assertGrantLifecycleBarrier(runtimeRoot, [challenge.challengeId]),
     );
 
-    const completed = recordGrantTransitionOutcome(paths, {
+    const completed = createFileGrantRecordStore(
+      paths,
+    ).recordGrantTransitionOutcome({
       challengeId: challenge.challengeId,
       operationId: prepared.operationId,
       poststateDigest: digest('9'),
@@ -165,7 +175,10 @@ test('one atomic record moves from pending to prepared to terminal exactly once'
       'schemaVersion',
       'state',
     ]);
-    assert.deepEqual(readGrantRecord(paths, challenge.challengeId), completed);
+    assert.deepEqual(
+      createFileGrantRecordStore(paths).readGrantRecord(challenge.challengeId),
+      completed,
+    );
     assert.deepEqual(
       parseGrantRecord(`${canonicalJson(completed)}\n`),
       completed,
@@ -181,7 +194,7 @@ test('one atomic record moves from pending to prepared to terminal exactly once'
       (error) => isWorkflowError(error, 'GRANT_STORE_UNSAFE'),
     );
     assert.deepEqual(
-      recordGrantTransitionOutcome(paths, {
+      createFileGrantRecordStore(paths).recordGrantTransitionOutcome({
         challengeId: challenge.challengeId,
         operationId: prepared.operationId,
         poststateDigest: digest('9'),
@@ -194,7 +207,7 @@ test('one atomic record moves from pending to prepared to terminal exactly once'
     assert.doesNotThrow(() => assertGrantLifecycleBarrier(runtimeRoot));
     assert.throws(
       () =>
-        prepareGrantTransition(paths, {
+        createFileGrantRecordStore(paths).prepareGrantTransition({
           operationId: '88888888-8888-4888-8888-888888888888',
           challenge,
           subject,
@@ -223,7 +236,7 @@ test('an exact nested Grant allowance still blocks an unrelated prepared Grant',
         'nonce-child-22222222222222222222222222222',
       ],
     ] as const) {
-      persistGrantChallenge(paths, challenge);
+      createFileGrantRecordStore(paths).persistGrantChallenge(challenge);
       preparePublicRecord(paths, challenge, operationId, sessionNonce);
     }
     assert.doesNotThrow(() =>
@@ -234,7 +247,7 @@ test('an exact nested Grant allowance still blocks an unrelated prepared Grant',
     );
 
     const unrelated = fixtureChallenge('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
-    persistGrantChallenge(paths, unrelated);
+    createFileGrantRecordStore(paths).persistGrantChallenge(unrelated);
     preparePublicRecord(
       paths,
       unrelated,
@@ -258,7 +271,10 @@ test('@jigwright/grants matches exact pending, prepared, completed, and failed l
     const completedChallenge = fixtureChallenge(
       'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     );
-    const pending = persistGrantChallenge(paths, completedChallenge);
+    const pending =
+      createFileGrantRecordStore(paths).persistGrantChallenge(
+        completedChallenge,
+      );
     assertPublicRecord(paths, pending);
 
     const prepared = preparePublicRecord(
@@ -269,7 +285,9 @@ test('@jigwright/grants matches exact pending, prepared, completed, and failed l
     );
     assertPublicRecord(paths, prepared);
 
-    const completed = recordGrantTransitionOutcome(paths, {
+    const completed = createFileGrantRecordStore(
+      paths,
+    ).recordGrantTransitionOutcome({
       challengeId: completedChallenge.challengeId,
       operationId: prepared.operationId,
       poststateDigest: digest('9'),
@@ -282,14 +300,16 @@ test('@jigwright/grants matches exact pending, prepared, completed, and failed l
     const failedChallenge = fixtureChallenge(
       'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
     );
-    persistGrantChallenge(paths, failedChallenge);
+    createFileGrantRecordStore(paths).persistGrantChallenge(failedChallenge);
     const preparedToFail = preparePublicSshRecord(
       paths,
       failedChallenge,
       '88888888-8888-4888-8888-888888888888',
       'nonce-88888888888888888888888888888888',
     );
-    const failed = recordGrantTransitionOutcome(paths, {
+    const failed = createFileGrantRecordStore(
+      paths,
+    ).recordGrantTransitionOutcome({
       challengeId: failedChallenge.challengeId,
       operationId: preparedToFail.operationId,
       poststateDigest: digest('8'),
@@ -334,7 +354,7 @@ test('tampered portable SSH evidence makes the durable Grant record unreadable',
   withRuntime((runtimeRoot) => {
     const paths = grantStorePaths(runtimeRoot);
     const challenge = fixtureChallenge();
-    persistGrantChallenge(paths, challenge);
+    createFileGrantRecordStore(paths).persistGrantChallenge(challenge);
     preparePublicSshRecord(
       paths,
       challenge,
@@ -355,7 +375,10 @@ test('tampered portable SSH evidence makes the durable Grant record unreadable',
     fs.writeFileSync(recordPath, `${canonicalJson(tampered)}\n`);
 
     assert.throws(
-      () => readGrantRecord(paths, challenge.challengeId),
+      () =>
+        createFileGrantRecordStore(paths).readGrantRecord(
+          challenge.challengeId,
+        ),
       (error) => isWorkflowError(error, 'GRANT_STORE_UNSAFE'),
     );
     assert.throws(
@@ -372,10 +395,9 @@ test('a symlink cannot become a grant store root', () => {
       fs.symlinkSync(outside, path.join(runtimeRoot, 'grants-v2'));
       assert.throws(
         () =>
-          persistGrantChallenge(
+          createFileGrantRecordStore(
             grantStorePaths(runtimeRoot),
-            fixtureChallenge(),
-          ),
+          ).persistGrantChallenge(fixtureChallenge()),
         (error) => isWorkflowError(error, 'GRANT_STORE_UNSAFE'),
       );
     } finally {
@@ -393,7 +415,7 @@ test('the repository lifecycle lock honors a prepared Grant Core record', () => 
     fs.mkdirSync(runtime.root, { recursive: true });
     const paths = grantStorePaths(runtime.root);
     const challenge = fixtureChallenge();
-    persistGrantChallenge(paths, challenge);
+    createFileGrantRecordStore(paths).persistGrantChallenge(challenge);
     const subject = createApprovalSubject(
       challenge,
       {
@@ -405,7 +427,7 @@ test('the repository lifecycle lock honors a prepared Grant Core record', () => 
       },
       { now: NOW },
     );
-    prepareGrantTransition(paths, {
+    createFileGrantRecordStore(paths).prepareGrantTransition({
       operationId: '99999999-9999-4999-8999-999999999999',
       challenge,
       subject,
@@ -513,7 +535,7 @@ function preparePublicRecord(
     },
     { now: NOW },
   );
-  return prepareGrantTransition(paths, {
+  return createFileGrantRecordStore(paths).prepareGrantTransition({
     operationId,
     challenge,
     subject,
@@ -563,7 +585,7 @@ function preparePublicSshRecord(
     identity: 'maintainer',
     verifiedAt: NOW.toISOString(),
   });
-  return prepareGrantTransition(paths, {
+  return createFileGrantRecordStore(paths).prepareGrantTransition({
     operationId,
     challenge,
     subject,

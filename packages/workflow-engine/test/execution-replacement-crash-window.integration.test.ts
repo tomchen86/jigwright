@@ -7,7 +7,7 @@ import {
   executeGrantedReplacement,
   requestExecutionReplacement,
   SimulatedExecutionReplacementCrash,
-} from '../src/application/control-plane/execution-replacement.ts';
+} from '../src/composition-root/execution-retry-production.ts';
 import { issueExecutionBudgetGrant } from '../src/entrypoints/cli/execution-grant-cli.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
@@ -18,7 +18,7 @@ import {
   getProposeStatus,
   resumePropose,
   startPropose,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   claimProviderInvocation,

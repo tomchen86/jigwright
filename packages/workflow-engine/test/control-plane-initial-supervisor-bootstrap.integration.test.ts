@@ -24,22 +24,24 @@ import { spawnSync } from 'node:child_process';
 import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';
 import {
   createRecoveryQuarantineEnterGrantPayload,
-  executeRecoveryQuarantineEnter,
   createRecoveryQuarantineReleaseGrantPayload,
-  executeRecoveryQuarantineRelease,
   RECOVERY_QUARANTINE_ENTER_NAMESPACE,
   RECOVERY_QUARANTINE_RELEASE_NAMESPACE,
   type RecoveryQuarantineGrantPayload,
   type RecoveryQuarantineEnvelope,
   type RecoveryQuarantineAuditRecord,
-} from '../src/recovery-quarantine.ts';
+} from '../src/modules/authority/recovery-quarantine-contract.ts';
+import {
+  executeRecoveryQuarantineEnter,
+  executeRecoveryQuarantineRelease,
+} from '../src/runtime/recovery/recovery-quarantine.ts';
 import {
   type RecoveryAuthorityDescriptorV1,
   type RecoveryAuthorityExpectations,
   type RecoveryAuthorityDescriptorPayloadV1,
   recoveryAuthorityRepositoryIdentityDigest,
   recoveryAuthorityDescriptorDigest,
-} from '../src/recovery-authority.ts';
+} from '../src/modules/authority/recovery-authority-contract.ts';
 import { pathToFileURL } from 'node:url';
 import {
   digest,
@@ -435,10 +437,13 @@ test('initial supervisor bootstrap fails closed when the pinned built-in closure
   try {
     const trackedEntrypoint = path.join(
       repositoryEngineRoot(repository),
-      'src/cli.ts',
+      'src/entrypoints/cli/workflow-cli.ts',
     );
     fs.appendFileSync(trackedEntrypoint, "process.stderr.write('tampered');\n");
-    git(repository, ['add', 'packages/workflow-engine/src/cli.ts']);
+    git(repository, [
+      'add',
+      'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+    ]);
     git(repository, ['commit', '-m', 'Tamper tracked built-in closure']);
     git(repository, ['update-ref', 'refs/remotes/origin/main', 'HEAD']);
     const result = runInitialize(engineRoot, repository);
@@ -603,7 +608,7 @@ test('initial supervisor bootstrap rejects a self-consistent local main not auth
   try {
     const entrypoint = path.join(
       repositoryEngineRoot(repository),
-      'src/cli.ts',
+      'src/entrypoints/cli/workflow-cli.ts',
     );
     fs.appendFileSync(
       entrypoint,
@@ -1104,7 +1109,7 @@ function createSealedEnginePackage(): string {
     path.join(os.tmpdir(), 'control-plane-initial-supervisor-engine-'),
   );
   const bootstrap = path.join(root, 'bootstrap');
-  const source = path.join(root, 'src');
+  const source = path.join(root, 'src/entrypoints/cli');
   fs.mkdirSync(bootstrap, { recursive: true });
   fs.mkdirSync(source, { recursive: true });
   for (const name of [
@@ -1139,8 +1144,8 @@ function createSealedEnginePackage(): string {
     2,
   )}\n`;
   const entrypointBytes = [
-    "import { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST } from '../bootstrap/built-in-engine-closure-pin.ts';",
-    "import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';",
+    "import { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST } from '../../../bootstrap/built-in-engine-closure-pin.ts';",
+    "import { bootstrapInterventionStateRoot } from '../../../bootstrap/control-plane-trust.ts';",
     'void BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST;',
     'void bootstrapInterventionStateRoot;',
     'const argv = process.argv.slice(2);',
@@ -1152,7 +1157,7 @@ function createSealedEnginePackage(): string {
   fs.writeFileSync(path.join(root, 'package.json'), packageBytes, {
     mode: 0o644,
   });
-  fs.writeFileSync(path.join(source, 'cli.ts'), entrypointBytes, {
+  fs.writeFileSync(path.join(source, 'workflow-cli.ts'), entrypointBytes, {
     mode: 0o644,
   });
   const protectedLoaderPath = path.join(
@@ -1163,7 +1168,7 @@ function createSealedEnginePackage(): string {
   fs.writeFileSync(protectedLoaderPath, protectedLoaderBytes, { mode: 0o644 });
   const manifest = {
     kind: 'built-in-engine-closure-manifest.v2',
-    entrypoint: 'src/cli.ts',
+    entrypoint: 'src/entrypoints/cli/workflow-cli.ts',
     scope: 'workspace-runtime-source-closure',
     packages: [
       {
@@ -1184,7 +1189,7 @@ function createSealedEnginePackage(): string {
         digest: digest(protectedLoaderBytes),
       },
       {
-        path: 'src/cli.ts',
+        path: 'src/entrypoints/cli/workflow-cli.ts',
         mode: '100644',
         digest: digest(entrypointBytes),
       },
@@ -1264,7 +1269,7 @@ function regenerateFixtureEngineClosure(repository: string): void {
   const files = [
     'package.json',
     FIXTURE_PROTECTED_CAPABILITY_LOADER_PATH,
-    'src/cli.ts',
+    'src/entrypoints/cli/workflow-cli.ts',
   ].map((filePath) => {
     const bytes = fs.readFileSync(path.join(packageRoot, filePath));
     return {
@@ -1275,7 +1280,7 @@ function regenerateFixtureEngineClosure(repository: string): void {
   });
   const manifest = {
     kind: 'built-in-engine-closure-manifest.v2',
-    entrypoint: 'src/cli.ts',
+    entrypoint: 'src/entrypoints/cli/workflow-cli.ts',
     scope: 'workspace-runtime-source-closure',
     packages: [
       {

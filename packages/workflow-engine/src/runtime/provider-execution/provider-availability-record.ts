@@ -22,7 +22,7 @@ import {
   ExitCode,
 } from '../../foundation/errors/errors.ts';
 import { runGit } from '../repository-transaction/git.ts';
-import { normalizeExactRepositoryPath } from '../session-workspace/paths.ts';
+import { normalizeExactRepositoryPath } from '../../foundation/repository-path/repository-path.ts';
 import {
   type ProviderInvocationRequest,
   type ProviderRunnerReport,

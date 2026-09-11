@@ -13,12 +13,12 @@ import {
   type BuiltInProviderCapabilityProfile,
   type BuiltInProviderCapabilityPurpose,
   type BuiltInProviderFamily,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/built-in-provider-catalog';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
 /**
- * The reviewed built-in provider capability facade. Agent Runtime owns the
+ * The reviewed built-in provider capability facade. The shared core catalog owns the
  * exact family identities; repository policy may enable/disable those fixed
  * identities and lower bounded limits, but it can never add an ID, executable
  * path, argv, shell fragment, module path, prompt, or result parser. This slice

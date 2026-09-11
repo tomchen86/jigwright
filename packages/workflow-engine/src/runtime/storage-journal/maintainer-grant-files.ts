@@ -7,7 +7,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { assertMaintainerGrantId } from '../../modules/authority/maintainer-grant.ts';
+import { assertMaintainerGrantId } from '../../modules/authority/maintainer-grant-contracts.ts';
 import { ensurePlainDirectory } from '../repository-transaction/filesystem-safety.ts';
 import { runtimePaths } from '../session-workspace/session-store.ts';
 import {

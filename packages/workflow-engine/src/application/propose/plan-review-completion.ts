@@ -1,3 +1,4 @@
+import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
 /**
  * Completes admitted PlanReview findings and commits the resulting planning transition.
  *
@@ -54,6 +55,7 @@ import {
 } from './propose-types.ts';
 
 export function resumePlanReview(
+  planningExecution: PlanningTransitionExecutionServices,
   services: ProposeRuntime,
   cwd: string,
   input: PlanReviewProgressEnvelope,
@@ -198,6 +200,7 @@ export function resumePlanReview(
       return {
         outcome: 'complete' as const,
         output: commitCompletedPlanningUnderAuthority(
+          planningExecution,
           services,
           cwd,
           lockedStatus,
@@ -244,6 +247,7 @@ export function resumePlanReview(
 }
 
 export function completePlanReviewDispositions(
+  planningExecution: PlanningTransitionExecutionServices,
   services: ProposeRuntime,
   cwd: string,
   input: PlanReviewDispositionsEnvelope,
@@ -361,12 +365,15 @@ export function completePlanReviewDispositions(
                   options.challengeDispositionAuthority?.now ?? new Date(),
                 signer,
               });
-              assertAuthorizedPlanReviewChallengeClosure({
-                dispositionNode: node,
-                reviewNode: tracked.reviewNode,
-                expected: binding,
-                policy,
-              });
+              assertAuthorizedPlanReviewChallengeClosure(
+                services.planningEvidence.verifyChallengeClosureSignature,
+                {
+                  dispositionNode: node,
+                  reviewNode: tracked.reviewNode,
+                  expected: binding,
+                  policy,
+                },
+              );
               return node;
             })()
           : createPlanReviewDispositionNode({
@@ -393,6 +400,7 @@ export function completePlanReviewDispositions(
       );
       assertOwned();
       return commitCompletedPlanningUnderAuthority(
+        planningExecution,
         services,
         cwd,
         status,
@@ -434,6 +442,7 @@ function assertClassSamplesAudited(
 }
 
 function commitCompletedPlanningUnderAuthority(
+  planningExecution: PlanningTransitionExecutionServices,
   services: ProposeRuntime,
   cwd: string,
   status: ProposeLifecycleStatus,
@@ -471,6 +480,9 @@ function commitCompletedPlanningUnderAuthority(
     };
   }
   const planningTransition = commitPlanningTransitionUnderAuthority(
+    planningExecution,
+    services.managedDocuments,
+    services.loadChangeContract,
     cwd,
     status.changeId,
     assertOwned,

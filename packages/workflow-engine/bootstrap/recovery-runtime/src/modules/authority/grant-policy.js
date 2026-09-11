@@ -1,5 +1,5 @@
 /**
- * Loads Grant policy and resolves its registered approval modules, profiles
+ * Parses Grant policy and resolves its registered approval modules, profiles
  * and methods.
  *
  * Invariants:
@@ -9,8 +9,6 @@
  *   ssh module or ssh profile may exist, and when present the ssh module
  *   and the exact ssh-signature profile are required.
  */
-import fs from 'node:fs';
-import path from 'node:path';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { isRecord } from "../../foundation/canonical-json/contract-values.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
@@ -84,9 +82,6 @@ export function codeOwnedApprovalModuleRegistry() {
             return byIdentity.get(`${moduleId}@${version}`) ?? null;
         },
     });
-}
-export function loadGrantPolicyV2(repositoryRoot) {
-    return parseGrantPolicyV2Document(readPlainGrantPolicyFile(repositoryRoot));
 }
 export function parseGrantPolicyV2Document(document) {
     if (typeof document !== 'string' || Buffer.byteLength(document) > 1_048_576) {
@@ -260,38 +255,6 @@ function exactDigest(value) {
     }
     return value;
 }
-function readPlainGrantPolicyFile(repositoryRoot) {
-    const workflowDirectory = path.join(repositoryRoot, 'workflow');
-    const policyPath = path.join(workflowDirectory, 'grant-policy.json');
-    const directoryStats = fs.lstatSync(workflowDirectory, {
-        throwIfNoEntry: false,
-    });
-    const policyStats = fs.lstatSync(policyPath, { throwIfNoEntry: false });
-    if (!directoryStats?.isDirectory() ||
-        directoryStats.isSymbolicLink() ||
-        !policyStats?.isFile() ||
-        policyStats.isSymbolicLink()) {
-        throw policyInvalid('GRANT_POLICY_INVALID', 'Grant policy is malformed.');
-    }
-    const noFollow = process.platform !== 'win32' && typeof fs.constants.O_NOFOLLOW === 'number'
-        ? fs.constants.O_NOFOLLOW
-        : 0;
-    let descriptor;
-    try {
-        descriptor = fs.openSync(policyPath, fs.constants.O_RDONLY | noFollow);
-        if (!fs.fstatSync(descriptor).isFile()) {
-            throw policyInvalid('GRANT_POLICY_INVALID', 'Grant policy is malformed.');
-        }
-        return fs.readFileSync(descriptor, 'utf8');
-    }
-    catch {
-        throw policyInvalid('GRANT_POLICY_INVALID', 'Grant policy is malformed.');
-    }
-    finally {
-        if (descriptor !== undefined)
-            fs.closeSync(descriptor);
-    }
-}
-function policyInvalid(code, message) {
+export function policyInvalid(code, message) {
     return workflowError(code, message, ExitCode.guard);
 }

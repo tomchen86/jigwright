@@ -16,10 +16,8 @@ import {
   normalizeExactRepositoryPath,
   normalizePolicyPath,
 } from '../../foundation/repository-path/repository-path.ts';
-import {
-  planReviewSnapshotLineCount,
-  type PlanReviewTargetSnapshotArtifact,
-} from '../../modules/assurance/plan-review.ts';
+import { planReviewSnapshotLineCount } from '../../modules/assurance/plan-review.ts';
+import type { PlanReviewTargetSnapshotArtifact } from '../../modules/assurance/plan-review-target-snapshot-record.ts';
 import {
   projectWorkflowPlanDigest,
   type WorkflowPlanDigest,

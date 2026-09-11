@@ -9,11 +9,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { type CommandResult, usage, optionValue } from './cli-input.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
-import {
-  preparePullRequestPreMergeAssurance,
-  completePreparedPullRequestPreMergeAssurance,
-} from '../ci/pre-merge-assurance-git.ts';
-import type { IntegrationDeltaReviewSubmission } from '../../composition-root/cli-operational-services.ts';
+import {preparePullRequestPreMergeAssurance,completePreparedPullRequestPreMergeAssurance} from '../../composition-root/ci-verification-production.ts';
+import type { IntegrationDeltaReviewSubmission } from '../../modules/assurance/pre-merge-assurance.ts';
 
 function readPreMergeSubmission(
   cwd: string,

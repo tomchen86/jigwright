@@ -8,16 +8,16 @@ import {
   captureGovernanceSource,
   listGovernanceSources,
   readGovernanceSource,
-} from '../src/modules/governance-intake/governance-intake.ts';
+} from '../src/composition-root/governance-sources-production.ts';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
-import { runCli } from '../src/cli.ts';
+import { runCli } from '../src/entrypoints/cli/workflow-cli.ts';
 import {
   applyWorkItemReview,
   createWorkItem,
   showWorkItem,
   listWorkItems,
   workItemDigest,
-} from '../src/modules/governance-intake/work-registry.ts';
+} from '../src/composition-root/work-registry-production.ts';
 import {
   snapshotPlainTree,
   createGovernancePersistenceFixture,

@@ -1,3 +1,13 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 /** Fresh milestone fixtures for protected finalization, descendant settlement and recovery. No test registrations. */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -6,10 +16,13 @@ import path from 'node:path';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { grantStorePaths } from '../src/runtime/storage-journal/grant-store.ts';
+import {
+  grantStorePaths,
+  createFileGrantRecordStore,
+} from '../src/runtime/storage-journal/grant-store.ts';
 import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
-import { loadGrantPolicyV2 } from '../src/modules/authority/grant-policy.ts';
+import { loadGrantPolicyV2 } from '../src/runtime/repository-observation/grant-policy-reader.ts';
 import { protectedTaskApplyGrantTransitionDefinitions } from '../src/modules/authority/protected-task-apply-grant.ts';
 import { createProductionProtectedTaskApplyGrantPort } from '../src/composition-root/protected-task-apply-grant-production.ts';
 import {
@@ -28,11 +41,11 @@ import {
   runtimePaths,
   withRepositoryLifecycleOperationAsync,
 } from '../src/runtime/session-workspace/session-store.ts';
-import { beginTaskDiffReview } from '../src/application/finalize/task-diff-review-lifecycle.ts';
+import { beginTaskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
 import { preflightProviderWorkerAssignment } from '../src/entrypoints/worker/provider-worker.ts';
 import { getSession } from '../src/application/execute-task/session.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import { authorizeTaskMandate } from '../src/modules/authority/task-mandate.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+
 import {
   git,
   prepareCurrentV3IntroductionFixture,
@@ -69,7 +82,7 @@ export async function createProtectedPlanningFixture() {
   const protectedRepository = prepareRepository(trustedSigner);
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/cli.ts',
+    'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
   );
   const cleanup = () => {
     cleanupRepository(protectedRepository);
@@ -361,7 +374,9 @@ export async function createProtectedReviewFixture() {
     );
 
     const coordinator = createGrantCoordinatorKernel({
-      paths: grantStorePaths(lifecycleRuntime.root),
+      now: () => new Date(),
+      randomUUID: () => crypto.randomUUID(),
+      store: createFileGrantRecordStore(grantStorePaths(lifecycleRuntime.root)),
       registry: createTransitionRegistry(
         protectedTaskApplyGrantTransitionDefinitions(
           createProductionProtectedTaskApplyGrantPort(protectedRepository),
@@ -492,7 +507,9 @@ export async function createPreparedRoleGrantFixture() {
     );
 
     const roleAssignmentCoordinator = createGrantCoordinatorKernel({
-      paths: grantStorePaths(lifecycleRuntime.root),
+      now: () => new Date(),
+      randomUUID: () => crypto.randomUUID(),
+      store: createFileGrantRecordStore(grantStorePaths(lifecycleRuntime.root)),
       registry: createTransitionRegistry(
         changeRoleAssignmentGrantTransitionDefinitions({
           observe: (parameters) => roleAssignmentPort.observe(parameters),
@@ -595,3 +612,6 @@ export async function createPreparedRoleGrantFixture() {
     throw error;
   }
 }
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const { authorizeTaskMandate } = taskMandateOperations;

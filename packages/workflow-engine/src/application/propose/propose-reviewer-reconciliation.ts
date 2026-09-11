@@ -12,10 +12,7 @@ import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { readPlanReviewTargetSnapshotNode } from '../../modules/assurance/plan-review.ts';
-import {
-  type InvestigationFirstPlanningSubject,
-  deriveInvestigationFirstPlanningSubject,
-} from '../../modules/assurance/planning-assurance-validator.ts';
+import { type InvestigationFirstPlanningSubject } from '../../modules/assurance/planning-assurance-validator.ts';
 import { projectInvestigationManifestLedger } from '../../modules/projection/investigation-design-projection.ts';
 import { PROPOSE_POLICY_DIGEST } from '../../modules/provider-orchestration/provider-contracts.ts';
 import { preparePlanReviewInvocation } from './plan-review-preparation.ts';
@@ -462,7 +459,7 @@ function readReviewerReconciliationSnapshotArtifacts(
 }
 
 function derivePlanningSubjectFromCurrentDraft(
-  services: Pick<ProposeRuntime, 'workspace'>,
+  services: Pick<ProposeRuntime, 'workspace' | 'planningAssurance'>,
   cwd: string,
   status: InvestigationStatus,
   investigationBytes: string,
@@ -541,7 +538,7 @@ function derivePlanningSubjectFromCurrentDraft(
       ]),
     ),
   };
-  return deriveInvestigationFirstPlanningSubject(
+  return services.planningAssurance.deriveSubject(
     context.git.repositoryRoot,
     contract,
   );

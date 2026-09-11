@@ -1,3 +1,21 @@
+import { verifyPullRequest } from '../src/composition-root/ci-verification-production.ts';
+import {
+  productionChangeRoutingInspector,
+  productionChangeRoutingAdmissionReader,
+} from '../src/composition-root/change-routing-observation-production.ts';
+import {
+  loadChangeContract as productionChangeContractReader,
+  loadCommittedChangeContract as productionCommittedChangeContractReader,
+} from '../src/composition-root/consumer-contract-production.ts';
+const updateTaskSessionBase = updateTaskSessionBaseWithContractReader.bind(
+  undefined,
+  verifyPullRequest,
+  productionChangeRoutingInspector,
+  {
+    loadChangeContract: productionChangeContractReader,
+    loadCommittedChangeContract: productionCommittedChangeContractReader,
+  },
+);
 import test from 'node:test';
 import {
   createFixtureRepository,
@@ -9,18 +27,16 @@ import {
 import {
   getSession,
   startSession,
-  abortSession,
 } from '../src/application/execute-task/session.ts';
+import { abortSession } from '../src/composition-root/task-session-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { updateTaskSessionBase } from '../src/application/execute-task/update-base.ts';
+import { updateTaskSessionBase as updateTaskSessionBaseWithContractReader } from '../src/application/execute-task/update-base.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
-import {
-  finalizeTask,
-  commitSession,
-} from '../src/application/finalize/lifecycle.ts';
+import { commitSession } from '../src/application/finalize/lifecycle.ts';
+import { finalizeTask } from '../src/composition-root/finalization-production.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 import {
   prepareFinishedNonFinalTaskForBaseUpdate,
@@ -60,7 +76,10 @@ test('update-base replays a finished non-final task branch and recomputes local 
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+        ),
         'update-base',
         'demo-change',
         '--onto',
@@ -154,7 +173,10 @@ test('update-base replays a finished non-final task branch and recomputes local 
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+        ),
         'update-base',
         'demo-change',
         '--onto',
@@ -291,6 +313,7 @@ test('update-base revalidates active writers after acquiring the lifecycle lock'
           {
             afterFinishedSessionPreflight() {
               interleavedSession = startSession(
+                productionChangeRoutingAdmissionReader,
                 fixture!.worktree,
                 'demo-change',
                 '1.2',
@@ -329,7 +352,12 @@ test('update-base refuses an active writer before changing Git history', () => {
       'demo-change',
       'src/task/**',
     );
-    const started = startSession(fixture.worktree, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeRoutingAdmissionReader,
+      fixture.worktree,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/base-update.ts'),
       'export const baseUpdate = true;\n',
@@ -341,7 +369,10 @@ test('update-base refuses an active writer before changing Git history', () => {
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+        ),
         'update-base',
         'demo-change',
         '--onto',
@@ -393,7 +424,12 @@ test('update-base rolls back when generated reconciliation needs a reviewed tran
       'src/task/**',
     );
     const taskWorktree = fixture.worktree;
-    const started = startSession(taskWorktree, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeRoutingAdmissionReader,
+      taskWorktree,
+      'demo-change',
+      '1.1',
+    );
     fs.mkdirSync(path.join(taskWorktree, 'src/task'), {
       recursive: true,
     });
@@ -412,6 +448,7 @@ test('update-base rolls back when generated reconciliation needs a reviewed tran
     );
     finalizeTask(taskWorktree, started.sessionId);
     const committed = commitSession(
+      productionChangeRoutingAdmissionReader,
       taskWorktree,
       started.sessionId,
       'Complete concurrent fixture task',
@@ -427,7 +464,10 @@ test('update-base rolls back when generated reconciliation needs a reviewed tran
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+        ),
         'update-base',
         'demo-change',
         '--onto',

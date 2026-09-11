@@ -1,3 +1,7 @@
+import type {
+  GovernanceFindingAuthoringV1,
+  GovernanceFindingContextV1,
+} from '../../modules/governance-intake/governance-intake.ts';
 /**
  * Route exact wording, observations and Work Item decisions through intake APIs.
  *
@@ -41,9 +45,7 @@ import {
   captureGovernanceSource,
   listGovernanceSources,
   readGovernanceSource,
-  type GovernanceFindingAuthoringV1,
-  type GovernanceFindingContextV1,
-} from '../../modules/governance-intake/governance-intake.ts';
+} from '../../composition-root/governance-sources-production.ts';
 import {
   applyWorkItemReview,
   attachSourceToWorkItem,
@@ -69,11 +71,13 @@ import {
   traceWorkItem,
   validateWorkRegistry,
   validateWorkRegistryProjections,
-  type WorkItemAuthoringV1,
-  type WorkItemPromotionSurveyDeclarationV1,
-  type WorkItemReviewV1,
   workItemDigest,
-} from '../../modules/governance-intake/work-registry.ts';
+} from '../../composition-root/work-registry-production.ts';
+import type {
+  WorkItemAuthoringV1,
+  WorkItemPromotionSurveyDeclarationV1,
+  WorkItemReviewV1,
+} from '../../modules/governance-intake/work-registry-contracts.ts';
 
 export type GovernanceIntakeCliDependencies = Readonly<{
   now?: () => string;

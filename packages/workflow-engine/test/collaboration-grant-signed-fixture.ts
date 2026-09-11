@@ -10,16 +10,16 @@ import {
   createFixtureRepository,
   authoritativeCollaborationGrantVerifierForTest,
 } from './fixture.ts';
-import { issueCollaborationGrant } from '../src/modules/authority/collaboration-grant.ts';
+import { issueCollaborationGrant } from '../src/runtime/grants/collaboration-grant-issuance.ts';
 import type {
   CollaborationGrantRequest,
   CollaborationGrantEnvelope,
   CollaborationGrantExpectedBinding,
-} from '../src/modules/authority/collaboration-grant.ts';
+} from '../src/modules/authority/collaboration-grant-codec.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { reserveCollaborationGrant } from '../src/runtime/storage-journal/collaboration-grant-store.ts';
+import { reserveCollaborationGrant } from '../src/runtime/storage-journal/collaboration-grant-reservation.ts';
 
 export const NOW = new Date('2026-07-24T00:00:00.000Z');
 

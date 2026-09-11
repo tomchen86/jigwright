@@ -17,8 +17,9 @@ import {
   assertConsumedCollaborationGrantReplayVerifier,
 } from '../../modules/authority/grant-verifier-port.ts';
 import { type ConsumedRoleResultReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
-import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-scheduler.ts';
-import { type CollaborationGrantExpectedBinding } from '../../modules/authority/collaboration-grant.ts';
+import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+import { type CollaborationGrantExpectedBinding } from '../../modules/authority/collaboration-grant-codec.ts';
+
 import crypto from 'node:crypto';
 import type {
   TaskDiffReviewRuntimeBindings,

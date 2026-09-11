@@ -1,3 +1,4 @@
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Applies authenticated task diff review and assurance requirements to
  * completion.
@@ -7,10 +8,8 @@
  *   is reviewed.
  */
 // Apply review requirements and assurance gates to task completion.
-import {
-  type TaskDiffReviewRecord,
-  assertTaskDiffReviewContentSatisfied,
-} from '../../modules/assurance/task-diff-review-artifact.ts';
+import { assertTaskDiffReviewContentSatisfied } from '../../modules/assurance/task-diff-review-artifact.ts';
+import type { TaskDiffReviewRecord } from '../../modules/assurance/task-diff-review-artifact-record.ts';
 import {
   workflowError,
   ExitCode,
@@ -21,8 +20,8 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import {
   type CollaborationGrantRequest,
   collaborationPolicyDigestForPhase,
-} from '../../modules/authority/collaboration-grant.ts';
-import { type TaskDiffReviewSubject } from '../../modules/assurance/task-diff-review.ts';
+} from '../../modules/authority/collaboration-grant-codec.ts';
+import type { TaskDiffReviewSubject } from '../../modules/assurance/task-diff-review-record.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import type {
   TaskDiffReviewRuntimeBindings,
@@ -54,7 +53,7 @@ type TaskDiffReviewContinuationReservationRecord =
 type CollaborationGrantSelectionCoreBinding =
   TaskDiffReviewRuntimeData['CollaborationGrantSelectionCoreBinding'];
 
-export function createTaskDiffReviewCompletionModule(
+export function createTaskDiffReviewCompletionModule(routingAdmissionReader: ChangeRoutingAdmissionReader,
   runtime: TaskDiffReviewRuntimeBindings,
   common: ReturnType<typeof createTaskDiffReviewCommonModule>,
   subject: ReturnType<typeof createTaskDiffReviewSubjectModule>,
@@ -167,7 +166,7 @@ export function createTaskDiffReviewCompletionModule(
     ) {
       return null;
     }
-    const inspection = inspectSession(cwd, requestedSessionId, {
+    const inspection = inspectSession(routingAdmissionReader, cwd, requestedSessionId, {
       expectedSession: context.session,
       ...(options.projectedTaskIds === undefined
         ? {}

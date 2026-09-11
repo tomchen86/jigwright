@@ -10,12 +10,12 @@ import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/
 import {
   preparePlanningDraftWorkspace,
   readPlanningDraftWorkspace,
-} from '../src/runtime/session-workspace/planning-workspace.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/planning-workspace-production.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
 import {
   captureGovernanceSource,
   readGovernanceSource,
-} from '../src/modules/governance-intake/governance-intake.ts';
+} from '../src/composition-root/governance-sources-production.ts';
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
 import {
   createFixtureRepository,
@@ -302,7 +302,10 @@ test('top-level now starts the stable Source-bound planning workspace without an
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+        ),
         'now',
         original,
         '--json',
@@ -379,7 +382,10 @@ function runWorkflowCli(repository: string, args: string[]) {
     process.execPath,
     [
       '--experimental-strip-types',
-      path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+      path.join(
+        sourceRepositoryRoot,
+        'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+      ),
       ...args,
       '--json',
     ],

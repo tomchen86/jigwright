@@ -1,3 +1,7 @@
+import {
+  readLedgerEntry,
+  readLedgerIndex,
+} from '../runtime/storage-journal/semantic-ledger-store.ts';
 /**
  * Supplies repository snapshot access to semantic manifest reuse.
  *
@@ -22,10 +26,17 @@ export function applyLedgerToFullBlobManifest<
     snapshot?: SystemDescriptionSnapshot;
   } = {},
 ) {
-  return applyManifestReuse(repositoryRoot, manifest, {
-    currentPolicyDigest: options.currentPolicyDigest,
-    get snapshot() {
-      return options.snapshot ?? readSystemDescriptionSnapshot(repositoryRoot);
+  return applyManifestReuse(
+    { readLedgerEntry, readLedgerIndex },
+    repositoryRoot,
+    manifest,
+    {
+      currentPolicyDigest: options.currentPolicyDigest,
+      get snapshot() {
+        return (
+          options.snapshot ?? readSystemDescriptionSnapshot(repositoryRoot)
+        );
+      },
     },
-  });
+  );
 }

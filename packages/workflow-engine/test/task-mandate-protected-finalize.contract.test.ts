@@ -10,11 +10,11 @@ import { discoverRepository } from '../src/runtime/repository-transaction/git.ts
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import {
   grantStorePaths,
-  readGrantRecord,
+  createFileGrantRecordStore,
 } from '../src/runtime/storage-journal/grant-store.ts';
 import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
-import { loadGrantPolicyV2 } from '../src/modules/authority/grant-policy.ts';
+import { loadGrantPolicyV2 } from '../src/runtime/repository-observation/grant-policy-reader.ts';
 import { protectedTaskApplyGrantTransitionDefinitions } from '../src/modules/authority/protected-task-apply-grant.ts';
 import { createProductionProtectedTaskApplyGrantPort } from '../src/composition-root/protected-task-apply-grant-production.ts';
 import { issueProductionCollaborationGrant } from '../src/composition-root/collaboration-grant-production.ts';
@@ -23,7 +23,7 @@ import {
   withRepositoryLifecycleOperationAsync,
 } from '../src/runtime/session-workspace/session-store.ts';
 import { readFinalizeTransaction } from '../src/runtime/repository-transaction/finalize-transaction.ts';
-import { beginTaskDiffReview } from '../src/application/finalize/task-diff-review-lifecycle.ts';
+import { beginTaskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
 import { assertPreparedProtectedTaskApplyAuthorization } from '../src/application/finalize/protected-task-apply-authorization.ts';
 import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import { getSession } from '../src/application/execute-task/session.ts';
@@ -237,10 +237,9 @@ describe('protected finalize and recovery route through exact Central Fail-Grant
         undefined,
       );
 
-      const grant = readGrantRecord(
+      const grant = createFileGrantRecordStore(
         grantStorePaths(runtimeRoot(protectedRepository)),
-        protectedGrant.result.grant.challengeId,
-      );
+      ).readGrantRecord(protectedGrant.result.grant.challengeId);
 
       assert.equal(grant.state, 'pending');
 
@@ -385,7 +384,11 @@ describe('protected finalize and recovery route through exact Central Fail-Grant
       );
 
       const coordinator = createGrantCoordinatorKernel({
-        paths: grantStorePaths(lifecycleRuntime.root),
+        now: () => new Date(),
+        randomUUID: () => crypto.randomUUID(),
+        store: createFileGrantRecordStore(
+          grantStorePaths(lifecycleRuntime.root),
+        ),
         registry: createTransitionRegistry(
           protectedTaskApplyGrantTransitionDefinitions(
             createProductionProtectedTaskApplyGrantPort(protectedRepository),
@@ -437,10 +440,9 @@ describe('protected finalize and recovery route through exact Central Fail-Grant
           error.code === 'TASK_DIFF_REVIEW_REQUIRED',
       );
 
-      const prepared = readGrantRecord(
+      const prepared = createFileGrantRecordStore(
         grantStorePaths(lifecycleRuntime.root),
-        protectedGrant.result.grant.challengeId,
-      );
+      ).readGrantRecord(protectedGrant.result.grant.challengeId);
 
       assert.equal(prepared.state, 'prepared');
 

@@ -12,10 +12,6 @@ import {
   workflowError,
   type WorkflowError,
 } from '../../foundation/errors/errors.ts';
-import type {
-  ContextManifest,
-  ContextManifestItemReference,
-} from '../lifecycle/context-manifest-contract.ts';
 import {
   assertDigest,
   assertIdentity,
@@ -35,6 +31,25 @@ import {
   SHA256,
   sortedUniqueIdentities,
 } from './execution-governance-values.ts';
+
+export type ContextManifestItemReference = {
+  identity: string;
+  digest: string;
+};
+
+export type ContextManifest = {
+  schemaVersion: 1;
+  kind: 'epoch-context-manifest';
+  workflowId: string;
+  epoch: number;
+  contractVersion: number;
+  baselineDigest: string;
+  intentDigest: string;
+  termSetDigest: string;
+  planningSnapshotDigest: string;
+  contextDigest: string;
+  items: ContextManifestItemReference[];
+};
 
 export function buildContextManifest(input: {
   workflowId: string;

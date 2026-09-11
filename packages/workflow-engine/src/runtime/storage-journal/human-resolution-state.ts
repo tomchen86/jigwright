@@ -7,10 +7,8 @@
  */
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import {
-  type InvestigationRuntimePaths,
-  assertInvestigationId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertInvestigationId } from '../../foundation/repository-path/repository-path.ts';
 import {
   observeInvestigationEvidenceRefsAmbiguities,
   readInvestigationEvidenceRefsClosure,
@@ -24,7 +22,7 @@ import {
   humanResolutionDecisionSchemaDigest,
   investigationResolutionStateDigest,
   terminalHumanResolutionState,
-} from './human-resolution-contract.ts';
+} from '../../modules/investigation/domain/human-resolution-contract.ts';
 import {
   assertEvidenceClosureTargetBinding,
   digestBoundStartReservation,
@@ -50,11 +48,11 @@ import {
   humanResolutionRefPath,
   humanResolutionStateInvalid,
   investigationStartReservationPath,
-  isBoundedResolutionText,
   normalizeAmbiguityObservations,
   observeUnsafePath,
   startReservationUnsafe,
 } from './investigation-resolution-values.ts';
+import { isBoundedResolutionText } from '../../modules/investigation/domain/human-resolution-values.ts';
 import {
   readCurrentInvestigationRef,
   readInvestigationSession,
@@ -63,7 +61,7 @@ import {
   deepFreeze,
   providerInvocationUnsafe,
   sha256,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 import { digestPrivateDirectoryEntries } from './provider-runtime-retention.ts';
 
 export function inspectInvestigationResolutionState(

@@ -1,3 +1,11 @@
+import type {
+  TaskStrategyImplementationResultBinding,
+  TaskStrategyCallerImplementationBinding,
+} from '../../modules/assurance/task-strategy-evidence.ts';
+export type {
+  TaskStrategyImplementationResultBinding,
+  TaskStrategyCallerImplementationBinding,
+} from '../../modules/assurance/task-strategy-evidence.ts';
 /**
  * Validates immutable provider and caller implementation reservation and result records.
  *
@@ -8,21 +16,24 @@
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
-  type TaskStrategyImplementationSubject,
-  type TaskStrategyImplementationManifest,
   type TaskStrategyImplementationOutput,
   assertTaskStrategyImplementationSubject,
   assertTaskStrategyImplementationManifest,
   assertTaskStrategyImplementationOutput,
   TASK_STRATEGY_IMPLEMENTATION_POLICY_DIGEST,
 } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
-import type { TaskMandateBinding } from '../../modules/authority/task-mandate.ts';
+import type {
+  TaskStrategyImplementationSubject,
+  TaskStrategyImplementationManifest,
+} from '../../modules/provider-orchestration/task-strategy-implementation-manifest.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import type {
   RecordedRoleParticipant,
   ProviderRoleAssignment,
-  AdmittedRoleResult,
   GrantedRoleAssignment,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+} from '../../modules/provider-orchestration/role-assignment.ts';
+import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+
 import {
   type ProviderInvocationRequest,
   isProviderRoleAssignment,
@@ -32,7 +43,7 @@ import type {
   ProviderRetryDecisionBinding,
   ProviderRetryReservationV2,
   ProviderRetryReservationV3,
-} from './provider-invocation-store.ts';
+} from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
 import path from 'node:path';
 import {
   isRecord,
@@ -47,12 +58,12 @@ import {
   isGrantId,
   GIT_OBJECT_ID,
 } from './task-strategy-provider-store-values.ts';
-import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../../modules/authority/collaboration-grant-codec.ts';
+import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../../modules/provider-orchestration/role-independence.ts';
 import {
   assertSessionId,
   assertInvestigationId,
   assertInvocationId,
-} from '../session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 
 function isCurrentTaskStrategyOutputSchema(value: unknown): boolean {
   try {
@@ -100,42 +111,6 @@ export type TaskStrategyImplementationProviderAttempt = Readonly<{
   retryDecision: ProviderRetryDecisionBinding | null;
   retryReservation:
     ProviderRetryReservationV2 | ProviderRetryReservationV3 | null;
-  createdAt: string;
-}>;
-
-export type TaskStrategyImplementationResultBinding = Readonly<{
-  schemaVersion: 1;
-  kind: 'task-strategy-implementation-result-binding.v1';
-  bindingDigest: string;
-  ownerInvestigationId: string;
-  sessionId: string;
-  subjectDigest: string;
-  invocationId: string;
-  requestDigest: string;
-  outputDigest: string;
-  runtimeObservationDigest: string;
-  providerObservationNodeId: string;
-  providerObservationDigest: string;
-  providerResultNodeId: string;
-  providerResultDigest: string;
-  roleResult: AdmittedRoleResult;
-  output: TaskStrategyImplementationOutput;
-  createdAt: string;
-}>;
-
-export type TaskStrategyCallerImplementationBinding = Readonly<{
-  schemaVersion: 1;
-  kind: 'task-strategy-caller-implementation-binding.v1';
-  bindingDigest: string;
-  sessionId: string;
-  subjectDigest: string;
-  transitionDigest: string;
-  submissionNodeId: string;
-  submissionResultDigest: string;
-  resultNodeId: string;
-  resultDigest: string;
-  roleResult: AdmittedRoleResult;
-  output: TaskStrategyImplementationOutput;
   createdAt: string;
 }>;
 

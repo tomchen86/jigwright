@@ -1,9 +1,9 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { ensurePlanningExecutionEpochCompleteForArchive } from '../src/modules/lifecycle/planning-execution-epoch.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
 const GENERATION = 'a'.repeat(64);
@@ -50,19 +50,22 @@ test('epoch recovery without any immutable report refuses with its own error', (
     );
     assert.throws(
       () =>
-        ensurePlanningExecutionEpochCompleteForArchive(repository, {
-          changeId: 'demo-change',
-          head,
-          planningGeneration: GENERATION,
-          taskEvidence: [
-            {
-              taskId: '1.1',
-              source: 'managed-task-commit',
-              commitHash: head,
-            },
-          ],
-          now: new Date(),
-        }),
+        productionPlanningExecution.planningExecutionEpoch.ensurePlanningExecutionEpochCompleteForArchive(
+          repository,
+          {
+            changeId: 'demo-change',
+            head,
+            planningGeneration: GENERATION,
+            taskEvidence: [
+              {
+                taskId: '1.1',
+                source: 'managed-task-commit',
+                commitHash: head,
+              },
+            ],
+            now: new Date(),
+          },
+        ),
       (error: unknown) =>
         isWorkflowError(error, 'PLANNING_EXECUTION_EPOCH_RECOVERY_INVALID'),
     );

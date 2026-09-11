@@ -1,3 +1,4 @@
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -9,7 +10,7 @@ import {
   createPlanningCommitObject,
   planningCommitMessage,
 } from '../src/runtime/repository-transaction/git-transitions.ts';
-import { runRepositoryHook } from '../src/entrypoints/hooks/hooks.ts';
+import { runRepositoryHook } from '../src/composition-root/repository-hooks-production.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
   createFixtureRepository as createBareFixtureRepository,
@@ -64,7 +65,12 @@ test('hook validation is read-only and blocks ordinary commits during a session'
     assert.equal(fs.existsSync(path.join(repository, 'touch-pwned')), false);
 
     git(repository, ['checkout', '-b', 'work/demo-change']);
-    startSession(repository, 'demo-change', '1.1');
+    startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     assert.throws(
       () => runRepositoryHook(repository, 'pre-commit', []),
       (error) =>
@@ -83,7 +89,12 @@ test('an active session does not block a different linked worktree', () => {
   );
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
-    startSession(repository, 'demo-change', '1.1');
+    startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     git(repository, ['worktree', 'add', otherWorktree, 'main']);
 
     const result = runRepositoryHook(otherWorktree, 'pre-commit', []);

@@ -1,3 +1,5 @@
+import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
+import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
 /**
  * Reissues and applies retained candidates from expired or invalidated v2
  * grants.
@@ -26,6 +28,9 @@ export function createMaintainerApplyReissue(
   bindings: () => MaintainerApplyReissueBindings,
 ) {
   function reissueAndApplyMaintainerGrantV2(
+    authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
+    manifestOperations: MaintainerManifestOperations,
+    taskMandate: MaintainerTaskMandateOperations,
     cwd: string,
     request: ReissueAndApplyMaintainerGrantV2Request,
     options: ReissueAndApplyMaintainerGrantV2Options = {},
@@ -41,6 +46,9 @@ export function createMaintainerApplyReissue(
     );
     return withPostApprovalAdmissionDeadline(deadline, () =>
       reissueAndApplyMaintainerGrantV2WithDeadline(
+        authorityApplicationReceipts,
+        manifestOperations,
+        taskMandate,
         cwd,
         request,
         options,
@@ -50,6 +58,9 @@ export function createMaintainerApplyReissue(
   }
 
   function reissueAndApplyMaintainerGrantV2WithDeadline(
+    authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
+    manifestOperations: MaintainerManifestOperations,
+    taskMandate: MaintainerTaskMandateOperations,
     cwd: string,
     request: ReissueAndApplyMaintainerGrantV2Request,
     options: ReissueAndApplyMaintainerGrantV2Options,
@@ -155,6 +166,8 @@ export function createMaintainerApplyReissue(
           );
         }
         const grant = issueMaintainerGrantV2(
+          manifestOperations,
+          taskMandate,
           cwd,
           {
             changeId: payload.changeId,
@@ -192,16 +205,26 @@ export function createMaintainerApplyReissue(
           deadline,
           options.now,
           () =>
-            startAuthoritySession(cwd, payload.changeId, grant.grantId, {
-              now: options.now,
-              signer: confirmedSigner,
-              environment: options.environment,
-              externalStateDigests: options.externalStateDigests,
-              allowSignedV2Candidate: true,
-              postApprovalDeadline: deadline,
-            }),
+            startAuthoritySession(
+              manifestOperations,
+              taskMandate,
+              cwd,
+              payload.changeId,
+              grant.grantId,
+              {
+                now: options.now,
+                signer: confirmedSigner,
+                environment: options.environment,
+                externalStateDigests: options.externalStateDigests,
+                allowSignedV2Candidate: true,
+                postApprovalDeadline: deadline,
+              },
+            ),
         );
         const committed = commitAuthoritySession(
+          authorityApplicationReceipts,
+          manifestOperations,
+          taskMandate,
           cwd,
           session.sessionId,
           subject,
@@ -328,3 +351,5 @@ export function createMaintainerApplyReissue(
   }
   return { reissueAndApplyMaintainerGrantV2, verifyHistoricalApplyGrantTrust };
 }
+
+import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';

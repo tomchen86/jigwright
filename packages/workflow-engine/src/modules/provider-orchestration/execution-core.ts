@@ -7,7 +7,7 @@
  */
 import type { ProviderInvocationRequest } from './provider-contracts.ts';
 import { ExitCode } from '../../foundation/errors/errors.ts';
-import type { ProviderInvocationRecord } from '../../runtime/storage-journal/provider-invocation-store.ts';
+import type { ProviderInvocationRecord } from './provider-invocation-record.ts';
 import {
   assertReadOnlyProbeRequestV1,
   ReadOnlyProbeCodecError,

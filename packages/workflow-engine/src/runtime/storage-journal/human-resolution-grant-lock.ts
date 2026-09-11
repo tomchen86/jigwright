@@ -13,7 +13,7 @@ import {
   assertHumanResolutionGrantPublicationQuarantineReceipt,
   HUMAN_RESOLUTION_GRANT_FILE,
   HUMAN_RESOLUTION_GRANT_TEMPORARY,
-} from './human-resolution-grant-publication-contract.ts';
+} from '../../modules/investigation/domain/human-resolution-grant-publication-contract.ts';
 import {
   assertPrivateFile,
   fsyncDirectory,
@@ -24,8 +24,10 @@ import {
 } from './investigation-private-files.ts';
 import {
   assertHumanResolutionGrantId,
-  humanResolutionGrantPublicationRecoveryRequired,
   humanResolutionGrantUnsafe,
+} from '../../modules/investigation/domain/human-resolution-values.ts';
+import {
+  humanResolutionGrantPublicationRecoveryRequired,
   humanResolutionPaths,
 } from './investigation-resolution-values.ts';
 

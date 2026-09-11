@@ -19,8 +19,8 @@ import {
   resumePropose,
   startPropose,
   type PlanningContributionPayload,
-} from '../src/application/propose/propose-orchestrator.ts';
-import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest.ts';
+} from '../src/composition-root/propose-production.ts';
+import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
 import {
   createFixtureRepository,
   git,

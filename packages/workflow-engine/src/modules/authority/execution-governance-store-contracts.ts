@@ -1,3 +1,6 @@
+import type { RetentionPolicy } from './execution-governance-retention.ts';
+import { parseDocument, UUID_V4 } from './execution-governance-values.ts';
+import { invalidContextManifest } from './execution-governance-context.ts';
 /**
  * Validates durable context, retention, and prune envelopes with their exact CAS bindings.
  *
@@ -12,7 +15,7 @@ import {
   ExitCode,
   type WorkflowError,
 } from '../../foundation/errors/errors.ts';
-import type { ContextManifest } from '../lifecycle/context-manifest-contract.ts';
+import type { ContextManifest } from './execution-governance-context.ts';
 import {
   digest,
   MAX_DOCUMENT_BYTES,
@@ -645,3 +648,164 @@ export function unsafeDurableGovernanceStore(): WorkflowError {
     ExitCode.staleState,
   );
 }
+
+export function parseStoredDurableGovernanceState(
+  raw: string,
+  workflowId: string,
+): DurableGovernanceState {
+  const value = parseDocument(raw);
+  validateDurableGovernanceState(value);
+  if (
+    value.context.workflow.workflowId !== workflowId ||
+    canonicalDurableGovernanceState(value) !== raw
+  ) {
+    throw unsafeDurableGovernanceStore();
+  }
+  return value;
+}
+
+export function parseStoredDurablePruneReceipt(
+  raw: string,
+): DurablePruneReceipt {
+  const value = parseDocument(raw);
+  validateDurablePruneReceipt(value);
+  if (canonicalDurablePruneReceipt(value) !== raw) {
+    throw unsafeDurableGovernanceStore();
+  }
+  return value;
+}
+
+export function validateStoredManifestItems(
+  manifest: ContextManifest,
+  items: { identity: string; content: string }[],
+): Map<string, string> {
+  if (!Array.isArray(items) || items.length !== manifest.items.length) {
+    throw invalidContextManifest(
+      'Stored context items must exactly match the manifest item set.',
+    );
+  }
+  const byIdentity = new Map<string, string>();
+  for (const item of items) {
+    if (!isRecord(item) || !hasExactKeys(item, ['identity', 'content'])) {
+      throw invalidContextManifest('Stored context item is malformed.');
+    }
+    assertIdentity(
+      item.identity,
+      invalidContextManifest,
+      'context item identity',
+    );
+    if (
+      typeof item.content !== 'string' ||
+      Buffer.byteLength(item.content) > 262_144 ||
+      byIdentity.has(item.identity)
+    ) {
+      throw invalidContextManifest('Stored context item content is invalid.');
+    }
+    byIdentity.set(item.identity, item.content);
+  }
+  for (const reference of manifest.items) {
+    const content = byIdentity.get(reference.identity);
+    if (content === undefined || digest(content) !== reference.digest) {
+      throw workflowError(
+        'CONTEXT_ITEM_MISMATCH',
+        `Context item ${reference.identity} does not match its manifest digest.`,
+        ExitCode.verification,
+      );
+    }
+  }
+  return byIdentity;
+}
+
+export function parseDurableGovernanceLockOwner(
+  raw: string,
+  workflowId: string,
+) {
+  let value: unknown;
+  try {
+    value = parseDocument(raw);
+  } catch {
+    throw unsafeDurableGovernanceStore();
+  }
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, ['schemaVersion', 'workflowId', 'pid', 'createdAt']) ||
+    value.schemaVersion !== 1 ||
+    value.workflowId !== workflowId ||
+    !Number.isSafeInteger(value.pid) ||
+    (value.pid as number) < 1 ||
+    `${canonicalJson(value)}\n` !== raw
+  ) {
+    throw unsafeDurableGovernanceStore();
+  }
+  assertTimestamp(
+    value.createdAt,
+    unsafeDurableGovernanceStore,
+    'lock createdAt',
+  );
+  return value;
+}
+
+export function isDurablePruneReceiptTemporary(name: string): boolean {
+  const [receiptId, json, pid, temporaryId, suffix, ...extra] = name.split('.');
+  return (
+    extra.length === 0 &&
+    json === 'json' &&
+    suffix === 'tmp' &&
+    UUID_V4.test(receiptId ?? '') &&
+    /^[1-9][0-9]*$/.test(pid ?? '') &&
+    UUID_V4.test(temporaryId ?? '')
+  );
+}
+
+export function currentDurablePruneReceiptReferences(
+  state: DurableGovernanceState,
+  receipt: DurablePruneReceipt,
+): Set<string> {
+  if (
+    durableRetentionCatalogDigest(state.retention) !==
+      receipt.catalogDigestAfter ||
+    state.context.generation !== receipt.contextGeneration ||
+    state.context.workflow.currentEpoch !== receipt.epoch ||
+    state.context.workflow.contextDigest !== receipt.contextDigest
+  ) {
+    throw unsafeDurableGovernanceStore();
+  }
+  const referenced = new Set([
+    ...state.context.currentManifest.items.map(
+      ({ digest: itemDigest }) => itemDigest,
+    ),
+    ...state.retention.records.map(
+      ({ digest: evidenceDigest }) => evidenceDigest,
+    ),
+  ]);
+  return referenced;
+}
+
+export type DurableEvidencePublicationInput = {
+  workflowId: string;
+  expectedCatalogGeneration: number;
+  record: EvidenceRetentionRecord;
+  content: string;
+};
+
+export type DurableEvidencePinInput = {
+  workflowId: string;
+  evidenceId: string;
+  expectedCatalogGeneration: number;
+  decision: {
+    actor: string;
+    reason: string;
+    pinnedAt: Date;
+    humanConfirmed: true;
+  };
+};
+
+export type DurableEvidencePruneInput = {
+  workflowId: string;
+  expectedContextGeneration: number;
+  expectedEpoch: number;
+  expectedContextDigest: string;
+  expectedCatalogGeneration: number;
+  now: Date;
+  policy?: RetentionPolicy;
+};

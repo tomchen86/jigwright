@@ -30,7 +30,7 @@ export type BuiltInEngineClosureGenerationMode = '--check' | '--write';
 export type BuiltInEngineClosureRender = Readonly<{
   manifest: Readonly<{
     kind: 'built-in-engine-closure-manifest.v2';
-    entrypoint: 'src/cli.ts';
+    entrypoint: 'src/entrypoints/cli/workflow-cli.ts';
     scope: 'workspace-runtime-source-closure';
     packages: readonly WorkspaceSourcePackage[];
     files: readonly Readonly<{
@@ -69,7 +69,7 @@ export function renderBuiltInEngineClosure(
     );
   const manifest = Object.freeze({
     kind: 'built-in-engine-closure-manifest.v2' as const,
-    entrypoint: 'src/cli.ts' as const,
+    entrypoint: 'src/entrypoints/cli/workflow-cli.ts' as const,
     scope: 'workspace-runtime-source-closure' as const,
     packages,
     files: Object.freeze(files.map((entry) => Object.freeze(entry))),

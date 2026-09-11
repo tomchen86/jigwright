@@ -6,19 +6,19 @@
  * - The selected Grant identity must already be listed in the durable
  *   requirement.
  */
+import { canonicalRoleContextSharingGrantPayloadV1 } from '../runtime/grants/optional-grants-package.ts';
 import {
-  canonicalRoleContextSharingGrantPayloadV1,
   ROLE_CONTEXT_SHARING_DEGRADATION_EFFECT_V1,
   ROLE_CONTEXT_SHARING_GRANT_SIGNATURE_NAMESPACE_V1,
   type RoleContextSharingGrantEnvelopeV1,
-} from '../modules/authority/optional-grants-package.ts';
+} from '@jigwright/core/role-context-sharing-grant-codec';
 
 import {
   createRoleContextSharingRequirementEligibilityPort,
   deriveRoleContextSharingPlanReviewExpectedBinding,
   type RoleContextSharingPlanReviewRequirementV3,
 } from '../application/propose/role-context-sharing-plan-review.ts';
-import { readCurrentRoleContextSharingPlanReviewRequirement } from '../application/propose/propose-orchestrator.ts';
+import { readCurrentRoleContextSharingPlanReviewRequirement } from './propose-production.ts';
 import {
   assertInteractiveSignerContext,
   createInteractiveSshSigner,
@@ -26,7 +26,7 @@ import {
   type MaintainerSignerProvider,
 } from '../adapters/signing/ssh/maintainer-signer.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
-import { verifyRoleContextSharingGrantCapability } from '../modules/authority/role-context-sharing-grant.ts';
+import { verifyRoleContextSharingGrantCapability } from '../runtime/grants/grant-services.ts';
 import type { AuthoritativeRoleContextSharingGrantVerifier } from '../modules/authority/role-context-sharing-grant-verifier-port.ts';
 import {
   parseMaintainerPolicy,

@@ -1,3 +1,4 @@
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Reconciles one immediately preceding incomplete task from pinned commit
  * and check evidence.
@@ -7,7 +8,7 @@
  *   requires unchanged task and check definitions.
  */
 import type { CheckEvidence } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
-import type { TaskPolicy } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import type { TaskPolicy } from '../../modules/planning-provider/planning-artifact-types.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   commitChangedPaths,
@@ -15,8 +16,9 @@ import {
   hasExactTrailers,
 } from '../../runtime/repository-transaction/git-transitions.ts';
 import { runGit } from '../../runtime/repository-transaction/git.ts';
-import { matchesAllowedPath } from '../../runtime/session-workspace/paths.ts';
-import { executeChecks, type SessionInspection } from './verification.ts';
+import { matchesAllowedPath } from '../../foundation/repository-path/repository-path.ts';
+import { executeChecks } from './verification.ts';
+import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 
 export type ReconciledTask = {
   taskId: string;
@@ -26,6 +28,7 @@ export type ReconciledTask = {
 };
 
 export function reconcilePredecessor(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   inspection: SessionInspection,
   environment: NodeJS.ProcessEnv,
@@ -77,6 +80,7 @@ export function reconcilePredecessor(
   }
 
   const verified = executeChecks(
+    routingAdmissionReader,
     cwd,
     inspection,
     policy.requiredChecks,

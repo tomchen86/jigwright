@@ -1,3 +1,4 @@
+import { humanResolutionGrantUnsafe, } from "../../modules/investigation/domain/human-resolution-values.js";
 /**
  * Supplies investigation resolution paths, scalar checks, observations, and stable errors.
  *
@@ -8,8 +9,6 @@
 import path from 'node:path';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { exactUnsafePathObservationDigest } from "./evidence-unsafe-observation.js";
-import { hasExactKeys, isRecord } from "./investigation-store-values.js";
-export const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 export function investigationSessionPath(paths, investigationId) {
     return path.join(paths.sessions, `${investigationId}.json`);
 }
@@ -43,9 +42,6 @@ export function humanResolutionGrantPublicationRecoveryRequired() {
 }
 export function humanResolutionGrantPublicationRecoveryInvalid() {
     return workflowError('HUMAN_RESOLUTION_GRANT_PUBLICATION_RECOVERY_INVALID', 'Interrupted human resolution grant publication recovery input is malformed.', ExitCode.guard);
-}
-export function humanResolutionGrantPublicationRecoveryStale() {
-    return workflowError('HUMAN_RESOLUTION_GRANT_PUBLICATION_RECOVERY_STALE', 'Interrupted human resolution grant publication no longer matches the inspected bytes.', ExitCode.staleState);
 }
 export function humanResolutionGrantPublicationRecoveryAmbiguous() {
     return workflowError('HUMAN_RESOLUTION_GRANT_PUBLICATION_RECOVERY_AMBIGUOUS', 'Interrupted human resolution grant publication state is not a unique temp-only prefix.', ExitCode.unsafeEnvironment);
@@ -102,63 +98,14 @@ export function assertCanonicalResolutionEnvelopeBytes(content) {
         throw humanResolutionGrantUnsafe();
     }
 }
-export function assertHumanResolutionGrantId(value) {
-    if (typeof value !== 'string' ||
-        !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)) {
-        throw humanResolutionGrantUnsafe();
-    }
-    return value;
-}
-export function exactResolutionTimestamp(value) {
-    const time = value.getTime();
-    if (!Number.isFinite(time)) {
-        throw humanResolutionInvalid('Human resolution timestamp is invalid.');
-    }
-    return new Date(time).toISOString();
-}
-export function isBoundedResolutionText(value, maxBytes) {
-    return (typeof value === 'string' &&
-        value.trim() === value &&
-        value.length > 0 &&
-        Buffer.byteLength(value, 'utf8') <= maxBytes &&
-        ![...value].some((character) => {
-            const code = character.codePointAt(0) ?? 0;
-            return code <= 31 || (code >= 127 && code <= 159);
-        }));
-}
-export function isEmptyRecord(value) {
-    return isRecord(value) && Object.keys(value).length === 0;
-}
-export function isSortedUniqueStrings(values) {
-    const sorted = [...new Set(values)].sort();
-    return (values.length === sorted.length &&
-        values.every((value, index) => value === sorted[index]));
-}
-export function isBaseline(value) {
-    return (isRecord(value) &&
-        hasExactKeys(value, ['head', 'tree']) &&
-        typeof value.head === 'string' &&
-        GIT_OBJECT_ID.test(value.head) &&
-        typeof value.tree === 'string' &&
-        GIT_OBJECT_ID.test(value.tree));
-}
 export function sessionUnsafe() {
     return workflowError('INVESTIGATION_SESSION_UNSAFE', 'Investigation session storage is unsafe or malformed.', ExitCode.unsafeEnvironment);
-}
-export function sessionInvalid() {
-    return workflowError('INVESTIGATION_SESSION_INVALID', 'Investigation session is malformed or internally inconsistent.', ExitCode.staleState);
-}
-export function sessionTransitionInvalid() {
-    return workflowError('INVESTIGATION_SESSION_TRANSITION_INVALID', 'Investigation session transition is not monotonic.', ExitCode.staleState);
 }
 export function investigationCasMismatch(expected, observed) {
     return workflowError('INVESTIGATION_CAS_MISMATCH', 'Investigation session changed during compare-and-swap.', ExitCode.conflict, { details: { expectedRevision: expected, observedRevision: observed } });
 }
 export function refUnsafe() {
     return workflowError('CURRENT_INVESTIGATION_REF_UNSAFE', 'Current investigation reference is unsafe or malformed.', ExitCode.unsafeEnvironment);
-}
-export function humanResolutionInvalid(message) {
-    return workflowError('HUMAN_RESOLUTION_INVALID', message, ExitCode.guard);
 }
 export function humanResolutionStateInvalid() {
     return workflowError('HUMAN_RESOLUTION_STATE_UNSAFE', 'The workflow state cannot be uniquely bound for human resolution.', ExitCode.unsafeEnvironment);
@@ -169,23 +116,11 @@ export function humanResolutionRecoveryAmbiguous() {
 export function startReservationUnsafe() {
     return workflowError('HUMAN_RESOLUTION_START_RESERVATION_UNSAFE', 'Referenced investigation start reservation is unsafe or non-canonical.', ExitCode.unsafeEnvironment);
 }
-export function humanResolutionObjectUnsafe() {
-    return workflowError('HUMAN_RESOLUTION_NODE_UNSAFE', 'Human resolution overlay storage is unsafe or malformed.', ExitCode.unsafeEnvironment);
-}
 export function humanResolutionRefUnsafe() {
     return workflowError('HUMAN_RESOLUTION_REF_UNSAFE', 'Human resolution ref storage is unsafe or malformed.', ExitCode.unsafeEnvironment);
 }
-export function humanResolutionGrantUnsafe() {
-    return workflowError('HUMAN_RESOLUTION_GRANT_UNSAFE', 'Human resolution grant storage is unsafe or malformed.', ExitCode.unsafeEnvironment);
-}
 export function humanResolutionGrantUnavailable(grantId) {
     return workflowError('HUMAN_RESOLUTION_GRANT_UNAVAILABLE', `Human resolution grant ${grantId} is unavailable or already terminal.`, ExitCode.conflict);
-}
-export function humanResolutionGrantNotFound(grantId) {
-    return workflowError('HUMAN_RESOLUTION_GRANT_NOT_FOUND', `Human resolution grant ${grantId} does not exist.`, ExitCode.conflict);
-}
-export function humanResolutionJournalUnsafe() {
-    return workflowError('HUMAN_RESOLUTION_JOURNAL_UNSAFE', 'Human resolution journal is unsafe or malformed.', ExitCode.unsafeEnvironment);
 }
 export function humanResolutionArchiveUnsafe() {
     return workflowError('HUMAN_RESOLUTION_ARCHIVE_UNSAFE', 'Human resolution evidence archive is unsafe or malformed.', ExitCode.unsafeEnvironment);

@@ -10,7 +10,6 @@ import { deriveAuthorityAuditRepositoryId } from '../../runtime/storage-journal/
 import {
   authorityRefusalDigest,
   withAuthorityRefusalAudit,
-  type AuthorityRefusalAuditBinding,
 } from '../../modules/authority/authority-refusal-audit.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
@@ -44,7 +43,7 @@ import {
   normalizeControlPlaneTaskMandateBinding,
 } from '../../modules/authority/intervention-control.ts';
 import type { MaintainerSignerProvider } from '../../composition-root/maintainer-signer.ts';
-import type { TaskMandateBinding } from '../../modules/authority/task-mandate.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 
 const CONTROL_PLANE_GRANT_TTL_MS = 5 * 60 * 1000;
 
@@ -493,3 +492,5 @@ function isNonEmpty(value: unknown): value is string {
     typeof value === 'string' && value.length > 0 && value.trim() === value
   );
 }
+
+import { type AuthorityRefusalAuditBinding } from '../../modules/authority/authority-audit-contract.ts';

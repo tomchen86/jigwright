@@ -11,11 +11,11 @@ import { type ProviderInvocationAcceptanceBinding } from '../src/runtime/storage
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import { createProviderRunnerForTesting } from '../src/runtime/provider-execution/provider-runner.ts';
 import { spawnBoundedProviderProcess } from '../src/runtime/provider-execution/bounded-provider-process.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
+import {resolveBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
 import { createBuiltInAgentRuntimeV1Bridge } from '../src/composition-root/agent-runtime-v1-production.ts';
 import { runHostWrapperProviderThroughAgentRuntimeV1 } from '../src/composition-root/agent-runtime-host-wrapper-production.ts';
 import { productionAgentRuntime } from '../src/composition-root/agent-runtime-production.ts';
-import { type HostWrapperProviderProfileSnapshot } from '@jigwright/agent-runtime';
+import { type HostWrapperProviderProfileSnapshot } from '@jigwright/core/agent-provider-config';
 import type { AgentRuntimeNativeSessionTurnControllerV1 } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
 import { createAgentRuntimeAssignmentBindingV1 } from '../src/modules/provider-orchestration/agent-runtime-assignment-binding.ts';
 import {
@@ -40,8 +40,8 @@ import {
 import {
   assertProviderRuntimeProtocolReceipt,
   type ProviderRuntimeProtocolReceipt,
-  type ProviderWrapperProtocolReceipt,
 } from '../src/modules/provider-orchestration/agent-runtime-protocol.ts';
+import { type ProviderWrapperProtocolReceipt } from '@jigwright/core/harness-jsonl-v1-contracts';
 import { sourceRepositoryRoot } from './fixture.ts';
 import {
   PROVIDER_SCHEMA,

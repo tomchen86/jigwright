@@ -1,15 +1,28 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { resolveCurrentTaskStrategyCorrection } from '../src/application/execute-task/task-strategy-correction.ts';
 import { listTaskStrategyCorrectionRounds } from '../src/runtime/storage-journal/task-strategy-correction-round-store.ts';
 import { adoptCurrentTaskStrategyImplementation } from '../src/application/execute-task/task-strategy-patch.ts';
 import { sealTaskStrategyRed } from '../src/application/execute-task/task-strategy-execution.ts';
-import { resumeTaskStrategy } from '../src/application/execute-task/task-strategy-lifecycle.ts';
+import { resumeTaskStrategy } from '../src/composition-root/task-strategy-production.ts';
 import {
   checkSession,
   inspectSession,
@@ -26,24 +39,43 @@ import {
 test('single-agent correction reserves and authenticates one local round before exposing its patch head', () => {
   const repository = createLocalCorrectionFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
+    const red = sealTaskStrategyRed(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+      },
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     const initial = adoptCurrentTaskStrategyImplementation(
+      productionChangeRoutingAdmissionReader,
       repository,
       session.sessionId,
     )!;
 
     assert.throws(
-      () => checkSession(repository, session.sessionId, { environment: {} }),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          repository,
+          session.sessionId,
+          { environment: {} },
+        ),
       hasCode('CHECK_FAILED'),
     );
     fs.writeFileSync(implementationPath, 'export const corrected = true;\n');
@@ -51,7 +83,11 @@ test('single-agent correction reserves and authenticates one local round before 
     const resumed = resumeTaskStrategy(repository, session.sessionId);
     assert.equal(resumed.state, 'patch-imported');
 
-    const inspection = inspectSession(repository, session.sessionId);
+    const inspection = inspectSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+    );
     const projection = resolveCurrentTaskStrategyCorrection(inspection);
     const runtime = loadInvestigationRuntimeContext(repository).runtime;
     const rounds = listTaskStrategyCorrectionRounds(
@@ -86,7 +122,14 @@ test('single-agent correction reserves and authenticates one local round before 
     assert.equal(JSON.stringify(round).includes('invocationId'), false);
     assert.equal(JSON.stringify(round).includes('providerRequest'), false);
     assert.equal(
-      checkSession(repository, session.sessionId, { environment: {} }).passed,
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeRoutingAdmissionReader,
+        repository,
+        session.sessionId,
+        { environment: {} },
+      ).passed,
       true,
     );
     fs.rmSync(
@@ -101,7 +144,11 @@ test('single-agent correction reserves and authenticates one local round before 
     assert.throws(
       () =>
         resolveCurrentTaskStrategyCorrection(
-          inspectSession(repository, session.sessionId),
+          inspectSession(
+            productionChangeRoutingAdmissionReader,
+            repository,
+            session.sessionId,
+          ),
         ),
       hasCode('TASK_STRATEGY_CORRECTION_STATE_STALE'),
     );

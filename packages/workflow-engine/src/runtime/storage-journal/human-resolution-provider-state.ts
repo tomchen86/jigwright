@@ -13,11 +13,9 @@ import {
   type ProviderInvocationRequest,
   recreateProviderInvocationRequest,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
-import {
-  assertInvocationId,
-  type InvestigationRuntimePaths,
-} from '../session-workspace/paths.ts';
-import { type InvestigationResolutionStateEnvelope } from './human-resolution-contract.ts';
+import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
+import { type InvestigationResolutionStateEnvelope } from '../../modules/investigation/domain/human-resolution-contract.ts';
 import {
   assertPrivateInvestigationDirectory,
   MAX_HUMAN_RESOLUTION_BYTES,
@@ -26,7 +24,7 @@ import {
   walkPrivateDirectory,
 } from './investigation-private-files.ts';
 import { observeUnsafePath } from './investigation-resolution-values.ts';
-import { type InvestigationSession } from './investigation-session-types.ts';
+import { type InvestigationSession } from '../../modules/investigation/domain/investigation-session-types.ts';
 import {
   hasExactKeys,
   isDigest,
@@ -34,7 +32,7 @@ import {
   isTimestamp,
   providerInvocationUnsafe,
   sha256,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 import {
   isDurablyReservedProviderExecutionPolicySnapshot,
   scanProviderInvocationLifecycles,

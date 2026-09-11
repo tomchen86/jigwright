@@ -1,3 +1,8 @@
+import type { WorkflowSession } from '../../modules/lifecycle/workflow-session-contract.ts';
+import type { TaskSessionIsolationBinding } from '../../modules/lifecycle/workflow-session-contract.ts';
+export type { WorkflowSession } from '../../modules/lifecycle/workflow-session-contract.ts';
+export type { TaskSessionIsolationBinding } from '../../modules/lifecycle/workflow-session-contract.ts';
+export type { TaskSessionResourceLease } from '../../modules/lifecycle/workflow-session-contract.ts';
 /**
  * Reads and validates workflow sessions and publishes their atomic JSON records.
  *
@@ -5,10 +10,7 @@
  * - Stored sessions retain exact identity, planning assurance, check evidence, and isolation fields.
  * - Reads preserve file metadata and canonical validation; writes keep rename and fsync order.
  */
-import {
-  type PlanningAssuranceBinding,
-  isPlanningAssuranceBinding,
-} from '../../modules/assurance/planning-assurance-binding.ts';
+import { isPlanningAssuranceBinding } from '../../modules/assurance/planning-assurance-binding.ts';
 import { defaultSessionRuntimeLayoutPort } from '@jigwright/core/session-runtime-layout-port';
 import fs from 'node:fs';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
@@ -24,77 +26,10 @@ import {
   isSha256Digest,
   isCommitHash,
 } from './session-store-values.ts';
-import { normalizePolicyPath } from './paths.ts';
+import { normalizePolicyPath } from '../../foundation/repository-path/repository-path.ts';
 
 const TASK_REVISION_LEASE_ID =
   /^revision-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-
-export type TaskSessionResourceLease = Readonly<{
-  kind: 'destructive-database' | 'exclusive';
-  digest: `sha256:${string}`;
-}>;
-
-export type TaskSessionIsolationBinding = Readonly<{
-  schemaVersion: 1;
-  routingRole: 'single' | 'primary' | 'concurrent';
-  routingWorksetDigest: `sha256:${string}`;
-  concurrencyEnabled: boolean;
-  worktreeDigest: `sha256:${string}`;
-  resources: readonly TaskSessionResourceLease[];
-}>;
-
-export type WorkflowSession = {
-  schemaVersion: 1;
-  sessionId: string;
-  state: 'active' | 'revising' | 'aborted' | 'committed';
-  changeId: string;
-  taskId: string;
-  /** Durable top-level task mandate authorization for production sessions. */
-  mandateBinding?: {
-    schemaVersion: 1;
-    mandateTaskId: string;
-    mandateId: string;
-    mandateDigest: string;
-    changeId: string;
-    externalAuditRoot: string;
-  } | null;
-  repositoryRoot: string;
-  gitCommonDirectory: string;
-  branch: string;
-  baseline: {
-    head: string;
-    tree: string;
-  };
-  artifacts: Record<string, string>;
-  allowedPaths: string[];
-  requiredChecks: string[];
-  /** Durable worktree, workset, and exclusive-resource lease identities. */
-  isolation: TaskSessionIsolationBinding;
-  requiredCheckDigests: Record<string, string>;
-  /** Engine identity against which the current durable check evidence ran. */
-  checkEvidenceEngineDigest?: `sha256:${string}`;
-  planningAssurance: PlanningAssuranceBinding | null;
-  /** Current same-session planning-authority lease while execution is paused. */
-  revisionLeaseId?: string;
-  /** Immutable post-implementation semantic reconciliation authority. */
-  implementationReconciliationReportId?: string;
-  /** Exact engine-owned Git projection authorized by that reconciliation. */
-  implementationReconciliationPaths?: string[];
-  /** Authenticated reviewer-requested documentation paths for this session. */
-  documentationRemediation?: {
-    reviewRecordDigests: string[];
-    paths: string[];
-  };
-  createdAt: string;
-  latestCheckReportId?: string;
-  completionReportId?: string;
-  finishReportId?: string;
-  commitReportId?: string;
-  commitHash?: string;
-  committedAt?: string;
-  abortedAt?: string;
-  abortReason?: string;
-};
 
 export function runtimePaths(
   gitCommonDirectory: string,

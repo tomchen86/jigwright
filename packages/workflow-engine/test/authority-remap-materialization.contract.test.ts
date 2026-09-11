@@ -19,6 +19,7 @@ import {
   renderHarnessBootstrapRuntime,
 } from '../bootstrap/generate-harness-bootstrap-runtime.ts';
 import { generateProtectedCapabilitiesManifest } from '../bootstrap/generate-protected-capabilities.ts';
+import { resolveWorkspaceSourceClosure } from '../bootstrap/workspace-source-closure.ts';
 import { projectAuthorityRemap } from '../src/composition-root/authority-remap.ts';
 import assert from 'node:assert/strict';
 import { materializeAuthorityRemap } from '../bootstrap/authority-remap-materializer.ts';
@@ -34,6 +35,45 @@ import {
   writeMaintainerProfiles,
   updatePathRoles,
 } from './authority-remap-fixture.ts';
+
+// Cloning HEAD deliberately excludes uncommitted source relocations. Prepare the
+// real current bootstrap source closure before committing the fixture's pinned
+// base, then let the generators derive every manifest and digest from its bytes.
+function copyCurrentBootstrapSources(repository: string): void {
+  for (const descriptor of resolveWorkspaceSourceClosure(
+    sourceRepositoryRoot,
+  )) {
+    const source = path.join(sourceRepositoryRoot, descriptor.sourceRoot);
+    const target = path.join(repository, descriptor.sourceRoot);
+    fs.cpSync(path.join(source, 'src'), path.join(target, 'src'), {
+      recursive: true,
+    });
+    fs.copyFileSync(
+      path.join(source, 'package.json'),
+      path.join(target, 'package.json'),
+    );
+  }
+  // Reviewed source identities must match the current generator's declared
+  // verifier composition; generation below recomputes every content digest.
+  fs.copyFileSync(
+    path.join(sourceRepositoryRoot, 'workflow/protected-capabilities.json'),
+    path.join(repository, 'workflow/protected-capabilities.json'),
+  );
+  const bootstrap = 'packages/workflow-engine/bootstrap';
+  for (const entry of fs.readdirSync(
+    path.join(sourceRepositoryRoot, bootstrap),
+    {
+      withFileTypes: true,
+    },
+  )) {
+    if (entry.isFile() && entry.name.endsWith('.ts')) {
+      fs.copyFileSync(
+        path.join(sourceRepositoryRoot, bootstrap, entry.name),
+        path.join(repository, bootstrap, entry.name),
+      );
+    }
+  }
+}
 
 test('regeneration materializes one exact ready intent and rejects a stale handoff', async () => {
   const container = fs.mkdtempSync(
@@ -61,6 +101,7 @@ test('regeneration materializes one exact ready intent and rejects a stale hando
     ]);
     git(repository, ['config', 'user.email', 'workflow@example.test']);
     git(repository, ['config', 'user.name', 'Workflow Test']);
+    copyCurrentBootstrapSources(repository);
     const from =
       'packages/workflow-engine/src/modules/t3-materializer-fixture.ts';
     const to =
@@ -68,11 +109,11 @@ test('regeneration materializes one exact ready intent and rejects a stale hando
     write(repository, from, 'export const t3MaterializerFixture = true;\n');
     const harnessBootstrapPath = path.join(
       repository,
-      'packages/workflow-engine/src/harness-bootstrap.ts',
+      'packages/workflow-engine/src/entrypoints/cli/harness-bootstrap-cli.ts',
     );
     fs.appendFileSync(
       harnessBootstrapPath,
-      "export { t3MaterializerFixture } from './modules/t3-materializer-fixture.ts';\n",
+      "export { t3MaterializerFixture } from '../../modules/t3-materializer-fixture.ts';\n",
     );
     const regeneratedOutput =
       'packages/workflow-engine/bootstrap/recovery-runtime/src/modules/source/t3-materializer-fixture.js';
@@ -93,8 +134,8 @@ test('regeneration materializes one exact ready intent and rejects a stale hando
       fs
         .readFileSync(harnessBootstrapPath, 'utf8')
         .replace(
-          './modules/t3-materializer-fixture.ts',
-          './modules/source/t3-materializer-fixture.ts',
+          '../../modules/t3-materializer-fixture.ts',
+          '../../modules/source/t3-materializer-fixture.ts',
         ),
     );
     commitAll(repository, 'Review materializer fixture import rewrite');
@@ -216,6 +257,7 @@ test('regeneration rejects generated recovery outputs ignored by tracked rules',
     ]);
     git(repository, ['config', 'user.email', 'workflow@example.test']);
     git(repository, ['config', 'user.name', 'Workflow Test']);
+    copyCurrentBootstrapSources(repository);
     const from =
       'packages/workflow-engine/src/modules/t3-ignored-output-fixture.ts';
     const to =
@@ -225,11 +267,11 @@ test('regeneration rejects generated recovery outputs ignored by tracked rules',
     write(repository, from, 'export const t3IgnoredOutputFixture = true;\n');
     const harnessBootstrapPath = path.join(
       repository,
-      'packages/workflow-engine/src/harness-bootstrap.ts',
+      'packages/workflow-engine/src/entrypoints/cli/harness-bootstrap-cli.ts',
     );
     fs.appendFileSync(
       harnessBootstrapPath,
-      "export { t3IgnoredOutputFixture } from './modules/t3-ignored-output-fixture.ts';\n",
+      "export { t3IgnoredOutputFixture } from '../../modules/t3-ignored-output-fixture.ts';\n",
     );
     generateBuiltInEngineClosure(repository, '--write');
     generateHarnessBootstrapRuntime(repository, '--write');
@@ -256,8 +298,8 @@ test('regeneration rejects generated recovery outputs ignored by tracked rules',
       fs
         .readFileSync(harnessBootstrapPath, 'utf8')
         .replace(
-          './modules/t3-ignored-output-fixture.ts',
-          './modules/source/t3-ignored-output-fixture.ts',
+          '../../modules/t3-ignored-output-fixture.ts',
+          '../../modules/source/t3-ignored-output-fixture.ts',
         ),
     );
     commitAll(repository, 'Review ignored-output fixture import rewrite');
@@ -571,7 +613,7 @@ test('harness renderer never executes a candidate-owned compiler and returns imm
     );
     write(
       container,
-      'packages/workflow-engine/src/harness-bootstrap.ts',
+      'packages/workflow-engine/src/entrypoints/cli/harness-bootstrap-cli.ts',
       'export const fixture = true;\n',
     );
     generateBuiltInEngineClosure(container, '--write');
@@ -630,7 +672,7 @@ test('harness generator rejects linked metadata outputs without overwriting exte
     );
     write(
       container,
-      'packages/workflow-engine/src/harness-bootstrap.ts',
+      'packages/workflow-engine/src/entrypoints/cli/harness-bootstrap-cli.ts',
       'export const fixture = true;\n',
     );
     generateBuiltInEngineClosure(container, '--write');
@@ -644,7 +686,10 @@ test('harness generator rejects linked metadata outputs without overwriting exte
       ),
     );
 
-    assert.throws(() => generateHarnessBootstrapRuntime(container, '--write'));
+    assert.throws(
+      () => generateHarnessBootstrapRuntime(container, '--write'),
+      /Harness-bootstrap output is unsafe: .*harness-bootstrap-dependency-closure\.json/,
+    );
     assert.equal(
       fs.readFileSync(external, 'utf8'),
       'preserve-external-bytes\n',

@@ -1,3 +1,4 @@
+import type {ImmutableCandidateBundleV2} from '../../modules/authority/maintainer-candidate-contracts.ts';
 /**
  * Produces a control-plane approval candidate from frozen repository,
  * sidecar and supervisor evidence.
@@ -69,11 +70,7 @@ import {
   type PersistedControlPlaneApprovalCandidateV3,
 } from './intervention-control-updater.ts';
 import { readInterventionEngineArtifact } from './intervention-maintenance.ts';
-import {
-  assertStoredCandidateSupportingArtifacts,
-  readStoredImmutableCandidateBundle,
-  type ImmutableCandidateBundleV2,
-} from '../../modules/authority/maintainer-candidate.ts';
+import {assertStoredCandidateSupportingArtifacts,readStoredImmutableCandidateBundle} from '../../modules/authority/maintainer-candidate.ts';
 import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
 import { loadProtectedCapabilitiesFromTrustBase } from '../../adapters/consumer/repository/work-registry/protected-capabilities.ts';
 

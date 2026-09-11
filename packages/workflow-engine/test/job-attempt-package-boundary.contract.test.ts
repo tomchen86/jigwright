@@ -133,7 +133,6 @@ test('current provider Job and Attempt runtime has no legacy projection surface'
       'provider-invocation-policy.ts',
       'provider-invocation-reservations.ts',
       'provider-invocation-state.ts',
-      'provider-invocation-types.ts',
       'provider-invocation-validation.ts',
       'provider-invocation-manifest-validation.ts',
       'provider-invocation-output-validation.ts',

@@ -10,10 +10,10 @@ import crypto from 'node:crypto';
 
 import {
   assertAgentProviderProfileSnapshot,
-  assertKnownBuiltInProviderDefinitionSnapshot,
   type HostWrapperProviderProfileSnapshot,
-} from '@jigwright/agent-runtime';
-import { assertInvocationId } from '@jigwright/core/runtime-path-kernel';
+} from '@jigwright/core/agent-provider-config';
+import {assertKnownBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
+import { assertInvocationId } from '@jigwright/core/workflow-identifiers';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import type {

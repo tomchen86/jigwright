@@ -23,16 +23,16 @@ import {
   canonicalExecutionBudgetGrantRequest,
   createExecutionBudgetGrantEnvelope,
   createExecutionBudgetGrantRequest,
-  storeExecutionBudgetGrant,
-} from '../src/modules/authority/execution-governance.ts';
+} from '../src/modules/authority/execution-governance-grant-contracts.ts';
+import { storeExecutionBudgetGrant } from '../src/runtime/storage-journal/execution-budget-grants.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import {
   compareAndSwapHumanResolutionHead,
-  createHumanResolutionNode,
   writeHumanResolutionNode,
-} from '../src/runtime/storage-journal/investigation-session-store.ts';
+} from '../src/runtime/storage-journal/human-resolution-nodes.ts';
+import { createHumanResolutionNode } from '../src/modules/investigation/domain/human-resolution-contract.ts';
 import type { ProviderRetentionMetrics } from '../src/runtime/provider-execution/provider-retention.ts';
-import type { TaskMandateBinding } from '../src/modules/authority/task-mandate.ts';
+import type { TaskMandateBinding } from '../src/modules/authority/task-mandate-contract.ts';
 import { createFixtureRepository, sourceRepositoryRoot } from './fixture.ts';
 
 const NOW = '2026-08-03T10:00:00.000Z';
@@ -474,7 +474,7 @@ test('metrics show exposes a zero-sample production snapshot', () => {
           '--experimental-strip-types',
           path.join(
             sourceRepositoryRoot,
-            'packages/workflow-engine/src/cli.ts',
+            'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
           ),
           'metrics',
           'show',

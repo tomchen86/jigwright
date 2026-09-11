@@ -1,14 +1,11 @@
 /**
- * Loads and validates the public workflow conformance corpus.
+ * Parses and authenticates the public workflow conformance corpus.
  *
  * Invariants:
  * - All registered domains must be present and nonempty, and vector
  *   identities must be unique across domains.
  */
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import { canonicalJson } from './canonical-json.ts';
 
@@ -45,31 +42,23 @@ export type WorkflowConformanceVectorsV2 = Readonly<{
   vectorSetDigest: `sha256:${string}`;
 }>;
 
-const DEFAULT_VECTOR_PATH = fileURLToPath(
-  new URL('../conformance/workflow-conformance-v2.json', import.meta.url),
-);
+/** Locate the shipped corpus without reading it or depending on the caller's cwd. */
+export function workflowConformanceVectorsUrl(): URL {
+  return new URL(
+    '../conformance/workflow-conformance-v2.json',
+    import.meta.url,
+  );
+}
 const VECTOR_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const PREFIXED_SHA256 = /^sha256:[0-9a-f]{64}$/u;
 
-/** Load and authenticate the public, language-neutral T3 conformance corpus. */
-export function loadWorkflowConformanceVectorsV2(
-  options: Readonly<{ vectorPath?: string }> = {},
+/** Authenticate supplied corpus bytes independently of their storage. */
+export function parseWorkflowConformanceVectorsV2(
+  source: string,
 ): WorkflowConformanceVectorsV2 {
-  const requestedPath = path.resolve(options.vectorPath ?? DEFAULT_VECTOR_PATH);
-  const stats = fs.lstatSync(requestedPath, { throwIfNoEntry: false });
-  if (
-    !stats?.isFile() ||
-    stats.isSymbolicLink() ||
-    stats.size === 0 ||
-    stats.size > 1024 * 1024
-  ) {
-    throw new Error(
-      'Workflow conformance vectors must be a bounded plain file.',
-    );
-  }
   let value: unknown;
   try {
-    value = JSON.parse(fs.readFileSync(requestedPath, 'utf8')) as unknown;
+    value = JSON.parse(source) as unknown;
   } catch (error) {
     throw new Error('Workflow conformance vectors are malformed JSON.', {
       cause: error,

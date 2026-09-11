@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { parseAgentProviderConfigToml } from '@jigwright/agent-runtime';
+import { parseAgentProviderConfigToml } from '@jigwright/core/agent-provider-config';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import type { VerifiedApprovalProof } from '../src/modules/authority/grant-approval.ts';
@@ -67,7 +67,10 @@ import {
   observeChangeRoleAssignmentGrantActivation,
   readCompletedChangeRoleAssignmentGrantAuthority,
 } from '../src/runtime/storage-journal/change-role-assignment-grant-store.ts';
-import { grantStorePaths } from '../src/runtime/storage-journal/grant-store.ts';
+import {
+  grantStorePaths,
+  createFileGrantRecordStore,
+} from '../src/runtime/storage-journal/grant-store.ts';
 import {
   assertPinnedAgentRolePlanV2Snapshot,
   readPinnedAgentRolePlanV2Snapshot,
@@ -494,7 +497,9 @@ test('completed Central Grant activates only the exact durable below-floor assig
     };
     const ids = [GRANT_CHALLENGE_ID, GRANT_OPERATION_ID];
     const coordinator = createGrantCoordinatorKernel({
-      paths: grantStorePaths(path.dirname(state.paths.root)),
+      store: createFileGrantRecordStore(
+        grantStorePaths(path.dirname(state.paths.root)),
+      ),
       registry: createTransitionRegistry(
         changeRoleAssignmentGrantTransitionDefinitions(port),
       ),

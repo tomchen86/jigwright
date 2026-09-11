@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import test from 'node:test';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
-import { projectPlanReviewTerms } from '../src/modules/projection/investigation-term-projection.ts';
+import { projectPlanReviewTerms } from '../src/modules/assurance/plan-review-terms.ts';
 import {
   createPlanReviewNode,
   createPlanReviewProviderResultNode,
@@ -13,9 +13,12 @@ import {
   PLAN_REVIEW_OUTPUT_VALIDATOR,
   readPlanReviewTargetSnapshotNode,
   readPlanReviewNode,
+} from '../src/modules/assurance/plan-review.ts';
+import {
   type PlanReviewReport,
   type PlanReviewSubmission,
-} from '../src/modules/assurance/plan-review.ts';
+} from '../src/modules/assurance/plan-review-report.ts';
+
 import { validatePlanReview } from '../src/modules/assurance/plan-review-validation.ts';
 import {
   assertInvestigationPlanReviewCoverageRequirementSatisfied,
@@ -98,23 +101,30 @@ test('v3 authoring builds global PlanReview coverage as a direct payload', () =>
 
   assert.throws(
     () =>
-      assertInvestigationPlanReviewCoverageRequirementSatisfied({
-        repositoryRoot: process.cwd(),
-        requirement: {
-          kind: 'plan-review-coverage-requirement',
-          requirementId: 'plan-review-coverage',
-          coverage: requirement,
-          semanticAuthor: {
-            id: 'investigation-reviewer',
-            provenance: 'checkpoint:plan-review-coverage',
-          },
-          provenanceDigest: 'e'.repeat(64),
+      assertInvestigationPlanReviewCoverageRequirementSatisfied(
+        () => {
+          throw new Error(
+            'Coverage reader must not run before identity validation',
+          );
         },
-        review: {} as PlanReviewReport,
-        expectedInvestigationId: 'another-investigation',
-        expectedChangeId: 'change-v3',
-        expectedBaseline: { head: 'a'.repeat(40), tree: 'b'.repeat(40) },
-      }),
+        {
+          repositoryRoot: process.cwd(),
+          requirement: {
+            kind: 'plan-review-coverage-requirement',
+            requirementId: 'plan-review-coverage',
+            coverage: requirement,
+            semanticAuthor: {
+              id: 'investigation-reviewer',
+              provenance: 'checkpoint:plan-review-coverage',
+            },
+            provenanceDigest: 'e'.repeat(64),
+          },
+          review: {} as PlanReviewReport,
+          expectedInvestigationId: 'another-investigation',
+          expectedChangeId: 'change-v3',
+          expectedBaseline: { head: 'a'.repeat(40), tree: 'b'.repeat(40) },
+        },
+      ),
     (error) => isWorkflowError(error, 'REVIEW_COVERAGE_REQUIREMENT_INVALID'),
   );
 });

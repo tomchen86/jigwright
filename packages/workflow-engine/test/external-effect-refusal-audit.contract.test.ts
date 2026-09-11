@@ -3,24 +3,21 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import test from 'node:test';
 
-import {
-  deriveAuthorityAuditRepositoryId,
-  type AuthorityAuditLedgerScope,
-} from '../src/runtime/storage-journal/authority-audit-ledger.ts';
+import { deriveAuthorityAuditRepositoryId } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import {
   showAuthorityAuditTask,
   verifyAuthorityAuditEvents,
 } from '../src/runtime/storage-journal/authority-audit-service.ts';
 import {
   consumeExternalEffectGrant,
-  issueExternalEffectGrant,
   markExternalEffectDispatchIssued,
   reconcileExternalEffectGrant,
   recordExternalEffectObservation,
   reserveExternalEffectGrant,
   revokeExternalEffectGrant,
   terminalizeExternalEffectGrant,
-} from '../src/modules/authority/external-effect-grant.ts';
+} from '../src/composition-root/external-effect-production.ts';
+import { issueExternalEffectGrant } from '../src/composition-root/external-effect-production.ts';
 import {
   EFFECT_GRANT_ID as GRANT_ID,
   EFFECT_ISSUED_AT as ISSUED_AT,
@@ -260,3 +257,5 @@ function auditScope(fixture: {
 function digest(value: string): `sha256:${string}` {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
+
+import { type AuthorityAuditLedgerScope } from '../src/modules/authority/authority-audit-contract.ts';

@@ -1,3 +1,6 @@
+import type { TaskCommit } from '../../modules/assurance/task-execution-evidence.ts';
+export type { TaskCommit } from '../../modules/assurance/task-execution-evidence.ts';
+import type { CommitFacts } from '../../modules/repository-consumer/commit-facts.ts';
 /**
  * Reads immutable commit facts and finds task commits after the current execution boundary.
  *
@@ -6,25 +9,15 @@
  * - Task queries exclude commits from superseded execution boundaries.
  */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { parseManagedTrailers } from '../../modules/lifecycle/managed-trailers.ts';
-import { normalizeChangedPath } from '../session-workspace/paths.ts';
+import { parseManagedTrailers } from '@jigwright/core/managed-transition-trailers';
+import { normalizeChangedPath } from '../../foundation/repository-path/repository-path.ts';
 import { splitNull } from './git-transition-values.ts';
 import { runGit } from './git.ts';
-
-export type TaskCommit = {
-  hash: string;
-  subject: string;
-};
 
 export function commitFacts(
   repositoryRoot: string,
   commitHash: string,
-): {
-  hash: string;
-  parents: string[];
-  tree: string;
-  message: string;
-} {
+): CommitFacts {
   const hash = runGit(repositoryRoot, [
     'rev-parse',
     `${commitHash}^{commit}`,

@@ -5,7 +5,7 @@ import {
   parseAgentProviderConfigToml,
   type AgentProviderCapability,
   type AgentProviderConfigSnapshot,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
 
 import {
   agentRolePlanV2Digest,

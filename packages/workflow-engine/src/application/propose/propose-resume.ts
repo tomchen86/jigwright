@@ -1,3 +1,4 @@
+import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
 /**
  * Routes typed propose submissions through the current investigation transition.
  *
@@ -71,6 +72,7 @@ import {
 } from './propose-types.ts';
 
 export function resumePropose(
+  planningExecution: PlanningTransitionExecutionServices,
   services: ProposeRuntime,
   cwd: string,
   requestedChangeId: string,
@@ -84,6 +86,7 @@ export function resumePropose(
 ): OrdinaryProposeOutput;
 
 export function resumePropose(
+  planningExecution: PlanningTransitionExecutionServices,
   services: ProposeRuntime,
   cwd: string,
   requestedChangeId: string,
@@ -92,6 +95,7 @@ export function resumePropose(
 ): ExemptionProposeOutput;
 
 export function resumePropose(
+  planningExecution: PlanningTransitionExecutionServices,
   services: ProposeRuntime,
   cwd: string,
   requestedChangeId: string,
@@ -103,6 +107,7 @@ export function resumePropose(
 ): ProposeOutput;
 
 export function resumePropose(
+  planningExecution: PlanningTransitionExecutionServices,
   services: ProposeRuntime,
   cwd: string,
   requestedChangeId: string,
@@ -111,6 +116,7 @@ export function resumePropose(
 ): ProposeOutput;
 
 export function resumePropose(
+  planningExecution: PlanningTransitionExecutionServices,
   services: ProposeRuntime,
   cwd: string,
   requestedChangeId: string,
@@ -203,11 +209,17 @@ export function resumePropose(
   }
 
   if (input.kind === 'plan-review-progress') {
-    return resumePlanReview(services, cwd, input, options);
+    return resumePlanReview(planningExecution, services, cwd, input, options);
   }
 
   if (input.kind === 'plan-review-dispositions') {
-    return completePlanReviewDispositions(services, cwd, input, options);
+    return completePlanReviewDispositions(
+      planningExecution,
+      services,
+      cwd,
+      input,
+      options,
+    );
   }
 
   if (input.kind === 'provider-retry') {
@@ -545,6 +557,7 @@ function assertScanSaturationAcceptanceBinding(
 }
 
 export function resumeProposeFromFile(
+  planningExecution: PlanningTransitionExecutionServices,
   services: ProposeRuntime,
   cwd: string,
   changeId: string,
@@ -552,6 +565,7 @@ export function resumeProposeFromFile(
   options: ProposeResumeOptions = {},
 ): ProposeOutput {
   return resumePropose(
+    planningExecution,
     services,
     cwd,
     changeId,

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-import type { InvestigationWhyOverlayV3 } from '../src/modules/investigation/manifest/investigation-manifest.ts';
+import type { InvestigationWhyOverlayV3 } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
 import {
   projectInvestigationManifestLedger,
   validateInvestigationManifestLedgerProjection,

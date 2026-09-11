@@ -8,7 +8,7 @@
  */
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
-import { cancelProtectedTaskApplyRecoveryUnderGrant } from '../application/finalize/lifecycle.ts';
+import { cancelProtectedTaskApplyRecoveryUnderGrant } from './finalization-production.ts';
 import { readProtectedFinalizeCancellation } from '../application/finalize/finalize-cancellation.ts';
 import {
   abortSessionAfterProtectedTaskApplyRecoveryUnderGrant,
@@ -34,7 +34,7 @@ import {
 } from '../modules/authority/protected-task-apply-grant.ts';
 import { grantSha256 } from '../modules/authority/grant-primitives.ts';
 import { parseMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
-import { loadWorkflowConfig } from '../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../runtime/repository-observation/workflow-configuration.ts';
 import {
   discoverRepository,
   runGit,
@@ -45,10 +45,12 @@ import {
 } from '../runtime/repository-transaction/finalize-transaction.ts';
 import {
   grantStorePaths,
-  readGrantRecord,
+  createFileGrantRecordStore,
+} from '../runtime/storage-journal/grant-store.ts';
+import {
   type GrantRecord,
   type PreparedGrantRecord,
-} from '../runtime/storage-journal/grant-store.ts';
+} from '../modules/authority/grant-records.ts';
 import { runtimePaths } from '../runtime/session-workspace/session-store.ts';
 
 export function createProductionProtectedTaskApplyRecoveryGrantPort(
@@ -128,10 +130,9 @@ export function observeCurrentProtectedTaskApplyRecovery(
   const git = discoverRepository(cwd);
   const config = loadWorkflowConfig(git.repositoryRoot);
   const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
-  const parent = readGrantRecord(
+  const parent = createFileGrantRecordStore(
     grantStorePaths(runtime.root),
-    parameters.parentChallengeId,
-  );
+  ).readGrantRecord(parameters.parentChallengeId);
   assertExactPreparedParent(git.repositoryRoot, parent, parameters);
   const session = getSession(git.repositoryRoot, parameters.sessionId);
   if (
@@ -201,10 +202,9 @@ export function observeCurrentProtectedTaskApplyRecoveryRequest(
   const git = discoverRepository(cwd);
   const config = loadWorkflowConfig(git.repositoryRoot);
   const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
-  const parent = readGrantRecord(
+  const parent = createFileGrantRecordStore(
     grantStorePaths(runtime.root),
-    details.parentChallengeId,
-  );
+  ).readGrantRecord(details.parentChallengeId);
   if (
     parent.state !== 'prepared' ||
     parent.operationId !== details.parentOperationId ||
@@ -486,7 +486,9 @@ function readRepositoryGrantRecord(
   const git = discoverRepository(repositoryRoot);
   const config = loadWorkflowConfig(git.repositoryRoot);
   const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
-  return readGrantRecord(grantStorePaths(runtime.root), challengeId);
+  return createFileGrantRecordStore(
+    grantStorePaths(runtime.root),
+  ).readGrantRecord(challengeId);
 }
 
 function repositoryIdAtBaseline(

@@ -1,3 +1,4 @@
+import {parseDocumentationReviewCapture,type DocumentationReviewCapture} from '../../modules/assurance/documentation-closure.ts';
 /**
  * Persists projected finalize transactions and verifies their phase
  * progression.
@@ -12,15 +13,12 @@ import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  parseDocumentationReviewCapture,
-  type DocumentationReviewCapture,
-} from '../managed-documents/contracts/documentation-closure.ts';
+
 import {
   assertPlainDirectory,
   ensurePlainDirectory,
 } from './filesystem-safety.ts';
-import { assertSessionId } from '../session-workspace/paths.ts';
+import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import { writeJsonAtomic } from '../session-workspace/session-store.ts';
 import type { FinalizeCheckEscalation } from '../../modules/assurance/finalize-check-policy.ts';
 

@@ -6,11 +6,11 @@
  * - Competing active external grants cannot be resolved by filename order.
  */
 // Read and render the current review state without advancing its lifecycle.
-import { type TaskDiffReviewSubject } from '../../modules/assurance/task-diff-review.ts';
+import type { TaskDiffReviewSubject } from '../../modules/assurance/task-diff-review-record.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { assertTaskDiffReviewChallengeResponseCurrent } from '../../modules/assurance/task-diff-review-artifact.ts';
-import { type ProviderRoleAssignment } from '../../modules/provider-orchestration/role-scheduler.ts';
+import { type ProviderRoleAssignment } from '../../modules/provider-orchestration/role-assignment.ts';
 import type {
   TaskDiffReviewRuntimeBindings,
   TaskDiffReviewRuntimeData,

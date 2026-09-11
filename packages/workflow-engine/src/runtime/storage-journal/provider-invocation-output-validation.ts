@@ -42,12 +42,12 @@ import {
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR,
 } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
-import {
-  type ProviderOutputSchemaGeneration,
-  type ProviderResidualsGeneration,
-  type ProviderInvocationRecord,
-  type ProviderInvocationManifest,
-} from './provider-invocation-types.ts';
+import type {
+  ProviderOutputSchemaGeneration,
+  ProviderResidualsGeneration,
+} from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
+import type { ProviderInvocationManifest } from '../../modules/provider-orchestration/provider-invocation-manifest.ts';
 import {
   resultInvalid,
   deepFreeze,

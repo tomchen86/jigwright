@@ -1,11 +1,14 @@
+import { spawnSync } from 'node:child_process';
+import { sourceRepositoryRoot } from './fixture.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import test from 'node:test';
 
 import { canonicalJson } from '@jigwright/core/canonical-json';
-import { loadWorkflowConformanceVectorsV2 } from '@jigwright/core/conformance-vectors';
+import { loadWorkflowConformanceVectorsV2 } from '../src/runtime/repository-transaction/conformance-vectors.ts';
 import {
   parsePlanningProviderBinding,
   planningProviderBindingDigest,
@@ -13,12 +16,12 @@ import {
   type PlanningProviderBindingV1,
 } from '@jigwright/core/planning-provider-binding';
 import { parseManagedTrailers } from '@jigwright/core/managed-transition-trailers';
+import { createProviderWrapperProtocolParser } from '@jigwright/agent-runtime/harness-jsonl-v1';
 import {
-  createProviderWrapperProtocolParser,
   renderProviderWrapperFrame,
   type ProviderWrapperFrame,
   type ProviderWrapperProtocolBinding,
-} from '@jigwright/agent-runtime/harness-jsonl-v1';
+} from '@jigwright/core/harness-jsonl-v1-contracts';
 import {
   COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1,
   COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
@@ -40,6 +43,51 @@ import {
 } from '../src/modules/assurance/plan-review.ts';
 
 const vectors = loadWorkflowConformanceVectorsV2();
+
+test('conformance storage preserves plain-file bounds and malformed JSON errors', (t) => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'conformance-storage-'),
+  );
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const file = path.join(directory, 'vectors.json');
+  fs.writeFileSync(file, JSON.stringify(vectors));
+  assert.deepEqual(
+    loadWorkflowConformanceVectorsV2({ vectorPath: file }),
+    vectors,
+  );
+  const alias = path.join(directory, 'alias.json');
+  fs.symlinkSync(file, alias);
+  for (const vectorPath of [
+    directory,
+    alias,
+    path.join(directory, 'missing'),
+  ]) {
+    assert.throws(
+      () => loadWorkflowConformanceVectorsV2({ vectorPath }),
+      /bounded plain file/,
+    );
+  }
+  for (const bytes of ['', ' '.repeat(1024 * 1024 + 1)]) {
+    fs.writeFileSync(file, bytes);
+    assert.throws(
+      () => loadWorkflowConformanceVectorsV2({ vectorPath: file }),
+      /bounded plain file/,
+    );
+  }
+  fs.writeFileSync(file, '{');
+  assert.throws(
+    () => loadWorkflowConformanceVectorsV2({ vectorPath: file }),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.equal(
+        error.message,
+        'Workflow conformance vectors are malformed JSON.',
+      );
+      assert.ok(error.cause instanceof SyntaxError);
+      return true;
+    },
+  );
+});
 
 test('v2 vectors anchor canonical JSON, digest identity, trailers, and journal records', () => {
   const canonical = first('canonical-json');
@@ -420,3 +468,39 @@ function first(domain: keyof typeof vectors.domains): Record<string, unknown> {
 function sha256(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
+
+const cliPath = path.join(
+  sourceRepositoryRoot,
+  'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+);
+
+test('jigwright verifies the public language-neutral conformance corpus', () => {
+  const run = spawnSync(
+    process.execPath,
+    [
+      '--experimental-strip-types',
+      cliPath,
+      'boundary',
+      'vectors',
+      '--check',
+      '--json',
+    ],
+    { cwd: sourceRepositoryRoot, encoding: 'utf8' },
+  );
+  assert.equal(run.status, 0, run.stderr || run.stdout);
+  const output = JSON.parse(run.stdout) as {
+    result: {
+      kind: string;
+      status: string;
+      domainCount: number;
+      vectorSetDigest: string;
+    };
+  };
+  assert.deepEqual(output.result, {
+    kind: 'jigwright.conformance-vectors-check.v1',
+    status: 'current',
+    domainCount: 9,
+    vectorSetDigest:
+      'sha256:b2113b55d86f6fd83cac7a1f3c62cea5df3b27a9feb0e5df5be011de694b089a',
+  });
+});

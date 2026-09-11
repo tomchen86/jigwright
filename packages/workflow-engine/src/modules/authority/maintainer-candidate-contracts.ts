@@ -18,22 +18,11 @@ import {
   canonicalPatchManifest,
   parsePatchManifest,
 } from './maintainer-manifest-contracts.ts';
-import type { CheckDependency } from './maintainer-manifest.ts';
-import type { TaskMandateBinding } from './task-mandate.ts';
 import type {
-  CandidateCheckAttestation,
-  CandidateChecksAttestationV3,
-  CandidateChecksFields,
-  CandidateClassification,
-  CandidateDependencySnapshot,
-  CandidateExternalEffect,
-  CandidateExternalEffectsManifest,
-  CandidateProviderInvocation,
-  CandidateSupportingArtifact,
-  CandidateV2CheckFreshnessOptions,
-  ImmutableCandidateBundleV2,
-  ImmutableCandidateBundleV2Input,
-} from './maintainer-candidate.ts';
+  CheckDependency,
+  PatchManifest,
+} from './maintainer-manifest-contracts.ts';
+import type { TaskMandateBinding } from './task-mandate-contract.ts';
 
 export const DIGEST = /^[0-9a-f]{64}$/;
 
@@ -1086,3 +1075,164 @@ export function digest(value: string): string {
 export function candidateError(code: string, message: string) {
   return workflowError(code, message, ExitCode.guard);
 }
+
+export type CheckReuseClass =
+  'content-pure' | 'toolchain-dependent' | 'external-state';
+
+export type CandidateCheckAttestation = {
+  checkId: string;
+  definitionDigest: string;
+  commandDigest: string;
+  runnerDigest: string;
+  environmentDigest: string;
+  resultDigest: string;
+  outcome: 'passed';
+  startedAt: string;
+  completedAt: string;
+  reuseClass: CheckReuseClass;
+  maxAgeMs: number | null;
+  externalSnapshotDigest: string | null;
+  dependsOn: CheckDependency[];
+};
+
+export type CandidateDependencySnapshot = {
+  schemaVersion: 1;
+  sourceTree: string;
+  baseCommit: string;
+  harnessEngineDigest: string;
+  policyDigest: string;
+  runnerDigests: Record<string, string>;
+  externalStateDigests: Record<string, string | null>;
+};
+
+export type CandidateChecksAttestationV3 = {
+  schemaVersion: 3;
+  candidateTree: string;
+  patchDigest: string;
+  trustBaseCommit: string;
+  dependencySnapshot: CandidateDependencySnapshot;
+  checks: CandidateCheckAttestation[];
+};
+
+export type CandidateClassification =
+  'ordinary' | 'root-one-shot' | 'control-plane';
+
+type ImmutableCandidateBundleCommon = {
+  mandateBinding: TaskMandateBinding;
+  repositoryId: string;
+  targetRef: string;
+  expectedOldCommit: string;
+  expectedRefGeneration: number;
+  candidateCommit: string;
+  resultTree: string;
+  commitMessage: string;
+  manifest: PatchManifest;
+  manifestDigest: string;
+  checksAttestationDigest: string;
+  effectsManifestDigest: string;
+  providerInvocationsDigest: string;
+  classification: CandidateClassification;
+  recoveryPlanDigest: string;
+  createdAt: string;
+  candidateBundleDigest: string;
+};
+
+export type ImmutableCandidateBundleV2 = ImmutableCandidateBundleCommon & {
+  schemaVersion: 2;
+  checksAttestation: CandidateChecksAttestationV3;
+  humanReadableSummaryDigest: string;
+};
+
+export type ImmutableCandidateBundleV2Input = Omit<
+  ImmutableCandidateBundleV2,
+  | 'schemaVersion'
+  | 'manifestDigest'
+  | 'checksAttestationDigest'
+  | 'humanReadableSummaryDigest'
+  | 'candidateBundleDigest'
+> & {
+  candidateBundleDigest?: string;
+};
+
+export type CandidateExternalEffect = {
+  effectType: string;
+  targetDigest: string;
+  authorizationDigest: string | null;
+  resultDigest: string | null;
+};
+
+export type CandidateExternalEffectsManifest = {
+  schemaVersion: 1;
+  kind: 'candidate-external-effects.v1';
+  changeId: string;
+  mandateBinding: TaskMandateBinding;
+  effects: CandidateExternalEffect[];
+};
+
+export type CandidateProviderInvocation = {
+  invocationId: string;
+  investigationId: string;
+  purpose: 'survey' | 'plan-review' | 'task-diff-review';
+  attempt: number;
+  state: 'prepared' | 'leased' | 'succeeded' | 'failed';
+  requestDigest: string;
+  manifestDigest: string;
+  outputDigest: string | null;
+  failureDigest: string | null;
+};
+
+export type CandidateProviderInvocationsManifest = {
+  schemaVersion: 1;
+  kind: 'candidate-provider-invocations.v1';
+  changeId: string;
+  mandateBinding: TaskMandateBinding;
+  invocations: CandidateProviderInvocation[];
+};
+
+export type CandidateRecoveryPlan = {
+  schemaVersion: 1;
+  kind: 'candidate-recovery-plan.v1';
+  changeId: string;
+  mandateBinding: TaskMandateBinding;
+  targetRef: string;
+  expectedOldCommit: string;
+  expectedRefGeneration: number;
+  candidateCommit: string;
+  rollbackTarget: string;
+};
+
+export type CandidateSupportingArtifact =
+  | CandidateExternalEffectsManifest
+  | CandidateProviderInvocationsManifest
+  | CandidateRecoveryPlan;
+
+export type CandidateSupportingArtifactSet = {
+  effectsManifest: CandidateExternalEffectsManifest;
+  providerInvocations: CandidateProviderInvocationsManifest;
+  recoveryPlan: CandidateRecoveryPlan;
+};
+
+export type StoredCandidateSupportingArtifacts = {
+  effectsManifestDigest: string;
+  providerInvocationsDigest: string;
+  recoveryPlanDigest: string;
+  paths: string[];
+};
+
+export type CandidateV2CheckFreshnessOptions = {
+  now: Date;
+  candidateTree: string;
+  patchDigest: string;
+  trustBaseCommit: string;
+  requiredChecks: string[];
+  waivedFreshnessCheckIds?: string[];
+  environmentDigest: string;
+  currentDependencySnapshot: CandidateDependencySnapshot;
+};
+
+export type CandidateChecksFields = {
+  candidateTree: string;
+  patchDigest: string;
+  trustBaseCommit: string;
+  checks: CandidateCheckAttestation[];
+};

@@ -12,8 +12,10 @@ import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { assertNoPreparedHumanResolutionGrantPublicationRecovery, listHumanResolutionGrantIds, readHumanResolutionGrantPublicationRecovery, withHumanResolutionGrantStoreLock, } from "./human-resolution-grant-lock.js";
 import { createPrivateCanonicalJson, createPrivateRawFile, ensurePrivateInvestigationDirectory, fsyncDirectory, privatePathExists, readPrivateCanonicalJson, readPrivateFile, withPrivateRuntimeLock, } from "./investigation-private-files.js";
-import { assertCanonicalResolutionEnvelopeBytes, assertHumanResolutionGrantId, humanResolutionGrantNotFound, humanResolutionGrantUnavailable, humanResolutionGrantUnsafe, humanResolutionPaths, isBoundedResolutionText, } from "./investigation-resolution-values.js";
-import { deepFreeze, hasExactKeys, isDigest, isRecord, isTimestamp, } from "./investigation-store-values.js";
+import { assertCanonicalResolutionEnvelopeBytes, humanResolutionGrantUnavailable, humanResolutionPaths, } from "./investigation-resolution-values.js";
+import { humanResolutionGrantNotFound } from "../../modules/investigation/domain/human-resolution-values.js";
+import { assertHumanResolutionGrantId, humanResolutionGrantUnsafe, isBoundedResolutionText, } from "../../modules/investigation/domain/human-resolution-values.js";
+import { deepFreeze, hasExactKeys, isDigest, isRecord, isTimestamp, } from "../../modules/investigation/domain/investigation-store-values.js";
 export function storeAvailableHumanResolutionGrant(paths, requestedGrantId, canonicalEnvelope) {
     const grantId = assertHumanResolutionGrantId(requestedGrantId);
     assertCanonicalResolutionEnvelopeBytes(canonicalEnvelope);

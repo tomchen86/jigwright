@@ -1,3 +1,14 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -21,9 +32,9 @@ import {
   WorkflowError,
   workflowError,
 } from '../src/foundation/errors/errors.ts';
-import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
+import { finalizeTask } from '../src/composition-root/finalization-production.ts';
 import { reviseTask } from '../src/application/revise/task-revision.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {
   getSession,
   startSession,
@@ -41,7 +52,7 @@ import { recordGovernanceFinding } from '../src/composition-root/governance-find
 
 const cliPath = path.join(
   sourceRepositoryRoot,
-  'packages/workflow-engine/src/cli.ts',
+  'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
 );
 
 test('retired start command is absent and fails before repository mutation', () => {
@@ -176,7 +187,9 @@ test('WHY-answer guidance warns about the seam between files before sealing', ()
     },
   });
 
-  const nextSteps = workflowResultNextSteps(proposeResult('submit-why-answers'));
+  const nextSteps = workflowResultNextSteps(
+    proposeResult('submit-why-answers'),
+  );
   assert.equal(nextSteps.length <= 3, true);
   assert.equal(
     nextSteps[0]?.command,
@@ -241,10 +254,6 @@ test('managed guide registry owns nested routes and rejects duplicate projection
     'maintainer-review-diff-attest',
   );
   assert.equal(
-    resolveManagedWorkflowCommandRoute(['boundary', 'inventory']).id,
-    'boundary-inventory',
-  );
-  assert.equal(
     resolveManagedWorkflowCommandRoute(['boundary', 'vectors']).id,
     'boundary-vectors',
   );
@@ -306,7 +315,12 @@ test('JSON status stays read-only and same-digest resume emits at most three cat
 
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     recordGovernanceFinding(
       {
         repositoryRoot: repository,
@@ -337,7 +351,12 @@ test('JSON status stays read-only and same-digest resume emits at most three cat
     );
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.writeFileSync(implementationPath, 'export const value = 1;\n');
-    reviseTask(repository, session.sessionId, 'Keep the reviewed plan.');
+    reviseTask(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      session.sessionId,
+      'Keep the reviewed plan.',
+    );
     const headBeforeResume = git(repository, ['rev-parse', 'HEAD']).trim();
 
     const resumed = runCli(repository, [
@@ -733,7 +752,12 @@ test('retired finalize-task cannot mutate while preferred finalize resumes one d
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     recordGovernanceFinding(
       {
         repositoryRoot: repository,

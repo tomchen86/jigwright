@@ -1,3 +1,4 @@
+import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
 /**
  * Inspects authority sessions and runs checks within their approved scope.
  *
@@ -24,6 +25,8 @@ export function createMaintainerSessionInspection(
   bindings: () => MaintainerSessionInspectionBindings,
 ) {
   function checkAuthoritySession(
+    manifestOperations: MaintainerManifestOperations,
+    taskMandate: MaintainerTaskMandateOperations,
     cwd: string,
     requestedSessionId: string,
     options: AuthoritySessionOptions = {},
@@ -43,7 +46,7 @@ export function createMaintainerSessionInspection(
       verifiedV2AuthorityLifecycleRefusalBinding,
       authorityRefusalDigest,
       listChangedPaths,
-      verifyPatchManifestAgainstWorktree,
+
       assertDisposableDatabaseForRepository,
       fingerprintWorkingState,
       runCheck,
@@ -65,6 +68,8 @@ export function createMaintainerSessionInspection(
     }
     try {
       const { git, envelope, contractDigest } = inspectAuthoritySession(
+        manifestOperations,
+        taskMandate,
         cwd,
         initialSession,
         options,
@@ -106,7 +111,7 @@ export function createMaintainerSessionInspection(
               { unexpectedPaths },
             );
           }
-          verifyPatchManifestAgainstWorktree(
+          manifestOperations.verifyPatchManifestAgainstWorktree(
             git.repositoryRoot,
             envelope.payload.manifest,
           );
@@ -208,6 +213,8 @@ export function createMaintainerSessionInspection(
   }
 
   function inspectAuthoritySession(
+    manifestOperations: MaintainerManifestOperations,
+    taskMandate: MaintainerTaskMandateOperations,
     cwd: string,
     session: AuthoritySession,
     options: AuthoritySessionOptions,
@@ -274,6 +281,8 @@ export function createMaintainerSessionInspection(
       );
     }
     validateReservedGrantAuthorityBinding(
+      manifestOperations,
+      taskMandate,
       git.repositoryRoot,
       reservation.envelope,
       policy,
@@ -481,3 +490,5 @@ export function createMaintainerSessionInspection(
     assertPreapprovalChecksCurrent,
   };
 }
+
+import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';

@@ -12,7 +12,7 @@ import {
   type RoleAssignment,
   type RoleCandidate,
   type RoleParticipant,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+} from '../../modules/provider-orchestration/role-assignment.ts';
 import {
   CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1,
   resolveRoleTopologyV1,

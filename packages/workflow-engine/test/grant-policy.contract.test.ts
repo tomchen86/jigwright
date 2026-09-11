@@ -16,11 +16,11 @@ import {
   codeOwnedApprovalModuleRegistry,
   GRANT_PROOF_SSH_V1_CONFIGURATION_DIGEST,
   HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST,
-  loadGrantPolicyV2,
   parseGrantPolicyV2,
   type ApprovalClaim,
   type GrantPolicyV2,
 } from '../src/modules/authority/grant-policy.ts';
+import { loadGrantPolicyV2 } from '../src/runtime/repository-observation/grant-policy-reader.ts';
 import { parseGrantPolicyV2Document as parsePublicGrantPolicyV2Document } from '../src/composition-root/public/central-grant.ts';
 import { isWorkflowError } from './fixture.ts';
 

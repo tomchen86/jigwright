@@ -1,3 +1,13 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -5,25 +15,21 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import {
-  commitAuthoritySession as commitAuthoritySessionProduction,
-  SimulatedAuthorityCrash,
-} from '../src/application/control-plane/maintainer-commit.ts';
+import { SimulatedAuthorityCrash } from '../src/application/control-plane/maintainer-commit.ts';
+import { commitAuthoritySession as commitAuthoritySessionProduction } from '../src/composition-root/maintainer-authority-production.ts';
 import { readDurableRefGenerationLedger } from '../src/modules/authority/maintainer-candidate.ts';
 import { MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE } from '../src/modules/authority/maintainer-grant-v2.ts';
-import { approveAndApplyMaintainerGrantV2 as approveAndApplyMaintainerGrantV2Production } from '../src/application/control-plane/maintainer-approve.ts';
+import { approveAndApplyMaintainerGrantV2 as approveAndApplyMaintainerGrantV2Production } from '../src/composition-root/maintainer-authority-production.ts';
 import {
   armPostApprovalAdmissionDeadline,
   createPostApprovalAdmissionDeadline,
   enterPostApprovalCompletionObligation,
   enterPostApprovalTerminalCleanup,
 } from '../src/runtime/repository-transaction/git.ts';
-import {
-  readAuthorityCommitJournal,
-  recoverAuthorityCommit as recoverAuthorityCommitProduction,
-} from '../src/application/control-plane/maintainer-recovery.ts';
+import { readAuthorityCommitJournal } from '../src/application/control-plane/maintainer-recovery.ts';
+import { recoverAuthorityCommit as recoverAuthorityCommitProduction } from '../src/composition-root/maintainer-authority-production.ts';
 import { parseMaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
-import { startAuthoritySession } from '../src/application/control-plane/maintainer-session.ts';
+import { startAuthoritySession } from '../src/composition-root/maintainer-authority-production.ts';
 import {
   verifySshSignatureWithPublicKey,
   type MaintainerSignerProvider,
@@ -33,15 +39,12 @@ import {
   maintainerGrantStorePaths,
   terminallyFailMaintainerReservation,
 } from '../src/runtime/storage-journal/maintainer-store.ts';
-import {
-  authorizeTaskMandate,
-  TASK_MANDATE_SIGNATURE_NAMESPACE_V2,
-} from '../src/modules/authority/task-mandate.ts';
+import { TASK_MANDATE_SIGNATURE_NAMESPACE_V2 } from '../src/modules/authority/task-mandate.ts';
 import {
   computeProtectedCapabilityEntryDigests,
   REQUIRED_PROTECTED_CAPABILITIES,
 } from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {
   createFixtureRepository,
   git,
@@ -1911,7 +1914,10 @@ function installV2TrustBase(repository: string): void {
         policyPaths: ['workflow/**'],
         verificationInfrastructurePaths: ['.github/workflows/**'],
         forbiddenPaths: [
-          'packages/workflow-engine/src/modules/authority/maintainer-grant.ts',
+          'packages/workflow-engine/src/modules/authority/maintainer-grant-contracts.ts',
+          'packages/workflow-engine/src/runtime/grants/human-resolution-grant-verification.ts',
+          'packages/workflow-engine/src/runtime/repository-observation/human-resolution-grants.ts',
+          'packages/workflow-engine/src/runtime/repository-transaction/maintainer-audit-tag.ts',
         ],
         constraints: {
           evidenceOnlyGrantForbidden: true,
@@ -2171,3 +2177,6 @@ function recordingSigner(
     },
   };
 }
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const { authorizeTaskMandate } = taskMandateOperations;
