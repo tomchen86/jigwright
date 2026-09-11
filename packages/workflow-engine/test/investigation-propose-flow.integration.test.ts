@@ -254,7 +254,7 @@ describe('fake-backed propose composes breadth and depth before materializing an
           afterDispositions.investigation!,
           {
             answers: afterDispositions.work!.fullBlobManifest.map((entry) =>
-              whyAnswer(entry.manifestEntryId),
+              whyAnswer(entry.manifestEntryId, 'codex-b'),
             ),
           },
         ),
@@ -394,6 +394,12 @@ describe('fake-backed propose composes breadth and depth before materializing an
       assert.match(
         trackedInvestigation.investigationApproval.sealDigest,
         /^[0-9a-f]{64}$/,
+      );
+
+      assert.equal(
+        trackedInvestigation.investigationApproval.semanticAuthor.id,
+        'codex, codex-b',
+        'a multi-author investigation names every contributor as the approver',
       );
 
       assert.equal(

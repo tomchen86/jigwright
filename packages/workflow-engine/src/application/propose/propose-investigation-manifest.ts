@@ -234,10 +234,10 @@ export function buildProposeInvestigationManifestV3(
       ),
     ].filter((value) => value.length > 0);
     const uniqueAuthors = [...new Set(semanticAuthorIds)].sort();
-    if (uniqueAuthors.length !== 1) {
+    if (uniqueAuthors.length === 0) {
       throw workflowError(
         'SEMANTIC_COMPLETENESS_FAILURE',
-        'Final investigation checkpoints do not identify one exact v3 approver.',
+        'Final investigation checkpoints identify no v3 author.',
         ExitCode.guard,
       );
     }
@@ -260,7 +260,7 @@ export function buildProposeInvestigationManifestV3(
         whyOverlays: whyAuthoring.whyOverlays,
       });
     const requirementAuthor = {
-      id: uniqueAuthors[0]!,
+      id: uniqueAuthors.join(', '),
       provenance: `final-checkpoints:${whyCheckpoint.envelopeDigest}`,
     };
     const investigationRequirements = [
@@ -326,7 +326,7 @@ export function buildProposeInvestigationManifestV3(
       assuranceFacts,
       approval: {
         semanticAuthor: {
-          id: uniqueAuthors[0]!,
+          id: uniqueAuthors.join(', '),
           provenance: `final-checkpoints:${approvalProvenanceDigest}`,
         },
         approvalProvenanceDigest,

@@ -1053,7 +1053,7 @@
     {
       "path": "src/application/propose/propose-investigation-manifest.ts",
       "mode": "100644",
-      "digest": "sha256:de5ca1da7a61e091fe7639e5021ed023f98e4bf2e2a95d64d6c00ce5b3ab2cd9"
+      "digest": "sha256:5d7c63e7322b4573a55578daa13a2ac3bc58577024b1eabd08177fc51899ce2c"
     },
     {
       "path": "src/application/propose/propose-investigation-rebuild.ts",

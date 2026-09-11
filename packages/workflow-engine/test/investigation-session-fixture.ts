@@ -1009,7 +1009,7 @@ export function runWorkflowCli(
   );
 }
 
-export function whyAnswer(manifestEntryId: string) {
+export function whyAnswer(manifestEntryId: string, semanticAuthor = 'codex') {
   return {
     manifestEntryId,
     why: 'This complete module coordinates the load-bearing behavior.',
@@ -1019,7 +1019,7 @@ export function whyAnswer(manifestEntryId: string) {
       'What prevents a stale implementation blob from satisfying this row?',
     answer:
       'The manifest and evidence node bind the exact complete source blob.',
-    semanticAuthor: 'codex',
+    semanticAuthor,
     readComplete: true as const,
   };
 }

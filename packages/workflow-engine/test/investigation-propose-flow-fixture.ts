@@ -274,7 +274,7 @@ export function createSealedProposeFixture() {
       changeId,
       createInvestigationCheckpointEnvelope(afterDispositions.investigation!, {
         answers: afterDispositions.work!.fullBlobManifest.map((entry) =>
-          whyAnswer(entry.manifestEntryId),
+          whyAnswer(entry.manifestEntryId, 'codex-b'),
         ),
       }),
     );
