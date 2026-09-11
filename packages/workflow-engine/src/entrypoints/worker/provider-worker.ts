@@ -9,9 +9,11 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
+import { startProviderInvocationActivityHeartbeat } from '../../runtime/storage-journal/provider-invocation-activity.ts';
 import {
   ExitCode,
   WorkflowError,
+  durableFailureMessage,
   workflowError,
 } from '../../foundation/errors/errors.ts';
 import {
@@ -745,11 +747,24 @@ function runProviderWorkerWithExecution(
     const report = execute(agentRuntime, runtimeInput, runtimeOptions);
     if (isPromiseLike(report)) {
       releaseSynchronously = false;
+      // The durable record only learns what happened once the run ends. While
+      // it runs, this publication is the only way to tell a live provider from
+      // a dead worker.
+      const activity =
+        runtimeProgress === undefined
+          ? null
+          : startProviderInvocationActivityHeartbeat(context.runtime, {
+              invocationId: request.invocationId,
+              leaseGeneration: claim.record.leaseGeneration,
+              workerId: claimInput.workerId,
+              progress: runtimeProgress,
+            });
       return Promise.resolve(report)
         .then((completedReport) =>
           completeWithReport(completedReport, acceptanceBinding),
         )
         .catch((error) => failWithError(error, acceptanceBinding))
+        .finally(() => activity?.stop())
         .finally(releaseWorkerFence)
         .then(renderTerminal);
     }
@@ -1037,7 +1052,10 @@ function classifyProviderFailure(error: unknown): ProviderInvocationFailure {
       ? ('repository-reconciliation-required' as const)
       : ('retryable' as const),
     code,
-    message: `Provider invocation failed durably (${code}).`,
+    message: durableFailureMessage(
+      `Provider invocation failed durably (${code})`,
+      error,
+    ),
     ...(executionKind === null ? {} : { executionKind }),
     ...(retryAfterMs === null ? {} : { retryAfterMs }),
     ...(executionKind === 'probe-transient' && probe !== null ? { probe } : {}),

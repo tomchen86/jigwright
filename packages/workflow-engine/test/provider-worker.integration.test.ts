@@ -4,7 +4,11 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import os from 'node:os';
 import { runCli, createAsyncCliDispatcherForTesting } from '../src/cli.ts';
-import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
+import {
+  ExitCode,
+  type WorkflowError,
+  workflowError,
+} from '../src/foundation/errors/errors.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
 import {
@@ -13,6 +17,13 @@ import {
   createProviderWorkerDispatcherForTesting,
 } from '../src/entrypoints/worker/provider-worker.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
+import { createAgentRuntimeProgressTracker } from '../src/runtime/provider-execution/agent-runtime-progress-tracker.ts';
+import {
+  inspectProviderInvocationActivity,
+  startProviderInvocationActivityHeartbeat,
+} from '../src/runtime/storage-journal/provider-invocation-activity.ts';
+import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import { digestPrivateDirectoryEntries } from '../src/runtime/storage-journal/provider-runtime-retention.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import {
   readProviderInvocation,
@@ -154,6 +165,10 @@ test('provider worker records launch and admission failure durably', () => {
     });
     assert.equal(failed.state, 'failed');
     assert.equal(failed.failure?.code, 'PROVIDER_UNAVAILABLE');
+    assert.match(
+      failed.failure!.message,
+      /The selected provider is unavailable\./,
+    );
 
     const locator = discoverRepository(repository);
     const runtime = investigationRuntimePaths(
@@ -175,6 +190,171 @@ test('provider worker records launch and admission failure durably', () => {
     assert.equal(replayed.state, 'failed');
     assert.equal(replayed.launched, false);
     assert.equal(launches, 1);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('provider worker keeps an unexpected throw reason on the durable failure', () => {
+  const repository = createFixtureRepository();
+  const changeId = 'worker-unexpected-failure';
+  try {
+    git(repository, ['checkout', '-b', `work/${changeId}`]);
+    const started = startPropose(repository, changeId, intent(), {
+      explicitActor: 'codex',
+      environment: {},
+    });
+    const invocationId = started.investigation!.providerInvocationId;
+    const failed = runProviderWorker(repository, invocationId, {
+      runner() {
+        throw new TypeError('adapter policy digest is not a function');
+      },
+    });
+
+    assert.equal(failed.state, 'failed');
+    assert.equal(failed.failure?.code, 'PROVIDER_WORKER_UNEXPECTED_FAILURE');
+    assert.match(
+      failed.failure!.message,
+      /TypeError: adapter policy digest is not a function/,
+      'an unexpected throw is the only account of why the attempt failed',
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('provider activity tells an unobserved lease apart from a live process', async () => {
+  const repository = createFixtureRepository();
+  const changeId = 'worker-activity';
+  try {
+    git(repository, ['checkout', '-b', `work/${changeId}`]);
+    const started = startPropose(repository, changeId, intent(), {
+      explicitActor: 'codex',
+      environment: {},
+    });
+    const invocationId = started.investigation!.providerInvocationId;
+    const locator = discoverRepository(repository);
+    const runtime = investigationRuntimePaths(
+      locator.gitCommonDirectory,
+      'workflow-engine',
+    );
+    const lease = { invocationId, leaseGeneration: 1 };
+
+    assert.equal(
+      inspectProviderInvocationActivity(runtime, lease).state,
+      'not-observed',
+      'nothing published yet means unknown, never "it did not start"',
+    );
+
+    const progress = createAgentRuntimeProgressTracker();
+    const heartbeat = startProviderInvocationActivityHeartbeat(
+      runtime,
+      {
+        ...lease,
+        workerId: 'provider-worker-activity-test',
+        progress: progress.snapshot,
+      },
+      25,
+    );
+    try {
+      assert.equal(
+        inspectProviderInvocationActivity(runtime, lease).state,
+        'not-started',
+        'a claimed lease publishes before it launches anything',
+      );
+      progress.record({ type: 'spawned', elapsedMs: 0 });
+      progress.record({ type: 'stdout', elapsedMs: 1, bytes: 7 });
+
+      const deadline = Date.now() + 2_000;
+      let observed = inspectProviderInvocationActivity(runtime, lease);
+      while (observed.eventCount < 2 && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        observed = inspectProviderInvocationActivity(runtime, lease);
+      }
+      assert.equal(observed.state, 'running');
+      assert.equal(observed.eventCount, 2);
+      assert.equal(observed.stdoutBytes, 7);
+      assert.ok((observed.staleMs ?? -1) >= 0);
+      assert.equal(
+        inspectProviderInvocationActivity(runtime, {
+          invocationId,
+          leaseGeneration: 2,
+        }).state,
+        'not-observed',
+        'activity left by a superseded lease is not current activity',
+      );
+      assert.equal(
+        readProviderInvocationLifecycleProjection(runtime, invocationId).state,
+        'prepared',
+        'publishing activity keeps the exact private invocation closure valid',
+      );
+    } finally {
+      progress.record({ type: 'exited', elapsedMs: 2 });
+      heartbeat.stop();
+    }
+
+    assert.equal(
+      inspectProviderInvocationActivity(runtime, lease).state,
+      'exited',
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('a killed write leaves a file the engine names instead of a dead invocation', () => {
+  const repository = createFixtureRepository();
+  const changeId = 'worker-stray-file';
+  try {
+    git(repository, ['checkout', '-b', `work/${changeId}`]);
+    const started = startPropose(repository, changeId, intent(), {
+      explicitActor: 'codex',
+      environment: {},
+    });
+    const invocationId = started.investigation!.providerInvocationId;
+    const locator = discoverRepository(repository);
+    const runtime = investigationRuntimePaths(
+      locator.gitCommonDirectory,
+      'workflow-engine',
+    );
+    const directory = path.join(runtime.invocations, invocationId);
+    // Exactly what the engine's own atomic write leaves behind when the
+    // process is killed between its open and its rename.
+    const stray = `state.json.4242.6f1a2b3c-dead-4bee-8000-000000000000.tmp`;
+    fs.writeFileSync(path.join(directory, stray), '{}\n', { mode: 0o600 });
+
+    const projection = readProviderInvocationLifecycleProjection(
+      runtime,
+      invocationId,
+    );
+    assert.equal(
+      projection.state,
+      'prepared',
+      'an invocation nobody can read any more is a dead end with no exit',
+    );
+    assert.deepEqual(projection.strayFiles, [stray]);
+
+    let refused: WorkflowError | null = null;
+    try {
+      digestPrivateDirectoryEntries(runtime, directory, () =>
+        workflowError('UNUSED', 'unused', ExitCode.internal),
+      );
+    } catch (error) {
+      refused = error as WorkflowError;
+    }
+    assert.equal(refused?.code, 'PROVIDER_INVOCATION_STRAY_FILES');
+    assert.match(
+      refused?.recovery ?? '',
+      new RegExp(stray.replace(/\./g, '\\.')),
+      'refusing without naming the file is how the dead end started',
+    );
+
+    fs.rmSync(path.join(directory, stray));
+    assert.deepEqual(
+      readProviderInvocationLifecycleProjection(runtime, invocationId)
+        .strayFiles,
+      [],
+    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

@@ -656,6 +656,11 @@ test('status is read-only and short transition locks do not survive a call', () 
     assert.equal(leasedStatus.provider.state, 'leased');
     assert.equal(leasedStatus.provider.leaseGeneration, 1);
     assert.equal(
+      leasedStatus.provider.activity.state,
+      'not-observed',
+      'a leased invocation nobody has reported on is unknown, not idle',
+    );
+    assert.equal(
       JSON.stringify(leasedStatus).includes(claim.leaseToken),
       false,
     );
@@ -975,6 +980,8 @@ test('baseline drift and unsafe durable files fail closed', () => {
         mode: 0o600,
       },
     );
+    // Human resolution still refuses a directory holding a file the engine
+    // does not own, and now says which file it is.
     assert.throws(
       () =>
         inspectInvestigationResolutionState(
@@ -982,8 +989,7 @@ test('baseline drift and unsafe durable files fail closed', () => {
           policyStarted.investigationId,
           policyFixture.blindManifest.repositoryId,
         ),
-      (error) =>
-        isWorkflowError(error, 'HUMAN_RESOLUTION_PROVIDER_STATE_UNSAFE'),
+      (error) => isWorkflowError(error, 'PROVIDER_INVOCATION_STRAY_FILES'),
     );
   } finally {
     fs.rmSync(driftFixture.repository, { recursive: true, force: true });

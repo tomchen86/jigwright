@@ -4,11 +4,17 @@
  * Invariants:
  * - Live and retained artifacts retain exact membership, byte, digest, and snapshot bindings.
  * - Runtime authority is checked before retention evidence, and returned digests remain sorted.
+ * - A file the engine does not own is named, never silently digested, and never
+ *   deleted; a caller that only reads may admit it instead of refusing.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { WorkflowError } from '../../foundation/errors/errors.ts';
+import {
+  ExitCode,
+  WorkflowError,
+  workflowError,
+} from '../../foundation/errors/errors.ts';
 import { assertProviderInvocationCancellationRequestV1 } from '../../modules/authority/provider-invocation-cancellation-grant.ts';
 import {
   type ProviderInvocationRequest,
@@ -67,10 +73,37 @@ const OPTIONAL_PROVIDER_ROOT_FILES = [
   'repair-lineage.json',
 ] as const;
 
+// Observation, not authority: live activity belongs to the closure but is
+// never digested, because it keeps changing while the run it describes is
+// still in flight.
+const OBSERVATION_PROVIDER_ROOT_FILES = ['activity.json'] as const;
+
+function providerInvocationStrayFiles(
+  directory: string,
+  names: readonly string[],
+): WorkflowError {
+  return workflowError(
+    'PROVIDER_INVOCATION_STRAY_FILES',
+    'Provider invocation directory holds files the engine does not own.',
+    ExitCode.unsafeEnvironment,
+    {
+      details: { directory, files: [...names] },
+      recovery: `Remove ${names.join(', ')} from ${directory}. A write that was killed mid-flight leaves its own .tmp file behind; nothing else writes there.`,
+    },
+  );
+}
+
+/**
+ * A file the engine did not write is never evidence, so digesting refuses it.
+ * Reading is different: a crashed write leaves its own `.tmp` behind, and an
+ * invocation nobody can read any more is a dead end with no exit. Callers that
+ * only read pass `admitStray` and get the names instead of a failure.
+ */
 export function digestPrivateDirectoryEntries(
   paths: InvestigationRuntimePaths,
   directory: string,
   makeError: () => WorkflowError,
+  options: Readonly<{ admitStray?: (names: readonly string[]) => void }> = {},
 ): Array<{ name: string; digest: string }> {
   if (!walkPrivateDirectory(paths, directory, makeError, false)) {
     throw makeError();
@@ -101,6 +134,9 @@ export function digestPrivateDirectoryEntries(
   const hostWrapperDirectories = HOST_WRAPPER_DIRECTORIES.filter((name) =>
     rootNames.includes(name),
   );
+  const observationRootFiles = OBSERVATION_PROVIDER_ROOT_FILES.filter((name) =>
+    rootNames.includes(name),
+  );
   const rootFiles = [
     PROVIDER_POLICY_ROOT_FILE,
     ...BLIND_PROVIDER_CORE_ROOT_FILES,
@@ -108,12 +144,22 @@ export function digestPrivateDirectoryEntries(
   const expectedRootNames = [
     ...rootFiles,
     ...optionalRootFiles,
+    ...observationRootFiles,
     ...hostWrapperDirectories,
     ...(runtimeStats ? ['runtime'] : []),
     ...(snapshotArtifacts === null ? [] : ['review-root']),
   ].sort();
-  if (canonicalJson(rootNames) !== canonicalJson(expectedRootNames)) {
+  const strayNames = rootNames.filter(
+    (name) => !expectedRootNames.includes(name),
+  );
+  if (expectedRootNames.some((name) => !rootNames.includes(name))) {
     throw makeError();
+  }
+  if (strayNames.length > 0) {
+    if (options.admitStray === undefined) {
+      throw providerInvocationStrayFiles(directory, strayNames);
+    }
+    options.admitStray(Object.freeze([...strayNames]));
   }
 
   const files: Array<{ name: string; digest: string }> = rootFiles.map(

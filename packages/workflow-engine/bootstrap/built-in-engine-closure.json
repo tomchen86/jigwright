@@ -408,7 +408,7 @@
     {
       "path": "src/adapters/planning/investigation/investigation-session.ts",
       "mode": "100644",
-      "digest": "sha256:29235387c17c600e64d3925e473abfd97bf33d8e92324580c5ed3b3f6be6d728"
+      "digest": "sha256:9946336fa60e2df3b6cc950edfcd6da554336b025cdc23fb098a18e153e0c3a2"
     },
     {
       "path": "src/adapters/planning/openspec/documents/colocated-openspec-view.ts",
@@ -1163,7 +1163,7 @@
     {
       "path": "src/composition-root/agent-runtime-host-wrapper-production.ts",
       "mode": "100644",
-      "digest": "sha256:bcefe3fe751115750d5e82db000a8646fef323b862dd6cb18df0ec0133a8a138"
+      "digest": "sha256:2f968cbcbd159bedd2363d49026d0471f3bce3f3ad5066ef675b462c4a99051d"
     },
     {
       "path": "src/composition-root/agent-runtime-production.ts",
@@ -1173,7 +1173,7 @@
     {
       "path": "src/composition-root/agent-runtime-v1-production.ts",
       "mode": "100644",
-      "digest": "sha256:379273768d4c35f37229a1be519df410c527161ed896952c1d49a9e6b7a0ab62"
+      "digest": "sha256:de541c47f38e0a88c4299269f67fae21a2efd936dff340251f1284af93fb242c"
     },
     {
       "path": "src/composition-root/archive-cli-production.ts",
@@ -1633,7 +1633,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:8b7d981408dbd0ece7232714a3441b898a9b7ea496eeebd6b289636148e52341"
+      "digest": "sha256:6e767ee22d57fd19c98f905eebcf81d63565e4b7b0a71b3d116227f265559b43"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -1648,7 +1648,7 @@
     {
       "path": "src/foundation/errors/errors.ts",
       "mode": "100644",
-      "digest": "sha256:0d48e92afe2141feaaa42a0b7b325c1d3e095f146e074beaf70a6e0beb7a3a04"
+      "digest": "sha256:59af93bcefefbf7d5b900cc2c398d27cf8529333596318995db456232e08bd97"
     },
     {
       "path": "src/foundation/evidence-node/evidence-node.ts",
@@ -3043,7 +3043,7 @@
     {
       "path": "src/runtime/provider-execution/provider-availability-pilot.ts",
       "mode": "100644",
-      "digest": "sha256:35f3bac03b702ecc790f5d17f0148fe6425d3d73a26d28e907680c633c83cc32"
+      "digest": "sha256:d51df1e5b11415042cbc8b2f48ae9d873ab88c6904124eb41ab07b2f5c3c87d4"
     },
     {
       "path": "src/runtime/provider-execution/provider-availability-record.ts",
@@ -3896,6 +3896,11 @@
       "digest": "sha256:ce71ccb7c9baab14f7653841fd835ccb1351d0f1dea07fb4039b7edea4b71621"
     },
     {
+      "path": "src/runtime/storage-journal/provider-invocation-activity.ts",
+      "mode": "100644",
+      "digest": "sha256:33b1419832051218748cfbf69cb34d76fbdc3dac4ffc819ba70d8b36a755e8d5"
+    },
+    {
       "path": "src/runtime/storage-journal/provider-invocation-artifacts.ts",
       "mode": "100644",
       "digest": "sha256:701b645d49c046ce0f0093649273e556878ec7a2085fd2a50d6c6d2822736bcd"
@@ -3913,7 +3918,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:dce6c418012c3a8865f57835839769621ae637b633e8b8a0b362ec85ca7d6893"
+      "digest": "sha256:5c35cc09c79a638f98420ac8087d0c0ca1b7411b2ed874b1c37919288cc3a21f"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-manifest-validation.ts",
@@ -4013,12 +4018,12 @@
     {
       "path": "src/runtime/storage-journal/provider-runtime-evidence-contract.ts",
       "mode": "100644",
-      "digest": "sha256:aa53dae5eb050ac06bca51633a8ad94a9ff86f057d4b81383caa7f63a5a96d61"
+      "digest": "sha256:6536b5dfd44a0f0cf9e9c17c3425c346c63201e2d522d378a0b7ef192541ebc9"
     },
     {
       "path": "src/runtime/storage-journal/provider-runtime-retention.ts",
       "mode": "100644",
-      "digest": "sha256:126a0f47508c5400abebd0bdc9e6d9eeefb110a2b9165afe6419ca0125741447"
+      "digest": "sha256:a535892d2994c4f97663c1d5fbb7a175fdbadd8f3d1bdd09250eb036713a84ce"
     },
     {
       "path": "src/runtime/storage-journal/provider-worker-maintenance.ts",

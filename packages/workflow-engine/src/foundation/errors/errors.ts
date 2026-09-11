@@ -5,6 +5,7 @@
  * Invariants:
  * - A workflow error retains its code, exit category and optional details
  *   and recovery text.
+ * - A durable failure message keeps the original throw's name and message.
  */
 export const ExitCode = {
   internal: 1,
@@ -50,4 +51,26 @@ export function workflowError(
   } = {},
 ): WorkflowError {
   return new WorkflowError({ code, message, exitCode, ...options });
+}
+
+const DURABLE_FAILURE_REASON_LIMIT = 512;
+
+/**
+ * Composes a durable failure message that keeps the original throw's reason.
+ *
+ * A caught throw is the only account of why an attempt failed; a summary that
+ * drops it leaves two unrelated crashes indistinguishable on the record.
+ */
+export function durableFailureMessage(summary: string, error: unknown): string {
+  const reason = (
+    error instanceof WorkflowError
+      ? error.message
+      : error instanceof Error
+        ? `${error.name}: ${error.message}`
+        : String(error)
+  )
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, DURABLE_FAILURE_REASON_LIMIT);
+  return reason === '' ? `${summary}.` : `${summary}: ${reason}`;
 }

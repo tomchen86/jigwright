@@ -248,9 +248,15 @@ export function readProviderInvocationLifecycleProjection(paths, requestedInvoca
     }
     // Validate the exact private invocation closure here as well as when a
     // human-resolution digest is projected. Callers that only enumerate
-    // lifecycle projections must not silently accept unknown or malformed
-    // authority files.
-    digestPrivateDirectoryEntries(paths, directory, providerInvocationUnsafe);
+    // lifecycle projections must not silently accept malformed authority files.
+    // A file the engine does not own is reported rather than fatal: reading is
+    // how an operator finds out it is there.
+    let strayFiles = [];
+    digestPrivateDirectoryEntries(paths, directory, providerInvocationUnsafe, {
+        admitStray: (names) => {
+            strayFiles = names;
+        },
+    });
     return deepFreeze({
         invocationId,
         investigationId: value.investigationId,
@@ -275,6 +281,7 @@ export function readProviderInvocationLifecycleProjection(paths, requestedInvoca
                 acquiredAt: value.lease.acquiredAt,
                 expiresAt: value.lease.expiresAt,
             },
+        strayFiles,
     });
 }
 export function isDurablyReservedProviderExecutionPolicySnapshot(paths, invocationId) {
