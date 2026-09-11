@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:7a1be270e0902f8adc7f504dc7790ba156d25ec8a04a3a563a2860e8adf7f484"
+      "digest": "sha256:c3965c16b7abb99ec78f645648701e8b2e07f9a1453f508b98831125d181e7ae"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -998,7 +998,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/execution-retry.js",
       "mode": "100644",
-      "digest": "sha256:10ad5ce402ffd78e7ee5a3106614f30ebffc29c510550eb0ef9ff205f74303bc"
+      "digest": "sha256:735e579c565748519f8c0b27cfc433cd9ed793012b8f0127db96aff5c7ebb1dc"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/execution-values.js",
@@ -1008,7 +1008,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/provider-contracts.js",
       "mode": "100644",
-      "digest": "sha256:765307d3438883b02a279eb7c01ce2bd8cd4c2a3de0a71155df6aa6036e24c7b"
+      "digest": "sha256:9a94aa931f0deb4c92ca4a28a8fc5c02bcb214c0b0271b36b0a131ed3f048e01"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/provider-native-session.js",
@@ -1019,6 +1019,11 @@
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/provider-registry.js",
       "mode": "100644",
       "digest": "sha256:dc439b8b9dc3870695c10e8a8d131808027e6d9d50e18674c6082598c6baa8ef"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/provider-retry-explanation.js",
+      "mode": "100644",
+      "digest": "sha256:ef37b4f5b004c2dd31d929958b85f994d72fc92a41c3dfbee277fbd8468ff2d1"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/provider-runtime-evidence.js",
@@ -1488,7 +1493,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/evidence-plan-review-ownership.js",
       "mode": "100644",
-      "digest": "sha256:0ed3f70b49a10d7bfbd60796dc1af80f60ff2fdc59054f0820b2232239bbb008"
+      "digest": "sha256:d99db3c5a66fdf2a7477e3fbc353a5bebce8d55639e58c35c7ab0949394956e1"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/evidence-planning-ownership.js",
@@ -1533,7 +1538,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/execution-provider-projection.js",
       "mode": "100644",
-      "digest": "sha256:1c95286113b7926576a03bf44978d60bff892f456a843b85e38b4ef8199d797f"
+      "digest": "sha256:d24a36e04cd5d2615dab6f0e1c8a4fb59d0e42d4a3da6b9b41835c115da8b68e"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/execution-state-contract.js",
@@ -1798,7 +1803,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-validation.js",
       "mode": "100644",
-      "digest": "sha256:245df298ab1a4c3fde42dcb86b76d878643da8a650fce39f85f93da4bd9b6f9f"
+      "digest": "sha256:3aa5a3a76f82c358a0ac5d0d5c600f026c48075916bff93f5f986db04473753d"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-workers.js",

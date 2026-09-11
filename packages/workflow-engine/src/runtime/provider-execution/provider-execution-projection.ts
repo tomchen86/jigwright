@@ -65,12 +65,11 @@ export function buildProviderReplacementPreview(
   if (
     !Number.isSafeInteger(input.timeoutMs) ||
     input.timeoutMs < 1 ||
-    input.timeoutMs > MAX_PROVIDER_TIMEOUT_MS ||
-    input.timeoutMs === previous.policySnapshot.timeoutMs
+    input.timeoutMs > MAX_PROVIDER_TIMEOUT_MS
   ) {
     throw workflowError(
       'EXECUTION_RUNTIME_POLICY_CHANGE_INVALID',
-      'Replacement timeout must be a different bounded positive value.',
+      'Replacement timeout must be a bounded positive value.',
       ExitCode.usage,
     );
   }
@@ -81,12 +80,16 @@ export function buildProviderReplacementPreview(
     timeoutMs: input.timeoutMs,
     grantId,
   }).slice('sha256:'.length, 'sha256:'.length + 32)}`;
+  const retryMode =
+    input.timeoutMs === previous.policySnapshot.timeoutMs
+      ? ('same-input' as const)
+      : ('execution-policy-change' as const);
   const replacement = createReplacementAttempt({
     workflow: inspection.workflow,
     job: inspection.job,
     previousAttempt: previous,
     attemptId: previewAttemptId,
-    retryMode: 'execution-policy-change',
+    retryMode,
     currentExecutionPolicy: previous.policySnapshot,
     policyOverrides: { timeoutMs: input.timeoutMs },
     ...(grantId === null && !pendingGrant
@@ -104,7 +107,7 @@ export function buildProviderReplacementPreview(
     previousAttemptId: previous.attemptId,
     previewAttemptId: replacement.attempt.attemptId,
     attemptNumber: replacement.attempt.attemptNumber,
-    retryMode: 'execution-policy-change',
+    retryMode,
     changedFields: replacement.attempt.changedFields.map((field) => ({
       ...field,
     })),

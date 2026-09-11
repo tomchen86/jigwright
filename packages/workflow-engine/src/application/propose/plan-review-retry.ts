@@ -7,6 +7,7 @@
  * - Exact replays resume the reserved replacement and its recorded policy snapshot.
  */
 
+import { defaultProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   ExitCode,
@@ -345,8 +346,12 @@ export function resumePlanReviewRetry(
         options.executionGrantAuthorization?.replacementRequest ??
         createPlanReviewReplacementRequest(input, failedRequest, {
           policyDigest: currentExecutionPolicy.digest,
+          retryExplanation:
+            input.retryExplanation ??
+            defaultProviderRetryExplanation(failed.failure),
           limits: {
-            timeoutMs: currentExecutionPolicy.policy.limits.timeoutMs,
+            timeoutMs:
+              input.timeoutMs ?? currentExecutionPolicy.policy.limits.timeoutMs,
             aggregateOutputBytes:
               currentExecutionPolicy.policy.limits.aggregateOutputBytes,
           },
@@ -708,6 +713,7 @@ function assertExactPlanReviewRetryReplay(
     {
       policyDigest: reservation.request.policyDigest,
       limits: reservation.request.limits,
+      retryExplanation: reservation.request.retryExplanation,
     },
   );
   const expectedReservationNode = createPlanReviewReplacementReservationNode(
@@ -720,6 +726,8 @@ function assertExactPlanReviewRetryReplay(
     reservation.retry.executionPolicySnapshot,
   );
   if (
+    (input.timeoutMs !== undefined &&
+      reservation.request.limits.timeoutMs !== input.timeoutMs) ||
     reservation.subject.subjectDigest !== input.subjectDigest ||
     reservation.subject.planningGenerationId !== input.planningGenerationId ||
     reservation.retry.previousReservationNodeId !==

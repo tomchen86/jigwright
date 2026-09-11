@@ -93,7 +93,7 @@ export type ProviderReplacementPreview = {
   previousAttemptId: string;
   previewAttemptId: string;
   attemptNumber: number;
-  retryMode: 'execution-policy-change';
+  retryMode: 'same-input' | 'execution-policy-change';
   changedFields: ChangedField[];
   policySnapshot: ExecutionPolicySnapshot;
   requestDigest: string;

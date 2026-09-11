@@ -3,6 +3,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import {
+  previewExecutionJobRetry,
+  requestExecutionJobRetry,
+} from '../src/application/control-plane/execution-job-retry.ts';
+import { projectProviderInvocationExecution } from '../src/modules/provider-orchestration/execution-core.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   compareAndSwapEvidenceRefsDocument,
@@ -224,6 +229,7 @@ test('retries PlanReview with intact invocation and snapshot lineage', async (t)
       requestDigest: _replacementRequestDigest,
       policyDigest: _replacementPolicyDigest,
       limits: _replacementLimits,
+      retryExplanation: _replacementExplanation,
       ...replacementRequestBinding
     } = replacementRequest;
 
@@ -481,20 +487,70 @@ test('retries PlanReview with intact invocation and snapshot lineage', async (t)
 
     const secondRetriedInvocations: string[] = [];
 
-    const secondRetry = resumePropose(
+    const jobId = projectProviderInvocationExecution({
+      record: readProviderInvocation(reviewerRuntime, replacementInvocationId),
+      request: replacementRequest,
+    }).job.jobId;
+    const preview = previewExecutionJobRetry(repository, jobId);
+    assert.equal(preview.status, 'ready');
+    const explainedRetry = {
+      ...preview.inputTemplate!,
+      retryExplanation: {
+        failureReason: 'The review process failed for an unconfirmed reason.',
+        plannedAction:
+          'Retry the same review snapshot with the existing timeout.',
+      },
+    };
+    const retriedJob = requestExecutionJobRetry(
       repository,
-      changeId,
-      secondRetryEnvelope,
+      jobId,
+      explainedRetry,
       {
         providerDriver({ request }) {
           secondRetriedInvocations.push(request.invocationId);
         },
       },
     );
+    if (retriedJob.status !== 'retried')
+      assert.fail('Expected an admitted PlanReview retry.');
+    const secondRetry = retriedJob.result;
+    const replayedJob = requestExecutionJobRetry(
+      repository,
+      jobId,
+      explainedRetry,
+    );
+    assert.equal(replayedJob.status, 'retried');
+    assert.throws(
+      () =>
+        requestExecutionJobRetry(repository, jobId, {
+          ...explainedRetry,
+          retryExplanation: {
+            ...explainedRetry.retryExplanation,
+            plannedAction: 'Changed replay explanation',
+          },
+        }),
+      (error) =>
+        isWorkflowError(error, 'PROVIDER_RETRY_RESERVATION_CONFLICT') ||
+        isWorkflowError(error, 'PLAN_REVIEW_RETRY_INPUT_STALE'),
+    );
 
     const secondReplacementInvocationId = secondRetry.planReview!.invocationId;
 
     assert.deepEqual(secondRetriedInvocations, [secondReplacementInvocationId]);
+    assert.deepEqual(
+      readProviderInvocationRequest(
+        reviewerRuntime,
+        secondReplacementInvocationId,
+      ).limits,
+      replacementRequest.limits,
+    );
+    assert.deepEqual(
+      readProviderInvocationRequest(
+        reviewerRuntime,
+        secondReplacementInvocationId,
+      ).retryExplanation,
+      explainedRetry.retryExplanation,
+    );
 
     assert.equal(
       readProviderInvocation(reviewerRuntime, secondReplacementInvocationId)
@@ -628,6 +684,51 @@ test('retries PlanReview with intact invocation and snapshot lineage', async (t)
         .readdirSync(reviewerRuntime.invocations)
         .filter((entry) => entry.startsWith('invocation-')).length,
       4,
+    );
+    const thirdClaim = claimProviderInvocation(
+      reviewerRuntime,
+      secondReplacementInvocationId,
+      {
+        workerId: 'worker-third-review-failure',
+        leaseDurationMs: 1_000,
+      },
+    );
+    failProviderInvocation(reviewerRuntime, secondReplacementInvocationId, {
+      expectedRevision: thirdClaim.record.revision,
+      leaseGeneration: thirdClaim.record.leaseGeneration,
+      leaseToken: thirdClaim.leaseToken,
+      failure: {
+        kind: 'retryable',
+        code: 'PROVIDER_PROCESS_FAILED',
+        message: 'Retry with an explicitly shorter timeout.',
+      },
+    });
+    const shorterPreview = previewExecutionJobRetry(repository, jobId, {
+      timeoutMs: 300_000,
+    });
+    assert.equal(shorterPreview.status, 'ready');
+    const shorterInput = {
+      ...shorterPreview.inputTemplate!,
+      retryExplanation: {
+        failureReason: 'Transport failed again.',
+        plannedAction: 'Make another bounded attempt with a shorter timeout.',
+      },
+    };
+    const shorter = requestExecutionJobRetry(repository, jobId, shorterInput);
+    if (shorter.status !== 'retried')
+      assert.fail('Expected an admitted timeout change.');
+    const shorterRequest = readProviderInvocationRequest(
+      reviewerRuntime,
+      shorter.result.planReview!.invocationId,
+    );
+    assert.equal(shorterRequest.limits.timeoutMs, 300_000);
+    assert.throws(
+      () =>
+        requestExecutionJobRetry(repository, jobId, {
+          ...shorterInput,
+          timeoutMs: 600_000,
+        }),
+      (error) => isWorkflowError(error, 'PLAN_REVIEW_RETRY_INPUT_STALE'),
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

@@ -6,6 +6,7 @@
  * - Provider invocation requests use the repository-read-only capability
  *   profile.
  */
+import { parseProviderRetryExplanation, } from "./provider-retry-explanation.js";
 import crypto from 'node:crypto';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError, } from "../../foundation/errors/errors.js";
@@ -126,7 +127,11 @@ const RESULT_KEYS = [
 ];
 export function createProviderInvocationRequest(input) {
     // Reject unknown or missing input keys before any field is trusted.
-    if (!isRecord(input) || !hasExactKeys(input, REQUEST_INPUT_KEYS)) {
+    if (!isRecord(input) ||
+        !hasExactKeys(input, [
+            ...REQUEST_INPUT_KEYS,
+            ...('retryExplanation' in input ? ['retryExplanation'] : []),
+        ])) {
         throw requestInvalid();
     }
     if (!isNonEmptyString(input.invocationId) ||
@@ -173,7 +178,13 @@ export function createProviderInvocationRequest(input) {
         aggregateOutputBytes: input.limits.aggregateOutputBytes,
     });
     const roleAssignmentDigest = sha256(canonicalJson(roleAssignment));
+    const retryMetadata = !('retryExplanation' in input)
+        ? {}
+        : {
+            retryExplanation: parseProviderRetryExplanation(input.retryExplanation),
+        };
     const binding = {
+        ...retryMetadata,
         schemaVersion: REQUEST_SCHEMA_VERSION,
         invocationId: input.invocationId,
         nonce: input.nonce,
@@ -195,6 +206,7 @@ export function createProviderInvocationRequest(input) {
     };
     const requestDigest = sha256(canonicalJson(binding));
     const request = {
+        ...retryMetadata,
         schemaVersion: REQUEST_SCHEMA_VERSION,
         invocationId: input.invocationId,
         nonce: input.nonce,
@@ -223,6 +235,7 @@ export function recreateProviderInvocationRequest(value) {
         !hasExactKeys(value, [
             'schemaVersion',
             ...REQUEST_INPUT_KEYS,
+            ...('retryExplanation' in value ? ['retryExplanation'] : []),
             'roleAssignmentDigest',
             'requestDigest',
         ])) {
@@ -246,6 +259,9 @@ export function recreateProviderInvocationRequest(value) {
         evaluatorVersion: value.evaluatorVersion,
         policyDigest: value.policyDigest,
         limits: value.limits,
+        ...('retryExplanation' in value
+            ? { retryExplanation: value.retryExplanation }
+            : {}),
     });
     if (canonicalJson(request) !== canonicalJson(value)) {
         throw requestInvalid();

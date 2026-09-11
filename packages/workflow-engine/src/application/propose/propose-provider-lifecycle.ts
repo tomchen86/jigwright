@@ -7,6 +7,7 @@
  * - Exact retries reuse the recorded replacement and preserve provider mandate observations.
  */
 
+import { defaultProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
@@ -292,8 +293,13 @@ export function resumeProviderRetry(
               outputSchema: failedRequest.outputSchema,
               evaluatorVersion: failedRequest.evaluatorVersion,
               policyDigest: currentExecutionPolicy.digest,
+              retryExplanation:
+                input.retryExplanation ??
+                defaultProviderRetryExplanation(failed.failure),
               limits: {
-                timeoutMs: currentExecutionPolicy.policy.limits.timeoutMs,
+                timeoutMs:
+                  input.timeoutMs ??
+                  currentExecutionPolicy.policy.limits.timeoutMs,
                 aggregateOutputBytes:
                   currentExecutionPolicy.policy.limits.aggregateOutputBytes,
               },
@@ -365,6 +371,11 @@ function readExactProviderRetryReplay(
   );
   if (
     reservation === null ||
+    (input.timeoutMs !== undefined &&
+      reservation.request.limits.timeoutMs !== input.timeoutMs) ||
+    (input.retryExplanation !== undefined &&
+      canonicalJson(reservation.request.retryExplanation ?? null) !==
+        canonicalJson(input.retryExplanation)) ||
     reservation.previousInvocationId !== failed.invocationId ||
     reservation.invocationId !== current.providerInvocationId ||
     current.provider.attempt !== failed.attempt + 1 ||

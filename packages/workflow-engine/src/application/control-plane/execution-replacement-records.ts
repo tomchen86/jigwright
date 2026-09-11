@@ -7,6 +7,7 @@
  *   already-reached phase returns durable state.
  */
 // execution replacement records; repository effects remain bound by the public module.
+import { parseProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
 import type {
   ExecutionReplacementRecordsBindings,
   ExecutionReplacementRecordsBindingsTypes,
@@ -80,7 +81,13 @@ export function createExecutionReplacementRecords(
     ];
     if (
       !isRecord(value) ||
-      !hasExactKeys(value, keys) ||
+      !hasExactKeys(value, [
+        ...keys,
+        ...('budgetScope' in value ? ['budgetScope'] : []),
+        ...('retryExplanation' in value ? ['retryExplanation'] : []),
+      ]) ||
+      ('budgetScope' in value && value.budgetScope !== 'next-attempt') ||
+      ('retryExplanation' in value && value.budgetScope !== 'next-attempt') ||
       value.schemaVersion !== 1 ||
       value.kind !== 'execution-replacement-request-binding' ||
       !isDigest(value.requestDigest) ||
@@ -100,6 +107,8 @@ export function createExecutionReplacementRecords(
     ) {
       throw replacementUnsafe();
     }
+    if ('retryExplanation' in value)
+      parseProviderRetryExplanation(value.retryExplanation);
     const { recordDigest, ...core } = value;
     if (recordDigest !== digestCanonical(core)) throw replacementUnsafe();
     return Object.freeze(

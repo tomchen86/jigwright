@@ -3,6 +3,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import {
+  previewExecutionJobRetry,
+  requestExecutionJobRetry,
+} from '../src/application/control-plane/execution-job-retry.ts';
 import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { projectProviderInvocationExecution } from '../src/modules/provider-orchestration/execution-core.ts';
@@ -1070,6 +1074,7 @@ test('propose retry envelope authorizes one idempotent replacement survey', () =
       requestDigest: _secondRequestDigest,
       policyDigest: _secondPolicyDigest,
       limits: _secondLimits,
+      retryExplanation: _secondExplanation,
       ...secondBinding
     } = secondRequest;
     assert.deepEqual(secondBinding, firstBinding);
@@ -1177,9 +1182,59 @@ test('propose retry envelope authorizes one idempotent replacement survey', () =
     });
     assert.equal(nextRetry.failedInvocation.invocationId, secondInvocationId);
     assert.equal(nextRetry.expectedRevision, retried.investigation!.revision);
-    const thirdAttempt = resumePropose(repository, changeId, nextRetry);
+    const jobId = projectProviderInvocationExecution({
+      record: readProviderInvocation(paths, secondInvocationId),
+      request: secondRequest,
+    }).job.jobId;
+    const cliJobPreview = runWorkflowCli(
+      repository,
+      ['job', 'retry-preview', jobId],
+      { WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH: '1' },
+    );
+    assert.equal(cliJobPreview.status, 0, cliJobPreview.stderr);
+    const jobPreview = previewExecutionJobRetry(repository, jobId);
+    assert.deepEqual(JSON.parse(cliJobPreview.stdout).result, jobPreview);
+    assert.equal(jobPreview.status, 'ready');
+    assert.equal(
+      readProviderRetryReservation(paths, investigationId, 3),
+      null,
+      'preview must not reserve work',
+    );
+    const explainedRetry = {
+      ...jobPreview.inputTemplate!,
+      retryExplanation: {
+        failureReason:
+          'The provider appears to have run inside the sandbox; cause is not yet confirmed.',
+        plannedAction:
+          'Retry from the authorized host environment with the same timeout.',
+      },
+    };
+    assert.throws(
+      () =>
+        requestExecutionJobRetry(repository, jobId, jobPreview.inputTemplate),
+      (error) => isWorkflowError(error, 'PROVIDER_RETRY_EXPLANATION_INVALID'),
+    );
+    const jobRetried = requestExecutionJobRetry(
+      repository,
+      jobId,
+      explainedRetry,
+    );
+    if (jobRetried.status !== 'retried')
+      assert.fail('Expected an admitted job retry.');
+    const thirdAttempt = jobRetried.result;
+    if (thirdAttempt.investigation?.kind !== 'investigation')
+      assert.fail('Expected a survey investigation.');
     const thirdInvocationId = thirdAttempt.investigation!.providerInvocationId;
     assert.equal(thirdAttempt.investigation!.provider.attempt, 3);
+    const thirdRequest = readProviderInvocationRequest(
+      paths,
+      thirdInvocationId,
+    );
+    assert.deepEqual(thirdRequest.limits, secondRequest.limits);
+    assert.deepEqual(
+      thirdRequest.retryExplanation,
+      explainedRetry.retryExplanation,
+    );
     const thirdClaim = claimProviderInvocation(paths, thirdInvocationId, {
       workerId: 'worker-third-repeated-failure',
       leaseDurationMs: 1_000,
@@ -1194,18 +1249,49 @@ test('propose retry envelope authorizes one idempotent replacement survey', () =
         message: 'Third provider attempt repeated the same failure.',
       },
     });
+    fs.writeFileSync(retryPath, JSON.stringify(explainedRetry));
+    const jobCliReplay = runWorkflowCli(
+      repository,
+      ['job', 'retry-request', jobId, '--input', retryPath],
+      { WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH: '1' },
+    );
+    assert.equal(jobCliReplay.status, 0, jobCliReplay.stderr);
+    assert.equal(
+      JSON.parse(jobCliReplay.stdout).result.result.investigation
+        .providerInvocationId,
+      thirdInvocationId,
+    );
+    assert.equal(
+      readProviderRetryReservation(paths, investigationId, 4),
+      null,
+      'replay must not allocate a fourth attempt',
+    );
+    assert.throws(
+      () =>
+        requestExecutionJobRetry(repository, jobId, {
+          ...explainedRetry,
+          retryExplanation: {
+            ...explainedRetry.retryExplanation,
+            plannedAction: 'A different request',
+          },
+        }),
+      (error) => isWorkflowError(error, 'PROVIDER_RETRY_INPUT_STALE'),
+    );
     const repeatedFailure = getProposeStatus(repository, investigationId);
-    const strategyRequired = createProviderRetryEnvelope(
+    const fourthRetry = createProviderRetryEnvelope(
       repository,
       repeatedFailure,
       { acknowledgeProviderCost: true },
     );
-    assert.throws(
-      () => resumePropose(repository, changeId, strategyRequired),
-      (error) =>
-        isWorkflowError(error, 'PROVIDER_RETRY_STRATEGY_CHANGE_REQUIRED'),
+    const fourth = resumePropose(repository, changeId, fourthRetry);
+    assert.equal(fourth.investigation!.provider.attempt, 4);
+    assert.deepEqual(
+      readProviderInvocationRequest(
+        paths,
+        fourth.investigation!.providerInvocationId,
+      ).limits,
+      thirdRequest.limits,
     );
-    assert.equal(readProviderRetryReservation(paths, investigationId, 4), null);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
     fs.rmSync(inputDirectory, { recursive: true, force: true });

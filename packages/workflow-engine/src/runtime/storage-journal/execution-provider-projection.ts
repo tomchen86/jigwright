@@ -5,6 +5,7 @@
  * - Attempt history, retry accounting, policy changes, and accepted results retain their existing order.
  * - Projection rejects non-monotonic entries and preserves exact failure and retry decisions.
  */
+import { executionRetryBudgetChanges } from '../../modules/provider-orchestration/execution-retry.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { createExecutionBudgetGrantRequest } from '../../modules/authority/execution-governance.ts';
@@ -91,43 +92,30 @@ export function decideProviderExecutionFailure(input: {
     ({ failureFingerprint }) =>
       failureFingerprint !== null && failureFingerprint === failure.fingerprint,
   ).length;
-  const decision = decideRetry({
-    workflow: input.workflow,
+  const budgetInput = {
     job: input.job,
     attempt: input.attempt,
     failure,
+    providerAttemptCount: input.attempts.filter(
+      ({ provider }) => provider === input.attempt.provider,
+    ).length,
+    nextRuntimeMs: input.attempt.policySnapshot.timeoutMs,
+    nextProviderCostMicros: input.attempt.providerCostMicros,
+    nextProviderTokens: input.attempt.providerTokens,
+    now: input.attempt.updatedAt,
+  };
+  const decision = decideRetry({
+    ...budgetInput,
+    workflow: input.workflow,
     sameFingerprintCount,
     currentExecutionPolicy: input.attempt.policySnapshot,
-    now: input.attempt.updatedAt,
   });
   if (
-    ![
-      'REPEATED_FAILURE',
-      // A changed strategy has no automatic executor, so the boundary is
-      // offered the same bounded-grant exit as an exhausted ladder.
-      'REPEATED_FAILURE_STRATEGY_CHANGE',
-      'RETRY_BUDGET_EXHAUSTED',
-    ].includes(decision.reasonCode) ||
+    decision.reasonCode !== 'RETRY_BUDGET_EXHAUSTED' ||
     input.job.mandateBinding === undefined
-  ) {
+  )
     return decision;
-  }
-  const requestedChanges = [
-    {
-      path: '/retryPolicy/maxAttempts',
-      from: input.job.retryPolicy.maxAttempts,
-      to: input.job.retryPolicy.maxAttempts + 1,
-    },
-    ...(sameFingerprintCount > input.job.retryPolicy.maxSameFailureFingerprint
-      ? [
-          {
-            path: '/retryPolicy/maxSameFailureFingerprint',
-            from: input.job.retryPolicy.maxSameFailureFingerprint,
-            to: input.job.retryPolicy.maxSameFailureFingerprint + 1,
-          },
-        ]
-      : []),
-  ];
+  const requestedChanges = executionRetryBudgetChanges(budgetInput);
   const requiredGrant = createExecutionBudgetGrantRequest({
     requestId: deterministicUuid({
       kind: 'provider-execution-budget-request.v1',
@@ -146,6 +134,7 @@ export function decideProviderExecutionFailure(input: {
     createdAt: new Date(input.attempt.updatedAt),
   });
   return decideRetry({
+    ...budgetInput,
     workflow: input.workflow,
     job: input.job,
     attempt: input.attempt,

@@ -103,11 +103,7 @@ export function decideRetry(input: {
   if (job.acceptedAttemptId !== null) {
     return noRetry('JOB_RESULT_ALREADY_ACCEPTED');
   }
-  // Terminal failures resolve before the fingerprint ladder. The ladder exists
-  // to converge repeated *retryable* failures onto a changed strategy; letting
-  // a terminal failure reach it would turn its second occurrence into an
-  // automatic retry and let an attempt proceed while the job is projected as
-  // waiting on human input.
+  // Repeated failures are informational; terminal failures still cannot retry.
   if (failure.retryClass === 'terminal') {
     return noRetry(failure.code);
   }
@@ -131,40 +127,17 @@ export function decideRetry(input: {
     input.boundedGrantRequest === undefined
       ? undefined
       : assertExecutionBudgetGrantRequest(input.boundedGrantRequest, job);
-  const withinBudget = isWithinAutomaticBudget({
-    job,
-    attempt,
-    failure,
-    providerAttemptCount: input.providerAttemptCount,
-    nextRuntimeMs: input.nextRuntimeMs,
-    nextProviderCostMicros: input.nextProviderCostMicros,
-    nextProviderTokens: input.nextProviderTokens,
-    now,
-  });
-  if (input.sameFingerprintCount > job.retryPolicy.maxSameFailureFingerprint) {
-    return grant === undefined
-      ? noRetry('REPEATED_FAILURE')
-      : grantDecision(grant, 'REPEATED_FAILURE_GRANT_REQUIRED');
-  }
-  if (input.sameFingerprintCount >= job.retryPolicy.maxSameFailureFingerprint) {
-    // The boundary honors the same manual lever as the branch above: no
-    // automatic executor exists for a changed strategy, so a caller holding a
-    // bounded grant candidate is offered the grant exit rather than a
-    // decision nobody can execute.
-    if (grant !== undefined) {
-      return grantDecision(grant, 'REPEATED_FAILURE_GRANT_REQUIRED');
-    }
-    if (withinBudget) {
-      return {
-        retryable: true,
-        automatic: true,
-        retryMode: 'strategy-change',
-        changedStrategyRequired: true,
-        reasonCode: 'REPEATED_FAILURE_STRATEGY_CHANGE',
-      };
-    }
-    return noRetry('REPEATED_FAILURE');
-  }
+  const withinBudget =
+    executionRetryBudgetChanges({
+      job,
+      attempt,
+      failure,
+      providerAttemptCount: input.providerAttemptCount,
+      nextRuntimeMs: input.nextRuntimeMs,
+      nextProviderCostMicros: input.nextProviderCostMicros,
+      nextProviderTokens: input.nextProviderTokens,
+      now,
+    }).length === 0;
   if (withinBudget) {
     const retryMode = inferRetryMode(
       failure,
@@ -175,7 +148,10 @@ export function decideRetry(input: {
       retryable: true,
       automatic: true,
       retryMode,
-      reasonCode: failure.code,
+      reasonCode:
+        input.sameFingerprintCount >= job.retryPolicy.maxSameFailureFingerprint
+          ? 'REPEATED_FAILURE_WARNING'
+          : failure.code,
     };
     if (failure.retryAfterMs !== null) {
       decision.retryAfterMs = failure.retryAfterMs;
@@ -407,7 +383,8 @@ function assertExecutionBudgetGrantRequest(
   return deepFreeze(structuredClone(value) as GrantRequest);
 }
 
-function isWithinAutomaticBudget(input: {
+/** Exact extra capacity needed for one next reservation; never edits policy. */
+export function executionRetryBudgetChanges(input: {
   job: JobRecord;
   attempt: AttemptRecord;
   failure: FailureDescriptor;
@@ -416,7 +393,7 @@ function isWithinAutomaticBudget(input: {
   nextProviderCostMicros?: number;
   nextProviderTokens?: number;
   now: string;
-}): boolean {
+}): GrantRequest['requestedChanges'] {
   const { job, attempt, failure } = input;
   const providerLimit = job.retryPolicy.providerLimits[attempt.provider];
   const providerAttemptCount = input.providerAttemptCount ?? job.attemptCount;
@@ -431,19 +408,50 @@ function isWithinAutomaticBudget(input: {
   ] as const) {
     assertNonnegativeInteger(value, label);
   }
-  return (
-    job.attemptCount < job.retryPolicy.maxAttempts &&
-    job.cumulativeRuntimeMs + nextRuntimeMs <=
-      job.retryPolicy.maxCumulativeRuntimeMs &&
-    job.providerCostMicros + nextProviderCostMicros <=
-      job.retryPolicy.maxProviderCostMicros &&
-    job.providerTokens + nextProviderTokens <=
-      job.retryPolicy.maxProviderTokens &&
-    (providerLimit === undefined || providerAttemptCount < providerLimit) &&
-    (failure.retryClass !== 'repairable' ||
-      job.repairAttemptCount < job.retryPolicy.maxRepairAttempts) &&
-    Date.parse(input.now) < Date.parse(job.retryPolicy.deadline)
+  const changes: GrantRequest['requestedChanges'][number][] = [];
+  const addCapacity = (path: string, limit: number, needed: number) => {
+    if (needed > limit) changes.push({ path, from: limit, to: needed });
+  };
+  addCapacity(
+    '/retryPolicy/maxAttempts',
+    job.retryPolicy.maxAttempts,
+    job.attemptCount + 1,
   );
+  addCapacity(
+    '/retryPolicy/maxCumulativeRuntimeMs',
+    job.retryPolicy.maxCumulativeRuntimeMs,
+    job.cumulativeRuntimeMs + nextRuntimeMs,
+  );
+  addCapacity(
+    '/retryPolicy/maxProviderCostMicros',
+    job.retryPolicy.maxProviderCostMicros,
+    job.providerCostMicros + nextProviderCostMicros,
+  );
+  addCapacity(
+    '/retryPolicy/maxProviderTokens',
+    job.retryPolicy.maxProviderTokens,
+    job.providerTokens + nextProviderTokens,
+  );
+  if (providerLimit !== undefined)
+    addCapacity(
+      `/retryPolicy/providerLimits/${attempt.provider}`,
+      providerLimit,
+      providerAttemptCount + 1,
+    );
+  if (failure.retryClass === 'repairable')
+    addCapacity(
+      '/retryPolicy/maxRepairAttempts',
+      job.retryPolicy.maxRepairAttempts,
+      job.repairAttemptCount + 1,
+    );
+  if (Date.parse(input.now) >= Date.parse(job.retryPolicy.deadline)) {
+    changes.push({
+      path: '/retryPolicy/deadline',
+      from: job.retryPolicy.deadline,
+      to: 'next-attempt-only',
+    });
+  }
+  return changes.sort((left, right) => left.path.localeCompare(right.path));
 }
 
 function inferRetryMode(

@@ -759,6 +759,7 @@ function assertPlanReviewRetryReservation(
     requestDigest: _failedRequestDigest,
     policyDigest: _failedPolicyDigest,
     limits: _failedLimits,
+    retryExplanation: _failedExplanation,
     ...failedRequestBinding
   } = failedRequest;
   const {
@@ -767,6 +768,7 @@ function assertPlanReviewRetryReservation(
     requestDigest: _replacementRequestDigest,
     policyDigest: _replacementPolicyDigest,
     limits: _replacementLimits,
+    retryExplanation: _replacementExplanation,
     ...replacementRequestBinding
   } = request;
   if (

@@ -579,6 +579,7 @@ function assertPlanReviewRetryOwnership(
     requestDigest: _previousRequestDigest,
     policyDigest: _previousPolicyDigest,
     limits: _previousLimits,
+    retryExplanation: _previousExplanation,
     ...previousRequestBinding
   } = previousRequest;
   const {
@@ -587,6 +588,7 @@ function assertPlanReviewRetryOwnership(
     requestDigest: _replacementRequestDigest,
     policyDigest: _replacementPolicyDigest,
     limits: _replacementLimits,
+    retryExplanation: _replacementExplanation,
     ...replacementRequestBinding
   } = request;
   if (

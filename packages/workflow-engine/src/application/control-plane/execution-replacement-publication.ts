@@ -7,6 +7,7 @@
  *   attempting another Grant consumption.
  */
 // execution replacement publication; repository effects remain bound by the public module.
+import type { ProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
 import type {
   ExecutionReplacementPublicationBindings,
   ExecutionReplacementPublicationBindingsTypes,
@@ -321,6 +322,10 @@ export function createExecutionReplacementPublication(
     previousProviderPolicyDigest: string,
     providerPolicyDigest: string,
     providerPolicyTimeoutCeilingMs: number,
+    options?: {
+      budgetChanges: ExecutionBudgetGrantRequest['requestedChanges'];
+      retryExplanation?: ProviderRetryExplanation;
+    },
   ): string {
     const boundServices: ExecutionReplacementPublicationBindings = bindings();
     const {
@@ -338,19 +343,40 @@ export function createExecutionReplacementPublication(
     if (
       previous === undefined ||
       previous.failure === null ||
-      base === undefined
+      (options !== undefined && base === undefined)
     ) {
       throw replacementNotGrantable();
     }
-    const previewChanges = [
-      {
-        path: '/timeoutMs',
-        from: previous.policySnapshot.timeoutMs,
-        to: timeoutMs,
-      },
-    ];
+    const previewChanges =
+      timeoutMs === previous.policySnapshot.timeoutMs
+        ? []
+        : [
+            {
+              path: '/timeoutMs',
+              from: previous.policySnapshot.timeoutMs,
+              to: timeoutMs,
+            },
+          ];
     const changes = mergeExactChanges([
-      ...base.requestedChanges,
+      ...(options?.budgetChanges ?? [
+        {
+          path: '/retryPolicy/maxAttempts',
+          from: inspection.job.retryPolicy.maxAttempts,
+          to: inspection.job.retryPolicy.maxAttempts + 1,
+        },
+        ...(inspection.attempts.filter(
+          ({ failureFingerprint }) =>
+            failureFingerprint === previous.failure!.fingerprint,
+        ).length > inspection.job.retryPolicy.maxSameFailureFingerprint
+          ? [
+              {
+                path: '/retryPolicy/maxSameFailureFingerprint',
+                from: inspection.job.retryPolicy.maxSameFailureFingerprint,
+                to: inspection.job.retryPolicy.maxSameFailureFingerprint + 1,
+              },
+            ]
+          : []),
+      ]),
       ...previewChanges,
       ...(timeoutMs > providerPolicyTimeoutCeilingMs
         ? [
@@ -377,6 +403,10 @@ export function createExecutionReplacementPublication(
         jobId: inspection.job.jobId,
         failedAttemptId: previous.attemptId,
         changes,
+        ...(options === undefined ? {} : { budgetScope: 'next-attempt' }),
+        ...(options?.retryExplanation === undefined
+          ? {}
+          : { retryExplanation: options.retryExplanation }),
       }),
       workflowId: inspection.workflow.workflowId,
       epoch: inspection.job.epoch,
@@ -387,17 +417,19 @@ export function createExecutionReplacementPublication(
         previous,
         timeoutMs,
         providerPolicyDigest,
+        options?.retryExplanation,
       ),
       expiresAfterAttempts: 1,
       createdAt: new Date(previous.updatedAt),
     });
-    assertCompleteReplacementDelta(
-      request,
-      inspection.job.retryPolicy.maxAttempts,
-      previous.policySnapshot.timeoutMs,
-      timeoutMs,
-      providerPolicyTimeoutCeilingMs,
-    );
+    if (options === undefined)
+      assertCompleteReplacementDelta(
+        request,
+        inspection.job.retryPolicy.maxAttempts,
+        previous.policySnapshot.timeoutMs,
+        timeoutMs,
+        providerPolicyTimeoutCeilingMs,
+      );
     return canonicalExecutionBudgetGrantRequest(request);
   }
 
@@ -447,7 +479,10 @@ export function createExecutionReplacementPublication(
       transaction.requestDigest,
     );
     const policy = loadAiAdapterPolicy(context.git.repositoryRoot);
-    const timeoutMs = replacementTimeout(transaction.request);
+    const timeoutMs = replacementTimeout(
+      transaction.request,
+      failedRequest.limits.timeoutMs,
+    );
     const expectedReplacementRequest = createProviderInvocationRequest({
       invocationId: transaction.replacementInvocationId,
       nonce: `execution-grant-retry-${digestCanonical({ grantId: transaction.grantId, requestDigest: transaction.requestDigest }).slice(7)}`,
@@ -465,6 +500,9 @@ export function createExecutionReplacementPublication(
       outputSchema: failedRequest.outputSchema,
       evaluatorVersion: failedRequest.evaluatorVersion,
       policyDigest: binding.providerPolicyDigest,
+      ...(binding.retryExplanation === undefined
+        ? {}
+        : { retryExplanation: binding.retryExplanation }),
       limits: {
         timeoutMs,
         aggregateOutputBytes: failedRequest.limits.aggregateOutputBytes,
@@ -525,19 +563,20 @@ export function createExecutionReplacementPublication(
     );
     if (
       maxAttemptsChange === undefined ||
-      timeoutChange === undefined ||
       canonicalJson(maxAttemptsChange) !==
         canonicalJson({
           path: '/retryPolicy/maxAttempts',
           from: maxAttempts,
           to: maxAttempts + 1,
         }) ||
-      canonicalJson(timeoutChange) !==
-        canonicalJson({
-          path: '/timeoutMs',
-          from: oldTimeoutMs,
-          to: timeoutMs,
-        }) ||
+      (timeoutMs === oldTimeoutMs
+        ? timeoutChange !== undefined
+        : canonicalJson(timeoutChange) !==
+          canonicalJson({
+            path: '/timeoutMs',
+            from: oldTimeoutMs,
+            to: timeoutMs,
+          })) ||
       (timeoutMs > providerPolicyTimeoutCeilingMs
         ? canonicalJson(ceilingChange) !==
           canonicalJson({
@@ -548,7 +587,7 @@ export function createExecutionReplacementPublication(
         : ceilingChange !== undefined)
     ) {
       throw grantMismatch(
-        'GrantRequest must contain exactly one maxAttempts increment and the timeout delta.',
+        'GrantRequest must contain one maxAttempts increment and only the actual timeout change.',
       );
     }
   }

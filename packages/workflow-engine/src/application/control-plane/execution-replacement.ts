@@ -6,6 +6,11 @@
  * - This replacement path excludes task implementation and task diff review
  *   invocations.
  */
+import { executionReplacementBudgetChanges } from './execution-replacement-budget.ts';
+import {
+  parseProviderRetryExplanation,
+  type ProviderRetryExplanation,
+} from '../../modules/provider-orchestration/provider-retry-explanation.ts';
 import { createExecutionReplacementRecords } from './execution-replacement-records.ts';
 import { createExecutionReplacementPublication } from './execution-replacement-publication.ts';
 import crypto from 'node:crypto';
@@ -130,6 +135,8 @@ type ExecutionReplacementRequestBinding = Readonly<{
   failureFingerprint: string;
   providerPolicyDigest: string;
   providerPolicyDocumentDigest: string;
+  budgetScope?: 'next-attempt';
+  retryExplanation?: ProviderRetryExplanation;
   recordDigest: string;
 }>;
 
@@ -190,12 +197,47 @@ export class SimulatedExecutionReplacementCrash extends Error {
   }
 }
 
+/** Read-only view of the exact exception; publication remains in retry-request. */
+export function previewExecutionReplacementRequest(
+  cwd: string,
+  jobId: string,
+  input: { timeoutMs: number; retryExplanation?: ProviderRetryExplanation },
+): ExecutionBudgetGrantRequest {
+  assertTimeout(input.timeoutMs);
+  if (input.retryExplanation !== undefined)
+    parseProviderRetryExplanation(input.retryExplanation);
+  const inspection = inspectExecutionJob(cwd, jobId);
+  const source = inspectProviderExecutionJobSource(cwd, jobId);
+  const policy = loadAiAdapterPolicy(
+    loadInvestigationRuntimeContext(cwd).git.repositoryRoot,
+  );
+  return parseExecutionBudgetGrantRequest(
+    requestExecutionReplacementBytes(
+      inspection,
+      input.timeoutMs,
+      source.request.policyDigest,
+      policy.digest,
+      policy.policy.limits.timeoutMs,
+      {
+        budgetChanges: executionReplacementBudgetChanges(
+          inspection,
+          input.timeoutMs,
+          policy,
+        ),
+        retryExplanation: input.retryExplanation,
+      },
+    ),
+  );
+}
+
 export function requestExecutionReplacement(
   cwd: string,
   requestedJobId: string,
-  input: { timeoutMs: number },
+  input: { timeoutMs: number; retryExplanation?: ProviderRetryExplanation },
 ): ExecutionRetryRequestResult {
   assertTimeout(input.timeoutMs);
+  if (input.retryExplanation !== undefined)
+    parseProviderRetryExplanation(input.retryExplanation);
   const context = loadInvestigationRuntimeContext(cwd);
   return withRepositoryLifecycleOperation(
     context.lifecycleRuntime,
@@ -217,19 +259,12 @@ export function requestExecutionReplacement(
         (source.record.purpose === 'survey' ||
           source.record.purpose === 'plan-review')
       ) {
-        // A planning Attempt that needs no execution-budget grant is retried
-        // by the propose lifecycle that owns it; the job surface only carries
-        // grant-bound replacements.
-        const envelope =
-          source.record.purpose === 'survey'
-            ? 'provider-retry'
-            : 'plan-review-retry';
         throw workflowError(
           'EXECUTION_REPLACEMENT_GRANT_NOT_AVAILABLE',
-          `The failed ${source.record.purpose} Attempt needs no execution-budget grant; retry it through propose with the ${envelope} envelope from inputSchema.template.`,
+          'This retry needs no budget Grant. Fill the failure assessment and planned action from job retry-preview, then submit them to job retry-request --input.',
           ExitCode.guard,
           {
-            recovery: `pnpm workflow propose ${source.record.changeId} --resume --input <${envelope}.json> --json`,
+            recovery: `pnpm workflow job retry-preview ${requestedJobId} --json`,
           },
         );
       }
@@ -241,63 +276,27 @@ export function requestExecutionReplacement(
       ) {
         throw replacementNotGrantable();
       }
-      const preview = previewProviderReplacementGrantDelta(
-        cwd,
-        requestedJobId,
-        {
-          timeoutMs: input.timeoutMs,
-          now: previous.updatedAt,
-        },
-      );
-      const providerPolicy = loadAiAdapterPolicy(context.git.repositoryRoot);
-      const changes = mergeExactChanges([
-        ...grantBase.requestedChanges,
-        ...preview.changedFields,
-        ...(input.timeoutMs > providerPolicy.policy.limits.timeoutMs
-          ? [
-              {
-                path: '/providerPolicy/limits/timeoutMs',
-                from: providerPolicy.policy.limits.timeoutMs,
-                to: input.timeoutMs,
-              },
-            ]
-          : []),
-        ...(source.request.policyDigest === providerPolicy.digest
-          ? []
-          : [
-              {
-                path: '/providerPolicyDigest',
-                from: source.request.policyDigest,
-                to: providerPolicy.digest,
-              },
-            ]),
-      ]);
-      const request = createExecutionBudgetGrantRequest({
-        requestId: deterministicUuid({
-          kind: 'execution-replacement-request',
-          jobId: inspection.job.jobId,
-          failedAttemptId: previous.attemptId,
-          changes,
-        }),
-        workflowId: inspection.workflow.workflowId,
-        epoch: inspection.job.epoch,
-        jobId: inspection.job.jobId,
-        mandateBinding: requireExecutionJobMandateBinding(inspection.job),
-        requestedChanges: changes,
-        rationale: replacementRationale(
-          previous,
-          input.timeoutMs,
-          providerPolicy.digest,
-        ),
-        expiresAfterAttempts: 1,
-        createdAt: new Date(previous.updatedAt),
+      previewProviderReplacementGrantDelta(cwd, requestedJobId, {
+        timeoutMs: input.timeoutMs,
+        now: previous.updatedAt,
       });
-      assertCompleteReplacementDelta(
-        request,
-        inspection.job.retryPolicy.maxAttempts,
-        previous.policySnapshot.timeoutMs,
-        input.timeoutMs,
-        providerPolicy.policy.limits.timeoutMs,
+      const providerPolicy = loadAiAdapterPolicy(context.git.repositoryRoot);
+      const request = parseExecutionBudgetGrantRequest(
+        requestExecutionReplacementBytes(
+          inspection,
+          input.timeoutMs,
+          source.request.policyDigest,
+          providerPolicy.digest,
+          providerPolicy.policy.limits.timeoutMs,
+          {
+            budgetChanges: executionReplacementBudgetChanges(
+              inspection,
+              input.timeoutMs,
+              providerPolicy,
+            ),
+            retryExplanation: input.retryExplanation,
+          },
+        ),
       );
       const requestDigest = digestText(
         canonicalExecutionBudgetGrantRequest(request),
@@ -322,6 +321,10 @@ export function requestExecutionReplacement(
         failureFingerprint: previous.failure.fingerprint,
         providerPolicyDigest: providerPolicy.digest,
         providerPolicyDocumentDigest: digestText(providerPolicy.document),
+        budgetScope: 'next-attempt',
+        ...(input.retryExplanation === undefined
+          ? {}
+          : { retryExplanation: input.retryExplanation }),
       });
       assertOwned();
       createPrivateCanonicalJson(
@@ -399,7 +402,13 @@ export function executeGrantedReplacement(
   ) {
     throw grantMismatch('Grant request binding is stale or inconsistent.');
   }
-  const timeoutMs = replacementTimeout(request);
+  const timeoutMs = replacementTimeout(
+    request,
+    readProviderInvocationRequest(
+      context.runtime,
+      requestBinding.failedInvocationId,
+    ).limits.timeoutMs,
+  );
   const requestDigest = digestText(
     canonicalExecutionBudgetGrantRequest(request),
   );
@@ -503,6 +512,16 @@ export function executeGrantedReplacement(
         source.request.policyDigest,
         requestBinding.providerPolicyDigest,
         policy.policy.limits.timeoutMs,
+        requestBinding.budgetScope === 'next-attempt'
+          ? {
+              budgetChanges: executionReplacementBudgetChanges(
+                inspection,
+                timeoutMs,
+                policy,
+              ),
+              retryExplanation: requestBinding.retryExplanation,
+            }
+          : undefined,
       );
       if (expected !== canonicalExecutionBudgetGrantRequest(request)) {
         throw grantMismatch(
@@ -544,6 +563,9 @@ export function executeGrantedReplacement(
         outputSchema: source.request.outputSchema,
         evaluatorVersion: source.request.evaluatorVersion,
         policyDigest: requestBinding.providerPolicyDigest,
+        ...(requestBinding.retryExplanation === undefined
+          ? {}
+          : { retryExplanation: requestBinding.retryExplanation }),
         limits: {
           timeoutMs,
           aggregateOutputBytes: source.request.limits.aggregateOutputBytes,
@@ -649,14 +671,22 @@ function replacementRationale(
   previous: ReturnType<typeof inspectExecutionJob>['attempts'][number],
   timeoutMs: number,
   providerPolicyDigest: string,
+  retryExplanation?: ProviderRetryExplanation,
 ): string {
   if (previous.failure === null || !isProviderDigest(providerPolicyDigest)) {
     throw replacementStale();
   }
-  return (
+  const rationale =
     `Authorize exactly Attempt ${previous.attemptNumber + 1} after failed ${previous.attemptId} ` +
-    `(${previous.failure.code}, ${previous.failure.fingerprint}): extend maxAttempts once and change timeout ` +
-    `${previous.policySnapshot.timeoutMs}ms to ${timeoutMs}ms under provider policy ${providerPolicyDigest}.`
+    `(${previous.failure.code}, ${previous.failure.fingerprint}): ` +
+    (timeoutMs === previous.policySnapshot.timeoutMs
+      ? `authorize the listed extra capacity once and keep timeout ${timeoutMs}ms under provider policy ${providerPolicyDigest}.`
+      : `extend maxAttempts once and change timeout ${previous.policySnapshot.timeoutMs}ms to ${timeoutMs}ms under provider policy ${providerPolicyDigest}.`);
+  return (
+    rationale +
+    (retryExplanation === undefined
+      ? ''
+      : ` Failure assessment: ${retryExplanation.failureReason.replaceAll('\0', '').slice(0, 120).trim()}. Planned action: ${retryExplanation.plannedAction.replaceAll('\0', '').slice(0, 120).trim()}.`)
   );
 }
 
@@ -677,11 +707,15 @@ function mergeExactChanges(
   return [...byPath.values()].sort((a, b) => a.path.localeCompare(b.path));
 }
 
-function replacementTimeout(request: ExecutionBudgetGrantRequest): number {
+function replacementTimeout(
+  request: ExecutionBudgetGrantRequest,
+  previousTimeoutMs: number,
+): number {
   const change = request.requestedChanges.find(
     ({ path }) => path === '/timeoutMs',
   );
-  if (change === undefined || !Number.isSafeInteger(change.to)) {
+  if (change === undefined) return previousTimeoutMs;
+  if (!Number.isSafeInteger(change.to)) {
     throw grantMismatch('GrantRequest has no exact timeout replacement delta.');
   }
   assertTimeout(change.to as number);

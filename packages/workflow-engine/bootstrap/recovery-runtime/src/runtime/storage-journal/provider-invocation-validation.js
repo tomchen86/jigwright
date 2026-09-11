@@ -41,6 +41,9 @@ export function assertProviderRequest(value) {
             evaluatorVersion: value.evaluatorVersion,
             policyDigest: value.policyDigest,
             limits: value.limits,
+            ...('retryExplanation' in value
+                ? { retryExplanation: value.retryExplanation }
+                : {}),
         });
         if (canonicalJson(reconstructed) !== canonicalJson(value)) {
             throw invocationInvalid();
