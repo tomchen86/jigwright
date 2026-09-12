@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import path from 'node:path';
@@ -773,6 +774,23 @@ test('provider dispatch is detached and replay targets the stored prepared reque
       invocationId,
       '--json',
     ]);
+    const probeRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'provider-worker-dispatch-entry-'),
+    );
+    try {
+      const probe = spawnSync(launches[0]!.executable, launches[0]!.args, {
+        cwd: probeRoot,
+        encoding: 'utf8',
+      });
+      assert.equal(probe.error, undefined);
+      assert.equal(probe.signal, null);
+      assert.notEqual(probe.status, 0);
+      const result = JSON.parse(probe.stderr);
+      assert.equal(result.error.code, 'GIT_COMMAND_FAILED');
+      assert.equal(result.ok, false);
+    } finally {
+      fs.rmSync(probeRoot, { recursive: true, force: true });
+    }
     assert.equal(unrefCount, 1);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

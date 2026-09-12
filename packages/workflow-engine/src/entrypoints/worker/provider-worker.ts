@@ -910,7 +910,10 @@ function createProviderWorkerDispatcher(
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(import.meta.dirname, '../cli/workflow-cli.ts'),
+        path.join(
+          import.meta.dirname,
+          '../../../bootstrap/workflow-engine-host.ts',
+        ),
         'provider-worker',
         record.invocationId,
         '--json',

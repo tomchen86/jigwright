@@ -2018,7 +2018,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:0c562fa7ada5f3edb016ab0975f974dec4c0a3adcb3eda28503464ff96414318"
+      "digest": "sha256:4aa740fa973d18fff63c3f597648f4c82021ee9d35aa0e74957fa05863cd3689"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
