@@ -1,4 +1,5 @@
 /** Assemble recovery capabilities around the independently trusted built-in engine identity. */
+import { controlPlaneRecoveryGrantPersistence } from "../runtime/storage-journal/control-plane-recovery-grant.js";
 import { createHarnessBootstrapAudit } from "../application/control-plane/harness-bootstrap-audit.js";
 import { createHarnessBootstrapRecoveryProduction } from "../application/control-plane/harness-bootstrap-production.js";
 import { createHarnessBootstrapRecoveryCommands, } from "../application/control-plane/harness-bootstrap-recovery-commands.js";
@@ -70,6 +71,7 @@ export function createHarnessBootstrapProduction(BUILT_IN_ENGINE_CLOSURE_MANIFES
         recordAuthorityAuditEvent,
     });
     const { recoveryOperationalTrustRootDependencies, recoveryQuarantineDependencies, createHarnessRecoveryDependencies, } = createHarnessBootstrapRecoveryProduction({
+        recoveryGrants: controlPlaneRecoveryGrantPersistence,
         RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE,
         verifySshSignatureWithPublicKey,
         createHarnessBootstrapDependencies,

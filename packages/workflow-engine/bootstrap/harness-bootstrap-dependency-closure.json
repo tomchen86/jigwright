@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:83c4921cfc0a7803819e403fd18d398c0a2a24e4b34bf3a6924363715e9a1543"
+      "digest": "sha256:b7dc84bc7f65661615ad37799e2b5940b143a14ade3daa5971f93d6d067c600b"
     },
     {
       "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js",
@@ -178,7 +178,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/control-plane-updater-recovery.js",
       "mode": "100644",
-      "digest": "sha256:de36c41afb60259b5630a50d0646be9de79d4670ed44e80d114a3ba46df619f8"
+      "digest": "sha256:501ab18a0c0d62f9fe6074fd405950e656d1fbd694f8a839c62b74e3601caed1"
     },
     {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/control-plane-updater-storage.js",
@@ -213,12 +213,12 @@
     {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/harness-bootstrap-production.js",
       "mode": "100644",
-      "digest": "sha256:e290a3e71225fbf17a072c7484c293493f6e6e92fcc976694440565720141250"
+      "digest": "sha256:ab4b60c61bc9c3c852e23258b91046533e321983f1b6a2569d508a29a4236bee"
     },
     {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/harness-bootstrap-recovery-commands.js",
       "mode": "100644",
-      "digest": "sha256:3d8d10b19f982152623092dcf749a0748687d72c112524d876d0b80a02b180d5"
+      "digest": "sha256:6d02c8342b8a3cd9ba336e0000671b6b45345edb7703cd3a2f2b459c7ce39dca"
     },
     {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/human-resolution-grant-revocation.js",
@@ -268,7 +268,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/intervention-control-updater.js",
       "mode": "100644",
-      "digest": "sha256:912df27826c74dac2d66ed3d1da6304f982815799cc5727c4f1d7bd1c43b13f3"
+      "digest": "sha256:b01dcf4018c436cc1de40c806d6579bd57fbebdb90fb930e11e0f42fc508a9e6"
     },
     {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/intervention-maintenance-publication.js",
@@ -283,7 +283,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/composition-root/harness-bootstrap-production.js",
       "mode": "100644",
-      "digest": "sha256:78f9d281f1a691e16f5d37f359145c979c29959252de4d97e52151902f2272a7"
+      "digest": "sha256:c14272b513b40bdb6c7665d6654274478460e2e32faa588a54d335316f6774be"
     },
     {
       "path": "bootstrap/recovery-runtime/src/composition-root/human-revocation-production.js",
@@ -358,17 +358,17 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/control-plane-recovery-grant-records.js",
       "mode": "100644",
-      "digest": "sha256:10bc4b81af6f6bd759324bae00c785860ce835a5b5e112b7d015d0d5d0ff8aec"
+      "digest": "sha256:9889bcf8051eb25cfd249453e707c23b57514aedda4781f7bb915020ad8b5136"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/modules/authority/control-plane-recovery-grant-storage.js",
+      "path": "bootstrap/recovery-runtime/src/modules/authority/control-plane-recovery-grant-values.js",
       "mode": "100644",
-      "digest": "sha256:dc74d5d3bc00e8cf2c516b0f2fa46a6acbd324bf4ac12a2d024b6e5d731b7143"
+      "digest": "sha256:176c58da58746a9413bb364f144a1cff04433e78f1c4a71fe401195948842960"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/control-plane-recovery-grant.js",
       "mode": "100644",
-      "digest": "sha256:6a56b53fc11a0dd72b4e7a0d7c047131a7e3ec7fb12c11ceada1ad740e27f5f0"
+      "digest": "sha256:732f10e296fd89f27fb49d880bb28751dc4d89b1a4746ac7dff9f5ee7a50c7f0"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/grant-approval.js",
@@ -999,6 +999,16 @@
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/control-plane-history-values.js",
       "mode": "100644",
       "digest": "sha256:8e7a039241b552d211ce7da8ada5db7a00084b3da7b850540623c145724be308"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/control-plane-recovery-grant-storage.js",
+      "mode": "100644",
+      "digest": "sha256:eee4475f872d26e61d93fd8071edb4f927bae70c5dd59d0932880292789635c9"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/control-plane-recovery-grant.js",
+      "mode": "100644",
+      "digest": "sha256:e8a6c22e442b02da785dedc76bde1b96fef808ec4fa75a7cd305e42a88b07e5d"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/control-plane-supervisor-history.js",

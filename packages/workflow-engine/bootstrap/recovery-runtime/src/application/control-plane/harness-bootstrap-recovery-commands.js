@@ -1,7 +1,9 @@
 import { recoveryAuthorityStateRoot, hasRecoveryOperationalTrustRootFence, isExactAbsolutePath, readExternalRecoveryExpectations, readExternalRecoveryInput, ensureRecoveryAuthorityStateRoot, requireRecoveryAuthorityStateRoot, readExternalRecoveryTrustRootAuditRoot, readExternalRecoveryEnvelope, assertPrivateRecoveryDirectory, } from "./harness-bootstrap-external-input.js";
 import { workflowError, ExitCode, } from "../../foundation/errors/errors.js";
 import fs from 'node:fs';
-import { findPersistedControlPlaneRecoveryGrantForSource, throwControlPlaneRecoveryAlreadyConsumed, canonicalControlPlaneRecoveryGrantPayload, HARNESS_RECOVERY_SIGNATURE_NAMESPACE, } from "../../modules/authority/control-plane-recovery-grant.js";
+import { throwControlPlaneRecoveryAlreadyConsumed } from "../../modules/authority/control-plane-recovery-grant.js";
+import { canonicalControlPlaneRecoveryGrantPayload } from "../../modules/authority/control-plane-recovery-grant-records.js";
+import { HARNESS_RECOVERY_SIGNATURE_NAMESPACE } from "../../modules/authority/control-plane-recovery-grant-values.js";
 import { preflightControlPlaneRecoveryRollback, executeControlPlaneRecoveryRollback, } from "./intervention-control-updater.js";
 export function createHarnessBootstrapRecoveryCommands(bindings) {
     const { discoverRepository, bootstrapInterventionStateRoot, bootstrapInterventionUsage, importRecoveryAuthorityDescriptor, readRecoveryAuthorityDescriptor, verifyRecoveryAuthorityDescriptor, executeRecoveryOperationalTrustRootRestore, executeRecoveryQuarantineEnter, executeRecoveryQuarantineRelease, readRecoveryQuarantineMarker, recoveryOperationalTrustRootDependencies, recoveryQuarantineDependencies, createHarnessRecoveryDependencies, } = bindings;
@@ -191,7 +193,7 @@ export function createHarnessBootstrapRecoveryCommands(bindings) {
         const stateRoot = bootstrapInterventionStateRoot(repository.gitCommonDirectory);
         const { dependencies, signer } = createHarnessRecoveryDependencies(cwd, repository.repositoryRoot, overrides);
         const sourceControlPlaneGrantId = args[2];
-        const existing = findPersistedControlPlaneRecoveryGrantForSource(stateRoot, sourceControlPlaneGrantId);
+        const existing = dependencies.recoveryGrants.findForSource(stateRoot, sourceControlPlaneGrantId);
         if (existing?.state === 'consumed') {
             throwControlPlaneRecoveryAlreadyConsumed();
         }

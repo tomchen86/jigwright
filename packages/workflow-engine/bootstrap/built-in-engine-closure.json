@@ -688,7 +688,7 @@
     {
       "path": "src/application/control-plane/control-plane-updater-recovery.ts",
       "mode": "100644",
-      "digest": "sha256:04e5df97c2fad9f774a9b70465b2b70c973c1ef3b9ab35db27cd267605654345"
+      "digest": "sha256:68416aececbfb8fff11fe3ae6a7442e8c953b3304dd1b155b43458dce688636e"
     },
     {
       "path": "src/application/control-plane/control-plane-updater-storage.ts",
@@ -758,7 +758,7 @@
     {
       "path": "src/application/control-plane/harness-bootstrap-audit.ts",
       "mode": "100644",
-      "digest": "sha256:8142550a6472858066a1994594258532094f5c2ce25039b7179ce33c39b45e8e"
+      "digest": "sha256:df12f3ebfc301037fcebe6d31597448fcfa38cd0ddaded84e89a27070aa2a216"
     },
     {
       "path": "src/application/control-plane/harness-bootstrap-contracts.ts",
@@ -778,12 +778,12 @@
     {
       "path": "src/application/control-plane/harness-bootstrap-production.ts",
       "mode": "100644",
-      "digest": "sha256:7cc88bb91affea3cf618877ca29cd3e64e13e587dc9cef07e38dcb383acd894c"
+      "digest": "sha256:033791c6d6a5b5555b957518bb2f965105bd2cc96f74a7f00924de807ff5baca"
     },
     {
       "path": "src/application/control-plane/harness-bootstrap-recovery-commands.ts",
       "mode": "100644",
-      "digest": "sha256:66d765f990a141f6a71d69c060f51c41e2f5485ceaae24dca8d66fd6163af829"
+      "digest": "sha256:b09d53c8c9c925a98be0e3cfe4d29890ea8e9ba27bcd5e363046c93f428dcfec"
     },
     {
       "path": "src/application/control-plane/human-resolution-grant-revocation.ts",
@@ -833,7 +833,7 @@
     {
       "path": "src/application/control-plane/intervention-control-updater.ts",
       "mode": "100644",
-      "digest": "sha256:f84e1ff44b92e5128ec47ca7f7db8efa0b7a6f27811da002755429f6b666ac3c"
+      "digest": "sha256:572666b0b2ff8983094284a5541a9900cd7e989986950381f4e4b579757bffda"
     },
     {
       "path": "src/application/control-plane/intervention-maintenance-publication.ts",
@@ -1583,7 +1583,7 @@
     {
       "path": "src/composition-root/harness-bootstrap-production.ts",
       "mode": "100644",
-      "digest": "sha256:e8cd5d8bde6bd869a5ef120bdce2f707698d168f25f2d163e7a97b7606a84c3e"
+      "digest": "sha256:e4f2bf0b174a33615f3200d0a7516ce8489243bfda36f3373c8af8ca99898fee"
     },
     {
       "path": "src/composition-root/human-revocation-production.ts",
@@ -2438,17 +2438,17 @@
     {
       "path": "src/modules/authority/control-plane-recovery-grant-records.ts",
       "mode": "100644",
-      "digest": "sha256:46afd955a84300feb53db99f3e8cfccda4266e81e73a525bfa2698a5ddc917da"
+      "digest": "sha256:2898ee61a648e636688804a2305d7dc61fb94e8609a58d5e2c5897cb6a2496c6"
     },
     {
-      "path": "src/modules/authority/control-plane-recovery-grant-storage.ts",
+      "path": "src/modules/authority/control-plane-recovery-grant-values.ts",
       "mode": "100644",
-      "digest": "sha256:afa86db7d3a0d2fceef3f62efa15669c66b4e28fe9cb38f2a4ea083a197c8891"
+      "digest": "sha256:bd3dfdf1cb85e0df819bfba548836210d4263387a531fcfc980c4433bfd09b87"
     },
     {
       "path": "src/modules/authority/control-plane-recovery-grant.ts",
       "mode": "100644",
-      "digest": "sha256:838aff824a430e9e668ca23e3d0f9d7ee1746cf3c4bd4abf9603df6ddf617f78"
+      "digest": "sha256:d760df6f7ee9f64ccaf5aa5f035459da60d4384cfd628afb63b3b863b9326c1a"
     },
     {
       "path": "src/modules/authority/execution-governance-context.ts",
@@ -4654,6 +4654,16 @@
       "path": "src/runtime/storage-journal/control-plane-history-values.ts",
       "mode": "100644",
       "digest": "sha256:6bfd9ad41e067aa1f48c70f7bc61da7ddb2368b5035e2d4ef167b052f660b531"
+    },
+    {
+      "path": "src/runtime/storage-journal/control-plane-recovery-grant-storage.ts",
+      "mode": "100644",
+      "digest": "sha256:6773ae19e1e79918da6608b1b686beefed8c28b6c352a72812b84e45214edbbc"
+    },
+    {
+      "path": "src/runtime/storage-journal/control-plane-recovery-grant.ts",
+      "mode": "100644",
+      "digest": "sha256:8e89cef4eb479f8bc7cbd0fcc1846b281cba309c56da8c2ee2f82002c2fb03f3"
     },
     {
       "path": "src/runtime/storage-journal/control-plane-supervisor-history.ts",

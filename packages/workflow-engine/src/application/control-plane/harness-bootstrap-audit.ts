@@ -18,7 +18,7 @@ import {
 import type { RecoveryOperationalTrustRootRestoreAuditRecord } from '../../modules/authority/recovery-trust-root-contract.ts';
 import type { RecoveryQuarantineAuditRecord } from '../../modules/authority/recovery-quarantine-contract.ts';
 import type { ControlPlaneUpdaterAuditRecord } from './intervention-control-updater.ts';
-import type { ControlPlaneRecoveryAuditRecord } from '../../modules/authority/control-plane-recovery-grant.ts';
+import { type ControlPlaneRecoveryAuditRecord } from '../../modules/authority/control-plane-recovery-grant-values.ts';
 type AuthorityAuditRecordedEvent = ReturnType<typeof recordAuthorityRefusal>;
 type AuthorityAuditEventInput = Omit<
   AuthorityAuditRecordedEvent['event'],

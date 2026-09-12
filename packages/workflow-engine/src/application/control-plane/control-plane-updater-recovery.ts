@@ -48,7 +48,6 @@ export function createControlPlaneUpdaterRecovery(
       exactDate,
       workflowError,
       ExitCode,
-      findPersistedControlPlaneRecoveryGrantForSource,
       throwControlPlaneRecoveryAlreadyConsumed,
       createControlPlaneRecoveryGrantPayload,
       deepFreeze,
@@ -71,7 +70,7 @@ export function createControlPlaneUpdaterRecovery(
             ExitCode.guard,
           );
         }
-        const existing = findPersistedControlPlaneRecoveryGrantForSource(
+        const existing = dependencies.recoveryGrants.findForSource(
           storageRoot,
           sourceControlPlaneGrantId,
         );
@@ -121,7 +120,6 @@ export function createControlPlaneUpdaterRecovery(
       withUpdaterLock,
       requireRecoveryDependencies,
       updaterNow,
-      findPersistedControlPlaneRecoveryGrantForSource,
       throwControlPlaneRecoveryAlreadyConsumed,
       workflowError,
       ExitCode,
@@ -130,16 +128,11 @@ export function createControlPlaneUpdaterRecovery(
       verifyControlPlaneRecoveryGrant,
       canonicalDigest,
       createControlPlaneRecoveryAuditRecord,
-      expirePersistedControlPlaneRecoveryGrant,
-      reservePersistedControlPlaneRecoveryGrant,
       driveControlPlanePromotion,
       createControlPlaneRecoveryFailure,
       workflowFailureCode,
       laterIso,
-      failPersistedControlPlaneRecoveryGrant,
       createControlPlaneRecoveryReceipt,
-      preparePersistedControlPlaneRecoveryGrantConsumption,
-      consumePersistedControlPlaneRecoveryGrant,
       deepFreeze,
     } = boundServices;
 
@@ -159,7 +152,7 @@ export function createControlPlaneUpdaterRecovery(
         const now = updaterNow(dependencies);
         const existing =
           typeof requestedSourceGrantId === 'string'
-            ? findPersistedControlPlaneRecoveryGrantForSource(
+            ? dependencies.recoveryGrants.findForSource(
                 storageRoot,
                 requestedSourceGrantId,
               )
@@ -247,7 +240,7 @@ export function createControlPlaneUpdaterRecovery(
               recordedAt: terminalExpiredAt,
             }),
           );
-          expirePersistedControlPlaneRecoveryGrant(storageRoot, {
+          dependencies.recoveryGrants.expire(storageRoot, {
             recoveryGrantId: payload.grantId,
             expectedRecordDigest: pending.recordDigest,
             expiredAt: terminalExpiredAt,
@@ -272,7 +265,7 @@ export function createControlPlaneUpdaterRecovery(
 
         const reservation =
           pending ??
-          reservePersistedControlPlaneRecoveryGrant(
+          dependencies.recoveryGrants.reserve(
             storageRoot,
             envelope,
             now.toISOString(),
@@ -320,7 +313,7 @@ export function createControlPlaneUpdaterRecovery(
                 failedContext.supervisor.updatedAt,
               ),
             });
-            failPersistedControlPlaneRecoveryGrant(storageRoot, {
+            dependencies.recoveryGrants.fail(storageRoot, {
               recoveryGrantId: payload.grantId,
               expectedRecordDigest: reservation.recordDigest,
               failure,
@@ -381,7 +374,7 @@ export function createControlPlaneUpdaterRecovery(
           }),
         );
         const preparedConsumption =
-          preparePersistedControlPlaneRecoveryGrantConsumption(storageRoot, {
+          dependencies.recoveryGrants.prepareConsumption(storageRoot, {
             recoveryGrantId: payload.grantId,
             expectedRecordDigest: reservation.recordDigest,
             receipt,
@@ -398,13 +391,10 @@ export function createControlPlaneUpdaterRecovery(
             recordedAt: completedAt,
           }),
         );
-        const consumed = consumePersistedControlPlaneRecoveryGrant(
-          storageRoot,
-          {
-            recoveryGrantId: payload.grantId,
-            expectedRecordDigest: preparedConsumption.recordDigest,
-          },
-        );
+        const consumed = dependencies.recoveryGrants.consume(storageRoot, {
+          recoveryGrantId: payload.grantId,
+          expectedRecordDigest: preparedConsumption.recordDigest,
+        });
         return deepFreeze({
           kind: 'control-plane-recovery-rollback-result.v1' as const,
           action: 'rollback-control-plane' as const,

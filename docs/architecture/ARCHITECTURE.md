@@ -27,8 +27,11 @@ tests. Package roles do not suppress edges or cycles. Missing dependencies,
 computed targets, private cross-package imports, unsafe source/export paths
 and unapproved external modules fail the guard. Domain dependencies permit
 only crypto and path among Node builtins; all other external dependencies
-require an explicit architectural decision. File and module-owner cycles are
-checked separately from dependency direction.
+require an explicit architectural decision. The guard rejects file-loading
+cycles after excluding explicit type-only edges, and rejects cycles between
+module owners including type references. These checks are separate from
+dependency direction. Internal type cycles also need review for cohesive
+declaration ownership; their erasure alone does not establish good architecture.
 
 Architecture acceptance also requires cohesive responsibilities, useful
 abstractions, independent domain tests, preserved integration behavior and

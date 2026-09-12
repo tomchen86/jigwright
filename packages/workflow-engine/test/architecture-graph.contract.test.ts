@@ -13,8 +13,15 @@ import {
 import {
   dependencyOwner,
   readRepositoryDependencyGraph,
+  type DependencyEdge,
 } from './support/repository-dependency-graph.ts';
 import { repositoryRoot } from './boundary-contract-fixture.ts';
+
+function loadedFileCycles(edges: readonly DependencyEdge[]): string[][] {
+  return findDependencyCycles(
+    edges.filter(({ typeOnly }) => !typeOnly).map(({ from, to }) => [from, to]),
+  );
+}
 
 function fixture(t: TestContext, additions: Record<string, string>): string {
   const directory = fs.mkdtempSync(
@@ -400,6 +407,32 @@ test('architecture scanner finds module ownership cycles without a file-loading 
   );
 });
 
+test('architecture file-cycle guard detects a same-owner loading cycle separately from erased types', (t) => {
+  const root = fixture(t, {
+    'packages/workflow-engine/src/runtime/cyclic/first.ts':
+      "import { second } from './second.ts'; export const first = () => second;",
+    'packages/workflow-engine/src/runtime/cyclic/second.ts':
+      "import { first } from './first.ts'; export const second = () => first;",
+    'packages/workflow-engine/src/modules/records/left.ts':
+      "import type { Right } from './right.ts'; export type Left = { right?: Right };",
+    'packages/workflow-engine/src/modules/records/right.ts':
+      "import type { Left } from './left.ts'; export type Right = { left?: Left };",
+  });
+  const { edges } = readRepositoryDependencyGraph(root);
+  assert.deepEqual(
+    findDependencyCycles(
+      edges.map(({ from, to }) => [dependencyOwner(from), dependencyOwner(to)]),
+    ),
+    [],
+  );
+  assert.deepEqual(loadedFileCycles(edges), [
+    [
+      'packages/workflow-engine/src/runtime/cyclic/first.ts',
+      'packages/workflow-engine/src/runtime/cyclic/second.ts',
+    ],
+  ]);
+});
+
 test('application and runtime immutable reads do not invert into CI entrypoints', () => {
   for (const file of [
     'packages/workflow-engine/src/application/execute-task/open-task.ts',
@@ -434,6 +467,11 @@ test('current repository has no cycles between module owners', () => {
     edges.map(({ from, to }) => [dependencyOwner(from), dependencyOwner(to)]),
   );
   assert.deepEqual(cycles, []);
+});
+
+test('current repository has no file-loading cycles', () => {
+  const { edges } = readRepositoryDependencyGraph(repositoryRoot);
+  assert.deepEqual(loadedFileCycles(edges), []);
 });
 
 test('architecture purity follows value dependencies through foundation and public package exports', (t) => {

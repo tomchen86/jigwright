@@ -1,4 +1,5 @@
 /** Assemble recovery capabilities around the independently trusted built-in engine identity. */
+import { controlPlaneRecoveryGrantPersistence } from '../runtime/storage-journal/control-plane-recovery-grant.ts';
 import { createHarnessBootstrapAudit } from '../application/control-plane/harness-bootstrap-audit.ts';
 import { createHarnessBootstrapRecoveryProduction } from '../application/control-plane/harness-bootstrap-production.ts';
 import {
@@ -132,6 +133,7 @@ export function createHarnessBootstrapProduction(
     recoveryQuarantineDependencies,
     createHarnessRecoveryDependencies,
   } = createHarnessBootstrapRecoveryProduction({
+    recoveryGrants: controlPlaneRecoveryGrantPersistence,
     RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE,
     verifySshSignatureWithPublicKey,
     createHarnessBootstrapDependencies,

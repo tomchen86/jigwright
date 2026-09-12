@@ -1,9 +1,3 @@
-/**
- * Prepares, executes, and recovers control-plane engine promotions.
- *
- * Invariants:
- * - Promotion authority must match the exact parent Task Mandate binding.
- */
 import { createControlPlaneUpdaterStorage } from "./control-plane-updater-storage.js";
 import { createControlPlaneUpdaterSupervisor } from "./control-plane-updater-supervisor.js";
 import { createControlPlaneUpdaterApproval } from "./control-plane-updater-approval.js";
@@ -14,7 +8,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
-import { consumePersistedControlPlaneRecoveryGrant, createControlPlaneRecoveryAuditRecord, createControlPlaneRecoveryFailure, createControlPlaneRecoveryGrantPayload, createControlPlaneRecoveryReceipt, expirePersistedControlPlaneRecoveryGrant, failPersistedControlPlaneRecoveryGrant, findPersistedControlPlaneRecoveryGrantForSource, preparePersistedControlPlaneRecoveryGrantConsumption, reservePersistedControlPlaneRecoveryGrant, throwControlPlaneRecoveryAlreadyConsumed, throwControlPlaneRecoveryFailed, verifyControlPlaneRecoveryGrant, } from "../../modules/authority/control-plane-recovery-grant.js";
+import { createControlPlaneRecoveryAuditRecord, createControlPlaneRecoveryFailure, createControlPlaneRecoveryGrantPayload, createControlPlaneRecoveryReceipt, verifyControlPlaneRecoveryGrant, } from "../../modules/authority/control-plane-recovery-grant-records.js";
+import { throwControlPlaneRecoveryAlreadyConsumed, throwControlPlaneRecoveryFailed, } from "../../modules/authority/control-plane-recovery-grant.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { ensurePlainDirectory, publishPreparedExclusiveLock, reclaimDeadPreparedLock, } from "../../runtime/repository-transaction/filesystem-safety.js";
 import { classifyProtectedCandidateImpactV2, controlPlaneCandidateDigestV2, controlPlaneIndependentReviewAttestationDigestV3, controlPlanePromotionBundleDigestV3, createEngineArtifact, normalizeControlPlaneTaskMandateBinding, verifyControlPlaneIndependentReviewAttestationV3, verifyControlPlaneGrantV3, } from "../../modules/authority/intervention-control.js";
@@ -718,7 +713,6 @@ const { preflightControlPlaneRecoveryRollback, executeControlPlaneRecoveryRollba
     exactDate,
     workflowError,
     ExitCode,
-    findPersistedControlPlaneRecoveryGrantForSource,
     throwControlPlaneRecoveryAlreadyConsumed,
     createControlPlaneRecoveryGrantPayload,
     deepFreeze,
@@ -728,16 +722,11 @@ const { preflightControlPlaneRecoveryRollback, executeControlPlaneRecoveryRollba
     verifyControlPlaneRecoveryGrant,
     canonicalDigest,
     createControlPlaneRecoveryAuditRecord,
-    expirePersistedControlPlaneRecoveryGrant,
-    reservePersistedControlPlaneRecoveryGrant,
     driveControlPlanePromotion,
     createControlPlaneRecoveryFailure,
     workflowFailureCode,
     laterIso,
-    failPersistedControlPlaneRecoveryGrant,
     createControlPlaneRecoveryReceipt,
-    preparePersistedControlPlaneRecoveryGrantConsumption,
-    consumePersistedControlPlaneRecoveryGrant,
     ensureUpdaterDirectories,
     readPersistedControlPlaneUpdate,
     readPromotionBundle,

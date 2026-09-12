@@ -1,6 +1,6 @@
 import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
 export function createHarnessBootstrapRecoveryProduction(bindings) {
-    const { RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE, verifySshSignatureWithPublicKey, createHarnessBootstrapDependencies, productionRecoveryTrustRootAuditSink, productionRecoveryQuarantineAuditSink, productionControlPlaneAuditSink, productionRecoveryAuditSink, } = bindings;
+    const { recoveryGrants, RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE, verifySshSignatureWithPublicKey, createHarnessBootstrapDependencies, productionRecoveryTrustRootAuditSink, productionRecoveryQuarantineAuditSink, productionControlPlaneAuditSink, productionRecoveryAuditSink, } = bindings;
     function recoveryOperationalTrustRootDependencies(descriptor, expectations, externalAuditRoot, repositoryRoot, overrides) {
         return {
             authorityDescriptor: descriptor,
@@ -65,6 +65,7 @@ export function createHarnessBootstrapRecoveryProduction(bindings) {
         return {
             signer,
             dependencies: {
+                recoveryGrants,
                 now: overrides.now ?? (() => new Date()),
                 consumedGrantIds: new Set(),
                 verifyHumanSignature,

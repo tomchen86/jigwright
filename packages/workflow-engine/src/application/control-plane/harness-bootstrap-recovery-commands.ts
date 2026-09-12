@@ -42,13 +42,10 @@ import type {
   ControlPlaneRecoveryRollbackResult,
   ControlPlaneRecoveryApprovalSummary,
 } from './intervention-control-updater.ts';
-import {
-  findPersistedControlPlaneRecoveryGrantForSource,
-  throwControlPlaneRecoveryAlreadyConsumed,
-  canonicalControlPlaneRecoveryGrantPayload,
-  HARNESS_RECOVERY_SIGNATURE_NAMESPACE,
-} from '../../modules/authority/control-plane-recovery-grant.ts';
-import type { ControlPlaneRecoveryGrantEnvelope } from '../../modules/authority/control-plane-recovery-grant.ts';
+import { throwControlPlaneRecoveryAlreadyConsumed } from '../../modules/authority/control-plane-recovery-grant.ts';
+import { canonicalControlPlaneRecoveryGrantPayload } from '../../modules/authority/control-plane-recovery-grant-records.ts';
+import { HARNESS_RECOVERY_SIGNATURE_NAMESPACE } from '../../modules/authority/control-plane-recovery-grant-values.ts';
+import { type ControlPlaneRecoveryGrantEnvelope } from '../../modules/authority/control-plane-recovery-grant-values.ts';
 import {
   preflightControlPlaneRecoveryRollback,
   executeControlPlaneRecoveryRollback,
@@ -484,7 +481,7 @@ export function createHarnessBootstrapRecoveryCommands(
       overrides,
     );
     const sourceControlPlaneGrantId = args[2];
-    const existing = findPersistedControlPlaneRecoveryGrantForSource(
+    const existing = dependencies.recoveryGrants.findForSource(
       stateRoot,
       sourceControlPlaneGrantId,
     );

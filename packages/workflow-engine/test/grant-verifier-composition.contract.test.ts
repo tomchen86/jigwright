@@ -305,6 +305,14 @@ test('authority-plan and sealed recovery retain an independent repair path', () 
     'packages/workflow-engine/src/application/control-plane/authority-plan.ts',
     'packages/workflow-engine/src/application/control-plane/maintainer-recovery.ts',
     'packages/workflow-engine/src/modules/authority/control-plane-recovery-grant.ts',
+    'packages/workflow-engine/src/modules/authority/control-plane-recovery-grant-values.ts',
+    'packages/workflow-engine/src/modules/authority/control-plane-recovery-grant-records.ts',
+    'packages/workflow-engine/src/runtime/storage-journal/control-plane-recovery-grant.ts',
+    'packages/workflow-engine/src/runtime/storage-journal/control-plane-recovery-grant-storage.ts',
+    'packages/workflow-engine/src/application/control-plane/control-plane-updater-recovery.ts',
+    'packages/workflow-engine/src/application/control-plane/harness-bootstrap-production.ts',
+    'packages/workflow-engine/src/application/control-plane/harness-bootstrap-recovery-commands.ts',
+    'packages/workflow-engine/src/composition-root/harness-bootstrap-production.ts',
     'packages/workflow-engine/src/application/control-plane/intervention-control-updater.ts',
   ]) {
     const source = fs.readFileSync(

@@ -6,6 +6,7 @@
  * - Trust-root signature checks require the expected namespace, signer
  *   identity and fingerprint.
  */
+import type { ControlPlaneRecoveryGrantPersistence } from '../../modules/authority/control-plane-recovery-grant-values.ts';
 import type {
   RecoveryAuthorityDescriptorV1,
   RecoveryAuthorityExpectations,
@@ -28,6 +29,7 @@ export interface HarnessBootstrapRecoveryProductionBindings extends Pick<
   | 'productionControlPlaneAuditSink'
   | 'productionRecoveryAuditSink'
 > {
+  recoveryGrants: ControlPlaneRecoveryGrantPersistence;
   RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE: typeof import('../../modules/authority/recovery-trust-root-values.ts').RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE;
   verifySshSignatureWithPublicKey(
     payload: string,
@@ -46,6 +48,7 @@ export function createHarnessBootstrapRecoveryProduction(
   bindings: HarnessBootstrapRecoveryProductionBindings,
 ) {
   const {
+    recoveryGrants,
     RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE,
     verifySshSignatureWithPublicKey,
     createHarnessBootstrapDependencies,
@@ -166,6 +169,7 @@ export function createHarnessBootstrapRecoveryProduction(
     return {
       signer,
       dependencies: {
+        recoveryGrants,
         now: overrides.now ?? (() => new Date()),
         consumedGrantIds: new Set<string>(),
         verifyHumanSignature,

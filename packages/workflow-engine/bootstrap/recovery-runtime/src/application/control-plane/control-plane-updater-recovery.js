@@ -1,7 +1,7 @@
 export function createControlPlaneUpdaterRecovery(bindings) {
     function preflightControlPlaneRecoveryRollback(storageRoot, sourceControlPlaneGrantId, input, dependencies) {
         const boundServices = bindings();
-        const { withUpdaterLock, requireRecoveryDependencies, updaterNow, exactDate, workflowError, ExitCode, findPersistedControlPlaneRecoveryGrantForSource, throwControlPlaneRecoveryAlreadyConsumed, createControlPlaneRecoveryGrantPayload, deepFreeze, } = boundServices;
+        const { withUpdaterLock, requireRecoveryDependencies, updaterNow, exactDate, workflowError, ExitCode, throwControlPlaneRecoveryAlreadyConsumed, createControlPlaneRecoveryGrantPayload, deepFreeze, } = boundServices;
         return withUpdaterLock(storageRoot, `recovery-preflight:${sourceControlPlaneGrantId}`, () => {
             requireRecoveryDependencies(dependencies);
             const now = updaterNow(dependencies);
@@ -9,7 +9,7 @@ export function createControlPlaneUpdaterRecovery(bindings) {
             if (issuedAt !== now.toISOString()) {
                 throw workflowError('HARNESS_RECOVERY_GRANT_CLOCK_INVALID', 'Recovery Grant issuance time must come from the sealed executor clock.', ExitCode.guard);
             }
-            const existing = findPersistedControlPlaneRecoveryGrantForSource(storageRoot, sourceControlPlaneGrantId);
+            const existing = dependencies.recoveryGrants.findForSource(storageRoot, sourceControlPlaneGrantId);
             if (existing?.state === 'consumed') {
                 throwControlPlaneRecoveryAlreadyConsumed();
             }
@@ -35,7 +35,7 @@ export function createControlPlaneUpdaterRecovery(bindings) {
     }
     function executeControlPlaneRecoveryRollback(storageRoot, envelope, dependencies) {
         const boundServices = bindings();
-        const { isRecord, withUpdaterLock, requireRecoveryDependencies, updaterNow, findPersistedControlPlaneRecoveryGrantForSource, throwControlPlaneRecoveryAlreadyConsumed, workflowError, ExitCode, throwControlPlaneRecoveryFailed, canonicalJson, verifyControlPlaneRecoveryGrant, canonicalDigest, createControlPlaneRecoveryAuditRecord, expirePersistedControlPlaneRecoveryGrant, reservePersistedControlPlaneRecoveryGrant, driveControlPlanePromotion, createControlPlaneRecoveryFailure, workflowFailureCode, laterIso, failPersistedControlPlaneRecoveryGrant, createControlPlaneRecoveryReceipt, preparePersistedControlPlaneRecoveryGrantConsumption, consumePersistedControlPlaneRecoveryGrant, deepFreeze, } = boundServices;
+        const { isRecord, withUpdaterLock, requireRecoveryDependencies, updaterNow, throwControlPlaneRecoveryAlreadyConsumed, workflowError, ExitCode, throwControlPlaneRecoveryFailed, canonicalJson, verifyControlPlaneRecoveryGrant, canonicalDigest, createControlPlaneRecoveryAuditRecord, driveControlPlanePromotion, createControlPlaneRecoveryFailure, workflowFailureCode, laterIso, createControlPlaneRecoveryReceipt, deepFreeze, } = boundServices;
         const requestedSourceGrantId = isRecord(envelope) && isRecord(envelope.payload)
             ? envelope.payload.sourceControlPlaneGrantId
             : null;
@@ -45,7 +45,7 @@ export function createControlPlaneUpdaterRecovery(bindings) {
             requireRecoveryDependencies(dependencies);
             const now = updaterNow(dependencies);
             const existing = typeof requestedSourceGrantId === 'string'
-                ? findPersistedControlPlaneRecoveryGrantForSource(storageRoot, requestedSourceGrantId)
+                ? dependencies.recoveryGrants.findForSource(storageRoot, requestedSourceGrantId)
                 : null;
             if (existing?.state === 'consumed') {
                 throwControlPlaneRecoveryAlreadyConsumed();
@@ -101,7 +101,7 @@ export function createControlPlaneUpdaterRecovery(bindings) {
                     receiptDigest: null,
                     recordedAt: terminalExpiredAt,
                 }));
-                expirePersistedControlPlaneRecoveryGrant(storageRoot, {
+                dependencies.recoveryGrants.expire(storageRoot, {
                     recoveryGrantId: payload.grantId,
                     expectedRecordDigest: pending.recordDigest,
                     expiredAt: terminalExpiredAt,
@@ -121,7 +121,7 @@ export function createControlPlaneUpdaterRecovery(bindings) {
                 throw recoveryStateBindingMismatch();
             }
             const reservation = pending ??
-                reservePersistedControlPlaneRecoveryGrant(storageRoot, envelope, now.toISOString());
+                dependencies.recoveryGrants.reserve(storageRoot, envelope, now.toISOString());
             dependencies.recoveryAuditSink.append(createControlPlaneRecoveryAuditRecord({
                 payload,
                 envelopeDigest,
@@ -148,7 +148,7 @@ export function createControlPlaneUpdaterRecovery(bindings) {
                         controlPlaneJournalDigest: failedContext.record.transaction.journalDigest,
                         failedAt: laterIso(failedContext.record.updatedAt, failedContext.supervisor.updatedAt),
                     });
-                    failPersistedControlPlaneRecoveryGrant(storageRoot, {
+                    dependencies.recoveryGrants.fail(storageRoot, {
                         recoveryGrantId: payload.grantId,
                         expectedRecordDigest: reservation.recordDigest,
                         failure,
@@ -194,7 +194,7 @@ export function createControlPlaneUpdaterRecovery(bindings) {
                 receiptDigest: receipt.receiptDigest,
                 recordedAt: completedAt,
             }));
-            const preparedConsumption = preparePersistedControlPlaneRecoveryGrantConsumption(storageRoot, {
+            const preparedConsumption = dependencies.recoveryGrants.prepareConsumption(storageRoot, {
                 recoveryGrantId: payload.grantId,
                 expectedRecordDigest: reservation.recordDigest,
                 receipt,
@@ -209,7 +209,7 @@ export function createControlPlaneUpdaterRecovery(bindings) {
                 receiptDigest: receipt.receiptDigest,
                 recordedAt: completedAt,
             }));
-            const consumed = consumePersistedControlPlaneRecoveryGrant(storageRoot, {
+            const consumed = dependencies.recoveryGrants.consume(storageRoot, {
                 recoveryGrantId: payload.grantId,
                 expectedRecordDigest: preparedConsumption.recordDigest,
             });

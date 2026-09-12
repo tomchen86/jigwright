@@ -217,6 +217,8 @@ import './control-plane-promotion-material-binding.integration.test.ts';
 import './control-plane-promotion-producer.integration.test.ts';
 import './control-plane-promotion-bootstrap.test.ts';
 import './control-plane-recovery-grant.integration.test.ts';
+import './control-plane-recovery-grant-rules.test.ts';
+import './control-plane-recovery-grant-boundary.test.ts';
 import './control-plane-refusal-audit.integration.test.ts';
 import './control-plane-successive-promotion-lineage.integration.test.ts';
 import './control-plane-successive-promotion-production.integration.test.ts';

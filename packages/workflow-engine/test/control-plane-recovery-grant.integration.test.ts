@@ -1,3 +1,4 @@
+import { controlPlaneRecoveryGrantPersistence } from '../src/runtime/storage-journal/control-plane-recovery-grant.ts';
 import { controlPlanePromotionBootstrapObservations } from './control-plane-promotion-fixture.ts';
 import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
@@ -13,15 +14,19 @@ import { deriveAuthorityAuditRepositoryId } from '../src/runtime/storage-journal
 import { verifyAuthorityAuditEvents } from '../src/runtime/storage-journal/authority-audit-service.ts';
 import {
   HARNESS_RECOVERY_SIGNATURE_NAMESPACE,
+  type ControlPlaneRecoveryAuditRecord,
+  type ControlPlaneRecoveryGrantEnvelope,
+} from '../src/modules/authority/control-plane-recovery-grant-values.ts';
+import {
   canonicalControlPlaneRecoveryGrantPayload,
   controlPlaneRecoveryPrestateDigest,
   createControlPlaneRecoveryGrantPayload,
+} from '../src/modules/authority/control-plane-recovery-grant-records.ts';
+import {
   findPersistedControlPlaneRecoveryGrantForSource,
   readPersistedControlPlaneRecoveryGrant,
   reservePersistedControlPlaneRecoveryGrant,
-  type ControlPlaneRecoveryAuditRecord,
-  type ControlPlaneRecoveryGrantEnvelope,
-} from '../src/modules/authority/control-plane-recovery-grant.ts';
+} from '../src/runtime/storage-journal/control-plane-recovery-grant.ts';
 import { runHarnessBootstrapCli } from '../bootstrap/harness-bootstrap-host.ts';
 import {
   CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3,
@@ -769,6 +774,7 @@ function recoveryDependencies(
 ): ControlPlaneRecoveryExecutorDependencies {
   return {
     ...controlDependencies(controlAudit, now, controlVerifier),
+    recoveryGrants: controlPlaneRecoveryGrantPersistence,
     verifyHumanSignature(
       payload: string,
       signature: string,

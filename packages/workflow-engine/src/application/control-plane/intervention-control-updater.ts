@@ -4,6 +4,7 @@
  * Invariants:
  * - Promotion authority must match the exact parent Task Mandate binding.
  */
+import type { ControlPlaneRecoveryGrantPersistence } from '../../modules/authority/control-plane-recovery-grant-values.ts';
 import { createControlPlaneUpdaterStorage } from './control-plane-updater-storage.ts';
 import { createControlPlaneUpdaterSupervisor } from './control-plane-updater-supervisor.ts';
 import { createControlPlaneUpdaterApproval } from './control-plane-updater-approval.ts';
@@ -16,27 +17,25 @@ import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
-  consumePersistedControlPlaneRecoveryGrant,
   controlPlaneRecoveryPrestateDigest,
   createControlPlaneRecoveryAuditRecord,
   createControlPlaneRecoveryFailure,
   createControlPlaneRecoveryGrantPayload,
   createControlPlaneRecoveryReceipt,
-  expirePersistedControlPlaneRecoveryGrant,
-  failPersistedControlPlaneRecoveryGrant,
-  findPersistedControlPlaneRecoveryGrantForSource,
-  preparePersistedControlPlaneRecoveryGrantConsumption,
-  reservePersistedControlPlaneRecoveryGrant,
+  verifyControlPlaneRecoveryGrant,
+} from '../../modules/authority/control-plane-recovery-grant-records.ts';
+import {
   throwControlPlaneRecoveryAlreadyConsumed,
   throwControlPlaneRecoveryFailed,
-  verifyControlPlaneRecoveryGrant,
+} from '../../modules/authority/control-plane-recovery-grant.ts';
+import {
   type ControlPlaneRecoveryAuditRecord,
   type ControlPlaneRecoveryGrantEnvelope,
   type ControlPlaneRecoveryGrantPayload,
   type ControlPlaneRecoveryReceipt,
   type ControlPlaneRecoveryStateBinding,
   type PersistedControlPlaneRecoveryGrant,
-} from '../../modules/authority/control-plane-recovery-grant.ts';
+} from '../../modules/authority/control-plane-recovery-grant-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   ensurePlainDirectory,
@@ -264,6 +263,7 @@ export interface ControlPlaneRecoveryPreflight {
 }
 
 export interface ControlPlaneRecoveryExecutorDependencies extends ControlPlaneUpdaterDependencies {
+  recoveryGrants: ControlPlaneRecoveryGrantPersistence;
   recoveryAuditSink: {
     /** Implementations must make append idempotent by recordId. */
     append(record: ControlPlaneRecoveryAuditRecord): void;
@@ -1564,7 +1564,6 @@ export type ControlPlaneUpdaterRecoveryBindings = {
   exactDate: typeof exactDate;
   workflowError: typeof workflowError;
   ExitCode: typeof ExitCode;
-  findPersistedControlPlaneRecoveryGrantForSource: typeof findPersistedControlPlaneRecoveryGrantForSource;
   throwControlPlaneRecoveryAlreadyConsumed: typeof throwControlPlaneRecoveryAlreadyConsumed;
   createControlPlaneRecoveryGrantPayload: typeof createControlPlaneRecoveryGrantPayload;
   deepFreeze: typeof deepFreeze;
@@ -1574,16 +1573,11 @@ export type ControlPlaneUpdaterRecoveryBindings = {
   verifyControlPlaneRecoveryGrant: typeof verifyControlPlaneRecoveryGrant;
   canonicalDigest: typeof canonicalDigest;
   createControlPlaneRecoveryAuditRecord: typeof createControlPlaneRecoveryAuditRecord;
-  expirePersistedControlPlaneRecoveryGrant: typeof expirePersistedControlPlaneRecoveryGrant;
-  reservePersistedControlPlaneRecoveryGrant: typeof reservePersistedControlPlaneRecoveryGrant;
   driveControlPlanePromotion: typeof driveControlPlanePromotion;
   createControlPlaneRecoveryFailure: typeof createControlPlaneRecoveryFailure;
   workflowFailureCode: typeof workflowFailureCode;
   laterIso: typeof laterIso;
-  failPersistedControlPlaneRecoveryGrant: typeof failPersistedControlPlaneRecoveryGrant;
   createControlPlaneRecoveryReceipt: typeof createControlPlaneRecoveryReceipt;
-  preparePersistedControlPlaneRecoveryGrantConsumption: typeof preparePersistedControlPlaneRecoveryGrantConsumption;
-  consumePersistedControlPlaneRecoveryGrant: typeof consumePersistedControlPlaneRecoveryGrant;
   ensureUpdaterDirectories: typeof ensureUpdaterDirectories;
   readPersistedControlPlaneUpdate: typeof readPersistedControlPlaneUpdate;
   readPromotionBundle: typeof readPromotionBundle;
@@ -1613,7 +1607,6 @@ const {
   exactDate,
   workflowError,
   ExitCode,
-  findPersistedControlPlaneRecoveryGrantForSource,
   throwControlPlaneRecoveryAlreadyConsumed,
   createControlPlaneRecoveryGrantPayload,
   deepFreeze,
@@ -1623,16 +1616,11 @@ const {
   verifyControlPlaneRecoveryGrant,
   canonicalDigest,
   createControlPlaneRecoveryAuditRecord,
-  expirePersistedControlPlaneRecoveryGrant,
-  reservePersistedControlPlaneRecoveryGrant,
   driveControlPlanePromotion,
   createControlPlaneRecoveryFailure,
   workflowFailureCode,
   laterIso,
-  failPersistedControlPlaneRecoveryGrant,
   createControlPlaneRecoveryReceipt,
-  preparePersistedControlPlaneRecoveryGrantConsumption,
-  consumePersistedControlPlaneRecoveryGrant,
   ensureUpdaterDirectories,
   readPersistedControlPlaneUpdate,
   readPromotionBundle,
