@@ -1316,6 +1316,11 @@
       "digest": "sha256:ee8bb513f81e8e1aebdf12d415030bc694faaa85dfb167d2544b4f3569d2df4e"
     },
     {
+      "path": "src/application/revise/task-revision-approval.ts",
+      "mode": "100644",
+      "digest": "sha256:3875d7fdfaf48fdd39c96701d6f668bda06f66e56a2c7d7c5b8b867a1defe57f"
+    },
+    {
       "path": "src/application/revise/task-revision-implementation-snapshot.ts",
       "mode": "100644",
       "digest": "sha256:f6320d8c05a11685480a3b7439d8161af0154e22345aa8681d64150b21e09b03"
@@ -1328,7 +1333,7 @@
     {
       "path": "src/application/revise/task-revision.ts",
       "mode": "100644",
-      "digest": "sha256:d2c59b4c89e7f0e4c1a94972801bd5b21982de8715e68b29e22e220e8b72de73"
+      "digest": "sha256:6b1081f7e9f78873968e6b650ba4736b39359e2a5f103e8325dce775f9fa4362"
     },
     {
       "path": "src/application/work-registry/work-registry-grant-policy.ts",
@@ -1493,7 +1498,7 @@
     {
       "path": "src/composition-root/cli-command-services.ts",
       "mode": "100644",
-      "digest": "sha256:8dd04a8e2f821fce776025595f8336c9b7353dc2ba928a2e1a60b41419495787"
+      "digest": "sha256:f77e982de80d87e7e13bb06fb4897de8cd2e7df62b9ec7ce199d26803f2b7c73"
     },
     {
       "path": "src/composition-root/collaboration-grant-production.ts",
@@ -1829,6 +1834,11 @@
       "path": "src/composition-root/task-mandate-production.ts",
       "mode": "100644",
       "digest": "sha256:efcdbbc0ce5326777fbf3818311efaa15e2cab10e1be95ab5f0a2d1bde774119"
+    },
+    {
+      "path": "src/composition-root/task-revision-approval-production.ts",
+      "mode": "100644",
+      "digest": "sha256:065789df09746b885c89a54dc837d5225713b63f35f7d63d2bdc225f033569c2"
     },
     {
       "path": "src/composition-root/task-session-production.ts",
@@ -2823,12 +2833,7 @@
     {
       "path": "src/modules/authority/task-revision-approval-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:2ac96a5194eeb85d748f81d8a06111bcd1c9118fc9c63dd5b5f2d6f4a4f64e1b"
-    },
-    {
-      "path": "src/modules/authority/task-revision-approval.ts",
-      "mode": "100644",
-      "digest": "sha256:ec87bd25ec3f7d6c71418938147cd6335bafd2b73961a444124b8c211f4a5ce6"
+      "digest": "sha256:5839fbfc8db9d97fea815efc29af69be72847eecdb03c12f45cfb7916f85c69d"
     },
     {
       "path": "src/modules/governance-intake/governance-finding-ref.ts",
@@ -4196,6 +4201,11 @@
       "digest": "sha256:6aab4d033cae50a4a00480559d62e1f7a6ea5da759ebcd9cb8d26fe4a8cf4729"
     },
     {
+      "path": "src/runtime/repository-observation/task-revision-approval.ts",
+      "mode": "100644",
+      "digest": "sha256:535f98c9a32fe4f83afeffec1bd458d05563ed7d2db64125cb8f0fd603ac1dda"
+    },
+    {
       "path": "src/runtime/repository-observation/task-strategy-gate.ts",
       "mode": "100644",
       "digest": "sha256:89b5d936d3e13494ae1ee434ec2ebd1d83e4e6ff7612ceb1ae1da744c6ee8265"
@@ -5254,6 +5264,11 @@
       "path": "src/runtime/storage-journal/task-mandate-store.ts",
       "mode": "100644",
       "digest": "sha256:930dabf82f409b8b3c236f4fac4c66978113fdfa230791b2f5300cc7c4dceaed"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-revision-approval.ts",
+      "mode": "100644",
+      "digest": "sha256:6b683debd7ed05d1873ce3a1feb5ba7ee9ee34073829d9ebcda973e243f2ffbd"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-correction-round-authority.ts",

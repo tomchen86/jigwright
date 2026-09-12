@@ -1,3 +1,4 @@
+import { readAndValidateTaskRevisionApproval } from '../src/composition-root/task-revision-approval-production.ts';
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
@@ -9,6 +10,14 @@ const resumeTask = resumeTaskWithContractReader.bind(
   productionPlanningExecution,
   managedDocuments,
   productionChangeContractReader,
+  readAndValidateTaskRevisionApproval,
+);
+const resumeTaskWithoutApproval = resumeTaskWithContractReader.bind(
+  undefined,
+  productionPlanningExecution,
+  managedDocuments,
+  productionChangeContractReader,
+  () => assert.fail('No-op or narrowing must not read an approval'),
 );
 const commitPlanningTransition =
   commitPlanningTransitionWithContractReader.bind(
@@ -32,11 +41,9 @@ import {
   resumeTask as resumeTaskWithContractReader,
   reviseTask,
 } from '../src/application/revise/task-revision.ts';
-import {
-  issueTaskRevisionApproval,
-  taskRevisionApprovalTargetDigest,
-} from '../src/modules/authority/task-revision-approval.ts';
-import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
+import { issueTaskRevisionApproval } from '../src/composition-root/task-revision-approval-production.ts';
+import { taskRevisionApprovalTargetDigest } from '../src/modules/authority/task-revision-approval-contracts.ts';
+import type { MaintainerSignerProvider } from '../src/modules/authority/maintainer-signer-port.ts';
 import { commitChangedPaths } from '../src/runtime/repository-transaction/git-transitions.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { completeTask } from './support/local-engine-selection-host.ts';
@@ -113,7 +120,7 @@ test('revise-task durably suspends execution and no-op resume restores the same 
       (error) => workflowCode(error) === 'SESSION_NOT_ACTIVE',
     );
 
-    const resumed = resumeTask(repository, session.sessionId, {
+    const resumed = resumeTaskWithoutApproval(repository, session.sessionId, {
       now: () => new Date('2026-08-11T01:05:00.000Z'),
     });
     assert.equal(resumed.session.sessionId, session.sessionId);
@@ -674,7 +681,7 @@ test('a reviewed path narrowing resumes without external widening authority', ()
     writeTaskAllowedPaths(repository, ['src/feature.ts']);
     writeReadyV3ExemptChange(repository);
 
-    const resumed = resumeTask(repository, session.sessionId, {
+    const resumed = resumeTaskWithoutApproval(repository, session.sessionId, {
       now: () => new Date('2026-08-11T01:05:00.000Z'),
     });
     assert.equal(resumed.session.state, 'active');

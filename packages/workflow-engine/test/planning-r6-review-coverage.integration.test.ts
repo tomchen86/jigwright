@@ -1,3 +1,4 @@
+import { readAndValidateTaskRevisionApproval } from '../src/composition-root/task-revision-approval-production.ts';
 import { blockInvestigationForPlanReviewRetryUnderAuthority } from '../src/composition-root/investigation-retry-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
@@ -16,6 +17,7 @@ const resumeTask = resumeTaskWithContractReader.bind(
   productionPlanningExecution,
   managedDocuments,
   productionChangeContractReader,
+  readAndValidateTaskRevisionApproval,
 );
 import assert from 'node:assert/strict';
 

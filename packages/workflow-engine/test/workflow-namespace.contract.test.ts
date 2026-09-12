@@ -18,7 +18,7 @@ import {
   TASK_DIFF_REVIEW_OUTPUT_SCHEMA,
   TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA,
 } from '../src/modules/assurance/task-diff-review-artifact.ts';
-import { TASK_REVISION_APPROVAL_SIGNATURE_NAMESPACE } from '../src/modules/authority/task-revision-approval.ts';
+import { TASK_REVISION_APPROVAL_SIGNATURE_NAMESPACE } from '../src/modules/authority/task-revision-approval-contracts.ts';
 import { TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA } from '../src/modules/provider-orchestration/task-strategy-implementation-output.ts';
 import {
   repositoryRoot,

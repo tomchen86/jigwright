@@ -56,11 +56,11 @@ import {
 import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
 import { inspectSession } from '../finalize/verification.ts';
 import {
-  readAndValidateTaskRevisionApproval,
+  type TaskRevisionApprovalReader,
   taskRevisionApprovalTargetDigest,
   type TaskRevisionApprovalBinding,
   type TaskRevisionApprovalValidationOptions,
-} from '../../modules/authority/task-revision-approval.ts';
+} from '../../modules/authority/task-revision-approval-contracts.ts';
 
 import { createTaskRevisionImplementationSnapshot } from './task-revision-implementation-snapshot.ts';
 import { createTaskRevisionJournalStore } from './task-revision-journal.ts';
@@ -325,6 +325,7 @@ export function resumeTask(
   planningExecution: PlanningTransitionExecutionServices,
   managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
   loadChangeContract: ChangeContractReader,
+  readTaskRevisionApproval: TaskRevisionApprovalReader,
   cwd: string,
   requestedSessionId: string,
   options: TaskRevisionOptions = {},
@@ -361,6 +362,7 @@ export function resumeTask(
       }
       if (journal.phase === 'resume-prepared') {
         return completePreparedResume(
+          readTaskRevisionApproval,
           cwd,
           runtime,
           current,
@@ -371,6 +373,7 @@ export function resumeTask(
       }
       if (journal.phase === 'plan-committed') {
         return completeCommittedPlanningRevision(
+          readTaskRevisionApproval,
           runtime,
           current,
           journal,
@@ -380,6 +383,7 @@ export function resumeTask(
       }
       if (journal.phase === 'planning-staging-prepared') {
         return recoverPreparedPlanningStaging(
+          readTaskRevisionApproval,
           planningExecution,
           managedDocuments,
           loadChangeContract,
@@ -393,6 +397,7 @@ export function resumeTask(
       }
       if (journal.phase === 'plan-commit-prepared') {
         return recoverPreparedPlanningRevision(
+          readTaskRevisionApproval,
           managedDocuments,
           loadChangeContract,
           runtime,
@@ -436,6 +441,7 @@ export function resumeTask(
       );
       if (planningPaths.length > 0) {
         return commitPlanningRevision(
+          readTaskRevisionApproval,
           planningExecution,
           managedDocuments,
           loadChangeContract,
@@ -729,6 +735,7 @@ function reconcileReviseTask(
 }
 
 function completePreparedResume(
+  readTaskRevisionApproval: TaskRevisionApprovalReader,
   cwd: string,
   runtime: ReturnType<typeof runtimePaths>,
   current: WorkflowSession,
@@ -744,7 +751,12 @@ function completePreparedResume(
     if (current.revisionLeaseId !== journal.leaseId) {
       throw corruptRevisionState();
     }
-    active = activeSessionForPreparedResume(current, journal, options);
+    active = activeSessionForPreparedResume(
+      readTaskRevisionApproval,
+      current,
+      journal,
+      options,
+    );
     if (digestValue(active) !== journal.resumeSessionDigest) {
       throw corruptRevisionState();
     }
@@ -766,6 +778,7 @@ function completePreparedResume(
 }
 
 function activeSessionForPreparedResume(
+  readTaskRevisionApproval: TaskRevisionApprovalReader,
   current: WorkflowSession,
   journal: TaskRevisionJournal,
   options: TaskRevisionOptions,
@@ -806,6 +819,7 @@ function activeSessionForPreparedResume(
     current.changeId,
   );
   assertRevisionCandidateAuthorized(
+    readTaskRevisionApproval,
     current.repositoryRoot,
     current,
     journal,
@@ -823,6 +837,7 @@ function activeSessionForPreparedResume(
 }
 
 function commitPlanningRevision(
+  readTaskRevisionApproval: TaskRevisionApprovalReader,
   planningExecution: PlanningTransitionExecutionServices,
   managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
   loadChangeContract: ChangeContractReader,
@@ -839,6 +854,7 @@ function commitPlanningRevision(
     current.changeId,
   ).contract;
   const approvalId = assertRevisionCandidateAuthorized(
+    readTaskRevisionApproval,
     current.repositoryRoot,
     current,
     journal,
@@ -1010,6 +1026,7 @@ function commitPlanningRevision(
 }
 
 function completeCommittedPlanningRevision(
+  readTaskRevisionApproval: TaskRevisionApprovalReader,
   runtime: ReturnType<typeof runtimePaths>,
   current: WorkflowSession,
   journal: TaskRevisionJournal,
@@ -1052,6 +1069,7 @@ function completeCommittedPlanningRevision(
     current.changeId,
   );
   assertRevisionCandidateAuthorized(
+    readTaskRevisionApproval,
     current.repositoryRoot,
     current,
     journal,
@@ -1086,6 +1104,7 @@ function completeCommittedPlanningRevision(
 }
 
 function recoverPreparedPlanningRevision(
+  readTaskRevisionApproval: TaskRevisionApprovalReader,
   managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
   loadChangeContract: ChangeContractReader,
   runtime: ReturnType<typeof runtimePaths>,
@@ -1202,6 +1221,7 @@ function recoverPreparedPlanningRevision(
     planCommittedAt: trustedNow(options.now).toISOString(),
   });
   return completeCommittedPlanningRevision(
+    readTaskRevisionApproval,
     runtime,
     current,
     committed,
@@ -1211,6 +1231,7 @@ function recoverPreparedPlanningRevision(
 }
 
 function recoverPreparedPlanningStaging(
+  readTaskRevisionApproval: TaskRevisionApprovalReader,
   planningExecution: PlanningTransitionExecutionServices,
   managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
   loadChangeContract: ChangeContractReader,
@@ -1258,6 +1279,7 @@ function recoverPreparedPlanningStaging(
   );
   assertRepositoryLock();
   return commitPlanningRevision(
+    readTaskRevisionApproval,
     planningExecution,
     managedDocuments,
     loadChangeContract,
@@ -1383,6 +1405,7 @@ function classifyRevisionCandidate(
 }
 
 function assertRevisionCandidateAuthorized(
+  readTaskRevisionApproval: TaskRevisionApprovalReader,
   cwd: string,
   session: WorkflowSession,
   journal: TaskRevisionJournal,
@@ -1425,16 +1448,11 @@ function assertRevisionCandidateAuthorized(
   ) {
     throw corruptRevisionState();
   }
-  readAndValidateTaskRevisionApproval(
-    cwd,
-    approvalId,
-    classification.approvalBinding,
-    {
-      now: trustedNow(options.now),
-      allowExpired,
-      verifier: options.approvalVerifier,
-    },
-  );
+  readTaskRevisionApproval(cwd, approvalId, classification.approvalBinding, {
+    now: trustedNow(options.now),
+    allowExpired,
+    verifier: options.approvalVerifier,
+  });
   return approvalId;
 }
 

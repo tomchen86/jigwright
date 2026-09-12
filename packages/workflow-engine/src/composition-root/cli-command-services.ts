@@ -1,3 +1,4 @@
+import { readAndValidateTaskRevisionApproval } from './task-revision-approval-production.ts';
 export type { ControlPlanePromotionBootstrapObservations } from '../modules/authority/intervention-bootstrap-contract.ts';
 import {
   preparePullRequestPreMergeAssurance,
@@ -48,6 +49,7 @@ export const resumeTask = resumeTaskWithContractReader.bind(
   productionPlanningExecution,
   managedDocuments,
   productionChangeContractReader,
+  readAndValidateTaskRevisionApproval,
 );
 import { resolveOpenTaskId as resolveOpenTaskIdWithContractReader } from '../application/execute-task/open-task.ts';
 export const resolveOpenTaskId = resolveOpenTaskIdWithContractReader.bind(
@@ -204,7 +206,7 @@ export {
   submitExternalTaskDiffReviewContinuation,
   beginTaskDiffReview,
 } from './task-diff-review-production.ts';
-export { issueTaskRevisionApproval } from '../modules/authority/task-revision-approval.ts';
+export { issueTaskRevisionApproval } from './task-revision-approval-production.ts';
 export { parseTaskMandateRequest } from '../modules/authority/task-mandate.ts';
 export const {
   inspectActiveTaskMandateBinding,
