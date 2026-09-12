@@ -400,6 +400,18 @@ test('architecture scanner finds module ownership cycles without a file-loading 
   );
 });
 
+test('application and runtime immutable reads do not invert into CI entrypoints', () => {
+  for (const file of [
+    'packages/workflow-engine/src/application/execute-task/open-task.ts',
+    'packages/workflow-engine/src/application/finalize/lifecycle.ts',
+    'packages/workflow-engine/src/runtime/repository-transaction/archive-delta-verifier.ts',
+  ]) {
+    const source = fs.readFileSync(path.join(repositoryRoot, file), 'utf8');
+    assert.match(source, /\breadFileAtCommit\b/u, file);
+    assert.doesNotMatch(source, /entrypoints\/ci\/ci-git\.ts/u, file);
+  }
+});
+
 test('current repository has no architecture exceptions', () => {
   const { problems } = readRepositoryDependencyGraph(repositoryRoot);
   assert.equal(

@@ -1,10 +1,15 @@
-# Workflow engine responsibility refactor audit
+# Historical workflow engine responsibility refactor audit
 
-The engine was scanned in full, and all identified large-file responsibility
-mixes were resolved. The audit covers handwritten source, bootstrap, the native
-helper, and tests under `packages/workflow-engine`. The baseline for this final
-round is `9acbd6ef35bb92211bc1a8efdcc2d9a9e98f1129`; earlier extraction work is
-already present at that commit.
+This report records the earlier refactor delivered at `c7a0c21`, against
+`9acbd6ef35bb92211bc1a8efdcc2d9a9e98f1129`. Its paths, counts, hashes and
+conclusions describe that historical snapshot, not acceptance of the current
+architecture. Subsequent review found effectful domain modules and unnecessary
+factories among those extractions. Current boundaries and their permanent
+checks are defined in [Architecture](ARCHITECTURE.md).
+
+The historical scan covered handwritten source, bootstrap, the native helper,
+and tests under `packages/workflow-engine`. The old frozen dependency baseline
+and migration map referenced below have since been retired.
 
 [The complete file inventory](ENGINE_LONG_FILE_AUDIT.json) records the baseline
 and current sizes, content hashes, decisions, retention reasons, and original

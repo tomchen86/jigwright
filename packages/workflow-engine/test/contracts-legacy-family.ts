@@ -71,7 +71,6 @@ import './check-registry-port.contract.test.ts';
 import './check-execution.test.ts';
 import './document-refresh-policy.test.ts';
 import './architecture-graph.contract.test.ts';
-import './module-dependency-direction.contract.test.ts';
 import './path-role-registry.contract.test.ts';
 import './spec-delta-applicability.contract.test.ts';
 import './spec-scenario-preservation.contract.test.ts';
