@@ -1,7 +1,13 @@
+/**
+ * Owns shared check observations and their exact failure-evidence codec.
+ *
+ * Invariants:
+ * - Successful observations retain their mutable full metadata shape.
+ * - Failed observations bind bounded output excerpts and exact canonical digests.
+ */
 import crypto from 'node:crypto';
-import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-/** Successful check evidence shared by execution and its consumers. */
+import { canonicalJson } from '../canonical-json/canonical-json.ts';
+import { ExitCode, workflowError } from '../errors/errors.ts';
 export type CheckEvidence = {
   checkId: string;
   outcome: 'passed';
@@ -128,4 +134,4 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function sha256(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
-export { observedFailureInvalid, isDigest, isRecord, sha256 };
+export { sha256 };

@@ -9,8 +9,11 @@
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import type { CheckEvidence } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
-import type { ObservedCheckFailure } from '../../modules/assurance/check-evidence.ts';
+import type {
+  CheckEvidence,
+  ObservedCheckFailure,
+} from '../../foundation/check-evidence/check-evidence.ts';
+
 import type {
   CrossAgentTddExecution,
   TddSingleAgentExecution,

@@ -53,8 +53,9 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import {
   parseObservedCheckFailure,
   type CheckEvidence,
-} from '../../adapters/consumer/repository/work-registry/check-runner.ts';
-import type { ObservedCheckFailure } from '../../modules/assurance/check-evidence.ts';
+  type ObservedCheckFailure,
+} from '../../foundation/check-evidence/check-evidence.ts';
+
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   createPrivateCanonicalJson,

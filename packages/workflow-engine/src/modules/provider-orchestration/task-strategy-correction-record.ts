@@ -1,12 +1,12 @@
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { parseObservedCheckFailure } from '../assurance/check-evidence.ts';
+import {
+  parseObservedCheckFailure,
+  type CheckEvidence,
+  type ObservedCheckFailure,
+} from '../../foundation/check-evidence/check-evidence.ts';
 /** Canonical task strategy correction record data; parsing and effects stay with their existing implementation. */
-import type {
-  CheckEvidence,
-  ObservedCheckFailure,
-} from '../assurance/check-evidence.ts';
 
 export type TaskStrategyCorrectionPolicy = Readonly<{
   maxRepairAttempts: number;

@@ -8,12 +8,15 @@ import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   OBSERVED_CHECK_FAILURE_EXCERPT_BYTES,
+  type CheckEvidence,
+  type ObservedCheckFailure,
+} from '../src/foundation/check-evidence/check-evidence.ts';
+import {
   pinCheckRunner,
   runCheck,
   runObservedCheck,
-  type CheckEvidence,
 } from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
-import type { ObservedCheckFailure } from '../src/modules/assurance/check-evidence.ts';
+
 import type { CheckDefinition } from '../src/modules/source/check-command.ts';
 import type { InvestigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import {

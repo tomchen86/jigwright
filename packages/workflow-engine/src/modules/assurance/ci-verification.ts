@@ -5,7 +5,7 @@ import type {
   CommittedChangeContractReader,
   ChangeContract,
 } from '../planning-provider/change-contract.ts';
-import type { CheckEvidence } from './check-evidence.ts';
+import type { CheckEvidence } from '../../foundation/check-evidence/check-evidence.ts';
 
 import type { CiPlanningReplayOperations } from './commit-replay/ci-planning.ts';
 import type { CiSequenceReplayOperations } from './commit-replay/ci-sequence.ts';

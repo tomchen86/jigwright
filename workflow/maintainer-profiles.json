@@ -5,12 +5,8 @@
       "id": "workflow-engine-bootstrap",
       "version": 1,
       "authorityClass": "ordinary",
-      "implementationPaths": [
-        "packages/workflow-engine/src/**"
-      ],
-      "evidencePaths": [
-        "packages/workflow-engine/test/**"
-      ],
+      "implementationPaths": ["packages/workflow-engine/src/**"],
+      "evidencePaths": ["packages/workflow-engine/test/**"],
       "policyPaths": [
         "workflow/maintainer-policy.json",
         "workflow/maintainer-profiles.json",
@@ -49,7 +45,7 @@
         "packages/workflow-engine/src/composition-root/task-mandate-production.ts",
         "packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts",
         "packages/workflow-engine/src/foundation/canonical-json/canonical-json.ts",
-        "packages/workflow-engine/src/modules/assurance/check-evidence.ts",
+        "packages/workflow-engine/src/foundation/check-evidence/check-evidence.ts",
         "packages/workflow-engine/src/modules/assurance/ci-attestation.ts",
         "packages/workflow-engine/src/modules/assurance/commit-replay/ci-authority.ts",
         "packages/workflow-engine/src/modules/assurance/pre-merge-assurance.ts",
@@ -109,14 +105,8 @@
           "runner",
           "source-tree"
         ],
-        "workflow-format": [
-          "runner",
-          "source-tree"
-        ],
-        "workflow-lint": [
-          "runner",
-          "source-tree"
-        ],
+        "workflow-format": ["runner", "source-tree"],
+        "workflow-lint": ["runner", "source-tree"],
         "workflow-tests": [
           "base-commit",
           "harness-engine",
@@ -124,21 +114,14 @@
           "runner",
           "source-tree"
         ],
-        "workflow-typecheck": [
-          "runner",
-          "source-tree"
-        ]
+        "workflow-typecheck": ["runner", "source-tree"]
       }
     },
     "workflow-engine-root-one-shot": {
       "id": "workflow-engine-root-one-shot",
       "version": 1,
       "authorityClass": "root-one-shot",
-      "implementationPaths": [
-        "apps/**",
-        "docs/**",
-        "packages/**"
-      ],
+      "implementationPaths": ["apps/**", "docs/**", "packages/**"],
       "evidencePaths": [
         "apps/api/src/__tests__/**",
         "packages/workflow-engine/test/**"
@@ -181,7 +164,7 @@
         "packages/workflow-engine/src/composition-root/task-mandate-production.ts",
         "packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts",
         "packages/workflow-engine/src/foundation/canonical-json/canonical-json.ts",
-        "packages/workflow-engine/src/modules/assurance/check-evidence.ts",
+        "packages/workflow-engine/src/foundation/check-evidence/check-evidence.ts",
         "packages/workflow-engine/src/modules/assurance/ci-attestation.ts",
         "packages/workflow-engine/src/modules/assurance/commit-replay/ci-authority.ts",
         "packages/workflow-engine/src/modules/assurance/pre-merge-assurance.ts",
@@ -241,14 +224,8 @@
           "runner",
           "source-tree"
         ],
-        "workflow-format": [
-          "runner",
-          "source-tree"
-        ],
-        "workflow-lint": [
-          "runner",
-          "source-tree"
-        ],
+        "workflow-format": ["runner", "source-tree"],
+        "workflow-lint": ["runner", "source-tree"],
         "workflow-tests": [
           "base-commit",
           "harness-engine",
@@ -256,10 +233,7 @@
           "runner",
           "source-tree"
         ],
-        "workflow-typecheck": [
-          "runner",
-          "source-tree"
-        ]
+        "workflow-typecheck": ["runner", "source-tree"]
       }
     }
   }

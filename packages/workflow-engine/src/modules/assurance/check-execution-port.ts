@@ -1,5 +1,5 @@
 /** Capabilities for a bound repository check run; pinned executions retain their own runner. */
-import type { CheckEvidence } from './check-evidence.ts';
+import type { CheckEvidence } from '../../foundation/check-evidence/check-evidence.ts';
 import type { ResolvedRequiredCiCheck } from './required-checks.ts';
 
 export type CheckPostValidation = 'live-current-ref' | 'immutable-head';

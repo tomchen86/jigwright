@@ -7,7 +7,7 @@ import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/chang
  * - Reconciliation permits only the single immediate predecessor and
  *   requires unchanged task and check definitions.
  */
-import type { CheckEvidence } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
+import type { CheckEvidence } from '../../foundation/check-evidence/check-evidence.ts';
 import type { TaskPolicy } from '../../modules/planning-provider/planning-artifact-types.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {

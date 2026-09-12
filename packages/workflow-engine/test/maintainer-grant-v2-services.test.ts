@@ -32,7 +32,7 @@ import {
   type MaintainerChecksAttestationV2,
   type MaintainerGrantV2Envelope,
 } from '../src/modules/authority/maintainer-grant-v2-codec.ts';
-import type { CheckEvidence } from '../src/modules/assurance/check-evidence.ts';
+import type { CheckEvidence } from '../src/foundation/check-evidence/check-evidence.ts';
 import type { GitState } from '../src/modules/repository-consumer/repository-git-state.ts';
 import {
   createSignedMaintainerGrantPublisher,
@@ -673,6 +673,7 @@ test('V2 canonical candidate rules have no transitive effect dependencies', () =
     '../src/modules/authority/maintainer-candidate-contracts.ts',
     '../src/modules/authority/maintainer-candidate-ref-ledger.ts',
     '../src/modules/authority/maintainer-candidate-dependencies.ts',
+    '../src/foundation/check-evidence/check-evidence.ts',
   ])
     assertPureDependencyClosure(fileURLToPath(new URL(entry, import.meta.url)));
 });

@@ -1,19 +1,10 @@
 import {
-  parseObservedCheckFailure,
-  observedFailureInvalid,
-  isDigest,
-  isRecord,
   sha256,
   OBSERVED_CHECK_FAILURE_EXCERPT_BYTES,
-} from '../../../../modules/assurance/check-evidence.ts';
-export {
-  parseObservedCheckFailure,
-  observedFailureInvalid,
-  isDigest,
-  isRecord,
-  sha256,
-  OBSERVED_CHECK_FAILURE_EXCERPT_BYTES,
-} from '../../../../modules/assurance/check-evidence.ts';
+  type CheckEvidence,
+  type ObservedCheckOutcome,
+} from '../../../../foundation/check-evidence/check-evidence.ts';
+
 /**
  * Executes pinned check runners and records successful, observed-failure
  * and expected-RED evidence.
@@ -34,9 +25,6 @@ import {
 import { normalizeChangedPath } from '../../../../foundation/repository-path/repository-path.ts';
 import { resolveCheckRunner } from './runner-resolution.ts';
 import type { ResolvedCheckRunner } from '../../../../modules/source/check-command.ts';
-
-import type { CheckEvidence } from '../../../../modules/assurance/check-evidence.ts';
-export type { CheckEvidence } from '../../../../modules/assurance/check-evidence.ts';
 
 export type CheckEvidenceMetadata = {
   completedAt: () => Date;
@@ -451,15 +439,6 @@ function executionFailure(checkId: string, error: unknown) {
     },
   );
 }
-
-import type {
-  ObservedCheckFailure,
-  ObservedCheckOutcome,
-} from '../../../../modules/assurance/check-evidence.ts';
-export type {
-  ObservedCheckFailure,
-  ObservedCheckOutcome,
-} from '../../../../modules/assurance/check-evidence.ts';
 
 import type { PinnedCheckRunner } from '../../../../modules/source/check-command.ts';
 export type { PinnedCheckRunner } from '../../../../modules/source/check-command.ts';

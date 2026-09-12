@@ -31,7 +31,7 @@ import type {
   PatchManifest,
 } from './maintainer-manifest-contracts.ts';
 import { type TaskMandateBinding } from './task-mandate-contract.ts';
-import type { CheckEvidence } from '../assurance/check-evidence.ts';
+import type { CheckEvidence } from '../../foundation/check-evidence/check-evidence.ts';
 import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
 
 export const MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE =

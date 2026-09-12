@@ -23,9 +23,9 @@ import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract
 import {
   pinCheckRunner,
   runObservedCheck,
-  type CheckEvidence,
   type CheckEvidenceMetadata,
 } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
+import type { CheckEvidence } from '../../foundation/check-evidence/check-evidence.ts';
 import {
   assertDisposableDatabaseForRepository,
   createCheckEnvironmentForRepository,

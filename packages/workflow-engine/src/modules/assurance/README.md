@@ -8,11 +8,11 @@ Keep the presence and currentness of review evidence separate from the reviewer'
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:37df9fa92bdc41a95e7c79bb4d4ce3cfdcf362ce905c27235c9acdafeb5bbd03 -->
+<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:54848f41ff798eadee62472c804f77ffc2acce575295fb66ddc4028ebbf88fa5 -->
 
 <!-- prettier-ignore-start -->
 
-62 files changed in this module since confirmation.
+61 files changed in this module since confirmation.
 
 ## Commands
 
@@ -63,7 +63,6 @@ Header history compares Git blame at the explanation confirmation with this sour
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
 | [assurance-assessment-chain.ts](assurance-assessment-chain.ts) | Builds assurance assessments and derives effective coverage and change- class floors. | 1 | History unavailable |
-| [check-evidence.ts](check-evidence.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [check-execution-port.ts](check-execution-port.ts) | Capabilities for a bound repository check run; pinned executions retain their own runner. | 0 | History unavailable |
 | [ci-attestation.ts](ci-attestation.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [ci-verification.ts](ci-verification.ts) | No leading responsibility comment. | 0 | History unavailable |

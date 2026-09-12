@@ -1,6 +1,6 @@
 /** Runs resolved checks in order with pinned runners and per-check checkout freshness. */
 import type { CheckRegistryPortV1 } from '@jigwright/core/check-registry-port';
-import type { CheckEvidence } from '../../modules/assurance/check-evidence.ts';
+import type { CheckEvidence } from '../../foundation/check-evidence/check-evidence.ts';
 import type {
   CheckExecutionPort,
   CheckPostValidation,

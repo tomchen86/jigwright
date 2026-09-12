@@ -19,8 +19,8 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import {
   pinCheckRunner,
   runCheck,
-  type CheckEvidence,
 } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
+import type { CheckEvidence } from '../../foundation/check-evidence/check-evidence.ts';
 import type { PinnedCheckRunner } from '../../modules/source/check-command.ts';
 import type { CheckDefinition } from '../../modules/source/check-command.ts';
 import {
