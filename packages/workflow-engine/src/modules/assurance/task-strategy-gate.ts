@@ -1,5 +1,5 @@
 import type { TaskSessionReference } from '@jigwright/core/workflow-identifiers';
-import type { ValidatedChangeContract } from '../planning-provider/validated-change-contract.ts';
+import type { ValidatedChangeContract } from './validated-change-contract.ts';
 /** Pure task-strategy evidence predicates. Repository observations are supplied at their original operation boundaries. */
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

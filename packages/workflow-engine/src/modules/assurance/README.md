@@ -8,11 +8,11 @@ Keep the presence and currentness of review evidence separate from the reviewer'
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:cafa4e584620a35a77a460e9ab5f30171b9cbb6a5dcd12beb00fcb2421821f89 -->
+<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:0061f09eb297568ae3399108bb6e3c9d4a2f26c8f90e5ee016ea170752eaefdf -->
 
 <!-- prettier-ignore-start -->
 
-61 files changed in this module since confirmation.
+62 files changed in this module since confirmation.
 
 ## Commands
 
@@ -119,6 +119,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [task-execution-evidence.ts](task-execution-evidence.ts) | Pure admission rules and facts for task execution generation evidence. | 0 | History unavailable |
 | [task-strategy-evidence.ts](task-strategy-evidence.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [task-strategy-gate.ts](task-strategy-gate.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [validated-change-contract.ts](validated-change-contract.ts) | Admitted change facts shared by planning, execution and report validation. | 0 | History unavailable |
 
 <!-- prettier-ignore-end -->
 

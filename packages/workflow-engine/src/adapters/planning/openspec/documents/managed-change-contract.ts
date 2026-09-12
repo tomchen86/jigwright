@@ -498,9 +498,9 @@ function compareText(left: string, right: string): number {
 import type {
   ManagedChangeDiagnostic,
   ValidatedChangeContract,
-} from '../../../../modules/planning-provider/validated-change-contract.ts';
+} from '../../../../modules/assurance/validated-change-contract.ts';
 import type { ConsumedRoleReplayPort } from '../../../../modules/provider-orchestration/role-admission-contracts.ts';
 export type {
   ManagedChangeDiagnostic,
   ValidatedChangeContract,
-} from '../../../../modules/planning-provider/validated-change-contract.ts';
+} from '../../../../modules/assurance/validated-change-contract.ts';

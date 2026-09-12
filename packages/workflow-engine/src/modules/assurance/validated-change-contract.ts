@@ -1,8 +1,11 @@
 /** Admitted change facts shared by planning, execution and report validation. */
-import type { ChangeContract, ManagedSchemaName } from './change-contract.ts';
+import type {
+  ChangeContract,
+  ManagedSchemaName,
+} from '../planning-provider/change-contract.ts';
 import type { PlanningProviderDiagnostic } from '@jigwright/core/planning-provider-port';
 import type { ResolvedPlanningProviderBinding } from '@jigwright/core/planning-provider-binding';
-import type { PlanningAssuranceSummary as InvestigationFirstPlanningAssuranceSummary } from '../assurance/planning-assurance-binding.ts';
+import type { PlanningAssuranceSummary as InvestigationFirstPlanningAssuranceSummary } from './planning-assurance-binding.ts';
 export type ManagedChangeDiagnostic = PlanningProviderDiagnostic;
 
 export type ValidatedChangeContract = ChangeContract & {

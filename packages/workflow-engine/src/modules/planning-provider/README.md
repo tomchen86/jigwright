@@ -8,11 +8,11 @@ Keep planning-provider contracts neutral and adapt only their error presentation
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.planning-provider-readme v=1 digest=sha256:e62dc9631489d14adebeeae377e8ba5c9dc0fee8e6bf95a9fc470445bba8fc66 -->
+<!-- jigwright:region id=documents.planning-provider-readme v=1 digest=sha256:f108d0c1e26a2ab7aa8782ad906af33d8e8d2289f532d57767c7dad2a83a1fec -->
 
 <!-- prettier-ignore-start -->
 
-15 files changed in this module since confirmation.
+14 files changed in this module since confirmation.
 
 ## Commands
 
@@ -52,7 +52,6 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [planning-provider-port.ts](planning-provider-port.ts) | Exposes shared planning provider evaluation through the workflow error boundary. | 1 | History unavailable |
 | [planning-task-history.ts](planning-task-history.ts) | Adapts shared planning task-history checks to workflow errors. | 1 | History unavailable |
 | [planning-workspace.ts](planning-workspace.ts) | Planning workspace identity and operations required by proposal and task activation. | 0 | History unavailable |
-| [validated-change-contract.ts](validated-change-contract.ts) | Admitted change facts shared by planning, execution and report validation. | 0 | History unavailable |
 
 <!-- prettier-ignore-end -->
 

@@ -468,7 +468,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/managed-change-contract.ts",
       "mode": "100644",
-      "digest": "sha256:26f0a7c9deeb6e63bfc24995133df459f1ebfdbea804dfb22e9a193d6783882b"
+      "digest": "sha256:571737176d6644ba2ede202b5839be9b3ad70b7386fb35b7535e352eb6e2367e"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-adapter.ts",
@@ -1143,7 +1143,7 @@
     {
       "path": "src/application/finalize/verification.ts",
       "mode": "100644",
-      "digest": "sha256:dea670129cd4375b6254b6325e0aab8cbfcbbf35342d28782b291b1b5b2450f2"
+      "digest": "sha256:9bef08507385ef4aa95b6fa528e2f881e35ddaf8bd1496045fd60d892ff9dc7a"
     },
     {
       "path": "src/application/governance-intake/governance-findings.ts",
@@ -1913,7 +1913,7 @@
     {
       "path": "src/composition-root/validated-contract-context.ts",
       "mode": "100644",
-      "digest": "sha256:9af6b4298ea76cb0c7d046b45a3b169f1ad3a91de34526f7dd2c9233c7d1911e"
+      "digest": "sha256:7f0733f439375ca0ac5d88ed01fa5bc7b9be43cae794d4fe9c61171d81b58bee"
     },
     {
       "path": "src/composition-root/work-registry-grant-production.ts",
@@ -2413,7 +2413,12 @@
     {
       "path": "src/modules/assurance/task-strategy-gate.ts",
       "mode": "100644",
-      "digest": "sha256:c47afde45fbf52c2d919962dda2d464859f5076e2af5cb5b7e5cb47a68bbab7d"
+      "digest": "sha256:5ee4d6d94e54588404b36767cf79cb52ebbd3dbbad1c8753ec3071b0fa8fd6d9"
+    },
+    {
+      "path": "src/modules/assurance/validated-change-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:5ede3471ed3ae3b89b791637bfd0ee41301093018297c70d682df8e149a97e01"
     },
     {
       "path": "src/modules/authority/actor-identity.ts",
@@ -3283,7 +3288,7 @@
     {
       "path": "src/modules/lifecycle/session-inspection.ts",
       "mode": "100644",
-      "digest": "sha256:3ddec0af38fb814becb441370227570ca9d7b018758e982f55c772866345b25f"
+      "digest": "sha256:ce4df68fef3d9152a5f64e93c0fdb5913e734b0ecbc12953024de2963424f4f8"
     },
     {
       "path": "src/modules/lifecycle/workflow-report.ts",
@@ -3354,11 +3359,6 @@
       "path": "src/modules/planning-provider/planning-workspace.ts",
       "mode": "100644",
       "digest": "sha256:e7c6076a9b99e2b7a873acee7558ca56cc150a79eb4a35fa46cfb339c8975f7b"
-    },
-    {
-      "path": "src/modules/planning-provider/validated-change-contract.ts",
-      "mode": "100644",
-      "digest": "sha256:333a99db0b11b3a7b91586561eb5b876071ea88c7c33a15ac45993e1bf434169"
     },
     {
       "path": "src/modules/projection/document-refresh-policy.ts",

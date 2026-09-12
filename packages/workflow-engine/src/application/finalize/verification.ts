@@ -81,7 +81,7 @@ import {
 } from '../../runtime/repository-transaction/finalize-transaction.ts';
 import { assertPreparedProtectedTaskApplyAuthorization } from './protected-task-apply-authorization.ts';
 
-import type { ValidatedChangeContract } from '../../modules/planning-provider/validated-change-contract.ts';
+import type { ValidatedChangeContract } from '../../modules/assurance/validated-change-contract.ts';
 
 export type SessionCheck = {
   sessionId: string;

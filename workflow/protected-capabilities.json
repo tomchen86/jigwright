@@ -106,6 +106,7 @@
         "packages/workflow-engine/src/modules/assurance/planning-assurance-observations.ts",
         "packages/workflow-engine/src/modules/assurance/planning-assurance-validator.ts",
         "packages/workflow-engine/src/modules/assurance/planning-assurance-values.ts",
+        "packages/workflow-engine/src/modules/assurance/validated-change-contract.ts",
         "packages/workflow-engine/src/modules/authority/collaboration-grant-codec.ts",
         "packages/workflow-engine/src/modules/authority/collaboration-grant-records.ts",
         "packages/workflow-engine/src/modules/authority/collaboration-grant-use.ts",
@@ -115,7 +116,6 @@
         "packages/workflow-engine/src/modules/authority/role-context-sharing-grant-lifecycle-port.ts",
         "packages/workflow-engine/src/modules/authority/role-context-sharing-grant-verifier-port.ts",
         "packages/workflow-engine/src/modules/authority/role-context-sharing-grant.ts",
-        "packages/workflow-engine/src/modules/planning-provider/validated-change-contract.ts",
         "packages/workflow-engine/src/modules/provider-orchestration/agent-role-plan.ts",
         "packages/workflow-engine/src/modules/provider-orchestration/role-admission-contracts.ts",
         "packages/workflow-engine/src/modules/provider-orchestration/role-assignment.ts",
@@ -133,16 +133,16 @@
         "packages/workflow-engine/src/runtime/repository-validation/commit-replay/services.ts",
         "packages/workflow-engine/src/runtime/storage-journal/role-context-sharing-store.ts"
       ],
-      "sourceDigest": "sha256:a173b483541184e0f90f89e3abbc29b1473bdb9d5c68cb7e6452d2f192cfb520",
-      "authorizationClosureDigest": "sha256:00d399c74a8b88c2cc240ad3527123408b0bad10fa9cb85008e3a59c99fa7bef"
+      "sourceDigest": "sha256:6b86cbff54cd5103e627f9f11ec1e470c07c6027c2b31700566e43f37ab88292",
+      "authorizationClosureDigest": "sha256:25fcae601659e3df28559c0fc091da698f4ed7df9dd93c22246c04b4ceec1747"
     },
-    "authorizationClosureDigest": "sha256:00d399c74a8b88c2cc240ad3527123408b0bad10fa9cb85008e3a59c99fa7bef",
+    "authorizationClosureDigest": "sha256:25fcae601659e3df28559c0fc091da698f4ed7df9dd93c22246c04b4ceec1747",
     "humanTrustRootsClosureDigest": "sha256:2284f4bce8912898ee9138b249350e1c04cca938494a880f7a7ff73a7b515aba",
-    "applyJournalClosureDigest": "sha256:d8d66ba637c57be1668c5dbd9d70d7040f30b45dd556bf5f148280c4347f5f0b",
-    "controlPlaneUpdateClosureDigest": "sha256:dd45813a69f3f98c9084945dc0b9f5700c2b08d9d9b765fd4911b7307a858a5a",
-    "recoveryClosureDigest": "sha256:fcdf2757691da771991fd6c8af2f3931f01adcaff18c6c76ee4122cadbe82f98",
+    "applyJournalClosureDigest": "sha256:fb336a0a09178918f4ceb42cf5530876be901179e91de729b010c36608697fb1",
+    "controlPlaneUpdateClosureDigest": "sha256:35b8751ab0a54c39dbcbb7f4e01d7b7304b8f343966f76667e25987b3f32f69c",
+    "recoveryClosureDigest": "sha256:c7918186c7515f61524e8ed93773c69f4da5a3ba9ad9789ff48fb1db949c267b",
     "repairAuthority": "human-only-authority-plan-or-sealed-recovery",
-    "compositionDigest": "sha256:d28df6ab69436ebef4663bd1725848fc7f1e9f500acc988ab1d47cc901ef6d41"
+    "compositionDigest": "sha256:9165d87ed2bc22c4d8b54548ca745d7b054b16aa2c6eb9bb2e4edacc7e2e358e"
   },
   "entries": [
     {
@@ -244,8 +244,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/intervention-sidecar-store.ts",
         "packages/workflow-engine/src/runtime/storage-journal/intervention-update-store.ts"
       ],
-      "contentDigest": "sha256:a07f39c5a545cbf5f455b03b026efb22b9e7421888bdd1065f9c019beecee554",
-      "closureDigest": "sha256:50c780d9964f8eebcad773fd868d306b0f3f599fab2396f008e5f8cda592717e"
+      "contentDigest": "sha256:bbfd1695dac9824f8767af36374f6f1e41b0beba2b73d1190ed303bff9593f9e",
+      "closureDigest": "sha256:bb0936316f3f899680fbb2bd835819e9c9b53502fe8f41a5ca13ee514ad897c2"
     },
     {
       "capability": "apply.journal",
@@ -450,8 +450,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/task-mandate-repository.ts",
         "packages/workflow-engine/src/runtime/storage-journal/task-mandate-store.ts"
       ],
-      "contentDigest": "sha256:8fbd79b13e0cb793261c805a5408093a37778d9b3c60703e6a16ca71f77e1cc3",
-      "closureDigest": "sha256:d8d66ba637c57be1668c5dbd9d70d7040f30b45dd556bf5f148280c4347f5f0b"
+      "contentDigest": "sha256:36273df4ae7de54156368d1c83fbdf8ff213c12b20062dcadce0a129947ce7e1",
+      "closureDigest": "sha256:fb336a0a09178918f4ceb42cf5530876be901179e91de729b010c36608697fb1"
     },
     {
       "capability": "audit.append",
@@ -723,6 +723,7 @@
         "packages/workflow-engine/src/modules/assurance/pre-merge-assurance.ts",
         "packages/workflow-engine/src/modules/assurance/required-checks.ts",
         "packages/workflow-engine/src/modules/assurance/task-execution-evidence.ts",
+        "packages/workflow-engine/src/modules/assurance/validated-change-contract.ts",
         "packages/workflow-engine/src/modules/authority/authority-application-receipt.ts",
         "packages/workflow-engine/src/modules/authority/authority-attestation.ts",
         "packages/workflow-engine/src/modules/authority/authority-audit-contract.ts",
@@ -781,7 +782,6 @@
         "packages/workflow-engine/src/modules/lifecycle/completion-rollback.ts",
         "packages/workflow-engine/src/modules/lifecycle/session-inspection.ts",
         "packages/workflow-engine/src/modules/lifecycle/workflow-report.ts",
-        "packages/workflow-engine/src/modules/planning-provider/validated-change-contract.ts",
         "packages/workflow-engine/src/modules/provider-orchestration/agent-role-plan.ts",
         "packages/workflow-engine/src/modules/provider-orchestration/planning-role-provider-policy.ts",
         "packages/workflow-engine/src/modules/provider-orchestration/provider-execution-budget-authority.ts",
@@ -878,8 +878,8 @@
         "workflow/path-roles.json",
         "workflow/protected-capabilities.json"
       ],
-      "contentDigest": "sha256:b81e72e65abb33ef547119f53291f461b56f6e7b06c05e0eb3eec51ffcbef037",
-      "closureDigest": "sha256:00d399c74a8b88c2cc240ad3527123408b0bad10fa9cb85008e3a59c99fa7bef"
+      "contentDigest": "sha256:63f3e176f9f48470b57c314a4c82f256f77a1d8591b0c38a1333fa92fe1abeb7",
+      "closureDigest": "sha256:25fcae601659e3df28559c0fc091da698f4ed7df9dd93c22246c04b4ceec1747"
     },
     {
       "capability": "control-plane.update",
@@ -1017,8 +1017,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/task-mandate-store.ts",
         "workflow/protected-capabilities.json"
       ],
-      "contentDigest": "sha256:f41a9d2f59ce64ac6263a09ce45c206c860f3883f1289ffb0cbf7ba80c3b53ad",
-      "closureDigest": "sha256:dd45813a69f3f98c9084945dc0b9f5700c2b08d9d9b765fd4911b7307a858a5a"
+      "contentDigest": "sha256:3bb959e4bded65b105c4857da8abdc4a35daec4025074ff67a3655a901173ba0",
+      "closureDigest": "sha256:35b8751ab0a54c39dbcbb7f4e01d7b7304b8f343966f76667e25987b3f32f69c"
     },
     {
       "capability": "effect.monitor",
@@ -1410,8 +1410,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/maintainer-grant-values.ts",
         "packages/workflow-engine/src/runtime/storage-journal/maintainer-store.ts"
       ],
-      "contentDigest": "sha256:8b76dca09d3db0d79bd5d6062c54b8b1afaf847e69468b2cccab539b4e1acc50",
-      "closureDigest": "sha256:fcdf2757691da771991fd6c8af2f3931f01adcaff18c6c76ee4122cadbe82f98"
+      "contentDigest": "sha256:c671a66190876c72672445ee3095a1fd40b8b90b7006edbbbaf5d650c19d4e1d",
+      "closureDigest": "sha256:c7918186c7515f61524e8ed93773c69f4da5a3ba9ad9789ff48fb1db949c267b"
     },
     {
       "capability": "ref-generation.ledger",

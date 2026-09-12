@@ -23,7 +23,7 @@ import {
   type GitState,
 } from '../runtime/repository-transaction/git.ts';
 import { loadValidatedChangeContract as loadValidatedChangeContractWithContractReader } from '../adapters/planning/openspec/documents/managed-change-contract.ts';
-import type { ValidatedChangeContract } from '../modules/planning-provider/validated-change-contract.ts';
+import type { ValidatedChangeContract } from '../modules/assurance/validated-change-contract.ts';
 import { createOpenSpecPlanningProviderPort } from './openspec-planning-provider-production.ts';
 import { planningProviderBindingReader } from '../runtime/repository-transaction/planning-provider-binding-store.ts';
 import { productionConsumedPlanReviewReplayPort } from './grant-verifier-composition.ts';
