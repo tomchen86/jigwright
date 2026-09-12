@@ -6,19 +6,18 @@
  * - A request must select exactly one provider, caller or direct-human
  *   actor form.
  */
-import {
-  type CollaborationAvailableActor,
-  type CollaborationGrantRequest,
-  type CollaborationLifecyclePhase,
-  type CollaborationRolePair,
+import type {
+  CollaborationAvailableActor,
+  CollaborationGrantRequest,
+  CollaborationLifecyclePhase,
+  CollaborationRolePair,
+  CollaborationDegradedForm,
 } from '../../modules/authority/collaboration-grant-codec.ts';
-import { type CollaborationDegradedForm } from '../../modules/provider-orchestration/role-independence.ts';
 import { issueProductionCollaborationGrant } from '../../composition-root/collaboration-grant-production.ts';
 import {
   listCollaborationGrantInspections,
   readCollaborationGrantInspection,
 } from '../../runtime/storage-journal/collaboration-grant-records.ts';
-import type { ActorAssurance } from '../../modules/provider-orchestration/actor-identity.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   discoverRepository,
@@ -26,6 +25,11 @@ import {
 } from '../../runtime/repository-transaction/git.ts';
 import { isProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import { assertOptionalGrantsPackageAvailable } from '../../composition-root/optional-grants-package-production.ts';
+
+type ActorAssurance = Extract<
+  CollaborationAvailableActor,
+  { kind: 'provider' }
+>['assurance'];
 
 type CollaborationGrantCommandResult = Record<string, unknown>;
 const GIT_OBJECT_ID_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;

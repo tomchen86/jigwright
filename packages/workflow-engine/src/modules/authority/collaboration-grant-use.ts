@@ -7,6 +7,7 @@ import type { CollaborationGrantCodec } from './collaboration-grant-codec.ts';
  * - Consumed-use validation does not turn referenced content into governing authority.
  */
 import {
+  COLLABORATION_GRANT_AUTHORIZED_EFFECT,
   type CollaborationGrantEnvelope,
   COLLABORATION_GRANT_RETAINED_OBLIGATIONS,
   COLLABORATION_GRANT_REPLAY_SCOPE,
@@ -14,7 +15,6 @@ import {
   type DirectHumanReviewAttestation,
   type CollaborationLifecyclePhase,
 } from './collaboration-grant-codec.ts';
-import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../provider-orchestration/role-independence.ts';
 import type {
   CollaborationGrantUseValidationOptions,
   CollaborationGrantUseProjection,

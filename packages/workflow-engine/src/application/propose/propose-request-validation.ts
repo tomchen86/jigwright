@@ -9,7 +9,7 @@
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { type ActorSignal } from '../../modules/provider-orchestration/actor-identity.ts';
+import { type ActorSignal } from '../../modules/authority/actor-identity.ts';
 import {
   type ProviderInvocationRequest,
   PROPOSE_POLICY_DIGEST,

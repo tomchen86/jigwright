@@ -16,7 +16,7 @@ import {
   createInvestigationApplicability,
   INVESTIGATION_APPLICABILITY_POLICY_DIGEST,
 } from '../../modules/investigation/domain/investigation-applicability.ts';
-import { resolveActorIdentity } from '../../modules/provider-orchestration/actor-identity.ts';
+import { resolveActorIdentity } from '../../modules/authority/actor-identity.ts';
 import { createProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {
   scheduleOrdinaryRole,

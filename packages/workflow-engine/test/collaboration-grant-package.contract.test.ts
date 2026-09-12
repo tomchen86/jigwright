@@ -15,7 +15,7 @@ import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
 import { parseGrantPolicyV2Document } from '../src/modules/authority/grant-policy.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
-import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../src/modules/provider-orchestration/role-independence.ts';
+import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../src/modules/authority/collaboration-grant-codec.ts';
 import {
   COLLABORATION_GRANT_POLICY_DIGEST,
   COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,

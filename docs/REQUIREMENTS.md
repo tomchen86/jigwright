@@ -120,9 +120,9 @@ No linked contract yet.
 
 > 我覺得我們可以把這個設計看成 就算只有一個provider 這三個角色也應該由三個independent session擔任
 
+- [Actor Identity Is Resolved Once and Reported Honestly](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Provider Execution Uses a Reviewed Built-In Registry](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Built-In Adapters Resolve Only Reviewed Executable Candidates](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
-- [Actor Identity Is Resolved Once and Reported Honestly](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Independence Is Enforced Relative to Roles](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Every Provider Call Uses a Bound Typed Invocation](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Read-Only Provider Results Require an Unchanged Governed Projection](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
@@ -176,9 +176,9 @@ No linked contract yet.
 - [Verification Produces Exact Typed Capabilities](../packages/grants/spec.md)
 - [Grant Reservations Retain One Terminal Use](../packages/grants/spec.md)
 - [OpenSpec Validation Preserves Provider Facts](../packages/openspec-adapter/spec.md)
+- [Actor Identity Is Resolved Once and Reported Honestly](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Provider Execution Uses a Reviewed Built-In Registry](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Built-In Adapters Resolve Only Reviewed Executable Candidates](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
-- [Actor Identity Is Resolved Once and Reported Honestly](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Independence Is Enforced Relative to Roles](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Every Provider Call Uses a Bound Typed Invocation](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Read-Only Provider Results Require an Unchanged Governed Projection](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
@@ -197,9 +197,9 @@ No linked contract yet.
 
 > grant 的機制你決定 但是要注意到我希望grant 是一個自己的module provider services 也是另一個module
 
+- [Actor Identity Is Resolved Once and Reported Honestly](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Provider Execution Uses a Reviewed Built-In Registry](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Built-In Adapters Resolve Only Reviewed Executable Candidates](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
-- [Actor Identity Is Resolved Once and Reported Honestly](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Independence Is Enforced Relative to Roles](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Every Provider Call Uses a Bound Typed Invocation](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Read-Only Provider Results Require an Unchanged Governed Projection](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
@@ -221,10 +221,10 @@ No linked contract yet.
 - [Grant Reservations Retain One Terminal Use](../packages/grants/spec.md)
 - [OpenSpec Validation Preserves Provider Facts](../packages/openspec-adapter/spec.md)
 - [Archive Projection Reads Through Supplied Ports](../packages/openspec-adapter/spec.md)
+- [Actor Identity Is Resolved Once and Reported Honestly](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Planning Facades Preserve Core Contracts](../packages/workflow-engine/src/modules/planning-provider/spec.md)
 - [Provider Execution Uses a Reviewed Built-In Registry](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Built-In Adapters Resolve Only Reviewed Executable Candidates](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
-- [Actor Identity Is Resolved Once and Reported Honestly](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Independence Is Enforced Relative to Roles](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Every Provider Call Uses a Bound Typed Invocation](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Read-Only Provider Results Require an Unchanged Governed Projection](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
@@ -384,6 +384,7 @@ No linked contract yet.
 - [PlanReview Findings and Residuals Are Structurally Explicit](../packages/workflow-engine/src/modules/assurance/spec.md)
 - [Reviewer Terms Enter Only the Fixed Term Projector](../packages/workflow-engine/src/modules/assurance/spec.md)
 - [Review Findings Preserve Current-Change and Follow-Up Boundaries](../packages/workflow-engine/src/modules/assurance/spec.md)
+- [Actor Identity Is Resolved Once and Reported Honestly](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Canonical human-present authority attestation](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Exact authority transition identity](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Protected retention and unique mapping](../packages/workflow-engine/src/modules/authority/spec.md)
@@ -446,7 +447,6 @@ No linked contract yet.
 - [Curated Refresh Shares Region Splicing](../packages/workflow-engine/src/modules/projection/spec.md)
 - [Provider Execution Uses a Reviewed Built-In Registry](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Built-In Adapters Resolve Only Reviewed Executable Candidates](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
-- [Actor Identity Is Resolved Once and Reported Honestly](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Independence Is Enforced Relative to Roles](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Every Provider Call Uses a Bound Typed Invocation](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Read-Only Provider Results Require an Unchanged Governed Projection](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)

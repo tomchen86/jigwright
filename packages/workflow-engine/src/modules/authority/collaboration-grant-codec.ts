@@ -1,12 +1,9 @@
 import type { MaintainerSignerProvider } from './maintainer-signer-port.ts';
-import {
-  COLLABORATION_GRANT_AUTHORIZED_EFFECT,
-  type CollaborationDegradedForm,
-} from '../provider-orchestration/role-independence.ts';
-export {
-  COLLABORATION_GRANT_AUTHORIZED_EFFECT,
-  type CollaborationDegradedForm,
-} from '../provider-orchestration/role-independence.ts';
+export const COLLABORATION_GRANT_AUTHORIZED_EFFECT =
+  'role-independence-degradation-only' as const;
+
+export type CollaborationDegradedForm =
+  'same-provider-fresh-session' | 'caller-supplied' | 'direct-human-review';
 /**
  * Encodes and verifies collaboration Grants and direct human review
  * attestations.
@@ -37,7 +34,7 @@ import {
   type SignedAttestationPayloadCodecV1,
 } from '@jigwright/core/signed-attestation-envelope-codec';
 import { type GrantUseClaimIdentityV1 } from '@jigwright/core/grant-lifecycle-contracts';
-import type { ActorAssurance } from '../provider-orchestration/actor-identity.ts';
+import type { ActorAssurance } from './actor-identity.ts';
 import {
   ExitCode,
   WorkflowError,

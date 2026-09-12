@@ -1,5 +1,4 @@
-import { COLLABORATION_GRANT_AUTHORIZED_EFFECT, } from "../provider-orchestration/role-independence.js";
-export { COLLABORATION_GRANT_AUTHORIZED_EFFECT, } from "../provider-orchestration/role-independence.js";
+export const COLLABORATION_GRANT_AUTHORIZED_EFFECT = 'role-independence-degradation-only';
 /**
  * Encodes and verifies collaboration Grants and direct human review
  * attestations.

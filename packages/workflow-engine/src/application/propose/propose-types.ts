@@ -43,7 +43,7 @@ import {
 } from '../../modules/investigation/domain/investigation-terms.ts';
 import { type MaterializedEvidenceView } from '../../modules/investigation/manifest/investigation-materializer.ts';
 import { buildInvestigationV3WhyAuthoring } from '../../modules/investigation/manifest/investigation-why-domain.ts';
-import { type ActorSignal } from '../../modules/provider-orchestration/actor-identity.ts';
+import { type ActorSignal } from '../../modules/authority/actor-identity.ts';
 import { type ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import { type ProviderExecutionGrantAuthorization } from '../../modules/provider-orchestration/provider-retry-decision.ts';
 import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';

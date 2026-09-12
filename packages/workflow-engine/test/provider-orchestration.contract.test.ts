@@ -10,7 +10,7 @@ import {
   listBuiltInProviderCapabilityDescriptors,
 } from '@jigwright/core/built-in-provider-definition';
 import fs from 'node:fs';
-import { resolveActorIdentity } from '../src/modules/provider-orchestration/actor-identity.ts';
+import { resolveActorIdentity } from '../src/modules/authority/actor-identity.ts';
 import {
   assessRoleIndependence,
   scheduleOrdinaryRole,

@@ -12,7 +12,7 @@ Keep installed provider profiles on the host so repositories select roles withou
 
 Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessment and planned action, then submit the template with `jigwright job retry-request <job-id> --input retry.json --json`. The timeout may stay unchanged. See [retry behavior and single-use budget exceptions](../../../../../docs/features/PROVIDER_RETRY.md).
 
-<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:00e5b5b89391099947c204c8cd7b632571d76e602f0c874cce3a5bbadec8767f -->
+<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:81d6c414f18aa3cb972cc899c3efc77b1068fb7c90dd6fccf02ab033f52d5c28 -->
 
 <!-- prettier-ignore-start -->
 
@@ -32,7 +32,6 @@ Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessmen
 
 | Type | Values | Source |
 | --- | --- | --- |
-| ActorAssurance | self-declared, runtime-hint, adapter-assigned | [actor-identity.ts](actor-identity.ts) |
 | AgentRoleScopeRule | planning-generation, task, candidate | [agent-role-plan.ts](agent-role-plan.ts) |
 | AgentRoleIndependenceRequirement | provider-independent, session-independent, none | [agent-role-plan.ts](agent-role-plan.ts) |
 | AgentCustomWrapperPolicy | forbidden, allowed-non-protected, allowed | [agent-role-plan.ts](agent-role-plan.ts) |
@@ -55,13 +54,11 @@ Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessmen
 | TaskDiffReviewRole | task-diff-reviewer | [role-assignment.ts](role-assignment.ts) |
 | TaskImplementerRole | task-implementer | [role-assignment.ts](role-assignment.ts) |
 | IndependenceDimension | provider-independent, principal-independent, session-independent, none | [role-independence.ts](role-independence.ts) |
-| CollaborationDegradedForm | same-provider-fresh-session, caller-supplied, direct-human-review | [role-independence.ts](role-independence.ts) |
 
 ## Contracts
 
 - [Provider Execution Uses a Reviewed Built-In Registry](spec.md#requirement-provider-execution-uses-a-reviewed-built-in-registry)
 - [Built-In Adapters Resolve Only Reviewed Executable Candidates](spec.md#requirement-built-in-adapters-resolve-only-reviewed-executable-candidates)
-- [Actor Identity Is Resolved Once and Reported Honestly](spec.md#requirement-actor-identity-is-resolved-once-and-reported-honestly)
 - [Independence Is Enforced Relative to Roles](spec.md#requirement-independence-is-enforced-relative-to-roles)
 - [Every Provider Call Uses a Bound Typed Invocation](spec.md#requirement-every-provider-call-uses-a-bound-typed-invocation)
 - [Read-Only Provider Results Require an Unchanged Governed Projection](spec.md#requirement-read-only-provider-results-require-an-unchanged-governed-projection)
@@ -74,7 +71,6 @@ Header history compares Git blame at the explanation confirmation with this sour
 
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
-| [actor-identity.ts](actor-identity.ts) | Resolves provider identity from explicit actor selection and recognized runtime hints. | 1 | History unavailable |
 | [agent-role-plan.ts](agent-role-plan.ts) | Defines canonical agent role plans and their pinned snapshots. | 1 | History unavailable |
 | [agent-runtime-assignment-binding.ts](agent-runtime-assignment-binding.ts) | Creates and validates the public binding of a durable role assignment to its provider profile and input manifests. | 1 | History unavailable |
 | [agent-runtime-durable-authority.ts](agent-runtime-durable-authority.ts) | Validates durable assignment and native session references for AgentRuntime execution. | 1 | History unavailable |

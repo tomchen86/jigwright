@@ -20,7 +20,7 @@ import {
   deriveClassGroupsWithContextFromFacts,
   type InvestigationDispositionInput,
 } from '../../modules/investigation/domain/investigation-groups.ts';
-import type { resolveActorIdentity } from '../../modules/provider-orchestration/actor-identity.ts';
+import type { resolveActorIdentity } from '../../modules/authority/actor-identity.ts';
 import type { PlanReviewGrantRequirement } from './plan-review-contracts.ts';
 import { isRecord, isStringArray, sha256 } from './propose-common.ts';
 import {

@@ -42,6 +42,7 @@ import {
   validateCollaborationGrantEnvelope,
 } from './grant-services.ts';
 import {
+  COLLABORATION_GRANT_AUTHORIZED_EFFECT,
   assertCollaborationGrantId,
   validateCollaborationGrantPayload,
   bindingFromPayload,
@@ -65,7 +66,6 @@ import {
   type DirectHumanReviewAttestation,
   type DirectHumanReviewAttestationRequest,
 } from '../../modules/authority/collaboration-grant-codec.ts';
-import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../../modules/provider-orchestration/role-independence.ts';
 
 export function issueCollaborationGrant(
   cwd: string,

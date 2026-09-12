@@ -7,7 +7,7 @@
  *   resolved actor.
  */
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
-import { isProviderId } from "./provider-registry.js";
+import { isBuiltInProviderFamily as isProviderId, } from '@jigwright/core/built-in-provider-catalog';
 /**
  * A recognized runtime hint reads one environment variable and maps it to a
  * provider when present and meaningful. Empty, `0`, or unrecognized values are

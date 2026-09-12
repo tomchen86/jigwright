@@ -40,7 +40,7 @@ import {
   createTaskStrategyImplementationSubject,
   createTaskStrategyCorrectionSubject,
 } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
-import { resolveActorIdentity } from '../../modules/provider-orchestration/actor-identity.ts';
+import { resolveActorIdentity } from '../../modules/authority/actor-identity.ts';
 import type { TaskDiffReviewRuntimeBindings } from './task-diff-review-lifecycle.ts';
 import type { BeginTaskDiffReviewOptions } from './task-diff-review-contracts.ts';
 import type { createTaskDiffReviewCommonModule } from './task-diff-review-common.ts';

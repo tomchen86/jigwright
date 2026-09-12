@@ -27,6 +27,7 @@ import {
   existingStateDirectories,
 } from './collaboration-grant-private-files.ts';
 import {
+  COLLABORATION_GRANT_AUTHORIZED_EFFECT,
   assertCollaborationGrantId,
   bindingFromPayload,
   COLLABORATION_GRANT_RETAINED_OBLIGATIONS,
@@ -38,7 +39,6 @@ import {
   verifyCollaborationGrantCapability,
   collaborationGrantEnvelopeDigest,
 } from '../grants/grant-services.ts';
-import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../../modules/provider-orchestration/role-independence.ts';
 import fs from 'node:fs';
 import {
   assertAuthoritativeCollaborationGrantVerifier,

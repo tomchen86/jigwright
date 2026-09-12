@@ -988,7 +988,7 @@
     {
       "path": "src/application/execute-task/task-strategy-execution.ts",
       "mode": "100644",
-      "digest": "sha256:21ae42205010e898d29249abd0ae76864b013edab886ec73c49a64f9fd94db9b"
+      "digest": "sha256:33605e59a046614e285e7bd18e9f3f2bcad894350580f2ae0c61d2d99d443db6"
     },
     {
       "path": "src/application/execute-task/task-strategy-implementation-context.ts",
@@ -1008,7 +1008,7 @@
     {
       "path": "src/application/execute-task/task-strategy-patch.ts",
       "mode": "100644",
-      "digest": "sha256:44eb962ca02e33a32e086c34bb7db0cb0f084ad39441b73a90e887ded41e0c3f"
+      "digest": "sha256:106f7dd04e197b884d6c3416e20a0a1a077f2f00f83c9587556659912d89362b"
     },
     {
       "path": "src/application/execute-task/task-strategy-provider-reservations.ts",
@@ -1133,7 +1133,7 @@
     {
       "path": "src/application/finalize/task-diff-review-subject.ts",
       "mode": "100644",
-      "digest": "sha256:4efc08bb355f7f67ab3df8c532b07c5ef9139d861332df34705a32106ba4e161"
+      "digest": "sha256:7cb9bfb261f246ead61c5236635a3d02cde02058f88627b31bf706a42630e487"
     },
     {
       "path": "src/application/finalize/task-strategy-gate.ts",
@@ -1228,7 +1228,7 @@
     {
       "path": "src/application/propose/propose-evidence.ts",
       "mode": "100644",
-      "digest": "sha256:1c8170b83e9c63842eaf178c9b2cb66c8e3a3f89642b43dec6dad3141b30265e"
+      "digest": "sha256:66b861cb2fe82ec803ac1dbcec80d707e0cc394752f36949ea00fd21f6f4d4c3"
     },
     {
       "path": "src/application/propose/propose-input.ts",
@@ -1258,7 +1258,7 @@
     {
       "path": "src/application/propose/propose-output.ts",
       "mode": "100644",
-      "digest": "sha256:b7e5559889189d438efb40068f20925465cd13b0d9f948129a7d2f117ddcbf53"
+      "digest": "sha256:9dd3b035d36d6798d0fb3fe267e05f2c7a3235aaf1e26a762d1d13dded9d2052"
     },
     {
       "path": "src/application/propose/propose-planning-materialization.ts",
@@ -1283,7 +1283,7 @@
     {
       "path": "src/application/propose/propose-request-validation.ts",
       "mode": "100644",
-      "digest": "sha256:c760399fda512d57b2a80971e604059670585dc3bde3527889841c1cc00ce4fe"
+      "digest": "sha256:0ad6d1a9697a839eef6b8206543993685c89f69e57b1d9eebbbcc0b28d044b21"
     },
     {
       "path": "src/application/propose/propose-resume.ts",
@@ -1308,7 +1308,7 @@
     {
       "path": "src/application/propose/propose-start.ts",
       "mode": "100644",
-      "digest": "sha256:1a73dec8343a8cd9606697c9699875ecd7aa677efdb05b42dec7e0da81324772"
+      "digest": "sha256:1e6e0a89b49b6adb00a22b9003c483b36e577dde62d0053e233aefce0cad25ea"
     },
     {
       "path": "src/application/propose/propose-status.ts",
@@ -1318,7 +1318,7 @@
     {
       "path": "src/application/propose/propose-types.ts",
       "mode": "100644",
-      "digest": "sha256:5fd2d5bb62ee19eb6f59b7e9bef1c8c0a65cef6eebda3086b9495ca356893e31"
+      "digest": "sha256:af6cf757389e1cdaabede4c7cbd87fc1d3b6fd310f130703f75bbfbda259ab56"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -1993,7 +1993,7 @@
     {
       "path": "src/entrypoints/cli/collaboration-grant-cli.ts",
       "mode": "100644",
-      "digest": "sha256:0efcdbaf03607d95ebcf9f0117706ede12e99bb36167a90ed18d9cf312866b65"
+      "digest": "sha256:8244941f6daab0b526b94546017aef3ae34153f9d1356d43b0a455176fe41555"
     },
     {
       "path": "src/entrypoints/cli/consumer-setup-cli.ts",
@@ -2421,6 +2421,11 @@
       "digest": "sha256:c47afde45fbf52c2d919962dda2d464859f5076e2af5cb5b7e5cb47a68bbab7d"
     },
     {
+      "path": "src/modules/authority/actor-identity.ts",
+      "mode": "100644",
+      "digest": "sha256:93c582c71de618c7e11a2f6a56ff3cc7cd28ed5b46531b8d80c6d503d93c7846"
+    },
+    {
       "path": "src/modules/authority/archive-pr-grant.ts",
       "mode": "100644",
       "digest": "sha256:f84d45905ddae46dd394876264716847d6d21d51c73744a2cf704e7457b6dac1"
@@ -2473,17 +2478,17 @@
     {
       "path": "src/modules/authority/collaboration-grant-codec.ts",
       "mode": "100644",
-      "digest": "sha256:605a95f9deae0ef3e81da7d98e3206cfa2a93c1c2f5fb58e27743012f1f7f571"
+      "digest": "sha256:5baf6a18f43ee8286ccec19b71f09f5c32ad9faa17f1df5c06a9757cfdb94801"
     },
     {
       "path": "src/modules/authority/collaboration-grant-records.ts",
       "mode": "100644",
-      "digest": "sha256:a262106638c661668b1a4aa6fb1ce6e19ee2bb0eb72d7ed13d562f2a25ffdf79"
+      "digest": "sha256:750c7e6af438834d7f0db84247c64c781a464927fd19a032412e93cc035bac45"
     },
     {
       "path": "src/modules/authority/collaboration-grant-use.ts",
       "mode": "100644",
-      "digest": "sha256:fc9d2a540fe075b0981847f6fd993f93eac4f6425b42886e427f81347739dc62"
+      "digest": "sha256:46cca7982f4ec393a1103084a61c7582cecda45bf5a7baf61ae5261efc453b7b"
     },
     {
       "path": "src/modules/authority/collaboration-grant-values.ts",
@@ -3391,11 +3396,6 @@
       "digest": "sha256:073ee70721b6224a9bedd0e8b3f9707b18379188618c7f93b38c52af51ae83f9"
     },
     {
-      "path": "src/modules/provider-orchestration/actor-identity.ts",
-      "mode": "100644",
-      "digest": "sha256:cc8b52e89cc72d9d66ff46bf3bdb0c4eda1f5cfa2548281ef840e75bf0c6c1fc"
-    },
-    {
       "path": "src/modules/provider-orchestration/agent-role-plan.ts",
       "mode": "100644",
       "digest": "sha256:37ba00f742d5a85a1db551f12bfc669c9701e83cf8071765d988dbadf029b934"
@@ -3583,12 +3583,12 @@
     {
       "path": "src/modules/provider-orchestration/role-assignment.ts",
       "mode": "100644",
-      "digest": "sha256:d3248b1194ff42e14efe6c6d8a74a151ceeb5e582c3568ff837eb52cea53aa8f"
+      "digest": "sha256:8a38b40c02c6f79e2d51db48c0a3b2d2e2194bbf2008bafa8b64244800f6700e"
     },
     {
       "path": "src/modules/provider-orchestration/role-independence.ts",
       "mode": "100644",
-      "digest": "sha256:6a41ba3f8c10402371661cfec467f70b95d7da338f649e521e171a9cd5b251dc"
+      "digest": "sha256:3ad3dfbcd36cf25ff14bf444afd8d6401a4f40e41a56324eb90e0cfff2f78b6b"
     },
     {
       "path": "src/modules/provider-orchestration/role-result-admission.ts",
@@ -3598,7 +3598,7 @@
     {
       "path": "src/modules/provider-orchestration/role-scheduler.ts",
       "mode": "100644",
-      "digest": "sha256:632becfa6e7a982883e44be0431a6975dcd80e99160ad0895cc0d263bae52bdb"
+      "digest": "sha256:aa3fd00fe3bdd67eda55f4a30b7f91698e09c81faaaa3c635feeb01dadef7a59"
     },
     {
       "path": "src/modules/provider-orchestration/role-topology-resolution.ts",
@@ -3813,7 +3813,7 @@
     {
       "path": "src/runtime/grants/collaboration-grant-issuance.ts",
       "mode": "100644",
-      "digest": "sha256:d707392ada2f621799ad2f1a79bbe28b77cfb22dfb6b2a2ca25971e9a585a85d"
+      "digest": "sha256:63567c855f68dc6829a0aad44246e1cffe53f503b27de5bc880d1587a6b400c6"
     },
     {
       "path": "src/runtime/grants/grant-services.ts",
@@ -4708,7 +4708,7 @@
     {
       "path": "src/runtime/storage-journal/collaboration-grant-consumption.ts",
       "mode": "100644",
-      "digest": "sha256:c9eb58b0ce41f660db65aafee192a53b1de76dfd891efa4a880adece85cb924d"
+      "digest": "sha256:450871c70a14d332fe43c36b952b9851998835e977cd53ed722249407ab3761b"
     },
     {
       "path": "src/runtime/storage-journal/collaboration-grant-private-files.ts",
@@ -5133,7 +5133,7 @@
     {
       "path": "src/runtime/storage-journal/propose-exemption-store.ts",
       "mode": "100644",
-      "digest": "sha256:575a38fca04d4eb12e4f047bbb2b8989af621d920a741ab1cce65d1f024c116c"
+      "digest": "sha256:4c06497908fdef6c98aaf944cf6992b7c2acfce49ce64b17e109285f712f64dc"
     },
     {
       "path": "src/runtime/storage-journal/provider-execution-admission-authority.ts",
@@ -5428,7 +5428,7 @@
     {
       "path": "src/runtime/storage-journal/task-strategy-provider-record-contract.ts",
       "mode": "100644",
-      "digest": "sha256:2c2fbb99771f72da53a8cdce1b42a94ce0d860de083e30892b91741c096af671"
+      "digest": "sha256:196c2dcf840070a907d8542ede4202172b5ac5914259e9e0309196d6d4c2c931"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-provider-store-values.ts",

@@ -1,16 +1,16 @@
 /** Role assignment values and deterministic independence/candidate selection policy. */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import type { ActorAssurance } from './actor-identity.ts';
+import type { ActorAssurance } from '../authority/actor-identity.ts';
 import {
   requireProviderCapability,
   type ProviderId,
   type CapabilityPurpose,
 } from './provider-registry.ts';
-import {
+import type {
   COLLABORATION_GRANT_AUTHORIZED_EFFECT,
-  type CollaborationDegradedForm,
-  type IndependenceDimension,
-} from './role-independence.ts';
+  CollaborationDegradedForm,
+} from '../authority/collaboration-grant-codec.ts';
+import type { IndependenceDimension } from './role-independence.ts';
 
 /**
  * Role independence is always expressed at an explicit dimension. Provider

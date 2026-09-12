@@ -5,6 +5,49 @@ capabilities: [authority-tree-attestation, break-glass-maintainer-mode]
 
 Bind maintainer authorization and retained transition evidence to the exact operation, trusted inputs, and durable recovery state.
 ## Requirements
+### Requirement: Actor Identity Is Resolved Once and Reported Honestly
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-a0050aa57c1a5f5fd83361c1a033ffc98529ecebf92ad977e73b506ead644ae0, SRC-0af41f94cfd4d4b5de9f5532a58d6e53268916fc1e16aa631569e16895c59dc4, SRC-a56ac1533168972a6383b21bd8ed414ffe5d4360ca14a080cd854f2af5b7af70, SRC-b22a65010565f7f7758291b4aa29991f3cf7a3dd0fbdd2b1fe343c1369d83bb9, SRC-7d9b1c9e61d4f43d2c5c4be96f9ba57cff79e9833ed339aef537334a79ef11ce, SRC-581c9289ce5361d1052b0c507a331b20c6d468b861c03716cb91c7fb8ac56e87, SRC-baa079861a38b5a7932c0e0fdbcca89ca6b73b16a02fedff2084b66f7a55bf98]
+
+At each investigation or task-session boundary, the workflow engine SHALL collect explicit actor selection and recognized runtime hints, resolve the selected actor, record all observed signals and assurance levels, and pin the result for that session. Runtime hints or explicit claims MUST NOT be represented as cryptographic provider identity.
+
+Contradictory recognized signals MUST pause or fail actor resolution rather than being used to manufacture role independence.
+
+#### Scenario: Runtime hint identifies the caller
+covers: #Requirement: Actor Identity Is Resolved Once and Reported Honestly
+test: packages/workflow-engine/test/provider-orchestration.contract.test.ts#actor resolution preserves all agreeing soft signals and their grade
+
+- **GIVEN** no explicit actor was supplied and one recognized runtime hint identifies a provider
+- **WHEN** the session opens
+- **THEN** that provider is recorded as actor
+- **AND** its assurance is recorded as `runtime-hint`
+
+#### Scenario: Explicit actor is supplied without stronger proof
+covers: #Requirement: Actor Identity Is Resolved Once and Reported Honestly
+test: packages/workflow-engine/test/provider-orchestration.contract.test.ts#actor resolution distinguishes explicit-only, missing, and conflicts
+
+- **GIVEN** a valid explicit actor selection with no contradictory signal
+- **WHEN** the session opens
+- **THEN** the provider is pinned as actor
+- **AND** its assurance is no stronger than self-declared
+
+#### Scenario: Actor signals conflict
+covers: #Requirement: Actor Identity Is Resolved Once and Reported Honestly
+test: packages/workflow-engine/test/provider-orchestration.contract.test.ts#actor resolution distinguishes explicit-only, missing, and conflicts
+
+- **GIVEN** explicit selection and recognized runtime evidence name different providers
+- **WHEN** actor resolution runs
+- **THEN** the transition enters an actor-resolution-required outcome or fails with the conflict
+- **AND** the disputed identity cannot satisfy provider-independence policy
+
+#### Scenario: Routine transition follows session creation
+covers: #Requirement: Actor Identity Is Resolved Once and Reported Honestly
+test: packages/workflow-engine/test/provider-worker-native-evidence.integration.test.ts#async provider worker completes the exact durable invocation through ProviderWorkerRuntimePort on sha256
+
+- **GIVEN** actor identity is already pinned for a session
+- **WHEN** a routine sub-transition runs
+- **THEN** the engine does not ask for actor identity again
+- **AND** the stored actor does not change implicitly
+
 ### Requirement: Protected Base Initialization Offers a Local Grant Choice
 sources: [SRC-7f4a02c3f1a74cd4fc7265248dbeffda01979e4193c30e8ff32372000f3f11f2]
 

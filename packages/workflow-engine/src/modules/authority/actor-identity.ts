@@ -7,7 +7,10 @@
  *   resolved actor.
  */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { isProviderId, type ProviderId } from './provider-registry.ts';
+import {
+  isBuiltInProviderFamily as isProviderId,
+  type BuiltInProviderFamily as ProviderId,
+} from '@jigwright/core/built-in-provider-catalog';
 
 /**
  * Actor resolution collects every recognized signal before selecting an actor.

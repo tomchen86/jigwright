@@ -8,8 +8,6 @@
 import type {
   CollaborationDegradedForm,
   COLLABORATION_GRANT_AUTHORIZED_EFFECT,
-} from '../provider-orchestration/role-independence.ts';
-import type {
   CollaborationLifecyclePhase,
   DirectHumanReviewAttestation,
   COLLABORATION_GRANT_RETAINED_OBLIGATIONS,

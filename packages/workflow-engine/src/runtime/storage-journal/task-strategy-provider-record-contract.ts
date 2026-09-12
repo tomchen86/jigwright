@@ -58,7 +58,7 @@ import {
   isGrantId,
   GIT_OBJECT_ID,
 } from './task-strategy-provider-store-values.ts';
-import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../../modules/provider-orchestration/role-independence.ts';
+import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../../modules/authority/collaboration-grant-codec.ts';
 import {
   assertSessionId,
   assertInvestigationId,

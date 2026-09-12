@@ -23,7 +23,7 @@ import {
   COLLABORATION_GRANT_REPLAY_SCOPE,
   COLLABORATION_GRANT_RESIDUALS,
 } from '../src/modules/authority/collaboration-grant-codec.ts';
-import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../src/modules/provider-orchestration/role-independence.ts';
+import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../src/modules/authority/collaboration-grant-codec.ts';
 import type {
   CollaborationGrantEnvelope,
   CollaborationGrantPayload,

@@ -8,11 +8,11 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:b3e7750586537096a5331601e22ed0819fc2d81abdcd7a8918aeb03a1850af9a -->
+<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:ed7d337937459895aa0c1aa0da499d00da85133d473dd7a6ea016f6fed4ca0d8 -->
 
 <!-- prettier-ignore-start -->
 
-116 files changed in this module since confirmation.
+117 files changed in this module since confirmation.
 
 ## Commands
 
@@ -62,7 +62,9 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 
 | Type | Values | Source |
 | --- | --- | --- |
+| ActorAssurance | self-declared, runtime-hint, adapter-assigned | [actor-identity.ts](actor-identity.ts) |
 | AuthorityAuditProfile | development, protected | [authority-audit-contract.ts](authority-audit-contract.ts) |
+| CollaborationDegradedForm | same-provider-fresh-session, caller-supplied, direct-human-review | [collaboration-grant-codec.ts](collaboration-grant-codec.ts) |
 | CollaborationLifecyclePhase | blind-survey, plan-review, task-diff-review, task-implementation | [collaboration-grant-codec.ts](collaboration-grant-codec.ts) |
 | CollaborationAuthorRole | investigation-author, plan-author, task-implementer, red-author | [collaboration-grant-codec.ts](collaboration-grant-codec.ts) |
 | CollaborationConflictingRole | plan-reviewer, task-diff-reviewer, task-implementer | [collaboration-grant-codec.ts](collaboration-grant-codec.ts) |
@@ -93,6 +95,7 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 
 ## Contracts
 
+- [Actor Identity Is Resolved Once and Reported Honestly](spec.md#requirement-actor-identity-is-resolved-once-and-reported-honestly)
 - [Protected Base Initialization Offers a Local Grant Choice](spec.md#requirement-protected-base-initialization-offers-a-local-grant-choice)
 - [Canonical human-present authority attestation](spec.md#requirement-canonical-human-present-authority-attestation)
 - [Exact authority transition identity](spec.md#requirement-exact-authority-transition-identity)
@@ -117,6 +120,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
+| [actor-identity.ts](actor-identity.ts) | Resolves provider identity from explicit actor selection and recognized runtime hints. | 1 | History unavailable |
 | [archive-pr-grant.ts](archive-pr-grant.ts) | Builds and authenticates the Grant that authorizes an exact archive pull request publication. | 2 | History unavailable |
 | [archive-publication-preparation.ts](archive-publication-preparation.ts) | Canonical archive preparation identity, validation and readonly data. | 0 | History unavailable |
 | [authority-application-receipt.ts](authority-application-receipt.ts) | Admits portable authority receipts and coordinates their exact publication through required repository and signature capabilities. | 2 | History unavailable |

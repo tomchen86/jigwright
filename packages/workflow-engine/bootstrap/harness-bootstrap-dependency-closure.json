@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:b792a151f4233e8e37a3b24cd05a8eb22fe49a1b51b81e22033dd937c6479c53"
+      "digest": "sha256:543355bb64ddecfc790bc1b59e8e4a78955aec6550639941303ec5133f2a9526"
     },
     {
       "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js",
@@ -336,6 +336,11 @@
       "digest": "sha256:c10ad7a67686aea118ee7da57022b0b44df0de859152799b6330b88576c67271"
     },
     {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/actor-identity.js",
+      "mode": "100644",
+      "digest": "sha256:c38a851a6f5fc5a94bb8684f9fcac2592b5d263e486baa5c98040bec7495fe30"
+    },
+    {
       "path": "bootstrap/recovery-runtime/src/modules/authority/authority-audit-contract.js",
       "mode": "100644",
       "digest": "sha256:fca5a1e7e249debd0b3700aca42273ec638f93e9f8d1a8b256fa2e5629cb54d2"
@@ -348,7 +353,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/collaboration-grant-codec.js",
       "mode": "100644",
-      "digest": "sha256:e1d4f9a57e09200922568a731bb50ee00d23298deef50d58a109369f4c94a0a9"
+      "digest": "sha256:4ca1b3b7dce0e1c5ae85e6c66eed5d152a9b2a5931ceb28340b2197ff51933f6"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/collaboration-grant-records.js",
@@ -676,19 +681,9 @@
       "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/actor-identity.js",
-      "mode": "100644",
-      "digest": "sha256:3acac3d2f6b6aa666cd68330c69656bafad3387879869c6557cc10bc3a3aedaf"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/provider-registry.js",
       "mode": "100644",
       "digest": "sha256:4261dfba710e5d0ba370284cfe3d235285924da9506919541fc05c877c352a99"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/role-independence.js",
-      "mode": "100644",
-      "digest": "sha256:661cb9731d8652f051c955f200bc9afbb420e0a37219c7eea803070d3e80c97c"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/repository-consumer/repository-consumer-policy.js",

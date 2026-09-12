@@ -8,7 +8,7 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 
-import type { ActorSignal } from '../../modules/provider-orchestration/actor-identity.ts';
+import type { ActorSignal } from '../../modules/authority/actor-identity.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   readContentRecord,

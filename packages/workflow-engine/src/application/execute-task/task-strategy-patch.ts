@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { resolveActorIdentity } from '../../modules/provider-orchestration/actor-identity.ts';
+import { resolveActorIdentity } from '../../modules/authority/actor-identity.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import type {
   CrossAgentTddExecution,

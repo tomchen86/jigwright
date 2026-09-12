@@ -7,7 +7,7 @@ import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/chang
  */
 import crypto from 'node:crypto';
 
-import { resolveActorIdentity } from '../../modules/provider-orchestration/actor-identity.ts';
+import { resolveActorIdentity } from '../../modules/authority/actor-identity.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   pinCheckRunner,

@@ -22,7 +22,7 @@ import {
   type ProviderInvocationRequest,
   type ProviderProcessResult,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
-import type { ActorResolution } from '../../modules/provider-orchestration/actor-identity.ts';
+import type { ActorResolution } from '../../modules/authority/actor-identity.ts';
 import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
 
 import {

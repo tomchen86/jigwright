@@ -82,12 +82,12 @@ import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import type { ActorAssurance } from './actor-identity.ts';
+import type { ActorAssurance } from '../authority/actor-identity.ts';
 import {
   COLLABORATION_GRANT_AUTHORIZED_EFFECT,
   type CollaborationDegradedForm,
-} from './role-independence.ts';
-import { type DirectHumanReviewAttestation } from '../authority/collaboration-grant-codec.ts';
+  type DirectHumanReviewAttestation,
+} from '../authority/collaboration-grant-codec.ts';
 import {
   type CollaborationGrantUseProjection,
   type CollaborationGrantUseValidationOptions,
