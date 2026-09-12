@@ -8,11 +8,11 @@ Build the investigation around a manifest of the exact tracked source snapshot s
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.investigation-readme v=1 digest=sha256:5f39566c19f8af642a4496e1a7b9b04e0a69497d23ff2ecda03e0cf41b77a561 -->
+<!-- jigwright:region id=documents.investigation-readme v=1 digest=sha256:81411116713286ef4d5da42dbfe5d43cd3040b9638c073c457879ecc7f383cc0 -->
 
 <!-- prettier-ignore-start -->
 
-33 files changed in this module since confirmation.
+41 files changed in this module since confirmation.
 
 ## Commands
 
@@ -26,6 +26,8 @@ Build the investigation around a manifest of the exact tracked source snapshot s
 | Type | Values | Source |
 | --- | --- | --- |
 | SampleAuditOutcome | passed, member-misclassified, rationale-wrong, type-wrong | [domain/class-sample-audit.ts](domain/class-sample-audit.ts) |
+| InvestigationSessionState | actor-resolution-required, human-action-required, awaiting-main-terms, waiting-for-provider, awaiting-group-dispositions, awaiting-ledger-answers, investigation-sealed | [domain/investigation-session-types.ts](domain/investigation-session-types.ts) |
+| InvestigationCheckpointKind | main-terms, group-dispositions, why-answers | [domain/investigation-session-types.ts](domain/investigation-session-types.ts) |
 | InvestigationTermSource | engine, main, survey, reviewer | [domain/investigation-terms.ts](domain/investigation-terms.ts) |
 | InvestigationManifestPublicationPhase | candidate-written, journal-prepared, manifest-installed, current-ref-published, journal-committed | [manifest/investigation-publication-contracts.ts](manifest/investigation-publication-contracts.ts) |
 
@@ -49,7 +51,12 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [domain/class-sample-audit.ts](domain/class-sample-audit.ts) | Draws deterministic class samples and resolves first- and second-sample review failures. | 3 | No newer code observed |
 | [domain/floor-overflow-pruning.ts](domain/floor-overflow-pruning.ts) | Bounds the investigation floor using a deterministic retention order. | 1 | History unavailable |
 | [domain/hit-predicate.ts](domain/hit-predicate.ts) | Parses a bounded predicate language and evaluates it against stored scan- hit windows. | 1 | History unavailable |
+| [domain/human-resolution-contract.ts](domain/human-resolution-contract.ts) | Defines and validates investigation resolution decisions, nodes, and state identities. | 2 | History unavailable |
+| [domain/human-resolution-grant-publication-contract.ts](domain/human-resolution-grant-publication-contract.ts) | Defines and validates exact grant-publication observations and quarantine receipts. | 2 | History unavailable |
+| [domain/human-resolution-journal-contract.ts](domain/human-resolution-journal-contract.ts) | Validates resolution journal plans and their immutable identities and phase order. | 2 | History unavailable |
+| [domain/human-resolution-values.ts](domain/human-resolution-values.ts) | Shared human-resolution scalar validation and stable refusal errors. | 0 | History unavailable |
 | [domain/investigation-applicability.ts](domain/investigation-applicability.ts) | Defines investigation applicability and bounded exemption eligibility. | 1 | History unavailable |
+| [domain/investigation-checkpoint-contract.ts](domain/investigation-checkpoint-contract.ts) | Validates and digests investigation checkpoints and scan saturation acceptance. | 2 | History unavailable |
 | [domain/investigation-domain.ts](domain/investigation-domain.ts) | Applies semantic grouping and disposition decisions to mechanical investigation facts. | 1 | History unavailable |
 | [domain/investigation-floor.ts](domain/investigation-floor.ts) | Derives investigation floors and path facts from pinned repository changes. | 1 | History unavailable |
 | [domain/investigation-full-blob.ts](domain/investigation-full-blob.ts) | Materializes full pinned source bytes and disposition relationships for current WHY authoring requirements. | 1 | History unavailable |
@@ -58,6 +65,9 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [domain/investigation-scan-facts.ts](domain/investigation-scan-facts.ts) | Scanner input/output values and the maximum stored hit-context size. | 0 | History unavailable |
 | [domain/investigation-scanner.ts](domain/investigation-scanner.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [domain/investigation-schema.ts](domain/investigation-schema.ts) | Canonical investigation protocol versions, assurance label, and diagnostic catalogs. | 0 | History unavailable |
+| [domain/investigation-session-contract.ts](domain/investigation-session-contract.ts) | Validates investigation session milestones and monotonic state transitions. | 2 | History unavailable |
+| [domain/investigation-session-types.ts](domain/investigation-session-types.ts) | Defines persisted investigation sessions, checkpoint payloads, and current-ref records. | 2 | History unavailable |
+| [domain/investigation-store-values.ts](domain/investigation-store-values.ts) | Supplies shared value checks, digests, and provider-state errors for investigation storage. | 2 | History unavailable |
 | [domain/investigation-terms.ts](domain/investigation-terms.ts) | Normalizes investigation terms and previews their bounded provenance union. | 1 | History unavailable |
 | [domain/predicate-discrimination.ts](domain/predicate-discrimination.ts) | Measures whether a class predicate matches its members and distinguishes control evidence. | 1 | History unavailable |
 | [manifest/blind-survey-manifest.ts](manifest/blind-survey-manifest.ts) | Canonical blind survey manifest DTOs; field and wire semantics are unchanged. | 0 | History unavailable |

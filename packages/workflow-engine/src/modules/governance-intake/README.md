@@ -8,7 +8,7 @@ Keep original requirement wording separate from the working inbox so corrections
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.governance-intake-readme v=1 digest=sha256:2fabdedaf7038b87ee43abb523b0335a22e1846cd7c3500693f0f2656d80c711 -->
+<!-- jigwright:region id=documents.governance-intake-readme v=1 digest=sha256:0fbb1092c939e31476e4a11c7afa83e2fd941e1675da444ff6147bef3d0d98f0 -->
 
 <!-- prettier-ignore-start -->
 
@@ -71,24 +71,18 @@ Header history compares Git blame at the explanation confirmation with this sour
 | --- | --- | ---: | --- |
 | [governance-finding-ref.ts](governance-finding-ref.ts) | Defines canonical Finding paths and the dedicated-ref persistence contract. | 1 | Header changed since confirmation |
 | [governance-findings.ts](governance-findings.ts) | Pure Finding identity, canonical byte admission and append-only read projection. | 0 | Header changed since confirmation |
-| [governance-intake-storage.ts](governance-intake-storage.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [governance-intake.ts](governance-intake.ts) | Canonical intake DTOs and Source byte admission; no repository access. | 0 | History unavailable |
 | [intake-policy.ts](intake-policy.ts) | Defines intake kinds and the destination of deferred observations. | 1 | Header changed since confirmation |
 | [intake-summary.ts](intake-summary.ts) | Aggregates observed inbox, backlog and pending Finding facts without repository access. | 0 | History unavailable |
 | [source-aliases.ts](source-aliases.ts) | Parse named Source aliases; wording remains in immutable Source records. | 0 | Header changed since confirmation |
 | [work-registry-contracts.ts](work-registry-contracts.ts) | Canonical Work Item, origin, promotion and transition-policy values shared by rules and storage. | 0 | History unavailable |
-| [work-registry-grant.ts](work-registry-grant.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [work-registry-mutation.ts](work-registry-mutation.ts) | A paired Work Item/origin change; journal layout and recovery storage remain private to runtime. | 0 | History unavailable |
 | [work-registry-policy.ts](work-registry-policy.ts) | Work Item aliases, origin unions and repository transition-policy values; no repository reads. | 0 | History unavailable |
 | [work-registry-projections.ts](work-registry-projections.ts) | Pure readable backlog/history rendering and projection drift policy. | 0 | Header changed since confirmation |
 | [work-registry-promotion-policy.ts](work-registry-promotion-policy.ts) | Canonical survey values and permitted exact preparation transitions. | 0 | History unavailable |
-| [work-registry-promotion-preparation.ts](work-registry-promotion-preparation.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [work-registry-promotion-transaction.ts](work-registry-promotion-transaction.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [work-registry-queries.ts](work-registry-queries.ts) | Pure Work Registry selection, search, inventory and relationship rules. | 0 | Header changed since confirmation |
 | [work-registry-record.ts](work-registry-record.ts) | Parses canonical Work Items, lifecycle records, and change origins. | 1 | Header changed since confirmation |
 | [work-registry-source-update.ts](work-registry-source-update.ts) | Project a Source attachment or correction onto a Work Item and its origin. | 3 | Possibly stale |
-| [work-registry-storage.ts](work-registry-storage.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [work-registry.ts](work-registry.ts) | No leading responsibility comment. | 0 | History unavailable |
 
 <!-- prettier-ignore-end -->
 

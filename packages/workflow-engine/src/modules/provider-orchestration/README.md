@@ -12,11 +12,11 @@ Keep installed provider profiles on the host so repositories select roles withou
 
 Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessment and planned action, then submit the template with `jigwright job retry-request <job-id> --input retry.json --json`. The timeout may stay unchanged. See [retry behavior and single-use budget exceptions](../../../../../docs/features/PROVIDER_RETRY.md).
 
-<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:7c8cf8dea13f5a2ad77c0047c85bd61511305b9107e17a7f9f3a58bfd4e29652 -->
+<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:852fc652587d427d1f5110f46fd1030fd1731bc74b4751c8ffcbea5ac1ed4dde -->
 
 <!-- prettier-ignore-start -->
 
-49 files changed in this module since confirmation.
+48 files changed in this module since confirmation.
 
 ## Commands
 
@@ -74,7 +74,6 @@ Header history compares Git blame at the explanation confirmation with this sour
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
 | [actor-identity.ts](actor-identity.ts) | Resolves provider identity from explicit actor selection and recognized runtime hints. | 1 | History unavailable |
-| [agent-role-plan-path.ts](agent-role-plan-path.ts) | Owns the repository identity of a change-bound agent role override. | 1 | History unavailable |
 | [agent-role-plan.ts](agent-role-plan.ts) | Defines canonical agent role plans and their pinned snapshots. | 1 | History unavailable |
 | [agent-runtime-assignment-binding.ts](agent-runtime-assignment-binding.ts) | Creates and validates the public binding of a durable role assignment to its provider profile and input manifests. | 1 | History unavailable |
 | [agent-runtime-durable-authority.ts](agent-runtime-durable-authority.ts) | Validates durable assignment and native session references for AgentRuntime execution. | 1 | History unavailable |
@@ -116,7 +115,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [role-result-admission.ts](role-result-admission.ts) | Admits role results and replays their ordinary or granted participant authority. | 1 | Header changed since confirmation |
 | [role-scheduler.ts](role-scheduler.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [role-topology-resolution.ts](role-topology-resolution.ts) | Resolves role independence from central policy, overrides, and actual placements. | 1 | History unavailable |
-| [task-strategy-correction-record.ts](task-strategy-correction-record.ts) | Canonical task strategy correction record data; parsing and effects stay with their existing implementation. | 0 | History unavailable |
+| [task-strategy-correction-record.ts](task-strategy-correction-record.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [task-strategy-implementation-manifest.ts](task-strategy-implementation-manifest.ts) | Canonical task strategy implementation manifest data; parsing and effects stay with their existing implementation. | 0 | History unavailable |
 | [task-strategy-implementation-output.ts](task-strategy-implementation-output.ts) | Validates implementation patch output and optionally binds it to a sealed session and source tree. | 1 | History unavailable |
 | [task-strategy-provider-contract.ts](task-strategy-provider-contract.ts) | Defines implementation and correction subjects, provider manifests, and output contracts. | 1 | History unavailable |

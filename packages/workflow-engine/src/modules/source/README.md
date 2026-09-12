@@ -8,7 +8,7 @@ Use the directory tree to locate governing contracts and source imports to disco
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.source-readme v=1 digest=sha256:456d08b3bb43305d7a01cdb991ca0955b6d60067715aad58b945cd7a2fa8382d -->
+<!-- jigwright:region id=documents.source-readme v=1 digest=sha256:8ecbd6e222f10d21bc0ef1f225a71c6bb095c777f41edbf82a8fb21a9c23fda0 -->
 
 <!-- prettier-ignore-start -->
 
@@ -45,7 +45,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
 | [change-intent.ts](change-intent.ts) | Canonical change intent DTOs; field and wire semantics are unchanged. | 0 | History unavailable |
-| [check-command.ts](check-command.ts) | Exposes shared check-command parsing and registry types to source consumers. | 1 | History unavailable |
+| [check-command.ts](check-command.ts) | Owns resolved and pinned check-runner facts and exposes canonical check command parsing and registry types. | 1 | History unavailable |
 | [declared-path-symbols.ts](declared-path-symbols.ts) | Lexically extracts published names from declared source paths for investigation search. | 1 | Header changed since confirmation |
 | [document-disposition.ts](document-disposition.ts) | Finds the contracts and design explanations that a module change must disposition. | 2 | Possibly stale |
 | [file-header.ts](file-header.ts) | Reads a file's responsibility and invariant bullets for document projections. | 2 | Header changed since confirmation |
@@ -55,7 +55,6 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [path-role-registry.ts](path-role-registry.ts) | Classifies repository paths by planning evidence responsibility and compression eligibility. | 1 | History unavailable |
 | [planning-paths.ts](planning-paths.ts) | Checks planning artifact boundaries and maps cited Sources to immutable ledger paths. | 1 | History unavailable |
 | [planning-role-policy-paths.ts](planning-role-policy-paths.ts) | Separates the change-bound role policy path from planning provider changes. | 1 | History unavailable |
-| [planning-role-provider-policy-reader.ts](planning-role-provider-policy-reader.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [search-term.ts](search-term.ts) | Shared source-matching value used by investigation and implementation review. | 0 | History unavailable |
 | [spec-ownership.ts](spec-ownership.ts) | Resolves colocated contracts and their proof references from a caller's snapshot. | 2 | Possibly stale |
 | [system-description-snapshot.ts](system-description-snapshot.ts) | Projects an already-read tracked tree into system document snapshot accessors. | 1 | Header changed since confirmation |

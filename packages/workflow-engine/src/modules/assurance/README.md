@@ -8,11 +8,11 @@ Keep the presence and currentness of review evidence separate from the reviewer'
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:abbf283f15755472207b230cf2a21113ffc94472c3a5163fe644f4240435c085 -->
+<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:37df9fa92bdc41a95e7c79bb4d4ce3cfdcf362ce905c27235c9acdafeb5bbd03 -->
 
 <!-- prettier-ignore-start -->
 
-47 files changed in this module since confirmation.
+62 files changed in this module since confirmation.
 
 ## Commands
 
@@ -63,8 +63,20 @@ Header history compares Git blame at the explanation confirmation with this sour
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
 | [assurance-assessment-chain.ts](assurance-assessment-chain.ts) | Builds assurance assessments and derives effective coverage and change- class floors. | 1 | History unavailable |
-| [check-evidence.ts](check-evidence.ts) | Successful check evidence shared by execution and its consumers. | 0 | History unavailable |
+| [check-evidence.ts](check-evidence.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [check-execution-port.ts](check-execution-port.ts) | Capabilities for a bound repository check run; pinned executions retain their own runner. | 0 | History unavailable |
+| [ci-attestation.ts](ci-attestation.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [ci-verification.ts](ci-verification.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [commit-replay/ci-archive-tree.ts](commit-replay/ci-archive-tree.ts) | Canonical commit replay contracts and pure predicates. | 0 | History unavailable |
+| [commit-replay/ci-archive.ts](commit-replay/ci-archive.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [commit-replay/ci-authority.ts](commit-replay/ci-authority.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [commit-replay/ci-git.ts](commit-replay/ci-git.ts) | Canonical commit replay contracts and pure predicates. | 0 | History unavailable |
+| [commit-replay/ci-historical-contract.ts](commit-replay/ci-historical-contract.ts) | Canonical commit replay contracts and pure predicates. | 0 | History unavailable |
+| [commit-replay/ci-planning.ts](commit-replay/ci-planning.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [commit-replay/ci-routing.ts](commit-replay/ci-routing.ts) | Canonical commit replay contracts and pure predicates. | 0 | History unavailable |
+| [commit-replay/ci-sequence.ts](commit-replay/ci-sequence.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [commit-replay/ci-task-state.ts](commit-replay/ci-task-state.ts) | Canonical commit replay contracts and pure predicates. | 0 | History unavailable |
+| [documentation-closure.ts](documentation-closure.ts) | Canonical documentation closure records, commitment encoding and pure validation rules. | 0 | History unavailable |
 | [finalize-check-policy.ts](finalize-check-policy.ts) | Selects task and terminal check requirements for a projected completion state. | 1 | History unavailable |
 | [implementation-term-dispositions.ts](implementation-term-dispositions.ts) | Canonical bounded implementation-term review evidence. | 0 | History unavailable |
 | [implementation-term-floor.ts](implementation-term-floor.ts) | Pure hunk extraction and bounded implementation-term delta decisions. | 0 | History unavailable |
@@ -77,6 +89,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [plan-review-submission.ts](plan-review-submission.ts) | Defines PlanReview submission grammar, normalization, and evidence parsing. | 1 | Header changed since confirmation |
 | [plan-review-target-snapshot-record.ts](plan-review-target-snapshot-record.ts) | Canonical plan review target snapshot record data; parsing and effects stay with their existing implementation. | 0 | History unavailable |
 | [plan-review-target-snapshot.ts](plan-review-target-snapshot.ts) | Creates and validates immutable planning target snapshots and migration contracts. | 1 | Header changed since confirmation |
+| [plan-review-terms.ts](plan-review-terms.ts) | Projects current PlanReview terms into bounded reviewer contribution deltas. | 1 | History unavailable |
 | [plan-review-validation.ts](plan-review-validation.ts) | Validates PlanReview evidence, independence, dispositions, and resulting intake candidates. | 1 | History unavailable |
 | [plan-review-values.ts](plan-review-values.ts) | Provides exact value guards and freezing helpers for PlanReview evidence. | 1 | Header changed since confirmation |
 | [plan-review.ts](plan-review.ts) | No leading responsibility comment. | 0 | History unavailable |
@@ -90,12 +103,11 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [planning-generation-record.ts](planning-generation-record.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [planning-generation.ts](planning-generation.ts) | Creates canonical planning generations from targets, investigation evidence, and policies. | 1 | History unavailable |
 | [pre-merge-assurance.ts](pre-merge-assurance.ts) | Builds and validates pre-merge coverage, planning proofs, and integration review. | 1 | History unavailable |
+| [pre-merge-verification.ts](pre-merge-verification.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [provider-review-manifests.ts](provider-review-manifests.ts) | Canonical provider review manifests DTOs; field and wire semantics are unchanged. | 0 | History unavailable |
 | [required-checks.ts](required-checks.ts) | Resolves required check definitions through the existing versioned registry contract. | 0 | History unavailable |
 | [review-challenge.ts](review-challenge.ts) | Enforces review challenge closure authority and identifies targets requiring another review. | 1 | History unavailable |
 | [review-coverage.ts](review-coverage.ts) | Builds review populations and selects the required targets for each assurance tier. | 1 | History unavailable |
-| [t3-boundary-inventory.ts](t3-boundary-inventory.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [t3-boundary-scanner.ts](t3-boundary-scanner.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [task-diff-final-assurance-artifact.ts](task-diff-final-assurance-artifact.ts) | Builds and validates final task diff assurance from current reviews and responses. | 1 | Header changed since confirmation |
 | [task-diff-review-artifact-record.ts](task-diff-review-artifact-record.ts) | Canonical task diff review artifact record data; parsing and effects stay with their existing implementation. | 0 | History unavailable |
 | [task-diff-review-artifact.ts](task-diff-review-artifact.ts) | Creates and validates task diff review, disposition, and challenge- response records. | 1 | History unavailable |
@@ -106,8 +118,9 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [task-diff-review-schema.ts](task-diff-review-schema.ts) | Canonical shared task-diff review schema values. | 0 | History unavailable |
 | [task-diff-review-submission.ts](task-diff-review-submission.ts) | Defines task diff provider submissions, canonical findings, and evidence validation. | 1 | Header changed since confirmation |
 | [task-diff-review.ts](task-diff-review.ts) | Derives task diff review subjects, candidate scopes, and documentation requirements. | 1 | History unavailable |
-| [task-execution-evidence.ts](task-execution-evidence.ts) | Reconstructs the current task execution generation from immutable commit and amendment evidence. | 1 | History unavailable |
-| [task-strategy-gate.ts](task-strategy-gate.ts) | Checks task strategy authority and sealed evidence before GREEN execution. | 1 | History unavailable |
+| [task-execution-evidence.ts](task-execution-evidence.ts) | Pure admission rules and facts for task execution generation evidence. | 0 | History unavailable |
+| [task-strategy-evidence.ts](task-strategy-evidence.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [task-strategy-gate.ts](task-strategy-gate.ts) | No leading responsibility comment. | 0 | History unavailable |
 
 <!-- prettier-ignore-end -->
 

@@ -8,7 +8,7 @@ Keep reusable knowledge as a source-binding and freshness index, leaving the exp
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.why-knowledge-readme v=1 digest=sha256:a4c91429a4f5f4ded2587ff789098e166b7445a92b41545af4bceb7d66d72445 -->
+<!-- jigwright:region id=documents.why-knowledge-readme v=1 digest=sha256:647e5745e4ded8cdf4b30c94a51fe89686849f9e28901e340c08caa1dd17de9d -->
 
 <!-- prettier-ignore-start -->
 
@@ -42,10 +42,10 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [implementation-reconciliation-policy.ts](implementation-reconciliation-policy.ts) | Defines the policy identity for reconciling implementation changes with planned subjects. | 1 | History unavailable |
 | [implementation-reconciliation.ts](implementation-reconciliation.ts) | Pure reconciliation identities, canonical submissions and exact mutation coverage. | 0 | History unavailable |
 | [semantic-freshness.ts](semantic-freshness.ts) | Observes ledger subjects and dependencies and decides whether recorded understanding remains usable. | 1 | History unavailable |
+| [semantic-ledger-reader.ts](semantic-ledger-reader.ts) | Required validated ledger observations for domain reuse decisions. | 0 | History unavailable |
 | [semantic-ledger.ts](semantic-ledger.ts) | Indexes semantic subjects by exact source, import bindings, and freshness policy. | 2 | No newer code observed |
 | [semantic-manifest-reuse.ts](semantic-manifest-reuse.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [semantic-reconciliation.ts](semantic-reconciliation.ts) | Compares planned intent with recorded mutations, changed ranges and preserved invariants. | 1 | History unavailable |
-| [semantic-reuse-coverage.ts](semantic-reuse-coverage.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [semantic-reuse.ts](semantic-reuse.ts) | Plans which subjects can reuse prior understanding and propagates dependency revalidation to their consumers. | 1 | History unavailable |
 
 <!-- prettier-ignore-end -->
