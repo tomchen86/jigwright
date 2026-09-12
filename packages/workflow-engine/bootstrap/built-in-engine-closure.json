@@ -1871,6 +1871,11 @@
       "digest": "sha256:5d35ae0b5a374a0568e27307419c7de43e9ef7e95b067cd159aa93aa2c5243ff"
     },
     {
+      "path": "src/entrypoints/ci/managed-documents.ts",
+      "mode": "100644",
+      "digest": "sha256:ec86ad1bd00d28806b3b32e34c4024bebaf6cbcedbaccde2986e66fd2c281c12"
+    },
+    {
       "path": "src/entrypoints/cli/agent-guidance-cli.ts",
       "mode": "100644",
       "digest": "sha256:ef145096740dfd8e80c76edb89fa90446543295117a3cb3815ef32ff3fe5e4ca"

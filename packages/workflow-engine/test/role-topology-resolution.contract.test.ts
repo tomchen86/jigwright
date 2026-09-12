@@ -933,7 +933,7 @@ test('production CLI injects the topology snapshot port into start, resume, and 
   );
   assert.match(
     source,
-    /import \{ productionRoleTopologyResolutionPort \} from '\.\/composition-root\/role-topology-resolution-production\.ts';/u,
+    /import \{ productionRoleTopologyResolutionPort \} from '\.\.\/\.\.\/composition-root\/role-topology-resolution-production\.ts';/u,
   );
   assert.equal(
     [

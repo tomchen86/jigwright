@@ -274,9 +274,10 @@ test('built-in config dry-run consumes the production boundary and preserves cod
     ),
     'utf8',
   );
+  assert.match(contractsSource, /@jigwright\/core\/agent-runtime-port/u);
   assert.match(
     contractsSource,
-    /@jigwright\/agent-runtime\/provider-executable-identity/u,
+    /AgentRuntimeExecutableIdentityV1\s+as\s+ProviderExecutableIdentity/u,
   );
   assert.doesNotMatch(
     contractsSource,

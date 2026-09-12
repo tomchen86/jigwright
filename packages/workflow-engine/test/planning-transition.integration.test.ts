@@ -948,7 +948,10 @@ test('CLI exposes plan-commit with no free-form message authority', () => {
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'plan-commit',
         'cli-change',
         '--json',

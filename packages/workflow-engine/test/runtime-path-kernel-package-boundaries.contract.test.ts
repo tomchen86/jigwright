@@ -54,11 +54,20 @@ test('repository filesystem paths depend on pure core contracts', () => {
     'packages/workflow-engine/src/runtime/session-workspace/paths.ts',
   );
   assert.match(facade, /@jigwright\/repository-runtime\/paths/);
-  assert.match(facade, /@jigwright\/core\/workflow-identifiers/);
+  const identifiers = readSource(
+    'packages/workflow-engine/src/foundation/repository-path/repository-path.ts',
+  );
+  assert.match(facade, /foundation\/repository-path\/repository-path\.ts/);
+  assert.match(identifiers, /@jigwright\/core\/workflow-identifiers/);
   assert.doesNotMatch(
     facade,
     /CHANGE_ID_PATTERN|TASK_ID_PATTERN|SESSION_ID_PATTERN|INVESTIGATION_ID_PATTERN|INVOCATION_ID_PATTERN/,
   );
+  assert.doesNotMatch(
+    identifiers,
+    /CHANGE_ID_PATTERN|TASK_ID_PATTERN|SESSION_ID_PATTERN|INVESTIGATION_ID_PATTERN|INVOCATION_ID_PATTERN/,
+  );
+  assert.doesNotMatch(identifiers, /from 'node:(?:fs|path)'/);
   assert.doesNotMatch(facade, /from 'node:(?:fs|path)'/);
 });
 

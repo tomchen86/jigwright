@@ -32,7 +32,22 @@ test('session runtime layout is exposed through public core and fixture ports in
     epochSource,
     /runtime\/session-workspace\/session-store\.ts/,
   );
-  assert.match(epochSource, /defaultSessionRuntimeLayoutPort\.resolve\(/);
+  const epochObservations = fs.readFileSync(
+    path.join(
+      repositoryRoot,
+      'packages/workflow-engine/src/runtime/repository-observation/planning-execution-epoch.ts',
+    ),
+    'utf8',
+  );
+  assert.match(
+    epochObservations,
+    /@jigwright\/core\/session-runtime-layout-port/,
+  );
+  assert.match(epochObservations, /defaultSessionRuntimeLayoutPort\.resolve\(/);
+  assert.doesNotMatch(
+    epochSource,
+    /defaultSessionRuntimeLayoutPort|from 'node:fs'/,
+  );
 });
 
 test('session-store compatibility export delegates exact core layout bytes', async () => {

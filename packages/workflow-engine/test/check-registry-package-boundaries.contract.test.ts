@@ -13,6 +13,9 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { resolveWorkspaceSourceExports } from '../bootstrap/workspace-source-closure.ts';
+import { readModuleReferences } from './support/dependency-graph.ts';
+import { readRepositoryDependencyGraph } from './support/repository-dependency-graph.ts';
 import { renderBuiltInEngineClosure } from '../bootstrap/generate-built-in-engine-closure.ts';
 import { resolveCheckRunner } from '../src/adapters/consumer/repository/work-registry/runner-resolution.ts';
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
@@ -131,60 +134,126 @@ test('workflow-engine source never imports the fixture adapter', () => {
 });
 
 test('workflow-engine value-imports core only through the sealed runtime closure', () => {
-  const offenders = sourceFiles(
-    path.join(repositoryRoot, 'packages/workflow-engine/src'),
-  ).flatMap((file) => {
-    const source = fs.readFileSync(file, 'utf8');
-    if (!source.includes('@jigwright/core')) {
-      return [];
-    }
-    const statements = [...source.matchAll(/(?:import|export)\s+[\s\S]*?;/g)]
-      .map((match) => match[0])
-      .filter((statement) => statement.includes('@jigwright/core'));
-    return statements.length > 0 &&
-      statements.every((statement) => {
-        if (/^(?:import|export)\s+type\b/.test(statement)) return true;
-        const specifier = statement.match(/from\s+['"]([^'"]+)['"]/)?.[1];
-        return (
-          [
-            '@jigwright/core/agent-runtime-port',
-            '@jigwright/core/built-in-provider-catalog',
-            '@jigwright/core/canonical-json',
-            '@jigwright/core/check-command',
-            '@jigwright/core/conformance-vectors',
-            '@jigwright/core/contract-values',
-            '@jigwright/core/evidence-node',
-            '@jigwright/core/execution-policy-snapshot',
-            '@jigwright/core/execution-retry-policy',
-            '@jigwright/core/execution-workflow-record',
-            '@jigwright/core/governance-source',
-            '@jigwright/core/job-attempt-runtime',
-            '@jigwright/core/managed-transition-trailers',
-            '@jigwright/core/markdown-sections',
-            '@jigwright/core/planning-archive-projection-port',
-            '@jigwright/core/planning-provider-binding',
-            '@jigwright/core/planning-provider-port',
-            '@jigwright/core/planning-task-history',
-            '@jigwright/core/read-only-probe',
-            '@jigwright/core/repository-consumer-port',
-            '@jigwright/core/repository-path',
-            '@jigwright/core/runtime-path-kernel',
-            '@jigwright/core/session-runtime-layout-port',
-            '@jigwright/core/workflow-identifiers',
-            '@jigwright/core/workflow-namespace',
-          ].includes(specifier ?? '') &&
-          /^(?:import|export)\s+\{/.test(statement)
+  const graph = readRepositoryDependencyGraph(repositoryRoot);
+  const closure = renderBuiltInEngineClosure(repositoryRoot).manifest;
+  const core = closure.packages.find(({ name }) => name === '@jigwright/core');
+  assert.ok(core);
+  const sealedPaths = new Set(
+    closure.files.map(({ path: filePath }) => filePath),
+  );
+  assert.ok(sealedPaths.has(path.posix.join(core.closureRoot, 'package.json')));
+  const publicExports = new Map(
+    resolveWorkspaceSourceExports(repositoryRoot, core).map((entry) => [
+      entry.subpath === '.'
+        ? core.name
+        : `${core.name}/${entry.subpath.slice(2)}`,
+      {
+        source: path.posix.join(core.sourceRoot, entry.sourcePath),
+        sealed: path.posix.join(core.closureRoot, entry.sourcePath),
+      },
+    ]),
+  );
+  function assertCoreImports(
+    file: string,
+    source: string,
+    edges = graph.edges,
+    sealed = sealedPaths,
+  ) {
+    for (const reference of readModuleReferences(file, source)) {
+      if (reference.typeOnly) continue;
+      const edge = edges.find(
+        (candidate) =>
+          candidate.from === file &&
+          candidate.line === reference.line &&
+          candidate.specifier === reference.specifier,
+      );
+      const publicSpecifier =
+        reference.specifier === core!.name ||
+        reference.specifier?.startsWith(`${core!.name}/`);
+      if (edge?.to.startsWith(`${core!.sourceRoot}/`)) {
+        assert.ok(
+          publicSpecifier,
+          `${file}: core imports must use public exports`,
         );
-      })
-      ? []
-      : [path.relative(repositoryRoot, file)];
-  });
+      }
+      if (!publicSpecifier) continue;
+      const declared = publicExports.get(reference.specifier!);
+      assert.ok(
+        declared,
+        `${file}: undeclared core export ${reference.specifier}`,
+      );
+      assert.equal(
+        edge?.to,
+        declared.source,
+        `${file}: core export resolved elsewhere`,
+      );
+      assert.ok(
+        sealed.has(declared.sealed),
+        `${file}: core target is not sealed`,
+      );
+    }
+  }
+  for (const file of graph.files.filter((file) =>
+    file.startsWith('packages/workflow-engine/src/'),
+  )) {
+    assertCoreImports(
+      file,
+      fs.readFileSync(path.join(repositoryRoot, file), 'utf8'),
+    );
+  }
 
-  assert.deepEqual(offenders, []);
+  const probeFile = 'packages/workflow-engine/src/core-boundary-probe.ts';
+  const publicSpecifier = '@jigwright/core/runtime-path-kernel';
+  const target = publicExports.get(publicSpecifier)!;
+  assert.ok(target);
+  const probe = (
+    source: string,
+    resolved = target.source,
+    sealed = sealedPaths,
+  ) =>
+    assertCoreImports(
+      probeFile,
+      source,
+      readModuleReferences(probeFile, source)
+        .filter((reference) => reference.specifier !== null)
+        .map((reference) => ({
+          from: probeFile,
+          to: resolved,
+          specifier: reference.specifier!,
+          line: reference.line,
+          typeOnly: reference.typeOnly,
+        })),
+      sealed,
+    );
+  for (const source of [
+    "import { value } from '@jigwright/core/private';",
+    "import '@jigwright/core/private';",
+    "export { value } from '@jigwright/core/private';",
+    "export * from '@jigwright/core/private';",
+    "void import('@jigwright/core/private');",
+    "require('@jigwright/core/private');",
+  ])
+    assert.throws(() => probe(source), /undeclared core export/);
+  assert.throws(
+    () =>
+      probe("import { value } from '../../core/src/runtime-path-kernel.ts';"),
+    /must use public exports/,
+  );
+  const publicSource = `import * as core from '${publicSpecifier}';`;
+  assert.throws(
+    () => probe(publicSource, 'packages/core/src/private.ts'),
+    /resolved elsewhere/,
+  );
+  assert.throws(
+    () => probe(publicSource, target.source, new Set()),
+    /not sealed/,
+  );
+  probe(`import type { Value } from '${publicSpecifier}';`);
+  probe(
+    `// import '${publicSpecifier}';\nconst text = "import '${publicSpecifier}';";`,
+  );
 
-  const closurePaths = renderBuiltInEngineClosure(
-    repositoryRoot,
-  ).manifest.files.map(({ path: filePath }) => filePath);
+  const closurePaths = [...sealedPaths];
   assert.ok(
     closurePaths.includes('node_modules/@jigwright/core/src/check-command.ts'),
   );
@@ -297,7 +366,7 @@ test('required-check runners remain pinned across workflow CLI edits', () => {
     'managed-documents': {
       command: 'documents',
       entrypoint:
-        'packages/workflow-engine/src/runtime/managed-documents/validation/managed-documents.ts',
+        'packages/workflow-engine/src/entrypoints/ci/managed-documents.ts',
     },
     'openspec-assets': {
       command: 'openspec-assets',
