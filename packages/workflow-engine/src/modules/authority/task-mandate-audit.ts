@@ -1,7 +1,7 @@
 /** Pure mandate audit scope, refusal binding and canonical event inputs. */
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { type ProviderId } from '../provider-orchestration/provider-registry.ts';
+import type { BuiltInProviderFamily as ProviderId } from '@jigwright/core/built-in-provider-catalog';
 import {
   deriveAuthorityAuditRepositoryId,
   type AuthorityAuditEventInput,

@@ -1,7 +1,7 @@
 /** Canonical Task Mandate data and deterministic scalar validation. */
 import path from 'node:path';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { type ProviderId } from '../provider-orchestration/provider-registry.ts';
+import type { BuiltInProviderFamily as ProviderId } from '@jigwright/core/built-in-provider-catalog';
 
 export const TASK_MANDATE_SIGNATURE_NAMESPACE_V2 =
   'HARNESS_TASK_MANDATE_V2' as const;

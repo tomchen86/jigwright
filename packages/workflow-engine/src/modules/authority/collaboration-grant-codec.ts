@@ -47,9 +47,9 @@ import { assertChangeId } from '../../foundation/repository-path/repository-path
 import type { MaintainerPolicy } from './maintainer-policy.ts';
 import type { GrantVerifierPort } from './grant-verifier-port.ts';
 import {
-  isProviderId,
-  type ProviderId,
-} from '../provider-orchestration/provider-registry.ts';
+  isBuiltInProviderFamily as isProviderId,
+  type BuiltInProviderFamily as ProviderId,
+} from '@jigwright/core/built-in-provider-catalog';
 
 export const COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE =
   PACKAGE_COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE;

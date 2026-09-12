@@ -18,7 +18,7 @@ import { COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1, COLLABORATION_
 import { SIGNED_ATTESTATION_ENVELOPE_READER_CONTRACT_VERSION_V1, } from '@jigwright/core/signed-attestation-envelope-codec';
 import { ExitCode, WorkflowError, workflowError, } from "../../foundation/errors/errors.js";
 import { assertChangeId } from "../../foundation/repository-path/repository-path.js";
-import { isProviderId, } from "../provider-orchestration/provider-registry.js";
+import { isBuiltInProviderFamily as isProviderId, } from '@jigwright/core/built-in-provider-catalog';
 export const COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE = PACKAGE_COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE;
 export const DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE = 'workflow.direct-human-review.v1';
 export const COLLABORATION_GRANT_REPLAY_SCOPE = 'repository-common-dir-local';

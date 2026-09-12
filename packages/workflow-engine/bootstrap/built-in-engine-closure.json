@@ -2473,7 +2473,7 @@
     {
       "path": "src/modules/authority/collaboration-grant-codec.ts",
       "mode": "100644",
-      "digest": "sha256:7114a5e7d7668a516aae3d0240b06da9cc0906701061755fb3a1b6c9721bf2c5"
+      "digest": "sha256:605a95f9deae0ef3e81da7d98e3206cfa2a93c1c2f5fb58e27743012f1f7f571"
     },
     {
       "path": "src/modules/authority/collaboration-grant-records.ts",
@@ -2858,7 +2858,7 @@
     {
       "path": "src/modules/authority/task-mandate-audit.ts",
       "mode": "100644",
-      "digest": "sha256:7ed9e7d5717a54f6f1e4756868fc6d700a88f141fc6858a0c5c88b645607888b"
+      "digest": "sha256:3dfed80d5d657875141297d15dc4b85ee1443fdde3e5b97d78e10b376c56a812"
     },
     {
       "path": "src/modules/authority/task-mandate-contract.ts",
@@ -2868,12 +2868,12 @@
     {
       "path": "src/modules/authority/task-mandate-policy.ts",
       "mode": "100644",
-      "digest": "sha256:6d49e744d24e285db74e976c312e22b74fd62323f1fc4f998ea49352b1b0c1bc"
+      "digest": "sha256:b21e2a84959ec740468e86280445e61928b3f905f3a2892307c38b1714624355"
     },
     {
       "path": "src/modules/authority/task-mandate-records.ts",
       "mode": "100644",
-      "digest": "sha256:b3fe69d7b34d4b4ee2988c7f7edddaa400d46c760a3193a30d06f1496824bf40"
+      "digest": "sha256:a2c1ea1b490f8830d4589f54f16178ceed882ad7a59e5562d0fee1303cd1f7be"
     },
     {
       "path": "src/modules/authority/task-mandate-services.ts",
@@ -2883,7 +2883,7 @@
     {
       "path": "src/modules/authority/task-mandate-values.ts",
       "mode": "100644",
-      "digest": "sha256:915b33944522e7b177962b87e13afdc4b9269888ec3c633b080c43fa07a142b5"
+      "digest": "sha256:ca015db9f36da268dccbe98c92db37bbb1a2a2ceead26cb26876a42375e5051b"
     },
     {
       "path": "src/modules/authority/task-mandate.ts",

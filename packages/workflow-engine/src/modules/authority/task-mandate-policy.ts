@@ -5,9 +5,9 @@ import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
 import {
-  isProviderId,
-  type ProviderId,
-} from '../provider-orchestration/provider-registry.ts';
+  isBuiltInProviderFamily as isProviderId,
+  type BuiltInProviderFamily as ProviderId,
+} from '@jigwright/core/built-in-provider-catalog';
 import type { TaskMandateBinding } from './task-mandate-contract.ts';
 import {
   assertExternalAuditRootPath,

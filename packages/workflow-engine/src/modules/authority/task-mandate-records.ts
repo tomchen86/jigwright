@@ -3,9 +3,9 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
 import {
-  isProviderId,
-  type ProviderId,
-} from '../provider-orchestration/provider-registry.ts';
+  isBuiltInProviderFamily as isProviderId,
+  type BuiltInProviderFamily as ProviderId,
+} from '@jigwright/core/built-in-provider-catalog';
 import { type MaintainerPolicy } from './maintainer-policy.ts';
 import {
   assertTaskMandateTaskId,
