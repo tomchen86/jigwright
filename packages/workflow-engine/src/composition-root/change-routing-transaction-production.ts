@@ -1,7 +1,8 @@
 import { productionChangeRoutingInspector } from './change-routing-observation-production.ts';
 import { loadChangeContract as productionChangeContractReader } from './consumer-contract-production.ts';
 const renderHandoff = renderHandoffWithContractReader.bind(
-  undefined, productionChangeRoutingInspector,
+  undefined,
+  productionChangeRoutingInspector,
   productionChangeContractReader,
 );
 /**
@@ -25,7 +26,12 @@ import {
 } from '../runtime/repository-observation/workflow-configuration.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { applyChangeRoutingReviewUnderLifecycleLock } from '../runtime/repository-transaction/change-routing.ts';
-import { changeLifecycleRelativePath, parseChangeRoutingReview, type ChangeRoutingAuthorityPort, type ChangeRoutingReview } from '../modules/lifecycle/change-routing.ts';
+import {
+  changeLifecycleRelativePath,
+  parseChangeRoutingReview,
+  type ChangeRoutingAuthorityPort,
+  type ChangeRoutingReview,
+} from '../modules/lifecycle/change-routing.ts';
 import {
   changeRoutingReportRoot,
   changeRoutingReviewDigest,

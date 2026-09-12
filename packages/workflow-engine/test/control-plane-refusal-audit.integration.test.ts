@@ -1,3 +1,4 @@
+import { controlPlanePromotionBootstrapObservations } from './control-plane-promotion-fixture.ts';
 import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
 import fs from 'node:fs';
@@ -38,6 +39,8 @@ test('verified control-plane pre-switch refusal is audited once while unverified
       fixture.stateRoot,
       fixture.frozen.candidateBundleDigest,
       {
+        bootstrapObservations: controlPlanePromotionBootstrapObservations,
+        candidateArtifacts: controlPlaneCandidateArtifacts,
         now: () => new Date('2026-08-10T10:03:00.000Z'),
         reviewSigner: fixture.signing.signer(REVIEWER, {
           human: 0,
@@ -196,3 +199,5 @@ function hasCode(code: string) {
   return (error: unknown): boolean =>
     error instanceof WorkflowError && error.code === code;
 }
+
+import { controlPlaneCandidateArtifacts } from './control-plane-promotion-fixture.ts';

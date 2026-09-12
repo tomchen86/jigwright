@@ -1,4 +1,7 @@
-import {type DocumentationClosureRecord,encodeDocumentationClosure} from '../../modules/assurance/documentation-closure.ts';
+import {
+  type DocumentationClosureRecord,
+  encodeDocumentationClosure,
+} from '../../modules/assurance/documentation-closure.ts';
 /**
  * Builds exact planning, archive, route, task, and authority commit messages.
  *

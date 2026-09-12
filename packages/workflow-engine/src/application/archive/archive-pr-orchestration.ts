@@ -654,7 +654,12 @@ export function preparePostMergeArchivePullRequest(
       'Local archive replay did not return the same exact archive identity.',
     );
   }
-  const assure = options.assure ?? runLocalArchivePullRequestAssurance.bind(undefined, preparePullRequestPreMergeAssurance);
+  const assure =
+    options.assure ??
+    runLocalArchivePullRequestAssurance.bind(
+      undefined,
+      preparePullRequestPreMergeAssurance,
+    );
   const assurance = assure(
     worktreePath,
     candidate.base.commit,

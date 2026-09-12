@@ -1,7 +1,8 @@
 import { productionChangeRoutingInspector } from '../src/composition-root/change-routing-observation-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const renderHandoff = renderHandoffWithContractReader.bind(
-  undefined, productionChangeRoutingInspector,
+  undefined,
+  productionChangeRoutingInspector,
   productionChangeContractReader,
 );
 import assert from 'node:assert/strict';
@@ -16,7 +17,7 @@ import {
 } from '../src/composition-root/governance-sources-production.ts';
 import { recordGovernanceFinding } from '../src/composition-root/governance-findings-production.ts';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
-import { runCli } from '../src/entrypoints/cli/workflow-cli.ts';
+import { runCli } from '../bootstrap/workflow-engine-host.ts';
 import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import {

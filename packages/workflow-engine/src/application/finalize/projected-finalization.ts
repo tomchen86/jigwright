@@ -1,4 +1,4 @@
-import type {DocumentationReviewCapture} from '../../modules/assurance/documentation-closure.ts';
+import type { DocumentationReviewCapture } from '../../modules/assurance/documentation-closure.ts';
 import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 import type { ManagedDocumentOperations } from '../../modules/projection/managed-documents.ts';
@@ -72,7 +72,6 @@ import {
   type TaskDiffReviewOperations,
   type TaskDiffReviewCompletionGateOptions,
 } from './task-diff-review-lifecycle.ts';
-
 
 import { ensureTaskMechanicalTransformationEvidence } from '../execute-task/task-mechanical-transform.ts';
 import {

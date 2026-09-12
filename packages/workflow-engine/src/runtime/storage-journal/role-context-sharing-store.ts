@@ -1,4 +1,7 @@
-import type { RoleContextSharingUseV1, RoleContextSharingJournalRecord } from '../../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
+import type {
+  RoleContextSharingUseV1,
+  RoleContextSharingJournalRecord,
+} from '../../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
 /**
  * Stores and transitions role context sharing grants through reservation
  * and consumption.
@@ -124,10 +127,6 @@ export class RoleContextSharingJournalError extends Error {
     this.code = code;
   }
 }
-
-
-
-
 
 export type RoleContextSharingTransitionOptions = Readonly<{
   now?: Date;

@@ -708,7 +708,7 @@ test('amend-plan CLI exposes the completed-generation transition with exact prov
         '--experimental-strip-types',
         path.join(
           sourceRepositoryRoot,
-          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
         ),
         'amend-plan',
         '--change',

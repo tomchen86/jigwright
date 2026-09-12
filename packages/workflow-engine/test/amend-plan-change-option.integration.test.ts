@@ -78,7 +78,7 @@ test('amend-plan requires the normative --change option and rejects the retired 
         '--experimental-strip-types',
         path.join(
           sourceRepositoryRoot,
-          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
         ),
         'amend-plan',
         'demo-change',
@@ -115,7 +115,7 @@ test('amend-plan requires the normative --change option and rejects the retired 
         '--experimental-strip-types',
         path.join(
           sourceRepositoryRoot,
-          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
         ),
         'amend-plan',
         '--change',

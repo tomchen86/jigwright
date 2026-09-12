@@ -1236,3 +1236,147 @@ export type CandidateChecksFields = {
   trustBaseCommit: string;
   checks: CandidateCheckAttestation[];
 };
+
+export function assertCandidateHumanReadableSummary(value: string): void {
+  if (
+    typeof value !== 'string' ||
+    !value.startsWith('# Immutable Candidate Summary\n') ||
+    !value.endsWith('\n') ||
+    value.includes('\0') ||
+    value.includes('\r') ||
+    Buffer.byteLength(value, 'utf8') > 1_048_576
+  ) {
+    throw candidateError(
+      'APPLY_CANDIDATE_ARTIFACT_INVALID',
+      'Candidate human-readable summary is malformed or noncanonical.',
+    );
+  }
+}
+
+export function assertCandidateBundleDigest(value: string): string {
+  if (!DIGEST.test(value)) {
+    throw candidateStoreError('Immutable candidate digest is invalid.');
+  }
+  return value;
+}
+
+export function assertCandidateArtifactDigest(value: string): string {
+  if (!DIGEST.test(value)) {
+    throw candidateStoreError(
+      'Candidate supporting artifact digest is invalid.',
+    );
+  }
+  return value;
+}
+
+export function candidateStoreError(message: string) {
+  return workflowError(
+    'APPLY_CANDIDATE_STORE_INVALID',
+    message,
+    ExitCode.guard,
+  );
+}
+
+export function assertCandidateArtifactChangeId(changeId: string): void {
+  if (!CHANGE_ID.test(changeId)) {
+    throw candidateError(
+      'APPLY_CANDIDATE_ARTIFACT_INVALID',
+      'Candidate supporting artifact change binding is invalid.',
+    );
+  }
+}
+
+export function assertCandidateSupportingArtifactsBinding(
+  changeId: string,
+  candidate: ImmutableCandidateBundleV2,
+  effectsManifest: CandidateSupportingArtifact,
+  providerInvocations: CandidateSupportingArtifact,
+  recoveryPlan: CandidateSupportingArtifact,
+): CandidateSupportingArtifactSet {
+  if (
+    effectsManifest.kind !== 'candidate-external-effects.v1' ||
+    providerInvocations.kind !== 'candidate-provider-invocations.v1' ||
+    recoveryPlan.kind !== 'candidate-recovery-plan.v1' ||
+    effectsManifest.changeId !== changeId ||
+    providerInvocations.changeId !== changeId ||
+    recoveryPlan.changeId !== changeId ||
+    canonicalJson(effectsManifest.mandateBinding) !==
+      canonicalJson(candidate.mandateBinding) ||
+    canonicalJson(providerInvocations.mandateBinding) !==
+      canonicalJson(candidate.mandateBinding) ||
+    canonicalJson(recoveryPlan.mandateBinding) !==
+      canonicalJson(candidate.mandateBinding) ||
+    candidate.mandateBinding.changeId !== changeId ||
+    recoveryPlan.targetRef !== candidate.targetRef ||
+    recoveryPlan.expectedOldCommit !== candidate.expectedOldCommit ||
+    recoveryPlan.expectedRefGeneration !== candidate.expectedRefGeneration ||
+    recoveryPlan.candidateCommit !== candidate.candidateCommit ||
+    recoveryPlan.rollbackTarget !== candidate.expectedOldCommit
+  ) {
+    throw candidateError(
+      'APPLY_CANDIDATE_ARTIFACT_BINDING_INVALID',
+      'Stored candidate supporting artifacts do not bind the immutable candidate.',
+    );
+  }
+  return { effectsManifest, providerInvocations, recoveryPlan };
+}
+
+export function assertCandidateSummaryBinding(
+  summary: string,
+  candidate: ImmutableCandidateBundleV2,
+): void {
+  if (summary !== canonicalCandidateHumanReadableSummary(candidate)) {
+    throw candidateError(
+      'APPLY_CANDIDATE_ARTIFACT_BINDING_INVALID',
+      'Stored candidate summary does not describe the immutable candidate.',
+    );
+  }
+}
+
+export type CandidateArtifactObservations = {
+  readStoredImmutableCandidateBundle: (
+    gitCommonDirectory: string,
+    requestedCandidateBundleDigest: string,
+  ) => ImmutableCandidateBundleV2;
+  assertStoredCandidateSupportingArtifacts: (
+    gitCommonDirectory: string,
+    changeId: string,
+    candidate: ImmutableCandidateBundleV2,
+  ) => CandidateSupportingArtifactSet;
+};
+
+export function candidateSupportingArtifactsForPublication(
+  input: CandidateSupportingArtifactSet,
+): CandidateSupportingArtifact[] {
+  const artifacts = [
+    assertCandidateSupportingArtifact(input.effectsManifest),
+    assertCandidateSupportingArtifact(input.providerInvocations),
+    assertCandidateSupportingArtifact(input.recoveryPlan),
+  ];
+  const changeIds = new Set(artifacts.map(({ changeId }) => changeId));
+  const mandateBindings = new Set(
+    artifacts.map(({ mandateBinding }) => canonicalJson(mandateBinding)),
+  );
+  if (changeIds.size !== 1 || mandateBindings.size !== 1) {
+    throw candidateError(
+      'APPLY_CANDIDATE_ARTIFACT_INVALID',
+      'Candidate supporting artifacts belong to different changes or task mandates.',
+    );
+  }
+  return artifacts;
+}
+
+export type CandidateArtifactPublication = {
+  storeCandidateSupportingArtifacts: (
+    gitCommonDirectory: string,
+    input: CandidateSupportingArtifactSet,
+  ) => StoredCandidateSupportingArtifacts;
+  storeCandidateHumanReadableSummary: (
+    gitCommonDirectory: string,
+    summary: string,
+  ) => { humanReadableSummaryDigest: string; path: string };
+  storeImmutableCandidateBundle: (
+    gitCommonDirectory: string,
+    candidate: ImmutableCandidateBundleV2,
+  ) => string;
+};

@@ -86,7 +86,8 @@ export type ResumeTaskStrategyOptions = Readonly<{
 }>;
 
 /** Strictly read durable strategy state; never seal, reserve, dispatch, or import. */
-export function inspectTaskStrategyLifecycle(routingAdmissionReader: ChangeRoutingAdmissionReader,
+export function inspectTaskStrategyLifecycle(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
 ): TaskStrategyLifecycleStatus {
@@ -113,7 +114,8 @@ export function inspectTaskStrategyLifecycle(routingAdmissionReader: ChangeRouti
   const task = contract.execution?.tasks[session.taskId];
   if (task?.strategy === 'mechanical-transform') {
     if (transaction !== null) throw lifecycleStale();
-    const mechanical = inspectTaskMechanicalTransformLifecycle(routingAdmissionReader,
+    const mechanical = inspectTaskMechanicalTransformLifecycle(
+      routingAdmissionReader,
       cwd,
       session.sessionId,
     );
@@ -146,7 +148,11 @@ export function inspectTaskStrategyLifecycle(routingAdmissionReader: ChangeRouti
     });
   }
   assertTransactionContractCurrent(transaction, session, task);
-  const inspection = inspectSession(routingAdmissionReader, cwd, session.sessionId);
+  const inspection = inspectSession(
+    routingAdmissionReader,
+    cwd,
+    session.sessionId,
+  );
   const correction = resolveCurrentTaskStrategyCorrection(inspection);
   const implementationAuthority =
     resolveCurrentTaskStrategyImplementationAuthority(inspection, correction);
@@ -163,7 +169,8 @@ export function inspectTaskStrategyLifecycle(routingAdmissionReader: ChangeRouti
  * Advance only the next durable strategy substate. Process dispatch remains a
  * CLI concern so the domain transition cannot launch an arbitrary executable.
  */
-export function resumeTaskStrategy(routingAdmissionReader: ChangeRoutingAdmissionReader,
+export function resumeTaskStrategy(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   implementation: Pick<
     TaskStrategyImplementationLifecycle,
     'beginTaskStrategyImplementation'
@@ -174,7 +181,11 @@ export function resumeTaskStrategy(routingAdmissionReader: ChangeRoutingAdmissio
   requestedSessionId: string,
   options: ResumeTaskStrategyOptions = {},
 ): TaskStrategyLifecycleStatus {
-  let current = inspectTaskStrategyLifecycle(routingAdmissionReader, cwd, requestedSessionId);
+  let current = inspectTaskStrategyLifecycle(
+    routingAdmissionReader,
+    cwd,
+    requestedSessionId,
+  );
   if (current.state === 'not-required') return current;
   if (current.state === 'session-terminal') {
     throw workflowError(
@@ -195,8 +206,16 @@ export function resumeTaskStrategy(routingAdmissionReader: ChangeRoutingAdmissio
         ExitCode.usage,
       );
     }
-    resumeTaskMechanicalTransformation(routingAdmissionReader, cwd, current.sessionId);
-    return inspectTaskStrategyLifecycle(routingAdmissionReader, cwd, current.sessionId);
+    resumeTaskMechanicalTransformation(
+      routingAdmissionReader,
+      cwd,
+      current.sessionId,
+    );
+    return inspectTaskStrategyLifecycle(
+      routingAdmissionReader,
+      cwd,
+      current.sessionId,
+    );
   }
   if (options.redRevisionRequest !== undefined) {
     if (
@@ -211,43 +230,77 @@ export function resumeTaskStrategy(routingAdmissionReader: ChangeRoutingAdmissio
       );
     }
     redRevision.beginTaskStrategyRedRevision(cwd, options.redRevisionRequest);
-    return inspectTaskStrategyLifecycle(routingAdmissionReader, cwd, current.sessionId);
+    return inspectTaskStrategyLifecycle(
+      routingAdmissionReader,
+      cwd,
+      current.sessionId,
+    );
   }
 
   redRevision.continueTaskStrategyRedRevision(cwd, current.sessionId);
-  current = inspectTaskStrategyLifecycle(routingAdmissionReader, cwd, current.sessionId);
+  current = inspectTaskStrategyLifecycle(
+    routingAdmissionReader,
+    cwd,
+    current.sessionId,
+  );
   if (current.state === 'red-authoring') {
-    const transaction = sealTaskStrategyRed(routingAdmissionReader, cwd, current.sessionId, {
-      ...(options.explicitActor === undefined
-        ? {}
-        : { explicitActor: options.explicitActor }),
-    });
+    const transaction = sealTaskStrategyRed(
+      routingAdmissionReader,
+      cwd,
+      current.sessionId,
+      {
+        ...(options.explicitActor === undefined
+          ? {}
+          : { explicitActor: options.explicitActor }),
+      },
+    );
     if (transaction.strategy === 'tdd-single-agent') {
-      return inspectTaskStrategyLifecycle(routingAdmissionReader, cwd, current.sessionId);
+      return inspectTaskStrategyLifecycle(
+        routingAdmissionReader,
+        cwd,
+        current.sessionId,
+      );
     }
   }
 
-  current = inspectTaskStrategyLifecycle(routingAdmissionReader, cwd, current.sessionId);
+  current = inspectTaskStrategyLifecycle(
+    routingAdmissionReader,
+    cwd,
+    current.sessionId,
+  );
   if (
     current.strategy === 'tdd-single-agent' &&
     current.state === 'implementation-required'
   ) {
-    const adopted = adoptCurrentTaskStrategyImplementation(routingAdmissionReader,
+    const adopted = adoptCurrentTaskStrategyImplementation(
+      routingAdmissionReader,
       cwd,
       current.sessionId,
     );
     return adopted === null
       ? current
-      : inspectTaskStrategyLifecycle(routingAdmissionReader, cwd, current.sessionId);
+      : inspectTaskStrategyLifecycle(
+          routingAdmissionReader,
+          cwd,
+          current.sessionId,
+        );
   }
   if (
     current.strategy === 'tdd-single-agent' &&
     current.state === 'correction-required'
   ) {
-    const adopted = adoptCurrentTaskStrategyCorrection(routingAdmissionReader, cwd, current.sessionId);
+    const adopted = adoptCurrentTaskStrategyCorrection(
+      routingAdmissionReader,
+      cwd,
+      current.sessionId,
+    );
     return adopted === null
       ? current
-      : inspectTaskStrategyLifecycle(routingAdmissionReader, cwd, current.sessionId);
+      : inspectTaskStrategyLifecycle(
+          routingAdmissionReader,
+          cwd,
+          current.sessionId,
+        );
   }
   if (
     current.state === 'patch-imported' ||

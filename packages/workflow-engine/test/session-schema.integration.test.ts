@@ -76,7 +76,7 @@ test('doctor counts a durable revising session as a write-capable session withou
         '--experimental-strip-types',
         path.join(
           sourceRepositoryRoot,
-          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
         ),
         'doctor',
         '--json',

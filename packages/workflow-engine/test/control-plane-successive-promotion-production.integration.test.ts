@@ -1,3 +1,4 @@
+import { controlPlanePromotionBootstrapObservations } from './control-plane-promotion-fixture.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -168,6 +169,8 @@ test('successor review and grant signatures bind the exact promotion lineage', a
       fixture.stateRoot,
       fixture.frozen.candidateBundleDigest,
       {
+        bootstrapObservations: controlPlanePromotionBootstrapObservations,
+        candidateArtifacts: controlPlaneCandidateArtifacts,
         now: () => new Date('2026-08-10T10:03:00.000Z'),
         reviewSigner: fixture.signing.signer(CONTROL_PLANE_FIXTURE_REVIEWER, {
           human: 0,
@@ -346,6 +349,8 @@ test('production successor producer derives and persists the initial history anc
       fixture.stateRoot,
       fixture.frozen.candidateBundleDigest,
       {
+        bootstrapObservations: controlPlanePromotionBootstrapObservations,
+        candidateArtifacts: controlPlaneCandidateArtifacts,
         now: () => new Date('2026-08-10T10:03:00.000Z'),
         reviewSigner: fixture.signing.signer(
           CONTROL_PLANE_FIXTURE_REVIEWER,
@@ -418,6 +423,8 @@ test('production successor producer extends an independently verified current te
       fixture.stateRoot,
       successor.frozen.candidateBundleDigest,
       {
+        bootstrapObservations: controlPlanePromotionBootstrapObservations,
+        candidateArtifacts: controlPlaneCandidateArtifacts,
         now: () => new Date('2026-08-10T10:08:00.000Z'),
         reviewSigner: fixture.signing.signer(CONTROL_PLANE_FIXTURE_REVIEWER, {
           human: 0,
@@ -501,6 +508,8 @@ test('production successor producer extends an independently verified current te
         fixture.stateRoot,
         next.frozen.candidateBundleDigest,
         {
+          bootstrapObservations: controlPlanePromotionBootstrapObservations,
+          candidateArtifacts: controlPlaneCandidateArtifacts,
           now: () => new Date('2026-08-10T10:10:00.000Z'),
           reviewSigner: fixture.signing.signer(CONTROL_PLANE_FIXTURE_REVIEWER, {
             human: 0,
@@ -587,6 +596,8 @@ test('successor recovery publishes an already durable history transition before 
       fixture.stateRoot,
       successor.frozen.candidateBundleDigest,
       {
+        bootstrapObservations: controlPlanePromotionBootstrapObservations,
+        candidateArtifacts: controlPlaneCandidateArtifacts,
         now: () => new Date('2026-08-10T10:12:00.000Z'),
         reviewSigner: fixture.signing.signer(CONTROL_PLANE_FIXTURE_REVIEWER, {
           human: 0,
@@ -683,6 +694,8 @@ test('successor recovery seals an already terminal transaction exactly once', as
       fixture.stateRoot,
       successor.frozen.candidateBundleDigest,
       {
+        bootstrapObservations: controlPlanePromotionBootstrapObservations,
+        candidateArtifacts: controlPlaneCandidateArtifacts,
         now: () => new Date('2026-08-10T10:15:00.000Z'),
         reviewSigner: fixture.signing.signer(CONTROL_PLANE_FIXTURE_REVIEWER, {
           human: 0,
@@ -771,6 +784,8 @@ test('successor switch crash seals the exact rollback lineage for bootstrap sele
       fixture.stateRoot,
       successor.frozen.candidateBundleDigest,
       {
+        bootstrapObservations: controlPlanePromotionBootstrapObservations,
+        candidateArtifacts: controlPlaneCandidateArtifacts,
         now: () => new Date('2026-08-10T10:18:00.000Z'),
         reviewSigner: fixture.signing.signer(CONTROL_PLANE_FIXTURE_REVIEWER, {
           human: 0,
@@ -860,6 +875,8 @@ test('sealed successor selection rejects a fully redigested signature substituti
       fixture.stateRoot,
       successor.frozen.candidateBundleDigest,
       {
+        bootstrapObservations: controlPlanePromotionBootstrapObservations,
+        candidateArtifacts: controlPlaneCandidateArtifacts,
         now: () => new Date('2026-08-10T10:18:00.000Z'),
         reviewSigner: fixture.signing.signer(CONTROL_PLANE_FIXTURE_REVIEWER, {
           human: 0,
@@ -1025,3 +1042,5 @@ function writeCanonicalFixtureRecord(
 function commit(label: string): string {
   return crypto.createHash('sha256').update(`commit:${label}`).digest('hex');
 }
+
+import { controlPlaneCandidateArtifacts } from './control-plane-promotion-fixture.ts';

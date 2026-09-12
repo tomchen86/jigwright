@@ -1,8 +1,11 @@
-import {createDocumentationClosureRecord,encodeDocumentationClosure,parseDocumentationClosureFromCommitMessage,parseDocumentationClosureRecord} from '../src/modules/assurance/documentation-closure.ts';
+import {
+  createDocumentationClosureRecord,
+  encodeDocumentationClosure,
+  parseDocumentationClosureFromCommitMessage,
+  parseDocumentationClosureRecord,
+} from '../src/modules/assurance/documentation-closure.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
-
-
 
 import {
   assertTaskDiffReviewChallengeResponseCurrent,

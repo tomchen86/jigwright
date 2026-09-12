@@ -12,6 +12,7 @@ export const MAINTAINER_PROFILES_PATH = 'workflow/maintainer-profiles.json';
 
 export const REGENERATION_STEPS = [
   'built-in-engine-closure',
+  'workflow-bootstrap-host',
   'harness-bootstrap-runtime',
   'protected-capabilities',
 ] as const;

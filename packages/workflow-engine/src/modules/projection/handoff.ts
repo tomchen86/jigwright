@@ -9,7 +9,11 @@ export type HandoffReadContext = Readonly<{
 /** Handoff document operations observe their inputs at each invocation. */
 export type HandoffDocumentOperations = Readonly<{
   projectHandoff(repositoryRoot: string): string;
-  projectHandoffForTaskProjection(repositoryRoot: string, changeId: string, tasks: string): string;
+  projectHandoffForTaskProjection(
+    repositoryRoot: string,
+    changeId: string,
+    tasks: string,
+  ): string;
   renderHandoffForChange(repositoryRoot: string, changeId: string): string;
   validateHandoff(repositoryRoot: string, context?: HandoffReadContext): void;
 }>;

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseAgentProviderConfigToml } from '@jigwright/core/agent-provider-config';
-import {resolveBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import { listBuiltInProviderFamilies } from '@jigwright/core/built-in-provider-catalog';
 import {
   PROFILE_PATH,

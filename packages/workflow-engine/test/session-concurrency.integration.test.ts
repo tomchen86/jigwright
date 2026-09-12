@@ -226,7 +226,7 @@ test('status inspects each concurrent active session in its own durable worktree
         '--experimental-strip-types',
         path.join(
           sourceRepositoryRoot,
-          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
         ),
         'status',
         concurrentSession.sessionId,
@@ -258,7 +258,7 @@ test('status inspects each concurrent active session in its own durable worktree
         '--experimental-strip-types',
         path.join(
           sourceRepositoryRoot,
-          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
         ),
         'status',
         '--json',

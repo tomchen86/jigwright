@@ -44,7 +44,7 @@ import {
   type ApproveAndApplyMaintainerGrantV2Request,
 } from './maintainer-approve.ts';
 
-import type { MaintainerEvidenceWaiver } from '../../modules/authority/maintainer-grant-v2.ts';
+import type { MaintainerEvidenceWaiver } from '../../modules/authority/maintainer-grant-v2-codec.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 
 import { classifyFileRole } from '../../modules/authority/maintainer-manifest-contracts.ts';
@@ -301,6 +301,7 @@ export function inspectAuthorityPlan(
 }
 
 export function approveAndApplyAuthorityPlan(
+  grantServices: MaintainerGrantExecutionServices,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   manifestOperations: MaintainerManifestOperations,
   taskMandate: MaintainerTaskMandateOperations,
@@ -350,6 +351,7 @@ export function approveAndApplyAuthorityPlan(
       options.approveAndApply ??
       ((root: string, request: ApproveAndApplyMaintainerGrantV2Request) =>
         approveAndApplyMaintainerGrantV2(
+          grantServices,
           authorityApplicationReceipts,
           manifestOperations,
           taskMandate,
@@ -764,3 +766,5 @@ const {
 }));
 
 import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
+
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';

@@ -1,4 +1,9 @@
-import {createDocumentationClosureRecord,parseDocumentationReviewCapture,parseDocumentationClosureFromCommitMessage,type DocumentationReviewCapture} from '../../modules/assurance/documentation-closure.ts';
+import {
+  createDocumentationClosureRecord,
+  parseDocumentationReviewCapture,
+  parseDocumentationClosureFromCommitMessage,
+  type DocumentationReviewCapture,
+} from '../../modules/assurance/documentation-closure.ts';
 import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
 import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';

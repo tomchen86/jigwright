@@ -1,4 +1,7 @@
-import {createDocumentationClosureRecord,encodeDocumentationClosure} from '../src/modules/assurance/documentation-closure.ts';
+import {
+  createDocumentationClosureRecord,
+  encodeDocumentationClosure,
+} from '../src/modules/assurance/documentation-closure.ts';
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
@@ -18,7 +21,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import {verifyPullRequest} from '../src/composition-root/ci-verification-production.ts';
+import { verifyPullRequest } from '../src/composition-root/ci-verification-production.ts';
 import { loadHistoricalTaskAuthority } from '../src/composition-root/ci-replay-production.ts';
 import { canonicalCheckDefinition } from '../src/modules/assurance/commit-replay/ci-historical-contract.ts';
 import {

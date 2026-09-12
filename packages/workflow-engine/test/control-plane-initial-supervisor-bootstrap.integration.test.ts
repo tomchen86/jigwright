@@ -18,7 +18,10 @@ import {
   CONTROL_PLANE_FIXTURE_REPOSITORY_ID,
 } from './control-plane-promotion-fixture.ts';
 import os from 'node:os';
-import { BOOTSTRAP_RUNTIME_NAMES } from './support/bootstrap-runtime-fixture.ts';
+import {
+  BOOTSTRAP_RUNTIME_NAMES,
+  sealFixtureWorkflowHost,
+} from './support/bootstrap-runtime-fixture.ts';
 import { loadProtectedCapabilitiesFromTrustBase } from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 import { spawnSync } from 'node:child_process';
 import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';
@@ -442,7 +445,7 @@ test('initial supervisor bootstrap fails closed when the pinned built-in closure
     fs.appendFileSync(trackedEntrypoint, "process.stderr.write('tampered');\n");
     git(repository, [
       'add',
-      'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+      'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
     ]);
     git(repository, ['commit', '-m', 'Tamper tracked built-in closure']);
     git(repository, ['update-ref', 'refs/remotes/origin/main', 'HEAD']);
@@ -1210,6 +1213,7 @@ function createSealedEnginePackage(): string {
     ].join('\n'),
     { mode: 0o644 },
   );
+  sealFixtureWorkflowHost(root);
   return root;
 }
 

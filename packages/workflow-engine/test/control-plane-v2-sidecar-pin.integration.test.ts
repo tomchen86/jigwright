@@ -1,3 +1,4 @@
+import { controlPlanePromotionBootstrapObservations } from './control-plane-promotion-fixture.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -39,6 +40,8 @@ async function fixture() {
     value.stateRoot,
     value.frozen.candidateBundleDigest,
     {
+      bootstrapObservations: controlPlanePromotionBootstrapObservations,
+      candidateArtifacts: controlPlaneCandidateArtifacts,
       now: () => new Date('2026-08-10T10:03:00.000Z'),
       reviewSigner: value.signing.signer(
         CONTROL_PLANE_FIXTURE_REVIEWER,
@@ -271,3 +274,5 @@ test('current rollback terminalizes the exact reserved sidecar pin', async () =>
     value.cleanup();
   }
 });
+
+import { controlPlaneCandidateArtifacts } from './control-plane-promotion-fixture.ts';

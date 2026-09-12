@@ -42,8 +42,6 @@ const COMMITTED_DOCUMENT_PATHS = new Set([
 ]);
 const COMMITTED_WORKFLOW_PROJECTION = ['workflow'] as const;
 
-
-
 export function validateRepositoryState(cwd: string): RepositoryValidation {
   const git = discoverRepository(cwd);
   const config = loadWorkflowConfig(git.repositoryRoot);

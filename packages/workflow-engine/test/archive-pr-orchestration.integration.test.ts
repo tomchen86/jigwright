@@ -9,7 +9,8 @@ import { managedDocuments } from '../src/composition-root/managed-documents-prod
 import { renderHandoffFromTrackedFacts as productionTrackedHandoffRenderer } from '../src/composition-root/handoff-production.ts';
 const preparePostMergeArchivePullRequest =
   preparePostMergeArchivePullRequestWithHandoff.bind(
-    undefined, preparePullRequestPreMergeAssurance,
+    undefined,
+    preparePullRequestPreMergeAssurance,
     productionPlanningExecution,
     productionPlanningArchiveSourcePolicy,
     archiveEligibilityReplayServices,
@@ -53,7 +54,7 @@ import {
   syncOriginMain,
 } from './fixture.ts';
 import path from 'node:path';
-import { createArchivePullRequestCliDispatcherForTesting } from '../src/entrypoints/cli/workflow-cli.ts';
+import { createArchivePullRequestCliDispatcherForTesting } from '../bootstrap/workflow-engine-host.ts';
 import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { execFileSync, spawnSync } from 'node:child_process';

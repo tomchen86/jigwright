@@ -1,3 +1,6 @@
+import { verifyWorkflowBootstrapHost } from './workflow-bootstrap-host.ts';
+import { WORKFLOW_BOOTSTRAP_HOST_MANIFEST_DIGEST } from './workflow-bootstrap-host-pin.ts';
+import { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST } from './built-in-engine-closure-pin.ts';
 /**
  * Selects and runs the engine a repository command is entitled to, before any engine code loads.
  *
@@ -416,7 +419,12 @@ function builtInInvocation(argv: string[]): {
   executable: string;
   argv: string[];
 } {
-  const builtInEngine = verifyBuiltInEngineClosure(ENGINE_PACKAGE_ROOT);
+  verifyBuiltInEngineClosure(ENGINE_PACKAGE_ROOT);
+  const builtInEngine = verifyWorkflowBootstrapHost(
+    ENGINE_PACKAGE_ROOT,
+    WORKFLOW_BOOTSTRAP_HOST_MANIFEST_DIGEST,
+    BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST,
+  );
   return {
     executable: process.execPath,
     argv: ['--experimental-strip-types', builtInEngine, ...argv],

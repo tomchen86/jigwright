@@ -1,4 +1,4 @@
-import type {ImmutableCandidateBundleV2} from '../../modules/authority/maintainer-candidate-contracts.ts';
+import type { ImmutableCandidateBundleV2 } from '../../modules/authority/maintainer-candidate-contracts.ts';
 /**
  * Produces a control-plane approval candidate from frozen repository,
  * sidecar and supervisor evidence.
@@ -13,11 +13,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import {
-  bootstrapInterventionStateRoot,
-  readInitialControlPlaneSupervisorAnchorEvidence,
-  readBuiltInControlPlaneEngineArtifact,
-} from '../../../bootstrap/control-plane-trust.ts';
+import type { ControlPlanePromotionBootstrapObservations } from '../../modules/authority/intervention-bootstrap-contract.ts';
 import {
   canonicalJson,
   compareCanonicalStrings,
@@ -70,7 +66,6 @@ import {
   type PersistedControlPlaneApprovalCandidateV3,
 } from './intervention-control-updater.ts';
 import { readInterventionEngineArtifact } from './intervention-maintenance.ts';
-import {assertStoredCandidateSupportingArtifacts,readStoredImmutableCandidateBundle} from '../../modules/authority/maintainer-candidate.ts';
 import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
 import { loadProtectedCapabilitiesFromTrustBase } from '../../adapters/consumer/repository/work-registry/protected-capabilities.ts';
 
@@ -124,6 +119,8 @@ export interface ControlPlanePromotionReviewSummaryV3 extends Omit<
 }
 
 export interface ControlPlanePromotionProducerDependenciesV3 {
+  candidateArtifacts: CandidateArtifactObservations;
+  bootstrapObservations: ControlPlanePromotionBootstrapObservations;
   now?: () => Date;
   reviewSigner: MaintainerSignerProvider;
   verifyHumanSignature: PersistenceHumanSignatureVerifier;
@@ -164,13 +161,18 @@ export function produceControlPlaneApprovalCandidateV3(
       ExitCode.conflict,
     );
   }
-  assertProducerStateRoot(repository.gitCommonDirectory, stateRoot);
-  const candidate = readStoredImmutableCandidateBundle(
+  assertProducerStateRoot(
     repository.gitCommonDirectory,
-    requestedCandidateBundleDigest,
+    stateRoot,
+    dependencies.bootstrapObservations,
   );
+  const candidate =
+    dependencies.candidateArtifacts.readStoredImmutableCandidateBundle(
+      repository.gitCommonDirectory,
+      requestedCandidateBundleDigest,
+    );
   assertFrozenCandidatePrestate(repository, candidate);
-  assertStoredCandidateSupportingArtifacts(
+  dependencies.candidateArtifacts.assertStoredCandidateSupportingArtifacts(
     repository.gitCommonDirectory,
     candidate.mandateBinding.changeId,
     candidate,
@@ -209,6 +211,7 @@ export function produceControlPlaneApprovalCandidateV3(
     stateRoot,
     supervisor,
     candidate.expectedOldCommit,
+    dependencies.bootstrapObservations,
   );
   const { history, restartArtifact } = authority;
   if (
@@ -679,17 +682,14 @@ export type ControlPlaneCandidateMaterialBindings = {
   controlPlaneSupervisorHistoryDirectory: typeof controlPlaneSupervisorHistoryDirectory;
   fs: typeof fs;
   readControlPlaneSupervisorHistory: typeof readControlPlaneSupervisorHistory;
-  readBuiltInControlPlaneEngineArtifact: typeof readBuiltInControlPlaneEngineArtifact;
   producerError: typeof producerError;
   ExitCode: typeof ExitCode;
-  readInitialControlPlaneSupervisorAnchorEvidence: typeof readInitialControlPlaneSupervisorAnchorEvidence;
   createControlPlaneSupervisorHistoryAnchor: typeof createControlPlaneSupervisorHistoryAnchor;
   appendControlPlaneSupervisorHistoryRecord: typeof appendControlPlaneSupervisorHistoryRecord;
   readPersistedControlPlaneUpdate: typeof readPersistedControlPlaneUpdate;
   readPersistedControlPlaneApprovalCandidateCurrent: typeof readPersistedControlPlaneApprovalCandidateCurrent;
   runGit: typeof runGit;
   canonicalJson: typeof canonicalJson;
-  bootstrapInterventionStateRoot: typeof bootstrapInterventionStateRoot;
   path: typeof path;
   runGitBuffer: typeof runGitBuffer;
   compareCanonicalStrings: typeof compareCanonicalStrings;
@@ -711,7 +711,6 @@ export type ControlPlaneCandidateMaterialBindingsTypes = {
   Sha256Digest: Sha256Digest;
   ExactGitFileState: ExactGitFileState;
   readControlPlaneSupervisorState: typeof readControlPlaneSupervisorState;
-  readBuiltInControlPlaneEngineArtifact: typeof readBuiltInControlPlaneEngineArtifact;
   discoverRepository: typeof discoverRepository;
 };
 
@@ -728,17 +727,14 @@ const {
   controlPlaneSupervisorHistoryDirectory,
   fs,
   readControlPlaneSupervisorHistory,
-  readBuiltInControlPlaneEngineArtifact,
   producerError,
   ExitCode,
-  readInitialControlPlaneSupervisorAnchorEvidence,
   createControlPlaneSupervisorHistoryAnchor,
   appendControlPlaneSupervisorHistoryRecord,
   readPersistedControlPlaneUpdate,
   readPersistedControlPlaneApprovalCandidateCurrent,
   runGit,
   canonicalJson,
-  bootstrapInterventionStateRoot,
   path,
   runGitBuffer,
   compareCanonicalStrings,
@@ -751,3 +747,5 @@ const {
   MAX_PROCESS_OUTPUT_BYTES,
   processEvidenceInvalid,
 }));
+
+import type { CandidateArtifactObservations } from '../../modules/authority/maintainer-candidate-contracts.ts';

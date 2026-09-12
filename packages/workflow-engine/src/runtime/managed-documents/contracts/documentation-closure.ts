@@ -1,8 +1,16 @@
 /** Validates documentation closure commitments against exact tracked Git state. */
-import {runGit} from '../../repository-transaction/git.ts';
-import {canonicalJson} from '../../../foundation/canonical-json/canonical-json.ts';
-import {parseDocumentationClosureFromCommitMessage,canonicalSet,normalizeExactPath,objectId,sha256,closureInvalid,closureRequired} from '../../../modules/assurance/documentation-closure.ts';
-import type {DocumentationClosureRecord} from '../../../modules/assurance/documentation-closure.ts';
+import { runGit } from '../../repository-transaction/git.ts';
+import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
+import {
+  parseDocumentationClosureFromCommitMessage,
+  canonicalSet,
+  normalizeExactPath,
+  objectId,
+  sha256,
+  closureInvalid,
+  closureRequired,
+} from '../../../modules/assurance/documentation-closure.ts';
+import type { DocumentationClosureRecord } from '../../../modules/assurance/documentation-closure.ts';
 
 export function assertDocumentationClosureCommitCurrent(input: {
   repositoryRoot: string;

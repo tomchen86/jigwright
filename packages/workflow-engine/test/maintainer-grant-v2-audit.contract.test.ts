@@ -12,19 +12,17 @@ import {
   authorityAuditLedgerPaths,
 } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import path from 'node:path';
-import { type MaintainerGrantV2Payload } from '../src/modules/authority/maintainer-grant-v2.ts';
-import { issueMaintainerGrantV2 } from '../src/composition-root/maintainer-authority-production.ts';
-import {
-  buildImmutableCandidateBundleV2,
-  storeImmutableCandidateBundle,
-} from '../src/modules/authority/maintainer-candidate.ts';
+import { type MaintainerGrantV2Payload } from '../src/modules/authority/maintainer-grant-v2-codec.ts';
+import { issueMaintainerGrantV2 } from '../bootstrap/maintainer-authority-production.ts';
+import { buildImmutableCandidateBundleV2 } from '../src/modules/authority/maintainer-candidate-contracts.ts';
+import { storeImmutableCandidateBundle } from '../src/runtime/storage-journal/maintainer-candidate-writer.ts';
 import { revokeMaintainerGrantV2 } from '../src/application/control-plane/maintainer-approve.ts';
 import { inspectMaintainerGrants } from '../src/runtime/storage-journal/maintainer-store.ts';
 import { readAuthoritySession } from '../src/application/control-plane/maintainer-session.ts';
 import {
   startAuthoritySession,
   checkAuthoritySession,
-} from '../src/composition-root/maintainer-authority-production.ts';
+} from '../bootstrap/maintainer-authority-production.ts';
 import {
   prepareCandidate,
   TASK_ID,

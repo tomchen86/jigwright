@@ -52,7 +52,7 @@ import { recordGovernanceFinding } from '../src/composition-root/governance-find
 
 const cliPath = path.join(
   sourceRepositoryRoot,
-  'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+  'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
 );
 
 test('retired start command is absent and fails before repository mutation', () => {

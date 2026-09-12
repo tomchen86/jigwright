@@ -37,7 +37,12 @@ export function commitCurrentFixtureTask(
   const changeId = options.changeId ?? 'demo-change';
   const taskId = options.taskId ?? '1.1';
   const implementationPath = options.implementationPath ?? 'src/feature.ts';
-  const session = startSession(productionChangeRoutingAdmissionReader, repository, changeId, taskId);
+  const session = startSession(
+    productionChangeRoutingAdmissionReader,
+    repository,
+    changeId,
+    taskId,
+  );
   const target = path.join(repository, implementationPath);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   const sourceRevision = git(repository, [
@@ -60,7 +65,8 @@ export function commitCurrentFixtureTask(
     implementationPath,
   );
   finalizeTask(repository, session.sessionId);
-  return commitSession(productionChangeRoutingAdmissionReader,
+  return commitSession(
+    productionChangeRoutingAdmissionReader,
     repository,
     session.sessionId,
     options.message ?? 'Complete demo execution',

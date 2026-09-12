@@ -14,7 +14,7 @@ import {
 import { deriveAuthorityAuditRepositoryId } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import { verifyAuthorityAuditEvents } from '../src/runtime/storage-journal/authority-audit-service.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { runHarnessBootstrapCli } from '../src/entrypoints/cli/harness-bootstrap-cli.ts';
+import { runHarnessBootstrapCli } from '../bootstrap/harness-bootstrap-host.ts';
 import {
   recoveryAuthorityDescriptorDigest,
   recoveryAuthorityRepositoryIdentityDigest,

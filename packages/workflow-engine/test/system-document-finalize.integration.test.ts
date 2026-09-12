@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import { dispatchAsync } from '../src/entrypoints/cli/workflow-cli.ts';
+import { dispatchAsync } from '../bootstrap/workflow-engine-host.ts';
 import { createOpenSpecAdapter } from '../src/composition-root/openspec-adapter-production.ts';
 import type { CentralGrantRequestPortV1 } from '@jigwright/core/central-grant-port';
 import { createSystemDocumentFailGrantResult } from '../src/entrypoints/cli/system-document-fail-grant-cli.ts';

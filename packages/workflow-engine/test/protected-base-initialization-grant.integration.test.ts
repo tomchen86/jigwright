@@ -32,7 +32,7 @@ import {
   grantStorePaths,
   createFileGrantRecordStore,
 } from '../src/runtime/storage-journal/grant-store.ts';
-import { createProposeProtectedBaseFailGrantResult } from '../src/entrypoints/cli/workflow-cli.ts';
+import { createProposeProtectedBaseFailGrantResult } from '../bootstrap/workflow-engine-host.ts';
 import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';

@@ -44,7 +44,7 @@ import {
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { investigationManifestPublicationNamespace } from '../src/modules/investigation/manifest/investigation-publication-contracts.ts';
 import { validateCiArchiveCommit } from '../src/composition-root/ci-replay-production.ts';
-import {verifyPullRequest} from '../src/composition-root/ci-verification-production.ts';
+import { verifyPullRequest } from '../src/composition-root/ci-verification-production.ts';
 import { taskDiffReviewProviderSubmission } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact-record.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';

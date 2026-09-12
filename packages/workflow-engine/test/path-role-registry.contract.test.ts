@@ -22,7 +22,7 @@ const REGISTRY: PathRoleRegistry = parsePathRoleRegistry({
   roles: {
     'control-plane': ['packages/workflow-engine/bootstrap/**'],
     grant: [
-      'packages/workflow-engine/src/modules/authority/maintainer-candidate.ts',
+      'packages/workflow-engine/src/modules/authority/maintainer-candidate-contracts.ts',
     ],
     lifecycle: [
       'packages/workflow-engine/src/application/propose/planning-transition.ts',
@@ -50,13 +50,13 @@ test('a path resolves to the role that registers it', () => {
 });
 
 test('an exact registration outranks a prefix that also covers it', () => {
-  // maintainer-candidate.ts sits under the ordinary src prefix, but it is
+  // maintainer-candidate-contracts.ts sits under the ordinary src prefix, but it is
   // registered by name as grant substrate; the narrower claim has to win or
   // every risky file would be laundered by a broad sibling pattern.
   assert.equal(
     resolvePathRole(
       REGISTRY,
-      'packages/workflow-engine/src/modules/authority/maintainer-candidate.ts',
+      'packages/workflow-engine/src/modules/authority/maintainer-candidate-contracts.ts',
     ).role,
     'grant',
   );
@@ -79,7 +79,7 @@ test('only ordinary and unregistered-free paths may be compressed', () => {
   for (const risky of [
     'workflow/checks.json',
     'openspec/specs/workflow-assurance/spec.md',
-    'packages/workflow-engine/src/modules/authority/maintainer-candidate.ts',
+    'packages/workflow-engine/src/modules/authority/maintainer-candidate-contracts.ts',
     'packages/workflow-engine/src/application/propose/planning-transition.ts',
     'packages/workflow-engine/bootstrap/canonical-json.ts',
     'packages/workflow-engine/test/fixture.ts',
@@ -145,14 +145,14 @@ test('resolution is deterministic regardless of role declaration order', () => {
     roles: {
       ordinary: ['packages/workflow-engine/src/**'],
       grant: [
-        'packages/workflow-engine/src/modules/authority/maintainer-candidate.ts',
+        'packages/workflow-engine/src/modules/authority/maintainer-candidate-contracts.ts',
       ],
     },
   });
   assert.equal(
     resolvePathRole(
       reversed,
-      'packages/workflow-engine/src/modules/authority/maintainer-candidate.ts',
+      'packages/workflow-engine/src/modules/authority/maintainer-candidate-contracts.ts',
     ).role,
     'grant',
   );
@@ -173,7 +173,7 @@ test('the repository registry classifies its own risky substrate', () => {
     ['workflow/maintainer-policy.json', 'control-plane'],
     ['packages/workflow-engine/bootstrap/canonical-json.ts', 'control-plane'],
     [
-      'packages/workflow-engine/src/modules/authority/maintainer-candidate.ts',
+      'packages/workflow-engine/src/modules/authority/maintainer-candidate-contracts.ts',
       'grant',
     ],
     [

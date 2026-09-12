@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
-import { dispatchAsync } from '../src/entrypoints/cli/workflow-cli.ts';
+import { dispatchAsync } from '../bootstrap/workflow-engine-host.ts';
 import {
   listGovernanceSources,
   readGovernanceSource,

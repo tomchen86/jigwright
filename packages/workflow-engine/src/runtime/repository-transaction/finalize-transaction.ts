@@ -1,4 +1,7 @@
-import {parseDocumentationReviewCapture,type DocumentationReviewCapture} from '../../modules/assurance/documentation-closure.ts';
+import {
+  parseDocumentationReviewCapture,
+  type DocumentationReviewCapture,
+} from '../../modules/assurance/documentation-closure.ts';
 /**
  * Persists projected finalize transactions and verifies their phase
  * progression.

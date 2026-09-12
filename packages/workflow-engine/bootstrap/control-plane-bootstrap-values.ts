@@ -58,6 +58,7 @@ export const BUILT_IN_POLICY_SCHEMA_VERSION = 2;
 
 export const BUILT_IN_BOOTSTRAP_RUNTIME_PATHS = [
   'packages/workflow-engine/bootstrap/built-in-engine-closure-pin.ts',
+  'packages/workflow-engine/bootstrap/candidate-engine-selection.ts',
   'packages/workflow-engine/bootstrap/canonical-json.ts',
   'packages/workflow-engine/bootstrap/control-plane-bootstrap-closure.ts',
   'packages/workflow-engine/bootstrap/control-plane-bootstrap-executable.ts',
@@ -74,6 +75,10 @@ export const BUILT_IN_BOOTSTRAP_RUNTIME_PATHS = [
   'packages/workflow-engine/bootstrap/control-plane-bootstrap-types.ts',
   'packages/workflow-engine/bootstrap/control-plane-bootstrap-values.ts',
   'packages/workflow-engine/bootstrap/control-plane-trust.ts',
+  'packages/workflow-engine/bootstrap/harness-bootstrap-production.ts',
+  'packages/workflow-engine/bootstrap/maintainer-authority-production.ts',
+  'packages/workflow-engine/bootstrap/workflow-bootstrap-host.ts',
+  'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
 ] as const;
 
 export const REQUIRED_BOOTSTRAP_PROTECTED_CAPABILITIES = [

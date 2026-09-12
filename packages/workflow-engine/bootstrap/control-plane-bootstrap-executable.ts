@@ -1,3 +1,4 @@
+import { WORKFLOW_BOOTSTRAP_HOST_ENTRYPOINT } from './workflow-bootstrap-host.ts';
 /** Generate the pinned supervisor executable and verify its restart protocol. */
 import childProcess from 'node:child_process';
 import path from 'node:path';
@@ -80,6 +81,7 @@ const path = require('node:path');
 const BUILT_IN_CLOSURE_DIGEST = ${JSON.stringify(builtInClosureDigest)};
 const CONTROL_PLANE_CLOSURE_DIGEST = ${JSON.stringify(controlPlaneClosureDigest)};
 const ENTRYPOINT = ${JSON.stringify(manifest.entrypoint)};
+const HOST_ENTRYPOINT = ${JSON.stringify(WORKFLOW_BOOTSTRAP_HOST_ENTRYPOINT)};
 const PACKAGES = ${JSON.stringify(manifest.packages)};
 const BOOTSTRAP_RUNTIME_FILES = ${JSON.stringify(runtimeDescriptors)};
 const SOURCE_CHANGE_ID = 'repository-default-built-in';
@@ -337,7 +339,8 @@ try {
     process.stdout.write(JSON.stringify(verified.selfTest) + '\\n');
     process.exit(0);
   }
-  const entrypointPath = path.join(verified.closureRoot, ...ENTRYPOINT.split('/'));
+  if (!BOOTSTRAP_RUNTIME_FILES.some((entry) => entry.path === HOST_ENTRYPOINT)) throw new Error('Workflow host is missing from the verified bootstrap inventory.');
+  const entrypointPath = path.join(verified.closureRoot, ...HOST_ENTRYPOINT.split('/'));
   const closureUrl = require('node:url').pathToFileURL(verified.closureRoot + path.sep).href;
   const hookSource = [
     "import fs from 'node:fs';",

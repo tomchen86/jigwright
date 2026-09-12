@@ -1,4 +1,7 @@
-import {type DocumentationClosureRecord,encodeDocumentationClosure} from '../../modules/assurance/documentation-closure.ts';
+import {
+  type DocumentationClosureRecord,
+  encodeDocumentationClosure,
+} from '../../modules/assurance/documentation-closure.ts';
 /**
  * Creates managed commit objects and performs guarded managed ref updates.
  *

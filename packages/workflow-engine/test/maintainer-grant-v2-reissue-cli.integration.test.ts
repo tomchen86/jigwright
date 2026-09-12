@@ -10,7 +10,7 @@ test('the production CLI routes retained-candidate reissue before legacy grant f
   const repository = createFixtureRepository();
   const cli = path.resolve(
     import.meta.dirname,
-    '../src/entrypoints/cli/workflow-cli.ts',
+    '../bootstrap/workflow-engine-host.ts',
   );
   try {
     const result = spawnSync(

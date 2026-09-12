@@ -1,6 +1,12 @@
 import type { ChangeRoutingInspector } from '../../../../modules/lifecycle/change-routing.ts';
-import type { HandoffChange, HandoffReadContext } from '../../../../modules/projection/handoff.ts';
-export type { HandoffChange, HandoffReadContext } from '../../../../modules/projection/handoff.ts';
+import type {
+  HandoffChange,
+  HandoffReadContext,
+} from '../../../../modules/projection/handoff.ts';
+export type {
+  HandoffChange,
+  HandoffReadContext,
+} from '../../../../modules/projection/handoff.ts';
 import type { ChangeContractReader } from '../../../../modules/planning-provider/change-contract.ts';
 /**
  * Projects and validates the handoff document from controlled workflow and
@@ -26,7 +32,13 @@ import {
   workflowError,
 } from '../../../../foundation/errors/errors.ts';
 import { assertChangeId } from '../../../../foundation/repository-path/repository-path.ts';
-import { changeLifecycleRelativePath, parseChangeLifecycleSource, type ChangeRoutingAuthorityPort, type ChangeRoutingInspection, type ChangeRoutingObservation } from '../../../../modules/lifecycle/change-routing.ts';
+import {
+  changeLifecycleRelativePath,
+  parseChangeLifecycleSource,
+  type ChangeRoutingAuthorityPort,
+  type ChangeRoutingInspection,
+  type ChangeRoutingObservation,
+} from '../../../../modules/lifecycle/change-routing.ts';
 
 import {
   repositoryConsumerPath,
@@ -54,17 +66,20 @@ const ROUTING_SECTIONS = [
   'References',
 ];
 
-
-
 type RepositoryTextReader = (relativePath: string) => string | undefined;
 
-
-
-export function renderHandoff(routingInspector: ChangeRoutingInspector, loadChangeContract: ChangeContractReader,
+export function renderHandoff(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   authorityPort?: ChangeRoutingAuthorityPort,
 ): string {
-  const rendered = projectHandoff(routingInspector, loadChangeContract, repositoryRoot, authorityPort);
+  const rendered = projectHandoff(
+    routingInspector,
+    loadChangeContract,
+    repositoryRoot,
+    authorityPort,
+  );
   writeTextAtomic(handoffPath(repositoryRoot), rendered);
   return rendered;
 }
@@ -73,21 +88,36 @@ export function renderHandoff(routingInspector: ChangeRoutingInspector, loadChan
  * Render from tracked repository facts only. Durable transition and CI replay
  * callers use this projection so Git-common task runtime cannot change bytes.
  */
-export function renderHandoffFromTrackedFacts(routingInspector: ChangeRoutingInspector, loadChangeContract: ChangeContractReader, repositoryRoot: string): string {
-  const rendered = buildHandoff(routingInspector, loadChangeContract, repositoryRoot, undefined, undefined, {
-    contracts: liveContracts(loadChangeContract, repositoryRoot),
-    readText: (relativePath) =>
-      readTrackedHandoffSource(repositoryRoot, relativePath),
-  });
+export function renderHandoffFromTrackedFacts(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
+  repositoryRoot: string,
+): string {
+  const rendered = buildHandoff(
+    routingInspector,
+    loadChangeContract,
+    repositoryRoot,
+    undefined,
+    undefined,
+    {
+      contracts: liveContracts(loadChangeContract, repositoryRoot),
+      readText: (relativePath) =>
+        readTrackedHandoffSource(repositoryRoot, relativePath),
+    },
+  );
   writeTextAtomic(handoffPath(repositoryRoot), rendered);
   return rendered;
 }
 
-export function projectHandoff(routingInspector: ChangeRoutingInspector, loadChangeContract: ChangeContractReader,
+export function projectHandoff(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   authorityPort?: ChangeRoutingAuthorityPort,
 ): string {
-  return buildHandoff(routingInspector, loadChangeContract,
+  return buildHandoff(
+    routingInspector,
+    loadChangeContract,
     repositoryRoot,
     undefined,
     undefined,
@@ -97,16 +127,24 @@ export function projectHandoff(routingInspector: ChangeRoutingInspector, loadCha
 }
 
 /** Build completion handoff bytes from an exact prospective tasks projection. */
-export function projectHandoffForTaskProjection(routingInspector: ChangeRoutingInspector, loadChangeContract: ChangeContractReader,
+export function projectHandoffForTaskProjection(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   requestedChangeId: string,
   projectedTasks: string,
 ): string {
   const changeId = assertChangeId(requestedChangeId);
-  return buildHandoff(routingInspector, loadChangeContract, repositoryRoot, undefined, {
-    changeId,
-    tasks: parseTasks(projectedTasks),
-  });
+  return buildHandoff(
+    routingInspector,
+    loadChangeContract,
+    repositoryRoot,
+    undefined,
+    {
+      changeId,
+      tasks: parseTasks(projectedTasks),
+    },
+  );
 }
 
 /**
@@ -114,17 +152,26 @@ export function projectHandoffForTaskProjection(routingInspector: ChangeRoutingI
  * handoff bytes are deliberately not consulted: generated output is never an
  * authority input for the transition that replaces it.
  */
-export function renderHandoffForChange(routingInspector: ChangeRoutingInspector, loadChangeContract: ChangeContractReader,
+export function renderHandoffForChange(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   requestedChangeId: string,
 ): string {
   const changeId = assertChangeId(requestedChangeId);
-  const rendered = buildHandoff(routingInspector, loadChangeContract, repositoryRoot, changeId);
+  const rendered = buildHandoff(
+    routingInspector,
+    loadChangeContract,
+    repositoryRoot,
+    changeId,
+  );
   writeTextAtomic(handoffPath(repositoryRoot), rendered);
   return rendered;
 }
 
-function buildHandoff(routingInspector: ChangeRoutingInspector, loadChangeContract: ChangeContractReader,
+function buildHandoff(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   selectedChangeId?: string,
   projectedChange?: HandoffChange,
@@ -141,7 +188,8 @@ function buildHandoff(routingInspector: ChangeRoutingInspector, loadChangeContra
         : undefined
       : readContext.readText(changeLifecycleRelativePath);
   if (routedSource !== undefined) {
-    return buildRoutingHandoff(routingInspector,
+    return buildRoutingHandoff(
+      routingInspector,
       repositoryRoot,
       readContext,
       routedSource,
@@ -150,7 +198,8 @@ function buildHandoff(routingInspector: ChangeRoutingInspector, loadChangeContra
       authorityPort,
     );
   }
-  const contract = selectChange(loadChangeContract, 
+  const contract = selectChange(
+    loadChangeContract,
     repositoryRoot,
     selectedChangeId,
     projectedChange,
@@ -215,7 +264,8 @@ function buildHandoff(routingInspector: ChangeRoutingInspector, loadChangeContra
   ].join('\n');
 }
 
-function buildRoutingHandoff(routingInspector: ChangeRoutingInspector,
+function buildRoutingHandoff(
+  routingInspector: ChangeRoutingInspector,
   repositoryRoot: string,
   readContext: HandoffReadContext | undefined,
   sourceBytes: string,
@@ -490,11 +540,15 @@ function stateLabel(change: ChangeRoutingObservation): string {
   return change.state;
 }
 
-export function validateHandoff(routingInspector: ChangeRoutingInspector, loadChangeContract: ChangeContractReader,
+export function validateHandoff(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   readContext?: HandoffReadContext,
 ): void {
-  const expected = buildHandoff(routingInspector, loadChangeContract,
+  const expected = buildHandoff(
+    routingInspector,
+    loadChangeContract,
     repositoryRoot,
     undefined,
     undefined,
@@ -503,12 +557,19 @@ export function validateHandoff(routingInspector: ChangeRoutingInspector, loadCh
   assertHandoffBytes(repositoryRoot, expected, readContext?.readText);
 }
 
-export function validateHandoffForChange(routingInspector: ChangeRoutingInspector, loadChangeContract: ChangeContractReader,
+export function validateHandoffForChange(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   requestedChangeId: string,
 ): void {
   const changeId = assertChangeId(requestedChangeId);
-  const expected = buildHandoff(routingInspector, loadChangeContract, repositoryRoot, changeId);
+  const expected = buildHandoff(
+    routingInspector,
+    loadChangeContract,
+    repositoryRoot,
+    changeId,
+  );
   assertHandoffBytes(repositoryRoot, expected);
 }
 
@@ -549,7 +610,8 @@ function assertHandoffBytes(
   }
 }
 
-function selectChange(loadChangeContract: ChangeContractReader, 
+function selectChange(
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   explicitChangeId?: string,
   projectedChange?: HandoffChange,
@@ -601,7 +663,10 @@ function selectChange(loadChangeContract: ChangeContractReader,
   );
 }
 
-function liveContracts(loadChangeContract: ChangeContractReader, repositoryRoot: string): HandoffChange[] {
+function liveContracts(
+  loadChangeContract: ChangeContractReader,
+  repositoryRoot: string,
+): HandoffChange[] {
   const config = loadWorkflowConfig(repositoryRoot);
   const root = path.join(repositoryRoot, config.changeRoot);
   return fs

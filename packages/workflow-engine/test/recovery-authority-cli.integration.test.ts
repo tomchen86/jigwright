@@ -11,7 +11,7 @@ import {
   resolveRecoveryQuarantineMarker,
 } from '../bootstrap/control-plane-trust.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { runHarnessBootstrapCli } from '../src/entrypoints/cli/harness-bootstrap-cli.ts';
+import { runHarnessBootstrapCli } from '../bootstrap/harness-bootstrap-host.ts';
 import {
   recoveryAuthorityDescriptorDigest,
   recoveryAuthorityRepositoryIdentityDigest,

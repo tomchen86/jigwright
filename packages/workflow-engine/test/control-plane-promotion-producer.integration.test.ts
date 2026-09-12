@@ -1,3 +1,4 @@
+import { controlPlanePromotionBootstrapObservations } from './control-plane-promotion-fixture.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
@@ -40,6 +41,8 @@ test('clean frozen Class-C candidate produces exact current reviewed material an
       stateRoot,
       frozen.candidateBundleDigest,
       {
+        bootstrapObservations: controlPlanePromotionBootstrapObservations,
+        candidateArtifacts: controlPlaneCandidateArtifacts,
         now: () => new Date('2026-08-10T10:03:00.000Z'),
         reviewSigner: reviewer,
         verifyHumanSignature,
@@ -101,6 +104,8 @@ test('clean frozen Class-C candidate produces exact current reviewed material an
       stateRoot,
       frozen.candidateBundleDigest,
       {
+        bootstrapObservations: controlPlanePromotionBootstrapObservations,
+        candidateArtifacts: controlPlaneCandidateArtifacts,
         now: () => new Date('2026-08-10T10:04:00.000Z'),
         reviewSigner: reviewer,
         verifyHumanSignature,
@@ -144,6 +149,8 @@ test('clean frozen Class-C candidate produces exact current reviewed material an
       stateRoot,
       frozen.candidateBundleDigest,
       {
+        bootstrapObservations: controlPlanePromotionBootstrapObservations,
+        candidateArtifacts: controlPlaneCandidateArtifacts,
         now: () => new Date('2026-08-10T10:04:30.000Z'),
         reviewSigner: signing.signer(GRANT_SIGNER, replacementReviewCalls),
         verifyHumanSignature,
@@ -225,6 +232,8 @@ test('producer rejects a sidecar EngineArtifact whose source is not the frozen c
           fixture.stateRoot,
           fixture.frozen.candidateBundleDigest,
           {
+            bootstrapObservations: controlPlanePromotionBootstrapObservations,
+            candidateArtifacts: controlPlaneCandidateArtifacts,
             now: () => new Date('2026-08-10T10:03:00.000Z'),
             reviewSigner: fixture.signing.signer(REVIEWER, calls),
             verifyHumanSignature: fixture.signing.verifier,
@@ -252,6 +261,8 @@ test('producer rejects a caller-selected state store before reading or signing',
           `${fixture.stateRoot}-other-repository`,
           fixture.frozen.candidateBundleDigest,
           {
+            bootstrapObservations: controlPlanePromotionBootstrapObservations,
+            candidateArtifacts: controlPlaneCandidateArtifacts,
             now: () => new Date('2026-08-10T10:03:00.000Z'),
             reviewSigner: fixture.signing.signer(REVIEWER, calls),
             verifyHumanSignature: fixture.signing.verifier,
@@ -291,3 +302,5 @@ function hasCode(code: string) {
   return (error: unknown): boolean =>
     error instanceof WorkflowError && error.code === code;
 }
+
+import { controlPlaneCandidateArtifacts } from './control-plane-promotion-fixture.ts';

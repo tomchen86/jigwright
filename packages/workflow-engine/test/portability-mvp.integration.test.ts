@@ -1,7 +1,8 @@
 import { productionChangeRoutingInspector } from '../src/composition-root/change-routing-observation-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const renderHandoff = renderHandoffWithContractReader.bind(
-  undefined, productionChangeRoutingInspector,
+  undefined,
+  productionChangeRoutingInspector,
   productionChangeContractReader,
 );
 import path from 'node:path';

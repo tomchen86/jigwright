@@ -1,4 +1,4 @@
-import {parseDocumentationClosureFromCommitMessage} from '../src/modules/assurance/documentation-closure.ts';
+import { parseDocumentationClosureFromCommitMessage } from '../src/modules/assurance/documentation-closure.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import {
   productionChangeRoutingInspector,
@@ -28,8 +28,8 @@ import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { withArchiveEligibility } from '../src/application/archive/archive-eligibility.ts';
-import {verifyPullRequest} from '../src/composition-root/ci-verification-production.ts';
-import {assertDocumentationClosureCommitCurrent} from '../src/runtime/managed-documents/contracts/documentation-closure.ts';
+import { verifyPullRequest } from '../src/composition-root/ci-verification-production.ts';
+import { assertDocumentationClosureCommitCurrent } from '../src/runtime/managed-documents/contracts/documentation-closure.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { commitFacts } from '../src/runtime/repository-transaction/git-transitions.ts';
@@ -54,8 +54,11 @@ import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/pro
 import { readProviderAutomaticRetrySchedule } from '../src/composition-root/provider-retry-production.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { listProviderWorkerMaintenanceWarnings } from '../src/runtime/storage-journal/provider-worker-maintenance.ts';
-import {preparePullRequestPreMergeAssurance,verifyPullRequestWithPreMergeAssurance} from '../src/composition-root/ci-verification-production.ts';
-import { runCli } from '../src/entrypoints/cli/workflow-cli.ts';
+import {
+  preparePullRequestPreMergeAssurance,
+  verifyPullRequestWithPreMergeAssurance,
+} from '../src/composition-root/ci-verification-production.ts';
+import { runCli } from '../bootstrap/workflow-engine-host.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { abortSession } from '../src/composition-root/task-session-production.ts';
 import {

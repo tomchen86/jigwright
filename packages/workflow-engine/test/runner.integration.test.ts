@@ -71,7 +71,7 @@ test('registered full-gate style runner preserves strip-types and streams startu
         '--experimental-strip-types',
         path.join(
           sourceRepositoryRoot,
-          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
         ),
         'run-check',
         'live',

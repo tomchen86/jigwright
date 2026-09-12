@@ -29,6 +29,11 @@ export const BUILT_IN_OUTPUTS = new Set([
   'packages/workflow-engine/bootstrap/built-in-engine-closure-pin.ts',
 ]);
 
+export const WORKFLOW_BOOTSTRAP_HOST_OUTPUTS = new Set([
+  'packages/workflow-engine/bootstrap/workflow-bootstrap-host.json',
+  'packages/workflow-engine/bootstrap/workflow-bootstrap-host-pin.ts',
+]);
+
 export const HARNESS_BOOTSTRAP_OUTPUTS = new Set([
   'packages/workflow-engine/bootstrap/harness-bootstrap-dependency-closure.json',
   'packages/workflow-engine/bootstrap/harness-bootstrap-runtime-closure-pin.ts',
@@ -375,6 +380,7 @@ export function assertAllowedFinalMutations(
   baseAuthorityPaths: readonly string[],
   steps: readonly (
     | 'built-in-engine-closure'
+    | 'workflow-bootstrap-host'
     | 'harness-bootstrap-runtime'
     | 'protected-capabilities'
   )[],
@@ -386,6 +392,8 @@ export function assertAllowedFinalMutations(
       base.has(mutation.path) ||
       (enabled.has('built-in-engine-closure') &&
         BUILT_IN_OUTPUTS.has(mutation.path)) ||
+      (enabled.has('workflow-bootstrap-host') &&
+        WORKFLOW_BOOTSTRAP_HOST_OUTPUTS.has(mutation.path)) ||
       (enabled.has('harness-bootstrap-runtime') &&
         (HARNESS_BOOTSTRAP_OUTPUTS.has(mutation.path) ||
           mutation.path.startsWith(`${HARNESS_BOOTSTRAP_RUNTIME_ROOT}/`))) ||

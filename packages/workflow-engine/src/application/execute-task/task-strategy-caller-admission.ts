@@ -46,7 +46,8 @@ import type {
   TaskStrategyImplementationStatus,
 } from './task-strategy-implementation-lifecycle.ts';
 import type { createTaskStrategyImplementationContext } from './task-strategy-implementation-context.ts';
-export function createTaskStrategyCallerAdmission(routingAdmissionReader: ChangeRoutingAdmissionReader,
+export function createTaskStrategyCallerAdmission(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   roleAdmission: Pick<
     RoleAdmissionServices,
     'authorizeGrantedOrdinaryRole' | 'admitRoleResult'
@@ -132,7 +133,8 @@ export function createTaskStrategyCallerAdmission(routingAdmissionReader: Change
       subject.subjectDigest,
     );
     if (reservation === null) {
-      const validation = validateTaskStrategyCallerPatch(routingAdmissionReader,
+      const validation = validateTaskStrategyCallerPatch(
+        routingAdmissionReader,
         context.git.repositoryRoot,
         context.session.sessionId,
         {
@@ -408,7 +410,8 @@ export function createTaskStrategyCallerAdmission(routingAdmissionReader: Change
         'Simulated task implementation interruption after caller result persistence.',
       );
     }
-    const imported = importTaskStrategyCallerPatchUnderLifecycleLock(routingAdmissionReader,
+    const imported = importTaskStrategyCallerPatchUnderLifecycleLock(
+      routingAdmissionReader,
       context.git.repositoryRoot,
       context.session.sessionId,
       {

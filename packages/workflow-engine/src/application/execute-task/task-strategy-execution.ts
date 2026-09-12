@@ -71,22 +71,33 @@ export function inspectTaskStrategyTransaction(
   return readTaskStrategyTransaction(context.runtime, requestedSessionId);
 }
 
-export function sealTaskStrategyRed(routingAdmissionReader: ChangeRoutingAdmissionReader,
+export function sealTaskStrategyRed(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   options: SealTaskStrategyRedOptions = {},
 ): TaskStrategyTransaction {
   return runSessionOperation(cwd, requestedSessionId, () =>
-    sealTaskStrategyRedUnlocked(routingAdmissionReader, cwd, requestedSessionId, options),
+    sealTaskStrategyRedUnlocked(
+      routingAdmissionReader,
+      cwd,
+      requestedSessionId,
+      options,
+    ),
   );
 }
 
-function sealTaskStrategyRedUnlocked(routingAdmissionReader: ChangeRoutingAdmissionReader,
+function sealTaskStrategyRedUnlocked(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   options: SealTaskStrategyRedOptions,
 ): TaskStrategyTransaction {
-  const inspection = inspectSession(routingAdmissionReader, cwd, requestedSessionId);
+  const inspection = inspectSession(
+    routingAdmissionReader,
+    cwd,
+    requestedSessionId,
+  );
   const task = executionTask(inspection);
   const taskContractDigest = sha256(canonicalJson(task));
   const actorResolution = resolveActorIdentity({
@@ -136,7 +147,8 @@ function sealTaskStrategyRedUnlocked(routingAdmissionReader: ChangeRoutingAdmiss
     return existing;
   }
 
-  const prepared = prepareTaskStrategyRed(routingAdmissionReader,
+  const prepared = prepareTaskStrategyRed(
+    routingAdmissionReader,
     cwd,
     requestedSessionId,
     inspection,
@@ -155,12 +167,17 @@ function sealTaskStrategyRedUnlocked(routingAdmissionReader: ChangeRoutingAdmiss
  * writes the evidence node, transaction object, or current-ref transition.
  * The caller owns the repository and session lifecycle locks.
  */
-export function prepareTaskStrategyRedSuccessorUnlocked(routingAdmissionReader: ChangeRoutingAdmissionReader,
+export function prepareTaskStrategyRedSuccessorUnlocked(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   options: PrepareTaskStrategyRedSuccessorOptions,
 ): PreparedTaskStrategyRed {
-  const inspection = inspectSession(routingAdmissionReader, cwd, requestedSessionId);
+  const inspection = inspectSession(
+    routingAdmissionReader,
+    cwd,
+    requestedSessionId,
+  );
   const task = executionTask(inspection);
   const taskContractDigest = sha256(canonicalJson(task));
   if (inspection.session.state !== 'active') {
@@ -170,7 +187,8 @@ export function prepareTaskStrategyRedSuccessorUnlocked(routingAdmissionReader: 
       ExitCode.staleState,
     );
   }
-  const prepared = prepareTaskStrategyRed(routingAdmissionReader,
+  const prepared = prepareTaskStrategyRed(
+    routingAdmissionReader,
     cwd,
     requestedSessionId,
     inspection,
@@ -192,7 +210,8 @@ export function prepareTaskStrategyRedSuccessorUnlocked(routingAdmissionReader: 
   return prepared;
 }
 
-function prepareTaskStrategyRed(routingAdmissionReader: ChangeRoutingAdmissionReader,
+function prepareTaskStrategyRed(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
   inspection: ReturnType<typeof inspectSession>,
@@ -273,9 +292,14 @@ function prepareTaskStrategyRed(routingAdmissionReader: ChangeRoutingAdmissionRe
       },
     );
   }
-  const after = inspectSession(routingAdmissionReader, cwd, requestedSessionId, {
-    expectedSession: inspection.session,
-  });
+  const after = inspectSession(
+    routingAdmissionReader,
+    cwd,
+    requestedSessionId,
+    {
+      expectedSession: inspection.session,
+    },
+  );
   const afterPreview = previewExactStaging(
     after.git.repositoryRoot,
     after.session.baseline.head,

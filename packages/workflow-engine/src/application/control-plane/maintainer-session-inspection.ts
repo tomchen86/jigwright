@@ -25,6 +25,7 @@ export function createMaintainerSessionInspection(
   bindings: () => MaintainerSessionInspectionBindings,
 ) {
   function checkAuthoritySession(
+    grantServices: MaintainerGrantExecutionServices,
     manifestOperations: MaintainerManifestOperations,
     taskMandate: MaintainerTaskMandateOperations,
     cwd: string,
@@ -68,6 +69,7 @@ export function createMaintainerSessionInspection(
     }
     try {
       const { git, envelope, contractDigest } = inspectAuthoritySession(
+        grantServices,
         manifestOperations,
         taskMandate,
         cwd,
@@ -213,6 +215,7 @@ export function createMaintainerSessionInspection(
   }
 
   function inspectAuthoritySession(
+    grantServices: MaintainerGrantExecutionServices,
     manifestOperations: MaintainerManifestOperations,
     taskMandate: MaintainerTaskMandateOperations,
     cwd: string,
@@ -281,6 +284,7 @@ export function createMaintainerSessionInspection(
       );
     }
     validateReservedGrantAuthorityBinding(
+      grantServices,
       manifestOperations,
       taskMandate,
       git.repositoryRoot,
@@ -380,6 +384,7 @@ export function createMaintainerSessionInspection(
         : null,
     );
     assertV2CandidateFresh(
+      grantServices,
       stable.git.repositoryRoot,
       reservation.envelope,
       exactDate(options.now ?? new Date()),
@@ -397,7 +402,7 @@ export function createMaintainerSessionInspection(
 
   function assertPreapprovalChecksCurrent(
     attestation: NonNullable<
-      import('../../modules/authority/maintainer-grant-v2.ts').MaintainerGrantV2Payload['checksAttestation']
+      import('../../modules/authority/maintainer-grant-v2-codec.ts').MaintainerGrantV2Payload['checksAttestation']
     >,
     pinnedChecks: AuthorityPinnedCheck[],
     fingerprint: string,
@@ -492,3 +497,5 @@ export function createMaintainerSessionInspection(
 }
 
 import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
+
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';

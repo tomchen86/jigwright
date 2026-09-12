@@ -45,7 +45,8 @@ import type {
   TaskStrategyImplementationStatus,
 } from './task-strategy-implementation-lifecycle.ts';
 import type { createTaskStrategyImplementationContext } from './task-strategy-implementation-context.ts';
-export function createTaskStrategyProviderResults(routingAdmissionReader: ChangeRoutingAdmissionReader,
+export function createTaskStrategyProviderResults(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   roleAdmission: Pick<RoleAdmissionServices, 'admitRoleResult'>,
   runtime: TaskStrategyImplementationRuntimeBindings,
   context: ReturnType<typeof createTaskStrategyImplementationContext>,
@@ -274,11 +275,16 @@ export function createTaskStrategyProviderResults(routingAdmissionReader: Change
       output.sourceTree,
     );
     if (durablePatchRecord === null) {
-      validateTaskStrategyProviderPatch(routingAdmissionReader, cwd, context.session.sessionId, {
-        patch: Buffer.from(output.patchBase64, 'base64'),
-        implementationReservationDigest: reservation.recordDigest,
-        implementationSubjectDigest: reservation.subject.subjectDigest,
-      });
+      validateTaskStrategyProviderPatch(
+        routingAdmissionReader,
+        cwd,
+        context.session.sessionId,
+        {
+          patch: Buffer.from(output.patchBase64, 'base64'),
+          implementationReservationDigest: reservation.recordDigest,
+          implementationSubjectDigest: reservation.subject.subjectDigest,
+        },
+      );
     }
 
     let binding = readTaskStrategyImplementationResultBinding(
@@ -396,7 +402,8 @@ export function createTaskStrategyProviderResults(routingAdmissionReader: Change
       invocation,
       binding,
     );
-    const imported = importTaskStrategyProviderPatchUnderLifecycleLock(routingAdmissionReader,
+    const imported = importTaskStrategyProviderPatchUnderLifecycleLock(
+      routingAdmissionReader,
       cwd,
       context.session.sessionId,
       {

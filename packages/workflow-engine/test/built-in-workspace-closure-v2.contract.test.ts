@@ -1,4 +1,7 @@
-import { BOOTSTRAP_RUNTIME_NAMES } from './support/bootstrap-runtime-fixture.ts';
+import {
+  BOOTSTRAP_RUNTIME_NAMES,
+  sealFixtureWorkflowHost,
+} from './support/bootstrap-runtime-fixture.ts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -355,6 +358,7 @@ function createWorkspaceClosureFixture(): {
     { mode: 0o644 },
   );
 
+  sealFixtureWorkflowHost(workflowEngineRoot);
   const bootstrapRuntimeFiles = BOOTSTRAP_RUNTIME_NAMES.map((name) => {
     const bytes = fs.readFileSync(path.join(workflowBootstrap, name));
     return {

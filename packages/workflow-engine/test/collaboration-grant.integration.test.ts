@@ -346,7 +346,7 @@ test('collaboration grant CLI requires a controlling TTY and has no unattended e
     const request = sameProviderRequest(repository);
     const cli = path.join(
       sourceRepositoryRoot,
-      'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+      'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
     );
     const args = collaborationCliArguments(cli, request);
     const nonInteractive = spawnSync(process.execPath, args, {
@@ -383,7 +383,7 @@ test('collaboration grant CLI validates the base object ID before invoking Git',
     const request = sameProviderRequest(repository);
     const cli = path.join(
       sourceRepositoryRoot,
-      'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+      'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
     );
     const args = collaborationCliArguments(cli, request).slice(3, -1);
     const baselineIndex = args.indexOf('--base') + 1;

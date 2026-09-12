@@ -1,4 +1,4 @@
-import type {CandidateChecksAttestationV3} from '../../src/modules/authority/maintainer-candidate-contracts.ts';
+import type { CandidateChecksAttestationV3 } from '../../src/modules/authority/maintainer-candidate-contracts.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../../src/composition-root/planning-execution-epoch-production.ts';
 import { managedDocuments } from '../../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../../src/composition-root/consumer-contract-production.ts';
@@ -16,9 +16,9 @@ import {
 import {
   approveAndApplyMaintainerGrantV2 as approveAndApplyMaintainerGrantV2Production,
   reissueAndApplyMaintainerGrantV2 as reissueAndApplyMaintainerGrantV2Production,
-} from '../../src/composition-root/maintainer-authority-production.ts';
-import { commitAuthoritySession as commitAuthoritySessionProduction } from '../../src/composition-root/maintainer-authority-production.ts';
-import { recoverAuthorityCommit as recoverAuthorityCommitProduction } from '../../src/composition-root/maintainer-authority-production.ts';
+} from '../../bootstrap/maintainer-authority-production.ts';
+import { commitAuthoritySession as commitAuthoritySessionProduction } from '../../bootstrap/maintainer-authority-production.ts';
+import { recoverAuthorityCommit as recoverAuthorityCommitProduction } from '../../bootstrap/maintainer-authority-production.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -35,14 +35,13 @@ import {
 } from '../../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../../src/application/propose/planning-transition.ts';
 
-
 import { type MaintainerSignerProvider } from '../../src/adapters/signing/ssh/maintainer-signer.ts';
 import { parseMaintainerPolicy } from '../../src/modules/authority/maintainer-policy.ts';
 import os from 'node:os';
 import {
   MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
   type MaintainerGrantV2Payload,
-} from '../../src/modules/authority/maintainer-grant-v2.ts';
+} from '../../src/modules/authority/maintainer-grant-v2-codec.ts';
 import { AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE } from '../../src/modules/authority/authority-application-receipt.ts';
 import { inspectMaintainerGrants } from '../../src/runtime/storage-journal/maintainer-store.ts';
 

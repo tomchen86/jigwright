@@ -1,4 +1,4 @@
-import type {CandidateSupportingArtifactSet} from '../src/modules/authority/maintainer-candidate-contracts.ts';
+import type { CandidateSupportingArtifactSet } from '../src/modules/authority/maintainer-candidate-contracts.ts';
 import { buildMaintainerPatchManifest } from '../src/composition-root/maintainer-manifest-production.ts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -8,7 +8,19 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';
+import {
+  bootstrapInterventionStateRoot,
+  readInitialControlPlaneSupervisorAnchorEvidence,
+  readBuiltInControlPlaneEngineArtifact,
+} from '../bootstrap/control-plane-trust.ts';
+import type { ControlPlanePromotionBootstrapObservations } from '../src/modules/authority/intervention-bootstrap-contract.ts';
+
+export const controlPlanePromotionBootstrapObservations: ControlPlanePromotionBootstrapObservations =
+  {
+    bootstrapInterventionStateRoot,
+    readInitialControlPlaneSupervisorAnchorEvidence,
+    readBuiltInControlPlaneEngineArtifact,
+  };
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { produceControlPlaneApprovalCandidateV3 } from '../src/application/control-plane/control-plane-promotion-producer.ts';
 import {
@@ -25,7 +37,12 @@ import {
   type ControlPlaneApprovalSummaryV3,
 } from '../src/application/control-plane/intervention-control-updater.ts';
 import { persistInterventionEngineArtifact } from '../src/application/control-plane/intervention-maintenance.ts';
-import {buildImmutableCandidateBundleV2,storeCandidateHumanReadableSummary,storeCandidateSupportingArtifacts,storeImmutableCandidateBundle} from '../src/modules/authority/maintainer-candidate.ts';
+import { buildImmutableCandidateBundleV2 } from '../src/modules/authority/maintainer-candidate-contracts.ts';
+import {
+  storeCandidateHumanReadableSummary,
+  storeCandidateSupportingArtifacts,
+  storeImmutableCandidateBundle,
+} from '../src/runtime/storage-journal/maintainer-candidate-writer.ts';
 
 import { type CapabilityProfile } from '../src/modules/authority/maintainer-manifest-contracts.ts';
 import type { TrustedMaintainerSigner } from '../src/modules/authority/maintainer-policy.ts';
@@ -41,7 +58,10 @@ export const CONTROL_PLANE_FIXTURE_CHANGE_ID = 'intervention-b';
 const PARENT_CHANGE_ID = 'parent-a';
 export const CONTROL_PLANE_FIXTURE_REVIEWER = 'fixture-reviewer';
 export const CONTROL_PLANE_FIXTURE_GRANT_SIGNER = 'fixture-grant-signer';
-import { BOOTSTRAP_RUNTIME_NAMES } from './support/bootstrap-runtime-fixture.ts';
+import {
+  BOOTSTRAP_RUNTIME_NAMES,
+  sealFixtureWorkflowHost,
+} from './support/bootstrap-runtime-fixture.ts';
 const FIXTURE_PROTECTED_CAPABILITY_LOADER_PATH =
   'src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 
@@ -249,6 +269,8 @@ export async function setupFinalizedControlPlanePromotionFixture(
       fixture.stateRoot,
       fixture.frozen.candidateBundleDigest,
       {
+        bootstrapObservations: controlPlanePromotionBootstrapObservations,
+        candidateArtifacts: controlPlaneCandidateArtifacts,
         now: () => new Date(options.reviewedAt ?? '2026-08-10T10:03:00.000Z'),
         reviewSigner: fixture.signing.signer(
           CONTROL_PLANE_FIXTURE_REVIEWER,
@@ -702,6 +724,7 @@ function createSealedEnginePackage(builtInEntrypointBytes?: string): string {
       '',
     ].join('\n'),
   );
+  sealFixtureWorkflowHost(root);
   return root;
 }
 
@@ -1020,3 +1043,12 @@ export function controlPlaneFixtureDigest(
 ): `sha256:${string}` {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
+
+import {
+  readStoredImmutableCandidateBundle,
+  assertStoredCandidateSupportingArtifacts,
+} from '../src/runtime/storage-journal/maintainer-candidate-reader.ts';
+export const controlPlaneCandidateArtifacts = {
+  readStoredImmutableCandidateBundle,
+  assertStoredCandidateSupportingArtifacts,
+};

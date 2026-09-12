@@ -6,7 +6,7 @@ import os from 'node:os';
 import {
   runCli,
   createAsyncCliDispatcherForTesting,
-} from '../src/entrypoints/cli/workflow-cli.ts';
+} from '../bootstrap/workflow-engine-host.ts';
 import {
   ExitCode,
   type WorkflowError,

@@ -1,7 +1,8 @@
 import { productionChangeRoutingInspector } from '../src/composition-root/change-routing-observation-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const renderHandoff = renderHandoffWithContractReader.bind(
-  undefined, productionChangeRoutingInspector,
+  undefined,
+  productionChangeRoutingInspector,
   productionChangeContractReader,
 );
 import assert from 'node:assert/strict';
@@ -10,7 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { runCli } from '../src/entrypoints/cli/workflow-cli.ts';
+import { runCli } from '../bootstrap/workflow-engine-host.ts';
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { ExitCode, WorkflowError } from '../src/foundation/errors/errors.ts';
 import { withChangeTransitionAuthority } from '../src/runtime/session-workspace/planning-lock.ts';

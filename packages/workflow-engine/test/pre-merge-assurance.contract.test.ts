@@ -39,7 +39,9 @@ function coverageFixture() {
     category: 'base-context',
     changeId: null,
     subjectDigest: digest('6'),
-    paths: ['packages/workflow-engine/src/application/assurance/pull-request-verification.ts'],
+    paths: [
+      'packages/workflow-engine/src/application/assurance/pull-request-verification.ts',
+    ],
     contextDigests: [digest('7')],
   });
   return { planning, implementation, baseContext };

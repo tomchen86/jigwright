@@ -77,7 +77,7 @@ test('external-effect issue CLI resolves the active mandate before refusing unat
         '--experimental-strip-types',
         path.join(
           sourceRepositoryRoot,
-          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
         ),
         'external-effect',
         'issue',
@@ -139,7 +139,7 @@ test('publish CLI routes only an exact grant execution request', () => {
   try {
     const cli = path.join(
       sourceRepositoryRoot,
-      'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+      'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
     );
     const malformed = spawnSync(
       process.execPath,
@@ -161,7 +161,7 @@ test('external-effect reconciliation CLI accepts only an explicit evidence docum
   try {
     const cli = path.join(
       sourceRepositoryRoot,
-      'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+      'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
     );
     const result = spawnSync(
       process.execPath,

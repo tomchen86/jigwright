@@ -6,7 +6,11 @@
  * - A successor supervisor cannot create an initial history anchor when
  *   verified history is absent.
  */
-// control plane candidate material; repository effects remain bound by the public module.
+// Repository effects remain bound by the public module.
+import type {
+  BootstrapControlPlaneEngineArtifact,
+  ControlPlanePromotionBootstrapObservations,
+} from '../../modules/authority/intervention-bootstrap-contract.ts';
 import type {
   ControlPlaneCandidateMaterialBindings,
   ControlPlaneCandidateMaterialBindingsTypes,
@@ -25,7 +29,6 @@ type Sha256Digest = ControlPlaneCandidateMaterialBindingsTypes['Sha256Digest'];
 type ExactGitFileState =
   ControlPlaneCandidateMaterialBindingsTypes['ExactGitFileState'];
 declare const readControlPlaneSupervisorState: ControlPlaneCandidateMaterialBindingsTypes['readControlPlaneSupervisorState'];
-declare const readBuiltInControlPlaneEngineArtifact: ControlPlaneCandidateMaterialBindings['readBuiltInControlPlaneEngineArtifact'];
 declare const discoverRepository: ControlPlaneCandidateMaterialBindingsTypes['discoverRepository'];
 
 export function createControlPlaneCandidateMaterial(
@@ -35,22 +38,26 @@ export function createControlPlaneCandidateMaterial(
     stateRoot: string,
     supervisor: ReturnType<typeof readControlPlaneSupervisorState>,
     expectedActiveTrustCommit: string,
+    bootstrapObservations: ControlPlanePromotionBootstrapObservations,
   ): {
     history: VerifiedControlPlaneSupervisorHistory;
-    restartArtifact: ReturnType<typeof readBuiltInControlPlaneEngineArtifact>;
+    restartArtifact: BootstrapControlPlaneEngineArtifact;
   } {
     const boundServices: ControlPlaneCandidateMaterialBindings = bindings();
     const {
       controlPlaneSupervisorHistoryDirectory,
       fs,
       readControlPlaneSupervisorHistory,
-      readBuiltInControlPlaneEngineArtifact,
       producerError,
       ExitCode,
-      readInitialControlPlaneSupervisorAnchorEvidence,
       createControlPlaneSupervisorHistoryAnchor,
       appendControlPlaneSupervisorHistoryRecord,
     } = boundServices;
+
+    const {
+      readBuiltInControlPlaneEngineArtifact,
+      readInitialControlPlaneSupervisorAnchorEvidence,
+    } = bootstrapObservations;
 
     const directory = controlPlaneSupervisorHistoryDirectory(stateRoot);
     if (fs.lstatSync(directory, { throwIfNoEntry: false }) !== undefined) {
@@ -114,7 +121,7 @@ export function createControlPlaneCandidateMaterial(
     stateRoot: string,
     supervisor: ReturnType<typeof readControlPlaneSupervisorState>,
     history: VerifiedControlPlaneSupervisorHistory,
-  ): ReturnType<typeof readBuiltInControlPlaneEngineArtifact> {
+  ): BootstrapControlPlaneEngineArtifact {
     const boundServices: ControlPlaneCandidateMaterialBindings = bindings();
     const {
       producerError,
@@ -228,16 +235,12 @@ export function createControlPlaneCandidateMaterial(
   function assertProducerStateRoot(
     gitCommonDirectory: string,
     stateRoot: string,
+    bootstrapObservations: ControlPlanePromotionBootstrapObservations,
   ): void {
     const boundServices: ControlPlaneCandidateMaterialBindings = bindings();
-    const {
-      bootstrapInterventionStateRoot,
-      fs,
-      path,
-      producerError,
-      ExitCode,
-    } = boundServices;
+    const { fs, path, producerError, ExitCode } = boundServices;
 
+    const { bootstrapInterventionStateRoot } = bootstrapObservations;
     const expected = bootstrapInterventionStateRoot(gitCommonDirectory);
     const stats =
       typeof stateRoot === 'string'

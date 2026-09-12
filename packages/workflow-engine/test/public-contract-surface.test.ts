@@ -743,7 +743,7 @@ test('the public asset CLI exposes only the tool-plural command', () => {
   const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
   const cliPath = path.join(
     repositoryRoot,
-    'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+    'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
   );
   const run = (args: string[]) =>
     spawnSync(

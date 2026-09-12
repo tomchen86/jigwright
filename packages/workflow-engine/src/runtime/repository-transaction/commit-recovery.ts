@@ -1,4 +1,4 @@
-import {parseDocumentationClosureFromCommitMessage} from '../../modules/assurance/documentation-closure.ts';
+import { parseDocumentationClosureFromCommitMessage } from '../../modules/assurance/documentation-closure.ts';
 /**
  * Resumes a pending managed commit and finalizes its session and isolation
  * leases.

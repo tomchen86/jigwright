@@ -1,3 +1,4 @@
+import { controlPlanePromotionBootstrapObservations } from './control-plane-promotion-fixture.ts';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -65,6 +66,8 @@ async function setupProductionCandidate() {
       fixture.stateRoot,
       fixture.frozen.candidateBundleDigest,
       {
+        bootstrapObservations: controlPlanePromotionBootstrapObservations,
+        candidateArtifacts: controlPlaneCandidateArtifacts,
         now: () => new Date('2026-08-10T10:03:00.000Z'),
         reviewSigner: fixture.signing.signer(
           CONTROL_PLANE_FIXTURE_REVIEWER,
@@ -752,3 +755,5 @@ test('approve-and-apply replay is rejected without a second signature or mutatio
     value.cleanup();
   }
 });
+
+import { controlPlaneCandidateArtifacts } from './control-plane-promotion-fixture.ts';

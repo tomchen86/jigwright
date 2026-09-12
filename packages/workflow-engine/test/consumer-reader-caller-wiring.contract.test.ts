@@ -104,12 +104,24 @@ test('tracked handoff invokes the supplied live reader for every active director
         tasks: contract.tasks.map((task) => ({ ...task, completed: true })),
       };
     };
-    const first = renderHandoffFromTrackedFacts(productionChangeRoutingInspector, read, repository);
+    const first = renderHandoffFromTrackedFacts(
+      productionChangeRoutingInspector,
+      read,
+      repository,
+    );
     assert.deepEqual([...observations].sort(), ['demo-change', 'other-change']);
     observations.length = 0;
-    assert.equal(renderHandoffFromTrackedFacts(productionChangeRoutingInspector, read, repository), first);
+    assert.equal(
+      renderHandoffFromTrackedFacts(
+        productionChangeRoutingInspector,
+        read,
+        repository,
+      ),
+      first,
+    );
     assert.deepEqual([...observations].sort(), ['demo-change', 'other-change']);
-    validateHandoff(productionChangeRoutingInspector,
+    validateHandoff(
+      productionChangeRoutingInspector,
       () => {
         throw new Error('tracked validation must not use live authority');
       },

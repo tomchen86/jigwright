@@ -17,7 +17,7 @@ import { ensurePlainDirectory } from '../repository-transaction/filesystem-safet
 import type {
   MaintainerChecksAttestationV2,
   MaintainerPreapprovalCheck,
-} from '../../modules/authority/maintainer-grant-v2.ts';
+} from '../../modules/authority/maintainer-grant-v2-codec.ts';
 import type { CheckDependency } from '../../modules/authority/maintainer-manifest-contracts.ts';
 import { writeJsonAtomic } from '../session-workspace/session-store.ts';
 

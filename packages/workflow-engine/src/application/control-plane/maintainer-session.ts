@@ -49,18 +49,14 @@ import {
   commitFacts,
   previewExactStaging,
 } from '../../runtime/repository-transaction/git-transitions.ts';
-import {
-  acceptApplyPrestate,
-  assertCandidateV2ChecksFresh,
-  readDurableRefGenerationLedger,
-} from '../../modules/authority/maintainer-candidate.ts';
-import { currentCandidateDependencySnapshot } from './maintainer-candidate-dependencies.ts';
+import { acceptApplyPrestate } from '../../modules/authority/maintainer-candidate-ref-ledger.ts';
+import { assertCandidateV2ChecksFresh } from '../../modules/authority/maintainer-candidate-contracts.ts';
+
 import {
   canonicalMaintainerGrantV2Envelope,
   maintainerChecksEnvironmentDigest,
-  validateMaintainerGrantV2AuthorityBinding,
   type MaintainerGrantV2Envelope,
-} from '../../modules/authority/maintainer-grant-v2.ts';
+} from '../../modules/authority/maintainer-grant-v2-codec.ts';
 
 import {
   parseMaintainerPolicy,
@@ -144,6 +140,7 @@ export function verifiedV2AuthorityLifecycleRefusalBinding(
 }
 
 export function startAuthoritySession(
+  grantServices: MaintainerGrantExecutionServices,
   manifestOperations: MaintainerManifestOperations,
   taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
@@ -190,6 +187,7 @@ export function startAuthoritySession(
       initial.head,
     );
     validateReservedGrantAuthorityBinding(
+      grantServices,
       manifestOperations,
       taskMandate,
       initial.repositoryRoot,
@@ -252,7 +250,7 @@ export function startAuthoritySession(
             : null;
           if (candidate) {
             acceptApplyPrestate(
-              readDurableRefGenerationLedger(
+              grantServices.readDurableRefGenerationLedger(
                 initial.gitCommonDirectory,
                 candidate.targetRef,
                 true,
@@ -373,6 +371,7 @@ export function startAuthoritySession(
             environmentDigest,
           );
           assertV2CandidateFresh(
+            grantServices,
             git.repositoryRoot,
             envelope,
             exactDate(options.now ?? new Date()),
@@ -405,7 +404,7 @@ export function startAuthoritySession(
           runtimePaths(initial.gitCommonDirectory, 'workflow-engine'),
           (assertOwned) => {
             assertPostApprovalAdmissionDeadline(options.postApprovalDeadline);
-            validateMaintainerGrantV2AuthorityBinding(
+            grantServices.validateMaintainerGrantV2AuthorityBinding(
               manifestOperations,
               taskMandate,
               initial.repositoryRoot,
@@ -564,6 +563,7 @@ export function readAuthoritySession(
 }
 
 export function inspectActiveAuthoritySession(
+  grantServices: MaintainerGrantExecutionServices,
   manifestOperations: MaintainerManifestOperations,
   taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
@@ -580,6 +580,7 @@ export function inspectActiveAuthoritySession(
   return {
     session,
     ...inspectAuthoritySession(
+      grantServices,
       manifestOperations,
       taskMandate,
       cwd,
@@ -620,17 +621,18 @@ export function markAuthoritySessionCommitted(
 }
 
 function validateReservedGrantAuthorityBinding(
+  grantServices: MaintainerGrantExecutionServices,
   manifestOperations: MaintainerManifestOperations,
   taskMandate: MaintainerTaskMandateOperations,
   repositoryRoot: string,
   envelope: MaintainerGrantV2Envelope,
   policy: MaintainerPolicy,
-  options: Parameters<typeof validateMaintainerGrantV2AuthorityBinding>[5],
+  options: import('../../modules/authority/maintainer-grant-v2.ts').MaintainerGrantV2ValidationOptions,
   gitCommonDirectory: string,
   grantId: string,
 ): void {
   if (options.assertLifecycleOwned) {
-    validateMaintainerGrantV2AuthorityBinding(
+    grantServices.validateMaintainerGrantV2AuthorityBinding(
       manifestOperations,
       taskMandate,
       repositoryRoot,
@@ -643,7 +645,7 @@ function validateReservedGrantAuthorityBinding(
   withRepositoryLifecycleOperation(
     runtimePaths(gitCommonDirectory, 'workflow-engine'),
     (assertOwned) =>
-      validateMaintainerGrantV2AuthorityBinding(
+      grantServices.validateMaintainerGrantV2AuthorityBinding(
         manifestOperations,
         taskMandate,
         repositoryRoot,
@@ -656,8 +658,9 @@ function validateReservedGrantAuthorityBinding(
 }
 
 function assertV2CandidateFresh(
+  grantServices: MaintainerGrantExecutionServices,
   repositoryRoot: string,
-  envelope: import('../../modules/authority/maintainer-grant-v2.ts').MaintainerGrantV2Envelope,
+  envelope: import('../../modules/authority/maintainer-grant-v2-codec.ts').MaintainerGrantV2Envelope,
   now: Date,
   environmentDigest: string,
   environment: NodeJS.ProcessEnv | undefined,
@@ -675,16 +678,18 @@ function assertV2CandidateFresh(
       ({ checkId }) => checkId,
     ),
     environmentDigest,
-    currentDependencySnapshot: currentCandidateDependencySnapshot({
-      cwd: repositoryRoot,
-      repositoryId: envelope.payload.repositoryId,
-      candidateTree: candidate.resultTree,
-      baseCommit: envelope.payload.baseCommit,
-      policyDigest: envelope.payload.policyDigest,
-      checks: candidate.checksAttestation.checks,
-      environment,
-      externalStateDigests,
-    }),
+    currentDependencySnapshot: grantServices.currentCandidateDependencySnapshot(
+      {
+        cwd: repositoryRoot,
+        repositoryId: envelope.payload.repositoryId,
+        candidateTree: candidate.resultTree,
+        baseCommit: envelope.payload.baseCommit,
+        policyDigest: envelope.payload.policyDigest,
+        checks: candidate.checksAttestation.checks,
+        environment,
+        externalStateDigests,
+      },
+    ),
   });
 }
 
@@ -973,3 +978,5 @@ export type {
   AuthorityPinnedCheck,
   AuthoritySession,
 } from '../../modules/authority/authority-session-contract.ts';
+
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';

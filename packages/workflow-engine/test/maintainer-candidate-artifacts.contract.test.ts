@@ -1,11 +1,13 @@
-import type {CandidateSupportingArtifactSet} from '../src/modules/authority/maintainer-candidate-contracts.ts';
+import type { CandidateSupportingArtifactSet } from '../src/modules/authority/maintainer-candidate-contracts.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import {canonicalCandidateSupportingArtifact,readStoredCandidateSupportingArtifact,storeCandidateSupportingArtifacts} from '../src/modules/authority/maintainer-candidate.ts';
+import { canonicalCandidateSupportingArtifact } from '../src/modules/authority/maintainer-candidate-contracts.ts';
+import { readStoredCandidateSupportingArtifact } from '../src/runtime/storage-journal/maintainer-candidate-reader.ts';
+import { storeCandidateSupportingArtifacts } from '../src/runtime/storage-journal/maintainer-candidate-writer.ts';
 import { isWorkflowError } from './fixture.ts';
 
 const CHANGE_ID = 'demo-change';
@@ -136,6 +138,11 @@ test('candidate supporting evidence rejects mixed change bindings and tampered s
     assert.throws(
       () => storeCandidateSupportingArtifacts(gitCommonDirectory, mixed),
       (error) => isWorkflowError(error, 'APPLY_CANDIDATE_ARTIFACT_INVALID'),
+    );
+    assert.deepEqual(
+      fs.readdirSync(gitCommonDirectory),
+      [],
+      'binding refusal must precede lifecycle lock and publication',
     );
 
     const stored = storeCandidateSupportingArtifacts(

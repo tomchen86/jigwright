@@ -5,7 +5,10 @@ import {
   requireProviderCapability,
 } from '../src/modules/provider-orchestration/provider-registry.ts';
 import assert from 'node:assert/strict';
-import {listBuiltInProviderFamilies, listBuiltInProviderCapabilityDescriptors} from '@jigwright/core/built-in-provider-definition';
+import {
+  listBuiltInProviderFamilies,
+  listBuiltInProviderCapabilityDescriptors,
+} from '@jigwright/core/built-in-provider-definition';
 import fs from 'node:fs';
 import { resolveActorIdentity } from '../src/modules/provider-orchestration/actor-identity.ts';
 import {

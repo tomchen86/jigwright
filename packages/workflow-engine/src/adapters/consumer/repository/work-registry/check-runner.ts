@@ -65,13 +65,13 @@ export type ExpectedRedCheckResult = Readonly<{
 
 const RED_RESULT_PREFIX = 'WORKFLOW_RED_CHECK_RESULT ';
 
-export function pinCheckRunner(
-  repositoryRoot: string,
-  checkId: string,
-  definition: CheckDefinition,
-): PinnedCheckRunner {
+export const pinCheckRunner: CheckRunnerPin = function pinCheckRunner(
+  repositoryRoot,
+  checkId,
+  definition,
+) {
   return resolveCheckRunner(repositoryRoot, checkId, definition);
-}
+};
 
 export function runCheck(
   repositoryRoot: string,
@@ -463,3 +463,5 @@ export type {
 
 import type { PinnedCheckRunner } from '../../../../modules/source/check-command.ts';
 export type { PinnedCheckRunner } from '../../../../modules/source/check-command.ts';
+
+import type { CheckRunnerPin } from '../../../../modules/source/check-command.ts';

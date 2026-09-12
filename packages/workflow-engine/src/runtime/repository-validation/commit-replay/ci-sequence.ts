@@ -1,4 +1,4 @@
-import {parseDocumentationClosureFromCommitMessage} from '../../../modules/assurance/documentation-closure.ts';
+import { parseDocumentationClosureFromCommitMessage } from '../../../modules/assurance/documentation-closure.ts';
 /** Immutable commit replay operations; caller-owned semantic services are required. */
 import { validateCiRouteCommit } from './ci-routing.ts';
 import type { HistoricalTaskAuthority } from '../../../modules/assurance/commit-replay/ci-historical-contract.ts';

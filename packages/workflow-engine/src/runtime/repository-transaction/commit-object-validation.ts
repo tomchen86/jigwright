@@ -1,4 +1,4 @@
-import type {DocumentationClosureRecord} from '../../modules/assurance/documentation-closure.ts';
+import type { DocumentationClosureRecord } from '../../modules/assurance/documentation-closure.ts';
 /**
  * Verifies the created task commit against its authorized finish
  * projection.
@@ -14,7 +14,6 @@ import {
   managedCommitMessage,
 } from './git-transitions.ts';
 import type { WorkflowSession } from '../session-workspace/session-store.ts';
-
 
 export function assertCommitObject(
   repositoryRoot: string,

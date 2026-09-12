@@ -4,6 +4,15 @@ import type {
   ADOPTION_HISTORIES,
 } from './control-plane-bootstrap-values.ts';
 
+import type {
+  BootstrapControlPlaneEngineArtifact,
+  InitialControlPlaneSupervisorAnchorEvidence,
+} from '../src/modules/authority/intervention-bootstrap-contract.ts';
+export type {
+  BootstrapControlPlaneEngineArtifact,
+  InitialControlPlaneSupervisorAnchorEvidence,
+} from '../src/modules/authority/intervention-bootstrap-contract.ts';
+
 export type Sha256Digest = `sha256:${string}`;
 
 export interface BootstrapControlPlaneSupervisorState {
@@ -23,19 +32,6 @@ export interface BootstrapControlPlaneSupervisorState {
   } | null;
   updatedAt: string;
   recordDigest: Sha256Digest;
-}
-
-export interface BootstrapControlPlaneEngineArtifact {
-  kind: 'engine-artifact.v1';
-  sourceChangeId: string;
-  sourceDigest: Sha256Digest;
-  executableDigest: Sha256Digest;
-  protocolVersion: number;
-  canReadSessionSchemas: string[];
-  writesSessionSchema: string;
-  policySchemaVersion: number;
-  smokeReportDigest: Sha256Digest;
-  artifactId: Sha256Digest;
 }
 
 export interface BootstrapWorktreeIdentity {
@@ -179,20 +175,6 @@ export interface InitialSupervisorBootstrapJournalRecord {
 export interface InitialSupervisorBootstrapJournalProgress {
   completedPhases: number;
   pendingPhase: InitialSupervisorBootstrapPhase | null;
-}
-
-export interface InitialControlPlaneSupervisorAnchorEvidence {
-  repositoryId: string;
-  activeTrustCommit: string;
-  publishedRecordDigest: Sha256Digest;
-  supervisorRecordDigest: Sha256Digest;
-  generation: 1;
-  activeArtifact: {
-    artifactId: Sha256Digest;
-    executableDigest: Sha256Digest;
-    closureDigest: Sha256Digest;
-  };
-  recordedAt: string;
 }
 
 export interface BootstrapSupervisorHistoryArtifact {

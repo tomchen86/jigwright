@@ -13,6 +13,10 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import {
+  replaceFile,
+  requireContainedDirectory,
+} from './closure-generation-files.ts';
 
 import {
   resolveWorkspaceSourceClosure,
@@ -167,30 +171,6 @@ function digest(value: string | Buffer): `sha256:${string}` {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
 
-function replaceFile(filePath: string, content: string): void {
-  const temporary = `${filePath}.${process.pid}.tmp`;
-  const observed = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  if (
-    observed !== undefined &&
-    (!observed.isFile() || observed.isSymbolicLink() || observed.nlink !== 1)
-  ) {
-    throw new Error(`Built-in closure output is unsafe: ${filePath}`);
-  }
-  if (fs.lstatSync(temporary, { throwIfNoEntry: false }) !== undefined) {
-    throw new Error(
-      `Built-in closure temporary path is occupied: ${temporary}`,
-    );
-  }
-  try {
-    fs.writeFileSync(temporary, content, { flag: 'wx', mode: 0o644 });
-    fs.chmodSync(temporary, 0o644);
-    fs.renameSync(temporary, filePath);
-    fs.chmodSync(filePath, 0o644);
-  } finally {
-    fs.rmSync(temporary, { force: true });
-  }
-}
-
 function assertCurrent(filePath: string, expected: string): void {
   const stats = fs.lstatSync(filePath, { throwIfNoEntry: false });
   const observed =
@@ -206,23 +186,6 @@ function assertCurrent(filePath: string, expected: string): void {
       `Built-in engine closure metadata is stale; run ${path.basename(import.meta.filename)} --write.`,
     );
   }
-}
-
-function requireContainedDirectory(root: string, segments: string[]): string {
-  let current = root;
-  for (const segment of segments) {
-    current = path.join(current, segment);
-    const stats = fs.lstatSync(current, { throwIfNoEntry: false });
-    if (
-      stats === undefined ||
-      !stats.isDirectory() ||
-      stats.isSymbolicLink() ||
-      fs.realpathSync(current) !== current
-    ) {
-      throw new Error(`Built-in closure directory is unsafe: ${current}`);
-    }
-  }
-  return current;
 }
 
 function assertMode(

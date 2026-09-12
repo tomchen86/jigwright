@@ -95,7 +95,7 @@ test('recovery closure keeps stable paths and executes a workspace runtime impor
   }
   const result = childProcess.spawnSync(
     process.execPath,
-    [path.join(runtimeRoot, 'src/entrypoints/cli/harness-bootstrap-cli.js')],
+    [path.join(runtimeRoot, 'bootstrap/harness-bootstrap-host.js')],
     {
       cwd: runtimeRoot,
       encoding: 'utf8',
@@ -138,6 +138,13 @@ function createWorkspaceClosureFixture(t: test.TestContext): string {
   fs.mkdirSync(path.join(repository, 'packages/workflow-engine/bootstrap'), {
     recursive: true,
   });
+  writeText(
+    path.join(
+      repository,
+      'packages/workflow-engine/bootstrap/harness-bootstrap-host.ts',
+    ),
+    "import '../src/entrypoints/cli/harness-bootstrap-cli.ts';\n",
+  );
   writeJson(path.join(repository, 'packages/core/package.json'), {
     name: '@jigwright/core',
     private: true,

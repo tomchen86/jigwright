@@ -28,7 +28,7 @@ import {
 import { createEngineArtifact } from '../src/modules/authority/intervention-control.ts';
 import { persistInterventionEngineArtifact } from '../src/application/control-plane/intervention-maintenance.ts';
 import { preparePersistedEngineAdoption } from '../src/runtime/storage-journal/intervention-control-persistence.ts';
-import { resolveHarnessBootstrapParentState } from '../src/composition-root/harness-bootstrap-production.ts';
+import { resolveHarnessBootstrapParentState } from '../bootstrap/harness-bootstrap-production.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {
   checkSession,

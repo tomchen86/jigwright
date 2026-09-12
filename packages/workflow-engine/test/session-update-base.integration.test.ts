@@ -78,7 +78,7 @@ test('update-base replays a finished non-final task branch and recomputes local 
         '--experimental-strip-types',
         path.join(
           sourceRepositoryRoot,
-          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
         ),
         'update-base',
         'demo-change',
@@ -175,7 +175,7 @@ test('update-base replays a finished non-final task branch and recomputes local 
         '--experimental-strip-types',
         path.join(
           sourceRepositoryRoot,
-          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
         ),
         'update-base',
         'demo-change',
@@ -371,7 +371,7 @@ test('update-base refuses an active writer before changing Git history', () => {
         '--experimental-strip-types',
         path.join(
           sourceRepositoryRoot,
-          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
         ),
         'update-base',
         'demo-change',
@@ -466,7 +466,7 @@ test('update-base rolls back when generated reconciliation needs a reviewed tran
         '--experimental-strip-types',
         path.join(
           sourceRepositoryRoot,
-          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
         ),
         'update-base',
         'demo-change',

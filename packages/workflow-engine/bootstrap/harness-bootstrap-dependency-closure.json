@@ -1,6 +1,6 @@
 {
   "kind": "harness-bootstrap-dependency-closure.v1",
-  "entrypoint": "bootstrap/recovery-runtime/src/entrypoints/cli/harness-bootstrap-cli.js",
+  "entrypoint": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js",
   "boundary": "sealed-e1-independent-recovery-runtime",
   "scope": "compiled-transitive-runtime",
   "claim": "This sealed compiled recovery runtime is independent of the mutable E1 src tree and remains usable when E1 cannot load.",
@@ -8,7 +8,17 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:0d51c1a312878a60ec7fc8d9eb66f676d8b84101c59d9e172892e0a859b181e0"
+      "digest": "sha256:ec0b6516b52844998ea0732b0dd85e8c53dc9d760ccf70749e2b68c83f5e3cb6"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js",
+      "mode": "100755",
+      "digest": "sha256:9b312cc53f70b9410ecf4c6356b98685ec230902fee6be366b4af71b9eaa3bef"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-production.js",
+      "mode": "100644",
+      "digest": "sha256:13950e058d6150beb5f9e11f24774c9d2157a9793b64c63d583d8459953a36f1"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/package.json",
@@ -273,7 +283,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/composition-root/harness-bootstrap-production.js",
       "mode": "100644",
-      "digest": "sha256:da1d364cc1eb504ce7ecdb4577bc400ba2517effc80b3577c9ba4944cdf8e987"
+      "digest": "sha256:78f9d281f1a691e16f5d37f359145c979c29959252de4d97e52151902f2272a7"
     },
     {
       "path": "bootstrap/recovery-runtime/src/composition-root/human-revocation-production.js",
@@ -287,8 +297,8 @@
     },
     {
       "path": "bootstrap/recovery-runtime/src/entrypoints/cli/harness-bootstrap-cli.js",
-      "mode": "100755",
-      "digest": "sha256:a63f0bcd4e66b473dd96fef600f3e37ecfb37d4a042418ef45fa88a6c6caac3a"
+      "mode": "100644",
+      "digest": "sha256:61f901e64d2439d614f0e2147e9551bcd46ef1d9c561d9c5a03593ef8a9b1945"
     },
     {
       "path": "bootstrap/recovery-runtime/src/entrypoints/cli/intervention-control-bootstrap-cli.js",

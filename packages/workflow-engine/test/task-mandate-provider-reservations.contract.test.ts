@@ -55,7 +55,7 @@ test('true propose CLI charges the durable Survey reservation once and revoked r
   const changeId = 'mandated-propose';
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+    'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
   );
   const intentPath = path.join(inputDirectory, 'intent.json');
   try {

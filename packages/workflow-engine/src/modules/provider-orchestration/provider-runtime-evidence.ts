@@ -12,7 +12,7 @@ import {
   assertAgentProviderProfileSnapshot,
   type HostWrapperProviderProfileSnapshot,
 } from '@jigwright/core/agent-provider-config';
-import {assertKnownBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
+import { assertKnownBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import { assertInvocationId } from '@jigwright/core/workflow-identifiers';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

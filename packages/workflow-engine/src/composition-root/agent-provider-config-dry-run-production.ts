@@ -21,7 +21,7 @@ import { type AgentRuntimeExecutableIdentityV1 as ProviderExecutableIdentity } f
 
 import { buildClaudeProviderInvocation } from '../adapters/providers/claude/claude-provider-adapter.ts';
 import { buildCodexProviderInvocation } from '../adapters/providers/codex/codex-provider-adapter.ts';
-import {resolveBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import {
   dryRunAgentProviderConfigSnapshot,
   dryRunAgentProviderConfigSnapshotWithPolicy,

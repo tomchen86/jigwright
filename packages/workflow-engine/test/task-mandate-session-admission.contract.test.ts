@@ -82,7 +82,7 @@ test('ordinary open-task CLI needs no task mandate', () => {
   const repository = prepareRepository();
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+    'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
   );
   try {
     enableConditionalTaskAuthorization(repository);
@@ -190,7 +190,7 @@ test('open-task selects the next incomplete task for an already committed plan',
   const repository = prepareRepository(trustedSigner);
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+    'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
   );
   const changeId = CHANGE_ID;
   try {
@@ -228,7 +228,7 @@ test('ordinary propose CLI starts without a task mandate', () => {
   );
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+    'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
   );
   const changeId = 'ordinary-propose';
   const intentPath = path.join(inputDirectory, 'intent.json');
@@ -293,7 +293,7 @@ test('protected propose CLI requires a task mandate before durable planning', ()
   );
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+    'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
   );
   const changeId = 'protected-propose';
   const intentPath = path.join(inputDirectory, 'intent.json');

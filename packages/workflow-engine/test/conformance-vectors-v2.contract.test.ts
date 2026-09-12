@@ -471,7 +471,7 @@ function sha256(value: string): string {
 
 const cliPath = path.join(
   sourceRepositoryRoot,
-  'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+  'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
 );
 
 test('jigwright verifies the public language-neutral conformance corpus', () => {

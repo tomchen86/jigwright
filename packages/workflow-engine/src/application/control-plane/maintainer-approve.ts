@@ -1,4 +1,9 @@
-import type {CandidateChecksAttestationV3,CandidateExternalEffect,CandidateProviderInvocation,ImmutableCandidateBundleV2} from '../../modules/authority/maintainer-candidate-contracts.ts';
+import type {
+  CandidateChecksAttestationV3,
+  CandidateExternalEffect,
+  CandidateProviderInvocation,
+  ImmutableCandidateBundleV2,
+} from '../../modules/authority/maintainer-candidate-contracts.ts';
 import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
 import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
 /**
@@ -54,11 +59,11 @@ import {
   resolveCommitIdentity,
   validateCommitSubject,
 } from '../../runtime/repository-transaction/git-transitions.ts';
-import {assertStoredCandidateSupportingArtifacts,buildCandidateExternalEffectsManifest,buildImmutableCandidateBundleV2,ensureDurableRefGenerationLedger,storeCandidateHumanReadableSummary,storeCandidateSupportingArtifacts,storeImmutableCandidateBundle} from '../../modules/authority/maintainer-candidate.ts';
 import {
-  resolveCandidateHarnessEngineDigest,
-  sealedCandidateDependencySnapshot,
-} from './maintainer-candidate-dependencies.ts';
+  buildCandidateExternalEffectsManifest,
+  buildImmutableCandidateBundleV2,
+} from '../../modules/authority/maintainer-candidate-contracts.ts';
+import { sealedCandidateDependencySnapshot } from '../../modules/authority/maintainer-candidate-dependencies.ts';
 import {
   appendMaintainerCheckEvidence,
   completeMaintainerCheckJournal,
@@ -70,15 +75,13 @@ import {
   MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
   canonicalMaintainerGrantV2Envelope,
   canonicalMaintainerGrantV2Payload,
-  issueMaintainerGrantV2,
   maintainerChecksEnvironmentDigest,
-  preflightMaintainerGrantV2,
   validateMaintainerEvidenceWaivers,
   type MaintainerChecksAttestationV2,
   type MaintainerEvidenceWaiver,
   type MaintainerGrantV2Envelope,
-  type MaintainerGrantV2PreflightResult,
-} from '../../modules/authority/maintainer-grant-v2.ts';
+} from '../../modules/authority/maintainer-grant-v2-codec.ts';
+import { type MaintainerGrantV2PreflightResult } from '../../modules/authority/maintainer-grant-v2.ts';
 
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import {
@@ -131,7 +134,7 @@ export type ApproveAndApplyMaintainerGrantV2Options = {
   testBeforeCandidateCommitSigning?: () => void;
   /** Test-only interruption point after the signed grant is durable. */
   testAfterGrantIssued?: (
-    grant: ReturnType<typeof issueMaintainerGrantV2>,
+    grant: import('../../modules/authority/maintainer-grant-v2.ts').MaintainerGrantV2IssueResult,
   ) => void;
   /** Test-only deterministic seam; production always uses the code-owned cap. */
   testPostApprovalBudget?: PostApprovalBudgetTestOptions;
@@ -173,6 +176,7 @@ export type PrepareMaintainerGrantV2ChecksOptions = {
 };
 
 export function approveAndApplyMaintainerGrantV2(
+  grantServices: MaintainerGrantExecutionServices,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   manifestOperations: MaintainerManifestOperations,
   taskMandate: MaintainerTaskMandateOperations,
@@ -201,6 +205,7 @@ export function approveAndApplyMaintainerGrantV2(
       },
       () =>
         approveAndApplyMaintainerGrantV2WithBinding(
+          grantServices,
           authorityApplicationReceipts,
           manifestOperations,
           taskMandate,
@@ -215,6 +220,7 @@ export function approveAndApplyMaintainerGrantV2(
 }
 
 function approveAndApplyMaintainerGrantV2WithBinding(
+  grantServices: MaintainerGrantExecutionServices,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   manifestOperations: MaintainerManifestOperations,
   taskMandate: MaintainerTaskMandateOperations,
@@ -230,9 +236,13 @@ function approveAndApplyMaintainerGrantV2WithBinding(
     mandateBinding,
     externalEffects: request.externalEffects,
   });
-  const preflight = preflightMaintainerGrantV2(manifestOperations, cwd, {
-    profileId: request.profileId,
-  });
+  const preflight = grantServices.preflightMaintainerGrantV2(
+    manifestOperations,
+    cwd,
+    {
+      profileId: request.profileId,
+    },
+  );
   assertApproveAndApplyPreconditions(
     cwd,
     request,
@@ -242,7 +252,7 @@ function approveAndApplyMaintainerGrantV2WithBinding(
   const frozenRepository = discoverRepository(cwd);
   const grantId = crypto.randomUUID();
   const targetRef = `refs/heads/${frozenRepository.branch!}`;
-  const refLedger = ensureDurableRefGenerationLedger(
+  const refLedger = grantServices.ensureDurableRefGenerationLedger(
     frozenRepository.gitCommonDirectory,
     targetRef,
     frozenRepository.head,
@@ -253,6 +263,7 @@ function approveAndApplyMaintainerGrantV2WithBinding(
     preflight.manifest.files.map(({ path: filePath }) => filePath),
   );
   const checksAttestation = prepareMaintainerGrantV2Checks(
+    grantServices,
     manifestOperations,
     cwd,
     preflight,
@@ -341,7 +352,7 @@ function approveAndApplyMaintainerGrantV2WithBinding(
     cwd,
     request.changeId,
   );
-  const supportingArtifacts = storeCandidateSupportingArtifacts(
+  const supportingArtifacts = grantServices.storeCandidateSupportingArtifacts(
     repository.gitCommonDirectory,
     {
       effectsManifest,
@@ -386,10 +397,11 @@ function approveAndApplyMaintainerGrantV2WithBinding(
       recoveryPlanDigest: supportingArtifacts.recoveryPlanDigest,
       createdAt: (options.now ?? new Date()).toISOString(),
     });
-  const { humanReadableSummaryDigest } = storeCandidateHumanReadableSummary(
-    repository.gitCommonDirectory,
-    humanReadableSummary,
-  );
+  const { humanReadableSummaryDigest } =
+    grantServices.storeCandidateHumanReadableSummary(
+      repository.gitCommonDirectory,
+      humanReadableSummary,
+    );
   if (
     humanReadableSummaryDigest !== candidateBundle.humanReadableSummaryDigest
   ) {
@@ -399,17 +411,17 @@ function approveAndApplyMaintainerGrantV2WithBinding(
       ExitCode.guard,
     );
   }
-  assertStoredCandidateSupportingArtifacts(
+  grantServices.assertStoredCandidateSupportingArtifacts(
     repository.gitCommonDirectory,
     request.changeId,
     candidateBundle,
   );
-  const candidateStorePath = storeImmutableCandidateBundle(
+  const candidateStorePath = grantServices.storeImmutableCandidateBundle(
     repository.gitCommonDirectory,
     candidateBundle,
   );
   appendCandidateBundleAudit(auditScope, candidateBundle, request.changeId);
-  const grant = issueMaintainerGrantV2(
+  const grant = grantServices.issueMaintainerGrantV2(
     manifestOperations,
     taskMandate,
     cwd,
@@ -456,6 +468,7 @@ function approveAndApplyMaintainerGrantV2WithBinding(
     options.now,
     () =>
       startAuthoritySession(
+        grantServices,
         manifestOperations,
         taskMandate,
         cwd,
@@ -472,6 +485,7 @@ function approveAndApplyMaintainerGrantV2WithBinding(
       ),
   );
   const committed = commitAuthoritySession(
+    grantServices,
     authorityApplicationReceipts,
     manifestOperations,
     taskMandate,
@@ -745,7 +759,7 @@ export type MaintainerApplyChecksBindings = {
   workflowError: typeof workflowError;
   ExitCode: typeof ExitCode;
   discoverRepository: typeof discoverRepository;
-  preflightMaintainerGrantV2: typeof preflightMaintainerGrantV2;
+
   canonicalJson: typeof canonicalJson;
   pinCheckRunner: typeof pinCheckRunner;
   assertDisposableDatabaseForRepository: typeof assertDisposableDatabaseForRepository;
@@ -754,7 +768,6 @@ export type MaintainerApplyChecksBindings = {
   parseMaintainerPolicy: typeof parseMaintainerPolicy;
   runGit: typeof runGit;
 
-  resolveCandidateHarnessEngineDigest: typeof resolveCandidateHarnessEngineDigest;
   digest: typeof digest;
   maintainerGrantStorePaths: typeof maintainerGrantStorePaths;
   withRepositoryLifecycleOperation: typeof withRepositoryLifecycleOperation;
@@ -787,7 +800,7 @@ const {
   workflowError,
   ExitCode,
   discoverRepository,
-  preflightMaintainerGrantV2,
+
   canonicalJson,
   pinCheckRunner,
   assertDisposableDatabaseForRepository,
@@ -796,7 +809,6 @@ const {
   parseMaintainerPolicy,
   runGit,
 
-  resolveCandidateHarnessEngineDigest,
   digest,
   maintainerGrantStorePaths,
   withRepositoryLifecycleOperation,
@@ -880,7 +892,7 @@ export type MaintainerApplyReissueBindings = {
   workflowError: typeof workflowError;
   ExitCode: typeof ExitCode;
   authorityCandidateCommitMessage: typeof authorityCandidateCommitMessage;
-  issueMaintainerGrantV2: typeof issueMaintainerGrantV2;
+
   armPostApprovalAdmissionDeadline: typeof armPostApprovalAdmissionDeadline;
   appendApplyGrantAudit: typeof appendApplyGrantAudit;
   assertPostApprovalAdmissionDeadline: typeof assertPostApprovalAdmissionDeadline;
@@ -918,7 +930,7 @@ const { reissueAndApplyMaintainerGrantV2, verifyHistoricalApplyGrantTrust } =
     workflowError,
     ExitCode,
     authorityCandidateCommitMessage,
-    issueMaintainerGrantV2,
+
     armPostApprovalAdmissionDeadline,
     appendApplyGrantAudit,
     assertPostApprovalAdmissionDeadline,
@@ -945,3 +957,5 @@ import {
 } from '../../modules/authority/authority-audit-contract.ts';
 
 import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
+
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';

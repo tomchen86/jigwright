@@ -18,7 +18,7 @@ import {
   requestChangeRoleAssignmentGrant,
   withProductionGrantLifecycleOperation,
 } from '../src/composition-root/grant-production.ts';
-import { dispatchAsync } from '../src/entrypoints/cli/workflow-cli.ts';
+import { dispatchAsync } from '../bootstrap/workflow-engine-host.ts';
 import {
   assertProtectedTaskApplyRecoveryGrantRequiredDetails,
   protectedTaskApplyRecoveryGrantTransitionDefinitions,

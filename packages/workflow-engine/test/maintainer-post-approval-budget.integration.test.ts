@@ -16,10 +16,10 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { SimulatedAuthorityCrash } from '../src/application/control-plane/maintainer-commit.ts';
-import { commitAuthoritySession as commitAuthoritySessionProduction } from '../src/composition-root/maintainer-authority-production.ts';
-import { readDurableRefGenerationLedger } from '../src/modules/authority/maintainer-candidate.ts';
-import { MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE } from '../src/modules/authority/maintainer-grant-v2.ts';
-import { approveAndApplyMaintainerGrantV2 as approveAndApplyMaintainerGrantV2Production } from '../src/composition-root/maintainer-authority-production.ts';
+import { commitAuthoritySession as commitAuthoritySessionProduction } from '../bootstrap/maintainer-authority-production.ts';
+import { readDurableRefGenerationLedger } from '../src/runtime/storage-journal/maintainer-candidate-ref-ledger.ts';
+import { MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE } from '../src/modules/authority/maintainer-grant-v2-codec.ts';
+import { approveAndApplyMaintainerGrantV2 as approveAndApplyMaintainerGrantV2Production } from '../bootstrap/maintainer-authority-production.ts';
 import {
   armPostApprovalAdmissionDeadline,
   createPostApprovalAdmissionDeadline,
@@ -27,9 +27,9 @@ import {
   enterPostApprovalTerminalCleanup,
 } from '../src/runtime/repository-transaction/git.ts';
 import { readAuthorityCommitJournal } from '../src/application/control-plane/maintainer-recovery.ts';
-import { recoverAuthorityCommit as recoverAuthorityCommitProduction } from '../src/composition-root/maintainer-authority-production.ts';
+import { recoverAuthorityCommit as recoverAuthorityCommitProduction } from '../bootstrap/maintainer-authority-production.ts';
 import { parseMaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
-import { startAuthoritySession } from '../src/composition-root/maintainer-authority-production.ts';
+import { startAuthoritySession } from '../bootstrap/maintainer-authority-production.ts';
 import {
   verifySshSignatureWithPublicKey,
   type MaintainerSignerProvider,

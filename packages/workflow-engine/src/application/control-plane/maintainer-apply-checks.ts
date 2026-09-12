@@ -28,6 +28,7 @@ export function createMaintainerApplyChecks(
   bindings: () => MaintainerApplyChecksBindings,
 ) {
   function prepareMaintainerGrantV2Checks(
+    grantServices: MaintainerGrantExecutionServices,
     manifestOperations: MaintainerManifestOperations,
     cwd: string,
     preflight: MaintainerGrantV2PreflightResult,
@@ -39,7 +40,6 @@ export function createMaintainerApplyChecks(
       workflowError,
       ExitCode,
       discoverRepository,
-      preflightMaintainerGrantV2,
       canonicalJson,
       pinCheckRunner,
       assertDisposableDatabaseForRepository,
@@ -47,8 +47,6 @@ export function createMaintainerApplyChecks(
       maintainerChecksEnvironmentDigest,
       parseMaintainerPolicy,
       runGit,
-
-      resolveCandidateHarnessEngineDigest,
       digest,
       maintainerGrantStorePaths,
       withRepositoryLifecycleOperation,
@@ -74,9 +72,13 @@ export function createMaintainerApplyChecks(
         ExitCode.staleState,
       );
     }
-    const refreshed = preflightMaintainerGrantV2(manifestOperations, cwd, {
-      profileId: preflight.manifest.profile,
-    });
+    const refreshed = grantServices.preflightMaintainerGrantV2(
+      manifestOperations,
+      cwd,
+      {
+        profileId: preflight.manifest.profile,
+      },
+    );
     if (canonicalJson(refreshed) !== canonicalJson(preflight)) {
       throw workflowError(
         'MAINTAINER_CHECK_PREFLIGHT_STALE',
@@ -127,11 +129,12 @@ export function createMaintainerApplyChecks(
       preflight.trustBaseCommit,
       preflight.manifest.profile,
     );
-    const harnessEngineDigest = resolveCandidateHarnessEngineDigest(
-      initial,
-      basePolicy.repository.id,
-      environment,
-    );
+    const harnessEngineDigest =
+      grantServices.resolveCandidateHarnessEngineDigest(
+        initial,
+        basePolicy.repository.id,
+        environment,
+      );
     const identity: MaintainerCheckJournalIdentity = {
       schemaVersion: 2,
       repositoryId: basePolicy.repository.id,
@@ -178,6 +181,7 @@ export function createMaintainerApplyChecks(
           fingerprint,
         );
         assertHarnessEngineUnchanged(
+          grantServices,
           initial,
           basePolicy.repository.id,
           environment,
@@ -232,6 +236,7 @@ export function createMaintainerApplyChecks(
             fingerprint,
           );
           assertHarnessEngineUnchanged(
+            grantServices,
             initial,
             basePolicy.repository.id,
             environment,
@@ -425,17 +430,17 @@ export function createMaintainerApplyChecks(
   }
 
   function assertHarnessEngineUnchanged(
+    grantServices: MaintainerGrantExecutionServices,
     repository: ReturnType<typeof discoverRepository>,
     repositoryId: string,
     environment: NodeJS.ProcessEnv,
     expectedDigest: string,
   ): void {
     const boundServices: MaintainerApplyChecksBindings = bindings();
-    const { resolveCandidateHarnessEngineDigest, workflowError, ExitCode } =
-      boundServices;
+    const { workflowError, ExitCode } = boundServices;
 
     if (
-      resolveCandidateHarnessEngineDigest(
+      grantServices.resolveCandidateHarnessEngineDigest(
         repository,
         repositoryId,
         environment,
@@ -540,3 +545,5 @@ export function createMaintainerApplyChecks(
     loadBaseCheckDefinitions,
   };
 }
+
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';

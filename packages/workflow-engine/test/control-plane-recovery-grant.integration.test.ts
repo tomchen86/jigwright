@@ -1,3 +1,4 @@
+import { controlPlanePromotionBootstrapObservations } from './control-plane-promotion-fixture.ts';
 import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
 import crypto from 'node:crypto';
@@ -21,7 +22,7 @@ import {
   type ControlPlaneRecoveryAuditRecord,
   type ControlPlaneRecoveryGrantEnvelope,
 } from '../src/modules/authority/control-plane-recovery-grant.ts';
-import { runHarnessBootstrapCli } from '../src/entrypoints/cli/harness-bootstrap-cli.ts';
+import { runHarnessBootstrapCli } from '../bootstrap/harness-bootstrap-host.ts';
 import {
   CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3,
   CONTROL_PLANE_SIGNATURE_NAMESPACE_V3,
@@ -599,6 +600,8 @@ async function sealedBrokenFixture() {
       value.stateRoot,
       value.frozen.candidateBundleDigest,
       {
+        bootstrapObservations: controlPlanePromotionBootstrapObservations,
+        candidateArtifacts: controlPlaneCandidateArtifacts,
         now: () => new Date('2026-08-10T10:03:00.000Z'),
         reviewSigner: value.signing.signer(
           CONTROL_PLANE_FIXTURE_REVIEWER,
@@ -2139,3 +2142,5 @@ function errorWithCode(code: string): (error: unknown) => boolean {
     'code' in error &&
     (error as Error & { code: string }).code === code;
 }
+
+import { controlPlaneCandidateArtifacts } from './control-plane-promotion-fixture.ts';

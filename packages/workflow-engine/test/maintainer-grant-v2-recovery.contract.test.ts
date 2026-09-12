@@ -11,8 +11,8 @@ import {
   authorityAuditLedgerPaths,
 } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import { verifyAuthorityAuditEvents } from '../src/runtime/storage-journal/authority-audit-service.ts';
-import { readDurableRefGenerationLedger } from '../src/modules/authority/maintainer-candidate.ts';
-import { type MaintainerGrantV2Payload } from '../src/modules/authority/maintainer-grant-v2.ts';
+import { readDurableRefGenerationLedger } from '../src/runtime/storage-journal/maintainer-candidate-ref-ledger.ts';
+import { type MaintainerGrantV2Payload } from '../src/modules/authority/maintainer-grant-v2-codec.ts';
 import { readAuthorityCommitJournal } from '../src/application/control-plane/maintainer-recovery.ts';
 import { SimulatedAuthorityCrash } from '../src/application/control-plane/maintainer-commit.ts';
 import {

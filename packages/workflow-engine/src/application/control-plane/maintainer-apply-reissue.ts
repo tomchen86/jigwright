@@ -28,6 +28,7 @@ export function createMaintainerApplyReissue(
   bindings: () => MaintainerApplyReissueBindings,
 ) {
   function reissueAndApplyMaintainerGrantV2(
+    grantServices: MaintainerGrantExecutionServices,
     authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
     manifestOperations: MaintainerManifestOperations,
     taskMandate: MaintainerTaskMandateOperations,
@@ -46,6 +47,7 @@ export function createMaintainerApplyReissue(
     );
     return withPostApprovalAdmissionDeadline(deadline, () =>
       reissueAndApplyMaintainerGrantV2WithDeadline(
+        grantServices,
         authorityApplicationReceipts,
         manifestOperations,
         taskMandate,
@@ -58,6 +60,7 @@ export function createMaintainerApplyReissue(
   }
 
   function reissueAndApplyMaintainerGrantV2WithDeadline(
+    grantServices: MaintainerGrantExecutionServices,
     authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
     manifestOperations: MaintainerManifestOperations,
     taskMandate: MaintainerTaskMandateOperations,
@@ -76,7 +79,6 @@ export function createMaintainerApplyReissue(
       workflowError,
       ExitCode,
       authorityCandidateCommitMessage,
-      issueMaintainerGrantV2,
       armPostApprovalAdmissionDeadline,
       appendApplyGrantAudit,
       assertPostApprovalAdmissionDeadline,
@@ -165,7 +167,7 @@ export function createMaintainerApplyReissue(
             ExitCode.guard,
           );
         }
-        const grant = issueMaintainerGrantV2(
+        const grant = grantServices.issueMaintainerGrantV2(
           manifestOperations,
           taskMandate,
           cwd,
@@ -206,6 +208,7 @@ export function createMaintainerApplyReissue(
           options.now,
           () =>
             startAuthoritySession(
+              grantServices,
               manifestOperations,
               taskMandate,
               cwd,
@@ -222,6 +225,7 @@ export function createMaintainerApplyReissue(
             ),
         );
         const committed = commitAuthoritySession(
+          grantServices,
           authorityApplicationReceipts,
           manifestOperations,
           taskMandate,
@@ -353,3 +357,5 @@ export function createMaintainerApplyReissue(
 }
 
 import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
+
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';

@@ -1,4 +1,7 @@
-import {ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_TAG_PREFIX_V1,ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_SIGNATURE_NAMESPACE_V1} from '../src/modules/authority/role-context-sharing-grant-lifecycle-port.ts';
+import {
+  ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_TAG_PREFIX_V1,
+  ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_SIGNATURE_NAMESPACE_V1,
+} from '../src/modules/authority/role-context-sharing-grant-lifecycle-port.ts';
 import { bindingFromRoleContextSharingGrantPayloadV1 } from '../src/runtime/grants/optional-grants-package.ts';
 import { planningAssuranceDependencies } from '../src/composition-root/planning-assurance-production.ts';
 import assert from 'node:assert/strict';
@@ -19,10 +22,17 @@ import {
   reserveRoleContextSharingPlanReview,
 } from '../src/application/propose/role-context-sharing-plan-review.ts';
 import { completeRoleContextSharingPlanReviewAdmission } from '../src/composition-root/propose-production.ts';
-import { runCli } from '../src/entrypoints/cli/workflow-cli.ts';
+import { runCli } from '../bootstrap/workflow-engine-host.ts';
 
 import { productionRoleContextSharingGrantLifecyclePort } from '../src/composition-root/role-context-sharing-grant-lifecycle-production.ts';
-import {assertRoleContextSharingTerminalReceiptUseBijection,canonicalRoleContextSharingTerminalReceiptEnvelopeV1,canonicalRoleContextSharingTerminalReceiptPayloadV1,listVerifiedRoleContextSharingTerminalReceipts,publishRoleContextSharingTerminalReceipt,roleContextSharingTerminalReceiptTagRef} from '../src/composition-root/role-context-sharing-terminal-receipt-production.ts';
+import {
+  assertRoleContextSharingTerminalReceiptUseBijection,
+  canonicalRoleContextSharingTerminalReceiptEnvelopeV1,
+  canonicalRoleContextSharingTerminalReceiptPayloadV1,
+  listVerifiedRoleContextSharingTerminalReceipts,
+  publishRoleContextSharingTerminalReceipt,
+  roleContextSharingTerminalReceiptTagRef,
+} from '../src/composition-root/role-context-sharing-terminal-receipt-production.ts';
 import { productionConsumedPlanReviewReplayPort } from '../src/composition-root/grant-verifier-composition.ts';
 import { approveAndStoreRoleContextSharingGrantForCurrentRequirement } from '../src/composition-root/role-context-sharing-grant-approval-production.ts';
 import { ExitCode } from '../src/foundation/errors/errors.ts';

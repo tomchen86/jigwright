@@ -2440,7 +2440,7 @@ function runWorkflowCli(
       '--experimental-strip-types',
       path.join(
         sourceRepositoryRoot,
-        'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+        'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
       ),
       ...args,
     ],

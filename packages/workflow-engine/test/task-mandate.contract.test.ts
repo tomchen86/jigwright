@@ -483,7 +483,7 @@ test('task authorize CLI refuses unattended signing before creating mandate stat
   const manifest = path.join(repository, 'task-mandate.json');
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+    'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
   );
   fs.writeFileSync(manifest, `${JSON.stringify(request(), null, 2)}\n`);
   try {

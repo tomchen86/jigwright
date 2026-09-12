@@ -39,7 +39,7 @@ import {
   prepareChangeRoutingReview,
 } from '../src/composition-root/change-routing-production.ts';
 import { validateRepositoryStateAtCommit } from '../src/composition-root/repository-validation.ts';
-import { runCli } from '../src/entrypoints/cli/workflow-cli.ts';
+import { runCli } from '../bootstrap/workflow-engine-host.ts';
 import { validateCiArchiveCommit } from '../src/composition-root/ci-replay-production.ts';
 import {
   applyWorkItemReview,

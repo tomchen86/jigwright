@@ -1,4 +1,4 @@
-import { preflightMaintainerGrantV2 } from '../src/composition-root/maintainer-authority-production.ts';
+import { preflightMaintainerGrantV2 } from '../bootstrap/maintainer-authority-production.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as maintainerGrant from '../src/modules/authority/maintainer-grant-contracts.ts';
@@ -13,11 +13,11 @@ import {
   parseMaintainerGrantV2Envelope,
   type MaintainerGrantV2Envelope,
   MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
-} from '../src/modules/authority/maintainer-grant-v2.ts';
+} from '../src/modules/authority/maintainer-grant-v2-codec.ts';
 import {
   issueMaintainerGrantV2,
   validateMaintainerGrantV2AuthorityBinding,
-} from '../src/composition-root/maintainer-authority-production.ts';
+} from '../bootstrap/maintainer-authority-production.ts';
 import {
   inspectMaintainerGrants,
   reserveMaintainerGrant,
@@ -26,7 +26,7 @@ import {
 } from '../src/runtime/storage-journal/maintainer-store.ts';
 import { validateCiAuthorityCommit } from '../src/composition-root/ci-replay-production.ts';
 import { type MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
-import { startAuthoritySession } from '../src/composition-root/maintainer-authority-production.ts';
+import { startAuthoritySession } from '../bootstrap/maintainer-authority-production.ts';
 import { parseMaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
 import { spawnSync } from 'node:child_process';
 import {
@@ -708,7 +708,7 @@ test('v2 preflight CLI exposes the manifest without signing or writing grant sta
   const repository = prepareCandidate();
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+    'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
   );
   try {
     const result = spawnSync(

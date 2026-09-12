@@ -28,7 +28,10 @@ import {
   assertAgentProviderProfileSnapshot,
   type BuiltInReviewedProviderProfileSnapshot,
 } from '@jigwright/core/agent-provider-config';
-import {assertKnownBuiltInProviderDefinitionSnapshot, resolveBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
+import {
+  assertKnownBuiltInProviderDefinitionSnapshot,
+  resolveBuiltInProviderDefinitionSnapshot,
+} from '@jigwright/core/built-in-provider-definition';
 import { type ProviderDefinitionSnapshot } from '@jigwright/core/provider-definition-snapshot';
 
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';

@@ -52,7 +52,7 @@ import { parseChangeLifecycleSource } from '../src/modules/lifecycle/change-rout
 import {
   createChangeRoutingFailGrantResult,
   dispatchAsync,
-} from '../src/entrypoints/cli/workflow-cli.ts';
+} from '../bootstrap/workflow-engine-host.ts';
 import { dispatchChangeRoutingCommand } from '../src/entrypoints/cli/change-routing-cli.ts';
 import { runRepositoryHook } from '../src/composition-root/repository-hooks-production.ts';
 import { validateRepositoryStateAtCommit } from '../src/composition-root/repository-validation.ts';

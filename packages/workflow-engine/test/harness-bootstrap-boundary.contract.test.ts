@@ -5,7 +5,7 @@ import {
   createHarnessBootstrapParentState,
   type HarnessBootstrapParentBindings,
 } from '../src/application/control-plane/harness-bootstrap-parent-state.ts';
-import { createHarnessBootstrapDependencies } from '../src/composition-root/harness-bootstrap-production.ts';
+import { createHarnessBootstrapDependencies } from '../bootstrap/harness-bootstrap-production.ts';
 import type { HarnessBootstrapParentObservation } from '../src/modules/authority/harness-bootstrap-parent-contract.ts';
 import { workflowError, ExitCode } from '../src/foundation/errors/errors.ts';
 import { assertPureDependencyClosure } from './support/pure-dependency-closure.ts';

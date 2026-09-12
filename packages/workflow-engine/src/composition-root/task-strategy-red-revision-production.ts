@@ -3,6 +3,7 @@ import { productionChangeRoutingAdmissionReader } from './change-routing-observa
 import { createTaskStrategyRedRevisionService } from '../application/execute-task/task-strategy-red-revision.ts';
 import { assertCurrentImplementationReconciliation } from './implementation-reconciliation-production.ts';
 export const { beginTaskStrategyRedRevision, continueTaskStrategyRedRevision } =
-  createTaskStrategyRedRevisionService(productionChangeRoutingAdmissionReader,
+  createTaskStrategyRedRevisionService(
+    productionChangeRoutingAdmissionReader,
     assertCurrentImplementationReconciliation,
   );

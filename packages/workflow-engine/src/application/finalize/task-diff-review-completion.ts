@@ -53,7 +53,8 @@ type TaskDiffReviewContinuationReservationRecord =
 type CollaborationGrantSelectionCoreBinding =
   TaskDiffReviewRuntimeData['CollaborationGrantSelectionCoreBinding'];
 
-export function createTaskDiffReviewCompletionModule(routingAdmissionReader: ChangeRoutingAdmissionReader,
+export function createTaskDiffReviewCompletionModule(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   runtime: TaskDiffReviewRuntimeBindings,
   common: ReturnType<typeof createTaskDiffReviewCommonModule>,
   subject: ReturnType<typeof createTaskDiffReviewSubjectModule>,
@@ -166,20 +167,25 @@ export function createTaskDiffReviewCompletionModule(routingAdmissionReader: Cha
     ) {
       return null;
     }
-    const inspection = inspectSession(routingAdmissionReader, cwd, requestedSessionId, {
-      expectedSession: context.session,
-      ...(options.projectedTaskIds === undefined
-        ? {}
-        : { projectedTaskIds: [...options.projectedTaskIds] }),
-      ...(options.projectionSourceDigest === undefined
-        ? {}
-        : { projectionSourceDigest: options.projectionSourceDigest }),
-      ...(options.authorizedTransitionPaths === undefined
-        ? {}
-        : {
-            authorizedTransitionPaths: [...options.authorizedTransitionPaths],
-          }),
-    });
+    const inspection = inspectSession(
+      routingAdmissionReader,
+      cwd,
+      requestedSessionId,
+      {
+        expectedSession: context.session,
+        ...(options.projectedTaskIds === undefined
+          ? {}
+          : { projectedTaskIds: [...options.projectedTaskIds] }),
+        ...(options.projectionSourceDigest === undefined
+          ? {}
+          : { projectionSourceDigest: options.projectionSourceDigest }),
+        ...(options.authorizedTransitionPaths === undefined
+          ? {}
+          : {
+              authorizedTransitionPaths: [...options.authorizedTransitionPaths],
+            }),
+      },
+    );
     const requirement = taskDiffReviewRequirementIncludingDocumentation(
       resolveTaskDiffReviewContract(inspection).requirement,
       options.candidateTree === undefined

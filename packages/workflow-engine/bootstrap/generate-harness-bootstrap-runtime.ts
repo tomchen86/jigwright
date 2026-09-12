@@ -34,7 +34,7 @@ const MANIFEST_RELATIVE_PATH =
 const PIN_RELATIVE_PATH =
   'packages/workflow-engine/bootstrap/harness-bootstrap-runtime-closure-pin.ts';
 const ENTRYPOINT =
-  'bootstrap/recovery-runtime/src/entrypoints/cli/harness-bootstrap-cli.js';
+  'bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js';
 const TRUSTED_HARNESS_TOOLCHAIN_DIGEST =
   'sha256:2c5f1c5d7615667a8e552e9dc1f0b0dc0406695d557cb88c4bf3b414cd0e1c31' as const;
 const MAX_TOOLCHAIN_FILES = 1_000;
@@ -169,7 +169,9 @@ function withCompiledRuntime<T>(
       manifestFiles.some(
         ({ path: filePath }) =>
           filePath ===
-          'bootstrap/recovery-runtime/src/entrypoints/cli/workflow-cli.js',
+            'bootstrap/recovery-runtime/src/entrypoints/cli/workflow-cli.js' ||
+          filePath ===
+            'bootstrap/recovery-runtime/bootstrap/workflow-engine-host.js',
       )
     ) {
       throw new Error(
@@ -225,15 +227,7 @@ function compileRuntime(
         outDir: rawOutputRoot,
         paths,
       },
-      files: [
-        path.join(
-          packageRoot,
-          'src',
-          'entrypoints',
-          'cli',
-          'harness-bootstrap-cli.ts',
-        ),
-      ],
+      files: [path.join(packageRoot, 'bootstrap', 'harness-bootstrap-host.ts')],
     };
     fs.writeFileSync(
       compilerConfigPath,

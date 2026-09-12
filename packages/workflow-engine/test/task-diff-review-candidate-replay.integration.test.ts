@@ -56,7 +56,12 @@ test('a corrected ordinary candidate recovers one exact common supersession afte
     },
   });
   try {
-    const session = startSession(productionChangeRoutingAdmissionReader, repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -373,7 +378,12 @@ test('a corrected ordinary candidate recovers one exact common supersession afte
 test('an unchanged candidate reuses its review across fresh check evidence without another provider ceremony', () => {
   const { repository, counterPath } = createReviewFixture();
   try {
-    const session = startSession(productionChangeRoutingAdmissionReader, repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -498,7 +508,12 @@ test('an unchanged candidate reuses its review across fresh check evidence witho
 test('review-diff CLI resumes the durable happy path from ready through fixed-runner reconciliation', () => {
   const { repository, counterPath } = createReviewFixture();
   try {
-    const session = startSession(productionChangeRoutingAdmissionReader, repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',

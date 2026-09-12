@@ -11,7 +11,7 @@ import { type ProviderInvocationAcceptanceBinding } from '../src/runtime/storage
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import { createProviderRunnerForTesting } from '../src/runtime/provider-execution/provider-runner.ts';
 import { spawnBoundedProviderProcess } from '../src/runtime/provider-execution/bounded-provider-process.ts';
-import {resolveBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import { createBuiltInAgentRuntimeV1Bridge } from '../src/composition-root/agent-runtime-v1-production.ts';
 import { runHostWrapperProviderThroughAgentRuntimeV1 } from '../src/composition-root/agent-runtime-host-wrapper-production.ts';
 import { productionAgentRuntime } from '../src/composition-root/agent-runtime-production.ts';

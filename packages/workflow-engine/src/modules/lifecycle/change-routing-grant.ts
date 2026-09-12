@@ -26,7 +26,8 @@ type ChangeRoutingContinuationParameters = Readonly<{
   sourceDigest: `sha256:${string}`;
 }>;
 
-export function changeRoutingGrantTransitionDefinitions(observeChangeRoutingContinuationState: ChangeRoutingContinuationObserver,
+export function changeRoutingGrantTransitionDefinitions(
+  observeChangeRoutingContinuationState: ChangeRoutingContinuationObserver,
   repositoryRoot: string,
 ): readonly TransitionDefinition<ChangeRoutingContinuationParameters>[] {
   const definition: TransitionDefinition<ChangeRoutingContinuationParameters> =
@@ -92,7 +93,8 @@ export function changeRoutingGrantTransitionDefinitions(observeChangeRoutingCont
   return Object.freeze([definition]);
 }
 
-export function createChangeRoutingContinuationGrantRequest(observeChangeRoutingContinuationState: ChangeRoutingContinuationObserver,
+export function createChangeRoutingContinuationGrantRequest(
+  observeChangeRoutingContinuationState: ChangeRoutingContinuationObserver,
   repositoryRoot: string,
   changeId: string,
   proposedReason: string,

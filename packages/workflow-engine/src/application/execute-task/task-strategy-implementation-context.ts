@@ -45,7 +45,8 @@ import type {
   TaskStrategyRedAuthor,
   TaskStrategyImplementationStatus,
 } from './task-strategy-implementation-lifecycle.ts';
-export function createTaskStrategyImplementationContext(routingAdmissionReader: ChangeRoutingAdmissionReader,
+export function createTaskStrategyImplementationContext(
+  routingAdmissionReader: ChangeRoutingAdmissionReader,
   runtime: TaskStrategyImplementationRuntimeBindings,
 ) {
   const {
@@ -183,9 +184,14 @@ export function createTaskStrategyImplementationContext(routingAdmissionReader: 
         ExitCode.guard,
       );
     }
-    const inspection = inspectSession(routingAdmissionReader, cwd, context.session.sessionId, {
-      expectedSession: context.session,
-    });
+    const inspection = inspectSession(
+      routingAdmissionReader,
+      cwd,
+      context.session.sessionId,
+      {
+        expectedSession: context.session,
+      },
+    );
     const preview = previewExactStaging(
       inspection.git.repositoryRoot,
       inspection.session.baseline.head,
@@ -267,9 +273,14 @@ export function createTaskStrategyImplementationContext(routingAdmissionReader: 
     context: ReturnType<typeof loadActiveSessionContext>,
     transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>,
   ) {
-    const inspection = inspectSession(routingAdmissionReader, cwd, context.session.sessionId, {
-      expectedSession: context.session,
-    });
+    const inspection = inspectSession(
+      routingAdmissionReader,
+      cwd,
+      context.session.sessionId,
+      {
+        expectedSession: context.session,
+      },
+    );
     const task = inspection.contract.execution?.tasks[context.session.taskId];
     if (
       task === undefined ||
@@ -296,9 +307,14 @@ export function createTaskStrategyImplementationContext(routingAdmissionReader: 
     greenFailureRecord: TaskStrategyGreenFailureRecord | null;
   }> {
     const initialSubject = createSubject(transaction);
-    const inspection = inspectSession(routingAdmissionReader, cwd, context.session.sessionId, {
-      expectedSession: context.session,
-    });
+    const inspection = inspectSession(
+      routingAdmissionReader,
+      cwd,
+      context.session.sessionId,
+      {
+        expectedSession: context.session,
+      },
+    );
     const projection = resolveCurrentTaskStrategyCorrection(inspection);
     if (projection.transaction.recordDigest !== transaction.recordDigest) {
       throw implementationResultStale();

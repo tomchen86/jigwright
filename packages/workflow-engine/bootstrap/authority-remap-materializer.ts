@@ -1,3 +1,4 @@
+import { generateWorkflowBootstrapHost } from './generate-workflow-bootstrap-host.ts';
 /** Isolated authority remap orchestration and pinned regeneration order. */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -25,6 +26,7 @@ import {
   applyProjectedTextMutation,
   projectProtectedCapabilityPaths,
   BUILT_IN_OUTPUTS,
+  WORKFLOW_BOOTSTRAP_HOST_OUTPUTS,
   PROTECTED_CAPABILITIES_PATH,
   collectStagedTextMutations,
   assertAllowedFinalMutations,
@@ -148,6 +150,11 @@ export async function materializeAuthorityRemap(
         for (const output of BUILT_IN_OUTPUTS) {
           generatedOutputPaths.add(output);
         }
+      } else if (step === 'workflow-bootstrap-host') {
+        generateWorkflowBootstrapHost(isolatedRepository, '--write');
+        for (const output of WORKFLOW_BOOTSTRAP_HOST_OUTPUTS) {
+          generatedOutputPaths.add(output);
+        }
       } else if (step === 'harness-bootstrap-runtime') {
         generateHarnessBootstrapRuntime(isolatedRepository, '--write');
         for (const output of listHarnessBootstrapOutputPaths(
@@ -265,6 +272,7 @@ async function assertPinnedBaseGeneratedArtifactsCurrent(
   repositoryRoot: string,
   steps: readonly (
     | 'built-in-engine-closure'
+    | 'workflow-bootstrap-host'
     | 'harness-bootstrap-runtime'
     | 'protected-capabilities'
   )[],
@@ -273,6 +281,8 @@ async function assertPinnedBaseGeneratedArtifactsCurrent(
     for (const step of steps) {
       if (step === 'built-in-engine-closure') {
         generateBuiltInEngineClosure(repositoryRoot, '--check');
+      } else if (step === 'workflow-bootstrap-host') {
+        generateWorkflowBootstrapHost(repositoryRoot, '--check');
       } else if (step === 'harness-bootstrap-runtime') {
         generateHarnessBootstrapRuntime(repositoryRoot, '--check');
       } else if (step === 'protected-capabilities') {

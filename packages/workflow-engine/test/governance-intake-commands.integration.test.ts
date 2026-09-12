@@ -10,7 +10,7 @@ import {
   readGovernanceSource,
 } from '../src/composition-root/governance-sources-production.ts';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
-import { runCli } from '../src/entrypoints/cli/workflow-cli.ts';
+import { runCli } from '../bootstrap/workflow-engine-host.ts';
 import {
   applyWorkItemReview,
   createWorkItem,

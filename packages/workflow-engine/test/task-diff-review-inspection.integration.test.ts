@@ -18,7 +18,12 @@ import {
 test('review-diff inspect derives one exact checked candidate subject without rerunning checks', () => {
   const { repository, counterPath } = createReviewFixture();
   try {
-    const session = startSession(productionChangeRoutingAdmissionReader, repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -138,7 +143,12 @@ test('final documentation closure activates review for an ordinary candidate', (
     },
   });
   try {
-    const session = startSession(productionChangeRoutingAdmissionReader, repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const documented = true;\n',
@@ -163,7 +173,12 @@ test('final documentation closure uses only the current roadmap hint identity', 
     additionalAllowedPaths: ['docs/ROADMAP.md'],
   });
   try {
-    const session = startSession(productionChangeRoutingAdmissionReader, repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'docs/ROADMAP.md'),
       '# Roadmap\n\nCurrent product direction.\n',
@@ -213,7 +228,12 @@ test('final documentation closure uses only the current roadmap hint identity', 
 test('review-diff inspect is unavailable before checks freeze a candidate', () => {
   const { repository } = createReviewFixture();
   try {
-    const session = startSession(productionChangeRoutingAdmissionReader, repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeRoutingAdmissionReader,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     assert.throws(
       () => inspectTaskDiffReviewSubject(repository, session.sessionId),
       hasCode('TASK_DIFF_REVIEW_NOT_READY'),

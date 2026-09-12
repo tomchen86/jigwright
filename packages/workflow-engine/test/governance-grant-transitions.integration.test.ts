@@ -11,7 +11,7 @@ import {
   workRegistryGrantTransitionDefinitions,
 } from '../src/composition-root/work-registry-grant-production.ts';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
-import { createWorkRegistryFailGrantResult } from '../src/entrypoints/cli/workflow-cli.ts';
+import { createWorkRegistryFailGrantResult } from '../bootstrap/workflow-engine-host.ts';
 import { createGrantChallenge } from '../src/modules/authority/grant-core.ts';
 import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';

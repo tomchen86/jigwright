@@ -17,7 +17,7 @@ import {
 } from '@jigwright/core/agent-runtime-port';
 
 import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
-import {resolveBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import {
   preflightBuiltInProvider,
   type ProviderPreflightOptions,

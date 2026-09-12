@@ -897,12 +897,15 @@ function createRegenerationDescriptor(
 ): AuthorityRemapRegenerationDescriptor | null {
   const protectedPatterns = readProtectedClosurePatterns(repositoryRoot, proof);
   const workspaceSourceRoots = readWorkspaceSourceRoots(repositoryRoot, proof);
+  const workflowHostInputs = readWorkflowHostInputs(repositoryRoot, proof);
   const steps = new Set<AuthorityRemapRegenerationStep>();
   const affectedMoves = proof.moves
     .filter(({ from, to }) => {
       const engineSource =
         isWithinEngineSource(from, workspaceSourceRoots) ||
         isWithinEngineSource(to, workspaceSourceRoots);
+      const workflowHost =
+        workflowHostInputs.has(from) || workflowHostInputs.has(to);
       const recoveryRuntime =
         isWithinRecoveryRuntime(from) || isWithinRecoveryRuntime(to);
       const protectedClosure = protectedPatterns.some(
@@ -911,13 +914,19 @@ function createRegenerationDescriptor(
       );
       if (engineSource) {
         for (const step of REGENERATION_STEPS) steps.add(step);
+      } else if (workflowHost) {
+        steps.add('workflow-bootstrap-host');
+        steps.add('harness-bootstrap-runtime');
+        steps.add('protected-capabilities');
       } else if (recoveryRuntime) {
         steps.add('harness-bootstrap-runtime');
         steps.add('protected-capabilities');
       } else if (protectedClosure) {
         steps.add('protected-capabilities');
       }
-      return engineSource || recoveryRuntime || protectedClosure;
+      return (
+        engineSource || workflowHost || recoveryRuntime || protectedClosure
+      );
     })
     .map(({ from, to }) => Object.freeze({ from, to }));
   if (affectedMoves.length === 0) return null;
@@ -1117,6 +1126,62 @@ function readProtectedClosurePatterns(
       `${PROTECTED_CAPABILITIES_PATH} is not a valid manifest.`,
     );
   }
+}
+
+function readWorkflowHostInputs(
+  repositoryRoot: string,
+  proof: MechanicalMoveProof,
+): ReadonlySet<string> {
+  const manifestPath =
+    'packages/workflow-engine/bootstrap/workflow-bootstrap-host.json';
+  const snapshot = readPinnedTrackedTree({
+    repositoryRoot,
+    treeOid: proof.baseTree,
+  });
+  const entry = entriesByUtf8Path(snapshot.entries).get(manifestPath);
+  if (entry === undefined) return new Set();
+  if (entry.content === undefined)
+    throw remapInvalid(`${manifestPath} is not readable text.`);
+  let value: unknown;
+  try {
+    value = JSON.parse(entry.content.toString('utf8'));
+  } catch {
+    throw remapInvalid(`${manifestPath} is not valid JSON.`);
+  }
+  if (
+    !isRecord(value) ||
+    value.kind !== 'workflow-bootstrap-host.v1' ||
+    !Array.isArray(value.files)
+  ) {
+    throw remapInvalid(`${manifestPath} has an invalid host inventory.`);
+  }
+  const paths = value.files.map((file) => {
+    if (!isRecord(file) || typeof file.path !== 'string')
+      throw remapInvalid(`${manifestPath} has an invalid host path.`);
+    let normalized: string;
+    try {
+      normalized = normalizeExactRepositoryPath(file.path);
+    } catch {
+      throw remapInvalid(`${manifestPath} has an unsafe host path.`);
+    }
+    if (
+      normalized !== file.path ||
+      !normalized.startsWith('bootstrap/') ||
+      !normalized.endsWith('.ts')
+    ) {
+      throw remapInvalid(`${manifestPath} has a non-canonical host path.`);
+    }
+    return `packages/workflow-engine/${normalized}`;
+  });
+  const sorted = [...paths].sort(comparePaths);
+  if (
+    paths.length === 0 ||
+    new Set(paths).size !== paths.length ||
+    paths.some((file, index) => file !== sorted[index])
+  ) {
+    throw remapInvalid(`${manifestPath} has an ambiguous host inventory.`);
+  }
+  return new Set(paths);
 }
 
 function readWorkspaceSourceRoots(

@@ -100,7 +100,9 @@ type TaskBaseUpdateTestHooks = Readonly<{
  * assurance. The command never fetches, stashes, resolves a conflict, or
  * operates while a task writer is active.
  */
-export function updateTaskSessionBase(verifyPullRequest: PullRequestVerifier['verifyPullRequest'], routingInspector: ChangeRoutingInspector,
+export function updateTaskSessionBase(
+  verifyPullRequest: PullRequestVerifier['verifyPullRequest'],
+  routingInspector: ChangeRoutingInspector,
   readers: ChangeContractReaders,
   cwd: string,
   requestedChangeId: string,
@@ -140,7 +142,9 @@ export function updateTaskSessionBase(verifyPullRequest: PullRequestVerifier['ve
     );
     return withSessionOperation(runtime, lockedAnchor.sessionId, () => {
       assertRepositoryLock();
-      return updateFinishedTaskBaseLocked(verifyPullRequest, routingInspector,
+      return updateFinishedTaskBaseLocked(
+        verifyPullRequest,
+        routingInspector,
         readers,
         cwd,
         lockedAnchor,
@@ -214,7 +218,9 @@ function resolveFinishedSessionAnchor(
   return candidates[0]!;
 }
 
-function updateFinishedTaskBaseLocked(verifyPullRequest: PullRequestVerifier['verifyPullRequest'], routingInspector: ChangeRoutingInspector,
+function updateFinishedTaskBaseLocked(
+  verifyPullRequest: PullRequestVerifier['verifyPullRequest'],
+  routingInspector: ChangeRoutingInspector,
   readers: ChangeContractReaders,
   cwd: string,
   session: WorkflowSession,

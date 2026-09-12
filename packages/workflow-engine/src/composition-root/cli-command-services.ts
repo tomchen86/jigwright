@@ -1,6 +1,9 @@
-import { preparePullRequestPreMergeAssurance, verifyPullRequest } from './ci-verification-production.ts';
-export { createAuthorityPlan } from './maintainer-authority-production.ts';
-export { preflightMaintainerGrantV2 } from './maintainer-authority-production.ts';
+export type { ControlPlanePromotionBootstrapObservations } from '../modules/authority/intervention-bootstrap-contract.ts';
+import {
+  preparePullRequestPreMergeAssurance,
+  verifyPullRequest,
+} from './ci-verification-production.ts';
+
 import { maintainerManifestOperations } from './maintainer-manifest-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from './planning-execution-epoch-production.ts';
 import { productionTaskStrategyExecutionGate } from './task-strategy-gate-production.ts';
@@ -104,11 +107,7 @@ export const commitPlanAmendment = commitPlanAmendmentWithContractReader.bind(
 export { discoverArchivePullRequestCandidates } from '../application/archive/archive-pr-orchestration.ts';
 export type { GitHubArchiveAdapterModuleV1 } from '../application/archive/archive-pr-orchestration.ts';
 export { inspectAuthorityPlan } from '../application/control-plane/authority-plan.ts';
-export {
-  resumeAuthorityPlan,
-  attestAuthorityPlan,
-} from './maintainer-authority-production.ts';
-export { approveAndApplyAuthorityPlan } from './maintainer-authority-production.ts';
+
 export type { AuthorityPlanIntent } from '../application/control-plane/authority-plan.ts';
 export { loadWorkflowConfig } from '../runtime/repository-observation/workflow-configuration.ts';
 export { parseExecutionBudgetGrantRequest } from '../modules/authority/execution-governance-grant-contracts.ts';
@@ -133,15 +132,12 @@ export {
   runGit,
 } from '../runtime/repository-transaction/git.ts';
 export { assertMaintainerGrantId } from '../modules/authority/maintainer-grant-contracts.ts';
-export { parseMaintainerEvidenceWaivers } from '../modules/authority/maintainer-grant-v2.ts';
-export type {
-  MaintainerGrantV2PreflightRequest,
-  MaintainerEvidenceWaiver,
-} from '../modules/authority/maintainer-grant-v2.ts';
 export {
-  issueAuthorityAttestation,
-  projectAuthorityAttestationRelay,
-} from './maintainer-authority-production.ts';
+  parseMaintainerEvidenceWaivers,
+  type MaintainerEvidenceWaiver,
+} from '../modules/authority/maintainer-grant-v2-codec.ts';
+export type { MaintainerGrantV2PreflightRequest } from '../modules/authority/maintainer-grant-v2.ts';
+
 export type { AuthorityAttestationRequest } from '../application/control-plane/maintainer-attestation.ts';
 export {
   maintainerGrantStorePaths,
@@ -150,16 +146,39 @@ export {
 export { assertInteractiveSignerContext } from '../adapters/signing/ssh/maintainer-signer.ts';
 export { parseMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
 export { revokeMaintainerGrantV2 } from '../application/control-plane/maintainer-approve.ts';
-export {
-  approveAndApplyMaintainerGrantV2,
-  reissueAndApplyMaintainerGrantV2,
-} from './maintainer-authority-production.ts';
+
 export type {
   ApproveAndApplyMaintainerGrantV2Request,
   ReissueAndApplyMaintainerGrantV2Request,
 } from '../application/control-plane/maintainer-approve.ts';
-export type { CandidateExternalEffect } from '../modules/authority/maintainer-candidate.ts';
-export { produceControlPlaneApprovalCandidateV3 } from '../application/control-plane/control-plane-promotion-producer.ts';
+export type { CandidateExternalEffect } from '../modules/authority/maintainer-candidate-contracts.ts';
+import { produceControlPlaneApprovalCandidateV3 as produceControlPlaneApprovalCandidateWithArtifacts } from '../application/control-plane/control-plane-promotion-producer.ts';
+import {
+  readStoredImmutableCandidateBundle,
+  assertStoredCandidateSupportingArtifacts,
+} from '../runtime/storage-journal/maintainer-candidate-reader.ts';
+export function produceControlPlaneApprovalCandidateV3(
+  repositoryRoot: string,
+  storageRoot: string,
+  candidateId: string,
+  dependencies: Omit<
+    Parameters<typeof produceControlPlaneApprovalCandidateWithArtifacts>[3],
+    'candidateArtifacts'
+  >,
+) {
+  return produceControlPlaneApprovalCandidateWithArtifacts(
+    repositoryRoot,
+    storageRoot,
+    candidateId,
+    {
+      ...dependencies,
+      candidateArtifacts: {
+        readStoredImmutableCandidateBundle,
+        assertStoredCandidateSupportingArtifacts,
+      },
+    },
+  );
+}
 export {
   inspectHumanResolutionGrantPublicationRecoveries,
   inspectHumanResolutionGrants,

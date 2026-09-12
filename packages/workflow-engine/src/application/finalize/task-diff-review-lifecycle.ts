@@ -1,4 +1,4 @@
-import type {DocumentationReviewCapture} from '../../modules/assurance/documentation-closure.ts';
+import type { DocumentationReviewCapture } from '../../modules/assurance/documentation-closure.ts';
 import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';

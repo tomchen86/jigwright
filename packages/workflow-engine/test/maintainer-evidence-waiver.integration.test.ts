@@ -1,5 +1,5 @@
-import { preflightMaintainerGrantV2 } from '../src/composition-root/maintainer-authority-production.ts';
-import { prepareMaintainerGrantV2Checks } from '../src/composition-root/maintainer-authority-production.ts';
+import { preflightMaintainerGrantV2 } from '../bootstrap/maintainer-authority-production.ts';
+import { prepareMaintainerGrantV2Checks } from '../bootstrap/maintainer-authority-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
@@ -23,18 +23,18 @@ import { readAuthorityApplicationReceiptTag } from '../src/composition-root/auth
 import { deriveAuthorityAuditRepositoryId } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import { verifyAuthorityAuditEvents } from '../src/runtime/storage-journal/authority-audit-service.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { assertCandidateV2ChecksFresh } from '../src/modules/authority/maintainer-candidate.ts';
+import { assertCandidateV2ChecksFresh } from '../src/modules/authority/maintainer-candidate-contracts.ts';
 import {
   canonicalMaintainerGrantV2Envelope,
   MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
   type MaintainerEvidenceWaiver,
-} from '../src/modules/authority/maintainer-grant-v2.ts';
-import { validateMaintainerGrantV2AuthorityBinding } from '../src/composition-root/maintainer-authority-production.ts';
+} from '../src/modules/authority/maintainer-grant-v2-codec.ts';
+import { validateMaintainerGrantV2AuthorityBinding } from '../bootstrap/maintainer-authority-production.ts';
 
 import {
   approveAndApplyMaintainerGrantV2,
   reissueAndApplyMaintainerGrantV2,
-} from '../src/composition-root/maintainer-authority-production.ts';
+} from '../bootstrap/maintainer-authority-production.ts';
 import {
   computeProtectedCapabilityEntryDigests,
   REQUIRED_PROTECTED_CAPABILITIES,
@@ -45,7 +45,7 @@ import {
   maintainerGrantStorePaths,
   readTerminalMaintainerGrant,
 } from '../src/runtime/storage-journal/maintainer-store.ts';
-import { startAuthoritySession } from '../src/composition-root/maintainer-authority-production.ts';
+import { startAuthoritySession } from '../bootstrap/maintainer-authority-production.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 
 import {

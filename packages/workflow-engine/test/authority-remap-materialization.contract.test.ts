@@ -1,3 +1,5 @@
+import { assertAllowedFinalMutations } from '../bootstrap/authority-remap-mutations.ts';
+import { generateWorkflowBootstrapHost } from '../bootstrap/generate-workflow-bootstrap-host.ts';
 /** Authority remap regeneration, materialization, and generator boundary contracts. */
 import test from 'node:test';
 import fs from 'node:fs';
@@ -118,6 +120,7 @@ test('regeneration materializes one exact ready intent and rejects a stale hando
     const regeneratedOutput =
       'packages/workflow-engine/bootstrap/recovery-runtime/src/modules/source/t3-materializer-fixture.js';
     generateBuiltInEngineClosure(repository, '--write');
+    generateWorkflowBootstrapHost(repository, '--write');
     generateHarnessBootstrapRuntime(repository, '--write');
     stageGeneratedRuntimeFixture(repository);
     await generateProtectedCapabilitiesManifest(repository, '--write');
@@ -274,6 +277,7 @@ test('regeneration rejects generated recovery outputs ignored by tracked rules',
       "export { t3IgnoredOutputFixture } from '../../modules/t3-ignored-output-fixture.ts';\n",
     );
     generateBuiltInEngineClosure(repository, '--write');
+    generateWorkflowBootstrapHost(repository, '--write');
     generateHarnessBootstrapRuntime(repository, '--write');
     stageGeneratedRuntimeFixture(repository);
     await generateProtectedCapabilitiesManifest(repository, '--write');
@@ -616,6 +620,11 @@ test('harness renderer never executes a candidate-owned compiler and returns imm
       'packages/workflow-engine/src/entrypoints/cli/harness-bootstrap-cli.ts',
       'export const fixture = true;\n',
     );
+    write(
+      container,
+      'packages/workflow-engine/bootstrap/harness-bootstrap-host.ts',
+      "import '../src/entrypoints/cli/harness-bootstrap-cli.ts';\n",
+    );
     generateBuiltInEngineClosure(container, '--write');
     const marker = path.join(container, 'candidate-tsc-executed');
     const preloadMarker = path.join(container, 'node-options-executed');
@@ -674,6 +683,11 @@ test('harness generator rejects linked metadata outputs without overwriting exte
       container,
       'packages/workflow-engine/src/entrypoints/cli/harness-bootstrap-cli.ts',
       'export const fixture = true;\n',
+    );
+    write(
+      container,
+      'packages/workflow-engine/bootstrap/harness-bootstrap-host.ts',
+      "import '../src/entrypoints/cli/harness-bootstrap-cli.ts';\n",
     );
     generateBuiltInEngineClosure(container, '--write');
     const external = path.join(container, 'external-manifest-sentinel');
@@ -744,4 +758,34 @@ test('authority remap rejects an intent that its pinned trust-base profile canno
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
+});
+
+test('workflow host regeneration owns only its manifest and pin outputs', () => {
+  const mutations = [
+    'packages/workflow-engine/bootstrap/workflow-bootstrap-host.json',
+    'packages/workflow-engine/bootstrap/workflow-bootstrap-host-pin.ts',
+  ].map((path) => ({
+    path,
+    expectedBeforeSha256: null,
+    content: 'generated\n',
+  }));
+  assert.doesNotThrow(() =>
+    assertAllowedFinalMutations(mutations, [], ['workflow-bootstrap-host']),
+  );
+  assert.throws(() =>
+    assertAllowedFinalMutations(mutations, [], ['built-in-engine-closure']),
+  );
+  assert.throws(() =>
+    assertAllowedFinalMutations(
+      [
+        {
+          path: 'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+          expectedBeforeSha256: null,
+          content: 'changed source\n',
+        },
+      ],
+      [],
+      ['workflow-bootstrap-host'],
+    ),
+  );
 });

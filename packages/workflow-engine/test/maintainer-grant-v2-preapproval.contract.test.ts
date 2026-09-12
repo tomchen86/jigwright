@@ -1,5 +1,5 @@
-import { preflightMaintainerGrantV2 } from '../src/composition-root/maintainer-authority-production.ts';
-import { prepareMaintainerGrantV2Checks } from '../src/composition-root/maintainer-authority-production.ts';
+import { preflightMaintainerGrantV2 } from '../bootstrap/maintainer-authority-production.ts';
+import { prepareMaintainerGrantV2Checks } from '../bootstrap/maintainer-authority-production.ts';
 import test from 'node:test';
 
 import assert from 'node:assert/strict';
@@ -503,7 +503,7 @@ test('repository publishes a protected capability dependency closure', () => {
   );
   assert.equal(
     protectedPaths.includes(
-      'packages/workflow-engine/src/modules/authority/maintainer-candidate.ts',
+      'packages/workflow-engine/src/modules/authority/maintainer-candidate-contracts.ts',
     ),
     true,
   );

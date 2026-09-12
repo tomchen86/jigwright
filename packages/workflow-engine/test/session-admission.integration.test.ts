@@ -42,7 +42,7 @@ test('task-session preflight reuses exact admission without mutating Git, runtim
         '--experimental-strip-types',
         path.join(
           sourceRepositoryRoot,
-          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
         ),
         'task-preflight',
         'demo-change',
@@ -952,7 +952,7 @@ test('task-session preflight reports protected authority without requesting a Gr
         '--experimental-strip-types',
         path.join(
           sourceRepositoryRoot,
-          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
         ),
         'task-preflight',
         'demo-change',
@@ -1007,7 +1007,7 @@ test('task-session preflight fails closed on an active lifecycle barrier without
           '--experimental-strip-types',
           path.join(
             sourceRepositoryRoot,
-            'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+            'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
           ),
           'task-preflight',
           'demo-change',
@@ -1075,7 +1075,7 @@ test('task-session preflight fails closed on change-lock and publication-directo
           '--experimental-strip-types',
           path.join(
             sourceRepositoryRoot,
-            'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+            'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
           ),
           'task-preflight',
           'demo-change',

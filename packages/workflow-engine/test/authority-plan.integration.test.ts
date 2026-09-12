@@ -1,4 +1,4 @@
-import { createAuthorityPlan } from '../src/composition-root/maintainer-authority-production.ts';
+import { createAuthorityPlan } from '../bootstrap/maintainer-authority-production.ts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -14,8 +14,8 @@ import {
 import {
   attestAuthorityPlan,
   resumeAuthorityPlan,
-} from '../src/composition-root/maintainer-authority-production.ts';
-import { approveAndApplyAuthorityPlan } from '../src/composition-root/maintainer-authority-production.ts';
+} from '../bootstrap/maintainer-authority-production.ts';
+import { approveAndApplyAuthorityPlan } from '../bootstrap/maintainer-authority-production.ts';
 import {
   createFixtureRepository,
   git,
@@ -68,7 +68,7 @@ test('authority plan drives one durable break-glass round without remote or sign
         '--experimental-strip-types',
         path.join(
           sourceRepositoryRoot,
-          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
         ),
         'authority-plan',
         'prepare',
@@ -94,7 +94,7 @@ test('authority plan drives one durable break-glass round without remote or sign
         '--experimental-strip-types',
         path.join(
           sourceRepositoryRoot,
-          'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
         ),
         'authority-plan',
         'status',

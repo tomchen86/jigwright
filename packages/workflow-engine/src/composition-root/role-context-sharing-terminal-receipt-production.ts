@@ -1,6 +1,14 @@
-import {type RoleContextSharingJournalRecord} from '../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
-import { ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_SIGNATURE_NAMESPACE_V1, ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_TAG_PREFIX_V1 } from '../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
-import type { RoleContextSharingTerminalReceiptPayloadV1, RoleContextSharingTerminalReceiptEnvelopeV1, VerifiedRoleContextSharingTerminalReceiptV1, RoleContextSharingTerminalUseIdentityV1 } from '../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
+import { type RoleContextSharingJournalRecord } from '../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
+import {
+  ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_SIGNATURE_NAMESPACE_V1,
+  ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_TAG_PREFIX_V1,
+} from '../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
+import type {
+  RoleContextSharingTerminalReceiptPayloadV1,
+  RoleContextSharingTerminalReceiptEnvelopeV1,
+  VerifiedRoleContextSharingTerminalReceiptV1,
+  RoleContextSharingTerminalUseIdentityV1,
+} from '../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
 /**
  * Publishes and verifies portable receipts for terminal role context
  * sharing uses.
@@ -34,10 +42,10 @@ import {
   discoverRepository,
   runGit,
 } from '../runtime/repository-transaction/git.ts';
-import {parseRoleContextSharingJournalRecord,readRoleContextSharingRecord} from '../runtime/storage-journal/role-context-sharing-store.ts';
-
-
-
+import {
+  parseRoleContextSharingJournalRecord,
+  readRoleContextSharingRecord,
+} from '../runtime/storage-journal/role-context-sharing-store.ts';
 
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -71,14 +79,6 @@ const PAYLOAD_KEYS = [
   'transitionDigest',
   'useProjectionDigest',
 ] as const;
-
-
-
-
-
-
-
-
 
 export type PublishRoleContextSharingTerminalReceiptOptions = Readonly<{
   now?: Date;

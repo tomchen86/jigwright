@@ -55,7 +55,7 @@ import {
   type PostApprovalAdmissionDeadline,
   type PostApprovalBudgetTestOptions,
 } from '../../runtime/repository-transaction/git.ts';
-import { canonicalMaintainerGrantV2Envelope } from '../../modules/authority/maintainer-grant-v2.ts';
+import { canonicalMaintainerGrantV2Envelope } from '../../modules/authority/maintainer-grant-v2-codec.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import {
   createInteractiveSshSigner,
@@ -67,11 +67,8 @@ import {
   readAuthoritySession,
 } from './maintainer-session.ts';
 import type { AuthoritySession } from '../../modules/authority/authority-session-contract.ts';
-import {
-  acceptApplyPrestate,
-  readDurableRefGenerationLedger,
-  recordDurableRefGenerationTransitionUnderLifecycleLock,
-} from '../../modules/authority/maintainer-candidate.ts';
+import { acceptApplyPrestate } from '../../modules/authority/maintainer-candidate-ref-ledger.ts';
+import type { RefGenerationRecords } from '../../modules/authority/maintainer-candidate-ref-ledger.ts';
 import {
   consumeMaintainerReservationUnderLifecycleLock,
   inspectMaintainerGrants,
@@ -276,6 +273,7 @@ export function recordAuthorityCasPrepared(
 }
 
 export function recoverAuthorityCommit(
+  records: RefGenerationRecords,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
@@ -283,6 +281,14 @@ export function recoverAuthorityCommit(
   now = new Date(),
   options: AuthorityRecoveryOptions = {},
 ): AuthorityCommitResult {
+  const {
+    rejectAmbiguousAuthorityCas,
+    expireAuthorityCommitBeforeCas,
+    failAuthorityCommitBeforeCas,
+    rollbackAuthorityCommitAfterCas,
+    revokePreparingTransaction,
+    revokeAmbiguousTransaction,
+  } = createAuthorityRecoveryTerminalization(records);
   let deadline = options.postApprovalDeadline;
   try {
     if (deadline === undefined) {
@@ -317,6 +323,7 @@ export function recoverAuthorityCommit(
     }
     return withPostApprovalAdmissionDeadline(deadline, () =>
       recoverAuthorityCommitWithDeadline(
+        records,
         authorityApplicationReceipts,
         taskMandate,
         cwd,
@@ -345,6 +352,7 @@ export function recoverAuthorityCommit(
 }
 
 function recoverAuthorityCommitWithDeadline(
+  records: RefGenerationRecords,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
@@ -352,6 +360,14 @@ function recoverAuthorityCommitWithDeadline(
   now: Date,
   options: AuthorityRecoveryOptions,
 ): AuthorityCommitResult {
+  const {
+    rejectAmbiguousAuthorityCas,
+    expireAuthorityCommitBeforeCas,
+    failAuthorityCommitBeforeCas,
+    rollbackAuthorityCommitAfterCas,
+    revokePreparingTransaction,
+    revokeAmbiguousTransaction,
+  } = createAuthorityRecoveryTerminalization(records);
   const session = readAuthoritySession(cwd, requestedSessionId);
   const journal = readAuthorityCommitJournal(
     session.gitCommonDirectory,
@@ -522,7 +538,7 @@ function recoverAuthorityCommitWithDeadline(
           }
           if (expectedGeneration !== null) {
             acceptApplyPrestate(
-              readDurableRefGenerationLedger(
+              records.readDurableRefGenerationLedger(
                 currentSession.gitCommonDirectory,
                 targetRef,
                 true,
@@ -547,7 +563,7 @@ function recoverAuthorityCommitWithDeadline(
             targetRef,
           );
           if (expectedGeneration !== null) {
-            recordDurableRefGenerationTransitionUnderLifecycleLock(
+            records.recordDurableRefGenerationTransitionUnderLifecycleLock(
               currentSession.gitCommonDirectory,
               {
                 ref: targetRef,
@@ -566,7 +582,7 @@ function recoverAuthorityCommitWithDeadline(
             'The branch no longer points to the journaled base or commit.',
           );
         } else if (expectedGeneration !== null) {
-          const ledger = readDurableRefGenerationLedger(
+          const ledger = records.readDurableRefGenerationLedger(
             currentSession.gitCommonDirectory,
             targetRef,
             true,
@@ -575,7 +591,7 @@ function recoverAuthorityCommitWithDeadline(
             ledger.currentOid === currentJournal.baseCommit &&
             ledger.generation === expectedGeneration
           ) {
-            recordDurableRefGenerationTransitionUnderLifecycleLock(
+            records.recordDurableRefGenerationTransitionUnderLifecycleLock(
               currentSession.gitCommonDirectory,
               {
                 ref: targetRef,
@@ -1165,7 +1181,7 @@ export { verifyCreatedAuthorityCommit };
 export type MaintainerRecoveryTerminalizationBindings = {
   exactDate: typeof exactDate;
   recoveryError: typeof recoveryError;
-  recordDurableRefGenerationTransitionUnderLifecycleLock: typeof recordDurableRefGenerationTransitionUnderLifecycleLock;
+  recordDurableRefGenerationTransitionUnderLifecycleLock: RefGenerationRecords['recordDurableRefGenerationTransitionUnderLifecycleLock'];
   terminallyInvalidateMaintainerReservationUnderLifecycleLock: typeof terminallyInvalidateMaintainerReservationUnderLifecycleLock;
   rollbackExactStaging: typeof rollbackExactStaging;
   transitionJournal: typeof transitionJournal;
@@ -1186,7 +1202,7 @@ export type MaintainerRecoveryTerminalizationBindings = {
   requireCommitHash: typeof requireCommitHash;
   verifyJournaledCommit: typeof verifyJournaledCommit;
   updateManagedRef: typeof updateManagedRef;
-  readDurableRefGenerationLedger: typeof readDurableRefGenerationLedger;
+  readDurableRefGenerationLedger: RefGenerationRecords['readDurableRefGenerationLedger'];
   assertRolledBackTransactionPoststate: typeof assertRolledBackTransactionPoststate;
 };
 export type MaintainerRecoveryTerminalizationBindingsTypes = {
@@ -1194,45 +1210,38 @@ export type MaintainerRecoveryTerminalizationBindingsTypes = {
   AuthorityCommitJournal: AuthorityCommitJournal;
 };
 
-const {
-  rejectAmbiguousAuthorityCas,
-  expireAuthorityCommitBeforeCas,
-  failAuthorityCommitBeforeCas,
-  rollbackAuthorityCommitAfterCas,
-  revokePreparingTransaction,
-  revokeAmbiguousTransaction,
-} = createMaintainerRecoveryTerminalization(() => ({
-  exactDate,
-  recoveryError,
-  recordDurableRefGenerationTransitionUnderLifecycleLock,
-  terminallyInvalidateMaintainerReservationUnderLifecycleLock,
-  rollbackExactStaging,
-  transitionJournal,
-  enterActivePostApprovalTerminalCleanup,
-  readAuthoritySession,
-  withRepositoryLifecycleOperation,
-  maintainerGrantStorePaths,
-  readAuthorityCommitJournal,
-  assertJournalMatchesSession,
-  discoverRepository,
-  runGit,
-  terminallyExpireMaintainerReservationUnderLifecycleLock,
-  failAuthoritySession,
-  terminallyFailMaintainerReservationUnderLifecycleLock,
-  isPostApprovalAdmissionFailure,
-  authorityAuditScopeForJournal,
-  ensureTransactionAuditReceipt,
-  requireCommitHash,
-  verifyJournaledCommit,
-  updateManagedRef,
-  readDurableRefGenerationLedger,
-  assertRolledBackTransactionPoststate,
-}));
-export {
-  expireAuthorityCommitBeforeCas,
-  failAuthorityCommitBeforeCas,
-  rollbackAuthorityCommitAfterCas,
-};
+export function createAuthorityRecoveryTerminalization(
+  records: RefGenerationRecords,
+) {
+  return createMaintainerRecoveryTerminalization(() => ({
+    exactDate,
+    recoveryError,
+    recordDurableRefGenerationTransitionUnderLifecycleLock:
+      records.recordDurableRefGenerationTransitionUnderLifecycleLock,
+    terminallyInvalidateMaintainerReservationUnderLifecycleLock,
+    rollbackExactStaging,
+    transitionJournal,
+    enterActivePostApprovalTerminalCleanup,
+    readAuthoritySession,
+    withRepositoryLifecycleOperation,
+    maintainerGrantStorePaths,
+    readAuthorityCommitJournal,
+    assertJournalMatchesSession,
+    discoverRepository,
+    runGit,
+    terminallyExpireMaintainerReservationUnderLifecycleLock,
+    failAuthoritySession,
+    terminallyFailMaintainerReservationUnderLifecycleLock,
+    isPostApprovalAdmissionFailure,
+    authorityAuditScopeForJournal,
+    ensureTransactionAuditReceipt,
+    requireCommitHash,
+    verifyJournaledCommit,
+    updateManagedRef,
+    readDurableRefGenerationLedger: records.readDurableRefGenerationLedger,
+    assertRolledBackTransactionPoststate,
+  }));
+}
 
 import {
   type AuthorityAuditEventType,

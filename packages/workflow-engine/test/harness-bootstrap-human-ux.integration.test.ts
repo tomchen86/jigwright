@@ -163,7 +163,7 @@ function fixture() {
   );
   const helperPath = path.join(root, 'invoke-sealed-bootstrap.mjs');
   const harnessUrl = pathToFileURL(
-    path.join(isolatedRuntime, 'src', 'harness-bootstrap.js'),
+    path.join(isolatedRuntime, 'bootstrap', 'harness-bootstrap-host.js'),
   ).href;
   fs.writeFileSync(
     helperPath,

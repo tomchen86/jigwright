@@ -76,7 +76,7 @@ import {
   inspectProviderExecutable,
 } from '@jigwright/agent-runtime/provider-executable-identity';
 import { spawnBoundedProviderProcess } from './bounded-provider-process.ts';
-import {resolveBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import {
   type ProviderPreflightSpec,
   normalizeCandidateInspection,

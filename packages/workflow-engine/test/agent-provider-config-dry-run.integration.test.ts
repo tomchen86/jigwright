@@ -25,7 +25,7 @@ import {
   loadAgentProviderConfigFile,
 } from '../src/runtime/provider-execution/agent-provider-config-file.ts';
 import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
-import {resolveBuiltInProviderDefinitionSnapshot} from '@jigwright/core/built-in-provider-definition';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import { createFixtureRepository, sourceRepositoryRoot } from './fixture.ts';
 
 const configuration = `
@@ -706,7 +706,7 @@ function runCli(repository: string, args: string[]) {
       '--experimental-strip-types',
       path.join(
         sourceRepositoryRoot,
-        'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+        'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
       ),
       ...args,
     ],

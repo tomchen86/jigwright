@@ -1,5 +1,6 @@
 /** Canonical intervention bootstrap inputs, parent state and human approval data. */
 import type {
+  EngineArtifact,
   ParentChangeState,
   HarnessMaintenanceOperation,
   HarnessMaintenanceWaiver,
@@ -98,4 +99,36 @@ export interface LocalEngineBinding {
   generation: number;
   updatedAt: string;
   recordDigest: Sha256Digest;
+}
+
+/** The built-in artifact has the existing engine artifact fields, without a workflow binding. */
+export type BootstrapControlPlaneEngineArtifact = Omit<
+  EngineArtifact,
+  'workflowBindingDigest'
+>;
+
+export interface InitialControlPlaneSupervisorAnchorEvidence {
+  repositoryId: string;
+  activeTrustCommit: string;
+  publishedRecordDigest: Sha256Digest;
+  supervisorRecordDigest: Sha256Digest;
+  generation: 1;
+  activeArtifact: {
+    artifactId: Sha256Digest;
+    executableDigest: Sha256Digest;
+    closureDigest: Sha256Digest;
+  };
+  recordedAt: string;
+}
+
+/** Required observations supplied by the bootstrap host at the original producer phases. */
+export interface ControlPlanePromotionBootstrapObservations {
+  bootstrapInterventionStateRoot(gitCommonDirectory: string): string;
+  readInitialControlPlaneSupervisorAnchorEvidence(
+    storageRoot: string,
+    expectedRepositoryId: string,
+  ): InitialControlPlaneSupervisorAnchorEvidence;
+  readBuiltInControlPlaneEngineArtifact(
+    storageRoot: string,
+  ): BootstrapControlPlaneEngineArtifact;
 }

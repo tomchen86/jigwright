@@ -44,22 +44,16 @@ import {
 } from '../../runtime/repository-transaction/git.ts';
 import {
   beginAuthorityCommitJournal,
-  failAuthorityCommitBeforeCas,
   recordAuthorityCasPrepared,
   recordAuthorityCommitCreated,
   recordAuthorityRefUpdated,
-  expireAuthorityCommitBeforeCas,
   readAuthorityCommitJournal,
   recoverAuthorityCommit,
-  rollbackAuthorityCommitAfterCas,
+  createAuthorityRecoveryTerminalization,
   verifyCreatedAuthorityCommit,
   type AuthorityCommitResult,
 } from './maintainer-recovery.ts';
-import {
-  acceptApplyPrestate,
-  readDurableRefGenerationLedger,
-  recordDurableRefGenerationTransitionUnderLifecycleLock,
-} from '../../modules/authority/maintainer-candidate.ts';
+import { acceptApplyPrestate } from '../../modules/authority/maintainer-candidate-ref-ledger.ts';
 import { readCurrentAuthorityCheckReport } from '../../runtime/storage-journal/maintainer-report.ts';
 import {
   failAuthoritySession,
@@ -115,6 +109,7 @@ class AuthorityPoststateVerificationFailed extends Error {
 }
 
 export function commitAuthoritySession(
+  grantServices: MaintainerGrantExecutionServices,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   manifestOperations: MaintainerManifestOperations,
   taskMandate: MaintainerTaskMandateOperations,
@@ -123,6 +118,11 @@ export function commitAuthoritySession(
   subject: string,
   options: AuthorityCommitOptions = {},
 ): AuthorityCommitResult {
+  const {
+    failAuthorityCommitBeforeCas,
+    expireAuthorityCommitBeforeCas,
+    rollbackAuthorityCommitAfterCas,
+  } = createAuthorityRecoveryTerminalization(grantServices);
   let deadline = options.postApprovalDeadline;
   try {
     if (deadline === undefined) {
@@ -174,6 +174,7 @@ export function commitAuthoritySession(
     }
     return withPostApprovalAdmissionDeadline(deadline, () =>
       commitAuthoritySessionWithDeadline(
+        grantServices,
         authorityApplicationReceipts,
         manifestOperations,
         taskMandate,
@@ -219,6 +220,7 @@ export function commitAuthoritySession(
 }
 
 function commitAuthoritySessionWithDeadline(
+  grantServices: MaintainerGrantExecutionServices,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   manifestOperations: MaintainerManifestOperations,
   taskMandate: MaintainerTaskMandateOperations,
@@ -227,11 +229,17 @@ function commitAuthoritySessionWithDeadline(
   subject: string,
   options: AuthorityCommitOptions,
 ): AuthorityCommitResult {
+  const {
+    failAuthorityCommitBeforeCas,
+    expireAuthorityCommitBeforeCas,
+    rollbackAuthorityCommitAfterCas,
+  } = createAuthorityRecoveryTerminalization(grantServices);
   const discovered = discoverRepository(cwd);
   const store = maintainerGrantStorePaths(discovered.gitCommonDirectory);
   const journalPath = path.join(store.journals, `${requestedSessionId}.json`);
   if (fs.existsSync(journalPath)) {
     return recoverAuthorityCommit(
+      grantServices,
       authorityApplicationReceipts,
       taskMandate,
       cwd,
@@ -249,6 +257,7 @@ function commitAuthoritySessionWithDeadline(
   let inspection: ReturnType<typeof inspectActiveAuthoritySession>;
   try {
     inspection = inspectActiveAuthoritySession(
+      grantServices,
       manifestOperations,
       taskMandate,
       cwd,
@@ -310,6 +319,7 @@ function commitAuthoritySessionWithDeadline(
         (assertOwned) => {
           assertOwned();
           const current = inspectActiveAuthoritySession(
+            grantServices,
             manifestOperations,
             taskMandate,
             cwd,
@@ -331,7 +341,7 @@ function commitAuthoritySessionWithDeadline(
           }
           const targetRef = `refs/heads/${current.session.branch}`;
           if (current.session.expectedRefGeneration !== null) {
-            const ledger = readDurableRefGenerationLedger(
+            const ledger = grantServices.readDurableRefGenerationLedger(
               current.session.gitCommonDirectory,
               targetRef,
               true,
@@ -454,7 +464,7 @@ function commitAuthoritySessionWithDeadline(
             throw new SimulatedAuthorityCrash('ref-cas');
           }
           if (current.session.expectedRefGeneration !== null) {
-            recordDurableRefGenerationTransitionUnderLifecycleLock(
+            grantServices.recordDurableRefGenerationTransitionUnderLifecycleLock(
               current.session.gitCommonDirectory,
               {
                 ref: targetRef,
@@ -502,6 +512,7 @@ function commitAuthoritySessionWithDeadline(
         );
       }
       return recoverAuthorityCommit(
+        grantServices,
         authorityApplicationReceipts,
         taskMandate,
         cwd,
@@ -587,6 +598,7 @@ function commitAuthoritySessionWithDeadline(
       if (journalCreated) {
         try {
           return recoverAuthorityCommit(
+            grantServices,
             authorityApplicationReceipts,
             taskMandate,
             cwd,
@@ -765,3 +777,5 @@ function commitError(code: string, message: string) {
 import { type AuthorityAuditLedgerScope } from '../../modules/authority/authority-audit-contract.ts';
 
 import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
+
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';

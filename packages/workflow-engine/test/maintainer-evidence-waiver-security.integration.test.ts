@@ -34,9 +34,9 @@ import {
   type MaintainerEvidenceWaiver,
   type MaintainerGrantV2Envelope,
   type MaintainerGrantV2Payload,
-} from '../src/modules/authority/maintainer-grant-v2.ts';
-import { assertCandidateV2ChecksFresh } from '../src/modules/authority/maintainer-candidate.ts';
-import { approveAndApplyMaintainerGrantV2 } from '../src/composition-root/maintainer-authority-production.ts';
+} from '../src/modules/authority/maintainer-grant-v2-codec.ts';
+import { assertCandidateV2ChecksFresh } from '../src/modules/authority/maintainer-candidate-contracts.ts';
+import { approveAndApplyMaintainerGrantV2 } from '../bootstrap/maintainer-authority-production.ts';
 import { parseMaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import {

@@ -1,4 +1,7 @@
-import {createDocumentationClosureRecord,encodeDocumentationClosure} from '../src/modules/assurance/documentation-closure.ts';
+import {
+  createDocumentationClosureRecord,
+  encodeDocumentationClosure,
+} from '../src/modules/assurance/documentation-closure.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
 import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
@@ -11,7 +14,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { withArchiveEligibility } from '../src/application/archive/archive-eligibility.ts';
-import { issueAuthorityAttestation } from '../src/composition-root/maintainer-authority-production.ts';
+import { issueAuthorityAttestation } from '../bootstrap/maintainer-authority-production.ts';
 import { protectedBranchRef } from '../src/runtime/repository-transaction/git.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
