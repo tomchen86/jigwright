@@ -8,11 +8,11 @@ Build the investigation around a manifest of the exact tracked source snapshot s
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.investigation-readme v=1 digest=sha256:81411116713286ef4d5da42dbfe5d43cd3040b9638c073c457879ecc7f383cc0 -->
+<!-- jigwright:region id=documents.investigation-readme v=1 digest=sha256:9e87f7ee08b5ba0abdbb88590a51b9fc031e2de20e8d13112c9b991d98718d62 -->
 
 <!-- prettier-ignore-start -->
 
-41 files changed in this module since confirmation.
+42 files changed in this module since confirmation.
 
 ## Commands
 
@@ -57,6 +57,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [domain/human-resolution-values.ts](domain/human-resolution-values.ts) | Shared human-resolution scalar validation and stable refusal errors. | 0 | History unavailable |
 | [domain/investigation-applicability.ts](domain/investigation-applicability.ts) | Defines investigation applicability and bounded exemption eligibility. | 1 | History unavailable |
 | [domain/investigation-checkpoint-contract.ts](domain/investigation-checkpoint-contract.ts) | Validates and digests investigation checkpoints and scan saturation acceptance. | 2 | History unavailable |
+| [domain/investigation-design-ledger.ts](domain/investigation-design-ledger.ts) | Projects investigation WHY overlays into the managed ledger region of a design document. | 1 | History unavailable |
 | [domain/investigation-domain.ts](domain/investigation-domain.ts) | Applies semantic grouping and disposition decisions to mechanical investigation facts. | 1 | History unavailable |
 | [domain/investigation-floor.ts](domain/investigation-floor.ts) | Derives investigation floors and path facts from pinned repository changes. | 1 | History unavailable |
 | [domain/investigation-full-blob.ts](domain/investigation-full-blob.ts) | Materializes full pinned source bytes and disposition relationships for current WHY authoring requirements. | 1 | History unavailable |

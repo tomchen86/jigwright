@@ -8,7 +8,13 @@
  */
 import crypto from 'node:crypto';
 
-import { markdownLines } from '@jigwright/core/markdown-sections';
+import {
+  hasExactMarkdownRegion,
+  MarkdownRegionBoundsError,
+  markdownLines,
+  spliceMarkdownRegion,
+  type MarkdownRegion,
+} from '@jigwright/core/markdown-sections';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   projectionDefinition,
@@ -17,12 +23,11 @@ import {
   type ProjectionId,
 } from './engine-projection-registry.ts';
 
-export type ProjectionRegion = Readonly<{
-  start: number;
-  end: number;
-  version?: number;
-  digest?: string;
-}>;
+export type ProjectionRegion = MarkdownRegion &
+  Readonly<{
+    version?: number;
+    digest?: string;
+  }>;
 
 /** A source closes over an already loaded snapshot; it returns derived bytes,
  * never authority. Paths are resolved by the existing owning adapter. */
@@ -66,18 +71,13 @@ export function spliceProjectionRegion(
   region: ProjectionRegion,
   replacement: string,
 ): string {
-  if (
-    !Number.isInteger(region.start) ||
-    !Number.isInteger(region.end) ||
-    region.start < 0 ||
-    region.end < region.start ||
-    region.end > current.length
-  ) {
-    throw invalid('Invalid projection region offsets.');
+  try {
+    return spliceMarkdownRegion(current, region, replacement);
+  } catch (error) {
+    if (error instanceof MarkdownRegionBoundsError)
+      throw invalid(error.message);
+    throw error;
   }
-  return (
-    current.slice(0, region.start) + replacement + current.slice(region.end)
-  );
 }
 
 const END = '<!-- /jigwright:region -->';
@@ -262,12 +262,7 @@ export function createProjectionService(
                   options.install === true
                 : after !== current;
             if (changed && definition.placement === 'region') {
-              const candidateRegion = locate(after);
-              if (
-                !candidateRegion ||
-                after.slice(candidateRegion.start, candidateRegion.end) !==
-                  expected
-              ) {
+              if (!hasExactMarkdownRegion(after, expected, locate)) {
                 throw invalid(
                   `Projection candidate region is not discoverable and exact: ${id}.`,
                 );

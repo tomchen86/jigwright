@@ -5,7 +5,6 @@ import {
 } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { matchesAllowedPath } from '../../foundation/repository-path/repository-path.ts';
-import { engineProjectionDefinitions } from '../projection/engine-projection-registry.ts';
 import type { ChecksConfig } from '../source/check-command.ts';
 import { invalidContract } from './change-contract-errors.ts';
 import { hasExactKeys } from './planning-artifact-parsers.ts';
@@ -75,6 +74,7 @@ export function validateTaskPolicy(
   policy: TaskPolicy,
   checks: ChecksConfig,
   normalizedPaths: string[],
+  engineProjectionPaths: readonly string[],
 ): void {
   if (new Set(normalizedPaths).size !== normalizedPaths.length) {
     throw workflowError(
@@ -84,13 +84,12 @@ export function validateTaskPolicy(
     );
   }
 
-  const claimedProjectionPaths = engineProjectionDefinitions()
-    .map(({ path: projectionPath }) => projectionPath)
-    .filter((projectionPath) =>
+  const claimedProjectionPaths = engineProjectionPaths.filter(
+    (projectionPath) =>
       normalizedPaths.some((allowedPath) =>
         matchesAllowedPath(projectionPath, allowedPath),
       ),
-    );
+  );
   if (claimedProjectionPaths.length > 0) {
     throw workflowError(
       'ENGINE_PROJECTION_PATH_IN_TASK_SCOPE',

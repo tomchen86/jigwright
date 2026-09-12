@@ -6,16 +6,77 @@ import type { InvestigationWhyOverlayV3 } from '../src/modules/investigation/man
 import {
   projectInvestigationManifestLedger,
   validateInvestigationManifestLedgerProjection,
-} from '../src/modules/projection/investigation-design-projection.ts';
+} from '../src/modules/investigation/domain/investigation-design-ledger.ts';
 import { isWorkflowError } from './fixture.ts';
 
 const START = '<!-- workflow:investigation-ledger:start v1 -->';
 const END = '<!-- workflow:investigation-ledger:end v1 -->';
 const FENCE = '```';
 
+test('WHY projection sorts raw path bytes, keeps input order and renders non-UTF8 and empty overlays', () => {
+  const overlays = [
+    whyOverlay({
+      pathIdentity: {
+        rawBase64: Buffer.from([255]).toString('base64'),
+        utf8: null,
+      },
+    }),
+    whyOverlay({
+      pathIdentity: {
+        rawBase64: Buffer.from('z').toString('base64'),
+        utf8: 'z',
+      },
+    }),
+    whyOverlay({
+      pathIdentity: {
+        rawBase64: Buffer.from('a').toString('base64'),
+        utf8: 'a',
+      },
+    }),
+  ];
+  const before = structuredClone(overlays);
+  const design = `😀prefix\r\n${START}\r\nold\r\n${END}\r\n尾`;
+  const projected = projectInvestigationManifestLedger(design, overlays);
+  assert.ok(projected.indexOf('### a') < projected.indexOf('### z'));
+  assert.ok(projected.indexOf('### z') < projected.indexOf('### Source 3'));
+  assert.match(projected, /path is not representable as UTF-8/);
+  assert.ok(projected.startsWith('😀prefix\r\n'));
+  assert.ok(projected.endsWith('\r\n尾'));
+  assert.deepEqual(overlays, before);
+  assert.equal(
+    projectInvestigationManifestLedger(design, []),
+    `😀prefix\r\n${START}\n\n${END}\r\n尾`,
+  );
+});
+
+test('WHY projection preserves render-first failures and untyped missing-design behavior', () => {
+  const failure = new Error('overlay unavailable');
+  const overlay = whyOverlay();
+  Object.defineProperty(overlay, 'why', {
+    get() {
+      throw failure;
+    },
+  });
+  for (const design of [null, undefined, 0, '# missing markers']) {
+    assert.throws(
+      () => projectInvestigationManifestLedger(design as never, [overlay]),
+      (error) => error === failure,
+    );
+  }
+  assert.equal(projectInvestigationManifestLedger(null as never, []), '');
+  assert.throws(
+    () => projectInvestigationManifestLedger(undefined as never, []),
+    TypeError,
+  );
+  assert.throws(
+    () => projectInvestigationManifestLedger(0 as never, []),
+    (error) => isWorkflowError(error, 'INVESTIGATION_LEDGER_INVALID'),
+  );
+});
+
 test('current WHY surface omits EvidenceNode v1 runtime and projector', async () => {
   const projection =
-    await import('../src/modules/projection/investigation-design-projection.ts');
+    await import('../src/modules/investigation/domain/investigation-design-ledger.ts');
 
   assert.equal(
     fs.existsSync(

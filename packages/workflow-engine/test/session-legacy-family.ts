@@ -41,6 +41,7 @@ import './investigation-scanner.integration.test.ts';
 import './investigation-session.integration.test.ts';
 import './investigation-why-domain-v3.test.ts';
 import './investigation-why.integration.test.ts';
+import './projection-domain-boundary.contract.test.ts';
 import './plan-review.integration.test.ts';
 import './planning-transition.integration.test.ts';
 import './managed-change-contract.integration.test.ts';

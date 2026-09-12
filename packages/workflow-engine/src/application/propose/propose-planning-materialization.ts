@@ -12,7 +12,7 @@ import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { assertPlanningTaskHistory } from '../../modules/planning-provider/planning-task-history.ts';
-import { projectInvestigationManifestLedger } from '../../modules/projection/investigation-design-projection.ts';
+import { projectInvestigationManifestLedger } from '../../modules/investigation/domain/investigation-design-ledger.ts';
 import { type RoleTopologyResolutionDependencyPortV1 } from '../../modules/provider-orchestration/role-topology-resolution.ts';
 import { preparePlanReviewInvocation } from './plan-review-preparation.ts';
 import {

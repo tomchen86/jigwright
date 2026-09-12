@@ -5,7 +5,6 @@ import {
   createPlanningAmendmentDecision,
   planningAmendmentDecisionDigest,
 } from './planning-amendment-decision.ts';
-import { isEngineProjectionPathForTransition } from '../projection/engine-projection-registry.ts';
 import type { InvestigationFirstPlanningAssuranceSummary } from '../assurance/planning-assurance-validator.ts';
 
 export type PlanningCarryForwardTaskEvidence = Readonly<{
@@ -127,6 +126,7 @@ function isExactTrailerBlock(
 
 export function assertPlanningTransitionReport(
   value: unknown,
+  isPlanProjectionPath: (candidate: string) => boolean,
 ): asserts value is PlanningTransitionReport {
   if (!isRecord(value)) {
     throw invalidPlanningReport();
@@ -181,7 +181,7 @@ export function assertPlanningTransitionReport(
     !isGitObject(value.commitHash) ||
     !isDigest(value.fingerprint) ||
     !isSortedUniqueStrings(value.changedPaths) ||
-    !isPlanningPathPartition(value) ||
+    !isPlanningPathPartition(value, isPlanProjectionPath) ||
     !isDigestRecord(value.artifactDigests) ||
     !isParent(value.parent) ||
     !isTaskProjection(value.tasks) ||
@@ -506,7 +506,10 @@ function isSortedUniqueStrings(value: unknown): value is string[] {
   );
 }
 
-function isPlanningPathPartition(value: Record<string, unknown>): boolean {
+function isPlanningPathPartition(
+  value: Record<string, unknown>,
+  isPlanProjectionPath: (candidate: string) => boolean,
+): boolean {
   if (
     !isSortedUniqueStrings(value.planningPaths) ||
     !Array.isArray(value.engineProjectionPaths) ||
@@ -519,12 +522,10 @@ function isPlanningPathPartition(value: Record<string, unknown>): boolean {
   const planningPaths = value.planningPaths as string[];
   const engineProjectionPaths = value.engineProjectionPaths as string[];
   if (
-    planningPaths.some((planningPath) =>
-      isEngineProjectionPathForTransition(planningPath, 'plan'),
-    ) ||
+    planningPaths.some((planningPath) => isPlanProjectionPath(planningPath)) ||
     engineProjectionPaths.some(
       (projectionPath) =>
-        !isEngineProjectionPathForTransition(projectionPath, 'plan') ||
+        !isPlanProjectionPath(projectionPath) ||
         planningPaths.includes(projectionPath),
     )
   ) {

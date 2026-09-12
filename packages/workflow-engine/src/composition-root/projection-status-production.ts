@@ -25,7 +25,10 @@ import {
   projectionDefinitions,
   type ProjectionId,
 } from '../modules/projection/engine-projection-registry.ts';
-import { investigationManifestProjectionBinding } from '../modules/projection/investigation-design-projection.ts';
+import {
+  locateLedgerRegion,
+  renderManifestLedgerRegion,
+} from '../modules/investigation/domain/investigation-design-ledger.ts';
 import {
   createProjectionService,
   type ProjectionStatus,
@@ -144,14 +147,28 @@ export function inspectProjectionStatus(repositoryRoot: string) {
           },
         );
         if (manifest.applicability.kind !== 'ordinary') return [];
+        const whyOverlays = manifest.applicability.semanticDelta.whyOverlays;
+        const designPath = path.join(
+          config.changeRoot,
+          entry.name,
+          'design.md',
+        );
         return createProjectionService(
           [
-            investigationManifestProjectionBinding([
-              {
-                path: path.join(config.changeRoot, entry.name, 'design.md'),
-                whyOverlays: manifest.applicability.semanticDelta.whyOverlays,
+            {
+              id: 'investigation.why-ledger',
+              targetPaths: [designPath],
+              source: () => [
+                {
+                  path: designPath,
+                  content: renderManifestLedgerRegion(whyOverlays),
+                },
+              ],
+              region: {
+                locate: locateLedgerRegion,
+                render: (content) => content,
               },
-            ]),
+            },
           ],
           io,
         ).status();

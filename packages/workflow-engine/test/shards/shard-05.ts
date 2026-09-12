@@ -71,6 +71,7 @@ import '../control-plane-recovery-grant-boundary.test.ts';
 import '../control-plane-recovery-grant-rules.test.ts';
 import '../evidence-retention-boundary.test.ts';
 import '../investigation-propose-flow.integration.test.ts';
+import '../projection-domain-boundary.contract.test.ts';
 import '../provider-native-session-closure.integration.test.ts';
 import '../task-mandate-boundary.test.ts';
 import '../task-mandate-protected-finalize.contract.test.ts';

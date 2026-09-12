@@ -6,13 +6,15 @@
  * - Validation requires the stored ledger projection to equal a fresh
  *   projection.
  */
-import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import type { InvestigationWhyOverlayV3 } from '../investigation/manifest/investigation-manifest-types.ts';
-import { markdownLines } from '@jigwright/core/markdown-sections';
+import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
+import type { InvestigationWhyOverlayV3 } from '../manifest/investigation-manifest-types.ts';
 import {
-  createProjectionService,
-  type ProjectionBinding,
-} from './projection-service.ts';
+  hasExactMarkdownRegion,
+  MarkdownRegionBoundsError,
+  markdownLines,
+  spliceMarkdownRegion,
+  type MarkdownRegion,
+} from '@jigwright/core/markdown-sections';
 
 const START = '<!-- workflow:investigation-ledger:start v1 -->';
 const END = '<!-- workflow:investigation-ledger:end v1 -->';
@@ -28,35 +30,30 @@ export function projectInvestigationManifestLedger(
   design: string,
   whyOverlays: readonly InvestigationWhyOverlayV3[],
 ): string {
-  const service = createProjectionService(
-    [
-      investigationManifestProjectionBinding([
-        { path: 'design.md', whyOverlays },
-      ]),
-    ],
-    { read: () => design, write: () => {} },
-  );
-  return service.project('investigation.why-ledger')[0]!.after;
-}
-
-/** Bind preloaded Manifest snapshots while preserving the existing WHY marker
- * format and errors. No filesystem or semantic ledger authority is introduced. */
-export function investigationManifestProjectionBinding(
-  snapshots: readonly Readonly<{
-    path: string;
-    whyOverlays: readonly InvestigationWhyOverlayV3[];
-  }>[],
-): ProjectionBinding {
-  return {
-    id: 'investigation.why-ledger',
-    targetPaths: snapshots.map(({ path }) => path),
-    source: () =>
-      snapshots.map(({ path, whyOverlays }) => ({
-        path,
-        content: renderManifestLedgerRegion(whyOverlays),
-      })),
-    region: { locate: locateLedgerRegion, render: (content) => content },
-  };
+  const expected = renderManifestLedgerRegion(whyOverlays);
+  // Preserve the service's missing-region result for untyped null callers.
+  if (design === null) return '';
+  const region = locateLedgerRegion(design);
+  let after: string;
+  try {
+    after = spliceMarkdownRegion(design, region, expected);
+  } catch (error) {
+    if (error instanceof MarkdownRegionBoundsError) {
+      throw workflowError('PROJECTION_INVALID', error.message, ExitCode.usage);
+    }
+    throw error;
+  }
+  if (
+    after !== design &&
+    !hasExactMarkdownRegion(after, expected, locateLedgerRegion)
+  ) {
+    throw workflowError(
+      'PROJECTION_INVALID',
+      'Projection candidate region is not discoverable and exact: investigation.why-ledger.',
+      ExitCode.usage,
+    );
+  }
+  return after;
 }
 
 /** Confirm the tracked managed region is the exact v3 overlay projection. */
@@ -74,9 +71,7 @@ export function validateInvestigationManifestLedgerProjection(
   return { valid: true, rowCount: whyOverlays.length };
 }
 
-type LedgerRegion = { start: number; end: number };
-
-function locateLedgerRegion(design: string): LedgerRegion {
+export function locateLedgerRegion(design: string): MarkdownRegion {
   const lines = markdownLines(design);
   let startLine: number | null = null;
   let endLine: number | null = null;
@@ -114,7 +109,7 @@ function locateLedgerRegion(design: string): LedgerRegion {
   return { start: lines[startLine]!.start, end: end.start + END.length };
 }
 
-function renderManifestLedgerRegion(
+export function renderManifestLedgerRegion(
   whyOverlays: readonly InvestigationWhyOverlayV3[],
 ): string {
   const rows = [...whyOverlays]

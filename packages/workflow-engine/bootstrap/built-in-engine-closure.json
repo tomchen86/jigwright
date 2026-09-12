@@ -218,7 +218,7 @@
     {
       "path": "node_modules/@jigwright/core/src/markdown-sections.ts",
       "mode": "100644",
-      "digest": "sha256:9886af8a577a6df3547fa36b62460003ecb4d3214a2e799e9f34b14fb6d29c13"
+      "digest": "sha256:c397a9588f5e73f5d09149f660c39c253368e1f34953f8122a4345f0c6940f0c"
     },
     {
       "path": "node_modules/@jigwright/core/src/planning-archive-projection-port.ts",
@@ -1263,7 +1263,7 @@
     {
       "path": "src/application/propose/propose-planning-materialization.ts",
       "mode": "100644",
-      "digest": "sha256:769d7e8726ebcd84114ee35045938fc9a658d810a37251b64e4469a32d1e5a35"
+      "digest": "sha256:490d5ad9072eb679e077c391d58abc378f857b9caa4fbf566c609aeb378efbfb"
     },
     {
       "path": "src/application/propose/propose-planning-store.ts",
@@ -1293,7 +1293,7 @@
     {
       "path": "src/application/propose/propose-reviewer-reconciliation.ts",
       "mode": "100644",
-      "digest": "sha256:326b7fef8375417ae7f997aa403809f920247d86c55957053b81a0105ca5bae5"
+      "digest": "sha256:fcd719a4407d38eaf045db34d3ba5ecd26678476b89704bb10b823f894d539ad"
     },
     {
       "path": "src/application/propose/propose-reviewer-terms.ts",
@@ -1758,7 +1758,7 @@
     {
       "path": "src/composition-root/projection-status-production.ts",
       "mode": "100644",
-      "digest": "sha256:761fd535c1a77438e93baab5332433c3ccdd2668847d8f7ac41e2ceacb3c65ee"
+      "digest": "sha256:dcbd114d16e9f1305981b79bb73d1ebbef832a365b17d008ee248602a4419c81"
     },
     {
       "path": "src/composition-root/propose-production.ts",
@@ -2303,7 +2303,7 @@
     {
       "path": "src/modules/assurance/planning-assurance-validator.ts",
       "mode": "100644",
-      "digest": "sha256:77484b66055eb4638d0127290eaccb67888cd6cf74728993817610b52f8cfd97"
+      "digest": "sha256:628534bbb70cd8b7013d1142ab53df96f0fa257e2c783d3574c2a83230fcdccf"
     },
     {
       "path": "src/modules/assurance/planning-assurance-values.ts",
@@ -3036,6 +3036,11 @@
       "digest": "sha256:00655c01ea9d97f255906cf0c3d9ae502799dbda7b10964da7b26409bc8f4077"
     },
     {
+      "path": "src/modules/investigation/domain/investigation-design-ledger.ts",
+      "mode": "100644",
+      "digest": "sha256:66525e349323f9fb52a7616da45a32fe427576b19e8c0d2bfc02230fd6e2f3ba"
+    },
+    {
       "path": "src/modules/investigation/domain/investigation-domain.ts",
       "mode": "100644",
       "digest": "sha256:047603f4a63a9fcbadfc573862c407e6913f5aa936346c550adb2f5589e4ed0f"
@@ -3238,7 +3243,7 @@
     {
       "path": "src/modules/lifecycle/planning-transition-report.ts",
       "mode": "100644",
-      "digest": "sha256:5f74aa37f1759220e62c0bd47a57f7664aa32c01ebaf6ee9038763b318230da0"
+      "digest": "sha256:5c96a8137c1dceb19ac06a7e5ef039ad41941bba229effa0cc5a74588f805188"
     },
     {
       "path": "src/modules/lifecycle/repository-hooks.ts",
@@ -3278,7 +3283,7 @@
     {
       "path": "src/modules/planning-provider/guard-policy.ts",
       "mode": "100644",
-      "digest": "sha256:88a5d692cebbeb0eee94b01210d34cd91ba0f20a1d827cca246bbfa405ad242b"
+      "digest": "sha256:af8c8373f68f4c5c29840fb6faa58e31ec953fa1bd1978743c9a10a1878d050c"
     },
     {
       "path": "src/modules/planning-provider/planning-archive-projection-port.ts",
@@ -3346,11 +3351,6 @@
       "digest": "sha256:e976001e427802f5f106030f6ed2c16d4d8b191016f5c3f05b6f9f82316ac021"
     },
     {
-      "path": "src/modules/projection/investigation-design-projection.ts",
-      "mode": "100644",
-      "digest": "sha256:31a952e58fb141b1e67ab5aeaf29d99f4e845ca9ed8dbf99eab65552e4de1c0f"
-    },
-    {
       "path": "src/modules/projection/managed-documents.ts",
       "mode": "100644",
       "digest": "sha256:7ee75b2868c3aba39f612dd30042f2cfe45de6a9ee4274e3dd85a4f9a5fdf6b7"
@@ -3363,7 +3363,7 @@
     {
       "path": "src/modules/projection/projection-service.ts",
       "mode": "100644",
-      "digest": "sha256:3cafdbdd9f14a0bdd712f833476a4ead3efe533ac683ee375a4425894344cf48"
+      "digest": "sha256:9f897450b98d1059b1464c93796b18e1929993329dd90fe17b5c99d13404edfb"
     },
     {
       "path": "src/modules/projection/system-document-projections.ts",
@@ -4128,7 +4128,7 @@
     {
       "path": "src/runtime/repository-observation/change-contract-reader.ts",
       "mode": "100644",
-      "digest": "sha256:9c9a68e00580abad62ad8402ef4c5dc5bc5a80fd79c489aacf62bf5f1709b0b9"
+      "digest": "sha256:e9ad9d4fbbd9d08ed4b013f83ec3880f92650ae953c97cd6403abe6b9a26b012"
     },
     {
       "path": "src/runtime/repository-observation/change-metadata.ts",
@@ -5083,7 +5083,7 @@
     {
       "path": "src/runtime/storage-journal/planning-report.ts",
       "mode": "100644",
-      "digest": "sha256:aedf9713899823418b8edb644b7b48c6cbbb487554093d03cc78428fd329771c"
+      "digest": "sha256:640b70c30a51b95b33495b27b36a65ef7d72eeff114126c7f2a06907ea9ea5ef"
     },
     {
       "path": "src/runtime/storage-journal/pre-merge-assurance-repository.ts",

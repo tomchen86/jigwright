@@ -8,7 +8,7 @@ Keep canonical facts in their owning records and regenerate their readable views
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.projection-readme v=1 digest=sha256:fa03b135e79e28e5630b459b8fed06288190801a2332012cd0364a133e862705 -->
+<!-- jigwright:region id=documents.projection-readme v=1 digest=sha256:767384657aad57635d0d09ce3bcbbe65091654c2d0fa012200c148cea7d72ce9 -->
 
 <!-- prettier-ignore-start -->
 
@@ -50,7 +50,6 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [document-refresh-storage.ts](document-refresh-storage.ts) | Feature storage boundary: writes to a target are only supplied inside its lock. | 0 | History unavailable |
 | [engine-projection-registry.ts](engine-projection-registry.ts) | Declares generated document outputs, their triggers and privileged projection path ownership. | 1 | History unavailable |
 | [handoff.ts](handoff.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [investigation-design-projection.ts](investigation-design-projection.ts) | Projects investigation WHY overlays into the managed ledger region of a design document. | 1 | History unavailable |
 | [managed-documents.ts](managed-documents.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [module-readme-projection.ts](module-readme-projection.ts) | Derives module reference sections from snapshot CLI usage, union types, contracts and source headers. | 1 | Header changed since confirmation |
 | [projection-service.ts](projection-service.ts) | Locates, renders, and conditionally updates engine-owned document regions. | 1 | History unavailable |

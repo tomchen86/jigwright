@@ -1,4 +1,5 @@
 import { materializeInvestigationEvidenceView } from './investigation-replay.ts';
+import { engineProjectionDefinitions } from '../../modules/projection/engine-projection-registry.ts';
 import type { CurrentChangeOriginReader } from '../../modules/governance-intake/work-registry-contracts.ts';
 import type { ChangeContractReaders } from '../../modules/planning-provider/change-contract.ts';
 import { invalidContract } from '../../modules/planning-provider/change-contract-errors.ts';
@@ -500,7 +501,13 @@ export function createChangeContractReaders(
         assertPolicyPathInsideRepository(repositoryRoot, normalized);
         return normalized;
       });
-      validateTaskPolicy(taskId, policy, checks, normalizedPaths);
+      validateTaskPolicy(
+        taskId,
+        policy,
+        checks,
+        normalizedPaths,
+        engineProjectionDefinitions().map(({ path }) => path),
+      );
     }
 
     const missingPolicies = [...markdownTaskIds].filter(

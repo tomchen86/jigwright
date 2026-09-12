@@ -47,7 +47,7 @@ import type {
   InvestigationPlanReviewCoverageRequirementV3,
   InvestigationRequirementV3,
 } from '../investigation/manifest/investigation-requirement-types.ts';
-import { validateInvestigationManifestLedgerProjection } from '../projection/investigation-design-projection.ts';
+import { validateInvestigationManifestLedgerProjection } from '../investigation/domain/investigation-design-ledger.ts';
 import { agentRolePlanV2Path } from '../source/planning-role-policy-paths.ts';
 import {
   assertCurrentPlanningRoleOverridePolicy,

@@ -10,6 +10,44 @@ import {
 } from '../src/modules/planning-provider/guard-policy.ts';
 import { readModuleReferences } from './support/dependency-graph.ts';
 
+test('guard policy consumes required path facts without inventing paths or changing error precedence', () => {
+  const checks = { schemaVersion: 1 as const, checks: {} };
+  const policy = { allowedPaths: ['custom/**'], requiredChecks: ['BAD CHECK'] };
+  assert.throws(
+    () =>
+      validateTaskPolicy(
+        '1.1',
+        policy,
+        checks,
+        ['custom/**'],
+        ['custom/report.md'],
+      ),
+    { code: 'ENGINE_PROJECTION_PATH_IN_TASK_SCOPE' },
+  );
+  assert.throws(
+    () =>
+      validateTaskPolicy(
+        '1.1',
+        policy,
+        checks,
+        ['custom/**', 'custom/**'],
+        ['custom/report.md'],
+      ),
+    { code: 'DUPLICATE_ALLOWED_PATH' },
+  );
+  assert.throws(
+    () =>
+      validateTaskPolicy(
+        '1.1',
+        policy,
+        checks,
+        ['docs/CURRENT_AND_NEXT_STEPS.md'],
+        [],
+      ),
+    { code: 'INVALID_REQUIRED_CHECK_ID' },
+  );
+});
+
 test('metadata admission follows the supplied consumer schema and exact date grammar without repository access', () => {
   const planning = {
     providerId: 'openspec',
@@ -65,23 +103,38 @@ test('guard policy rejects projection claims and malformed checks using admitted
     'sample',
   );
   const checks = { schemaVersion: 1 as const, checks: {} };
+  const projectionPaths = ['docs/CURRENT_AND_NEXT_STEPS.md'];
   assert.throws(
     () =>
-      validateTaskPolicy('1.1', guard.tasks['1.1'], checks, [
-        'src/**',
-        'src/**',
-      ]),
+      validateTaskPolicy(
+        '1.1',
+        guard.tasks['1.1'],
+        checks,
+        ['src/**', 'src/**'],
+        projectionPaths,
+      ),
     { code: 'DUPLICATE_ALLOWED_PATH' },
   );
   assert.throws(
     () =>
-      validateTaskPolicy('1.1', guard.tasks['1.1'], checks, [
-        'docs/CURRENT_AND_NEXT_STEPS.md',
-      ]),
+      validateTaskPolicy(
+        '1.1',
+        guard.tasks['1.1'],
+        checks,
+        ['docs/CURRENT_AND_NEXT_STEPS.md'],
+        projectionPaths,
+      ),
     { code: 'ENGINE_PROJECTION_PATH_IN_TASK_SCOPE' },
   );
   assert.throws(
-    () => validateTaskPolicy('1.1', guard.tasks['1.1'], checks, ['src/**']),
+    () =>
+      validateTaskPolicy(
+        '1.1',
+        guard.tasks['1.1'],
+        checks,
+        ['src/**'],
+        projectionPaths,
+      ),
     { code: 'INVALID_REQUIRED_CHECK_ID' },
   );
 });

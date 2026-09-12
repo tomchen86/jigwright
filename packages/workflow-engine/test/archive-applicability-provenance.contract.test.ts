@@ -9,6 +9,7 @@ import {
   readPlanningTransitionReport,
   writePlanningTransitionReport,
 } from '../src/runtime/storage-journal/planning-report.ts';
+import { assertPlanningTransitionReport } from '../src/modules/lifecycle/planning-transition-report.ts';
 
 const BASE_REPORT = {
   schemaVersion: 1 as const,
@@ -75,6 +76,66 @@ function directory(): string {
     fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'planning-report-')),
   );
 }
+
+test('planning report rules use the required predicate and production stores retain semantic object authority', () => {
+  const objectPath = `workflow/semantic-ledger/objects/sha256/ab/${'c'.repeat(62)}.json`;
+  const observed: string[] = [];
+  const predicate = (candidate: string) => {
+    observed.push(candidate);
+    return candidate === 'custom/projection.md';
+  };
+  const custom = {
+    ...BASE_REPORT,
+    engineProjectionPaths: ['custom/projection.md'],
+    changedPaths: ['custom/projection.md', ...BASE_REPORT.changedPaths].sort(),
+  };
+  assert.doesNotThrow(() => assertPlanningTransitionReport(custom, predicate));
+  assert.deepEqual(observed, [
+    ...BASE_REPORT.planningPaths,
+    'custom/projection.md',
+  ]);
+  const root = directory();
+  try {
+    for (const projectionPath of [
+      'workflow/semantic-ledger/index.json',
+      objectPath,
+      'docs/CURRENT_AND_NEXT_STEPS.md',
+    ]) {
+      const report = {
+        ...BASE_REPORT,
+        engineProjectionPaths: [projectionPath],
+        changedPaths: [...BASE_REPORT.changedPaths, projectionPath].sort(),
+      };
+      const id = writePlanningTransitionReport(root, report);
+      assert.deepEqual(readPlanningTransitionReport(root, id), report);
+    }
+    for (const projectionPath of [
+      'custom/projection.md',
+      objectPath.replace('ab/', 'AB/'),
+      objectPath.replace('.json', '.txt'),
+    ]) {
+      const report = {
+        ...BASE_REPORT,
+        engineProjectionPaths: [projectionPath],
+        changedPaths: [...BASE_REPORT.changedPaths, projectionPath].sort(),
+      };
+      const before = fs.readdirSync(root);
+      assert.throws(() => writePlanningTransitionReport(root, report), {
+        code: 'PLANNING_REPORT_INVALID',
+      });
+      assert.deepEqual(fs.readdirSync(root), before);
+      const id = writeContentRecord(root, report);
+      const file = path.join(root, `${id}.json`);
+      const bytes = fs.readFileSync(file);
+      assert.throws(() => readPlanningTransitionReport(root, id), {
+        code: 'PLANNING_REPORT_INVALID',
+      });
+      assert.deepEqual(fs.readFileSync(file), bytes);
+    }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test('a plan records the base its preflight was checked against', () => {
   const root = directory();
