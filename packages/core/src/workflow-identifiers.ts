@@ -5,6 +5,14 @@ const SESSION_ID_PATTERN = /^session-[a-zA-Z0-9-]+$/;
 const INVESTIGATION_ID_PATTERN = /^investigation-[a-zA-Z0-9-]+$/;
 const INVOCATION_ID_PATTERN = /^invocation-[a-zA-Z0-9-]+$/;
 
+/** Identifies a task execution and the repository baseline it refers to. */
+export type TaskSessionReference = {
+  sessionId: string;
+  changeId: string;
+  taskId: string;
+  baseline: { head: string; tree: string };
+};
+
 export type InvalidRuntimeIdentifierFactory = () => Error;
 
 export function assertChangeId(

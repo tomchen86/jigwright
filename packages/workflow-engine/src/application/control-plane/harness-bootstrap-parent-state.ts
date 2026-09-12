@@ -8,12 +8,18 @@ import type {
 } from './intervention-control-bootstrap.ts';
 import type { readControlPlaneSupervisorState } from './intervention-control-updater.ts';
 import { canonicalDigest as digestCanonical } from '../../modules/authority/intervention-control-values.ts';
-import type { HarnessBootstrapParentObservations } from '../../modules/authority/harness-bootstrap-parent-contract.ts';
 import {
-  admitHarnessBootstrapParent,
+  type HarnessBootstrapParentBindingObservations,
   assertHarnessBootstrapParentBinding,
 } from '../../modules/authority/harness-bootstrap-parent-contract.ts';
-export interface HarnessBootstrapParentBindings extends HarnessBootstrapParentObservations {
+import {
+  type HarnessBootstrapParentSessionObservations,
+  admitHarnessBootstrapParent,
+} from '../../modules/lifecycle/harness-bootstrap-parent-session.ts';
+export interface HarnessBootstrapParentBindings
+  extends
+    HarnessBootstrapParentSessionObservations,
+    HarnessBootstrapParentBindingObservations {
   BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST: DurableInterventionParentState['parent']['engineBinding'];
   readLocalEngineBinding: typeof readLocalEngineBinding;
   readControlPlaneSupervisorState: typeof readControlPlaneSupervisorState;

@@ -9,8 +9,9 @@ import {
   readSessionFile,
   runtimePaths,
 } from '../session-workspace/session-store.ts';
-import type { HarnessBootstrapParentObservations } from '../../modules/authority/harness-bootstrap-parent-contract.ts';
-export const observeParentSessions: HarnessBootstrapParentObservations['observeParentSessions'] =
+import type { HarnessBootstrapParentBindingObservations } from '../../modules/authority/harness-bootstrap-parent-contract.ts';
+import type { HarnessBootstrapParentSessionObservations } from '../../modules/lifecycle/harness-bootstrap-parent-session.ts';
+export const observeParentSessions: HarnessBootstrapParentSessionObservations['observeParentSessions'] =
   (cwd, parentChangeId) => {
     const repository = discoverRepository(cwd);
     const config = loadWorkflowConfig(repository.repositoryRoot);
@@ -30,7 +31,7 @@ export const observeParentSessions: HarnessBootstrapParentObservations['observeP
       .filter(({ session }) => session.changeId === parentChangeId);
     return { repository, runtime, candidates };
   };
-export const observeParentBindingPath: HarnessBootstrapParentObservations['observeParentBindingPath'] =
+export const observeParentBindingPath: HarnessBootstrapParentBindingObservations['observeParentBindingPath'] =
   (stateRoot, parentChangeId) => {
     const identity = crypto
       .createHash('sha256')

@@ -1,3 +1,8 @@
+import {
+  assertTaskStrategyRedTransactionCurrent,
+  assertCurrentTaskStrategyPatch,
+  type TaskStrategyPatchEvidence,
+} from '../src/modules/assurance/task-strategy-gate.ts';
 import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
@@ -264,4 +269,134 @@ test('missing patch records still observe authority before final patch validatio
     'patch',
     'authority',
   ]);
+});
+
+test('RED identity mismatches reject before repository preview without adding a sessionId check', () => {
+  const changes: Array<Partial<TaskStrategyTransaction>> = [
+    { changeId: 'other' },
+    { taskId: 'other' },
+    { strategy: 'cross-agent-tdd' },
+    { baseline: { ...transaction.baseline, head: 'other' } },
+    { baseline: { ...transaction.baseline, tree: 'other' } },
+    { taskContractDigest: 'other' },
+  ];
+  for (const change of changes) {
+    const { calls, gate } = fixture({
+      readTransaction: () => ({ ...transaction, ...change }),
+    });
+    assert.throws(() => gate(inspection, {}), {
+      code: 'TASK_STRATEGY_RED_STALE',
+    });
+    assert.deepEqual(calls, ['open']);
+  }
+  assert.doesNotThrow(() =>
+    assertTaskStrategyRedTransactionCurrent(inspection, task, {
+      ...transaction,
+      sessionId: 'different-session',
+    }),
+  );
+});
+
+test('RED reads only its original identity facts and serializes the full baseline', () => {
+  const session = {
+    ...inspection.session,
+    baseline: { ...inspection.session.baseline, extra: 'original' },
+  };
+  const record = { ...transaction, baseline: { ...session.baseline } };
+  const failRead = {
+    get() {
+      assert.fail('RED read a lifecycle field or sessionId');
+    },
+  };
+  for (const name of [
+    'sessionId',
+    'state',
+    'isolation',
+    'planningAssurance',
+    'latestCheckReportId',
+  ])
+    Object.defineProperty(session, name, failRead);
+  Object.defineProperty(record, 'sessionId', failRead);
+  assert.doesNotThrow(() =>
+    assertTaskStrategyRedTransactionCurrent({ session }, task, record),
+  );
+  record.baseline.extra = 'changed';
+  assert.throws(
+    () => assertTaskStrategyRedTransactionCurrent({ session }, task, record),
+    { code: 'TASK_STRATEGY_RED_STALE' },
+  );
+});
+
+test('patch admission still rejects a sessionId-only mismatch after valid RED evidence', () => {
+  const record: NonNullable<TaskStrategyPatchEvidence['record']> = {
+    schemaVersion: 1,
+    kind: 'task-strategy-patch-record.v1',
+    recordDigest: digest,
+    sessionId: inspection.session.sessionId,
+    changeId: inspection.session.changeId,
+    taskId: inspection.session.taskId,
+    strategy: task.strategy,
+    sourceTree: objectId,
+    candidateTree: objectId,
+    taskContractDigest: transaction.taskContractDigest,
+    patchDigest: digest,
+    patchBase64: '',
+    changedPaths: [],
+    changes: [],
+    implementer: transaction.author,
+    createdAt: transaction.createdAt,
+  };
+  const receipt: NonNullable<TaskStrategyPatchEvidence['receipt']> = {
+    schemaVersion: 1,
+    kind: 'task-strategy-patch-import-receipt.v1',
+    receiptDigest: digest,
+    recordDigest: digest,
+    sessionId: inspection.session.sessionId,
+    patchDigest: digest,
+    candidateTree: objectId,
+    importedAt: transaction.createdAt,
+  };
+  const binding: NonNullable<TaskStrategyPatchEvidence['binding']> = {
+    schemaVersion: 1,
+    kind: 'task-strategy-patch-current.v1',
+    bindingDigest: digest,
+    sessionId: inspection.session.sessionId,
+    patchDigest: digest,
+    recordDigest: digest,
+    receiptDigest: digest,
+    candidateTree: objectId,
+    createdAt: receipt.importedAt,
+  };
+  const reservation: NonNullable<TaskStrategyPatchEvidence['reservation']> = {
+    schemaVersion: 1,
+    kind: 'task-strategy-patch-reservation.v1',
+    reservationDigest: digest,
+    sessionId: inspection.session.sessionId,
+    patchDigest: digest,
+    recordDigest: digest,
+    sourceTree: objectId,
+    candidateTree: objectId,
+    createdAt: record.createdAt,
+  };
+  const assertPatch = (candidate: typeof record) =>
+    assertCurrentTaskStrategyPatch(
+      inspection,
+      task,
+      transaction,
+      { tree: objectId },
+      { binding, record, receipt },
+      objectId,
+      { binding, record: candidate, receipt, reservation },
+      { implementationResult: null, callerImplementationResult: null },
+    );
+  assert.doesNotThrow(() => assertPatch(record));
+  assert.doesNotThrow(() =>
+    assertTaskStrategyRedTransactionCurrent(inspection, task, {
+      ...transaction,
+      sessionId: 'other',
+    }),
+  );
+  assert.throws(() => assertPatch({ ...record, sessionId: 'other' }), {
+    code: 'TASK_STRATEGY_PATCH_STALE',
+  });
 });

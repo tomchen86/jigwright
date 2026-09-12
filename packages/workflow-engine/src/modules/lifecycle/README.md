@@ -8,11 +8,11 @@ Keep repository routing in one controlled source and derive the visible inventor
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:73e506b9d435f28c19ce864e7139e2e887a8097f832b136fc6721f2fe0e943d1 -->
+<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:86c6e5a327ec00a9babfc2e980548dd4deee3f0eca5e941b787c509c3b9341c6 -->
 
 <!-- prettier-ignore-start -->
 
-18 files changed in this module since confirmation.
+19 files changed in this module since confirmation.
 
 ## Commands
 
@@ -68,6 +68,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [change-routing-transaction.ts](change-routing-transaction.ts) | Builds and validates reports binding a routing review to its lifecycle Source update. | 1 | History unavailable |
 | [change-routing.ts](change-routing.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [contract-digests.ts](contract-digests.ts) | Computes identities for the required registered check definitions. | 1 | History unavailable |
+| [harness-bootstrap-parent-session.ts](harness-bootstrap-parent-session.ts) | Complete durable parent observations and lifecycle admission decisions. | 0 | History unavailable |
 | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) | Defines shared task strategy, review and authority-plan state names. | 1 | Header changed since confirmation |
 | [planning-amendment-decision.ts](planning-amendment-decision.ts) | Creates, reads and replaces canonical amendment decisions embedded in proposal markers. | 1 | History unavailable |
 | [planning-execution-epoch-observations.ts](planning-execution-epoch-observations.ts) | Required repository observations, invoked at each epoch admission phase. | 0 | History unavailable |

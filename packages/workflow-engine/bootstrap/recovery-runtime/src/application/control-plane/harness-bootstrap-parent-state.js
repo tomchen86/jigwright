@@ -2,7 +2,8 @@
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { WorkflowError } from "../../foundation/errors/errors.js";
 import { canonicalDigest as digestCanonical } from "../../modules/authority/intervention-control-values.js";
-import { admitHarnessBootstrapParent, assertHarnessBootstrapParentBinding, } from "../../modules/authority/harness-bootstrap-parent-contract.js";
+import { assertHarnessBootstrapParentBinding, } from "../../modules/authority/harness-bootstrap-parent-contract.js";
+import { admitHarnessBootstrapParent, } from "../../modules/lifecycle/harness-bootstrap-parent-session.js";
 export function createHarnessBootstrapParentState(bindings) {
     const { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST, observeParentSessions, observeParentBindingPath, readLocalEngineBinding, readControlPlaneSupervisorState, persistTrustedBootstrapSessionSnapshot, } = bindings;
     function resolveHarnessBootstrapParentState(cwd, parentChangeId, stateRoot) {

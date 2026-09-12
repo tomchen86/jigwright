@@ -1,4 +1,5 @@
 /** Current durable workflow session data shared by lifecycle rules and storage. */
+import type { TaskSessionReference } from '@jigwright/core/workflow-identifiers';
 import type { PlanningAssuranceBinding } from '../assurance/planning-assurance-binding.ts';
 
 export type TaskSessionResourceLease = Readonly<{
@@ -15,12 +16,9 @@ export type TaskSessionIsolationBinding = Readonly<{
   resources: readonly TaskSessionResourceLease[];
 }>;
 
-export type WorkflowSession = {
+export type WorkflowSession = TaskSessionReference & {
   schemaVersion: 1;
-  sessionId: string;
   state: 'active' | 'revising' | 'aborted' | 'committed';
-  changeId: string;
-  taskId: string;
   /** Durable top-level task mandate authorization for production sessions. */
   mandateBinding?: {
     schemaVersion: 1;
@@ -33,10 +31,6 @@ export type WorkflowSession = {
   repositoryRoot: string;
   gitCommonDirectory: string;
   branch: string;
-  baseline: {
-    head: string;
-    tree: string;
-  };
   artifacts: Record<string, string>;
   allowedPaths: string[];
   requiredChecks: string[];

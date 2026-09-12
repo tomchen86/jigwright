@@ -1,4 +1,4 @@
-import type { WorkflowSession } from '../lifecycle/workflow-session-contract.ts';
+import type { TaskSessionReference } from '@jigwright/core/workflow-identifiers';
 import type { ValidatedChangeContract } from '../planning-provider/validated-change-contract.ts';
 /** Pure task-strategy evidence predicates. Repository observations are supplied at their original operation boundaries. */
 import crypto from 'node:crypto';
@@ -23,8 +23,8 @@ import type { TaskStrategyGreenFailureRecord } from '../provider-orchestration/t
 export type TaskStrategyGateTask =
   CrossAgentTddExecution | TddSingleAgentExecution;
 export type TaskStrategyGateIdentity = {
-  session: Pick<WorkflowSession, 'sessionId' | 'changeId' | 'taskId'> & {
-    baseline: Readonly<WorkflowSession['baseline']>;
+  session: Omit<TaskSessionReference, 'baseline'> & {
+    baseline: Readonly<TaskSessionReference['baseline']>;
   };
 };
 export type TaskStrategyPatchEvidence = {

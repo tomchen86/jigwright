@@ -1,3 +1,4 @@
+import type { TaskSessionReference } from '@jigwright/core/workflow-identifiers';
 import type { ProviderId } from '../provider-orchestration/provider-registry.ts';
 import type { EvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';
 import type { AdmittedRoleResult } from '../provider-orchestration/role-admission-contracts.ts';
@@ -9,42 +10,41 @@ export type TaskStrategyFrozenFile = Readonly<{
   objectId: string;
 }>;
 
-export type TaskStrategyTransaction = Readonly<{
-  schemaVersion: 1;
-  kind: 'task-strategy-transaction.v1';
-  recordDigest: string;
-  sessionId: string;
-  changeId: string;
-  taskId: string;
-  baseline: Readonly<{ head: string; tree: string }>;
-  strategy: 'cross-agent-tdd' | 'tdd-single-agent';
-  phase: 'red-sealed';
-  taskContractDigest: string;
-  author: Readonly<{
-    providerId: ProviderId;
-    assurance: 'self-declared' | 'runtime-hint' | 'adapter-assigned';
-  }>;
-  red: Readonly<{
-    candidateTree: string;
-    changedPaths: readonly string[];
-    checkId: string;
-    runner: string;
-    runnerDigest: string;
-    exitCode: number;
-    failureCategory: 'assertion' | 'behavior-mismatch';
-    selector: string;
-    testPaths: readonly string[];
-    fixturePaths: readonly string[];
-    files: readonly TaskStrategyFrozenFile[];
-    stdoutDigest: string;
-    stderrDigest: string;
-    failureFingerprint: string;
-    evidenceNodeId: string;
-    evidenceResultDigest: string;
-    evidenceNode: EvidenceNode;
-  }>;
-  createdAt: string;
-}>;
+export type TaskStrategyTransaction = Readonly<
+  Omit<TaskSessionReference, 'baseline'> & {
+    schemaVersion: 1;
+    kind: 'task-strategy-transaction.v1';
+    recordDigest: string;
+    baseline: Readonly<TaskSessionReference['baseline']>;
+    strategy: 'cross-agent-tdd' | 'tdd-single-agent';
+    phase: 'red-sealed';
+    taskContractDigest: string;
+    author: Readonly<{
+      providerId: ProviderId;
+      assurance: 'self-declared' | 'runtime-hint' | 'adapter-assigned';
+    }>;
+    red: Readonly<{
+      candidateTree: string;
+      changedPaths: readonly string[];
+      checkId: string;
+      runner: string;
+      runnerDigest: string;
+      exitCode: number;
+      failureCategory: 'assertion' | 'behavior-mismatch';
+      selector: string;
+      testPaths: readonly string[];
+      fixturePaths: readonly string[];
+      files: readonly TaskStrategyFrozenFile[];
+      stdoutDigest: string;
+      stderrDigest: string;
+      failureFingerprint: string;
+      evidenceNodeId: string;
+      evidenceResultDigest: string;
+      evidenceNode: EvidenceNode;
+    }>;
+    createdAt: string;
+  }
+>;
 
 export type TaskStrategyTransactionInput = Omit<
   TaskStrategyTransaction,

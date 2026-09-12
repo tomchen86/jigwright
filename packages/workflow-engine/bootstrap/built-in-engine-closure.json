@@ -288,7 +288,7 @@
     {
       "path": "node_modules/@jigwright/core/src/workflow-identifiers.ts",
       "mode": "100644",
-      "digest": "sha256:5f8ec728b8355b0c11c1ea79e28c555f471c2e60b73be3f3ed6c66817c745f4d"
+      "digest": "sha256:8121215fa67373e355c095e3290700c9f103eac992b64c32c62ad20a6438b670"
     },
     {
       "path": "node_modules/@jigwright/core/src/workflow-namespace.ts",
@@ -783,7 +783,7 @@
     {
       "path": "src/application/control-plane/harness-bootstrap-parent-state.ts",
       "mode": "100644",
-      "digest": "sha256:a3e6e2995b963f24322b12a2a73b36b3b112592ea872895f6135ad06e4ea70e4"
+      "digest": "sha256:470bbd255af6a92f9e841f0e45af44efbaf3cf5d9f1a45711a380d4cc80b56c1"
     },
     {
       "path": "src/application/control-plane/harness-bootstrap-production.ts",
@@ -2408,12 +2408,12 @@
     {
       "path": "src/modules/assurance/task-strategy-evidence.ts",
       "mode": "100644",
-      "digest": "sha256:96ce9910468aa0c04767538f661f22c4c465c768d5d0fdf00e390074dd6a3672"
+      "digest": "sha256:6f37706d567b30bb7a84c56e72861a5a432f7e052b2d6d428804d353cc71f0f7"
     },
     {
       "path": "src/modules/assurance/task-strategy-gate.ts",
       "mode": "100644",
-      "digest": "sha256:63823644df8744770849523d35e76963c38d13ba2ca502a5911be0e1471b80ec"
+      "digest": "sha256:c47afde45fbf52c2d919962dda2d464859f5076e2af5cb5b7e5cb47a68bbab7d"
     },
     {
       "path": "src/modules/authority/archive-pr-grant.ts",
@@ -2643,7 +2643,7 @@
     {
       "path": "src/modules/authority/harness-bootstrap-parent-contract.ts",
       "mode": "100644",
-      "digest": "sha256:989287de9b9fa1abf5ea3ac4277eaf12c5a9544fbe16dce0f131cc3f2d25d4b2"
+      "digest": "sha256:7c2b310d1f3ecd50ba69160e258f8c89ed0d55699c56fd1d73031a0dca925177"
     },
     {
       "path": "src/modules/authority/human-revocation-contract.ts",
@@ -3221,6 +3221,11 @@
       "digest": "sha256:cc22959c4379ac749fdce0db6dbca554c3ccaa0a07dc7319419c49f385f81070"
     },
     {
+      "path": "src/modules/lifecycle/harness-bootstrap-parent-session.ts",
+      "mode": "100644",
+      "digest": "sha256:013e1420bd5c358c02bfcbd83ae033e63f6783563aa52564ab2e97231f79a770"
+    },
+    {
       "path": "src/modules/lifecycle/managed-workflow-state-contract.ts",
       "mode": "100644",
       "digest": "sha256:1fb8fa79d6a932baff5311f1efbde95255e8961287b5142f3a197b49ab9eb9d6"
@@ -3263,7 +3268,7 @@
     {
       "path": "src/modules/lifecycle/workflow-session-contract.ts",
       "mode": "100644",
-      "digest": "sha256:ff29603359ed6ff30f8f3fb057a9de3812021ced5909abfa1aec43f34733e4fc"
+      "digest": "sha256:5e80d4246f3bc98e110839b597c117d8a6f8fa331c3deecb93ac1bbc94bb50d8"
     },
     {
       "path": "src/modules/planning-provider/change-contract-errors.ts",
@@ -4163,7 +4168,7 @@
     {
       "path": "src/runtime/repository-observation/harness-bootstrap-parent-state.ts",
       "mode": "100644",
-      "digest": "sha256:e58965d00db032c7a559ea37db0339aced7dae88dc2dc10dd5af9d023d8f1a12"
+      "digest": "sha256:146ea5ddfce1b77f93280d47360e5beac73e6412d960b6d8a901c23761e879da"
     },
     {
       "path": "src/runtime/repository-observation/human-resolution-grants.ts",

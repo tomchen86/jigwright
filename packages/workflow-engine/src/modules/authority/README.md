@@ -8,7 +8,7 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:cf187dcf7a940c50e0c4a927cd70a17a7356ef15c6a0f5cac4df4669fd69bf46 -->
+<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:b3e7750586537096a5331601e22ed0819fc2d81abdcd7a8918aeb03a1850af9a -->
 
 <!-- prettier-ignore-start -->
 
@@ -162,7 +162,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [grant-revocation-contract.ts](grant-revocation-contract.ts) | Canonical revocation targets and required transaction capabilities. | 0 | History unavailable |
 | [grant-transition-registry.ts](grant-transition-registry.ts) | Registers Grant transitions and renders choices bound to their declared parameters and consequences. | 2 | History unavailable |
 | [grant-verifier-port.ts](grant-verifier-port.ts) | Seals authoritative collaboration verifiers and resolves opaque consumed- replay verifier handles. | 2 | History unavailable |
-| [harness-bootstrap-parent-contract.ts](harness-bootstrap-parent-contract.ts) | Parent bootstrap observation contract and exact durable admission decisions. | 0 | History unavailable |
+| [harness-bootstrap-parent-contract.ts](harness-bootstrap-parent-contract.ts) | Observe and admit an existing engine overlay for a parent session. | 0 | History unavailable |
 | [human-revocation-contract.ts](human-revocation-contract.ts) | Parses canonical human revocation envelopes and validates their exact subject bindings. | 2 | History unavailable |
 | [immutable-git-candidate-codec.ts](immutable-git-candidate-codec.ts) | Decodes immutable Git candidates and validates their canonical patch, policy and check bindings. | 2 | Header changed since confirmation |
 | [immutable-git-candidate.ts](immutable-git-candidate.ts) | Builds immutable Git candidates and verifies their observed repository state and pinned objects. | 2 | History unavailable |

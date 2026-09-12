@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:2728602c68a0956ed5de11e67effe502c4b27c5147187f39ecc4318a6b88e26e"
+      "digest": "sha256:e4114f625053996807fe5c71ab12a0021a955409c618ff906fd39f50039d878d"
     },
     {
       "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js",
@@ -208,7 +208,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/harness-bootstrap-parent-state.js",
       "mode": "100644",
-      "digest": "sha256:e8cf9242545f6286216f2001a5fce9ea42904ddada10be8d1358a317208d88ef"
+      "digest": "sha256:3641a1128e2593aaf02a32454945160752f2c0ae6e8c44a18004d1813b310104"
     },
     {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/harness-bootstrap-production.js",
@@ -428,7 +428,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/harness-bootstrap-parent-contract.js",
       "mode": "100644",
-      "digest": "sha256:5ef4187d5a6566f89bc928f9c1a04e8627612f6169be7ebd4c94d77581fcfc85"
+      "digest": "sha256:52fb1a445a2e40be63d42008250f35d85ea737129281b0fd7fb13fee627e9064"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/human-revocation-contract.js",
@@ -649,6 +649,11 @@
       "path": "bootstrap/recovery-runtime/src/modules/investigation/manifest/investigation-why-domain.js",
       "mode": "100644",
       "digest": "sha256:ba2ee610dbd0f90607bd2ca0efccf460a773be9e652a2ce30d6ac4af57c33d84"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/lifecycle/harness-bootstrap-parent-session.js",
+      "mode": "100644",
+      "digest": "sha256:f0d50e502f98da472fae494ec933399479ed08fe2ff6a5bfc63f288a2c4ded6e"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/lifecycle/workflow-session-contract.js",
