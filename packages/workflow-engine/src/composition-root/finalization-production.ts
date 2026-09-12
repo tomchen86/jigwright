@@ -1,3 +1,12 @@
+import {
+  normalizeCompletionRollbackReason,
+  type RollbackCompletionResult,
+} from '../modules/lifecycle/completion-rollback.ts';
+import { rollbackCompletionProjection } from '../runtime/managed-documents/transaction/completion-rollback.ts';
+import {
+  loadActiveSessionContext,
+  runSessionOperation,
+} from './lifecycle-context.ts';
 import { systemDocumentDispositions } from './system-document-disposition-production.ts';
 import type { LocalEngineSelectionReaders } from '../modules/authority/local-engine-selection.ts';
 import { maintainerManifestOperations } from './maintainer-manifest-production.ts';
@@ -11,7 +20,7 @@ import { assertCurrentImplementationReconciliation } from './implementation-reco
 export function createProductionFinalizationService(
   localEngineSelection: LocalEngineSelectionReaders,
 ) {
-  return createFinalizationService(
+  const finalization = createFinalizationService(
     localEngineSelection,
     maintainerManifestOperations,
     productionTaskStrategyExecutionGate,
@@ -21,6 +30,21 @@ export function createProductionFinalizationService(
     assertCurrentImplementationReconciliation,
     systemDocumentDispositions,
   );
+  function rollbackCompletion(
+    cwd: string,
+    requestedSessionId: string,
+    reason: string,
+  ): RollbackCompletionResult {
+    const normalizedReason = normalizeCompletionRollbackReason(reason);
+    return runSessionOperation(cwd, requestedSessionId, () =>
+      rollbackCompletionProjection(
+        loadActiveSessionContext(cwd, requestedSessionId),
+        normalizedReason,
+        managedDocuments,
+      ),
+    );
+  }
+  return Object.freeze({ rollbackCompletion, ...finalization });
 }
 
 export type ProductionFinalizationService = ReturnType<

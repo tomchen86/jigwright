@@ -1,3 +1,5 @@
+import type { WorkflowReport } from '../../modules/lifecycle/workflow-report.ts';
+export type { WorkflowReport };
 /**
  * Persists immutable workflow reports and verifies their session and
  * content identities on read.
@@ -9,10 +11,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import {
-  isPlanningAssuranceBinding,
-  type PlanningAssuranceBinding,
-} from '../../modules/assurance/planning-assurance-binding.ts';
+import { isPlanningAssuranceBinding } from '../../modules/assurance/planning-assurance-binding.ts';
 import {
   ExitCode,
   WorkflowError,
@@ -23,24 +22,6 @@ import {
   ensurePlainDirectory,
 } from '../repository-transaction/filesystem-safety.ts';
 import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
-
-export type WorkflowReport = {
-  schemaVersion: 1;
-  kind:
-    | 'check'
-    | 'completion'
-    | 'finish'
-    | 'commit'
-    | 'authority-check'
-    | 'implementation-reconciliation';
-  sessionId: string;
-  changeId: string;
-  taskId: string;
-  createdAt: string;
-  parentReportId?: string;
-  planningAssurance?: PlanningAssuranceBinding | null;
-  [key: string]: unknown;
-};
 
 export function writeImmutableReport(
   reportsRoot: string,

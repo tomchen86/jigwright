@@ -45,6 +45,7 @@ import './projection-domain-boundary.contract.test.ts';
 import './lifecycle-domain-boundary.contract.test.ts';
 import './system-document-composition-boundary.contract.test.ts';
 import './runtime-context-boundary.contract.test.ts';
+import './completion-rollback-boundary.contract.test.ts';
 import './plan-review.integration.test.ts';
 import './planning-transition.integration.test.ts';
 import './managed-change-contract.integration.test.ts';

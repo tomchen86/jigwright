@@ -67,6 +67,7 @@ import '../generated/package-tests/core/conformance-vectors.contract.test.ts';
 import '../execution-core-terminal-failures.contract.test.ts';
 import '../ci-planning.integration.test.ts';
 import '../colocated-spec-admission.integration.test.ts';
+import '../completion-rollback-boundary.contract.test.ts';
 import '../control-plane-recovery-grant-boundary.test.ts';
 import '../control-plane-recovery-grant-rules.test.ts';
 import '../evidence-retention-boundary.test.ts';

@@ -8,11 +8,11 @@ Keep repository routing in one controlled source and derive the visible inventor
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:86c6e5a327ec00a9babfc2e980548dd4deee3f0eca5e941b787c509c3b9341c6 -->
+<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:999fae6ca3395e0ccfc0c2fb444dcfb426aa8c79aca48565aef2b1e647fe11be -->
 
 <!-- prettier-ignore-start -->
 
-19 files changed in this module since confirmation.
+21 files changed in this module since confirmation.
 
 ## Commands
 
@@ -67,6 +67,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [change-routing-grant.ts](change-routing-grant.ts) | Defines and requests authorization to continue a parked or manually blocked change. | 1 | History unavailable |
 | [change-routing-transaction.ts](change-routing-transaction.ts) | Builds and validates reports binding a routing review to its lifecycle Source update. | 1 | History unavailable |
 | [change-routing.ts](change-routing.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [completion-rollback.ts](completion-rollback.ts) | Pure admission and state reset for reversing an unfinished completion projection. | 0 | History unavailable |
 | [contract-digests.ts](contract-digests.ts) | Computes identities for the required registered check definitions. | 1 | History unavailable |
 | [harness-bootstrap-parent-session.ts](harness-bootstrap-parent-session.ts) | Complete durable parent observations and lifecycle admission decisions. | 0 | History unavailable |
 | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) | Defines shared task strategy, review and authority-plan state names. | 1 | Header changed since confirmation |
@@ -77,6 +78,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [repository-hooks.ts](repository-hooks.ts) | Repository hook admission rules over required current observations and checks. | 0 | History unavailable |
 | [repository-specification-policy.ts](repository-specification-policy.ts) | Combines canonical spec ownership with repository-specific lifecycle paths. | 1 | History unavailable |
 | [session-inspection.ts](session-inspection.ts) | Observed session facts consumed by lifecycle rules and report validation. | 0 | History unavailable |
+| [workflow-report.ts](workflow-report.ts) | Complete workflow report contract shared by lifecycle policy and durable storage. | 0 | History unavailable |
 | [workflow-session-contract.ts](workflow-session-contract.ts) | Current durable workflow session data shared by lifecycle rules and storage. | 0 | History unavailable |
 
 <!-- prettier-ignore-end -->

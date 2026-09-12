@@ -12,7 +12,7 @@ import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/chang
 import type { ManagedDocumentOperations } from '../../modules/projection/managed-documents.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 /**
- * Coordinates task finalization, completion, rollback, finish, and commit.
+ * Coordinates task finalization, completion, finish, and commit.
  *
  * Invariants:
  * - Protected apply recovery authorization must bind the exact requested
@@ -65,7 +65,6 @@ import {
   discoverRepository,
   fingerprintRepositoryProjection,
   listChangedPaths,
-  readFileAtCommit,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
 import {
@@ -110,8 +109,6 @@ import {
   staleReport,
 } from '../../runtime/storage-journal/report-validation.ts';
 import {
-  assertOwnedLock,
-  readSessionFile,
   runtimePaths,
   writeJsonAtomic,
   type WorkflowSession,
@@ -124,13 +121,9 @@ import {
   reconcileSessionChecksAfterLocalEngineAdoption,
   writeSessionReport,
 } from './verification.ts';
-import {
-  completionDocumentPaths,
-  rollbackGeneratedDocuments,
-} from '../../runtime/managed-documents/validation/managed-documents.ts';
+import { rollbackGeneratedDocuments } from '../../runtime/managed-documents/validation/managed-documents.ts';
 import { type GeneratedDocumentMutation } from '../../modules/projection/managed-documents.ts';
 import {
-  assertExactTaskProjection,
   projectTasksCompleted,
   digestTaskContent,
   restoreTaskProjection,
@@ -167,15 +160,6 @@ export type FinishSessionResult = {
   reportId: string;
   stagedPaths: string[];
   tree: string;
-};
-
-export type RollbackCompletionResult = {
-  session: WorkflowSession;
-  completionReportId: string;
-  rollbackRecordId: string;
-  restoredPaths: string[];
-  rolledBackAt: string;
-  reason: string;
 };
 
 export type { CommitSessionResult } from '../../runtime/repository-transaction/commit-recovery.ts';
@@ -996,61 +980,6 @@ function protectedTaskApplyAuthorizationInvalid(message: string) {
   );
 }
 
-function assertPinnedRollbackState(
-  context: ReturnType<typeof loadActiveSessionContext>,
-): void {
-  const { git, runtime, session } = context;
-  const current = discoverRepository(git.repositoryRoot);
-  if (
-    current.repositoryRealPath !== session.repositoryRoot ||
-    current.gitCommonDirectory !== session.gitCommonDirectory ||
-    current.branch !== session.branch ||
-    current.head !== session.baseline.head
-  ) {
-    throw workflowError(
-      'ROLLBACK_REPOSITORY_DRIFT',
-      'Repository identity, branch, or HEAD changed before completion rollback.',
-      ExitCode.staleState,
-    );
-  }
-  assertOwnedLock(
-    path.join(runtime.locks, `${session.changeId}.lock`),
-    session.sessionId,
-    session.changeId,
-    session.taskId,
-  );
-  if (listStagedPaths(git.repositoryRoot, session.baseline.head).length > 0) {
-    throw workflowError(
-      'ROLLBACK_INDEX_NOT_EMPTY',
-      'Completion rollback requires an empty index.',
-      ExitCode.staleState,
-    );
-  }
-}
-
-function assertPlainDirectory(directory: string): void {
-  const stats = fs.lstatSync(directory, { throwIfNoEntry: false });
-  if (!stats?.isDirectory() || stats.isSymbolicLink()) {
-    throw workflowError(
-      'ROLLBACK_RECORD_DIRECTORY_UNSAFE',
-      'Completion rollback record directory is missing or unsafe.',
-      ExitCode.staleState,
-    );
-  }
-}
-
-function writePlainFile(filePath: string, content: string): void {
-  const stats = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  if (!stats?.isFile() || stats.isSymbolicLink()) {
-    throw workflowError(
-      'ROLLBACK_PATH_UNSAFE',
-      'Completion rollback encountered an unsafe projected file.',
-      ExitCode.staleState,
-    );
-  }
-  fs.writeFileSync(filePath, content, 'utf8');
-}
-
 export function commitSession(
   routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
@@ -1717,217 +1646,6 @@ export function createFinalizationService(
     );
   }
 
-  function rollbackCompletion(
-    cwd: string,
-    requestedSessionId: string,
-    reason: string,
-  ): RollbackCompletionResult {
-    const normalizedReason = reason.trim();
-    if (!normalizedReason) {
-      throw workflowError(
-        'ROLLBACK_REASON_REQUIRED',
-        'Rolling back a completion projection requires a non-empty reason.',
-        ExitCode.usage,
-      );
-    }
-    if (/\p{Cc}/u.test(normalizedReason)) {
-      throw workflowError(
-        'ROLLBACK_REASON_INVALID',
-        'Completion rollback reason contains control characters.',
-        ExitCode.usage,
-      );
-    }
-
-    return runSessionOperation(cwd, requestedSessionId, () =>
-      rollbackCompletionUnlocked(cwd, requestedSessionId, normalizedReason),
-    );
-  }
-
-  function rollbackCompletionUnlocked(
-    cwd: string,
-    requestedSessionId: string,
-    reason: string,
-  ): RollbackCompletionResult {
-    const context = loadActiveSessionContext(cwd, requestedSessionId);
-    const { git, runtime, session } = context;
-    if (
-      !session.completionReportId ||
-      session.finishReportId ||
-      session.commitReportId
-    ) {
-      throw workflowError(
-        'ROLLBACK_REQUIRES_PROJECTED_SESSION',
-        'Completion rollback requires an active projected session that has not been finished or committed.',
-        ExitCode.staleState,
-      );
-    }
-    assertPinnedRollbackState(context);
-
-    const completionReport = readImmutableReport(
-      runtime.reports,
-      session.sessionId,
-      session.completionReportId,
-    );
-    if (
-      completionReport.kind !== 'completion' ||
-      completionReport.changeId !== session.changeId ||
-      completionReport.taskId !== session.taskId ||
-      completionReport.parentReportId !== session.latestCheckReportId
-    ) {
-      throw staleReport('COMPLETION_REPORT_STALE');
-    }
-    const completedTaskIds = reportTaskIds(
-      completionReport,
-      'COMPLETION_REPORT_STALE',
-    );
-    const transitionPaths = reportStringArray(
-      completionReport,
-      'transitionPaths',
-      'COMPLETION_REPORT_STALE',
-    );
-    const configuredTransitionPaths = completionDocumentPaths(
-      git.repositoryRoot,
-    );
-    if (
-      transitionPaths.some(
-        (documentPath) => !configuredTransitionPaths.includes(documentPath),
-      )
-    ) {
-      throw staleReport('COMPLETION_REPORT_STALE');
-    }
-
-    const tasksPathRelative = `${context.config.changeRoot}/${session.changeId}/tasks.md`;
-    assertProjectionPathClassification(
-      completionReport,
-      classifyProjectionPaths(
-        reportStringArray(
-          completionReport,
-          'changedPaths',
-          'COMPLETION_REPORT_STALE',
-        ),
-        [tasksPathRelative],
-        transitionPaths,
-      ),
-      'COMPLETION_REPORT_STALE',
-    );
-    const tasksPath = path.join(git.repositoryRoot, tasksPathRelative);
-    const baselineTasks = readFileAtCommit(
-      git.repositoryRoot,
-      session.baseline.head,
-      tasksPathRelative,
-    );
-    if (baselineTasks === undefined) {
-      throw staleReport('COMPLETION_REPORT_STALE');
-    }
-    const projectedTasks = fs.readFileSync(tasksPath, 'utf8');
-    assertExactTaskProjection(baselineTasks, projectedTasks, completedTaskIds);
-    if (
-      reportString(
-        completionReport,
-        'projectionSourceDigest',
-        'COMPLETION_REPORT_STALE',
-      ) !== digestTaskContent(baselineTasks)
-    ) {
-      throw staleReport('COMPLETION_REPORT_STALE');
-    }
-    managedDocuments.validateManagedDocuments(git.repositoryRoot);
-
-    const documentMutations = transitionPaths.map((documentPath) => {
-      const absolutePath = path.join(git.repositoryRoot, documentPath);
-      return {
-        path: documentPath,
-        before: readFileAtCommit(
-          git.repositoryRoot,
-          session.baseline.head,
-          documentPath,
-        ),
-        after: fs.readFileSync(absolutePath, 'utf8'),
-      } satisfies GeneratedDocumentMutation;
-    });
-    const restoredPaths = [...transitionPaths, tasksPathRelative].sort();
-    const rolledBackAt = new Date().toISOString();
-    const completionReportId = session.completionReportId;
-    const {
-      latestCheckReportId: _check,
-      completionReportId: _completion,
-      ...reset
-    } = session;
-    const resetSession: WorkflowSession = reset;
-    const sessionPath = path.join(
-      runtime.sessions,
-      `${session.sessionId}.json`,
-    );
-    let rollbackRecordPath: string | undefined;
-
-    try {
-      restoreTaskProjection(tasksPath, projectedTasks, baselineTasks);
-      rollbackGeneratedDocuments(git.repositoryRoot, documentMutations);
-      assertPinnedRollbackState(context);
-      if (
-        JSON.stringify(readSessionFile(sessionPath)) !== JSON.stringify(session)
-      ) {
-        throw workflowError(
-          'SESSION_CHANGED_DURING_TRANSITION',
-          'The session changed before its completion rollback could be persisted.',
-          ExitCode.staleState,
-        );
-      }
-
-      const record = {
-        schemaVersion: 1,
-        kind: 'completion-rollback',
-        sessionId: session.sessionId,
-        changeId: session.changeId,
-        taskId: session.taskId,
-        completionReportId,
-        rolledBackAt,
-        reason,
-        restoredPaths,
-      } as const;
-      const recordContent = `${JSON.stringify(record, null, 2)}\n`;
-      const rollbackRecordId = crypto
-        .createHash('sha256')
-        .update(recordContent)
-        .digest('hex');
-      const rollbackDirectory = path.join(
-        runtime.root,
-        'completion-rollbacks',
-        session.sessionId,
-      );
-      fs.mkdirSync(rollbackDirectory, { recursive: true });
-      assertPlainDirectory(runtime.root);
-      assertPlainDirectory(path.join(runtime.root, 'completion-rollbacks'));
-      assertPlainDirectory(rollbackDirectory);
-      rollbackRecordPath = path.join(
-        rollbackDirectory,
-        `${rollbackRecordId}.json`,
-      );
-      writeJsonAtomic(rollbackRecordPath, record);
-      writeJsonAtomic(sessionPath, resetSession);
-
-      return {
-        session: resetSession,
-        completionReportId,
-        rollbackRecordId,
-        restoredPaths,
-        rolledBackAt,
-        reason,
-      };
-    } catch (error) {
-      if (rollbackRecordPath) {
-        fs.rmSync(rollbackRecordPath, { force: true });
-      }
-      writePlainFile(tasksPath, projectedTasks);
-      for (const mutation of documentMutations) {
-        writePlainFile(
-          path.join(git.repositoryRoot, mutation.path),
-          mutation.after,
-        );
-      }
-      throw error;
-    }
-  }
-
   function recoverFinalize(
     cwd: string,
     requestedSessionId: string,
@@ -2512,7 +2230,6 @@ export function createFinalizationService(
     }
   }
   return Object.freeze({
-    rollbackCompletion,
     recoverFinalize,
     finalizeSession,
     finalizeProtectedTaskApplyUnderGrant,

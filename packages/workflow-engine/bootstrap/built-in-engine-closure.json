@@ -1038,7 +1038,7 @@
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:5bb2198178324e1652f6d65ecb83a57eed4254a0382ab88a097aa31e68b612bc"
+      "digest": "sha256:45de126f6a82413e13c737c1c3ab5a1eb5d282a027d10d2eabb83f9f757d18f0"
     },
     {
       "path": "src/application/finalize/predecessor-reconciliation.ts",
@@ -1578,7 +1578,7 @@
     {
       "path": "src/composition-root/finalization-production.ts",
       "mode": "100644",
-      "digest": "sha256:c7c03014dd884baf29a5bf2d3e42db60ebb42844c00f77ccb81db6ce309bd093"
+      "digest": "sha256:c5bf7a1277848b4f83f54197c60ef327e965310be59c0a198f208d8b6c5989c2"
     },
     {
       "path": "src/composition-root/git-authority-candidate-apply-production.ts",
@@ -3221,6 +3221,11 @@
       "digest": "sha256:0172290ede230b57f9c3bc74519355c3443752088a0ad6432aa57d17b4d4ec14"
     },
     {
+      "path": "src/modules/lifecycle/completion-rollback.ts",
+      "mode": "100644",
+      "digest": "sha256:50fc2d87592c7b05d223d6e9d1814a85ea47879538cd98b879abfc9c2628d29f"
+    },
+    {
       "path": "src/modules/lifecycle/contract-digests.ts",
       "mode": "100644",
       "digest": "sha256:cc22959c4379ac749fdce0db6dbca554c3ccaa0a07dc7319419c49f385f81070"
@@ -3269,6 +3274,11 @@
       "path": "src/modules/lifecycle/session-inspection.ts",
       "mode": "100644",
       "digest": "sha256:3ddec0af38fb814becb441370227570ca9d7b018758e982f55c772866345b25f"
+    },
+    {
+      "path": "src/modules/lifecycle/workflow-report.ts",
+      "mode": "100644",
+      "digest": "sha256:11303a1fd6db352a2509e747d4d7faf0b03ca44cf5dbc996cf79c8f08311ca07"
     },
     {
       "path": "src/modules/lifecycle/workflow-session-contract.ts",
@@ -3834,6 +3844,11 @@
       "path": "src/runtime/managed-documents/ownership/reviewed-mutation-policy.ts",
       "mode": "100644",
       "digest": "sha256:7054849b058bd467a29ee8118b98c58cb973c5740a19702a293c0cf0594242f6"
+    },
+    {
+      "path": "src/runtime/managed-documents/transaction/completion-rollback.ts",
+      "mode": "100644",
+      "digest": "sha256:91537e62c41cad35a12694fb65a7fb7da072251a374a7e2bb2e3590b7878d500"
     },
     {
       "path": "src/runtime/managed-documents/transaction/document-refresh.ts",
@@ -5268,12 +5283,12 @@
     {
       "path": "src/runtime/storage-journal/report-store.ts",
       "mode": "100644",
-      "digest": "sha256:31707ac964b8f9a7cc33a747ee229e773a069edba9eb9c0472274eb0783bea63"
+      "digest": "sha256:41568ac5364e243d62bdecd093a5ad5a0653f7d0fa7702283cb97df0434ca1db"
     },
     {
       "path": "src/runtime/storage-journal/report-validation.ts",
       "mode": "100644",
-      "digest": "sha256:8cc824f1edac00ac3526a612db16674bec122f11d59373950bf8f581ab9a7a23"
+      "digest": "sha256:cfb4d75b8af3d081164258b5ae82f97f0a4db7c9f1b5f5ffc8200bf6b39cbf4b"
     },
     {
       "path": "src/runtime/storage-journal/role-context-sharing-store.ts",

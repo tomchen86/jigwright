@@ -8,7 +8,8 @@
  */
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
 import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
-import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import { staleReport } from '../../modules/lifecycle/workflow-report.ts';
+export { staleReport };
 import type { ProjectionPathClassification } from '../../modules/projection/engine-projection-registry.ts';
 import { readImmutableReport, type WorkflowReport } from './report-store.ts';
 import { runtimePaths } from '../session-workspace/session-store.ts';
@@ -181,14 +182,6 @@ export function reportString(
     throw staleReport(errorCode);
   }
   return value;
-}
-
-export function staleReport(code: string) {
-  return workflowError(
-    code,
-    'The workflow report no longer matches the exact repository projection.',
-    ExitCode.staleState,
-  );
 }
 
 function same(left: unknown, right: unknown): boolean {
