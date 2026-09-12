@@ -16,7 +16,7 @@ import test from 'node:test';
 import { dispatchAsync } from '../bootstrap/workflow-engine-host.ts';
 import { createOpenSpecAdapter } from '../src/composition-root/openspec-adapter-production.ts';
 import type { CentralGrantRequestPortV1 } from '@jigwright/core/central-grant-port';
-import { createSystemDocumentFailGrantResult } from '../src/entrypoints/cli/system-document-fail-grant-cli.ts';
+import { createSystemDocumentFailGrantResult } from '../bootstrap/workflow-engine-host.ts';
 import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
 import {
   createFixtureRepository,
@@ -35,7 +35,7 @@ import { commitPlanningTransition as commitPlanningTransitionWithContractReader 
 import {
   finalizeTask,
   finalizeSession,
-} from '../src/composition-root/finalization-production.ts';
+} from './support/local-engine-selection-host.ts';
 import { systemDocumentDispositions } from '../src/composition-root/lifecycle-context.ts';
 import { SYSTEM_DOCUMENT_GRANT_REASON } from '../src/application/finalize/system-document-grant.ts';
 import { createProductionSystemDocumentGrantService } from '../src/composition-root/grant-production.ts';

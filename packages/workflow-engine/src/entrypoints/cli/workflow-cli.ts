@@ -1,4 +1,14 @@
 #!/usr/bin/env node
+import type { WorkflowGrantServices } from '../../composition-root/grant-production.ts';
+import type {
+  ProductionFinalizationService,
+  ProductionSessionCheck,
+} from '../../composition-root/cli-command-services.ts';
+import type { ArchivePullRequestCliDependencies } from '../../composition-root/archive-cli-production.ts';
+import { dispatchArchivePullRequest as dispatchArchivePullRequestWithDependencies } from './archive-cli.ts';
+import { createTaskLifecycleCommands } from './task-lifecycle-cli.ts';
+import { createFailGrantCli } from './fail-grant-cli.ts';
+import { createSystemDocumentFailGrantCli } from './system-document-fail-grant-cli.ts';
 import { productionChangeRoutingInspector } from '../../composition-root/change-routing-observation-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../../composition-root/consumer-contract-production.ts';
 const validateHandoff = validateHandoffWithContractReader.bind(
@@ -40,7 +50,7 @@ import {
 
 import { dispatchDocumentRefreshCommand } from './document-refresh-cli.ts';
 import { systemDocumentDispositions } from '../../composition-root/lifecycle-context.ts';
-import { createSystemDocumentFailGrantResult } from './system-document-fail-grant-cli.ts';
+
 import { collectEngineMetrics } from '../../application/control-plane/engine-metrics.ts';
 import {
   WorkflowError,
@@ -59,17 +69,7 @@ import {
 } from '../../runtime/repository-transaction/git.ts';
 import { validateHandoff as validateHandoffWithContractReader } from '../../adapters/consumer/repository/handoff/handoff.ts';
 import { runRepositoryHook } from '../../composition-root/repository-hooks-production.ts';
-import {
-  isHumanGrantCliInvocation,
-  runHumanGrantCli,
-} from './human-grant-cli.ts';
-import {
-  requestChangeRoleAssignmentGrant,
-  requestChangeRoutingContinuationGrant,
-  requestProtectedTaskApplyGrant,
-  requestProtectedTaskApplyRecoveryGrant,
-  requestProtectedTaskApplyDescendantSettlementGrant,
-} from '../../composition-root/grant-production.ts';
+
 import { dispatchGovernanceIntakeCommand } from './governance-intake-cli.ts';
 import { dispatchChangeRoutingCommand } from './change-routing-cli.ts';
 
@@ -108,36 +108,11 @@ import {
   usage,
   usageText,
 } from './cli-input.ts';
-import {
-  type ChangeRoutingGrantRequest,
-  createProposeProtectedBaseFailGrantResult,
-  createRoleAssignmentFailGrantResult,
-  createProtectedTaskApplyFailGrantResult,
-  createProtectedTaskApplyDescendantSettlementFailGrantResult,
-  createProtectedTaskApplyRecoveryFailGrantResult,
-  createWorkRegistryFailGrantResult,
-  createChangeRoutingFailGrantResult,
-} from './fail-grant-cli.ts';
-import {
-  dispatchArchivePullRequest,
-  dispatchArchiveCommand,
-} from './archive-cli.ts';
-import {
-  currentGovernanceIntakeCounts,
-  dispatchTaskLifecycleCommand,
-} from './task-lifecycle-cli.ts';
+import { type ChangeRoutingGrantRequest } from './fail-grant-cli.ts';
+import { dispatchArchiveCommand } from './archive-cli.ts';
+import { currentGovernanceIntakeCounts } from './task-lifecycle-cli.ts';
 import type { createAuthorityCommands } from './authority-management-cli.ts';
 import type { HarnessBootstrapProduction } from '../../composition-root/harness-bootstrap-production.ts';
-
-export {
-  createProtectedTaskApplyDescendantSettlementFailGrantResult,
-  createProtectedTaskApplyFailGrantResult,
-  createProtectedTaskApplyRecoveryFailGrantResult,
-  createChangeRoutingFailGrantResult,
-  createRoleAssignmentFailGrantResult,
-  createProposeProtectedBaseFailGrantResult,
-  createWorkRegistryFailGrantResult,
-} from './fail-grant-cli.ts';
 export { createArchivePullRequestCliDispatcherForTesting } from './archive-cli.ts';
 export { dispatchPreparedTaskStrategyProvider } from './task-lifecycle-cli.ts';
 
@@ -317,8 +292,49 @@ function printFailure(
 export function createWorkflowCli({
   dispatchAuthorityCommand,
   createHarnessBootstrapDependencies,
+  workflowGrants,
+  sessionLifecycle,
+  archiveDependencies,
 }: ReturnType<typeof createAuthorityCommands> &
-  Pick<HarnessBootstrapProduction, 'createHarnessBootstrapDependencies'>) {
+  Pick<HarnessBootstrapProduction, 'createHarnessBootstrapDependencies'> & {
+    workflowGrants: WorkflowGrantServices;
+    sessionLifecycle: ProductionFinalizationService & {
+      checkSession: ProductionSessionCheck;
+    };
+    archiveDependencies: ArchivePullRequestCliDependencies;
+  }) {
+  const {
+    requestProtectedTaskApplyGrant,
+    requestProtectedTaskApplyRecoveryGrant,
+    requestProtectedTaskApplyDescendantSettlementGrant,
+    requestProviderInvocationCancellationGrant,
+    requestChangeRoleAssignmentGrant,
+    requestProtectedBaseInitializationGrant,
+    requestArchivePullRequestPublicationGrant,
+    requestWorkRegistryReviewGrant,
+    requestWorkRegistryPromotionGrant,
+    requestChangeRoutingContinuationGrant,
+    requestInvestigationV3Grant,
+    requestInvestigationV3PublicationGrant,
+  } = workflowGrants;
+  const failGrantCli = createFailGrantCli(workflowGrants);
+  const {
+    createProtectedTaskApplyDescendantSettlementFailGrantResult,
+    createProtectedTaskApplyFailGrantResult,
+    createProtectedTaskApplyRecoveryFailGrantResult,
+    createChangeRoutingFailGrantResult,
+    createRoleAssignmentFailGrantResult,
+    createProposeProtectedBaseFailGrantResult,
+    createWorkRegistryFailGrantResult,
+  } = failGrantCli;
+  const { createSystemDocumentFailGrantResult } =
+    createSystemDocumentFailGrantCli(
+      workflowGrants.createProductionCentralGrantRequestPort,
+    );
+  const { dispatchTaskLifecycleCommand } =
+    createTaskLifecycleCommands(sessionLifecycle);
+  const dispatchArchivePullRequest = (args: string[], cwd: string) =>
+    dispatchArchivePullRequestWithDependencies(args, cwd, archiveDependencies);
   function runCli(argv: string[], cwd = process.cwd()): number {
     const json = hasTerminalJsonOutputFlag(argv);
     const args = json ? argv.slice(0, -1) : [...argv];
@@ -884,6 +900,8 @@ export function createWorkflowCli({
     }
   }
   return {
+    ...failGrantCli,
+    createSystemDocumentFailGrantResult,
     runCli,
     runCliAsync,
     dispatchAsync,

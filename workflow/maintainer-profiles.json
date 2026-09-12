@@ -23,6 +23,7 @@
       ],
       "forbiddenPaths": [
         "packages/workflow-engine/bootstrap/maintainer-authority-production.ts",
+        "packages/workflow-engine/bootstrap/session-lifecycle-production.ts",
         "packages/workflow-engine/bootstrap/workflow-engine-host.ts",
         "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
         "packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts",
@@ -154,6 +155,7 @@
       ],
       "forbiddenPaths": [
         "packages/workflow-engine/bootstrap/maintainer-authority-production.ts",
+        "packages/workflow-engine/bootstrap/session-lifecycle-production.ts",
         "packages/workflow-engine/bootstrap/workflow-engine-host.ts",
         "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
         "packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts",

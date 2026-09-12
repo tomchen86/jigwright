@@ -32,7 +32,7 @@ import {
   WorkflowError,
   workflowError,
 } from '../src/foundation/errors/errors.ts';
-import { finalizeTask } from '../src/composition-root/finalization-production.ts';
+import { finalizeTask } from './support/local-engine-selection-host.ts';
 import { reviseTask } from '../src/application/revise/task-revision.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {

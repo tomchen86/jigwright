@@ -40,13 +40,12 @@ import {
   createGitHubApiArchiveRulesetObserver,
   createGitExactArchiveBranchPublisher,
 } from './archive-pr-publication-production.ts';
-import { requestArchivePullRequestPublicationGrant } from './grant-production.ts';
 
 export type ArchivePullRequestCliDependencies = Readonly<{
   discover: typeof discoverArchivePullRequestCandidates;
   inspect: typeof inspectArchivePublicationPreparation;
   prepare: typeof preparePostMergeArchivePullRequest;
-  requestGrant: typeof requestArchivePullRequestPublicationGrant;
+  requestGrant: WorkflowGrantServices['requestArchivePullRequestPublicationGrant'];
   publish: typeof publishPostMergeArchivePullRequest;
   loadAdapter(): Promise<GitHubArchiveAdapterModuleV1>;
   createRulesetObserver(
@@ -65,8 +64,10 @@ export type ArchivePullRequestCliDependencies = Readonly<{
   fetch?: typeof globalThis.fetch;
 }>;
 
-export const ARCHIVE_PULL_REQUEST_CLI_DEPENDENCIES: ArchivePullRequestCliDependencies =
-  Object.freeze({
+export function createArchivePullRequestCliDependencies(
+  requestArchivePullRequestPublicationGrant: WorkflowGrantServices['requestArchivePullRequestPublicationGrant'],
+): ArchivePullRequestCliDependencies {
+  return Object.freeze({
     discover: discoverArchivePullRequestCandidates,
     inspect: inspectArchivePublicationPreparation,
     prepare: preparePostMergeArchivePullRequest,
@@ -79,3 +80,5 @@ export const ARCHIVE_PULL_REQUEST_CLI_DEPENDENCIES: ArchivePullRequestCliDepende
     createBranchPublisher: createGitExactArchiveBranchPublisher,
     resolvePublicationTarget: resolveArchivePullRequestPublicationTarget,
   });
+}
+import type { WorkflowGrantServices } from './grant-production.ts';

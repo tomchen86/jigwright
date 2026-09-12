@@ -35,14 +35,14 @@ import { renderHandoff as renderHandoffWithContractReader } from '../src/adapter
 import {
   completeTask,
   finalizeTask,
-} from '../src/composition-root/finalization-production.ts';
+} from './support/local-engine-selection-host.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {
   readImmutableReport,
   type WorkflowReport,
 } from '../src/runtime/storage-journal/report-store.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
 import {
-  checkSession,
   getSession,
   startSession,
 } from '../src/application/execute-task/session.ts';
@@ -187,7 +187,7 @@ test('the public handoff command is read-only and refuses render', () => {
         '--experimental-strip-types',
         path.resolve(
           import.meta.dirname,
-          '../src/entrypoints/cli/workflow-cli.ts',
+          '../bootstrap/workflow-engine-host.ts',
         ),
         'handoff',
         'render',

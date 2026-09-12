@@ -20,7 +20,7 @@ import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { runGitWithEnvironment } from '../src/runtime/repository-transaction/git.ts';
-import { finalizeTask } from '../src/composition-root/finalization-production.ts';
+import { finalizeTask } from './support/local-engine-selection-host.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
@@ -31,8 +31,8 @@ import { sealTaskStrategyRed } from '../src/application/execute-task/task-strate
 import { beginTaskStrategyImplementation } from '../src/composition-root/task-strategy-production.ts';
 import { readTaskStrategyImplementationResultBinding } from '../src/runtime/storage-journal/task-strategy-provider-store.ts';
 import { beginTaskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
 import {
-  checkSession,
   inspectSession,
   persistSession,
 } from '../src/application/finalize/verification.ts';

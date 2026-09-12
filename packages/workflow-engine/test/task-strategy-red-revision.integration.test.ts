@@ -16,7 +16,7 @@ import {
 } from '../src/application/execute-task/task-strategy-patch.ts';
 import { beginTaskStrategyRedRevision } from '../src/composition-root/task-strategy-red-revision-production.ts';
 import { parseTaskStrategyRedRevisionRequest } from '../src/runtime/storage-journal/task-strategy-red-revision-store.ts';
-import { checkSession } from '../src/application/finalize/verification.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
 import {
   createCrossAgentFixture,
   runWorkflowCli,

@@ -1,3 +1,4 @@
+import type { LocalEngineSelectionReaders } from '../../modules/authority/local-engine-selection.ts';
 import {
   createDocumentationClosureRecord,
   parseDocumentationReviewCapture,
@@ -1694,6 +1695,7 @@ export function findTaskCommits(
 
 /** Required reconciliation capability is bound once at the production boundary. */
 export function createFinalizationService(
+  localEngineSelection: LocalEngineSelectionReaders,
   manifestOperations: MaintainerManifestOperations,
   taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
   routingAdmissionReader: ChangeRoutingAdmissionReader,
@@ -2156,6 +2158,7 @@ export function createFinalizationService(
   ): CompleteTaskResult {
     assertCurrentTaskMayUseOrdinaryFinalize(cwd, requestedSessionId);
     reconcileSessionChecksAfterLocalEngineAdoption(
+      localEngineSelection,
       manifestOperations,
       routingAdmissionReader,
       cwd,

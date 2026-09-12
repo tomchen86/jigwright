@@ -36,7 +36,7 @@ import { validateRepositoryStateAtCommit } from '../src/composition-root/reposit
 import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
 import { readSystemDescriptionSnapshot } from '../src/runtime/repository-transaction/system-description-snapshot.ts';
 import { validateManagedDocuments } from '../src/composition-root/managed-documents-production.ts';
-import { finalizeTask } from '../src/composition-root/finalization-production.ts';
+import { finalizeTask } from './support/local-engine-selection-host.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {

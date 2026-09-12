@@ -6,12 +6,12 @@ import { startSession } from '../src/application/execute-task/session.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-import { finalizeTask } from '../src/composition-root/finalization-production.ts';
+import { finalizeTask } from './support/local-engine-selection-host.ts';
 import {
   inspectTaskStrategyTransaction,
   sealTaskStrategyRed,
 } from '../src/application/execute-task/task-strategy-execution.ts';
-import { checkSession } from '../src/application/finalize/verification.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
 import { runtimeRoot, sourceRepositoryRoot, git } from './fixture.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { importTaskStrategyPatch } from '../src/application/execute-task/task-strategy-patch.ts';

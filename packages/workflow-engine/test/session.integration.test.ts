@@ -9,10 +9,8 @@ import {
   runtimeRoot,
 } from './fixture.ts';
 import assert from 'node:assert/strict';
-import {
-  startSession,
-  checkSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
 import { abortSession } from '../src/composition-root/task-session-production.ts';
 import fs from 'node:fs';
 import path from 'node:path';

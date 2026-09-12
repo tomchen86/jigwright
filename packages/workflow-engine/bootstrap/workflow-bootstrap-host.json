@@ -1,12 +1,12 @@
 {
   "kind": "workflow-bootstrap-host.v1",
   "entrypoint": "bootstrap/workflow-engine-host.ts",
-  "engineManifestDigest": "sha256:2e9171ba7943b8559506cb781e013bbb0a06af99bc7415a6c405280b1f124081",
+  "engineManifestDigest": "sha256:081f2ab1faafe990b1ff1015fe2414cd2e7fc745b971a34167e8384de6392a97",
   "files": [
     {
       "path": "bootstrap/built-in-engine-closure-pin.ts",
       "mode": "100644",
-      "digest": "sha256:c35510fb9971490521961b4d3a9b3164a4ed31e7d592bfc2c85bbaee90c47163"
+      "digest": "sha256:d285f8b501a65388edb4759a3141c969388bebe15f36690bd6eb2fec97aa9d56"
     },
     {
       "path": "bootstrap/candidate-engine-selection.ts",
@@ -86,7 +86,7 @@
     {
       "path": "bootstrap/control-plane-bootstrap-values.ts",
       "mode": "100644",
-      "digest": "sha256:83b4ba8cbeb7f161260dd84a91c670cebce8989fdc4daad8a850a57818c2a50a"
+      "digest": "sha256:fb4ec41c318170e7ce45d1422ba4c9df30a96078a3a8778d4625f8a039b7837b"
     },
     {
       "path": "bootstrap/control-plane-trust.ts",
@@ -104,6 +104,11 @@
       "digest": "sha256:70726fcdcc90aceee2b2cf42da3418e4d3bb0c3dcb7cfa91af592d04f53f68b6"
     },
     {
+      "path": "bootstrap/session-lifecycle-production.ts",
+      "mode": "100644",
+      "digest": "sha256:dbb68b4d2d9f7b2deae98f165e2b7fbb7e95911334f4980aca84cc0e55b0ca49"
+    },
+    {
       "path": "bootstrap/workflow-bootstrap-host.ts",
       "mode": "100644",
       "digest": "sha256:d35b87548f833424ff8426a56863a702ad91fb1c424a5a2bc2e0a4be48eabbe7"
@@ -111,7 +116,7 @@
     {
       "path": "bootstrap/workflow-engine-host.ts",
       "mode": "100644",
-      "digest": "sha256:a1efb26141e398cd3af86b65be903d59f07140479b9c3a3a5f07637701d310d5"
+      "digest": "sha256:659a5c7aae565d6d3bbd1121463bfdc44ebe4c9a7b4bd866e0081a84c31c2daf"
     }
   ]
 }

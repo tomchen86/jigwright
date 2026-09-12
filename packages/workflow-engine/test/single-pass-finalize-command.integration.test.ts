@@ -25,7 +25,7 @@ import test from 'node:test';
 
 import { commitFacts } from '../src/runtime/repository-transaction/git-transitions.ts';
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import { finalizeSession } from '../src/composition-root/finalization-production.ts';
+import { finalizeSession } from './support/local-engine-selection-host.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {
   getSession,
@@ -331,10 +331,7 @@ function runCli(
     process.execPath,
     [
       '--experimental-strip-types',
-      path.resolve(
-        import.meta.dirname,
-        '../src/entrypoints/cli/workflow-cli.ts',
-      ),
+      path.resolve(import.meta.dirname, '../bootstrap/workflow-engine-host.ts'),
       ...args,
     ],
     { cwd: repository, encoding: 'utf8' },

@@ -422,10 +422,7 @@ export function runCli(
     process.execPath,
     [
       '--experimental-strip-types',
-      path.resolve(
-        import.meta.dirname,
-        '../src/entrypoints/cli/workflow-cli.ts',
-      ),
+      path.resolve(import.meta.dirname, '../bootstrap/workflow-engine-host.ts'),
       ...args,
     ],
     {

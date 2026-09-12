@@ -23,7 +23,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import { finalizeTask } from '../src/composition-root/finalization-production.ts';
+import { finalizeTask } from './support/local-engine-selection-host.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {
   getSession,

@@ -23,6 +23,7 @@ export const BOOTSTRAP_RUNTIME_NAMES = [
   'control-plane-trust.ts',
   'harness-bootstrap-production.ts',
   'maintainer-authority-production.ts',
+  'session-lifecycle-production.ts',
   'workflow-bootstrap-host.ts',
   'workflow-engine-host.ts',
 ] as const;
@@ -36,6 +37,7 @@ export function sealFixtureWorkflowHost(packageRoot: string): void {
     'candidate-engine-selection.ts',
     'harness-bootstrap-production.ts',
     'maintainer-authority-production.ts',
+    'session-lifecycle-production.ts',
   ]) {
     fs.writeFileSync(path.join(bootstrap, name), 'export {};\n', {
       mode: 0o644,

@@ -11,10 +11,8 @@ import {
   adoptCurrentTaskStrategyCorrection,
 } from '../src/application/execute-task/task-strategy-patch.ts';
 import assert from 'node:assert/strict';
-import {
-  checkSession,
-  inspectSession,
-} from '../src/application/finalize/verification.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
+import { inspectSession } from '../src/application/finalize/verification.ts';
 import {
   readCurrentTaskStrategyGreenFailure,
   resolveCurrentTaskStrategyCorrection,

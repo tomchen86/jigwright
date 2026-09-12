@@ -29,7 +29,7 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import { loadWorkflowConfig } from '../src/runtime/repository-observation/workflow-configuration.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import { finalizeTask } from '../src/composition-root/finalization-production.ts';
+import { finalizeTask } from './support/local-engine-selection-host.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-store.ts';
@@ -501,10 +501,7 @@ function runCli(
     process.execPath,
     [
       '--experimental-strip-types',
-      path.resolve(
-        import.meta.dirname,
-        '../src/entrypoints/cli/workflow-cli.ts',
-      ),
+      path.resolve(import.meta.dirname, '../bootstrap/workflow-engine-host.ts'),
       ...args,
     ],
     {

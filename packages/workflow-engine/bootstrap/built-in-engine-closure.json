@@ -1008,7 +1008,7 @@
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:77ee3159e7f274b51776d436490496de222c5d468c4a470938f7b9855057633d"
+      "digest": "sha256:a83a0c2bafdb009f72fdb352d831b608a69f92d373bf70748d247f6135d24284"
     },
     {
       "path": "src/application/finalize/predecessor-reconciliation.ts",
@@ -1113,7 +1113,7 @@
     {
       "path": "src/application/finalize/verification.ts",
       "mode": "100644",
-      "digest": "sha256:2eb155f14e75a7774ee1f293232bf5803bb81ff643dc747e5189a10b7c8d6132"
+      "digest": "sha256:dc414e32e7b0d648777909033e6438dcad8d48d8b541393f9cf147016773a2cb"
     },
     {
       "path": "src/application/governance-intake/governance-findings.ts",
@@ -1398,7 +1398,7 @@
     {
       "path": "src/composition-root/archive-cli-production.ts",
       "mode": "100644",
-      "digest": "sha256:302ee13cd61b11c0175c7a5791ae3b9f0ec623846c60fc2e56ae1731b10e269d"
+      "digest": "sha256:20d6d989e8271ebe8fe24b5955efd13235caf7e0ae7aeae767c3b1b8ec3dd0b1"
     },
     {
       "path": "src/composition-root/archive-pr-publication-production.ts",
@@ -1493,7 +1493,7 @@
     {
       "path": "src/composition-root/cli-command-services.ts",
       "mode": "100644",
-      "digest": "sha256:c3e8b48edc4a663e4ee0ce7dca215661a632576bdad5c44670bd565819ae2acd"
+      "digest": "sha256:8dd04a8e2f821fce776025595f8336c9b7353dc2ba928a2e1a60b41419495787"
     },
     {
       "path": "src/composition-root/collaboration-grant-production.ts",
@@ -1533,7 +1533,7 @@
     {
       "path": "src/composition-root/finalization-production.ts",
       "mode": "100644",
-      "digest": "sha256:ee50a17e03ea6cf056d3f3c830a8be7c54f5a3fd33f421307852705a21624233"
+      "digest": "sha256:346d1c4be75e51914e0c98ac7bac3351047b4983149215b306bf6f540423adf4"
     },
     {
       "path": "src/composition-root/git-authority-candidate-apply-production.ts",
@@ -1563,7 +1563,7 @@
     {
       "path": "src/composition-root/grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:07499eecf5b3fa58958100bce58a0f90b8841cceb5d935c15dd7b687c03fa18e"
+      "digest": "sha256:f63e997d741d51c869f8361bae671fe405b7cc31b12c333c1519270ddbc82056"
     },
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
@@ -1733,7 +1733,7 @@
     {
       "path": "src/composition-root/protected-task-apply-grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:d642586db86676f96b1be4ac6cb5f41f34f9f6cd7f2b77b785e53f3fc2030c93"
+      "digest": "sha256:8c291adfcf706b73fe5548d7a3ffafec4c73af30cb5cc82a764cc31673a4bf89"
     },
     {
       "path": "src/composition-root/protected-task-apply-recovery-grant-production.ts",
@@ -1888,7 +1888,7 @@
     {
       "path": "src/entrypoints/cli/archive-cli.ts",
       "mode": "100644",
-      "digest": "sha256:be57dd1bdf26a9c44ff4a032389db53debe4c2af4e6e421552bbe35228ef40e1"
+      "digest": "sha256:88ea92852a5229566a1d273e9d07558e15c7f51b20f32c44bd61f64b7791f558"
     },
     {
       "path": "src/entrypoints/cli/authority-audit-cli.ts",
@@ -1948,7 +1948,7 @@
     {
       "path": "src/entrypoints/cli/fail-grant-cli.ts",
       "mode": "100644",
-      "digest": "sha256:2f0eebd7bc1fb759acb72bf7f398610581d122a2d3d025dc5102535b8b694589"
+      "digest": "sha256:b2bec280ea1244384bf76a5dca2156d721a60090df88d84f1cb2d875cca1396e"
     },
     {
       "path": "src/entrypoints/cli/governance-intake-cli.ts",
@@ -1968,7 +1968,7 @@
     {
       "path": "src/entrypoints/cli/human-grant-cli.ts",
       "mode": "100644",
-      "digest": "sha256:01d5eb70d1b4aadffac590c76a92d120283d046cf0d1cbee6e41680163f1a534"
+      "digest": "sha256:13786032bddc45cc8e8038a46b0f9d889e72a631a87f51095c891d962df8e91c"
     },
     {
       "path": "src/entrypoints/cli/intervention-control-bootstrap-cli.ts",
@@ -1998,12 +1998,12 @@
     {
       "path": "src/entrypoints/cli/system-document-fail-grant-cli.ts",
       "mode": "100644",
-      "digest": "sha256:7c3ed2410224962f97e0592d5d4ec356ad7f73d1582a24d68fd8b9e4ed5513a5"
+      "digest": "sha256:7ebee887566ac60bf7fca07ce400c2b226bbdeb8843e24c36961f1fc1e49e84b"
     },
     {
       "path": "src/entrypoints/cli/task-lifecycle-cli.ts",
       "mode": "100644",
-      "digest": "sha256:bbe1bbb0bbf94b9d8ef7ff9a8d056169f02e7698fde53b4761c59a1182cf032e"
+      "digest": "sha256:017a3448cdc955b4515781381a437f1e7423a44fabaaae8c3d4d013bc4ff4d29"
     },
     {
       "path": "src/entrypoints/cli/task-review-cli-input.ts",
@@ -2013,7 +2013,7 @@
     {
       "path": "src/entrypoints/cli/workflow-cli.ts",
       "mode": "100644",
-      "digest": "sha256:1bc8565498804f9bbeca0466afba27094491fd864988d410e67db465f62eb23d"
+      "digest": "sha256:92c81760754feb329c13e6475fc2052da0ee1a566f58187fe8e4d717cae8ee9b"
     },
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
@@ -2634,6 +2634,11 @@
       "path": "src/modules/authority/intervention-control.ts",
       "mode": "100644",
       "digest": "sha256:2901e296fe61f11e4a53cca11f6f210336f58d31a4bbacded281ad83495d18c8"
+    },
+    {
+      "path": "src/modules/authority/local-engine-selection.ts",
+      "mode": "100644",
+      "digest": "sha256:3e01686352d5937eceb4260ee279c0548cf394b79df9ddea6a52c0a5bc095fb3"
     },
     {
       "path": "src/modules/authority/maintainer-candidate-contracts.ts",

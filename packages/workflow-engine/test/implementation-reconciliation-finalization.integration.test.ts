@@ -15,7 +15,7 @@ import {
 import {
   completeTask,
   finalizeTask,
-} from '../src/composition-root/finalization-production.ts';
+} from './support/local-engine-selection-host.ts';
 import {
   PLAN_REVIEW_COVERAGE,
   planReviewProviderSubmission,
@@ -39,10 +39,8 @@ import {
   readLedgerEntry,
   readLedgerIndex,
 } from '../src/runtime/storage-journal/semantic-ledger-store.ts';
-import {
-  checkSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
 import {
   applyChangeRoutingReview,
   prepareChangeRoutingReview,

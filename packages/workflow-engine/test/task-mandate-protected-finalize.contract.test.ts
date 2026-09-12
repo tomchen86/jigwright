@@ -16,7 +16,7 @@ import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coo
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import { loadGrantPolicyV2 } from '../src/runtime/repository-observation/grant-policy-reader.ts';
 import { protectedTaskApplyGrantTransitionDefinitions } from '../src/modules/authority/protected-task-apply-grant.ts';
-import { createProductionProtectedTaskApplyGrantPort } from '../src/composition-root/protected-task-apply-grant-production.ts';
+import { createProductionProtectedTaskApplyGrantPort } from './support/local-engine-selection-host.ts';
 import { issueProductionCollaborationGrant } from '../src/composition-root/collaboration-grant-production.ts';
 import {
   runtimePaths,

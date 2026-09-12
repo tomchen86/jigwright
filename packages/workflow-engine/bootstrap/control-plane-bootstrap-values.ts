@@ -77,6 +77,7 @@ export const BUILT_IN_BOOTSTRAP_RUNTIME_PATHS = [
   'packages/workflow-engine/bootstrap/control-plane-trust.ts',
   'packages/workflow-engine/bootstrap/harness-bootstrap-production.ts',
   'packages/workflow-engine/bootstrap/maintainer-authority-production.ts',
+  'packages/workflow-engine/bootstrap/session-lifecycle-production.ts',
   'packages/workflow-engine/bootstrap/workflow-bootstrap-host.ts',
   'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
 ] as const;

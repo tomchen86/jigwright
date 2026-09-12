@@ -10,7 +10,7 @@ import { taskMandateOperations } from './task-mandate-production.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { inspectProtectedTaskApplyLifecycleState } from '../application/finalize/lifecycle.ts';
-import { finalizeProtectedTaskApplyUnderGrant } from './finalization-production.ts';
+import type { ProtectedTaskApplyFinalizer } from './finalization-production.ts';
 
 import {
   type ProtectedTaskApplyFinalizationParametersV1,
@@ -54,6 +54,7 @@ export function observeCurrentProtectedTaskApply(
 }
 
 export function createProductionProtectedTaskApplyGrantPort(
+  finalizeProtectedTaskApplyUnderGrant: ProtectedTaskApplyFinalizer,
   cwd: string,
 ): ProtectedTaskApplyGrantPort {
   const repositoryRoot = discoverRepository(cwd).repositoryRoot;

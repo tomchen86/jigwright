@@ -231,13 +231,7 @@ export {
   inspectFinalizeRecoveryStatus,
   cancelFinalizeRecovery,
 } from './finalization-production.ts';
-export { rollbackCompletion } from './finalization-production.ts';
-export {
-  completeTask,
-  finishSession,
-  finalizeSession,
-  recoverFinalize,
-} from './finalization-production.ts';
+
 export {
   getSession,
   listSessions,
@@ -282,10 +276,24 @@ export const preflightTaskSession = preflightTaskSessionWithRouting.bind(
   productionChangeRoutingAdmissionReader,
 );
 import { checkSession as checkSessionWithRouting } from '../application/execute-task/session.ts';
-export const checkSession = checkSessionWithRouting.bind(
-  undefined,
-  maintainerManifestOperations,
-  productionTaskStrategyExecutionGate,
-  productionChangeRoutingAdmissionReader,
-);
+export function createProductionSessionCheck(
+  readers: LocalEngineSelectionReaders,
+) {
+  return checkSessionWithRouting.bind(
+    undefined,
+    readers,
+    maintainerManifestOperations,
+    productionTaskStrategyExecutionGate,
+    productionChangeRoutingAdmissionReader,
+  );
+}
 export { inspectTaskStrategyLifecycle } from './task-strategy-production.ts';
+
+import type { LocalEngineSelectionReaders } from './finalization-production.ts';
+export type {
+  LocalEngineSelectionReaders,
+  ProductionFinalizationService,
+} from './finalization-production.ts';
+export type ProductionSessionCheck = ReturnType<
+  typeof createProductionSessionCheck
+>;

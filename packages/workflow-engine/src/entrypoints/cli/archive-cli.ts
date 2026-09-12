@@ -19,10 +19,7 @@ import {
   ExitCode,
   WorkflowError,
 } from '../../foundation/errors/errors.ts';
-import {
-  type ArchivePullRequestCliDependencies,
-  ARCHIVE_PULL_REQUEST_CLI_DEPENDENCIES,
-} from '../../composition-root/archive-cli-production.ts';
+import { type ArchivePullRequestCliDependencies } from '../../composition-root/archive-cli-production.ts';
 import {
   type CommandResult,
   shellCommandArgument,
@@ -34,7 +31,7 @@ import {
 export async function dispatchArchivePullRequest(
   args: string[],
   cwd: string,
-  dependencies: ArchivePullRequestCliDependencies = ARCHIVE_PULL_REQUEST_CLI_DEPENDENCIES,
+  dependencies: ArchivePullRequestCliDependencies,
 ): Promise<CommandResult> {
   const [, action, ...rest] = args;
   if (action === 'doctor') {

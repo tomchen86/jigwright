@@ -60,7 +60,7 @@ test('public CLI routes guidance and advertises its commands', () => {
       0,
     );
     const cli = new URL(
-      '../src/entrypoints/cli/workflow-cli.ts',
+      '../bootstrap/workflow-engine-host.ts',
       import.meta.url,
     );
     const execute = (...args: string[]) => {

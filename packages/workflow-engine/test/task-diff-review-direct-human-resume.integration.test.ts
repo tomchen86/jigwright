@@ -31,7 +31,7 @@ import {
 } from '../src/runtime/grants/collaboration-grant-issuance.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import { finalizeTask } from '../src/composition-root/finalization-production.ts';
+import { finalizeTask } from './support/local-engine-selection-host.ts';
 import {
   verifySshSignatureWithPublicKey,
   type MaintainerSignerProvider,
@@ -634,10 +634,7 @@ function runCli(
     process.execPath,
     [
       '--experimental-strip-types',
-      path.resolve(
-        import.meta.dirname,
-        '../src/entrypoints/cli/workflow-cli.ts',
-      ),
+      path.resolve(import.meta.dirname, '../bootstrap/workflow-engine-host.ts'),
       ...args,
     ],
     {

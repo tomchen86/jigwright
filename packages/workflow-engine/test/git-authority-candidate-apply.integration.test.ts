@@ -1,3 +1,7 @@
+import {
+  createProductionCentralGrantRequestPort,
+  createProductionWorkflowGrantCoordinator,
+} from '../bootstrap/session-lifecycle-production.ts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -66,10 +70,8 @@ import {
   withRepositoryLifecycleOperationAsync,
 } from '../src/runtime/session-workspace/session-store.ts';
 import {
-  createProductionCentralGrantRequestPort,
   createProductionGitAuthorityCandidateApplyGrantCoordinator,
   createProductionGrantCoordinator,
-  createProductionWorkflowGrantCoordinator,
 } from '../src/composition-root/grant-production.ts';
 import { createFixtureRepository, isWorkflowError } from './fixture.ts';
 import {

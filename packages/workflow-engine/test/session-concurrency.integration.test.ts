@@ -30,7 +30,7 @@ import {
 import { spawnSync } from 'node:child_process';
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { commitSession } from '../src/application/finalize/lifecycle.ts';
-import { finalizeTask } from '../src/composition-root/finalization-production.ts';
+import { finalizeTask } from './support/local-engine-selection-host.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {

@@ -30,12 +30,12 @@ import {
   commitSession,
   findTaskCommits,
 } from '../src/application/finalize/lifecycle.ts';
-import { rollbackCompletion } from '../src/composition-root/finalization-production.ts';
+import { rollbackCompletion } from './support/local-engine-selection-host.ts';
 import {
   completeTask,
   finalizeTask,
   finishSession,
-} from '../src/composition-root/finalization-production.ts';
+} from './support/local-engine-selection-host.ts';
 import {
   hasExactTrailers,
   previewExactStaging,
@@ -59,8 +59,8 @@ import {
   withSessionOperation,
   writeJsonAtomic,
 } from '../src/runtime/session-workspace/session-store.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
 import {
-  checkSession,
   getSession,
   startSession,
 } from '../src/application/execute-task/session.ts';
@@ -779,7 +779,7 @@ test('finalize adds terminal policy checks only when its projection closes the t
         '--experimental-strip-types',
         path.resolve(
           import.meta.dirname,
-          '../src/entrypoints/cli/workflow-cli.ts',
+          '../bootstrap/workflow-engine-host.ts',
         ),
         'finalize',
         second.sessionId,
@@ -809,7 +809,7 @@ test('finalize adds terminal policy checks only when its projection closes the t
         '--experimental-strip-types',
         path.resolve(
           import.meta.dirname,
-          '../src/entrypoints/cli/workflow-cli.ts',
+          '../bootstrap/workflow-engine-host.ts',
         ),
         'finalize',
         second.sessionId,

@@ -48,10 +48,8 @@ import {
   resolveCurrentTaskStrategyCorrection,
 } from '../src/application/execute-task/task-strategy-correction.ts';
 import { readTaskStrategyCorrectionRound } from '../src/runtime/storage-journal/task-strategy-correction-round-store.ts';
-import {
-  checkSession,
-  inspectSession,
-} from '../src/application/finalize/verification.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
+import { inspectSession } from '../src/application/finalize/verification.ts';
 import {
   configureChecks,
   createFixtureRepository,

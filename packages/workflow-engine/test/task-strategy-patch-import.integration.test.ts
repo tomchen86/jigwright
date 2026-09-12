@@ -19,7 +19,7 @@ import {
   readTaskStrategyPatchRecord,
   readTaskStrategyPatchImportReceipt,
 } from '../src/runtime/storage-journal/task-strategy-patch-store.ts';
-import { checkSession } from '../src/application/finalize/verification.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
 import { runtimeRoot } from './fixture.ts';
 import { createHash } from 'node:crypto';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';

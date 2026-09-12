@@ -15,7 +15,7 @@ import {
 import {
   createProductionWorkflowGrantCoordinator,
   propagateInvestigationV3PublicationResult,
-} from '../src/composition-root/grant-production.ts';
+} from '../bootstrap/session-lifecycle-production.ts';
 import { HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST } from '../src/modules/authority/grant-policy.ts';
 import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../src/modules/assurance/plan-review-coverage.ts';
 import {

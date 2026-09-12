@@ -30,8 +30,8 @@ import { persistInterventionEngineArtifact } from '../src/application/control-pl
 import { preparePersistedEngineAdoption } from '../src/runtime/storage-journal/intervention-control-persistence.ts';
 import { resolveHarnessBootstrapParentState } from '../bootstrap/harness-bootstrap-production.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
 import {
-  checkSession,
   getSession,
   startSession,
 } from '../src/application/execute-task/session.ts';

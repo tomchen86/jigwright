@@ -38,10 +38,8 @@ import {
   readTaskStrategyCallerImplementationReservation,
 } from '../src/runtime/storage-journal/task-strategy-provider-store.ts';
 import { sealTaskStrategyRed } from '../src/application/execute-task/task-strategy-execution.ts';
-import {
-  checkSession,
-  inspectSession,
-} from '../src/application/finalize/verification.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
+import { inspectSession } from '../src/application/finalize/verification.ts';
 import {
   authoritativeCollaborationGrantVerifierForTest,
   configureChecks,

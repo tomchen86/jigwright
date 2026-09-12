@@ -6,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import type { GrantCoordinator } from '../src/modules/authority/grant-coordinator.ts';
-import { dispatchHumanGrantCli } from '../src/entrypoints/cli/human-grant-cli.ts';
+import { dispatchHumanGrantCli } from '../bootstrap/workflow-engine-host.ts';
 import { isWorkflowError } from './fixture.ts';
 
 test('human grant CLI exposes registered investigation and Work Registry requests without accepting agent decisions', async () => {
@@ -248,7 +248,7 @@ test('human grant CLI exposes registered investigation and Work Registry request
 test('current CLI exposes no legacy authority or human-resolution entrypoints', () => {
   const cli = path.resolve(
     import.meta.dirname,
-    '../src/entrypoints/cli/workflow-cli.ts',
+    '../bootstrap/workflow-engine-host.ts',
   );
   for (const args of [
     ['human-resolution-apply', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'],
@@ -284,4 +284,71 @@ test('current CLI exposes no legacy authority or human-resolution entrypoints', 
       'INVALID_USAGE',
     );
   }
+});
+
+test('required session and Grant assembly stays cold and human requests use the supplied services', async () => {
+  const unexpectedObservation = () => {
+    assert.fail(
+      'Assembly must not observe a repository or execute a finalizer.',
+    );
+  };
+  const { createProductionFinalizationService } =
+    await import('../src/composition-root/finalization-production.ts');
+  const { createProductionSessionCheck } =
+    await import('../src/composition-root/cli-command-services.ts');
+  const { createProductionWorkflowGrantServices } =
+    await import('../src/composition-root/grant-production.ts');
+  const { createArchivePullRequestCliDependencies } =
+    await import('../src/composition-root/archive-cli-production.ts');
+  const { createWorkflowCli } =
+    await import('../src/entrypoints/cli/workflow-cli.ts');
+  const { createHumanGrantCli } =
+    await import('../src/entrypoints/cli/human-grant-cli.ts');
+  const readers = {
+    bootstrapInterventionStateRoot: unexpectedObservation,
+    resolveLocalEngineSelection: unexpectedObservation,
+  };
+  const sessionLifecycle = {
+    ...createProductionFinalizationService(readers),
+    checkSession: createProductionSessionCheck(readers),
+  };
+  const workflowGrants = createProductionWorkflowGrantServices(
+    unexpectedObservation,
+  );
+  const archiveDependencies = createArchivePullRequestCliDependencies(
+    workflowGrants.requestArchivePullRequestPublicationGrant,
+  );
+  const cli = createWorkflowCli({
+    dispatchAuthorityCommand: unexpectedObservation,
+    createHarnessBootstrapDependencies: unexpectedObservation,
+    workflowGrants,
+    sessionLifecycle,
+    archiveDependencies,
+  });
+  assert.equal(typeof cli.runCliAsync, 'function');
+  const observed = new Error('supplied Grant service reached');
+  const human = createHumanGrantCli({
+    ...workflowGrants,
+    async requestInvestigationV3Grant(cwd, id, reason) {
+      assert.deepEqual(
+        [cwd, id, reason],
+        ['/unobserved-repository', 'investigation', 'reason'],
+      );
+      throw observed;
+    },
+  });
+  await assert.rejects(
+    human.dispatchHumanGrantCli(
+      [
+        'grant',
+        'human',
+        'request-investigation-v3',
+        'investigation',
+        '--reason',
+        'reason',
+      ],
+      '/unobserved-repository',
+    ),
+    (error) => error === observed,
+  );
 });

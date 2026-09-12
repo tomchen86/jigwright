@@ -47,6 +47,7 @@ import './managed-change-contract.integration.test.ts';
 import './managed-change-lifecycle.integration.test.ts';
 import './runner.integration.test.ts';
 import './session-check-invalidation.integration.test.ts';
+import './session-local-engine-selection.integration.test.ts';
 import './task-revision-lease.integration.test.ts';
 import './task-mechanical-transform.integration.test.ts';
 import './task-mechanical-transform-lifecycle.integration.test.ts';

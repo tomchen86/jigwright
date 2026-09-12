@@ -39,11 +39,11 @@ import {
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import { commitChangedPaths } from '../src/runtime/repository-transaction/git-transitions.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
-import { completeTask } from '../src/composition-root/finalization-production.ts';
+import { completeTask } from './support/local-engine-selection-host.ts';
 import { readImmutableReport } from '../src/runtime/storage-journal/report-store.ts';
 import { startPropose } from '../src/composition-root/propose-production.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
 import {
-  checkSession,
   getSession,
   listSessions,
   startSession,

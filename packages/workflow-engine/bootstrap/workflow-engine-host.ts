@@ -1,18 +1,32 @@
+import {
+  workflowGrantServices,
+  sessionLifecycle,
+  archiveDependencies,
+} from './session-lifecycle-production.ts';
+import { createHumanGrantCli } from '../src/entrypoints/cli/human-grant-cli.ts';
+export const { runHumanGrantCli, dispatchHumanGrantCli } = createHumanGrantCli(
+  workflowGrantServices,
+);
 import { createHarnessBootstrapDependencies } from './harness-bootstrap-production.ts';
 /** Assemble the verified engine inside its selected child process. */
 import { pathToFileURL } from 'node:url';
 import { createWorkflowCli } from '../src/entrypoints/cli/workflow-cli.ts';
 import { createAuthorityCommands } from '../src/entrypoints/cli/authority-management-cli.ts';
-import {
-  isHumanGrantCliInvocation,
-  runHumanGrantCli,
-} from '../src/entrypoints/cli/human-grant-cli.ts';
+import { isHumanGrantCliInvocation } from '../src/entrypoints/cli/human-grant-cli.ts';
 import {
   maintainerAuthorityOperations,
   controlPlanePromotionBootstrapObservations,
 } from './maintainer-authority-production.ts';
 
 export const {
+  createProtectedTaskApplyDescendantSettlementFailGrantResult,
+  createProtectedTaskApplyFailGrantResult,
+  createProtectedTaskApplyRecoveryFailGrantResult,
+  createChangeRoutingFailGrantResult,
+  createRoleAssignmentFailGrantResult,
+  createProposeProtectedBaseFailGrantResult,
+  createWorkRegistryFailGrantResult,
+  createSystemDocumentFailGrantResult,
   runCli,
   runCliAsync,
   dispatchAsync,
@@ -23,15 +37,11 @@ export const {
     controlPlanePromotionBootstrapObservations,
   ),
   createHarnessBootstrapDependencies,
+  workflowGrants: workflowGrantServices,
+  sessionLifecycle,
+  archiveDependencies,
 });
 export {
-  createProtectedTaskApplyDescendantSettlementFailGrantResult,
-  createProtectedTaskApplyFailGrantResult,
-  createProtectedTaskApplyRecoveryFailGrantResult,
-  createChangeRoutingFailGrantResult,
-  createRoleAssignmentFailGrantResult,
-  createProposeProtectedBaseFailGrantResult,
-  createWorkRegistryFailGrantResult,
   createArchivePullRequestCliDispatcherForTesting,
   dispatchPreparedTaskStrategyProvider,
 } from '../src/entrypoints/cli/workflow-cli.ts';

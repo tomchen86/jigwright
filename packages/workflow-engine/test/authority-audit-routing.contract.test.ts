@@ -8,7 +8,7 @@ import test from 'node:test';
 import { authorityAuditUsage } from '../src/entrypoints/cli/authority-audit-cli.ts';
 
 const cli = fileURLToPath(
-  new URL('../src/entrypoints/cli/workflow-cli.ts', import.meta.url),
+  new URL('../bootstrap/workflow-engine-host.ts', import.meta.url),
 );
 
 test('audit input failures retain exact human and JSON stderr and usage exit', () => {

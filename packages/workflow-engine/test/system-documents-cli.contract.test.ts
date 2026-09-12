@@ -86,7 +86,7 @@ test('documents CLI produces proof before validation and renders from the same c
         process.execPath,
         [
           fileURLToPath(
-            new URL('../src/entrypoints/cli/workflow-cli.ts', import.meta.url),
+            new URL('../bootstrap/workflow-engine-host.ts', import.meta.url),
           ),
           'documents',
           ...args,

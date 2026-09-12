@@ -35,7 +35,7 @@ import { commitPlanningTransition as commitPlanningTransitionWithContractReader 
 import {
   finalizeSession,
   finalizeTask,
-} from '../src/composition-root/finalization-production.ts';
+} from './support/local-engine-selection-host.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
   beginTaskDiffReview,

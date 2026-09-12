@@ -28,7 +28,7 @@ import { issueCollaborationGrant } from '../src/runtime/grants/collaboration-gra
 import { collaborationGrantStorePaths } from '../src/runtime/storage-journal/collaboration-grant-private-files.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import { finalizeTask } from '../src/composition-root/finalization-production.ts';
+import { finalizeTask } from './support/local-engine-selection-host.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';

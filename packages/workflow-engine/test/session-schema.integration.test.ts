@@ -13,8 +13,8 @@ import {
 import {
   startSession,
   getSession,
-  checkSession,
 } from '../src/application/execute-task/session.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
 import assert from 'node:assert/strict';
 import { reviseTask } from '../src/application/revise/task-revision.ts';
 import path from 'node:path';
@@ -24,7 +24,7 @@ import { commitSession } from '../src/application/finalize/lifecycle.ts';
 import {
   finalizeTask,
   completeTask,
-} from '../src/composition-root/finalization-production.ts';
+} from './support/local-engine-selection-host.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 import {
   readImmutableReport,

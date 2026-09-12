@@ -17,7 +17,7 @@ import test from 'node:test';
 
 import type { TransformationTerm } from '../src/modules/planning-provider/planning-artifact-types.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
-import { finalizeTask } from '../src/composition-root/finalization-production.ts';
+import { finalizeTask } from './support/local-engine-selection-host.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { beginTaskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
@@ -730,10 +730,7 @@ function runCli(
     process.execPath,
     [
       '--experimental-strip-types',
-      path.resolve(
-        import.meta.dirname,
-        '../src/entrypoints/cli/workflow-cli.ts',
-      ),
+      path.resolve(import.meta.dirname, '../bootstrap/workflow-engine-host.ts'),
       ...args,
     ],
     { cwd: repository, encoding: 'utf8', env: { ...process.env } },

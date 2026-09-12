@@ -17,17 +17,11 @@ import {
   inspectGovernanceIntakeCounts,
   inspectFinalizeRecoveryStatus,
   findTaskCommits,
-  completeTask,
-  finishSession,
-  finalizeSession,
-  recoverFinalize,
   cancelFinalizeRecovery,
-  rollbackCompletion,
   commitSession,
   getSession,
   preflightTaskSession,
   listSessions,
-  checkSession,
   abortSession,
   updateTaskSessionBase,
   runtimePaths,
@@ -177,318 +171,6 @@ export function dispatchPreparedTaskStrategyProvider(
   return invocation.state === 'prepared'
     ? dispatcher(cwd, invocation.invocationId)
     : null;
-}
-
-export function dispatchTaskLifecycleCommand(
-  args: string[],
-  cwd: string,
-): CommandResult {
-  const [command, ...rest] = args;
-  switch (command) {
-    case 'plan-commit':
-      requireArgumentCount(command, rest, 1, 1);
-      return {
-        command,
-        ok: true,
-        result: commitPlanningTransition(cwd, rest[0]),
-      };
-    case 'task-preflight': {
-      const changeId = rest[0];
-      const taskId = optionValue(rest.slice(1), '--task');
-      const expected = taskId ? [changeId, '--task', taskId] : [changeId];
-      if (
-        !changeId ||
-        rest.length !== expected.length ||
-        JSON.stringify(rest) !== JSON.stringify(expected)
-      ) {
-        throw usage(
-          'Usage: pnpm workflow task-preflight <change-id> [--task <task-id>] [--json]',
-        );
-      }
-      const resolvedTaskId = resolveOpenTaskId(cwd, changeId, taskId);
-      return {
-        command,
-        ok: true,
-        result: preflightTaskSession(cwd, changeId, resolvedTaskId),
-      };
-    }
-    case 'open-task': {
-      const changeId = rest[0];
-      const taskId = optionValue(rest.slice(1), '--task');
-      const mandateTaskId = optionValue(rest.slice(1), '--mandate');
-      const expected = taskId
-        ? mandateTaskId
-          ? [changeId, '--task', taskId, '--mandate', mandateTaskId]
-          : [changeId, '--task', taskId]
-        : mandateTaskId
-          ? [changeId, '--mandate', mandateTaskId]
-          : [changeId];
-      if (
-        !changeId ||
-        rest.length !== expected.length ||
-        JSON.stringify(rest) !== JSON.stringify(expected)
-      ) {
-        throw usage(
-          'Usage: pnpm workflow open-task <change-id> [--task <task-id>] [--mandate <mandate-task-id>] [--json]',
-        );
-      }
-      const resolvedTaskId = resolveOpenTaskId(cwd, changeId, taskId);
-      try {
-        const result = openTask(cwd, changeId, resolvedTaskId, mandateTaskId);
-        return {
-          command,
-          ok: true,
-          result,
-          intakeCounts: currentGovernanceIntakeCounts(cwd),
-        };
-      } catch (error) {
-        throw contextualizeOpenTaskError(cwd, changeId, resolvedTaskId, error);
-      }
-    }
-    case 'update-base': {
-      const changeId = rest[0];
-      const ontoRef = optionValue(rest.slice(1), '--onto');
-      const expected = [changeId, '--onto', ontoRef];
-      if (
-        !changeId ||
-        !ontoRef ||
-        rest.length !== expected.length ||
-        JSON.stringify(rest) !== JSON.stringify(expected)
-      ) {
-        throw usage(
-          'Usage: pnpm workflow update-base <change-id> --onto <ref> [--json]',
-        );
-      }
-      return {
-        command,
-        ok: true,
-        result: updateTaskSessionBase(cwd, changeId, ontoRef),
-      };
-    }
-    case 'amend-plan': {
-      // Both arguments are mandatory: an amendment that has not said why it
-      // was needed, or whether the work already done still stands, has not
-      // answered the questions the transition exists to ask.
-      requireArgumentCount(command, rest, 6, 6);
-      if (
-        rest[0] !== '--change' ||
-        rest[2] !== '--reason' ||
-        rest[4] !== '--execution-impact'
-      ) {
-        throw usage(
-          'workflow amend-plan --change <change-id> --reason <code> --execution-impact <none|required>',
-        );
-      }
-      return {
-        command,
-        ok: true,
-        result: commitPlanAmendment(cwd, rest[1]!, {
-          reason: rest[3]!,
-          executionImpact: rest[5] as 'none' | 'required',
-        }),
-      };
-    }
-    case 'propose':
-      return dispatchProposeCommand(command, rest, cwd);
-
-    case 'revise-task': {
-      const sessionId = rest[0];
-      const reason = optionValue(rest.slice(1), '--reason');
-      if (
-        !sessionId ||
-        !reason ||
-        rest.length !== 3 ||
-        rest[1] !== '--reason'
-      ) {
-        throw usage(
-          'Usage: pnpm workflow revise-task <session-id> --reason <text> [--json]',
-        );
-      }
-      return {
-        command,
-        ok: true,
-        result: reviseTask(cwd, sessionId, reason),
-      };
-    }
-    case 'resume-task': {
-      const sessionId = rest[0];
-      const approvalId = optionValue(rest.slice(1), '--approval');
-      if (
-        !sessionId ||
-        !(
-          rest.length === 1 ||
-          (rest.length === 3 && rest[1] === '--approval' && approvalId)
-        )
-      ) {
-        throw usage(
-          'Usage: pnpm workflow resume-task <session-id> [--approval <approval-id>] [--json]',
-        );
-      }
-      return {
-        command,
-        ok: true,
-        result: resumeTask(cwd, sessionId, { approvalId }),
-      };
-    }
-    case 'resume':
-      return dispatchResumeCommand(command, rest, cwd);
-
-    case 'status':
-      return dispatchStatusCommand(command, rest, cwd);
-
-    case 'check':
-      requireArgumentCount(command, rest, 1, 1);
-      return { command, ok: true, result: checkSession(cwd, rest[0]) };
-    case 'complete-task': {
-      requireArgumentCount(command, rest, 1, 1);
-      const result = completeTask(cwd, rest[0], process.env, {
-        consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-      });
-      return {
-        command,
-        ok: true,
-        result,
-        intakeCounts: currentGovernanceIntakeCounts(cwd),
-      };
-    }
-    case 'finish':
-      requireArgumentCount(command, rest, 1, 1);
-      return {
-        command,
-        ok: true,
-        result: finishSession(cwd, rest[0], process.env, {
-          consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-        }),
-      };
-    case 'finalize': {
-      const sessionId = rest[0];
-      const message = optionValue(rest.slice(1), '--message');
-      const fullGate = rest.includes('--full-gate');
-      const expected = [
-        sessionId,
-        '--message',
-        message,
-        ...(fullGate ? ['--full-gate'] : []),
-      ];
-      if (
-        !sessionId ||
-        !message ||
-        rest.length !== expected.length ||
-        JSON.stringify(rest) !== JSON.stringify(expected)
-      ) {
-        throw usage(
-          'Usage: pnpm workflow finalize <session-id> --message <subject> [--full-gate] [--json]',
-        );
-      }
-      return {
-        command,
-        ok: true,
-        result: finalizeSession(cwd, sessionId, message, process.env, {
-          fullGate,
-          consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-          onCheckEscalation: announceFinalizeCheckEscalation,
-        }),
-        intakeCounts: currentGovernanceIntakeCounts(cwd),
-      };
-    }
-    case 'finalize-recover': {
-      if (rest.length === 1) {
-        return {
-          command,
-          ok: true,
-          result: recoverFinalize(cwd, rest[0], process.env, {
-            consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-          }),
-        };
-      }
-      const sessionId = rest[0];
-      const transactionId = optionValue(rest.slice(1), '--cancel');
-      const reason = optionValue(rest.slice(1), '--reason');
-      if (
-        !sessionId ||
-        !transactionId ||
-        !reason ||
-        rest.length !== 5 ||
-        rest[1] !== '--cancel' ||
-        rest[3] !== '--reason'
-      ) {
-        throw usage(
-          'Usage: pnpm workflow finalize-recover <session-id> [--cancel <transaction-id> --reason <text>] [--json]',
-        );
-      }
-      return {
-        command,
-        ok: true,
-        result: cancelFinalizeRecovery(cwd, sessionId, transactionId, reason, {
-          consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-        }),
-      };
-    }
-    case 'review-diff':
-      return dispatchReviewDiffCommand(command, rest, cwd);
-
-    case 'rollback-completion': {
-      const sessionId = rest[0];
-      const reason = optionValue(rest.slice(1), '--reason');
-      if (
-        !sessionId ||
-        !reason ||
-        rest.length !== 3 ||
-        rest[1] !== '--reason'
-      ) {
-        throw usage(
-          'Usage: pnpm workflow rollback-completion <session-id> --reason <text> [--json]',
-        );
-      }
-      return {
-        command,
-        ok: true,
-        result: rollbackCompletion(cwd, sessionId, reason),
-      };
-    }
-    case 'commit': {
-      const sessionId = rest[0];
-      const message = optionValue(rest.slice(1), '--message');
-      if (
-        !sessionId ||
-        !message ||
-        rest.length !== 3 ||
-        rest[1] !== '--message'
-      ) {
-        throw usage(
-          'Usage: pnpm workflow commit <session-id> --message <subject> [--json]',
-        );
-      }
-      return {
-        command,
-        ok: true,
-        result: commitSession(cwd, sessionId, message),
-      };
-    }
-    case 'abort': {
-      const sessionId = rest[0];
-      const reason = optionValue(rest.slice(1), '--reason');
-      if (
-        !sessionId ||
-        !reason ||
-        rest.length !== 3 ||
-        rest[1] !== '--reason'
-      ) {
-        throw usage(
-          'Usage: pnpm workflow abort <session-id> --reason <text> [--json]',
-        );
-      }
-      return {
-        command,
-        ok: true,
-        session: abortSession(cwd, sessionId, reason),
-      };
-    }
-    default:
-      throw usage(
-        command ? `Unknown workflow command: ${command}` : usageText(),
-      );
-  }
 }
 
 function dispatchProposeCommand(
@@ -1003,4 +685,341 @@ function dispatchReviewDiffCommand(
     }
     throw taskDiffReviewUsage();
   }
+}
+
+import type {
+  ProductionFinalizationService,
+  ProductionSessionCheck,
+} from '../../composition-root/cli-command-services.ts';
+export function createTaskLifecycleCommands({
+  completeTask,
+  finishSession,
+  finalizeSession,
+  recoverFinalize,
+  rollbackCompletion,
+  checkSession,
+}: ProductionFinalizationService & { checkSession: ProductionSessionCheck }) {
+  function dispatchTaskLifecycleCommand(
+    args: string[],
+    cwd: string,
+  ): CommandResult {
+    const [command, ...rest] = args;
+    switch (command) {
+      case 'plan-commit':
+        requireArgumentCount(command, rest, 1, 1);
+        return {
+          command,
+          ok: true,
+          result: commitPlanningTransition(cwd, rest[0]),
+        };
+      case 'task-preflight': {
+        const changeId = rest[0];
+        const taskId = optionValue(rest.slice(1), '--task');
+        const expected = taskId ? [changeId, '--task', taskId] : [changeId];
+        if (
+          !changeId ||
+          rest.length !== expected.length ||
+          JSON.stringify(rest) !== JSON.stringify(expected)
+        ) {
+          throw usage(
+            'Usage: pnpm workflow task-preflight <change-id> [--task <task-id>] [--json]',
+          );
+        }
+        const resolvedTaskId = resolveOpenTaskId(cwd, changeId, taskId);
+        return {
+          command,
+          ok: true,
+          result: preflightTaskSession(cwd, changeId, resolvedTaskId),
+        };
+      }
+      case 'open-task': {
+        const changeId = rest[0];
+        const taskId = optionValue(rest.slice(1), '--task');
+        const mandateTaskId = optionValue(rest.slice(1), '--mandate');
+        const expected = taskId
+          ? mandateTaskId
+            ? [changeId, '--task', taskId, '--mandate', mandateTaskId]
+            : [changeId, '--task', taskId]
+          : mandateTaskId
+            ? [changeId, '--mandate', mandateTaskId]
+            : [changeId];
+        if (
+          !changeId ||
+          rest.length !== expected.length ||
+          JSON.stringify(rest) !== JSON.stringify(expected)
+        ) {
+          throw usage(
+            'Usage: pnpm workflow open-task <change-id> [--task <task-id>] [--mandate <mandate-task-id>] [--json]',
+          );
+        }
+        const resolvedTaskId = resolveOpenTaskId(cwd, changeId, taskId);
+        try {
+          const result = openTask(cwd, changeId, resolvedTaskId, mandateTaskId);
+          return {
+            command,
+            ok: true,
+            result,
+            intakeCounts: currentGovernanceIntakeCounts(cwd),
+          };
+        } catch (error) {
+          throw contextualizeOpenTaskError(
+            cwd,
+            changeId,
+            resolvedTaskId,
+            error,
+          );
+        }
+      }
+      case 'update-base': {
+        const changeId = rest[0];
+        const ontoRef = optionValue(rest.slice(1), '--onto');
+        const expected = [changeId, '--onto', ontoRef];
+        if (
+          !changeId ||
+          !ontoRef ||
+          rest.length !== expected.length ||
+          JSON.stringify(rest) !== JSON.stringify(expected)
+        ) {
+          throw usage(
+            'Usage: pnpm workflow update-base <change-id> --onto <ref> [--json]',
+          );
+        }
+        return {
+          command,
+          ok: true,
+          result: updateTaskSessionBase(cwd, changeId, ontoRef),
+        };
+      }
+      case 'amend-plan': {
+        // Both arguments are mandatory: an amendment that has not said why it
+        // was needed, or whether the work already done still stands, has not
+        // answered the questions the transition exists to ask.
+        requireArgumentCount(command, rest, 6, 6);
+        if (
+          rest[0] !== '--change' ||
+          rest[2] !== '--reason' ||
+          rest[4] !== '--execution-impact'
+        ) {
+          throw usage(
+            'workflow amend-plan --change <change-id> --reason <code> --execution-impact <none|required>',
+          );
+        }
+        return {
+          command,
+          ok: true,
+          result: commitPlanAmendment(cwd, rest[1]!, {
+            reason: rest[3]!,
+            executionImpact: rest[5] as 'none' | 'required',
+          }),
+        };
+      }
+      case 'propose':
+        return dispatchProposeCommand(command, rest, cwd);
+
+      case 'revise-task': {
+        const sessionId = rest[0];
+        const reason = optionValue(rest.slice(1), '--reason');
+        if (
+          !sessionId ||
+          !reason ||
+          rest.length !== 3 ||
+          rest[1] !== '--reason'
+        ) {
+          throw usage(
+            'Usage: pnpm workflow revise-task <session-id> --reason <text> [--json]',
+          );
+        }
+        return {
+          command,
+          ok: true,
+          result: reviseTask(cwd, sessionId, reason),
+        };
+      }
+      case 'resume-task': {
+        const sessionId = rest[0];
+        const approvalId = optionValue(rest.slice(1), '--approval');
+        if (
+          !sessionId ||
+          !(
+            rest.length === 1 ||
+            (rest.length === 3 && rest[1] === '--approval' && approvalId)
+          )
+        ) {
+          throw usage(
+            'Usage: pnpm workflow resume-task <session-id> [--approval <approval-id>] [--json]',
+          );
+        }
+        return {
+          command,
+          ok: true,
+          result: resumeTask(cwd, sessionId, { approvalId }),
+        };
+      }
+      case 'resume':
+        return dispatchResumeCommand(command, rest, cwd);
+
+      case 'status':
+        return dispatchStatusCommand(command, rest, cwd);
+
+      case 'check':
+        requireArgumentCount(command, rest, 1, 1);
+        return { command, ok: true, result: checkSession(cwd, rest[0]) };
+      case 'complete-task': {
+        requireArgumentCount(command, rest, 1, 1);
+        const result = completeTask(cwd, rest[0], process.env, {
+          consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+        });
+        return {
+          command,
+          ok: true,
+          result,
+          intakeCounts: currentGovernanceIntakeCounts(cwd),
+        };
+      }
+      case 'finish':
+        requireArgumentCount(command, rest, 1, 1);
+        return {
+          command,
+          ok: true,
+          result: finishSession(cwd, rest[0], process.env, {
+            consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+          }),
+        };
+      case 'finalize': {
+        const sessionId = rest[0];
+        const message = optionValue(rest.slice(1), '--message');
+        const fullGate = rest.includes('--full-gate');
+        const expected = [
+          sessionId,
+          '--message',
+          message,
+          ...(fullGate ? ['--full-gate'] : []),
+        ];
+        if (
+          !sessionId ||
+          !message ||
+          rest.length !== expected.length ||
+          JSON.stringify(rest) !== JSON.stringify(expected)
+        ) {
+          throw usage(
+            'Usage: pnpm workflow finalize <session-id> --message <subject> [--full-gate] [--json]',
+          );
+        }
+        return {
+          command,
+          ok: true,
+          result: finalizeSession(cwd, sessionId, message, process.env, {
+            fullGate,
+            consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+            onCheckEscalation: announceFinalizeCheckEscalation,
+          }),
+          intakeCounts: currentGovernanceIntakeCounts(cwd),
+        };
+      }
+      case 'finalize-recover': {
+        if (rest.length === 1) {
+          return {
+            command,
+            ok: true,
+            result: recoverFinalize(cwd, rest[0], process.env, {
+              consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+            }),
+          };
+        }
+        const sessionId = rest[0];
+        const transactionId = optionValue(rest.slice(1), '--cancel');
+        const reason = optionValue(rest.slice(1), '--reason');
+        if (
+          !sessionId ||
+          !transactionId ||
+          !reason ||
+          rest.length !== 5 ||
+          rest[1] !== '--cancel' ||
+          rest[3] !== '--reason'
+        ) {
+          throw usage(
+            'Usage: pnpm workflow finalize-recover <session-id> [--cancel <transaction-id> --reason <text>] [--json]',
+          );
+        }
+        return {
+          command,
+          ok: true,
+          result: cancelFinalizeRecovery(
+            cwd,
+            sessionId,
+            transactionId,
+            reason,
+            {
+              consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+            },
+          ),
+        };
+      }
+      case 'review-diff':
+        return dispatchReviewDiffCommand(command, rest, cwd);
+
+      case 'rollback-completion': {
+        const sessionId = rest[0];
+        const reason = optionValue(rest.slice(1), '--reason');
+        if (
+          !sessionId ||
+          !reason ||
+          rest.length !== 3 ||
+          rest[1] !== '--reason'
+        ) {
+          throw usage(
+            'Usage: pnpm workflow rollback-completion <session-id> --reason <text> [--json]',
+          );
+        }
+        return {
+          command,
+          ok: true,
+          result: rollbackCompletion(cwd, sessionId, reason),
+        };
+      }
+      case 'commit': {
+        const sessionId = rest[0];
+        const message = optionValue(rest.slice(1), '--message');
+        if (
+          !sessionId ||
+          !message ||
+          rest.length !== 3 ||
+          rest[1] !== '--message'
+        ) {
+          throw usage(
+            'Usage: pnpm workflow commit <session-id> --message <subject> [--json]',
+          );
+        }
+        return {
+          command,
+          ok: true,
+          result: commitSession(cwd, sessionId, message),
+        };
+      }
+      case 'abort': {
+        const sessionId = rest[0];
+        const reason = optionValue(rest.slice(1), '--reason');
+        if (
+          !sessionId ||
+          !reason ||
+          rest.length !== 3 ||
+          rest[1] !== '--reason'
+        ) {
+          throw usage(
+            'Usage: pnpm workflow abort <session-id> --reason <text> [--json]',
+          );
+        }
+        return {
+          command,
+          ok: true,
+          session: abortSession(cwd, sessionId, reason),
+        };
+      }
+      default:
+        throw usage(
+          command ? `Unknown workflow command: ${command}` : usageText(),
+        );
+    }
+  }
+  return { dispatchTaskLifecycleCommand };
 }

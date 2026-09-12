@@ -31,7 +31,7 @@ import test from 'node:test';
 
 import { commitArchiveTransition as commitArchiveTransitionWithHandoff } from '../src/application/archive/archive-transition.ts';
 import { commitSession } from '../src/application/finalize/lifecycle.ts';
-import { finalizeTask } from '../src/composition-root/finalization-production.ts';
+import { finalizeTask } from './support/local-engine-selection-host.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {

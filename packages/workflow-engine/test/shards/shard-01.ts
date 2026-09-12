@@ -111,6 +111,7 @@ import '../provider-native-session-closure.integration.test.ts';
 import '../repository-hooks-boundary.test.ts';
 import '../review-strategy-dto-boundary.test.ts';
 import '../semantic-manifest-reuse-observation.test.ts';
+import '../session-local-engine-selection.integration.test.ts';
 import '../task-mandate-protected-finalize.contract.test.ts';
 import '../task-mandate-services.contract.test.ts';
 import '../task-strategy-gate-boundary.test.ts';

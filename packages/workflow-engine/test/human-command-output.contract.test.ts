@@ -6,7 +6,7 @@ import { renderHumanCommandResult } from '../src/entrypoints/cli/human-command-o
 
 test('main and packaged init front doors use prose while --json remains structured', () => {
   const cli = fileURLToPath(
-    new URL('../src/entrypoints/cli/workflow-cli.ts', import.meta.url),
+    new URL('../bootstrap/workflow-engine-host.ts', import.meta.url),
   );
   const launcher = fileURLToPath(
     new URL('../bootstrap/jigwright-cli.mjs', import.meta.url),

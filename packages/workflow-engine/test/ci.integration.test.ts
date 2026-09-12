@@ -24,10 +24,8 @@ import test from 'node:test';
 import { verifyPullRequest } from '../src/composition-root/ci-verification-production.ts';
 import { loadHistoricalTaskAuthority } from '../src/composition-root/ci-replay-production.ts';
 import { canonicalCheckDefinition } from '../src/modules/assurance/commit-replay/ci-historical-contract.ts';
-import {
-  startSession,
-  checkSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
 import { abortSession } from '../src/composition-root/task-session-production.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 

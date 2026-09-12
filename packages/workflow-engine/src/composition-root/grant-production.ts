@@ -499,66 +499,6 @@ export function createProductionSystemDocumentGrantService() {
   return createSystemDocumentGrantService(systemDocumentDispositions);
 }
 
-export function createProductionWorkflowGrantCoordinator(
-  cwd: string,
-): GrantCoordinator {
-  const git = discoverRepository(cwd);
-  const authority = productionGrantAuthorityAtCommit(
-    git.repositoryRoot,
-    git.head,
-  );
-  const runtimeRoot = runtimePaths(
-    git.gitCommonDirectory,
-    authority.runtimeDirectory,
-  ).root;
-  const protectedBase = createProductionProtectedBaseSelectionPort(cwd);
-  const roleAssignment = createProductionChangeRoleAssignmentGrantPort(cwd);
-  const protectedTaskApply = createProductionProtectedTaskApplyGrantPort(cwd);
-  const protectedTaskApplyRecovery =
-    createProductionProtectedTaskApplyRecoveryGrantPort(cwd);
-  const protectedTaskApplyDescendantSettlement =
-    createProductionProtectedTaskApplyDescendantSettlementGrantPort(cwd);
-  const providerInvocationCancellation =
-    createProductionProviderInvocationCancellationGrantPort(cwd);
-  const coordinator = createProductionGrantCoordinatorWithAuthorityContext(
-    cwd,
-    createTransitionRegistry([
-      ...investigationV3GrantTransitionDefinitions(
-        investigationFailureObservations,
-        cwd,
-      ),
-      ...workRegistryGrantTransitionDefinitions(cwd),
-      ...createProductionSystemDocumentGrantService().systemDocumentGrantTransitionDefinitions(
-        cwd,
-      ),
-      ...archivePullRequestGrantTransitionDefinitions(runtimeRoot),
-      ...changeRoutingGrantTransitionDefinitions(
-        observeChangeRoutingContinuationState,
-        cwd,
-      ),
-      ...protectedBaseSelectionGrantTransitionDefinitions(protectedBase),
-      ...changeRoleAssignmentGrantTransitionDefinitions(roleAssignment),
-      ...protectedTaskApplyGrantTransitionDefinitions(protectedTaskApply),
-      ...protectedTaskApplyRecoveryGrantTransitionDefinitions(
-        protectedTaskApplyRecovery,
-      ),
-      ...protectedTaskApplyDescendantSettlementTransitionDefinitions(
-        protectedTaskApplyDescendantSettlement,
-      ),
-      ...providerInvocationCancellationTransitionDefinitions(
-        providerInvocationCancellation,
-      ),
-    ]),
-    authority,
-    true,
-  );
-  return coordinateProtectedTaskApplyRecoveryParent(
-    cwd,
-    coordinator,
-    authority.runtimeDirectory,
-  );
-}
-
 export function createProductionGitAuthorityCandidateApplyGrantCoordinator(
   cwd: string,
   parametersValue: GitAuthorityCandidateApplyParametersV1,
@@ -666,225 +606,6 @@ export function coordinateProtectedTaskApplyRecoveryParent(
   });
 }
 
-export async function requestProtectedTaskApplyGrant(
-  cwd: string,
-  sessionId: string,
-  commitMessage: string,
-  fullGate: boolean,
-  failure: ProtectedTaskApplyFailureDetailsV1,
-  proposedReason: string,
-) {
-  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
-  const observation = observeCurrentProtectedTaskApply(
-    repositoryRoot,
-    sessionId,
-    commitMessage,
-    fullGate,
-  );
-  return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
-    createProtectedTaskApplyGrantRequest(observation, failure, proposedReason),
-  );
-}
-
-export async function requestProtectedTaskApplyRecoveryGrant(
-  cwd: string,
-  details: ProtectedTaskApplyRecoveryGrantRequiredDetailsV1,
-  proposedReason: string,
-) {
-  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
-  const observation = observeCurrentProtectedTaskApplyRecoveryRequest(
-    repositoryRoot,
-    details,
-  );
-  return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
-    createProtectedTaskApplyRecoveryGrantRequest(observation, proposedReason),
-  );
-}
-
-export async function requestProtectedTaskApplyDescendantSettlementGrant(
-  cwd: string,
-  details: ProtectedTaskApplyDescendantSettlementGrantRequiredDetailsV1,
-  proposedReason: string,
-) {
-  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
-  const observation =
-    observeCurrentProtectedTaskApplyDescendantSettlementRequest(
-      repositoryRoot,
-      details,
-    );
-  return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
-    createProtectedTaskApplyDescendantSettlementGrantRequest(
-      observation,
-      proposedReason,
-    ),
-  );
-}
-
-export async function requestProviderInvocationCancellationGrant(
-  cwd: string,
-  invocationId: string,
-  reason: string,
-  proposedReason: string,
-) {
-  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
-  const observation = observeCurrentProviderInvocationCancellationRequest(
-    repositoryRoot,
-    invocationId,
-    reason,
-  );
-  return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
-    createProviderInvocationCancellationGrantRequest(
-      observation,
-      proposedReason,
-    ),
-  );
-}
-
-export async function requestChangeRoleAssignmentGrant(
-  cwd: string,
-  invocationId: string,
-  proposedReason: string,
-) {
-  const git = discoverRepository(cwd);
-  const repositoryRoot = git.repositoryRoot;
-  const runtimeDirectory = productionGrantAuthorityAtCommit(
-    repositoryRoot,
-    git.head,
-  ).runtimeDirectory;
-  const runtime = runtimePaths(git.gitCommonDirectory, runtimeDirectory);
-  const initialContinuation =
-    deriveProtectedTaskApplyTaskDiffProviderGrantContinuation(
-      repositoryRoot,
-      invocationId,
-    );
-  return withRepositoryLifecycleOperationAsync(
-    runtime,
-    async (assertOwned) => {
-      assertOwned();
-      const continuation =
-        deriveProtectedTaskApplyTaskDiffProviderGrantContinuation(
-          repositoryRoot,
-          invocationId,
-        );
-      if (canonicalJson(continuation) !== canonicalJson(initialContinuation)) {
-        throw workflowError(
-          'GRANT_CONTINUATION_INVALID',
-          'TaskDiffReview role-assignment parent changed before Grant creation.',
-          ExitCode.staleState,
-        );
-      }
-      const parentBinding =
-        continuation === null
-          ? null
-          : createTaskDiffRoleAssignmentParentBinding(
-              repositoryRoot,
-              continuation,
-              runtimeDirectory,
-            );
-      const observation = observeCurrentChangeRoleAssignmentGrantForInvocation(
-        repositoryRoot,
-        invocationId,
-      );
-      const result = await createProductionCentralGrantRequestPort(
-        repositoryRoot,
-      ).requestGrant(
-        createChangeRoleAssignmentGrantRequest(
-          observation,
-          proposedReason,
-          parentBinding,
-        ),
-      );
-      assertOwned();
-      if (continuation !== null && parentBinding !== null) {
-        assertTaskDiffRoleAssignmentParentBinding(
-          repositoryRoot,
-          continuation,
-          parentBinding,
-          runtimeDirectory,
-        );
-      }
-      return result;
-    },
-    {
-      allowGrantChallengeIds:
-        initialContinuation === null
-          ? []
-          : [initialContinuation.parentChallengeId],
-    },
-  );
-}
-
-export async function requestProtectedBaseInitializationGrant(
-  cwd: string,
-  proposedReason: string,
-) {
-  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
-  const port = createProductionProtectedBaseSelectionPort(repositoryRoot);
-  return createProductionWorkflowGrantCoordinator(repositoryRoot).requestGrant(
-    createProtectedBaseSelectionGrantRequest(port, proposedReason),
-  );
-}
-
-export async function requestArchivePullRequestPublicationGrant(
-  cwd: string,
-  preparationIdentity: string,
-  configValue: unknown,
-  proposedReason: string,
-) {
-  assertOptionalGrantsPackageAvailable();
-  const runtimeRoot =
-    loadInvestigationRuntimeContext(cwd).lifecycleRuntime.root;
-  return createProductionWorkflowGrantCoordinator(cwd).requestGrant(
-    createArchivePullRequestGrantRequest(
-      runtimeRoot,
-      preparationIdentity,
-      resolveArchivePullRequestPublicationTarget(cwd, configValue),
-      proposedReason,
-    ),
-  );
-}
-
-export async function requestWorkRegistryReviewGrant(
-  cwd: string,
-  workItemId: string,
-  review: WorkItemReviewV1,
-  proposedReason: string,
-) {
-  assertOptionalGrantsPackageAvailable();
-  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
-  const transition = review.action === 'prioritize' ? 'prioritize' : 'intake';
-  assertWorkRegistryGrantRequired(repositoryRoot, transition);
-  return createProductionWorkflowGrantCoordinator(repositoryRoot).requestGrant(
-    createWorkRegistryReviewGrantRequest({
-      repositoryRoot,
-      workItemId,
-      review,
-      proposedReason,
-    }),
-  );
-}
-
-export async function requestWorkRegistryPromotionGrant(
-  cwd: string,
-  workItemId: string,
-  changeId: string,
-  expectedDigest: string,
-  proposedReason: string,
-) {
-  assertOptionalGrantsPackageAvailable();
-  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
-  assertWorkRegistryGrantRequired(repositoryRoot, 'promote');
-  return createProductionWorkflowGrantCoordinator(repositoryRoot).requestGrant(
-    createWorkRegistryPromotionGrantRequest({
-      repositoryRoot,
-      workItemId,
-      changeId,
-      expectedDigest,
-      proposedReason,
-    }),
-  );
-}
-
 function assertWorkRegistryGrantRequired(
   repositoryRoot: string,
   transition: 'intake' | 'prioritize' | 'promote',
@@ -894,110 +615,6 @@ function assertWorkRegistryGrantRequired(
     'WORK_REGISTRY_GRANT_NOT_REQUIRED',
     `Repository policy permits the ${transition} transition without Central Grant.`,
     ExitCode.guard,
-  );
-}
-
-/** Domain-facing composition boundary; it intentionally omits Human Gate APIs. */
-export function createProductionCentralGrantRequestPort(
-  cwd: string,
-): CentralGrantRequestPortV1 {
-  return createProductionWorkflowGrantCoordinator(cwd);
-}
-
-export async function requestChangeRoutingContinuationGrant(
-  cwd: string,
-  changeId: string,
-  proposedReason: string,
-  expected?: Readonly<{
-    sourceDigest: `sha256:${string}`;
-    stateBindingDigest: `sha256:${string}`;
-  }>,
-) {
-  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
-  return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
-    createChangeRoutingContinuationGrantRequest(
-      observeChangeRoutingContinuationState,
-      repositoryRoot,
-      changeId,
-      proposedReason,
-      expected,
-    ),
-  );
-}
-
-export async function requestInvestigationV3Grant(
-  cwd: string,
-  investigationId: string,
-  proposedReason: string,
-) {
-  assertOptionalGrantsPackageAvailable();
-  const context = loadInvestigationRuntimeContext(cwd);
-  const observation = readCurrentInvestigationV3FailureObservation(
-    context.runtime,
-    investigationId,
-  );
-  const repositoryId =
-    observation.kind === 'investigation-v3-failure-observation'
-      ? observation.repositoryId
-      : observation.failure.lifecycle.repositoryId;
-  if (repositoryId !== context.config.repositoryName) {
-    throw workflowError(
-      'INVESTIGATION_V3_GRANT_REPOSITORY_MISMATCH',
-      'Investigation v3 failure observation belongs to another repository.',
-      ExitCode.guard,
-    );
-  }
-  const request =
-    observation.kind === 'investigation-v3-failure-observation'
-      ? createInvestigationV3GrantRequest(investigationFailureObservations, {
-          cwd,
-          failure: {
-            repositoryId: observation.repositoryId,
-            changeId: observation.changeId,
-            investigationId: observation.investigationId,
-            sessionRevision: observation.sessionRevision,
-            sessionSnapshotDigest: observation.sessionSnapshotDigest,
-            blocker: observation.blocker,
-          },
-          emission: observation.emission,
-          proposedReason,
-        })
-      : createInvestigationV3PublicationGrantRequest(
-          investigationFailureObservations,
-          {
-            cwd,
-            failure: observation.failure,
-            proposedReason,
-          },
-        );
-  return createProductionCentralGrantRequestPort(cwd).requestGrant(request);
-}
-
-export async function requestInvestigationV3PublicationGrant(
-  cwd: string,
-  input: Readonly<{
-    failure: InvestigationManifestPublicationFailure;
-    proposedReason: string;
-  }>,
-) {
-  assertOptionalGrantsPackageAvailable();
-  const context = loadInvestigationRuntimeContext(cwd);
-  if (input.failure.lifecycle.repositoryId !== context.config.repositoryName) {
-    throw workflowError(
-      'INVESTIGATION_V3_GRANT_REPOSITORY_MISMATCH',
-      'Investigation v3 publication failure belongs to another repository.',
-      ExitCode.guard,
-    );
-  }
-  return createProductionCentralGrantRequestPort(cwd).requestGrant(
-    createInvestigationV3PublicationGrantRequest(
-      investigationFailureObservations,
-      {
-        cwd,
-        failure: input.failure,
-        proposedReason: input.proposedReason,
-      },
-    ),
   );
 }
 
@@ -1021,61 +638,12 @@ export type InvestigationV3PublicationPropagation<
   | Readonly<{
       propagationOutcome: 'central-grant-requested';
       result: T;
-      grant: Awaited<ReturnType<typeof requestInvestigationV3PublicationGrant>>;
+      grant: Awaited<
+        ReturnType<
+          WorkflowGrantServices['requestInvestigationV3PublicationGrant']
+        >
+      >;
     }>;
-
-/**
- * Production propagation boundary for the real publication operation unions.
- * Failure-bearing results enter central Grant Core here; successful, empty,
- * committed, read, and idempotently recoverable results retain their original
- * operation classification and object identity.
- */
-export async function propagateInvestigationV3PublicationResult<
-  T extends InvestigationV3PublicationOperationResult,
->(
-  cwd: string,
-  input: Readonly<{ result: T; proposedReason: string }>,
-): Promise<InvestigationV3PublicationPropagation<T>> {
-  if (input.result.failure !== undefined) {
-    try {
-      const grant = await requestInvestigationV3PublicationGrant(cwd, {
-        failure: input.result.failure,
-        proposedReason: input.proposedReason,
-      });
-      return Object.freeze({
-        propagationOutcome: 'central-grant-requested' as const,
-        result: input.result,
-        grant,
-      });
-    } catch (error) {
-      if (
-        error instanceof WorkflowError &&
-        error.code === 'INVESTIGATION_V3_GRANT_NOT_REQUIRED'
-      ) {
-        return Object.freeze({
-          propagationOutcome: 'grant-free' as const,
-          result: input.result,
-        });
-      }
-      throw error;
-    }
-  }
-  if (
-    input.result.outcome === 'blocked' ||
-    (input.result.outcome === 'recoverable' &&
-      input.result.recoveryKind === 'pre-ref')
-  ) {
-    throw workflowError(
-      'INVESTIGATION_V3_PUBLICATION_RESULT_INVALID',
-      'A failure-bearing Investigation v3 publication result omitted its source envelope.',
-      ExitCode.guard,
-    );
-  }
-  return Object.freeze({
-    propagationOutcome: 'unchanged' as const,
-    result: input.result,
-  });
-}
 
 function humanResolutionLifecycleBinding(
   challenge: ReturnType<
@@ -1094,5 +662,477 @@ function humanResolutionLifecycleBinding(
   return {
     allowHumanResolutionGrantId: challenge.challengeId,
     allowHumanResolutionChangeId: assertChangeId(challenge.facts.changeId),
+  };
+}
+
+import type { ProtectedTaskApplyFinalizer } from './finalization-production.ts';
+export type WorkflowGrantServices = ReturnType<
+  typeof createProductionWorkflowGrantServices
+>;
+export function createProductionWorkflowGrantServices(
+  finalizeProtectedTaskApplyUnderGrant: ProtectedTaskApplyFinalizer,
+) {
+  function createProductionWorkflowGrantCoordinator(
+    cwd: string,
+  ): GrantCoordinator {
+    const git = discoverRepository(cwd);
+    const authority = productionGrantAuthorityAtCommit(
+      git.repositoryRoot,
+      git.head,
+    );
+    const runtimeRoot = runtimePaths(
+      git.gitCommonDirectory,
+      authority.runtimeDirectory,
+    ).root;
+    const protectedBase = createProductionProtectedBaseSelectionPort(cwd);
+    const roleAssignment = createProductionChangeRoleAssignmentGrantPort(cwd);
+    const protectedTaskApply = createProductionProtectedTaskApplyGrantPort(
+      finalizeProtectedTaskApplyUnderGrant,
+      cwd,
+    );
+    const protectedTaskApplyRecovery =
+      createProductionProtectedTaskApplyRecoveryGrantPort(cwd);
+    const protectedTaskApplyDescendantSettlement =
+      createProductionProtectedTaskApplyDescendantSettlementGrantPort(cwd);
+    const providerInvocationCancellation =
+      createProductionProviderInvocationCancellationGrantPort(cwd);
+    const coordinator = createProductionGrantCoordinatorWithAuthorityContext(
+      cwd,
+      createTransitionRegistry([
+        ...investigationV3GrantTransitionDefinitions(
+          investigationFailureObservations,
+          cwd,
+        ),
+        ...workRegistryGrantTransitionDefinitions(cwd),
+        ...createProductionSystemDocumentGrantService().systemDocumentGrantTransitionDefinitions(
+          cwd,
+        ),
+        ...archivePullRequestGrantTransitionDefinitions(runtimeRoot),
+        ...changeRoutingGrantTransitionDefinitions(
+          observeChangeRoutingContinuationState,
+          cwd,
+        ),
+        ...protectedBaseSelectionGrantTransitionDefinitions(protectedBase),
+        ...changeRoleAssignmentGrantTransitionDefinitions(roleAssignment),
+        ...protectedTaskApplyGrantTransitionDefinitions(protectedTaskApply),
+        ...protectedTaskApplyRecoveryGrantTransitionDefinitions(
+          protectedTaskApplyRecovery,
+        ),
+        ...protectedTaskApplyDescendantSettlementTransitionDefinitions(
+          protectedTaskApplyDescendantSettlement,
+        ),
+        ...providerInvocationCancellationTransitionDefinitions(
+          providerInvocationCancellation,
+        ),
+      ]),
+      authority,
+      true,
+    );
+    return coordinateProtectedTaskApplyRecoveryParent(
+      cwd,
+      coordinator,
+      authority.runtimeDirectory,
+    );
+  }
+
+  async function requestProtectedTaskApplyGrant(
+    cwd: string,
+    sessionId: string,
+    commitMessage: string,
+    fullGate: boolean,
+    failure: ProtectedTaskApplyFailureDetailsV1,
+    proposedReason: string,
+  ) {
+    const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+    const observation = observeCurrentProtectedTaskApply(
+      repositoryRoot,
+      sessionId,
+      commitMessage,
+      fullGate,
+    );
+    return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
+      createProtectedTaskApplyGrantRequest(
+        observation,
+        failure,
+        proposedReason,
+      ),
+    );
+  }
+
+  async function requestProtectedTaskApplyRecoveryGrant(
+    cwd: string,
+    details: ProtectedTaskApplyRecoveryGrantRequiredDetailsV1,
+    proposedReason: string,
+  ) {
+    const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+    const observation = observeCurrentProtectedTaskApplyRecoveryRequest(
+      repositoryRoot,
+      details,
+    );
+    return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
+      createProtectedTaskApplyRecoveryGrantRequest(observation, proposedReason),
+    );
+  }
+
+  async function requestProtectedTaskApplyDescendantSettlementGrant(
+    cwd: string,
+    details: ProtectedTaskApplyDescendantSettlementGrantRequiredDetailsV1,
+    proposedReason: string,
+  ) {
+    const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+    const observation =
+      observeCurrentProtectedTaskApplyDescendantSettlementRequest(
+        repositoryRoot,
+        details,
+      );
+    return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
+      createProtectedTaskApplyDescendantSettlementGrantRequest(
+        observation,
+        proposedReason,
+      ),
+    );
+  }
+
+  async function requestProviderInvocationCancellationGrant(
+    cwd: string,
+    invocationId: string,
+    reason: string,
+    proposedReason: string,
+  ) {
+    const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+    const observation = observeCurrentProviderInvocationCancellationRequest(
+      repositoryRoot,
+      invocationId,
+      reason,
+    );
+    return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
+      createProviderInvocationCancellationGrantRequest(
+        observation,
+        proposedReason,
+      ),
+    );
+  }
+
+  async function requestChangeRoleAssignmentGrant(
+    cwd: string,
+    invocationId: string,
+    proposedReason: string,
+  ) {
+    const git = discoverRepository(cwd);
+    const repositoryRoot = git.repositoryRoot;
+    const runtimeDirectory = productionGrantAuthorityAtCommit(
+      repositoryRoot,
+      git.head,
+    ).runtimeDirectory;
+    const runtime = runtimePaths(git.gitCommonDirectory, runtimeDirectory);
+    const initialContinuation =
+      deriveProtectedTaskApplyTaskDiffProviderGrantContinuation(
+        repositoryRoot,
+        invocationId,
+      );
+    return withRepositoryLifecycleOperationAsync(
+      runtime,
+      async (assertOwned) => {
+        assertOwned();
+        const continuation =
+          deriveProtectedTaskApplyTaskDiffProviderGrantContinuation(
+            repositoryRoot,
+            invocationId,
+          );
+        if (
+          canonicalJson(continuation) !== canonicalJson(initialContinuation)
+        ) {
+          throw workflowError(
+            'GRANT_CONTINUATION_INVALID',
+            'TaskDiffReview role-assignment parent changed before Grant creation.',
+            ExitCode.staleState,
+          );
+        }
+        const parentBinding =
+          continuation === null
+            ? null
+            : createTaskDiffRoleAssignmentParentBinding(
+                repositoryRoot,
+                continuation,
+                runtimeDirectory,
+              );
+        const observation =
+          observeCurrentChangeRoleAssignmentGrantForInvocation(
+            repositoryRoot,
+            invocationId,
+          );
+        const result = await createProductionCentralGrantRequestPort(
+          repositoryRoot,
+        ).requestGrant(
+          createChangeRoleAssignmentGrantRequest(
+            observation,
+            proposedReason,
+            parentBinding,
+          ),
+        );
+        assertOwned();
+        if (continuation !== null && parentBinding !== null) {
+          assertTaskDiffRoleAssignmentParentBinding(
+            repositoryRoot,
+            continuation,
+            parentBinding,
+            runtimeDirectory,
+          );
+        }
+        return result;
+      },
+      {
+        allowGrantChallengeIds:
+          initialContinuation === null
+            ? []
+            : [initialContinuation.parentChallengeId],
+      },
+    );
+  }
+
+  async function requestProtectedBaseInitializationGrant(
+    cwd: string,
+    proposedReason: string,
+  ) {
+    const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+    const port = createProductionProtectedBaseSelectionPort(repositoryRoot);
+    return createProductionWorkflowGrantCoordinator(
+      repositoryRoot,
+    ).requestGrant(
+      createProtectedBaseSelectionGrantRequest(port, proposedReason),
+    );
+  }
+
+  async function requestArchivePullRequestPublicationGrant(
+    cwd: string,
+    preparationIdentity: string,
+    configValue: unknown,
+    proposedReason: string,
+  ) {
+    assertOptionalGrantsPackageAvailable();
+    const runtimeRoot =
+      loadInvestigationRuntimeContext(cwd).lifecycleRuntime.root;
+    return createProductionWorkflowGrantCoordinator(cwd).requestGrant(
+      createArchivePullRequestGrantRequest(
+        runtimeRoot,
+        preparationIdentity,
+        resolveArchivePullRequestPublicationTarget(cwd, configValue),
+        proposedReason,
+      ),
+    );
+  }
+
+  async function requestWorkRegistryReviewGrant(
+    cwd: string,
+    workItemId: string,
+    review: WorkItemReviewV1,
+    proposedReason: string,
+  ) {
+    assertOptionalGrantsPackageAvailable();
+    const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+    const transition = review.action === 'prioritize' ? 'prioritize' : 'intake';
+    assertWorkRegistryGrantRequired(repositoryRoot, transition);
+    return createProductionWorkflowGrantCoordinator(
+      repositoryRoot,
+    ).requestGrant(
+      createWorkRegistryReviewGrantRequest({
+        repositoryRoot,
+        workItemId,
+        review,
+        proposedReason,
+      }),
+    );
+  }
+
+  async function requestWorkRegistryPromotionGrant(
+    cwd: string,
+    workItemId: string,
+    changeId: string,
+    expectedDigest: string,
+    proposedReason: string,
+  ) {
+    assertOptionalGrantsPackageAvailable();
+    const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+    assertWorkRegistryGrantRequired(repositoryRoot, 'promote');
+    return createProductionWorkflowGrantCoordinator(
+      repositoryRoot,
+    ).requestGrant(
+      createWorkRegistryPromotionGrantRequest({
+        repositoryRoot,
+        workItemId,
+        changeId,
+        expectedDigest,
+        proposedReason,
+      }),
+    );
+  }
+
+  function createProductionCentralGrantRequestPort(
+    cwd: string,
+  ): CentralGrantRequestPortV1 {
+    return createProductionWorkflowGrantCoordinator(cwd);
+  }
+
+  async function requestChangeRoutingContinuationGrant(
+    cwd: string,
+    changeId: string,
+    proposedReason: string,
+    expected?: Readonly<{
+      sourceDigest: `sha256:${string}`;
+      stateBindingDigest: `sha256:${string}`;
+    }>,
+  ) {
+    const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+    return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
+      createChangeRoutingContinuationGrantRequest(
+        observeChangeRoutingContinuationState,
+        repositoryRoot,
+        changeId,
+        proposedReason,
+        expected,
+      ),
+    );
+  }
+
+  async function requestInvestigationV3Grant(
+    cwd: string,
+    investigationId: string,
+    proposedReason: string,
+  ) {
+    assertOptionalGrantsPackageAvailable();
+    const context = loadInvestigationRuntimeContext(cwd);
+    const observation = readCurrentInvestigationV3FailureObservation(
+      context.runtime,
+      investigationId,
+    );
+    const repositoryId =
+      observation.kind === 'investigation-v3-failure-observation'
+        ? observation.repositoryId
+        : observation.failure.lifecycle.repositoryId;
+    if (repositoryId !== context.config.repositoryName) {
+      throw workflowError(
+        'INVESTIGATION_V3_GRANT_REPOSITORY_MISMATCH',
+        'Investigation v3 failure observation belongs to another repository.',
+        ExitCode.guard,
+      );
+    }
+    const request =
+      observation.kind === 'investigation-v3-failure-observation'
+        ? createInvestigationV3GrantRequest(investigationFailureObservations, {
+            cwd,
+            failure: {
+              repositoryId: observation.repositoryId,
+              changeId: observation.changeId,
+              investigationId: observation.investigationId,
+              sessionRevision: observation.sessionRevision,
+              sessionSnapshotDigest: observation.sessionSnapshotDigest,
+              blocker: observation.blocker,
+            },
+            emission: observation.emission,
+            proposedReason,
+          })
+        : createInvestigationV3PublicationGrantRequest(
+            investigationFailureObservations,
+            {
+              cwd,
+              failure: observation.failure,
+              proposedReason,
+            },
+          );
+    return createProductionCentralGrantRequestPort(cwd).requestGrant(request);
+  }
+
+  async function requestInvestigationV3PublicationGrant(
+    cwd: string,
+    input: Readonly<{
+      failure: InvestigationManifestPublicationFailure;
+      proposedReason: string;
+    }>,
+  ) {
+    assertOptionalGrantsPackageAvailable();
+    const context = loadInvestigationRuntimeContext(cwd);
+    if (
+      input.failure.lifecycle.repositoryId !== context.config.repositoryName
+    ) {
+      throw workflowError(
+        'INVESTIGATION_V3_GRANT_REPOSITORY_MISMATCH',
+        'Investigation v3 publication failure belongs to another repository.',
+        ExitCode.guard,
+      );
+    }
+    return createProductionCentralGrantRequestPort(cwd).requestGrant(
+      createInvestigationV3PublicationGrantRequest(
+        investigationFailureObservations,
+        {
+          cwd,
+          failure: input.failure,
+          proposedReason: input.proposedReason,
+        },
+      ),
+    );
+  }
+
+  async function propagateInvestigationV3PublicationResult<
+    T extends InvestigationV3PublicationOperationResult,
+  >(
+    cwd: string,
+    input: Readonly<{ result: T; proposedReason: string }>,
+  ): Promise<InvestigationV3PublicationPropagation<T>> {
+    if (input.result.failure !== undefined) {
+      try {
+        const grant = await requestInvestigationV3PublicationGrant(cwd, {
+          failure: input.result.failure,
+          proposedReason: input.proposedReason,
+        });
+        return Object.freeze({
+          propagationOutcome: 'central-grant-requested' as const,
+          result: input.result,
+          grant,
+        });
+      } catch (error) {
+        if (
+          error instanceof WorkflowError &&
+          error.code === 'INVESTIGATION_V3_GRANT_NOT_REQUIRED'
+        ) {
+          return Object.freeze({
+            propagationOutcome: 'grant-free' as const,
+            result: input.result,
+          });
+        }
+        throw error;
+      }
+    }
+    if (
+      input.result.outcome === 'blocked' ||
+      (input.result.outcome === 'recoverable' &&
+        input.result.recoveryKind === 'pre-ref')
+    ) {
+      throw workflowError(
+        'INVESTIGATION_V3_PUBLICATION_RESULT_INVALID',
+        'A failure-bearing Investigation v3 publication result omitted its source envelope.',
+        ExitCode.guard,
+      );
+    }
+    return Object.freeze({
+      propagationOutcome: 'unchanged' as const,
+      result: input.result,
+    });
+  }
+  return {
+    createProductionWorkflowGrantCoordinator,
+    requestProtectedTaskApplyGrant,
+    requestProtectedTaskApplyRecoveryGrant,
+    requestProtectedTaskApplyDescendantSettlementGrant,
+    requestProviderInvocationCancellationGrant,
+    requestChangeRoleAssignmentGrant,
+    requestProtectedBaseInitializationGrant,
+    requestArchivePullRequestPublicationGrant,
+    requestWorkRegistryReviewGrant,
+    requestWorkRegistryPromotionGrant,
+    createProductionCentralGrantRequestPort,
+    requestChangeRoutingContinuationGrant,
+    requestInvestigationV3Grant,
+    requestInvestigationV3PublicationGrant,
+    propagateInvestigationV3PublicationResult,
   };
 }

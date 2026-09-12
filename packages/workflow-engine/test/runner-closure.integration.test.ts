@@ -19,10 +19,8 @@ import test from 'node:test';
 
 import { resolveCheckRunner } from '../src/adapters/consumer/repository/work-registry/runner-resolution.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
-import {
-  checkSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
 import {
   addFixturePackage,
   configureChecks,

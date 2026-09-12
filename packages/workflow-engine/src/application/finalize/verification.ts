@@ -13,10 +13,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import {
-  bootstrapInterventionStateRoot,
-  resolveLocalEngineSelection,
-} from '../../../bootstrap/control-plane-trust.ts';
+import type { LocalEngineSelectionReaders } from '../../modules/authority/local-engine-selection.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { digestArtifacts } from '../../runtime/repository-observation/contract-artifact-observation.ts';
 import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
@@ -119,6 +116,7 @@ type TrustedCheckPolicy = {
 };
 
 export function checkSession(
+  localEngineSelection: LocalEngineSelectionReaders,
   manifestOperations: MaintainerManifestOperations,
   taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
   routingAdmissionReader: ChangeRoutingAdmissionReader,
@@ -135,6 +133,7 @@ export function checkSession(
   const sessionId = assertSessionId(requestedSessionId);
   return withSessionOperation(runtime, sessionId, () =>
     checkSessionUnlocked(
+      localEngineSelection,
       manifestOperations,
       taskStrategyExecutionGate,
       routingAdmissionReader,
@@ -146,6 +145,7 @@ export function checkSession(
 }
 
 function checkSessionUnlocked(
+  localEngineSelection: LocalEngineSelectionReaders,
   manifestOperations: MaintainerManifestOperations,
   taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
   routingAdmissionReader: ChangeRoutingAdmissionReader,
@@ -154,6 +154,7 @@ function checkSessionUnlocked(
   options: SessionCheckOptions,
 ): SessionCheck {
   const reconciled = reconcileSessionChecksAfterLocalEngineAdoption(
+    localEngineSelection,
     manifestOperations,
     routingAdmissionReader,
     cwd,
@@ -220,6 +221,7 @@ function checkSessionUnlocked(
   };
   const reportId = writeSessionReport(verified.inspection, report);
   const localAdoption = resolveVerifiedLocalAdoption(
+    localEngineSelection,
     verified.inspection,
     options.environment ?? process.env,
   );
@@ -262,6 +264,7 @@ type VerifiedLocalAdoption = {
  * session CAS replays to the same content-addressed report ID.
  */
 export function reconcileSessionChecksAfterLocalEngineAdoption(
+  localEngineSelection: LocalEngineSelectionReaders,
   manifestOperations: MaintainerManifestOperations,
   routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
@@ -274,6 +277,7 @@ export function reconcileSessionChecksAfterLocalEngineAdoption(
     requestedSessionId,
   );
   const adoption = resolveVerifiedLocalAdoption(
+    localEngineSelection,
     initial,
     options.environment ?? process.env,
   );
@@ -483,6 +487,10 @@ export function reconcileSessionChecksAfterLocalEngineAdoption(
 }
 
 function resolveVerifiedLocalAdoption(
+  {
+    bootstrapInterventionStateRoot,
+    resolveLocalEngineSelection,
+  }: LocalEngineSelectionReaders,
   inspection: SessionInspection,
   environment: NodeJS.ProcessEnv,
 ): VerifiedLocalAdoption | null {

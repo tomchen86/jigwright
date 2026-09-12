@@ -26,7 +26,7 @@ import {
 import {
   createProductionWorkflowGrantCoordinator,
   requestProtectedBaseInitializationGrant,
-} from '../src/composition-root/grant-production.ts';
+} from '../bootstrap/session-lifecycle-production.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
   grantStorePaths,

@@ -20,11 +20,11 @@ import test from 'node:test';
 import {
   completeTask,
   finishSession,
-} from '../src/composition-root/finalization-production.ts';
+} from './support/local-engine-selection-host.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
+import { checkSession } from './support/local-engine-selection-host.ts';
 import {
-  checkSession,
   getSession,
   startSession,
 } from '../src/application/execute-task/session.ts';

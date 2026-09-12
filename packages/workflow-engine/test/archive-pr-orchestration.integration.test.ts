@@ -75,7 +75,7 @@ import {
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { commitSession } from '../src/application/finalize/lifecycle.ts';
-import { finalizeTask } from '../src/composition-root/finalization-production.ts';
+import { finalizeTask } from './support/local-engine-selection-host.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
@@ -1117,7 +1117,7 @@ test('archive preparation status replays exact local Git truth without a worktre
         '--experimental-strip-types',
         path.resolve(
           import.meta.dirname,
-          '../src/entrypoints/cli/workflow-cli.ts',
+          '../bootstrap/workflow-engine-host.ts',
         ),
         'archive-pr',
         'status',
@@ -1221,7 +1221,7 @@ test('archive preparation status replays exact local Git truth without a worktre
         '--experimental-strip-types',
         path.resolve(
           import.meta.dirname,
-          '../src/entrypoints/cli/workflow-cli.ts',
+          '../bootstrap/workflow-engine-host.ts',
         ),
         'archive-pr',
         'status',
