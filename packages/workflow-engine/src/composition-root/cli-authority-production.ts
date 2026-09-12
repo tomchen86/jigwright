@@ -1,3 +1,4 @@
+import { withAuthorityRefusalAudit } from './authority-refusal-production.ts';
 import { taskMandateOperations } from './task-mandate-production.ts';
 /**
  * Assembles production authority dependencies and grant replay verifiers
@@ -112,6 +113,7 @@ export function controlPlaneUpdaterDependencies(
   };
   return {
     ...human,
+    withAuthorityRefusalAudit,
     approvalSigner,
     resolveTaskMandateBinding(parentTaskId: string) {
       return controlPlaneTaskMandateBindingFromTaskMandate(

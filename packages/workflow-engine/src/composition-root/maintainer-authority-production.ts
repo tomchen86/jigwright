@@ -1,3 +1,4 @@
+import { withAuthorityRefusalAudit } from './authority-refusal-production.ts';
 /** Assemble authority commands around required current grant and candidate services. */
 import { authorityAttestationOperations } from './maintainer-attestation-production.ts';
 import { authorityApplicationReceipts } from './authority-application-receipt-production.ts';
@@ -40,6 +41,7 @@ export function createMaintainerAuthorityProduction(
   const approveAndApplyMaintainerGrantV2 =
     approveAndApplyMaintainerGrantV2WithMandate.bind(
       undefined,
+      withAuthorityRefusalAudit,
       maintainerGrantExecutionServices,
       authorityApplicationReceipts,
       maintainerManifestOperations,
@@ -48,6 +50,7 @@ export function createMaintainerAuthorityProduction(
   const reissueAndApplyMaintainerGrantV2 =
     reissueAndApplyMaintainerGrantV2WithMandate.bind(
       undefined,
+      withAuthorityRefusalAudit,
       maintainerGrantExecutionServices,
       authorityApplicationReceipts,
       maintainerManifestOperations,
@@ -61,6 +64,7 @@ export function createMaintainerAuthorityProduction(
   );
   const startAuthoritySession = startAuthoritySessionWithMandate.bind(
     undefined,
+    withAuthorityRefusalAudit,
     maintainerGrantExecutionServices,
     maintainerManifestOperations,
     taskMandateOperations,
@@ -74,12 +78,14 @@ export function createMaintainerAuthorityProduction(
     );
   const checkAuthoritySession = checkAuthoritySessionWithMandate.bind(
     undefined,
+    withAuthorityRefusalAudit,
     maintainerGrantExecutionServices,
     maintainerManifestOperations,
     taskMandateOperations,
   );
   const commitAuthoritySession = commitAuthoritySessionWithMandate.bind(
     undefined,
+    withAuthorityRefusalAudit,
     maintainerGrantExecutionServices,
     authorityApplicationReceipts,
     maintainerManifestOperations,
@@ -88,6 +94,7 @@ export function createMaintainerAuthorityProduction(
   const approveAndApplyAuthorityPlan =
     approveAndApplyAuthorityPlanWithMandate.bind(
       undefined,
+      withAuthorityRefusalAudit,
       maintainerGrantExecutionServices,
       authorityApplicationReceipts,
       maintainerManifestOperations,

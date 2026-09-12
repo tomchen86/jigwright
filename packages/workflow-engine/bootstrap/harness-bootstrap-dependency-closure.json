@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:1dc9ae02e0b9679ff492f9585b5ec7e39396853dab0419e05ce1445ee08fca1c"
+      "digest": "sha256:19889d8b3e6fc865aa1fd47ae90f8d89876c6500088b5a5425d2444729b2d047"
     },
     {
       "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js",
@@ -193,7 +193,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/harness-bootstrap-audit.js",
       "mode": "100644",
-      "digest": "sha256:0769f831e60732457678eee008aa655d1b85b043de3dbce764c29d2ca7d959db"
+      "digest": "sha256:e20703a212e8d6bb72fe5c5b04c1ece45fd67a9c81ffe849a6205e5e22ad0962"
     },
     {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/harness-bootstrap-contracts.js",
@@ -283,7 +283,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/composition-root/harness-bootstrap-production.js",
       "mode": "100644",
-      "digest": "sha256:c14272b513b40bdb6c7665d6654274478460e2e32faa588a54d335316f6774be"
+      "digest": "sha256:520eeee0d9806549b042c50d2db1d3af1607ce8abb2e5dbd220e24167d718872"
     },
     {
       "path": "bootstrap/recovery-runtime/src/composition-root/human-revocation-production.js",
@@ -343,7 +343,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/authority-refusal-audit.js",
       "mode": "100644",
-      "digest": "sha256:60af62c03c4237b9c50ba5e8a7b60b3cec9d70cd30af6398ecb2103f9fd05701"
+      "digest": "sha256:01e79474bf60df2ccee04a4869a8111b81711d840da34bee72fbd3b65a8eb3bf"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/collaboration-grant-codec.js",
@@ -979,6 +979,11 @@
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/authority-audit-values.js",
       "mode": "100644",
       "digest": "sha256:b0bea8c69226a64d293aa0ebe234e291db2d5a78927a73fef791969af4cdc6c2"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/authority-refusal-audit.js",
+      "mode": "100644",
+      "digest": "sha256:eea6440299235943a275a1201df6f4f44bd1a9d744a4911163c029f306b76e7b"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/control-plane-history-chain.js",

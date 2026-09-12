@@ -8,7 +8,7 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:5eaa4aead9b37c57e21cdb95fcd5d74aa0141dc6ad0010450191b745322ed755 -->
+<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:dd8aba3cd872563ab1e7de28211d6095587b63eb54a368fb55eeb0598a840a1d -->
 
 <!-- prettier-ignore-start -->
 
@@ -122,7 +122,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [authority-attestation-admission.ts](authority-attestation-admission.ts) | Shared attestation request and grant admission errors. | 0 | History unavailable |
 | [authority-attestation.ts](authority-attestation.ts) | Encodes authority attestations and verifies the original and protected- main commit pair. | 2 | History unavailable |
 | [authority-audit-contract.ts](authority-audit-contract.ts) | Canonical authority audit evidence and refusal contracts. | 0 | History unavailable |
-| [authority-refusal-audit.ts](authority-refusal-audit.ts) | Records durable authority refusals while preserving the original operation error. | 2 | History unavailable |
+| [authority-refusal-audit.ts](authority-refusal-audit.ts) | Pure refusal identity/event construction and original-error preservation. | 0 | History unavailable |
 | [authority-remap-contract.ts](authority-remap-contract.ts) | Canonical mechanical-move and authority-remap request/result contracts. | 0 | History unavailable |
 | [authority-session-contract.ts](authority-session-contract.ts) | Durable state of an authority session and its pinned checks. | 0 | History unavailable |
 | [candidate-engine-selection.ts](candidate-engine-selection.ts) | Selects the exact current engine dependency from required, freshly verified observations. | 0 | History unavailable |

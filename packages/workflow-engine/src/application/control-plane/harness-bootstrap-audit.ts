@@ -11,39 +11,40 @@ import type {
   HarnessBootstrapRuntimeOverrides,
 } from './harness-bootstrap-contracts.ts';
 import { WorkflowError } from '../../foundation/errors/errors.ts';
-import {
-  recordAuthorityRefusal,
-  authorityRefusalDigest,
-} from '../../modules/authority/authority-refusal-audit.ts';
+import { authorityRefusalDigest } from '../../modules/authority/authority-refusal-audit.ts';
 import type { RecoveryOperationalTrustRootRestoreAuditRecord } from '../../modules/authority/recovery-trust-root-contract.ts';
 import type { RecoveryQuarantineAuditRecord } from '../../modules/authority/recovery-quarantine-contract.ts';
 import type { ControlPlaneUpdaterAuditRecord } from './intervention-control-updater.ts';
 import { type ControlPlaneRecoveryAuditRecord } from '../../modules/authority/control-plane-recovery-grant-values.ts';
-type AuthorityAuditRecordedEvent = ReturnType<typeof recordAuthorityRefusal>;
-type AuthorityAuditEventInput = Omit<
-  AuthorityAuditRecordedEvent['event'],
-  'schemaVersion' | 'kind' | 'eventId' | 'repositoryId'
->;
-type AuthorityAuditEventType = AuthorityAuditEventInput['eventType'];
-type AuthorityAuditResult = AuthorityAuditEventInput['result'];
+import type {
+  AuthorityAuditEventInput,
+  AuthorityAuditEventType,
+  AuthorityAuditResult,
+  AuthorityAuditLedgerScope,
+  AuthorityAuditRecordedEvent,
+  AuthorityAuditServiceHooks,
+  RecordAuthorityRefusal,
+} from '../../modules/authority/authority-audit-contract.ts';
 export type HarnessBootstrapAuditBindings = {
   deriveAuthorityAuditRepositoryId: (
     repositoryIdentity: string,
-  ) => Parameters<typeof recordAuthorityRefusal>[0]['scope']['repositoryId'];
+  ) => AuthorityAuditLedgerScope['repositoryId'];
   recordAuthorityAuditEvent: (
-    scope: Parameters<typeof recordAuthorityRefusal>[0]['scope'],
+    scope: AuthorityAuditLedgerScope,
     rawInput: AuthorityAuditEventInput,
-    hooks?: NonNullable<
-      Parameters<typeof recordAuthorityRefusal>[2]
-    >['serviceHooks'],
+    hooks?: AuthorityAuditServiceHooks,
   ) => AuthorityAuditRecordedEvent;
+  recordAuthorityRefusal: RecordAuthorityRefusal;
 };
 
 export function createHarnessBootstrapAudit(
   bindings: HarnessBootstrapAuditBindings,
 ) {
-  const { deriveAuthorityAuditRepositoryId, recordAuthorityAuditEvent } =
-    bindings;
+  const {
+    deriveAuthorityAuditRepositoryId,
+    recordAuthorityAuditEvent,
+    recordAuthorityRefusal,
+  } = bindings;
 
   function auditHarnessRecoveryRefusal(
     authority: HarnessRecoveryRefusalAuthority,

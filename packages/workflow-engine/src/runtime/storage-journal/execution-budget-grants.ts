@@ -1,3 +1,4 @@
+import { recordAuthorityRefusal } from './authority-refusal-audit.ts';
 import {
   inspectionFromRecord,
   revokedInspectionFromRecord,
@@ -208,6 +209,7 @@ export function consumeExecutionBudgetGrant(
       },
     );
     return withAuthorityRefusalAudit(
+      recordAuthorityRefusal,
       refusalBinding,
       {
         now: new Date(consumedAt),
@@ -286,6 +288,7 @@ export function revokeExecutionBudgetGrant(
       },
     );
     return withAuthorityRefusalAudit(
+      recordAuthorityRefusal,
       refusalBinding,
       {
         now: new Date(revokedAt),

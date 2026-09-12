@@ -1,3 +1,4 @@
+import { recordAuthorityRefusal } from "../runtime/storage-journal/authority-refusal-audit.js";
 /** Assemble recovery capabilities around the independently trusted built-in engine identity. */
 import { controlPlaneRecoveryGrantPersistence } from "../runtime/storage-journal/control-plane-recovery-grant.js";
 import { createHarnessBootstrapAudit } from "../application/control-plane/harness-bootstrap-audit.js";
@@ -67,6 +68,7 @@ export function createHarnessBootstrapProduction(BUILT_IN_ENGINE_CLOSURE_MANIFES
         };
     }
     const { auditHarnessRecoveryRefusal, productionRecoveryTrustRootAuditSink, productionRecoveryQuarantineAuditSink, productionControlPlaneAuditSink, productionRecoveryAuditSink, } = createHarnessBootstrapAudit({
+        recordAuthorityRefusal,
         deriveAuthorityAuditRepositoryId,
         recordAuthorityAuditEvent,
     });

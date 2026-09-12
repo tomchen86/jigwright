@@ -5,7 +5,7 @@ import { taskMandateStore } from '../runtime/storage-journal/task-mandate-store.
 import { taskMandateRepository } from '../runtime/storage-journal/task-mandate-repository.ts';
 import { scanAuthorityAuditLedger } from '../runtime/storage-journal/authority-audit-ledger.ts';
 import { recordAuthorityAuditEvent } from '../runtime/storage-journal/authority-audit-service.ts';
-import { withAuthorityRefusalAudit } from '../modules/authority/authority-refusal-audit.ts';
+import { withAuthorityRefusalAudit } from './authority-refusal-production.ts';
 import { withRepositoryLifecycleOperation } from '../runtime/session-workspace/session-store.ts';
 export const taskMandateOperations = createTaskMandateOperations({
   store: taskMandateStore,

@@ -1,3 +1,4 @@
+import { withAuthorityRefusalAudit } from '../src/composition-root/authority-refusal-production.ts';
 import type { CandidateSupportingArtifactSet } from '../src/modules/authority/maintainer-candidate-contracts.ts';
 import { buildMaintainerPatchManifest } from '../src/composition-root/maintainer-manifest-production.ts';
 import assert from 'node:assert/strict';
@@ -437,6 +438,7 @@ export function controlPlaneFixtureUpdaterDependencies(
   return {
     now: () => new Date(now.getTime()),
     consumedGrantIds: new Set<string>(),
+    withAuthorityRefusalAudit,
     verifyHumanSignature,
     approvalSigner,
     presentApprovalSummaryV3(summary: ControlPlaneApprovalSummaryV3) {

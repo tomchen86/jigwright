@@ -6,8 +6,7 @@ import type {
   AuthorityAuditLedgerScope,
   AuthorityAuditRecordedEvent,
   AuthorityAuditServiceHooks,
-  AuthorityRefusalAuditBinding,
-  AuthorityRefusalAuditOptions,
+  WithAuthorityRefusalAudit,
 } from './authority-audit-contract.ts';
 import type { MaintainerPolicy } from './maintainer-policy.ts';
 import type { MaintainerSignerProvider } from './maintainer-signer-port.ts';
@@ -65,11 +64,7 @@ export type TaskMandateAuditServices = {
     hooks?: AuthorityAuditServiceHooks,
   ) => AuthorityAuditRecordedEvent;
 
-  withAuthorityRefusalAudit: <T>(
-    binding: AuthorityRefusalAuditBinding,
-    options: AuthorityRefusalAuditOptions,
-    operation: () => T,
-  ) => T;
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit;
 };
 export type TaskMandateServices = {
   store: TaskMandateStoreServices;

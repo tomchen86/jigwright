@@ -16,7 +16,7 @@ import { type MaintainerGrantV2Payload } from '../src/modules/authority/maintain
 import { issueMaintainerGrantV2 } from '../bootstrap/maintainer-authority-production.ts';
 import { buildImmutableCandidateBundleV2 } from '../src/modules/authority/maintainer-candidate-contracts.ts';
 import { storeImmutableCandidateBundle } from '../src/runtime/storage-journal/maintainer-candidate-writer.ts';
-import { revokeMaintainerGrantV2 } from '../src/application/control-plane/maintainer-approve.ts';
+import { revokeMaintainerGrantV2 } from '../src/composition-root/cli-command-services.ts';
 import { inspectMaintainerGrants } from '../src/runtime/storage-journal/maintainer-store.ts';
 import { readAuthoritySession } from '../src/application/control-plane/maintainer-session.ts';
 import {

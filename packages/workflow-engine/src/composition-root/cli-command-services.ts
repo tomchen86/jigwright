@@ -160,7 +160,12 @@ export {
 } from '../runtime/storage-journal/maintainer-store.ts';
 export { assertInteractiveSignerContext } from '../adapters/signing/ssh/maintainer-signer.ts';
 export { parseMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
-export { revokeMaintainerGrantV2 } from '../application/control-plane/maintainer-approve.ts';
+import { revokeMaintainerGrantV2 as revokeMaintainerGrantV2WithAudit } from '../application/control-plane/maintainer-approve.ts';
+import { withAuthorityRefusalAudit } from './authority-refusal-production.ts';
+export const revokeMaintainerGrantV2 = revokeMaintainerGrantV2WithAudit.bind(
+  undefined,
+  withAuthorityRefusalAudit,
+);
 
 export type {
   ApproveAndApplyMaintainerGrantV2Request,

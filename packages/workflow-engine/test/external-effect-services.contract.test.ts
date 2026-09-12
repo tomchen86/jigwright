@@ -13,7 +13,7 @@ import {
 } from '../src/runtime/storage-journal/external-effect-grant-repository.ts';
 import { emitAudit } from '../src/runtime/storage-journal/external-effect-grant-audit.ts';
 
-import { withAuthorityRefusalAudit } from '../src/modules/authority/authority-refusal-audit.ts';
+import { withAuthorityRefusalAudit } from '../src/composition-root/authority-refusal-production.ts';
 import { withRepositoryLifecycleOperation } from '../src/runtime/session-workspace/session-store.ts';
 import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';

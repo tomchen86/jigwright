@@ -14,10 +14,7 @@ import path from 'node:path';
 
 import { deriveAuthorityAuditRepositoryId } from '../../runtime/storage-journal/authority-audit-ledger.ts';
 
-import {
-  authorityRefusalDigest,
-  withAuthorityRefusalAudit,
-} from '../../modules/authority/authority-refusal-audit.ts';
+import { authorityRefusalDigest } from '../../modules/authority/authority-refusal-audit.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   pinCheckRunner,
@@ -140,6 +137,7 @@ export function verifiedV2AuthorityLifecycleRefusalBinding(
 }
 
 export function startAuthoritySession(
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
   grantServices: MaintainerGrantExecutionServices,
   manifestOperations: MaintainerManifestOperations,
   taskMandate: MaintainerTaskMandateOperations,
@@ -884,7 +882,6 @@ function authorityError(
 export type MaintainerSessionInspectionBindings = {
   readAuthoritySession: typeof readAuthoritySession;
   authorityError: typeof authorityError;
-  withAuthorityRefusalAudit: typeof withAuthorityRefusalAudit;
   verifiedV2AuthorityLifecycleRefusalBinding: typeof verifiedV2AuthorityLifecycleRefusalBinding;
   authorityRefusalDigest: typeof authorityRefusalDigest;
   listChangedPaths: typeof listChangedPaths;
@@ -930,7 +927,6 @@ const {
 } = createMaintainerSessionInspection(() => ({
   readAuthoritySession,
   authorityError,
-  withAuthorityRefusalAudit,
   verifiedV2AuthorityLifecycleRefusalBinding,
   authorityRefusalDigest,
   listChangedPaths,
@@ -966,6 +962,7 @@ export { checkAuthoritySession };
 import {
   type AuthorityAuditServiceHooks,
   type AuthorityRefusalAuditBinding,
+  type WithAuthorityRefusalAudit,
 } from '../../modules/authority/authority-audit-contract.ts';
 
 import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';

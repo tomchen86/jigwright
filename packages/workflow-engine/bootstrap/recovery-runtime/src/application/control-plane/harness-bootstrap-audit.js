@@ -1,6 +1,6 @@
-import { recordAuthorityRefusal, authorityRefusalDigest, } from "../../modules/authority/authority-refusal-audit.js";
+import { authorityRefusalDigest } from "../../modules/authority/authority-refusal-audit.js";
 export function createHarnessBootstrapAudit(bindings) {
-    const { deriveAuthorityAuditRepositoryId, recordAuthorityAuditEvent } = bindings;
+    const { deriveAuthorityAuditRepositoryId, recordAuthorityAuditEvent, recordAuthorityRefusal, } = bindings;
     function auditHarnessRecoveryRefusal(authority, args, refusal, overrides) {
         if (refusal.code.startsWith('AUTHORITY_AUDIT_'))
             return;

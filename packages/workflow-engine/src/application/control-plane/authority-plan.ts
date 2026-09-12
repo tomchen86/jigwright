@@ -301,6 +301,7 @@ export function inspectAuthorityPlan(
 }
 
 export function approveAndApplyAuthorityPlan(
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
   grantServices: MaintainerGrantExecutionServices,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   manifestOperations: MaintainerManifestOperations,
@@ -351,6 +352,7 @@ export function approveAndApplyAuthorityPlan(
       options.approveAndApply ??
       ((root: string, request: ApproveAndApplyMaintainerGrantV2Request) =>
         approveAndApplyMaintainerGrantV2(
+          withAuthorityRefusalAudit,
           grantServices,
           authorityApplicationReceipts,
           manifestOperations,
@@ -768,3 +770,5 @@ const {
 import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
 
 import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
+
+import type { WithAuthorityRefusalAudit } from '../../modules/authority/authority-audit-contract.ts';

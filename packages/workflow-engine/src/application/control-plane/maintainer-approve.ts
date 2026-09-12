@@ -23,10 +23,7 @@ import {
   scanAuthorityAuditLedger,
 } from '../../runtime/storage-journal/authority-audit-ledger.ts';
 import { recordAuthorityAuditEvent } from '../../runtime/storage-journal/authority-audit-service.ts';
-import {
-  authorityRefusalDigest,
-  withAuthorityRefusalAudit,
-} from '../../modules/authority/authority-refusal-audit.ts';
+import { authorityRefusalDigest } from '../../modules/authority/authority-refusal-audit.ts';
 import { authorityApplicationReceiptTagRef } from '../../modules/authority/authority-application-receipt.ts';
 import {
   pinCheckRunner,
@@ -176,6 +173,7 @@ export type PrepareMaintainerGrantV2ChecksOptions = {
 };
 
 export function approveAndApplyMaintainerGrantV2(
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
   grantServices: MaintainerGrantExecutionServices,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   manifestOperations: MaintainerManifestOperations,
@@ -205,6 +203,7 @@ export function approveAndApplyMaintainerGrantV2(
       },
       () =>
         approveAndApplyMaintainerGrantV2WithBinding(
+          withAuthorityRefusalAudit,
           grantServices,
           authorityApplicationReceipts,
           manifestOperations,
@@ -220,6 +219,7 @@ export function approveAndApplyMaintainerGrantV2(
 }
 
 function approveAndApplyMaintainerGrantV2WithBinding(
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
   grantServices: MaintainerGrantExecutionServices,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   manifestOperations: MaintainerManifestOperations,
@@ -468,6 +468,7 @@ function approveAndApplyMaintainerGrantV2WithBinding(
     options.now,
     () =>
       startAuthoritySession(
+        withAuthorityRefusalAudit,
         grantServices,
         manifestOperations,
         taskMandate,
@@ -485,6 +486,7 @@ function approveAndApplyMaintainerGrantV2WithBinding(
       ),
   );
   const committed = commitAuthoritySession(
+    withAuthorityRefusalAudit,
     grantServices,
     authorityApplicationReceipts,
     manifestOperations,
@@ -528,6 +530,7 @@ function approveAndApplyMaintainerGrantV2WithBinding(
 }
 
 export function revokeMaintainerGrantV2(
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
   cwd: string,
   request: RevokeMaintainerGrantV2Request,
   options: RevokeMaintainerGrantV2Options = {},
@@ -886,7 +889,6 @@ export type MaintainerApplyReissueBindings = {
   withPostApprovalAdmissionDeadline: typeof withPostApprovalAdmissionDeadline;
   discoverRepository: typeof discoverRepository;
   readTerminalMaintainerGrant: typeof readTerminalMaintainerGrant;
-  withAuthorityRefusalAudit: typeof withAuthorityRefusalAudit;
   applyGrantRefusalBinding: typeof applyGrantRefusalBinding;
   authorityRefusalDigest: typeof authorityRefusalDigest;
   workflowError: typeof workflowError;
@@ -924,7 +926,6 @@ const { reissueAndApplyMaintainerGrantV2, verifyHistoricalApplyGrantTrust } =
     withPostApprovalAdmissionDeadline,
     discoverRepository,
     readTerminalMaintainerGrant,
-    withAuthorityRefusalAudit,
     applyGrantRefusalBinding,
     authorityRefusalDigest,
     workflowError,
@@ -954,6 +955,7 @@ import {
   type Sha256Digest,
   type AuthorityAuditServiceHooks,
   type AuthorityRefusalAuditBinding,
+  type WithAuthorityRefusalAudit,
 } from '../../modules/authority/authority-audit-contract.ts';
 
 import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';

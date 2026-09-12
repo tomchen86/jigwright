@@ -1,3 +1,4 @@
+import { withAuthorityRefusalAudit } from '../../composition-root/authority-refusal-production.ts';
 import { taskMandateOperations } from '../../composition-root/task-mandate-production.ts';
 
 type TaskMandateDependencies = Pick<
@@ -14,10 +15,7 @@ type TaskMandateDependencies = Pick<
 import crypto from 'node:crypto';
 
 import { deriveAuthorityAuditRepositoryId } from '../../runtime/storage-journal/authority-audit-ledger.ts';
-import {
-  authorityRefusalDigest,
-  withAuthorityRefusalAudit,
-} from '../../modules/authority/authority-refusal-audit.ts';
+import { authorityRefusalDigest } from '../../modules/authority/authority-refusal-audit.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
 import { requireExecutionJobMandateBinding } from '../../modules/provider-orchestration/execution-core.ts';

@@ -176,6 +176,18 @@ export type AuthorityRefusalAuditOptions = Readonly<{
   onRecord?: (entry: AuthorityAuditRecordedEvent) => void;
 }>;
 
+export type RecordAuthorityRefusal = (
+  binding: AuthorityRefusalAuditBinding,
+  error: WorkflowError,
+  options?: AuthorityRefusalAuditOptions,
+) => AuthorityAuditRecordedEvent;
+
+export type WithAuthorityRefusalAudit = <T>(
+  binding: AuthorityRefusalAuditBinding,
+  options: AuthorityRefusalAuditOptions,
+  operation: () => T,
+) => T;
+
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

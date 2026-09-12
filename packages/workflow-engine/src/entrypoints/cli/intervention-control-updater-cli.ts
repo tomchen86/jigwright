@@ -7,10 +7,7 @@
  */
 import { bootstrapInterventionStateRoot } from '../../../bootstrap/control-plane-trust.ts';
 import { deriveAuthorityAuditRepositoryId } from '../../runtime/storage-journal/authority-audit-ledger.ts';
-import {
-  authorityRefusalDigest,
-  withAuthorityRefusalAudit,
-} from '../../modules/authority/authority-refusal-audit.ts';
+import { authorityRefusalDigest } from '../../modules/authority/authority-refusal-audit.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
 import {
@@ -61,6 +58,7 @@ export interface ControlPlaneUpdaterCliResult {
 }
 
 export interface ControlPlaneUpdaterCliDependencies extends ControlPlaneUpdaterDependencies {
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit;
   approvalSigner?: MaintainerSignerProvider;
   presentApprovalSummaryV3?: (summary: ControlPlaneApprovalSummaryV3) => void;
   resolveTaskMandateBinding?: (
@@ -270,7 +268,7 @@ function approveAndApplyControlPlaneCandidateV3(input: {
     resolvedMandate,
     preflight.candidate.mandateBinding,
   );
-  const approval = withAuthorityRefusalAudit(
+  const approval = dependencies.withAuthorityRefusalAudit(
     controlPlaneApprovalRefusalBinding(
       requestBaseDirectory,
       preflight,
@@ -493,4 +491,7 @@ function isNonEmpty(value: unknown): value is string {
   );
 }
 
-import { type AuthorityRefusalAuditBinding } from '../../modules/authority/authority-audit-contract.ts';
+import {
+  type AuthorityRefusalAuditBinding,
+  type WithAuthorityRefusalAudit,
+} from '../../modules/authority/authority-audit-contract.ts';

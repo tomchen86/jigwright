@@ -28,6 +28,7 @@ export function createMaintainerApplyReissue(
   bindings: () => MaintainerApplyReissueBindings,
 ) {
   function reissueAndApplyMaintainerGrantV2(
+    withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
     grantServices: MaintainerGrantExecutionServices,
     authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
     manifestOperations: MaintainerManifestOperations,
@@ -47,6 +48,7 @@ export function createMaintainerApplyReissue(
     );
     return withPostApprovalAdmissionDeadline(deadline, () =>
       reissueAndApplyMaintainerGrantV2WithDeadline(
+        withAuthorityRefusalAudit,
         grantServices,
         authorityApplicationReceipts,
         manifestOperations,
@@ -60,6 +62,7 @@ export function createMaintainerApplyReissue(
   }
 
   function reissueAndApplyMaintainerGrantV2WithDeadline(
+    withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
     grantServices: MaintainerGrantExecutionServices,
     authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
     manifestOperations: MaintainerManifestOperations,
@@ -73,7 +76,6 @@ export function createMaintainerApplyReissue(
     const {
       discoverRepository,
       readTerminalMaintainerGrant,
-      withAuthorityRefusalAudit,
       applyGrantRefusalBinding,
       authorityRefusalDigest,
       workflowError,
@@ -208,6 +210,7 @@ export function createMaintainerApplyReissue(
           options.now,
           () =>
             startAuthoritySession(
+              withAuthorityRefusalAudit,
               grantServices,
               manifestOperations,
               taskMandate,
@@ -225,6 +228,7 @@ export function createMaintainerApplyReissue(
             ),
         );
         const committed = commitAuthoritySession(
+          withAuthorityRefusalAudit,
           grantServices,
           authorityApplicationReceipts,
           manifestOperations,
@@ -359,3 +363,5 @@ export function createMaintainerApplyReissue(
 import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
 
 import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
+
+import type { WithAuthorityRefusalAudit } from '../../modules/authority/authority-audit-contract.ts';

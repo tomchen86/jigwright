@@ -25,6 +25,7 @@ export function createMaintainerSessionInspection(
   bindings: () => MaintainerSessionInspectionBindings,
 ) {
   function checkAuthoritySession(
+    withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
     grantServices: MaintainerGrantExecutionServices,
     manifestOperations: MaintainerManifestOperations,
     taskMandate: MaintainerTaskMandateOperations,
@@ -43,7 +44,6 @@ export function createMaintainerSessionInspection(
     const {
       readAuthoritySession,
       authorityError,
-      withAuthorityRefusalAudit,
       verifiedV2AuthorityLifecycleRefusalBinding,
       authorityRefusalDigest,
       listChangedPaths,
@@ -499,3 +499,5 @@ export function createMaintainerSessionInspection(
 import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
 
 import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
+
+import type { WithAuthorityRefusalAudit } from '../../modules/authority/authority-audit-contract.ts';

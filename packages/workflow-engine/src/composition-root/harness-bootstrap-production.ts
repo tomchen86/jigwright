@@ -1,3 +1,4 @@
+import { recordAuthorityRefusal } from '../runtime/storage-journal/authority-refusal-audit.ts';
 /** Assemble recovery capabilities around the independently trusted built-in engine identity. */
 import { controlPlaneRecoveryGrantPersistence } from '../runtime/storage-journal/control-plane-recovery-grant.ts';
 import { createHarnessBootstrapAudit } from '../application/control-plane/harness-bootstrap-audit.ts';
@@ -125,6 +126,7 @@ export function createHarnessBootstrapProduction(
     productionControlPlaneAuditSink,
     productionRecoveryAuditSink,
   } = createHarnessBootstrapAudit({
+    recordAuthorityRefusal,
     deriveAuthorityAuditRepositoryId,
     recordAuthorityAuditEvent,
   });

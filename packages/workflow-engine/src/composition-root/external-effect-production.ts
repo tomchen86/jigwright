@@ -38,7 +38,7 @@ export const {
 
 import { emitAudit } from '../runtime/storage-journal/external-effect-grant-audit.ts';
 
-import { withAuthorityRefusalAudit } from '../modules/authority/authority-refusal-audit.ts';
+import { withAuthorityRefusalAudit } from './authority-refusal-production.ts';
 import { withRepositoryLifecycleOperation } from '../runtime/session-workspace/session-store.ts';
 
 import { createPublishExecutor } from '../application/control-plane/publish-executor.ts';

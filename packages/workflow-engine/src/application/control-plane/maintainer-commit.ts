@@ -15,10 +15,7 @@ import {
   deriveAuthorityAuditRepositoryId,
   scanAuthorityAuditLedger,
 } from '../../runtime/storage-journal/authority-audit-ledger.ts';
-import {
-  authorityRefusalDigest,
-  withAuthorityRefusalAudit,
-} from '../../modules/authority/authority-refusal-audit.ts';
+import { authorityRefusalDigest } from '../../modules/authority/authority-refusal-audit.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   previewExactStaging,
@@ -109,6 +106,7 @@ class AuthorityPoststateVerificationFailed extends Error {
 }
 
 export function commitAuthoritySession(
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
   grantServices: MaintainerGrantExecutionServices,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   manifestOperations: MaintainerManifestOperations,
@@ -174,6 +172,7 @@ export function commitAuthoritySession(
     }
     return withPostApprovalAdmissionDeadline(deadline, () =>
       commitAuthoritySessionWithDeadline(
+        withAuthorityRefusalAudit,
         grantServices,
         authorityApplicationReceipts,
         manifestOperations,
@@ -220,6 +219,7 @@ export function commitAuthoritySession(
 }
 
 function commitAuthoritySessionWithDeadline(
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
   grantServices: MaintainerGrantExecutionServices,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   manifestOperations: MaintainerManifestOperations,
@@ -774,7 +774,10 @@ function commitError(code: string, message: string) {
   return workflowError(code, message, ExitCode.staleState);
 }
 
-import { type AuthorityAuditLedgerScope } from '../../modules/authority/authority-audit-contract.ts';
+import {
+  type AuthorityAuditLedgerScope,
+  type WithAuthorityRefusalAudit,
+} from '../../modules/authority/authority-audit-contract.ts';
 
 import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
 
