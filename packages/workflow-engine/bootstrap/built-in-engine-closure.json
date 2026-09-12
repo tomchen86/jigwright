@@ -458,7 +458,7 @@
     {
       "path": "src/adapters/planning/investigation/investigation-session.ts",
       "mode": "100644",
-      "digest": "sha256:6434e13a31a08379104c827600930ec23e08300ab9246085db08f4e609e7e874"
+      "digest": "sha256:dce376a2020b9e6d360bfe793c4bc6e6991754135c2da31c3ed0b0687d9f1f8b"
     },
     {
       "path": "src/adapters/planning/openspec/documents/colocated-openspec-view.ts",
@@ -623,7 +623,7 @@
     {
       "path": "src/application/assurance/base-authority-attestation.ts",
       "mode": "100644",
-      "digest": "sha256:9d8bb2db5ecc6fe5375955193e356830c0e5dcedee8b2ce03fc39a2e764a5a10"
+      "digest": "sha256:8a43dfa951cf8763ae6234ed7be21e54af526883708ba81a327874a982a59e45"
     },
     {
       "path": "src/application/assurance/check-execution.ts",
@@ -798,7 +798,7 @@
     {
       "path": "src/application/control-plane/human-resolution-grant-revocation.ts",
       "mode": "100644",
-      "digest": "sha256:e4049f0c3daf6d02754d91e48541e8092cacce03e073a16be69a61690d7282fb"
+      "digest": "sha256:1a445fe19b76d0acac229f099c6905eb0bb7eecef4d41a92a42e24c04e4516c8"
     },
     {
       "path": "src/application/control-plane/human-revocation.ts",
@@ -878,7 +878,7 @@
     {
       "path": "src/application/control-plane/maintainer-attestation.ts",
       "mode": "100644",
-      "digest": "sha256:bc874b898aaa0367684268848cb8d31737d5acf60b0e0edbabd9ebab98938cbd"
+      "digest": "sha256:2bc627843d974ed097218b9d7089ad04b4b361d50d60865184238e50eeb5a71e"
     },
     {
       "path": "src/application/control-plane/maintainer-commit.ts",
@@ -1223,7 +1223,7 @@
     {
       "path": "src/application/propose/propose-decision-services.ts",
       "mode": "100644",
-      "digest": "sha256:7c1311aa4692eb2f02a82204fc221742e52b1db0a1c0c8de88c37f5e3f105660"
+      "digest": "sha256:42ce0e7ac16ead378460c04a01fed6891ddad0757c31396228829ec221d89eb8"
     },
     {
       "path": "src/application/propose/propose-evidence.ts",
@@ -1613,7 +1613,7 @@
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
       "mode": "100644",
-      "digest": "sha256:9321ce7bda0445cfe940d15368be8ce97eb0ff80bf89e4b71b7c89e2a585ee54"
+      "digest": "sha256:9e17f4e64779e941cb5889dd478eabae493af019138efb2e035e3f758c81aae0"
     },
     {
       "path": "src/composition-root/handoff-production.ts",
@@ -2143,7 +2143,7 @@
     {
       "path": "src/modules/assurance/ci-attestation.ts",
       "mode": "100644",
-      "digest": "sha256:4bbf0320bb873099463f28a50d987ea8eed14d9982e5bd88a7cba7dada85301d"
+      "digest": "sha256:0e98112843667f1da0a587a19ee872feef40d44e960f747ad89bdfd85b41c6d7"
     },
     {
       "path": "src/modules/assurance/ci-verification.ts",
@@ -2638,7 +2638,7 @@
     {
       "path": "src/modules/authority/grant-revocation-contract.ts",
       "mode": "100644",
-      "digest": "sha256:98ec4dd4bd40cf1c098d345c8dc95a50d2a4ba54c08aad5963f0dee1878be2b6"
+      "digest": "sha256:b3b2672510d829b64cc536285442037f8d8a2de6fe15f250ddb3f0464167b546"
     },
     {
       "path": "src/modules/authority/grant-transition-registry.ts",
@@ -2733,7 +2733,7 @@
     {
       "path": "src/modules/authority/maintainer-grant-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:1f014431cba3189fc4b97c20db06f38c8e32f3698951a80f452720d37a591bd6"
+      "digest": "sha256:1768694bbe7cfad1e9147f059804cbbfd8346e195c8c34dbd6882cfc1e18d73e"
     },
     {
       "path": "src/modules/authority/maintainer-grant-v2-codec.ts",
@@ -2743,7 +2743,7 @@
     {
       "path": "src/modules/authority/maintainer-grant-v2.ts",
       "mode": "100644",
-      "digest": "sha256:58d3ab028d94ed5b04fcde54dcb49771247519ccacaae262a76de31a155de7f6"
+      "digest": "sha256:fc6112221f9192cc405875aa4ff97094001b1e4b02608e94cbaeea7324300d03"
     },
     {
       "path": "src/modules/authority/maintainer-manifest-contracts.ts",
@@ -2763,7 +2763,7 @@
     {
       "path": "src/modules/authority/maintainer-signer-port.ts",
       "mode": "100644",
-      "digest": "sha256:bb1f9acd5d6e6c8a2ef435d0416fbc8066f35ed7ae421a566b2f2b29f2f7375e"
+      "digest": "sha256:053599df0e3770617e6969a0939c1e250163294db9d2632efd575efe696b6090"
     },
     {
       "path": "src/modules/authority/protected-base-initialization-grant.ts",
@@ -3019,6 +3019,11 @@
       "path": "src/modules/investigation/domain/human-resolution-contract.ts",
       "mode": "100644",
       "digest": "sha256:59ffaf5f5cc9d5853e70921b4475b47b8f4d4efba8dfccd87be3f92065f5f6b7"
+    },
+    {
+      "path": "src/modules/investigation/domain/human-resolution-grant-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:3ba864d74eca0f4e870f7d553b443794ca0a5a4068cbb75412a29ab7014f0c8a"
     },
     {
       "path": "src/modules/investigation/domain/human-resolution-grant-publication-contract.ts",
@@ -3823,7 +3828,7 @@
     {
       "path": "src/runtime/grants/human-resolution-grant-verification.ts",
       "mode": "100644",
-      "digest": "sha256:a70096d6fe888a8b18bc92ac2cc144f846c11f63fb16d33aa8e6c15a794a9918"
+      "digest": "sha256:2ece250dd624213c770f448b7e473fb5533f307d3438115b8472880478d4303a"
     },
     {
       "path": "src/runtime/grants/optional-grants-package.ts",
@@ -4193,7 +4198,7 @@
     {
       "path": "src/runtime/repository-observation/human-resolution-grants.ts",
       "mode": "100644",
-      "digest": "sha256:067e2296ffb50e4bd4e4a003708c4d555e00cb7bc51dab1bc5e0db30a7f60196"
+      "digest": "sha256:e7c45995a3ca4e93ef638295d7202838fa1677f9f299d0e0e69fe548d205fc60"
     },
     {
       "path": "src/runtime/repository-observation/human-revocation.ts",
@@ -4953,7 +4958,7 @@
     {
       "path": "src/runtime/storage-journal/human-resolution-grant-store.ts",
       "mode": "100644",
-      "digest": "sha256:03e6ba97cfac8640fc6c6002a26f2490024a65809eb3a30cee42202602e89f53"
+      "digest": "sha256:084350fa00450129706a68ba088af66926419c030135223abc767d7d679aba90"
     },
     {
       "path": "src/runtime/storage-journal/human-resolution-journal.ts",
@@ -4973,7 +4978,7 @@
     {
       "path": "src/runtime/storage-journal/human-resolution-revocation-store.ts",
       "mode": "100644",
-      "digest": "sha256:989e584494856c0fa0c3283d56e97af3fbd7a7e4a2fcf2d21060d6b1194ac711"
+      "digest": "sha256:efce445680b0b324c8b67489b33c0a818d7277dad67f8db60d5b4c2dd37b3d36"
     },
     {
       "path": "src/runtime/storage-journal/human-resolution-state.ts",

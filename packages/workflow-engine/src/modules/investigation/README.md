@@ -8,11 +8,11 @@ Build the investigation around a manifest of the exact tracked source snapshot s
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.investigation-readme v=1 digest=sha256:9e87f7ee08b5ba0abdbb88590a51b9fc031e2de20e8d13112c9b991d98718d62 -->
+<!-- jigwright:region id=documents.investigation-readme v=1 digest=sha256:a882d5685155fe3d3187dd6c70a2b0abe665349952c995b75109109145b6b407 -->
 
 <!-- prettier-ignore-start -->
 
-42 files changed in this module since confirmation.
+43 files changed in this module since confirmation.
 
 ## Commands
 
@@ -52,6 +52,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [domain/floor-overflow-pruning.ts](domain/floor-overflow-pruning.ts) | Bounds the investigation floor using a deterministic retention order. | 1 | History unavailable |
 | [domain/hit-predicate.ts](domain/hit-predicate.ts) | Parses a bounded predicate language and evaluates it against stored scan- hit windows. | 1 | History unavailable |
 | [domain/human-resolution-contract.ts](domain/human-resolution-contract.ts) | Defines and validates investigation resolution decisions, nodes, and state identities. | 2 | History unavailable |
+| [domain/human-resolution-grant-contract.ts](domain/human-resolution-grant-contract.ts) | Owns investigation human-resolution Grant evidence and session-bound revocation. | 2 | History unavailable |
 | [domain/human-resolution-grant-publication-contract.ts](domain/human-resolution-grant-publication-contract.ts) | Defines and validates exact grant-publication observations and quarantine receipts. | 2 | History unavailable |
 | [domain/human-resolution-journal-contract.ts](domain/human-resolution-journal-contract.ts) | Validates resolution journal plans and their immutable identities and phase order. | 2 | History unavailable |
 | [domain/human-resolution-values.ts](domain/human-resolution-values.ts) | Shared human-resolution scalar validation and stable refusal errors. | 0 | History unavailable |

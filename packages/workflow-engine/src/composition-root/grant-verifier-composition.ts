@@ -86,6 +86,7 @@ const REQUIRED_COMPOSITION_SOURCES = Object.freeze([
   'packages/workflow-engine/src/modules/authority/collaboration-grant-use.ts',
   'packages/workflow-engine/src/modules/authority/grant-errors.ts',
   'packages/workflow-engine/src/modules/authority/grant-revocation-contract.ts',
+  'packages/workflow-engine/src/modules/investigation/domain/human-resolution-grant-contract.ts',
   'packages/workflow-engine/src/modules/authority/role-context-sharing-consumed-replay.ts',
   'packages/workflow-engine/src/modules/authority/role-context-sharing-grant-lifecycle-port.ts',
   'packages/workflow-engine/src/modules/authority/role-context-sharing-grant.ts',

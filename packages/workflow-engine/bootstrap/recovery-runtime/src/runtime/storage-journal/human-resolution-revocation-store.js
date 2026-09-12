@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { withHumanResolutionGrantStoreLock } from "./human-resolution-grant-lock.js";
+import { humanResolutionRevocationBinding, } from "../../modules/investigation/domain/human-resolution-grant-contract.js";
 import { inspectStoredHumanResolutionGrant, reconcileTerminalHumanResolutionGrantResidual, } from "./human-resolution-grant-store.js";
 import { readHumanResolutionJournal } from "./human-resolution-journal.js";
 import { createPrivateCanonicalJson, fsyncDirectory, privatePathExists, readPrivateCanonicalJson, } from "./investigation-private-files.js";
@@ -10,7 +11,6 @@ import { humanResolutionGrantNotFound } from "../../modules/investigation/domain
 import { humanResolutionPaths } from "./investigation-resolution-values.js";
 import { readInvestigationSession } from "./investigation-session-records.js";
 import { canonicalHumanRevocationAuthorization, } from "../../modules/authority/human-revocation-contract.js";
-import { humanResolutionRevocationBinding, } from "../../modules/authority/grant-revocation-contract.js";
 export const openHumanResolutionRevocationStore = (paths) => ({
     inspect: (grantId) => inspectStoredHumanResolutionGrant(paths, grantId),
     hasPreparedJournal: (grantId) => readHumanResolutionJournal(paths, grantId) !== null,

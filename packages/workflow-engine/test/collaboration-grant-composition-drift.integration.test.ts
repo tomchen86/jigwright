@@ -151,6 +151,7 @@ const RETIRED_COLLABORATION_STORE_OWNERS = [
   'packages/workflow-engine/src/composition-root/collaboration-grant-production.ts',
   'packages/workflow-engine/src/modules/authority/collaboration-grant-records.ts',
   'packages/workflow-engine/src/modules/authority/grant-revocation-contract.ts',
+  'packages/workflow-engine/src/modules/investigation/domain/human-resolution-grant-contract.ts',
   'packages/workflow-engine/src/runtime/grants/grant-services.ts',
   'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-consumption.ts',
   'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-private-files.ts',

@@ -12,8 +12,10 @@ import type {
   PatchManifest,
 } from './maintainer-manifest-contracts.ts';
 import type { MaintainerPolicy } from './maintainer-policy.ts';
-import type { MaintainerSignerProvider } from './maintainer-signer-port.ts';
-import type { HumanResolutionSignerFactory } from './maintainer-grant-contracts.ts';
+import type {
+  MaintainerSignerProvider,
+  MaintainerSignerFactory,
+} from './maintainer-signer-port.ts';
 
 import type { GitState } from '../repository-consumer/repository-git-state.ts';
 import type { RefGenerationLedger } from './maintainer-candidate-ref-ledger.ts';
@@ -221,7 +223,7 @@ export type MaintainerGrantV2Services = {
     baseCommit: string,
     paths: string[],
   ) => readonly string[];
-  createInteractiveSshSigner: HumanResolutionSignerFactory;
+  createInteractiveSshSigner: MaintainerSignerFactory;
   isPostApprovalAdmissionFailure: (error: unknown) => boolean;
   publishSignedMaintainerGrant: (
     publication: SignedMaintainerGrantPublication,

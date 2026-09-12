@@ -23,11 +23,11 @@ import {
   COLLABORATION_GRANT_AUTHORIZED_EFFECT,
   COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
 } from '../src/modules/authority/collaboration-grant-codec.ts';
-import {
-  type CollaborationRevocationTarget,
-  type HumanResolutionGrantStoreEntry,
-  type HumanResolutionRevocationStore,
-} from '../src/modules/authority/grant-revocation-contract.ts';
+import type { CollaborationRevocationTarget } from '../src/modules/authority/grant-revocation-contract.ts';
+import type {
+  HumanResolutionGrantStoreEntry,
+  HumanResolutionRevocationStore,
+} from '../src/modules/investigation/domain/human-resolution-grant-contract.ts';
 import type { CollaborationGrantInspection } from '../src/modules/authority/collaboration-grant-records.ts';
 import { projectInvestigationRuntimePaths } from '@jigwright/core/runtime-path-kernel';
 import { assertPureDependencyClosure } from './support/pure-dependency-closure.ts';
@@ -545,6 +545,7 @@ test('revocation application and canonical contracts have complete effect-free d
     'application/control-plane/collaboration-grant-revocation',
     'application/control-plane/human-resolution-grant-revocation',
     'modules/authority/grant-revocation-contract',
+    'modules/investigation/domain/human-resolution-grant-contract',
   ]) {
     const root = fileURLToPath(new URL('../../../', import.meta.url));
     const entry = fileURLToPath(new URL(`../src/${file}.ts`, import.meta.url));

@@ -1,4 +1,4 @@
-import type { HumanResolutionGrantStoreEntry } from '../../modules/authority/grant-revocation-contract.ts';
+import type { HumanResolutionGrantStoreEntry } from '../../modules/investigation/domain/human-resolution-grant-contract.ts';
 /**
  * Publishes, reserves, reads, and terminalizes human-resolution grants.
  *

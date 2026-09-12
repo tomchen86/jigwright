@@ -1,7 +1,8 @@
+import { canonicalHumanResolutionGrantEnvelope, parseHumanResolutionGrantEnvelope, assertHumanResolutionAuditPayload, humanResolutionGrantInvalid, } from "../../modules/investigation/domain/human-resolution-grant-contract.js";
+import { assertMaintainerGrantId } from "../../modules/authority/maintainer-grant-contracts.js";
 /** Reads historical Grant policy, exact annotated tags and successor sessions. */
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { parseMaintainerPolicy, } from "../../modules/authority/maintainer-policy.js";
-import { canonicalHumanResolutionGrantEnvelope, parseHumanResolutionGrantEnvelope, assertMaintainerGrantId, assertHumanResolutionAuditPayload, humanResolutionGrantInvalid, } from "../../modules/authority/maintainer-grant-contracts.js";
 import { runGit } from "../repository-transaction/git.js";
 import { readInvestigationSession } from "../storage-journal/investigation-session-records.js";
 export const readHumanResolutionAuditTag = (repositoryRoot, policy, observedRef) => {

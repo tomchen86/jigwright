@@ -4,7 +4,11 @@ import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 
 import { withHumanResolutionGrantStoreLock } from './human-resolution-grant-lock.ts';
-import { type HumanResolutionGrantStoreEntry } from '../../modules/authority/grant-revocation-contract.ts';
+import {
+  type HumanResolutionGrantStoreEntry,
+  humanResolutionRevocationBinding,
+  type OpenHumanResolutionRevocationStore,
+} from '../../modules/investigation/domain/human-resolution-grant-contract.ts';
 import {
   inspectStoredHumanResolutionGrant,
   reconcileTerminalHumanResolutionGrantResidual,
@@ -28,10 +32,7 @@ import {
   canonicalHumanRevocationAuthorization,
   type HumanRevocationAuthorization,
 } from '../../modules/authority/human-revocation-contract.ts';
-import {
-  humanResolutionRevocationBinding,
-  type OpenHumanResolutionRevocationStore,
-} from '../../modules/authority/grant-revocation-contract.ts';
+
 export const openHumanResolutionRevocationStore: OpenHumanResolutionRevocationStore =
   (paths) => ({
     inspect: (grantId) => inspectStoredHumanResolutionGrant(paths, grantId),

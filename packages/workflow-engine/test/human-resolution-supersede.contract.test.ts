@@ -19,7 +19,7 @@ import { inspectInvestigationResolutionState } from '../src/runtime/storage-jour
 import {
   canonicalHumanResolutionGrantEnvelope,
   type HumanResolutionGrantEnvelope,
-} from '../src/modules/authority/maintainer-grant-contracts.ts';
+} from '../src/modules/investigation/domain/human-resolution-grant-contract.ts';
 import { verifyHumanResolutionGrantEnvelope } from '../src/composition-root/human-revocation-production.ts';
 import type { MaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';

@@ -1,20 +1,18 @@
-import type {
-  HumanResolutionServices,
-  HumanResolutionSignerFactory,
-} from '../../modules/authority/maintainer-grant-contracts.ts';
-/** Verifies exact human-resolution bytes with the selected historical signer. */
-
 import {
+  type HumanResolutionServices,
   canonicalHumanResolutionGrantPayload,
   assertHumanResolutionAuditPayload,
   HUMAN_RESOLUTION_SIGNATURE_NAMESPACE,
-} from '../../modules/authority/maintainer-grant-contracts.ts';
+} from '../../modules/investigation/domain/human-resolution-grant-contract.ts';
+import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
+/** Verifies exact human-resolution bytes with the selected historical signer. */
+
 import { assertHumanResolutionDecision } from '../../modules/investigation/domain/human-resolution-contract.ts';
 
 import { loadMaintainerPolicyForResolution } from '../repository-observation/human-resolution-grants.ts';
 
 export function createHumanResolutionGrantVerification(
-  createSigner: HumanResolutionSignerFactory,
+  createSigner: MaintainerSignerFactory,
 ) {
   const verifyHumanResolutionGrantEnvelope: HumanResolutionServices['verifyHumanResolutionGrantEnvelope'] =
     (repositoryRoot, envelope, policy, verifier) => {

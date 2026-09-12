@@ -1,19 +1,20 @@
-import type { HumanResolutionServices } from '../../modules/authority/maintainer-grant-contracts.ts';
-import type { HumanResolutionAuditTagReader } from '../../modules/authority/maintainer-grant-contracts.ts';
+import {
+  type HumanResolutionServices,
+  type HumanResolutionAuditTagReader,
+  canonicalHumanResolutionGrantEnvelope,
+  parseHumanResolutionGrantEnvelope,
+  assertHumanResolutionAuditPayload,
+  humanResolutionGrantInvalid,
+  type HumanResolutionGrantEnvelope,
+} from '../../modules/investigation/domain/human-resolution-grant-contract.ts';
+import { assertMaintainerGrantId } from '../../modules/authority/maintainer-grant-contracts.ts';
+
 /** Reads historical Grant policy, exact annotated tags and successor sessions. */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   parseMaintainerPolicy,
   type MaintainerPolicy,
 } from '../../modules/authority/maintainer-policy.ts';
-import {
-  canonicalHumanResolutionGrantEnvelope,
-  parseHumanResolutionGrantEnvelope,
-  assertMaintainerGrantId,
-  assertHumanResolutionAuditPayload,
-  humanResolutionGrantInvalid,
-  type HumanResolutionGrantEnvelope,
-} from '../../modules/authority/maintainer-grant-contracts.ts';
 
 import { runGit } from '../repository-transaction/git.ts';
 import { readInvestigationSession } from '../storage-journal/investigation-session-records.ts';

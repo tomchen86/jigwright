@@ -58,7 +58,7 @@ import {
   storeProviderExecutionPolicySnapshot,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import type { BlindSurveyManifest } from '../src/modules/investigation/manifest/blind-survey-manifest.ts';
-import { humanResolutionBlockerBinding } from '../src/modules/authority/maintainer-grant-contracts.ts';
+import { humanResolutionBlockerBinding } from '../src/modules/investigation/domain/human-resolution-grant-contract.ts';
 import {
   createFixtureRepository,
   git,

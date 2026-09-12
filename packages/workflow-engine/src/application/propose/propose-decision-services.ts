@@ -4,7 +4,7 @@ import {
   type TaskMandateActiveBinding,
 } from '../../modules/authority/task-mandate-access-contract.ts';
 
-import type { HumanResolutionServices } from '../../modules/authority/maintainer-grant-contracts.ts';
+import type { HumanResolutionServices } from '../../modules/investigation/domain/human-resolution-grant-contract.ts';
 import type { InvestigationHumanActionBlockerFactory } from '../../modules/investigation/domain/human-resolution-contract.ts';
 
 import type { ReadPinnedPathDiff } from '../../modules/investigation/domain/investigation-floor.ts';

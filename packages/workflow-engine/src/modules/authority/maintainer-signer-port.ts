@@ -26,3 +26,9 @@ export type MaintainerDataSignatureVerifier = (
   namespace: string,
   errorCode: string,
 ) => void;
+
+/** Creates the canonical signer used by maintainer operations. */
+export type MaintainerSignerFactory = (
+  repositoryRoot: string,
+  policy: import('./maintainer-policy.ts').MaintainerPolicy,
+) => MaintainerSignerProvider;

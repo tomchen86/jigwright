@@ -22,12 +22,15 @@ import {
   type MaintainerGrantV2Envelope,
 } from '../../modules/authority/maintainer-grant-v2-codec.ts';
 import type { MaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
+import type {
+  MaintainerSignerProvider,
+  MaintainerSignerFactory,
+} from '../../modules/authority/maintainer-signer-port.ts';
 import type {
   HumanResolutionAuditTagReader,
   HumanResolutionServices,
-  HumanResolutionSignerFactory,
-} from '../../modules/authority/maintainer-grant-contracts.ts';
+} from '../../modules/investigation/domain/human-resolution-grant-contract.ts';
+
 import type { GitState } from '../../modules/repository-consumer/repository-git-state.ts';
 import type { WorkflowConfig } from '../../modules/repository-consumer/workflow-config.ts';
 import {
@@ -113,7 +116,7 @@ export type AuthorityAttestationServices = {
   ) => void;
   readHumanResolutionAuditTag: HumanResolutionAuditTagReader;
   verifyHumanResolutionGrantEnvelope: HumanResolutionServices['verifyHumanResolutionGrantEnvelope'];
-  createInteractiveSshSigner: HumanResolutionSignerFactory;
+  createInteractiveSshSigner: MaintainerSignerFactory;
   authorityAttestCommand: (binding: AuthorityAttestationRequest) => string;
   authorityTagPublishCommand: (
     repositoryOrigin: string,

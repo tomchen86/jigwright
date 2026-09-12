@@ -33,7 +33,7 @@ import {
   validateHumanResolutionGrantPayload,
   type HumanResolutionGrantEnvelope,
   type HumanResolutionGrantPayload,
-} from '../src/modules/authority/maintainer-grant-contracts.ts';
+} from '../src/modules/investigation/domain/human-resolution-grant-contract.ts';
 import {
   assertResolutionDecisionTarget,
   loadMaintainerPolicyForResolution,

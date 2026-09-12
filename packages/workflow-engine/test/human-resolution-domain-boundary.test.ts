@@ -7,6 +7,7 @@ import { assertPureDependencyClosure } from './support/pure-dependency-closure.t
 test('HumanResolution codecs and canonical session DTOs have complete pure closures', () => {
   for (const owner of [
     'authority/maintainer-grant-contracts',
+    'investigation/domain/human-resolution-grant-contract',
     'investigation/domain/human-resolution-contract',
     'investigation/domain/investigation-session-types',
     'investigation/domain/investigation-checkpoint-contract',

@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:543355bb64ddecfc790bc1b59e8e4a78955aec6550639941303ec5133f2a9526"
+      "digest": "sha256:b8d30e8ebbc97c0fe3322b92736f34b63e2f1d81abfc1a9fcb8fa6cf7e23fc18"
     },
     {
       "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js",
@@ -23,7 +23,7 @@
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/package.json",
       "mode": "100644",
-      "digest": "sha256:6b73294ca2ded1bfb74ecc805407f4d357cdbe84f0f465f9cf25edd85a77217b"
+      "digest": "sha256:36d4931d29a2eddaa2285deb9edabee9d7e516bbbf54f90c5a712bb3b4ca5260"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/built-in-provider-catalog.js",
@@ -51,11 +51,6 @@
       "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
     },
     {
-      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/collaboration-grant-envelope-codec.js",
-      "mode": "100644",
-      "digest": "sha256:0fa62b30f24928e38bf274baf8fb59d79c50cfbc46dbd681c11c21a4aa2ee2f2"
-    },
-    {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/contract-values.js",
       "mode": "100644",
       "digest": "sha256:c2856f46e0f315531e4176fc89b4fd2c9640f50a9aec88387623369f23be21f6"
@@ -69,21 +64,6 @@
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/governance-source.js",
       "mode": "100644",
       "digest": "sha256:162f11bf5cfe5681d5a9d3d2947dfadf34c0335dd8ce55e87299ccc4fbcd2604"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/grant-envelope-contracts.js",
-      "mode": "100644",
-      "digest": "sha256:3a915a11f9442a02f68e8250524d6bf525273472514fab6c82bdb82ab3eba09d"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/grant-lifecycle-contracts.js",
-      "mode": "100644",
-      "digest": "sha256:1b3c9209012c82b775473abb0785407060b3798437f774483e6fa8819c587945"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/grant-verifier-port.js",
-      "mode": "100644",
-      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/markdown-sections.js",
@@ -111,11 +91,6 @@
       "digest": "sha256:8fbc5c50eb5c1f3136dbe0bfebd989f05a06eb7577dd7250fad3f0acc7cb82c1"
     },
     {
-      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/signed-attestation-envelope-codec.js",
-      "mode": "100644",
-      "digest": "sha256:3610369278202e1b7472ec0b564833c1d3061421fe673491632fd0aeb20b900e"
-    },
-    {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/workflow-identifiers.js",
       "mode": "100644",
       "digest": "sha256:15cad186dca1c281da02bc57711920566b468b56708e140a6cf68eb77bbd42db"
@@ -124,31 +99,6 @@
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/workflow-namespace.js",
       "mode": "100644",
       "digest": "sha256:0505781c53f8198df3e0c413d838976a487ab9298bb030efd6e0402bbcaf37c7"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/grants/package.json",
-      "mode": "100644",
-      "digest": "sha256:2848c37a9e94ae5f7d0d17f35b5e6675e1525c7e5d8fb1ea1cb8d4fd573f7aaa"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/grants/src/collaboration-grant-envelope-reader.js",
-      "mode": "100644",
-      "digest": "sha256:468c5e241bfde82890210cc49017b748820d1c74bcd15db1a82573d8829183c4"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/grants/src/grant-envelope-verifier.js",
-      "mode": "100644",
-      "digest": "sha256:b9cba3337c7f711699f40f6757c88d216984d8d01939898d83d0b04b9a701904"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/grants/src/grant-lifecycle.js",
-      "mode": "100644",
-      "digest": "sha256:c5fd977c5ac4fb8a2b80c8559d3c4769ad8f925d7e539e415b2c6250bf6333ca"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/grants/src/signed-attestation-envelope-reader.js",
-      "mode": "100644",
-      "digest": "sha256:18e592fab5e6e3844ce7b997539d75de8610b24791f01a017d9e84155dbc42a6"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/repository-runtime/package.json",
@@ -336,11 +286,6 @@
       "digest": "sha256:c10ad7a67686aea118ee7da57022b0b44df0de859152799b6330b88576c67271"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/modules/authority/actor-identity.js",
-      "mode": "100644",
-      "digest": "sha256:c38a851a6f5fc5a94bb8684f9fcac2592b5d263e486baa5c98040bec7495fe30"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/modules/authority/authority-audit-contract.js",
       "mode": "100644",
       "digest": "sha256:fca5a1e7e249debd0b3700aca42273ec638f93e9f8d1a8b256fa2e5629cb54d2"
@@ -349,16 +294,6 @@
       "path": "bootstrap/recovery-runtime/src/modules/authority/authority-refusal-audit.js",
       "mode": "100644",
       "digest": "sha256:01e79474bf60df2ccee04a4869a8111b81711d840da34bee72fbd3b65a8eb3bf"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/modules/authority/collaboration-grant-codec.js",
-      "mode": "100644",
-      "digest": "sha256:4ca1b3b7dce0e1c5ae85e6c66eed5d152a9b2a5931ceb28340b2197ff51933f6"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/modules/authority/collaboration-grant-records.js",
-      "mode": "100644",
-      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/control-plane-recovery-grant-records.js",
@@ -386,11 +321,6 @@
       "digest": "sha256:bb6257ab87ce45e332cb2ca59b1aae116207d0886d07bc17d757f6ed1f78746b"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/modules/authority/grant-errors.js",
-      "mode": "100644",
-      "digest": "sha256:3bc276e698df926244aa849ab5200ec825bc2081cf354ba0de415e654c40d5a6"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/modules/authority/grant-parent-binding.js",
       "mode": "100644",
       "digest": "sha256:8c82b41bc0416b96e908629f896a470c89d774d25067a8ef2859b13c56b42be8"
@@ -416,19 +346,9 @@
       "digest": "sha256:50c40cb98a7e3b0bceb9d874b24bf5d1475a30df0504141f91407dc28af35100"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/modules/authority/grant-revocation-contract.js",
-      "mode": "100644",
-      "digest": "sha256:fe38760e3a38a0496b5f90ef72182fd42fb611f675d2eaa7af16c7031d4f0e89"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/modules/authority/grant-transition-registry.js",
       "mode": "100644",
       "digest": "sha256:95db4d9b93104796f17a7e153aaf0478ae451ccedaafd62bd2a09156d45adc96"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/modules/authority/grant-verifier-port.js",
-      "mode": "100644",
-      "digest": "sha256:d41d98820b1f005be9e348b6ffb994a1c0539a8c6795c58bf1533ce9e1389b3c"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/harness-bootstrap-parent-contract.js",
@@ -483,7 +403,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/maintainer-grant-contracts.js",
       "mode": "100644",
-      "digest": "sha256:fdbd902a4a1a72d0d7c4ef3d949f7ad2fc95a50543608f214274975f626e3899"
+      "digest": "sha256:6122e136f19b46ec7963485643d3f021abc7bac2f2d3a96e7d06c9d38e2cf249"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/maintainer-policy.js",
@@ -544,6 +464,11 @@
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/human-resolution-contract.js",
       "mode": "100644",
       "digest": "sha256:a2dfb0742ddbd3c60e943a5bd787859db5e1278d6bbd9ed5708629ebd9b7d826"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/human-resolution-grant-contract.js",
+      "mode": "100644",
+      "digest": "sha256:66e27f70b1551fd6d45860b1c2c664de01393f63e36a166b413d9042eeb421f8"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/human-resolution-grant-publication-contract.js",
@@ -753,7 +678,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/grants/human-resolution-grant-verification.js",
       "mode": "100644",
-      "digest": "sha256:91ba71f396ee90a6f4ea1306f39cf6cc797e537ae1ff527c9484d1d7d1a81391"
+      "digest": "sha256:657953b6c9bb35ceca862e6cbaca747d45f7288fc24631b3682f786b874f34bf"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/provider-execution/execution-environment.js",
@@ -798,7 +723,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/repository-observation/human-resolution-grants.js",
       "mode": "100644",
-      "digest": "sha256:906e856b553399c16f8e52d0ed63180191bdf0c87f5877a65f0a1b61a59c6619"
+      "digest": "sha256:8af71ed4b23f2a9acc1dafb618547ff088bdcbe2e1d70a763cc545d7da640b79"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/repository-observation/human-revocation.js",
@@ -1053,7 +978,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/human-resolution-revocation-store.js",
       "mode": "100644",
-      "digest": "sha256:5bd5173be79b15d7f5926e00788fb8c353fc9a0ad5c520d5c774140485191690"
+      "digest": "sha256:7ca4d59a24433f77e235fe4a2304f205c48d9007af0c245d65e3cfbb0cc33735"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/human-revocation-preparation.js",

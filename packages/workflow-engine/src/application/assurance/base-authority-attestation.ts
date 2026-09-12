@@ -13,7 +13,7 @@ import { WorkflowError } from '../../foundation/errors/errors.ts';
 import {
   HUMAN_RESOLUTION_SIGNATURE_NAMESPACE,
   canonicalHumanResolutionGrantPayload,
-} from '../../modules/authority/maintainer-grant-contracts.ts';
+} from '../../modules/investigation/domain/human-resolution-grant-contract.ts';
 import {
   canonicalMaintainerGrantV2Payload,
   maintainerGrantV2SignatureNamespace,

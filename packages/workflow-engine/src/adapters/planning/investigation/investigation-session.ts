@@ -9,11 +9,10 @@ import {
   assertResolutionDecisionAvailable,
   humanResolutionBlockerBinding,
   parseHumanResolutionGrantEnvelope,
-} from '../../../modules/authority/maintainer-grant-contracts.ts';
-import {
   type HumanResolutionGrantRevoker,
   type HumanResolutionGrantStoreEntry,
-} from '../../../modules/authority/grant-revocation-contract.ts';
+} from '../../../modules/investigation/domain/human-resolution-grant-contract.ts';
+
 import {
   type InvestigationHumanActionBlockerFactory,
   assertHumanResolutionDecision,

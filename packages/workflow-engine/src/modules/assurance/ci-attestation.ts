@@ -168,7 +168,7 @@ import type {
   CiAuthorityReplayOperations,
   CiAuthorityReplayServices,
 } from './commit-replay/ci-authority.ts';
-import type { HumanResolutionAuditTagReader } from '../authority/maintainer-grant-contracts.ts';
+import type { HumanResolutionAuditTagReader } from '../investigation/domain/human-resolution-grant-contract.ts';
 export type CiAttestationServices = Pick<
   CiRepositoryObservations,
   | 'listFirstParentHashes'

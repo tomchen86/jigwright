@@ -3,7 +3,7 @@ import type { HumanRevocationAuthorizer } from '../../modules/authority/human-re
 import type {
   OpenHumanResolutionRevocationStore,
   HumanResolutionGrantRevoker,
-} from '../../modules/authority/grant-revocation-contract.ts';
+} from '../../modules/investigation/domain/human-resolution-grant-contract.ts';
 import {
   assertHumanResolutionGrantId,
   humanResolutionGrantNotFound,

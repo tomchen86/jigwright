@@ -8,7 +8,7 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:ed7d337937459895aa0c1aa0da499d00da85133d473dd7a6ea016f6fed4ca0d8 -->
+<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:52ce77bbefe6c6578826c3e2c2a231b695a71db951961a02ee349a021e9c556c -->
 
 <!-- prettier-ignore-start -->
 
@@ -163,7 +163,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [grant-primitives.ts](grant-primitives.ts) | Provides Grant identifier, canonical value, key-set and timestamp primitives. | 2 | History unavailable |
 | [grant-record-store.ts](grant-record-store.ts) | Grant record transitions over required canonical record persistence. | 0 | History unavailable |
 | [grant-records.ts](grant-records.ts) | Canonical Grant records, evidence validation and exact record projections. | 0 | History unavailable |
-| [grant-revocation-contract.ts](grant-revocation-contract.ts) | Canonical revocation targets and required transaction capabilities. | 0 | History unavailable |
+| [grant-revocation-contract.ts](grant-revocation-contract.ts) | Canonical collaboration revocation targets and required transaction capabilities. | 0 | History unavailable |
 | [grant-transition-registry.ts](grant-transition-registry.ts) | Registers Grant transitions and renders choices bound to their declared parameters and consequences. | 2 | History unavailable |
 | [grant-verifier-port.ts](grant-verifier-port.ts) | Seals authoritative collaboration verifiers and resolves opaque consumed- replay verifier handles. | 2 | History unavailable |
 | [harness-bootstrap-parent-contract.ts](harness-bootstrap-parent-contract.ts) | Observe and admit an existing engine overlay for a parent session. | 0 | History unavailable |
@@ -182,7 +182,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [maintainer-candidate-contracts.ts](maintainer-candidate-contracts.ts) | Builds canonical candidate bundles, supporting artifacts and check freshness contracts. | 2 | Header changed since confirmation |
 | [maintainer-candidate-dependencies.ts](maintainer-candidate-dependencies.ts) | Canonical candidate dependency projections and required observation contracts. | 0 | History unavailable |
 | [maintainer-candidate-ref-ledger.ts](maintainer-candidate-ref-ledger.ts) | Canonical ref-generation state and prestate rules. | 0 | Header changed since confirmation |
-| [maintainer-grant-contracts.ts](maintainer-grant-contracts.ts) | No leading responsibility comment. | 0 | Header changed since confirmation |
+| [maintainer-grant-contracts.ts](maintainer-grant-contracts.ts) | Owns the canonical maintainer Grant ID pattern and its exact admission error. | 0 | Header changed since confirmation |
 | [maintainer-grant-v2-codec.ts](maintainer-grant-v2-codec.ts) | No leading responsibility comment. | 0 | Header changed since confirmation |
 | [maintainer-grant-v2.ts](maintainer-grant-v2.ts) | Exact V2 candidate admission rules and canonical operation contracts. | 0 | History unavailable |
 | [maintainer-manifest-contracts.ts](maintainer-manifest-contracts.ts) | Validates capability profiles and canonical patch manifests, including file roles and relationships. | 2 | Header changed since confirmation |
