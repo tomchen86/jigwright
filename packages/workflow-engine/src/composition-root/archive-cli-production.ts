@@ -27,7 +27,7 @@ import {
   discoverArchivePullRequestCandidates,
   inspectArchivePublicationPreparation,
   preparePostMergeArchivePullRequest as preparePostMergeArchivePullRequestWithHandoff,
-  publishPostMergeArchivePullRequest,
+  publishPostMergeArchivePullRequest as publishWithArchiveGrant,
   type GitHubArchiveAdapterModuleV1,
   type ExactArchiveBranchPublisherPortV1,
 } from '../application/archive/archive-pr-orchestration.ts';
@@ -82,3 +82,9 @@ export function createArchivePullRequestCliDependencies(
   });
 }
 import type { WorkflowGrantServices } from './grant-production.ts';
+
+import { authenticateCompletedArchivePullRequestGrant } from './archive-pr-grant-production.ts';
+export const publishPostMergeArchivePullRequest = publishWithArchiveGrant.bind(
+  undefined,
+  authenticateCompletedArchivePullRequestGrant,
+);

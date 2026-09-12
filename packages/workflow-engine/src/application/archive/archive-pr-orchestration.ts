@@ -45,18 +45,19 @@ import {
 import { ensurePlainDirectory } from '../../runtime/repository-transaction/filesystem-safety.ts';
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
 import {
-  createArchivePublicationPreparation,
   persistArchivePublicationPreparation,
   readArchivePublicationPreparation,
-  type ArchivePublicationPreparationV1,
 } from '../../runtime/storage-journal/archive-publication-store.ts';
 import {
   assertArchivePublicationTarget,
-  authenticateCompletedArchivePullRequestGrant,
   type ArchivePullRequestPublicationTargetV1,
   type CompletedArchivePullRequestGrantReferenceV1,
 } from '../../modules/authority/archive-pr-grant.ts';
-import { grantStorePaths } from '../../runtime/storage-journal/grant-store.ts';
+import {
+  createArchivePublicationPreparation,
+  type ArchivePublicationPreparationV1,
+} from '../../modules/authority/archive-publication-preparation.ts';
+import type { ArchivePullRequestGrantAuthenticator } from './archive-pr-grant.ts';
 import { loadRepositoryConsumerConfiguration } from '../../runtime/repository-observation/repository-consumer.ts';
 
 export type ArchivePullRequestCandidateProjectionInput = Readonly<{
@@ -845,6 +846,7 @@ export function projectArchivePullRequestPublication(
  * candidate discovery and local preparation never cross the network boundary.
  */
 export async function publishPostMergeArchivePullRequest(
+  authenticateCompletedArchivePullRequestGrant: ArchivePullRequestGrantAuthenticator,
   cwd: string,
   local: PreparedPostMergeArchivePullRequestV1,
   configValue: unknown,
@@ -876,7 +878,6 @@ export async function publishPostMergeArchivePullRequest(
   const runtimeRoot =
     loadInvestigationRuntimeContext(cwd).lifecycleRuntime.root;
   const centralGrantRecord = authenticateCompletedArchivePullRequestGrant(
-    grantStorePaths(runtimeRoot),
     runtimeRoot,
     options.grantChallengeId,
     local.preparation.preparationIdentity,

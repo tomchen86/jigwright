@@ -25,7 +25,7 @@ import {
 import {
   archivePullRequestGrantTransitionDefinitions,
   createArchivePullRequestGrantRequest,
-} from '../modules/authority/archive-pr-grant.ts';
+} from './archive-pr-grant-production.ts';
 import {
   assertGitAuthorityCandidateApplyParameters,
   gitAuthorityCandidateApplyGrantTransitionDefinitions,

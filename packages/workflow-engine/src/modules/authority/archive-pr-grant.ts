@@ -16,21 +16,9 @@ import type { CentralGrantCompletedAuthorityRefV1 } from '@jigwright/core/centra
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  readArchivePublicationPreparation,
-  type ArchivePublicationPreparationV1,
-} from '../../runtime/storage-journal/archive-publication-store.ts';
-import {
-  type GrantStorePaths,
-  createFileGrantRecordStore,
-} from '../../runtime/storage-journal/grant-store.ts';
-import { type TerminalGrantRecord } from './grant-records.ts';
+import type { ArchivePublicationPreparationV1 } from './archive-publication-preparation.ts';
+import type { GrantRecord, TerminalGrantRecord } from './grant-records.ts';
 import type { GrantRequestInput, StateBinding } from './grant-core.ts';
-import {
-  grantTransitionPreconditionChanged,
-  type AuthorizedTransitionContext,
-  type TransitionDefinition,
-} from './grant-transition-registry.ts';
 
 export const ARCHIVE_PR_PUBLICATION_TRANSITION_ID =
   'github.archive-pr.publish' as const;
@@ -62,15 +50,10 @@ export type CompletedArchivePullRequestGrantReferenceV1 =
     Readonly<{ transitionId: typeof ARCHIVE_PR_PUBLICATION_TRANSITION_ID }>;
 
 export function createArchivePullRequestGrantRequest(
-  runtimeRoot: string,
-  preparationIdentity: string,
+  preparation: ArchivePublicationPreparationV1,
   publicationTarget: ArchivePullRequestPublicationTargetV1,
   proposedReason: string,
 ): GrantRequestInput {
-  const preparation = readArchivePublicationPreparation(
-    runtimeRoot,
-    preparationIdentity,
-  );
   const parameters = archiveGrantParameters(
     preparation.preparationIdentity,
     publicationTarget,
@@ -90,7 +73,10 @@ export function createArchivePullRequestGrantRequest(
       archiveBranch: preparation.archive.branch,
       archiveHead: preparation.archive.headCommit,
     }),
-    stateBinding: preparationStateBinding(preparation, publicationTarget),
+    stateBinding: archivePullRequestGrantStateBinding(
+      preparation,
+      publicationTarget,
+    ),
     candidates: Object.freeze([
       Object.freeze({
         transitionId: ARCHIVE_PR_PUBLICATION_TRANSITION_ID,
@@ -103,123 +89,67 @@ export function createArchivePullRequestGrantRequest(
   });
 }
 
-export function archivePullRequestGrantTransitionDefinitions(
-  runtimeRoot: string,
-): readonly TransitionDefinition<ArchivePullRequestGrantParametersV1>[] {
-  return Object.freeze([
-    Object.freeze({
-      transitionId: ARCHIVE_PR_PUBLICATION_TRANSITION_ID,
-      parameterSchemaDigest: digest(
-        canonicalJson({
-          schemaVersion: 1,
-          kind: 'archive-pr-publication-authorization-parameters.schema.v1',
-          required: ['preparationIdentity', 'publicationTarget'],
-        }),
-      ),
-      consequenceDigest: digest(
-        canonicalJson({
-          schemaVersion: 1,
-          kind: 'archive-pr-publication-authorization-consequence.v1',
-          effect: 'authorizes-one-exact-idempotent-publication-retry-family',
-          remoteEffectApplied: false,
-        }),
-      ),
-      resolutionKind: 'non-retry',
-      allowedApprovalMethods: ['human-presence', 'ssh'] as const,
-      validateParameters: assertArchiveGrantParameters,
-      renderTrustedChoice(parameters: ArchivePullRequestGrantParametersV1) {
-        const preparation = readArchivePublicationPreparation(
-          runtimeRoot,
-          parameters.preparationIdentity,
-        );
-        return Object.freeze({
-          title: `Authorize archive PR publication for ${preparation.changeId}`,
-          consequences: Object.freeze([
-            `Permit publication of exact archive commit ${preparation.archive.headCommit}.`,
-            `Permit only ${parameters.publicationTarget.canonicalOrigin} (${parameters.publicationTarget.owner}/${parameters.publicationTarget.repository}).`,
-            'Do not approve, bypass, merge, force-update, or publish any different branch.',
-          ]),
-        });
-      },
-      observeState(parameters: ArchivePullRequestGrantParametersV1) {
-        return preparationStateBinding(
-          readArchivePublicationPreparation(
-            runtimeRoot,
-            parameters.preparationIdentity,
-          ),
-          parameters.publicationTarget,
-        );
-      },
-      async execute(
-        context: AuthorizedTransitionContext<ArchivePullRequestGrantParametersV1>,
-      ) {
-        context.assertLifecycleOwned();
-        let preparation: ArchivePublicationPreparationV1;
-        try {
-          preparation = readArchivePublicationPreparation(
-            runtimeRoot,
-            context.parameters.preparationIdentity,
-          );
-        } catch {
-          throw grantTransitionPreconditionChanged(
-            'ARCHIVE_PR_PREPARATION_STALE',
-            'The exact archive publication preparation is no longer available.',
-          );
-        }
-        context.assertLifecycleOwned();
-        return Object.freeze({
-          outcome: 'completed' as const,
-          details: Object.freeze({
-            schemaVersion: 1,
-            kind: 'archive-pr-publication-authorized.v1',
-            preparationIdentity: preparation.preparationIdentity,
-            publicationTargetDigest: digest(
-              canonicalJson(context.parameters.publicationTarget),
-            ),
-            remoteEffectApplied: false,
-          }),
-        });
-      },
-    }),
-  ]);
+export function archivePullRequestGrantPolicy() {
+  return {
+    transitionId: ARCHIVE_PR_PUBLICATION_TRANSITION_ID,
+    parameterSchemaDigest: digest(
+      canonicalJson({
+        schemaVersion: 1,
+        kind: 'archive-pr-publication-authorization-parameters.schema.v1',
+        required: ['preparationIdentity', 'publicationTarget'],
+      }),
+    ),
+    consequenceDigest: digest(
+      canonicalJson({
+        schemaVersion: 1,
+        kind: 'archive-pr-publication-authorization-consequence.v1',
+        effect: 'authorizes-one-exact-idempotent-publication-retry-family',
+        remoteEffectApplied: false,
+      }),
+    ),
+    resolutionKind: 'non-retry' as const,
+    allowedApprovalMethods: ['human-presence', 'ssh'] as const,
+    validateParameters: assertArchiveGrantParameters,
+  };
 }
 
-export function authenticateCompletedArchivePullRequestGrant(
-  paths: GrantStorePaths,
-  runtimeRoot: string,
-  challengeId: string,
-  preparationIdentity: string,
+export function renderArchivePullRequestGrantChoice(
+  preparation: ArchivePublicationPreparationV1,
+  parameters: ArchivePullRequestGrantParametersV1,
+) {
+  return Object.freeze({
+    title: `Authorize archive PR publication for ${preparation.changeId}`,
+    consequences: Object.freeze([
+      `Permit publication of exact archive commit ${preparation.archive.headCommit}.`,
+      `Permit only ${parameters.publicationTarget.canonicalOrigin} (${parameters.publicationTarget.owner}/${parameters.publicationTarget.repository}).`,
+      'Do not approve, bypass, merge, force-update, or publish any different branch.',
+    ]),
+  });
+}
+
+export function archivePullRequestGrantOutcome(
+  preparation: ArchivePublicationPreparationV1,
   publicationTarget: ArchivePullRequestPublicationTargetV1,
-  now = new Date(),
-): CompletedArchivePullRequestGrantReferenceV1 {
-  try {
-    return authenticateCompletedArchivePullRequestGrantUnsafe(
-      paths,
-      runtimeRoot,
-      challengeId,
-      preparationIdentity,
-      publicationTarget,
-      now,
-    );
-  } catch {
-    throw grantInvalid();
-  }
+) {
+  return Object.freeze({
+    outcome: 'completed' as const,
+    details: Object.freeze({
+      schemaVersion: 1,
+      kind: 'archive-pr-publication-authorized.v1',
+      preparationIdentity: preparation.preparationIdentity,
+      publicationTargetDigest: digest(canonicalJson(publicationTarget)),
+      remoteEffectApplied: false,
+    }),
+  });
 }
 
-function authenticateCompletedArchivePullRequestGrantUnsafe(
-  paths: GrantStorePaths,
-  runtimeRoot: string,
-  challengeId: string,
-  preparationIdentity: string,
+export function authenticateCompletedArchivePullRequestGrantRecord(
+  preparation: ArchivePublicationPreparationV1,
+  record: GrantRecord,
   publicationTarget: ArchivePullRequestPublicationTargetV1,
   now: Date,
 ): CompletedArchivePullRequestGrantReferenceV1 {
-  const preparation = readArchivePublicationPreparation(
-    runtimeRoot,
-    preparationIdentity,
-  );
-  const record = createFileGrantRecordStore(paths).readGrantRecord(challengeId);
-  if (record.state !== 'completed') throw grantInvalid();
+  if (record.state !== 'completed') throw archivePullRequestGrantInvalid();
   const terminal = record as TerminalGrantRecord;
   const choice = terminal.challenge.choices.find(
     ({ choiceId }) => choiceId === terminal.approvalSubject.choiceId,
@@ -228,7 +158,10 @@ function authenticateCompletedArchivePullRequestGrantUnsafe(
     preparation.preparationIdentity,
     publicationTarget,
   );
-  const expectedState = preparationStateBinding(preparation, publicationTarget);
+  const expectedState = archivePullRequestGrantStateBinding(
+    preparation,
+    publicationTarget,
+  );
   const completedAt = Date.parse(terminal.completedAt);
   const nowTime = now.getTime();
   if (
@@ -257,7 +190,7 @@ function authenticateCompletedArchivePullRequestGrantUnsafe(
         },
       })
   ) {
-    throw grantInvalid();
+    throw archivePullRequestGrantInvalid();
   }
   return Object.freeze({
     contractVersion: 'central-grant-completed-authority-ref.v1',
@@ -314,7 +247,7 @@ function assertArchiveGrantParameters(
   });
 }
 
-function preparationStateBinding(
+export function archivePullRequestGrantStateBinding(
   preparation: ArchivePublicationPreparationV1,
   publicationTarget: ArchivePullRequestPublicationTargetV1,
 ): StateBinding {
@@ -380,7 +313,7 @@ function digest(value: string): `sha256:${string}` {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
 
-function grantInvalid() {
+export function archivePullRequestGrantInvalid() {
   return workflowError(
     'ARCHIVE_PR_CENTRAL_GRANT_INVALID',
     'Archive publication requires the canonical completed Central Grant record for this exact preparation.',

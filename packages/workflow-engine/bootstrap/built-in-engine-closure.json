@@ -601,9 +601,14 @@
       "digest": "sha256:c8daadd1b0f3ea73bab5d5396c2e0a4e5ff7021d4d8b747d808d9cb0e1171248"
     },
     {
+      "path": "src/application/archive/archive-pr-grant.ts",
+      "mode": "100644",
+      "digest": "sha256:448a21bc8596d34214d96f17adfacea8981d37562539590f16024ccf2f79fecf"
+    },
+    {
       "path": "src/application/archive/archive-pr-orchestration.ts",
       "mode": "100644",
-      "digest": "sha256:b102a8f6e33eafb12704d0bed06b0268404a67eb80327f396b976ca31818db75"
+      "digest": "sha256:648572b93692e0c66dd402646a261adf9401b48b297bae53b1dae59b69efe7fc"
     },
     {
       "path": "src/application/archive/archive-transformation.ts",
@@ -1428,7 +1433,12 @@
     {
       "path": "src/composition-root/archive-cli-production.ts",
       "mode": "100644",
-      "digest": "sha256:20d6d989e8271ebe8fe24b5955efd13235caf7e0ae7aeae767c3b1b8ec3dd0b1"
+      "digest": "sha256:929d86ac54e3b4bbf8d1e8a466dcb8adadc3ef5e3a4db7855b8dc77ddf3c0c5a"
+    },
+    {
+      "path": "src/composition-root/archive-pr-grant-production.ts",
+      "mode": "100644",
+      "digest": "sha256:df78bf9407f50eaf0cc25e51c33e4772f331045b830b93f2e8ad4df8bc9aa70c"
     },
     {
       "path": "src/composition-root/archive-pr-publication-production.ts",
@@ -1598,7 +1608,7 @@
     {
       "path": "src/composition-root/grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:f63e997d741d51c869f8361bae671fe405b7cc31b12c333c1519270ddbc82056"
+      "digest": "sha256:5a144a48da275231cfcf5e5e4b7319102f7fed248c6d8db725d450a1a96d4a5e"
     },
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
@@ -2408,7 +2418,12 @@
     {
       "path": "src/modules/authority/archive-pr-grant.ts",
       "mode": "100644",
-      "digest": "sha256:3b173156616cfcbeb9ad9317830995ba67f163205aae5dc0e5930d5d7600010e"
+      "digest": "sha256:f84d45905ddae46dd394876264716847d6d21d51c73744a2cf704e7457b6dac1"
+    },
+    {
+      "path": "src/modules/authority/archive-publication-preparation.ts",
+      "mode": "100644",
+      "digest": "sha256:be84c4a8bc811db5c4ce75eec0f82656fee99bc1b36827727ff8a66ffb01dee4"
     },
     {
       "path": "src/modules/authority/authority-application-receipt.ts",
@@ -4568,7 +4583,7 @@
     {
       "path": "src/runtime/storage-journal/archive-publication-store.ts",
       "mode": "100644",
-      "digest": "sha256:27771bf03b5ac803e71a6aaa0e6dc36a0c27f75217df920663dbeffd82fa6512"
+      "digest": "sha256:4ef23f8fdecd78ffce536971ebf0b1b7e4ae407c03156170c29e701cbf3feae5"
     },
     {
       "path": "src/runtime/storage-journal/archive-report.ts",

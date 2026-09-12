@@ -8,11 +8,11 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:dd8aba3cd872563ab1e7de28211d6095587b63eb54a368fb55eeb0598a840a1d -->
+<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:cf187dcf7a940c50e0c4a927cd70a17a7356ef15c6a0f5cac4df4669fd69bf46 -->
 
 <!-- prettier-ignore-start -->
 
-115 files changed in this module since confirmation.
+116 files changed in this module since confirmation.
 
 ## Commands
 
@@ -118,6 +118,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
 | [archive-pr-grant.ts](archive-pr-grant.ts) | Builds and authenticates the Grant that authorizes an exact archive pull request publication. | 2 | History unavailable |
+| [archive-publication-preparation.ts](archive-publication-preparation.ts) | Canonical archive preparation identity, validation and readonly data. | 0 | History unavailable |
 | [authority-application-receipt.ts](authority-application-receipt.ts) | Admits portable authority receipts and coordinates their exact publication through required repository and signature capabilities. | 2 | History unavailable |
 | [authority-attestation-admission.ts](authority-attestation-admission.ts) | Shared attestation request and grant admission errors. | 0 | History unavailable |
 | [authority-attestation.ts](authority-attestation.ts) | Encodes authority attestations and verifies the original and protected- main commit pair. | 2 | History unavailable |
