@@ -12,9 +12,9 @@
   },
   "sourceTelemetryRunId": "run-20260912023916307-f369e0a2-e7a4-441a-bca1-57c8300410a4",
   "sourceTelemetryDigest": "sha256:9b45f37d8baf330b4fbd88d81456c97b50767229cf3cb6646d9dcdc1fdb4661d",
-  "physicalFileCount": 521,
-  "executionUnitCount": 518,
-  "inventoryDigest": "sha256:4f99f0569303a38d3465e16e55e6a037c724a66343d45963536d03a3a7123df7",
+  "physicalFileCount": 522,
+  "executionUnitCount": 519,
+  "inventoryDigest": "sha256:fecbdcf8805e49a0441aa437ec0ecd0a872f75d2fc269bdf8ecfbf64e50e896d",
   "shards": [
     {
       "shardNumber": 1,
@@ -2633,11 +2633,19 @@
           "estimatedDurationMs": 0
         },
         {
+          "entrypoint": "packages/workflow-engine/test/system-document-composition-boundary.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/system-document-composition-boundary.contract.test.ts"
+          ],
+          "legacyOrdinal": 515,
+          "estimatedDurationMs": 0
+        },
+        {
           "entrypoint": "packages/workflow-engine/test/task-mandate-boundary.test.ts",
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/task-mandate-boundary.test.ts"
           ],
-          "legacyOrdinal": 515,
+          "legacyOrdinal": 516,
           "estimatedDurationMs": 0
         },
         {
@@ -2645,7 +2653,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/task-mandate-protected-finalize.contract.test.ts"
           ],
-          "legacyOrdinal": 516,
+          "legacyOrdinal": 517,
           "estimatedDurationMs": 0
         },
         {
@@ -2653,7 +2661,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/task-mandate-rules.test.ts"
           ],
-          "legacyOrdinal": 517,
+          "legacyOrdinal": 518,
           "estimatedDurationMs": 0
         },
         {
@@ -2661,7 +2669,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/task-revision-approval-boundary.test.ts"
           ],
-          "legacyOrdinal": 518,
+          "legacyOrdinal": 519,
           "estimatedDurationMs": 0
         }
       ]

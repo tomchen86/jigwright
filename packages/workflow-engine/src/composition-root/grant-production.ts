@@ -115,10 +115,8 @@ import {
   readProductionGitAuthorityCandidateBaseGrantPolicyDocument,
   readProductionGitBaseAuthorityContext,
 } from './git-authority-candidate-apply-production.ts';
-import {
-  loadInvestigationRuntimeContext,
-  systemDocumentDispositions,
-} from './lifecycle-context.ts';
+import { loadInvestigationRuntimeContext } from './lifecycle-context.ts';
+import { systemDocumentDispositions } from './system-document-disposition-production.ts';
 import { createProductionProtectedBaseSelectionPort } from './local-protected-base-initialization-production.ts';
 import { assertOptionalGrantsPackageAvailable } from './optional-grants-package-production.ts';
 import {

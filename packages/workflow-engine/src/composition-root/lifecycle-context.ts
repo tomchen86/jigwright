@@ -1,9 +1,8 @@
 /**
- * Assembles repository-backed session context and document disposition services.
+ * Supplies repository-backed session and investigation context with lifecycle operations.
  *
  * Invariants:
  * - Session operations retain their runtime identity checks and session lock.
- * - Document services use validated snapshots, canonical delta checks and completed Grant records.
  */
 import path from 'node:path';
 
@@ -12,15 +11,10 @@ import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { listStagedPaths } from '../runtime/repository-transaction/git-transitions.ts';
 import {
   discoverRepository,
-  fingerprintRepositoryProjection,
-  listChangedPaths,
   runGit,
 } from '../runtime/repository-transaction/git.ts';
 import { investigationRuntimePaths } from '../runtime/session-workspace/paths.ts';
-import {
-  assertInvestigationId,
-  assertSessionId,
-} from '../foundation/repository-path/repository-path.ts';
+import { assertSessionId } from '../foundation/repository-path/repository-path.ts';
 import type { WorkflowReport } from '../runtime/storage-journal/report-store.ts';
 import {
   reportString,
@@ -37,22 +31,6 @@ import {
   createPlanningProviderAuthoringPort,
   planningProviderReviewedAssetMirrors,
 } from './planning-provider-authoring-production.ts';
-
-import { createSystemDocumentDispositionService } from '../application/finalize/system-document-dispositions.ts';
-import { observeSystemDocumentCandidate } from '../application/finalize/system-document-candidate.ts';
-import { readSystemDescriptionSnapshot } from '../runtime/repository-transaction/system-description-snapshot.ts';
-import {
-  combineOpenSpecDeltas,
-  specDeltaChangesContract,
-} from '../runtime/repository-transaction/archive-delta-verifier.ts';
-import {
-  grantStorePaths,
-  createFileGrantRecordStore,
-} from '../runtime/storage-journal/grant-store.ts';
-import {
-  readSystemDocumentReviewRecord,
-  writeSystemDocumentReviewRecord,
-} from '../runtime/storage-journal/system-document-review-store.ts';
 
 export function loadActiveSessionContext(
   cwd: string,
@@ -96,10 +74,6 @@ export function loadInvestigationRuntimeContext(cwd: string) {
   };
 }
 
-export function assertInvestigationSubjectId(value: string): string {
-  return assertInvestigationId(value);
-}
-
 export function runSessionOperation<T>(
   cwd: string,
   requestedSessionId: string,
@@ -137,29 +111,3 @@ export function assertFinishProjection(
     throw staleReport('FINISH_REPORT_STALE');
   }
 }
-
-export const systemDocumentDispositions =
-  createSystemDocumentDispositionService({
-    observeSystemDocumentCandidate: (cwd, sessionId) =>
-      observeSystemDocumentCandidate(cwd, sessionId, {
-        loadActiveSessionContext,
-        readSystemDescriptionSnapshot,
-        listChangedPaths,
-        fingerprintRepositoryProjection,
-        deltaChangesContract: (documentPath, before, deltas) =>
-          specDeltaChangesContract(
-            documentPath,
-            before,
-            combineOpenSpecDeltas(deltas),
-          ),
-      }),
-    runSessionOperation,
-    readSystemDocumentReviewRecord,
-    writeSystemDocumentReviewRecord,
-    readCompletedGrant(runtimeRoot, challengeId) {
-      const record = createFileGrantRecordStore(
-        grantStorePaths(runtimeRoot),
-      ).readGrantRecord(challengeId);
-      return record.state === 'completed' ? record : null;
-    },
-  });

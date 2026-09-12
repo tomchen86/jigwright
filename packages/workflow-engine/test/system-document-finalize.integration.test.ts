@@ -1,3 +1,13 @@
+import { createFinalizationService } from '../src/application/finalize/lifecycle.ts';
+import { finalizeTaskUnlocked } from '../src/application/finalize/projected-finalization.ts';
+import type { SystemDocumentDispositionService } from '../src/application/finalize/system-document-dispositions.ts';
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { taskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
+import { assertCurrentImplementationReconciliation } from '../src/composition-root/implementation-reconciliation-production.ts';
+import { localEngineSelectionReaders } from './support/local-engine-selection-host.ts';
+import { getSession } from '../src/application/execute-task/session.ts';
+import { readFinalizeTransaction } from '../src/runtime/repository-transaction/finalize-transaction.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
@@ -36,7 +46,7 @@ import {
   finalizeTask,
   finalizeSession,
 } from './support/local-engine-selection-host.ts';
-import { systemDocumentDispositions } from '../src/composition-root/lifecycle-context.ts';
+import { systemDocumentDispositions } from '../src/composition-root/system-document-disposition-production.ts';
 import { SYSTEM_DOCUMENT_GRANT_REASON } from '../src/application/finalize/system-document-grant.ts';
 import { createProductionSystemDocumentGrantService } from '../src/composition-root/grant-production.ts';
 import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
@@ -442,3 +452,137 @@ function prepare() {
   fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
   return { repository, sessionId: session.sessionId, counter };
 }
+
+function finalizationWithDocuments(
+  documents: Pick<
+    SystemDocumentDispositionService,
+    'assertSystemDocumentDispositions'
+  >,
+) {
+  return createFinalizationService(
+    localEngineSelectionReaders,
+    maintainerManifestOperations,
+    productionTaskStrategyExecutionGate,
+    productionChangeRoutingAdmissionReader,
+    taskDiffReview,
+    managedDocuments,
+    assertCurrentImplementationReconciliation,
+    documents,
+  );
+}
+
+test('ordinary finalization uses the injected document receiver at the original gate before checks', () => {
+  const { repository, sessionId, counter } = prepare();
+  try {
+    const failure = new Error('in-memory document decision failed');
+    const calls: Array<readonly [string, string]> = [];
+    let lookups = 0;
+    const documents = {
+      get assertSystemDocumentDispositions() {
+        lookups += 1;
+        return function (this: unknown, cwd: string, id: string): void {
+          assert.equal(this, documents);
+          calls.push([cwd, id]);
+          throw failure;
+        };
+      },
+    };
+    const service = finalizationWithDocuments(documents);
+    assert.equal(lookups, 0, 'construction must not read the method');
+    const before = getSession(repository, sessionId);
+    const operations = [
+      () => service.finalizeTask(repository, sessionId),
+      () =>
+        service.finalizeSession(
+          repository,
+          sessionId,
+          'Complete memory-reviewed task',
+        ),
+      () => service.completeTask(repository, sessionId),
+      () =>
+        finalizeTaskUnlocked(
+          productionTaskStrategyExecutionGate,
+          productionChangeRoutingAdmissionReader,
+          taskDiffReview,
+          managedDocuments,
+          assertCurrentImplementationReconciliation,
+          documents,
+          repository,
+          sessionId,
+          {},
+        ),
+    ];
+    for (const [index, run] of operations.entries()) {
+      assert.throws(run, (error) => error === failure);
+      assert.equal(lookups, index + 1);
+      assert.deepEqual(calls[index], [repository, sessionId]);
+      assert.equal(fs.existsSync(counter), false);
+      assert.equal(
+        readFinalizeTransaction(runtimeRoot(repository), sessionId),
+        null,
+      );
+      assert.deepEqual(getSession(repository, sessionId), before);
+      assert.equal(git(repository, ['diff', '--cached', '--name-only']), '');
+    }
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('durable finalization resume never looks up the injected document method again or repeats passed checks', () => {
+  const { repository, sessionId, counter } = prepare();
+  try {
+    let calls = 0;
+    let lookups = 0;
+    let resume = false;
+    const documents = {
+      get assertSystemDocumentDispositions() {
+        if (resume) assert.fail('resume read a fresh document gate');
+        lookups += 1;
+        return function (this: unknown, cwd: string, id: string): void {
+          assert.equal(this, documents);
+          assert.equal(cwd, repository);
+          assert.equal(id, sessionId);
+          calls += 1;
+        };
+      },
+    };
+    const service = finalizationWithDocuments(documents);
+    // The explicit memory service admits this fixture without a production
+    // document record; other production capabilities still execute normally.
+    assert.throws(
+      () => service.finalizeTask(repository, sessionId),
+      hasCode('TASK_DIFF_REVIEW_REQUIRED'),
+    );
+    assert.equal(
+      calls,
+      2,
+      'ordinary preliminary and fresh projected gates both use the same service',
+    );
+    assert.equal(lookups, 2);
+    const transaction = readFinalizeTransaction(
+      runtimeRoot(repository),
+      sessionId,
+    );
+    assert.equal(transaction?.phase, 'checked');
+    assert.equal(fs.readFileSync(counter, 'utf8'), '1');
+    resume = true;
+    satisfyCurrentTaskDiffReview(repository, sessionId);
+    const recovered = service.recoverFinalize(repository, sessionId);
+    assert.equal(recovered.transactionId, transaction!.transactionId);
+    assert.equal(fs.readFileSync(counter, 'utf8'), '1');
+    const finalized = service.finalizeSession(
+      repository,
+      sessionId,
+      'Complete memory-reviewed task',
+    );
+    assert.equal(finalized.session.state, 'committed');
+    assert.equal(finalized.tree, recovered.tree);
+    assert.equal(calls, 2);
+    assert.equal(lookups, 2);
+    assert.equal(fs.readFileSync(counter, 'utf8'), '1');
+    assert.equal(git(repository, ['status', '--porcelain']), '');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});

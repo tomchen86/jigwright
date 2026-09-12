@@ -1,3 +1,4 @@
+import { systemDocumentDispositions } from './system-document-disposition-production.ts';
 import type { LocalEngineSelectionReaders } from '../modules/authority/local-engine-selection.ts';
 import { maintainerManifestOperations } from './maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from './task-strategy-gate-production.ts';
@@ -18,6 +19,7 @@ export function createProductionFinalizationService(
     taskDiffReview,
     managedDocuments,
     assertCurrentImplementationReconciliation,
+    systemDocumentDispositions,
   );
 }
 

@@ -1,3 +1,4 @@
+import type { SystemDocumentDispositionService } from './system-document-dispositions.ts';
 import type { DocumentationReviewCapture } from '../../modules/assurance/documentation-closure.ts';
 import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
@@ -47,10 +48,7 @@ import {
   fingerprintUnstagedRepositoryProjection,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
-import {
-  loadActiveSessionContext,
-  systemDocumentDispositions,
-} from '../../composition-root/lifecycle-context.ts';
+import { loadActiveSessionContext } from '../../composition-root/lifecycle-context.ts';
 import { applyGeneratedDocumentMutations } from '../../runtime/managed-documents/validation/managed-documents.ts';
 import type { ImplementationReconciliationGate } from '../reconciliation/implementation-reconciliation.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
@@ -139,6 +137,10 @@ export function finalizeTaskUnlocked(
   >,
   managedDocuments: Pick<ManagedDocumentOperations, 'planCompletionDocuments'>,
   assertCurrentImplementationReconciliation: ImplementationReconciliationGate<SessionInspection>,
+  systemDocumentDispositions: Pick<
+    SystemDocumentDispositionService,
+    'assertSystemDocumentDispositions'
+  >,
   cwd: string,
   requestedSessionId: string,
   environment: NodeJS.ProcessEnv,

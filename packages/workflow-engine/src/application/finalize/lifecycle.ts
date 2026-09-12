@@ -1,3 +1,4 @@
+import type { SystemDocumentDispositionService } from './system-document-dispositions.ts';
 import type { LocalEngineSelectionReaders } from '../../modules/authority/local-engine-selection.ts';
 import {
   createDocumentationClosureRecord,
@@ -73,7 +74,6 @@ import {
 } from '../../foundation/repository-path/repository-path.ts';
 import {
   assertFinishProjection,
-  systemDocumentDispositions,
   loadActiveSessionContext,
   runSessionOperation,
 } from '../../composition-root/lifecycle-context.ts';
@@ -548,36 +548,6 @@ function isAuthenticatedCheckedFinalizeCancellation(
     }
     throw error;
   }
-}
-
-function assertCurrentTaskMayUseOrdinaryFinalize(
-  cwd: string,
-  requestedSessionId: string,
-): void {
-  const session = getSession(cwd, requestedSessionId);
-  const git = discoverRepository(cwd);
-  const config = loadWorkflowConfig(git.repositoryRoot);
-  const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
-  const transaction = readFinalizeTransaction(runtime.root, session.sessionId);
-  if (transaction !== null) {
-    assertProtectedTaskApplyNotRequired(
-      git.repositoryRoot,
-      config,
-      session,
-      finalizeTransactionTaskPaths(transaction, session),
-    );
-    return;
-  }
-  systemDocumentDispositions.assertSystemDocumentDispositions(
-    cwd,
-    requestedSessionId,
-  );
-  assertProtectedTaskApplyNotRequired(
-    git.repositoryRoot,
-    config,
-    session,
-    listChangedPaths(git.repositoryRoot, session.baseline.head),
-  );
 }
 
 function assertProtectedTaskApplyNotRequired(
@@ -1706,7 +1676,47 @@ export function createFinalizationService(
   >,
   managedDocuments: ManagedDocumentOperations,
   assertCurrentImplementationReconciliation: ImplementationReconciliationGate<SessionInspection>,
+  systemDocumentDispositions: Pick<
+    SystemDocumentDispositionService,
+    'assertSystemDocumentDispositions'
+  >,
 ) {
+  function assertCurrentTaskMayUseOrdinaryFinalize(
+    cwd: string,
+    requestedSessionId: string,
+  ): void {
+    const session = getSession(cwd, requestedSessionId);
+    const git = discoverRepository(cwd);
+    const config = loadWorkflowConfig(git.repositoryRoot);
+    const runtime = runtimePaths(
+      git.gitCommonDirectory,
+      config.runtimeDirectory,
+    );
+    const transaction = readFinalizeTransaction(
+      runtime.root,
+      session.sessionId,
+    );
+    if (transaction !== null) {
+      assertProtectedTaskApplyNotRequired(
+        git.repositoryRoot,
+        config,
+        session,
+        finalizeTransactionTaskPaths(transaction, session),
+      );
+      return;
+    }
+    systemDocumentDispositions.assertSystemDocumentDispositions(
+      cwd,
+      requestedSessionId,
+    );
+    assertProtectedTaskApplyNotRequired(
+      git.repositoryRoot,
+      config,
+      session,
+      listChangedPaths(git.repositoryRoot, session.baseline.head),
+    );
+  }
+
   function rollbackCompletion(
     cwd: string,
     requestedSessionId: string,
@@ -1957,6 +1967,7 @@ export function createFinalizationService(
             taskDiffReview,
             managedDocuments,
             assertCurrentImplementationReconciliation,
+            systemDocumentDispositions,
             cwd,
             requestedSessionId,
             environment,
@@ -2064,6 +2075,7 @@ export function createFinalizationService(
         taskDiffReview,
         managedDocuments,
         assertCurrentImplementationReconciliation,
+        systemDocumentDispositions,
         cwd,
         requestedSessionId,
         environment,
@@ -2131,6 +2143,7 @@ export function createFinalizationService(
         taskDiffReview,
         managedDocuments,
         assertCurrentImplementationReconciliation,
+        systemDocumentDispositions,
         cwd,
         requestedSessionId,
         environment,

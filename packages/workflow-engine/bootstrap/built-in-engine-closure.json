@@ -1038,7 +1038,7 @@
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:a83a0c2bafdb009f72fdb352d831b608a69f92d373bf70748d247f6135d24284"
+      "digest": "sha256:5bb2198178324e1652f6d65ecb83a57eed4254a0382ab88a097aa31e68b612bc"
     },
     {
       "path": "src/application/finalize/predecessor-reconciliation.ts",
@@ -1048,7 +1048,7 @@
     {
       "path": "src/application/finalize/projected-finalization.ts",
       "mode": "100644",
-      "digest": "sha256:0231625a059883575d3f23b29619caef460717d07f32ff5faf3f71f7a13e4419"
+      "digest": "sha256:32585e47bbf598fdec03489cd0504e85c13e50f2fce248876cb519314128c723"
     },
     {
       "path": "src/application/finalize/protected-task-apply-authorization.ts",
@@ -1578,7 +1578,7 @@
     {
       "path": "src/composition-root/finalization-production.ts",
       "mode": "100644",
-      "digest": "sha256:346d1c4be75e51914e0c98ac7bac3351047b4983149215b306bf6f540423adf4"
+      "digest": "sha256:c7c03014dd884baf29a5bf2d3e42db60ebb42844c00f77ccb81db6ce309bd093"
     },
     {
       "path": "src/composition-root/git-authority-candidate-apply-production.ts",
@@ -1608,7 +1608,7 @@
     {
       "path": "src/composition-root/grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:5a144a48da275231cfcf5e5e4b7319102f7fed248c6d8db725d450a1a96d4a5e"
+      "digest": "sha256:f747656be3e48a70d1e9c322f7bed5749a87540e0d3a251a765180a8ae85f5c3"
     },
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
@@ -1663,7 +1663,7 @@
     {
       "path": "src/composition-root/lifecycle-context.ts",
       "mode": "100644",
-      "digest": "sha256:0a3f61a3da3283b72e408d4859477ee708d54ce7d496f706df54dfd311d053e5"
+      "digest": "sha256:a66ad2f33729edc0c99c7137e4251676edf5be8a071133a3082965bb7bd0a497"
     },
     {
       "path": "src/composition-root/local-protected-base-initialization-production.ts",
@@ -1871,6 +1871,11 @@
       "digest": "sha256:c2297edad2167094afdac30dcf379fca6fd578c0369e36e71c798f34c84069cf"
     },
     {
+      "path": "src/composition-root/system-document-disposition-production.ts",
+      "mode": "100644",
+      "digest": "sha256:8cf71350c58d0f9aa7881cbc02d6e73e55c7f0d0e9f1002a3dae9ee90be8513e"
+    },
+    {
       "path": "src/composition-root/task-diff-review-production.ts",
       "mode": "100644",
       "digest": "sha256:536d41f89cde1e403a1060c49e15107ce402a20f0f4db23456fb9282f4bfff3f"
@@ -2073,7 +2078,7 @@
     {
       "path": "src/entrypoints/cli/workflow-cli.ts",
       "mode": "100644",
-      "digest": "sha256:dee47be5b8450387b838ab081f4b7a6b38e76c0370b1d81934c7b1a56b5aa9d1"
+      "digest": "sha256:2a55a0f4a050c05e9ee34bf70ce1d8de86a0422a0c7f25485e701d9eaf0c143a"
     },
     {
       "path": "src/entrypoints/worker/provider-worker.ts",

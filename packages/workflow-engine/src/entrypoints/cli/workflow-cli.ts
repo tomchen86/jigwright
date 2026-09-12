@@ -52,7 +52,7 @@ import {
 } from '../../adapters/planning/openspec/documents/openspec-planning-assets.ts';
 
 import { dispatchDocumentRefreshCommand } from './document-refresh-cli.ts';
-import { systemDocumentDispositions } from '../../composition-root/lifecycle-context.ts';
+import { systemDocumentDispositions } from '../../composition-root/system-document-disposition-production.ts';
 
 import {
   WorkflowError,
