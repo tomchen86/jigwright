@@ -445,7 +445,7 @@ test('initial supervisor bootstrap fails closed when the pinned built-in closure
     fs.appendFileSync(trackedEntrypoint, "process.stderr.write('tampered');\n");
     git(repository, [
       'add',
-      'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+      'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
     ]);
     git(repository, ['commit', '-m', 'Tamper tracked built-in closure']);
     git(repository, ['update-ref', 'refs/remotes/origin/main', 'HEAD']);

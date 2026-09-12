@@ -2353,7 +2353,7 @@
     {
       "path": "src/modules/assurance/task-strategy-gate.ts",
       "mode": "100644",
-      "digest": "sha256:15c78c3258c711b3170f894003826dcac035abdcfe80b92a14cc984cf032be56"
+      "digest": "sha256:63823644df8744770849523d35e76963c38d13ba2ca502a5911be0e1471b80ec"
     },
     {
       "path": "src/modules/authority/archive-pr-grant.ts",

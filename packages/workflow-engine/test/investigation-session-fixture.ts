@@ -86,7 +86,7 @@ export const WORKFLOW_SOURCE_MODULE_PATHS = {
     'runtime/storage-journal/human-resolution-grant-store.ts',
   'investigation-session.ts':
     'composition-root/investigation-retry-production.ts',
-  'propose-orchestrator.ts': 'application/propose/propose-orchestrator.ts',
+  'propose-orchestrator.ts': 'composition-root/propose-production.ts',
   'evidence-object-store.ts':
     'runtime/storage-journal/evidence-object-store.ts',
   'filesystem-safety.ts': 'runtime/repository-transaction/filesystem-safety.ts',

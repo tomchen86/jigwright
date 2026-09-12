@@ -777,7 +777,10 @@ test('managed task start recovers its shared change lock crash windows', () => {
         `
           const { startSession } =
             await import(${JSON.stringify(SESSION_MODULE_URL)});
+          const { productionChangeRoutingAdmissionReader } =
+            await import(${JSON.stringify(new URL('../src/composition-root/change-routing-observation-production.ts', import.meta.url).href)});
           startSession(
+            productionChangeRoutingAdmissionReader,
             ${JSON.stringify(repository)},
             'demo-change',
             '1.1',
@@ -998,6 +1001,8 @@ test('managed lock release claim fences a concurrent successor start', () => {
           const fs = (await import('node:fs')).default;
           const { startSession } =
             await import(${JSON.stringify(SESSION_MODULE_URL)});
+          const { productionChangeRoutingAdmissionReader } =
+            await import(${JSON.stringify(new URL('../src/composition-root/change-routing-observation-production.ts', import.meta.url).href)});
           const { releaseOwnedLock } =
             await import(${JSON.stringify(SESSION_STORE_MODULE_URL)});
           const originalRead = fs.readFileSync.bind(fs);
@@ -1009,6 +1014,7 @@ test('managed lock release claim fences a concurrent successor start', () => {
               interleaved = true;
               try {
                 startSession(
+                  productionChangeRoutingAdmissionReader,
                   ${JSON.stringify(repository)},
                   'demo-change',
                   '1.1',

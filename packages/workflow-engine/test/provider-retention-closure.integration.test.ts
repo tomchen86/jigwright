@@ -504,6 +504,9 @@ function spawnPinAttempt(input: {
     import fs from 'node:fs';
     const [repository, workflowId, evidenceId, promptedPath, continuePath, resultPath, moduleUrl] = process.argv.slice(1);
     const { pinWorkflowEvidence } = await import(moduleUrl);
+    const { taskMandateOperations } = await import(
+      new URL('../../composition-root/task-mandate-production.ts', moduleUrl).href,
+    );
     const signer = {
       assertHumanPresent() {
         fs.writeFileSync(promptedPath, 'present\\n');
@@ -519,7 +522,7 @@ function spawnPinAttempt(input: {
       verify() {},
     };
     try {
-      pinWorkflowEvidence(repository, {
+      pinWorkflowEvidence(taskMandateOperations, repository, {
         workflowId,
         evidenceId,
         reason: 'Preserve the exact provider runtime for incident review.',

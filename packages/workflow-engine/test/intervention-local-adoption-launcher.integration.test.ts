@@ -612,9 +612,11 @@ test('sealed harness-bootstrap runtime remains usable when the mutable E1 src tr
       path.join(engineRoot, 'package.json'),
       `${JSON.stringify({ type: 'module' })}\n`,
     );
-    fs.mkdirSync(path.join(engineRoot, 'src'));
+    fs.mkdirSync(path.join(engineRoot, 'src/foundation/errors'), {
+      recursive: true,
+    });
     fs.writeFileSync(
-      path.join(engineRoot, 'src', 'errors.ts'),
+      path.join(engineRoot, 'src/foundation/errors/errors.ts'),
       `throw new Error('mutable E1 source must not load');\n`,
     );
     const status = childProcess.spawnSync(
@@ -638,6 +640,8 @@ test('sealed harness-bootstrap runtime remains usable when the mutable E1 src tr
         'bootstrap',
         'recovery-runtime',
         'src',
+        'foundation',
+        'errors',
         'errors.js',
       ),
       '\n// tampered\n',
@@ -676,7 +680,7 @@ test('sealed harness-bootstrap runtime remains usable when the mutable E1 src tr
     };
     assert.equal(
       closure.entrypoint,
-      'bootstrap/recovery-runtime/src/harness-bootstrap.js',
+      'bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js',
     );
     assert.equal(closure.boundary, 'sealed-e1-independent-recovery-runtime');
     assert.match(closure.claim, /independent/i);

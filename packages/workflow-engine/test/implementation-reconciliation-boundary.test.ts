@@ -86,7 +86,13 @@ test('all four finalization gates require an injected capability with no default
         ts.isFunctionDeclaration(node) && node.name?.text === owner,
     );
     assert.ok(factory);
-    const gate = factory.parameters[0];
+    const injectedGates = factory.parameters.filter(
+      (parameter) =>
+        ts.isIdentifier(parameter.name) &&
+        parameter.name.text === 'assertCurrentImplementationReconciliation',
+    );
+    assert.equal(injectedGates.length, 1);
+    const gate = injectedGates[0];
     assert.ok(
       gate &&
         ts.isIdentifier(gate.name) &&

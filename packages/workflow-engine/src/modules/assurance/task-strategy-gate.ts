@@ -23,10 +23,9 @@ import type { TaskStrategyGreenFailureRecord } from '../provider-orchestration/t
 export type TaskStrategyGateTask =
   CrossAgentTddExecution | TddSingleAgentExecution;
 export type TaskStrategyGateIdentity = {
-  session: Pick<
-    WorkflowSession,
-    'sessionId' | 'changeId' | 'taskId' | 'baseline'
-  >;
+  session: Pick<WorkflowSession, 'sessionId' | 'changeId' | 'taskId'> & {
+    baseline: Readonly<WorkflowSession['baseline']>;
+  };
 };
 export type TaskStrategyPatchEvidence = {
   binding: TaskStrategyPatchCurrentBinding | null;
