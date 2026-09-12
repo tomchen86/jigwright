@@ -12,11 +12,11 @@ Keep installed provider profiles on the host so repositories select roles withou
 
 Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessment and planned action, then submit the template with `jigwright job retry-request <job-id> --input retry.json --json`. The timeout may stay unchanged. See [retry behavior and single-use budget exceptions](../../../../../docs/features/PROVIDER_RETRY.md).
 
-<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:852fc652587d427d1f5110f46fd1030fd1731bc74b4751c8ffcbea5ac1ed4dde -->
+<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:00e5b5b89391099947c204c8cd7b632571d76e602f0c874cce3a5bbadec8767f -->
 
 <!-- prettier-ignore-start -->
 
-48 files changed in this module since confirmation.
+49 files changed in this module since confirmation.
 
 ## Commands
 
@@ -47,6 +47,7 @@ Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessmen
 | ProviderOutputSchemaGeneration | code-owned | [provider-invocation-lifecycle.ts](provider-invocation-lifecycle.ts) |
 | ProviderNativeSessionDispositionV1 | usable, rejected, error, cancelled, timeout, indeterminate | [provider-native-session.ts](provider-native-session.ts) |
 | ProviderNativeSessionErrorCode | PROVIDER_NATIVE_SESSION_INVALID, PROVIDER_NATIVE_SESSION_ASSIGNMENT_AUTHORITY_REQUIRED, PROVIDER_NATIVE_SESSION_CALLER_EXISTING_UNSUPPORTED, PROVIDER_NATIVE_SESSION_PROTOCOL_UNSUPPORTED, PROVIDER_NATIVE_SESSION_CAPABILITY_UNSUPPORTED | [provider-native-session.ts](provider-native-session.ts) |
+| ProviderRetentionDenyReason | accepted-result-current, active-invocation, active-retention, already-pruned, current-attempt, consumed-repair-evidence-unproven, nothing-prunable, pinned, schema-currentness-unknown, schema-history-incomplete, ttl-not-expired, unsafe-artifact | [provider-retention.ts](provider-retention.ts) |
 | ProviderRetryScheduleState | scheduled, dispatch-issued, probe-succeeded, probe-failed-terminal | [provider-retry-schedule.ts](provider-retry-schedule.ts) |
 | ProviderRetryScheduleNextAction | wait-until-due, dispatch-replacement, none, inspect-environment-before-new-provider-attempt | [provider-retry-schedule.ts](provider-retry-schedule.ts) |
 | ProviderRetryScheduleReceiptState | started, dispatch-issued, probe-succeeded, probe-retry-scheduled, probe-failed-terminal | [provider-retry-schedule.ts](provider-retry-schedule.ts) |
@@ -103,6 +104,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [provider-limits.ts](provider-limits.ts) | The code-owned positive maxima for a single provider invocation. | 0 | History unavailable |
 | [provider-native-session.ts](provider-native-session.ts) | Defines native provider session scopes, claims, completions, and continuation handles. | 1 | History unavailable |
 | [provider-registry.ts](provider-registry.ts) | Exposes reviewed built-in provider families and checks requested capability profiles. | 1 | History unavailable |
+| [provider-retention.ts](provider-retention.ts) | Provider retention contracts and pure eligibility decisions. | 0 | History unavailable |
 | [provider-retry-accounting.ts](provider-retry-accounting.ts) | Defines the exact accounting facts needed by retry policy and derives the frozen Job budget. | 2 | History unavailable |
 | [provider-retry-decision.ts](provider-retry-decision.ts) | Authorizes provider retries from durable attempt history and execution budget receipts. | 1 | History unavailable |
 | [provider-retry-explanation.ts](provider-retry-explanation.ts) | Preserves the agent's failure assessment and next action with a retry. | 2 | History unavailable |

@@ -14,11 +14,11 @@ import type {
 import type { ExecutionJobInspection } from '../src/runtime/provider-execution/execution-runtime.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
-  collectEngineMetrics,
   computeEngineMetrics,
   inspectEngineSupersedeReason,
   type EngineMetricsSnapshot,
 } from '../src/application/control-plane/engine-metrics.ts';
+import { collectEngineMetrics } from '../src/composition-root/provider-operations-cli-production.ts';
 import {
   canonicalExecutionBudgetGrantRequest,
   createExecutionBudgetGrantEnvelope,
@@ -31,7 +31,7 @@ import {
   writeHumanResolutionNode,
 } from '../src/runtime/storage-journal/human-resolution-nodes.ts';
 import { createHumanResolutionNode } from '../src/modules/investigation/domain/human-resolution-contract.ts';
-import type { ProviderRetentionMetrics } from '../src/runtime/provider-execution/provider-retention.ts';
+import type { ProviderRetentionMetrics } from '../src/modules/provider-orchestration/provider-retention.ts';
 import type { TaskMandateBinding } from '../src/modules/authority/task-mandate-contract.ts';
 import { createFixtureRepository, sourceRepositoryRoot } from './fixture.ts';
 

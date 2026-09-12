@@ -1,15 +1,15 @@
-import { taskMandateOperations } from './task-mandate-production.ts';
 /** Binds operational command handlers to the actual job, retry, retention and replay services. */
 import {
   listExecutionJobs,
   inspectExecutionJob,
 } from '../runtime/provider-execution/execution-runtime.ts';
-import { pruneProviderRuntime } from '../runtime/provider-execution/provider-retention.ts';
 import {
+  inspectProviderRetentionMetrics,
+  pruneProviderRuntime,
   inspectEvidenceRetention,
   runEvidenceRetentionMaintenance,
   pinWorkflowEvidence,
-} from '../runtime/provider-execution/retention-control.ts';
+} from './retention-production.ts';
 import {
   requestExecutionReplacement,
   executeGrantedReplacement,
@@ -35,9 +35,12 @@ export const providerOperationsServices = {
   requestExecutionJobRetry,
   inspectEvidenceRetention,
   runEvidenceRetentionMaintenance,
-  pinWorkflowEvidence: pinWorkflowEvidence.bind(
-    undefined,
-    taskMandateOperations,
-  ),
+  pinWorkflowEvidence,
   consumedPlanReviewReplay: productionConsumedPlanReviewReplayPort,
 };
+
+import { collectEngineMetrics as collectMetrics } from '../application/control-plane/engine-metrics.ts';
+export const collectEngineMetrics = collectMetrics.bind(
+  undefined,
+  inspectProviderRetentionMetrics,
+);

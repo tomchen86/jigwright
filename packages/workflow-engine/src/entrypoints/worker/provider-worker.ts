@@ -121,7 +121,7 @@ import {
   pumpProviderRetrySchedules,
   type ProviderRetrySchedulePumpOptions,
 } from '../../composition-root/provider-retry-production.ts';
-import { runEvidenceRetentionMaintenance } from '../../runtime/provider-execution/retention-control.ts';
+import { runEvidenceRetentionMaintenance } from '../../composition-root/retention-production.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
 import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import { recordProviderWorkerMaintenanceWarning } from '../../runtime/storage-journal/provider-worker-maintenance.ts';

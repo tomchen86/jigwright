@@ -12,7 +12,7 @@ import {
   ExitCode,
   WorkflowError,
 } from '../../foundation/errors/errors.ts';
-import type { ProviderRetentionDenyReason } from './provider-retention.ts';
+import type { ProviderRetentionDenyReason } from '../../modules/provider-orchestration/provider-retention.ts';
 import type { CandidateDecision } from './provider-retention-observation.ts';
 
 export const PROVIDER_RETENTION_DEFAULT_TTL_DAYS = 7;

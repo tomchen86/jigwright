@@ -199,6 +199,7 @@ import './provider-retention.contract.test.ts';
 import './provider-retention-closure.integration.test.ts';
 import './provider-runtime-registration.integration.test.ts';
 import './retention-control.contract.test.ts';
+import './evidence-retention-boundary.test.ts';
 import './semantic-reuse-reporting.integration.test.ts';
 import './task-mandate.contract.test.ts';
 import './task-mandate-services.contract.test.ts';

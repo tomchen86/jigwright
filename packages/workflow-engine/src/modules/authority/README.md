@@ -8,7 +8,7 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:70285ed88f220fb6a874806dacc497313210c575ff0138a2ec2d61c035ca3cd5 -->
+<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:5eaa4aead9b37c57e21cdb95fcd5d74aa0141dc6ad0010450191b745322ed755 -->
 
 <!-- prettier-ignore-start -->
 
@@ -137,7 +137,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [execution-governance-epoch-port.ts](execution-governance-epoch-port.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [execution-governance-grant-contracts.ts](execution-governance-grant-contracts.ts) | Defines strict execution-budget grant envelopes, usage records, and canonical signing bytes. | 2 | Possibly stale |
 | [execution-governance-repair.ts](execution-governance-repair.ts) | Builds complete repair contexts and accounts for bounded schema and semantic retries. | 2 | No newer code observed |
-| [execution-governance-retention.ts](execution-governance-retention.ts) | Decides evidence retention and compacts epoch history without mutating durable storage. | 2 | Possibly stale |
+| [execution-governance-retention.ts](execution-governance-retention.ts) | No leading responsibility comment. | 0 | Header changed since confirmation |
 | [execution-governance-store-contracts.ts](execution-governance-store-contracts.ts) | No leading responsibility comment. | 0 | Header changed since confirmation |
 | [execution-governance-store-transitions.ts](execution-governance-store-transitions.ts) | Pure state transitions applied between durable storage phases. | 0 | History unavailable |
 | [execution-governance-values.ts](execution-governance-values.ts) | Shares canonical value validation and error preservation across execution governance. | 2 | Possibly stale |

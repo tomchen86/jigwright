@@ -51,7 +51,7 @@ import {
   HOST_WRAPPER_PROBE_DIRECTORY,
   HOST_WRAPPER_TURN_DIRECTORY,
 } from './provider-retention-files.ts';
-import type { ProviderRetentionHooks } from './provider-retention.ts';
+import type { ProviderRetentionHooks } from '../../modules/provider-orchestration/provider-retention.ts';
 
 export function prepareReceipt(
   paths: InvestigationRuntimePaths,

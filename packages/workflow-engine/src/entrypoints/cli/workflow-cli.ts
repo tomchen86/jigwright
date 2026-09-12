@@ -27,7 +27,10 @@ const validateHandoff = validateHandoffWithContractReader.bind(
 import { boundaryCommandOperations } from '../../composition-root/boundary-cli-production.ts';
 import { createBoundaryCommand } from './boundary-cli.ts';
 import { renderHumanCommandResult } from './human-command-output.ts';
-import { providerOperationsServices } from '../../composition-root/provider-operations-cli-production.ts';
+import {
+  providerOperationsServices,
+  collectEngineMetrics,
+} from '../../composition-root/provider-operations-cli-production.ts';
 import { createProviderOperationsCommands } from './provider-operations-cli.ts';
 import { dispatchCiCommand } from './ci-cli.ts';
 import fs from 'node:fs';
@@ -51,7 +54,6 @@ import {
 import { dispatchDocumentRefreshCommand } from './document-refresh-cli.ts';
 import { systemDocumentDispositions } from '../../composition-root/lifecycle-context.ts';
 
-import { collectEngineMetrics } from '../../application/control-plane/engine-metrics.ts';
 import {
   WorkflowError,
   workflowError,

@@ -32,12 +32,14 @@ import {
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import {
-  inspectProviderRetentionMetrics,
   providerRuntimeEvidenceId,
-  pruneProviderRuntime,
   readProviderRetentionReceipt,
 } from '../src/runtime/provider-execution/provider-retention.ts';
-import { pinWorkflowEvidence as pinWorkflowEvidenceWithMandate } from '../src/runtime/provider-execution/retention-control.ts';
+import {
+  inspectProviderRetentionMetrics,
+  pruneProviderRuntime,
+} from '../src/composition-root/retention-production.ts';
+import { pinWorkflowEvidence } from '../src/composition-root/retention-production.ts';
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
 import {
   createFixtureRepository,
@@ -497,16 +499,13 @@ function spawnPinAttempt(input: {
   const retentionControlUrl = pathToFileURL(
     path.join(
       sourceRepositoryRoot,
-      'packages/workflow-engine/src/runtime/provider-execution/retention-control.ts',
+      'packages/workflow-engine/src/composition-root/retention-production.ts',
     ),
   ).href;
   const script = `
     import fs from 'node:fs';
     const [repository, workflowId, evidenceId, promptedPath, continuePath, resultPath, moduleUrl] = process.argv.slice(1);
     const { pinWorkflowEvidence } = await import(moduleUrl);
-    const { taskMandateOperations } = await import(
-      new URL('../../composition-root/task-mandate-production.ts', moduleUrl).href,
-    );
     const signer = {
       assertHumanPresent() {
         fs.writeFileSync(promptedPath, 'present\\n');
@@ -522,7 +521,7 @@ function spawnPinAttempt(input: {
       verify() {},
     };
     try {
-      pinWorkflowEvidence(taskMandateOperations, repository, {
+      pinWorkflowEvidence(repository, {
         workflowId,
         evidenceId,
         reason: 'Preserve the exact provider runtime for incident review.',
@@ -588,10 +587,3 @@ async function waitForChild(child: ChildProcess): Promise<{
   });
   return { code, stdout, stderr };
 }
-
-import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
-
-const pinWorkflowEvidence = pinWorkflowEvidenceWithMandate.bind(
-  undefined,
-  taskMandateOperations,
-);

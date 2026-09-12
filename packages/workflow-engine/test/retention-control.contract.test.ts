@@ -16,9 +16,9 @@ import {
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import {
   inspectEvidenceRetention,
-  pinWorkflowEvidence as pinWorkflowEvidenceWithMandate,
+  pinWorkflowEvidence,
   runEvidenceRetentionMaintenance,
-} from '../src/runtime/provider-execution/retention-control.ts';
+} from '../src/composition-root/retention-production.ts';
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
 import {
   createFixtureRepository,
@@ -227,10 +227,3 @@ function prepareWorkflow(changeId: string) {
     },
   };
 }
-
-import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
-
-const pinWorkflowEvidence = pinWorkflowEvidenceWithMandate.bind(
-  undefined,
-  taskMandateOperations,
-);

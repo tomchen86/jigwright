@@ -708,7 +708,12 @@
     {
       "path": "src/application/control-plane/engine-metrics.ts",
       "mode": "100644",
-      "digest": "sha256:c7e014a6f1eabf930919bfb4c6cbbe920a8d05e593c6717c51e568bc36eb6b7e"
+      "digest": "sha256:d0f7b9e36213385ba8322551b4556a59102cc61372341f0d3ec0d4702b75b493"
+    },
+    {
+      "path": "src/application/control-plane/evidence-retention.ts",
+      "mode": "100644",
+      "digest": "sha256:fcb99504bf912b1c18ea218e76501053c904ebee784a38c9ab41f23e83806043"
     },
     {
       "path": "src/application/control-plane/execution-job-retry.ts",
@@ -1778,7 +1783,7 @@
     {
       "path": "src/composition-root/provider-operations-cli-production.ts",
       "mode": "100644",
-      "digest": "sha256:c6cc332107a34717713adcac8385b639f9450d8f0dfe9be06f19f30437aef0d6"
+      "digest": "sha256:440775e428636adf4a40f596808af6a15d6164dab63908b33a97ed58400da4d4"
     },
     {
       "path": "src/composition-root/provider-retry-production.ts",
@@ -1814,6 +1819,11 @@
       "path": "src/composition-root/repository-validation.ts",
       "mode": "100644",
       "digest": "sha256:d113a9d10dbf7632ca4b34db5020325fcc187e2b2b0ac38d4e827c73b0c1286e"
+    },
+    {
+      "path": "src/composition-root/retention-production.ts",
+      "mode": "100644",
+      "digest": "sha256:8199c4714e2d8a1abc5bc86c460ea6cbf54d1aecec4bfc1e9eb1cc2cd239d238"
     },
     {
       "path": "src/composition-root/role-admission-production.ts",
@@ -2023,7 +2033,7 @@
     {
       "path": "src/entrypoints/cli/provider-operations-cli.ts",
       "mode": "100644",
-      "digest": "sha256:7a0a2d8186a00e1eae0cba2a272594cc26762101f33377bc0a666e2109d30c53"
+      "digest": "sha256:1042a6aa3aebf47cf8f1a2bb9798c2614a0447bb2f606383bbd0415f08c73712"
     },
     {
       "path": "src/entrypoints/cli/role-context-sharing-grant-cli.ts",
@@ -2048,12 +2058,12 @@
     {
       "path": "src/entrypoints/cli/workflow-cli.ts",
       "mode": "100644",
-      "digest": "sha256:92c81760754feb329c13e6475fc2052da0ee1a566f58187fe8e4d717cae8ee9b"
+      "digest": "sha256:dee47be5b8450387b838ab081f4b7a6b38e76c0370b1d81934c7b1a56b5aa9d1"
     },
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:5261306a28397a3ddbdcf6fb5d6394e41c2a2d7bb8ed7c0e1354501a4a79259e"
+      "digest": "sha256:7a2e00c93ff44ec579365540ce7aea8fda697266e441a2d5d8bc2a0eaabb0185"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -2493,12 +2503,12 @@
     {
       "path": "src/modules/authority/execution-governance-retention.ts",
       "mode": "100644",
-      "digest": "sha256:ea972d0e0fff460f2636c4a35165230ab4cbe0b7eb1a1c16cd61f6ff8dd59a13"
+      "digest": "sha256:65a049e839cb217b3a4ad7c568d2b57c978706eadf5aca850037171e2a857dbf"
     },
     {
       "path": "src/modules/authority/execution-governance-store-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:8baf627e634eeee92a07e2d4178c812f9f417b22e0b18aa1ac179f5788705dfc"
+      "digest": "sha256:2ed0866fed10ae7534daebf0bba3dcec779843c50259e104606d0a0bd29057c2"
     },
     {
       "path": "src/modules/authority/execution-governance-store-transitions.ts",
@@ -3491,6 +3501,11 @@
       "digest": "sha256:74b3ec881e8fbec06ba593c53423a4e1bc1290dacc5b4184c088c568141b9395"
     },
     {
+      "path": "src/modules/provider-orchestration/provider-retention.ts",
+      "mode": "100644",
+      "digest": "sha256:10155d3c32328a4fcaae0bf48a2f17789a2f0f7de75eac85aec237dedf40ce51"
+    },
+    {
       "path": "src/modules/provider-orchestration/provider-retry-accounting.ts",
       "mode": "100644",
       "digest": "sha256:e34137a8fe45e0b78363b8f10d6e513b8dac06ede236cdae6847a486c0d29014"
@@ -3973,22 +3988,22 @@
     {
       "path": "src/runtime/provider-execution/provider-retention-observation.ts",
       "mode": "100644",
-      "digest": "sha256:ea03c63281a55e5f903017297f41507e6160dbf8976e89a86b2ffa6c11782524"
+      "digest": "sha256:07a207923f32354c89cce7996a5e3b9a6fcdae1211cb8a319f2acf5f0f1ffc46"
     },
     {
       "path": "src/runtime/provider-execution/provider-retention-transaction.ts",
       "mode": "100644",
-      "digest": "sha256:b35a852ec41aa9b81b46fed3f1b457a6433c1a80ac0fe71ccbc1549fcf50c76b"
+      "digest": "sha256:1a52045887a05887d05ae516f76e8bf5df908637c313614207727e6cb7674fe8"
     },
     {
       "path": "src/runtime/provider-execution/provider-retention-values.ts",
       "mode": "100644",
-      "digest": "sha256:acd198ac4cc5e2ae10d74c3adc51d79c74bf0df1ea8ec1d0def05a8171e13a43"
+      "digest": "sha256:176a2bff2f08dc19b0116736dd0816f3d9d5bfe7243e1479bccf4a0ab34f942e"
     },
     {
       "path": "src/runtime/provider-execution/provider-retention.ts",
       "mode": "100644",
-      "digest": "sha256:34c78123b8d3e9aae9ce59e2e1bb503ce100e7d29abf0d74cd6ba673ea51b4a1"
+      "digest": "sha256:b56b04ea034704f27920b93c6c293e7edb003726d80c16e28013bc1f440275db"
     },
     {
       "path": "src/runtime/provider-execution/provider-retry-scheduler.ts",
@@ -4048,7 +4063,7 @@
     {
       "path": "src/runtime/provider-execution/retention-control.ts",
       "mode": "100644",
-      "digest": "sha256:c14c57816e0b3836b71a671882936ade0d24dcb4afb24a16d7c4faa87a6b5621"
+      "digest": "sha256:5504b1db2dee22716d1360203e4ab457c80cc1870700ca8ea53983e5c21c0082"
     },
     {
       "path": "src/runtime/recovery/execution-governance-prune-recovery.ts",

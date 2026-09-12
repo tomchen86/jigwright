@@ -11,8 +11,7 @@ import { type CommandResult, usage } from './cli-input.ts';
 import type { WorkflowError } from '../../foundation/errors/errors.ts';
 
 import type * as ExecutionRuntime from '../../runtime/provider-execution/execution-runtime.ts';
-import type * as ProviderRetention from '../../runtime/provider-execution/provider-retention.ts';
-import type * as EvidenceRetention from '../../runtime/provider-execution/retention-control.ts';
+import type * as EvidenceRetention from '../../composition-root/retention-production.ts';
 import type * as ExecutionReplacement from '../../application/control-plane/execution-replacement.ts';
 import type * as ExecutionJobRetry from '../../application/control-plane/execution-job-retry.ts';
 import type { ProviderRetryScheduleOperations } from '../../modules/provider-orchestration/provider-retry-service-port.ts';
@@ -28,16 +27,15 @@ export type ProviderOperationsServices = Pick<
   typeof ExecutionRuntime,
   'listExecutionJobs' | 'inspectExecutionJob'
 > &
-  Pick<typeof ProviderRetention, 'pruneProviderRuntime'> &
   Pick<
     typeof EvidenceRetention,
-    'inspectEvidenceRetention' | 'runEvidenceRetentionMaintenance'
+    | 'inspectEvidenceRetention'
+    | 'runEvidenceRetentionMaintenance'
+    | 'pinWorkflowEvidence'
+    | 'pruneProviderRuntime'
   > &
   ProviderRetryScheduleOperations &
   Readonly<{
-    pinWorkflowEvidence: BoundOperation<
-      typeof EvidenceRetention.pinWorkflowEvidence
-    >;
     requestExecutionReplacement: BoundOperation<
       typeof ExecutionReplacement.requestExecutionReplacement
     >;

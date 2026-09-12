@@ -32,10 +32,10 @@ import {
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
 import { type InvestigationRuntimePaths } from '../../runtime/session-workspace/paths.ts';
 import { assertInvestigationId } from '../../foundation/repository-path/repository-path.ts';
-import {
-  inspectProviderRetentionMetrics,
-  type ProviderRetentionMetrics,
-} from '../../runtime/provider-execution/provider-retention.ts';
+import type {
+  ProviderRetentionMetrics,
+  ProviderRetentionOptions,
+} from '../../modules/provider-orchestration/provider-retention.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
 type Rate = Readonly<{
@@ -101,6 +101,10 @@ const RATE_TERMINAL_STATUSES = new Set<AttemptRecord['status']>([
   'timed-out',
 ]);
 export function collectEngineMetrics(
+  inspectProviderRetentionMetrics: (
+    cwd: string,
+    options: Pick<ProviderRetentionOptions, 'now' | 'ttlDays'>,
+  ) => ProviderRetentionMetrics,
   cwd: string,
   options: { now?: string; retentionTtlDays?: number } = {},
 ): EngineMetricsSnapshot {

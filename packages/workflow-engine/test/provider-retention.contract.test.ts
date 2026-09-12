@@ -2,14 +2,20 @@ import { planningAssuranceDependencies } from '../src/composition-root/planning-
 import { readCurrentPlanningRoleOverridePolicy } from '../src/runtime/repository-transaction/planning-role-provider-policy-reader.ts';
 import test from 'node:test';
 import {
-  inspectProviderRetentionMetrics,
-  pruneProviderRuntime,
+  inspectProviderRetentionMetrics as inspectWithRuntime,
+  pruneProviderRuntime as pruneWithRuntime,
+} from '../src/runtime/provider-execution/provider-retention.ts';
+import {
   readProviderRetentionReceipt,
   providerRetentionReceiptPath,
   PROVIDER_RETENTION_MAX_RECEIPT_BYTES,
-  classifyProviderRetentionEligibility,
   PROVIDER_RETENTION_MAX_LIMIT,
 } from '../src/runtime/provider-execution/provider-retention.ts';
+import { classifyProviderRetentionEligibility } from '../src/modules/provider-orchestration/provider-retention.ts';
+import {
+  inspectProviderRetentionMetrics,
+  pruneProviderRuntime,
+} from '../src/composition-root/retention-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -2455,3 +2461,67 @@ function runWorkflowCli(
 function sha256(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
+
+test('physical retention resolves runtime lazily after its own validation and preserves resolver errors', () => {
+  const sentinel = new Error('runtime resolution reached');
+  let calls = 0;
+  const resolve = (cwd: string): never => {
+    assert.equal(cwd, '/memory');
+    calls++;
+    throw sentinel;
+  };
+  const now = '2026-09-01T12:00:00.000Z';
+  for (const [invoke, code] of [
+    [
+      () =>
+        pruneWithRuntime(resolve, '/memory', {
+          limit: 0,
+          ttlDays: 0,
+          now: 'invalid',
+        }),
+      'PROVIDER_RETENTION_LIMIT_INVALID',
+    ],
+    [
+      () =>
+        pruneWithRuntime(resolve, '/memory', {
+          limit: 1,
+          ttlDays: 0,
+          now: 'invalid',
+        }),
+      'PROVIDER_RETENTION_TTL_INVALID',
+    ],
+    [
+      () =>
+        pruneWithRuntime(resolve, '/memory', {
+          limit: 1,
+          ttlDays: 1,
+          now: 'invalid',
+        }),
+      'PROVIDER_RETENTION_NOW_INVALID',
+    ],
+    [
+      () =>
+        inspectWithRuntime(resolve, '/memory', { ttlDays: 0, now: 'invalid' }),
+      'PROVIDER_RETENTION_TTL_INVALID',
+    ],
+    [
+      () =>
+        inspectWithRuntime(resolve, '/memory', { ttlDays: 1, now: 'invalid' }),
+      'PROVIDER_RETENTION_NOW_INVALID',
+    ],
+  ] as const) {
+    assert.throws(invoke, (error) => isWorkflowError(error, code));
+    assert.equal(calls, 0);
+  }
+  for (const invoke of [
+    () => inspectWithRuntime(resolve, '/memory', { now }),
+    () => pruneWithRuntime(resolve, '/memory', { limit: 1, now }),
+  ]) {
+    calls = 0;
+    assert.throws(invoke, (error) => {
+      assert.strictEqual(error, sentinel);
+      return true;
+    });
+    assert.equal(calls, 1);
+  }
+});

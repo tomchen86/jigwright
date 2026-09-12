@@ -110,6 +110,28 @@ export type DurableEpochTransitionCompactionResult = Readonly<{
   discarded: readonly string[];
 }>;
 
+/** Immutable result shared by durable maintenance and its repository-facing envelope. */
+export type DurableContextRetentionMaintenanceResult = Readonly<{
+  examined: number;
+  compacted: ReadonlyArray<{
+    workflowId: string;
+    fullReceiptsBefore: number;
+    fullReceiptsAfter: number;
+    stubsBefore: number;
+    stubsAfter: number;
+    discarded: readonly string[];
+  }>;
+  pruned: ReadonlyArray<{
+    workflowId: string;
+    deleted: number;
+    receipt: DurablePruneReceipt;
+  }>;
+  skipped: ReadonlyArray<{
+    workflowId: string;
+    reason: 'context-not-found' | 'nothing-expired';
+  }>;
+}>;
+
 export function canonicalDurableGovernanceState(
   state: DurableGovernanceState,
 ): string {

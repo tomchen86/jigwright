@@ -8,19 +8,17 @@ import { listProviderInvocationLifecycleProjections } from '../src/runtime/stora
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { startPropose } from '../src/composition-root/propose-production.ts';
 import { inspectProviderPromptContextRetentionBinding } from '../src/runtime/provider-execution/provider-execution-governance.ts';
-import {
-  inspectProviderRetentionMetrics,
-  providerRuntimeEvidenceId,
-} from '../src/runtime/provider-execution/provider-retention.ts';
+import { providerRuntimeEvidenceId } from '../src/runtime/provider-execution/provider-retention.ts';
+import { inspectProviderRetentionMetrics } from '../src/composition-root/retention-production.ts';
 import {
   readProviderInvocation,
   readProviderInvocationManifest,
   readProviderInvocationRequest,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import {
-  pinWorkflowEvidence as pinWorkflowEvidenceWithMandate,
+  pinWorkflowEvidence,
   runEvidenceRetentionMaintenance,
-} from '../src/runtime/provider-execution/retention-control.ts';
+} from '../src/composition-root/retention-production.ts';
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 
@@ -206,10 +204,3 @@ function prepareWorkflow(changeId: string) {
     },
   };
 }
-
-import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
-
-const pinWorkflowEvidence = pinWorkflowEvidenceWithMandate.bind(
-  undefined,
-  taskMandateOperations,
-);
