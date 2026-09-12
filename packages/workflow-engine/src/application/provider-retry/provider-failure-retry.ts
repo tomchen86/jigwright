@@ -13,7 +13,7 @@ import type {
   ProviderInvocationRecord,
   ProviderInvocationFailure,
 } from '../../modules/provider-orchestration/provider-invocation-record.ts';
-import type { ConsumedPlanReviewReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
+
 import {
   exactTimestamp,
   deepFreeze,
@@ -25,6 +25,7 @@ import type {
   ProviderFailureRetryResult,
   ProcessProviderFailureRetryOptions,
 } from '../../modules/provider-orchestration/provider-retry-service-port.ts';
+import type { ConsumedRoleReplayPort } from '../../modules/provider-orchestration/role-admission-contracts.ts';
 
 /**
  * Reconcile one durable failed invocation into its bounded next action. The
@@ -189,7 +190,7 @@ function scheduleProbeRetry(
 export function publishReplacement(
   publication: ProviderRetryPublication,
   failed: ProviderInvocationRecord,
-  consumedRoleResultReplay?: ConsumedPlanReviewReplayPort,
+  consumedRoleResultReplay?: ConsumedRoleReplayPort,
 ): string {
   if (failed.purpose === 'survey') {
     const existing = publication.readSurveyReservation(failed);

@@ -41,10 +41,7 @@ import {
   normalizeChangedPath,
 } from '../../../../foundation/repository-path/repository-path.ts';
 import { assertPlanningPaths } from '../../../../modules/source/planning-paths.ts';
-import {
-  type ConsumedPlanReviewReplayPort,
-  type InvestigationFirstPlanningAssuranceSummary,
-} from '../../../../modules/assurance/planning-assurance-validator.ts';
+import { type InvestigationFirstPlanningAssuranceSummary } from '../../../../modules/assurance/planning-assurance-validator.ts';
 import { resolveCurrentOpenSpecProviderBinding } from './openspec-provider-binding.ts';
 import type {
   PlanningProviderBindingReaderPort,
@@ -73,7 +70,7 @@ export function loadValidatedChangeContract(
   repositoryRoot: string,
   requestedChangeId: string,
   planningProviderReader: PlanningProviderBindingReaderPort,
-  consumedPlanReviewReplay: ConsumedPlanReviewReplayPort,
+  consumedPlanReviewReplay: ConsumedRoleReplayPort,
   planningProvider: PlanningProviderPort,
   planningAssurance: Pick<PlanningAssurancePort, 'validateReadiness'>,
 ): ValidatedChangeContract {
@@ -502,6 +499,7 @@ import type {
   ManagedChangeDiagnostic,
   ValidatedChangeContract,
 } from '../../../../modules/planning-provider/validated-change-contract.ts';
+import type { ConsumedRoleReplayPort } from '../../../../modules/provider-orchestration/role-admission-contracts.ts';
 export type {
   ManagedChangeDiagnostic,
   ValidatedChangeContract,

@@ -41,7 +41,6 @@ import type { PlanReviewSubject } from '../src/modules/assurance/plan-review-sub
 import {
   deriveInvestigationFirstPlanningSubject,
   validateInvestigationFirstPlanningReadiness,
-  type ConsumedPlanReviewReplayPort,
 } from '../src/modules/assurance/planning-assurance-validator.ts';
 import {
   sealAuthoritativeCollaborationGrantVerifier,
@@ -64,6 +63,7 @@ import {
   PROVIDER_RUNNER_RESIDUALS,
 } from '../src/modules/provider-orchestration/provider-runtime-evidence.ts';
 import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
+import type { ConsumedRoleReplayPort } from '../src/modules/provider-orchestration/role-admission-contracts.ts';
 
 export const sourceRepositoryRoot = path.resolve(
   import.meta.dirname,
@@ -73,7 +73,7 @@ export const sourceRepositoryRoot = path.resolve(
 let openSpecAssetTemplateRoot: string | undefined;
 
 const TEST_COLLABORATION_GRANT_COMPOSITION_DIGEST = `sha256:${'0'.repeat(64)}`;
-export const ordinaryPlanReviewReplayPortForTest: ConsumedPlanReviewReplayPort =
+export const ordinaryPlanReviewReplayPortForTest: ConsumedRoleReplayPort =
   Object.freeze({
     verify(): never {
       throw new Error(

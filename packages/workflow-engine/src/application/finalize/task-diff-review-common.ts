@@ -16,8 +16,11 @@ import {
   type ConsumedCollaborationGrantReplayVerifier,
   assertConsumedCollaborationGrantReplayVerifier,
 } from '../../modules/authority/grant-verifier-port.ts';
-import { type ConsumedRoleResultReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
-import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+
+import {
+  type AdmittedRoleResult,
+  type ConsumedRoleResultReplayPort,
+} from '../../modules/provider-orchestration/role-admission-contracts.ts';
 import { type CollaborationGrantExpectedBinding } from '../../modules/authority/collaboration-grant-codec.ts';
 
 import crypto from 'node:crypto';

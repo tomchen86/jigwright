@@ -38,7 +38,7 @@ import {
 } from '../../modules/assurance/task-diff-review-artifact.ts';
 import type { TaskDiffReviewChallengeResponseRecord } from '../../modules/assurance/task-diff-review-artifact-record.ts';
 import { type MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
-import { type ConsumedRoleResultReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
+
 import type {
   TaskDiffReviewRuntimeBindings,
   TaskDiffReviewRuntimeData,
@@ -56,6 +56,7 @@ import type { createTaskDiffReviewExternalBindingModule } from './task-diff-revi
 import type { createTaskDiffReviewExternalContinuationBindingModule } from './task-diff-review-external-continuation-binding.ts';
 import type { createTaskDiffReviewLineageModule } from './task-diff-review-lineage.ts';
 import type { createTaskDiffReviewInspectionModule } from './task-diff-review-inspection.ts';
+import type { ConsumedRoleResultReplayPort } from '../../modules/provider-orchestration/role-admission-contracts.ts';
 
 type TaskDiffExternalReviewReservation =
   TaskDiffReviewRuntimeData['TaskDiffExternalReviewReservation'];

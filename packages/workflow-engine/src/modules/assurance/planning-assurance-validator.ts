@@ -24,7 +24,7 @@ export {
 import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import type { CollaborationGrantExpectedBinding } from '../authority/collaboration-grant-codec.ts';
+
 import type {
   ChangeContract,
   CurrentInvestigationManifest,
@@ -76,9 +76,8 @@ import type {
   PlanningPolicyDigests,
 } from './planning-generation-record.ts';
 import {
-  type AdmitConsumedRoleContextSharingResultReplayInput,
-  type AdmitConsumedRoleResultReplayInput,
   type AdmittedRoleResult,
+  type ConsumedRoleReplayPort,
 } from '../provider-orchestration/role-admission-contracts.ts';
 
 const LEDGER_START = '<!-- workflow:investigation-ledger:start v1 -->';
@@ -113,44 +112,6 @@ export type InvestigationFirstPlanningReadiness =
     roleResult: AdmittedRoleResult;
     summary: InvestigationFirstPlanningAssuranceSummary;
   };
-
-export type ConsumedRoleResultReplayInput = Readonly<{
-  repositoryRoot: string;
-  expectedBinding: CollaborationGrantExpectedBinding;
-  grantUse: NonNullable<AdmittedRoleResult['grantUse']>;
-  assignment: AdmittedRoleResult['assignment'];
-  content: AdmittedRoleResult['content'];
-  directHumanReviewAttestation: AdmittedRoleResult['directHumanReviewAttestation'];
-}>;
-
-/**
- * Authenticate one exact already-consumed role use without granting any
- * live reserve/consume or generic signature-verification authority. The proof
- * is opaque in practice: only the terminal store can mint a value accepted by
- * `admitConsumedRoleResultReplay`.
- */
-export type ConsumedRoleResultReplayPort = Readonly<{
-  verify(
-    input: ConsumedRoleResultReplayInput,
-  ): AdmitConsumedRoleResultReplayInput['replay'];
-}>;
-
-export type ConsumedPlanReviewReplayInput = ConsumedRoleResultReplayInput;
-export type ConsumedRoleContextSharingReplayInput = Readonly<{
-  repositoryRoot: string;
-  evidence: NonNullable<AdmittedRoleResult['roleContextSharingUse']>;
-  assignment: AdmittedRoleResult['assignment'];
-  author: AdmittedRoleResult['author'];
-  participant: AdmittedRoleResult['participant'];
-  content: AdmittedRoleResult['content'];
-  providerInvocation: NonNullable<AdmittedRoleResult['providerInvocation']>;
-}>;
-export type ConsumedPlanReviewReplayPort = ConsumedRoleResultReplayPort &
-  Readonly<{
-    verifyRoleContextSharing(
-      input: ConsumedRoleContextSharingReplayInput,
-    ): AdmitConsumedRoleContextSharingResultReplayInput['replay'];
-  }>;
 
 export type CurrentPlanReviewRoleResultReplayContext = Readonly<{
   repositoryRoot: string;
@@ -248,7 +209,7 @@ export function validateInvestigationFirstPlanningReadiness(
   observations: PlanningAssuranceDependencies,
   repositoryRoot: string,
   contract: ChangeContract,
-  consumedPlanReviewReplay: ConsumedPlanReviewReplayPort,
+  consumedPlanReviewReplay: ConsumedRoleReplayPort,
   planningRoleOverride: CurrentPlanningRoleOverridePolicy | null,
 ): InvestigationFirstPlanningReadiness {
   assertCurrentContract(observations, repositoryRoot, contract);

@@ -46,10 +46,7 @@ import {
   type MaintainerPolicy,
 } from '../modules/authority/maintainer-policy.ts';
 import { ROLE_CONTEXT_SHARING_POLICY_DIGEST } from '../modules/authority/role-context-sharing-grant.ts';
-import type {
-  ConsumedPlanReviewReplayPort,
-  ConsumedRoleResultReplayPort,
-} from '../modules/assurance/planning-assurance-validator.ts';
+
 import { runGit } from '../runtime/repository-transaction/git.ts';
 import { verifyExactConsumedCollaborationGrantCrashReplay } from '../runtime/storage-journal/collaboration-grant-consumption.ts';
 import { verifyConsumedRoleContextSharingReplay } from '../runtime/grants/grant-services.ts';
@@ -58,6 +55,10 @@ import {
   loadProtectedCapabilitiesFromWorktree,
   type CollaborationGrantVerifierCompositionV1,
 } from '../adapters/consumer/repository/work-registry/protected-capabilities.ts';
+import type {
+  ConsumedRoleReplayPort,
+  ConsumedRoleResultReplayPort,
+} from '../modules/provider-orchestration/role-admission-contracts.ts';
 
 const COLLABORATION_EFFECT = 'role-independence-degradation-only' as const;
 const REQUIRED_PACKAGE_EXPORTS = Object.freeze({
@@ -346,7 +347,7 @@ export const productionConsumedRoleResultReplayPort: ConsumedRoleResultReplayPor
     },
   });
 
-export const productionConsumedPlanReviewReplayPort: ConsumedPlanReviewReplayPort =
+export const productionConsumedPlanReviewReplayPort: ConsumedRoleReplayPort =
   Object.freeze({
     verify(input) {
       return productionConsumedRoleResultReplayPort.verify(input);

@@ -237,7 +237,7 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
   );
   assert.match(
     retryContract,
-    /ProcessProviderFailureRetryOptions[\s\S]*?consumedRoleResultReplay\?: ConsumedPlanReviewReplayPort/,
+    /ProcessProviderFailureRetryOptions[\s\S]*?consumedRoleResultReplay\?: ConsumedRoleReplayPort/,
   );
   assert.match(
     retryScheduler,
@@ -264,7 +264,7 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
   );
   assert.match(
     executionReplacement,
-    /ExecuteGrantedReplacementOptions[\s\S]*?consumedRoleResultReplay\?: ConsumedPlanReviewReplayPort/,
+    /ExecuteGrantedReplacementOptions[\s\S]*?consumedRoleResultReplay\?: ConsumedRoleReplayPort/,
   );
   assert.match(
     executionReplacement,
@@ -292,7 +292,7 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
   );
   assert.match(
     cli,
-    /import\s*\{\s*providerOperationsServices\s*\}\s*from '\.\.\/\.\.\/composition-root\/provider-operations-cli-production\.ts'/,
+    /import\s*\{(?:[^}]*,\s*)?\s*providerOperationsServices\s*(?:,[^}]*)?\}\s*from '\.\.\/\.\.\/composition-root\/provider-operations-cli-production\.ts'/,
   );
   assert.match(
     cli,

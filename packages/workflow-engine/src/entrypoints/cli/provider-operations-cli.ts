@@ -15,7 +15,7 @@ import type * as EvidenceRetention from '../../composition-root/retention-produc
 import type * as ExecutionReplacement from '../../application/control-plane/execution-replacement.ts';
 import type * as ExecutionJobRetry from '../../application/control-plane/execution-job-retry.ts';
 import type { ProviderRetryScheduleOperations } from '../../modules/provider-orchestration/provider-retry-service-port.ts';
-import type { ConsumedPlanReviewReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
+import type { providerOperationsServices } from '../../composition-root/provider-operations-cli-production.ts';
 import type { dispatchProviderWorker } from '../worker/provider-worker.ts';
 type BoundOperation<T> = T extends (
   dependencies: never,
@@ -48,7 +48,7 @@ export type ProviderOperationsServices = Pick<
     requestExecutionJobRetry: BoundOperation<
       typeof ExecutionJobRetry.requestExecutionJobRetry
     >;
-    consumedPlanReviewReplay: ConsumedPlanReviewReplayPort;
+    consumedPlanReviewReplay: typeof providerOperationsServices.consumedPlanReviewReplay;
     providerDispatcher: typeof dispatchProviderWorker;
   }>;
 

@@ -8,7 +8,7 @@ import type {
   ManagedSchemaName,
 } from '../../../modules/planning-provider/change-contract.ts';
 import type { PlanningAssurancePort } from '../../../modules/assurance/planning-assurance-port.ts';
-import type { ConsumedPlanReviewReplayPort } from '../../../modules/assurance/planning-assurance-validator.ts';
+
 import type { PlanReviewArtifactParser } from '../../../modules/assurance/plan-review-artifact.ts';
 import type { validateForAuthority } from '../../../modules/investigation/manifest/investigation-manifest.ts';
 import type {
@@ -22,6 +22,7 @@ import type { CiPlanningReplayOperations } from '../../../modules/assurance/comm
 import type { CiArchiveReplayOperations } from '../../../modules/assurance/commit-replay/ci-archive.ts';
 import type { CiAuthorityReplayOperations } from '../../../modules/assurance/commit-replay/ci-authority.ts';
 import type { CiHistoricalReplayOperations } from '../../../modules/assurance/commit-replay/ci-historical-contract.ts';
+import type { ConsumedRoleReplayPort } from '../../../modules/provider-orchestration/role-admission-contracts.ts';
 type Tail<Values extends readonly unknown[]> = Values extends readonly [
   unknown,
   ...infer Rest,
@@ -32,7 +33,7 @@ export type CiPlanningReplayServices = {
   planningPaths: PlanningPathPolicy;
   validateHandoffForChange(repositoryRoot: string, changeId: string): void;
   productionPlanningAssurance: PlanningAssurancePort;
-  productionConsumedPlanReviewReplayPort: ConsumedPlanReviewReplayPort;
+  productionConsumedPlanReviewReplayPort: ConsumedRoleReplayPort;
   parsePlanReviewArtifact: PlanReviewArtifactParser;
   validateForAuthority(
     ...args: Tail<Parameters<typeof validateForAuthority>>

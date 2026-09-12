@@ -10,7 +10,10 @@ import type {
 } from './role-assignment.ts';
 import type { ProviderId } from './provider-registry.ts';
 import type { IndependenceDimension } from './role-independence.ts';
-import type { DirectHumanReviewAttestation } from '../authority/collaboration-grant-codec.ts';
+import type {
+  DirectHumanReviewAttestation,
+  CollaborationGrantExpectedBinding,
+} from '../authority/collaboration-grant-codec.ts';
 import type {
   CollaborationGrantUseProjection,
   CollaborationGrantUseValidationOptions,
@@ -130,6 +133,43 @@ export type AdmitConsumedRoleContextSharingResultReplayInput = Omit<
 > &
   Readonly<{
     replay: VerifiedConsumedRoleContextSharingReplay;
+  }>;
+
+export type ConsumedRoleResultReplayInput = Readonly<{
+  repositoryRoot: string;
+  expectedBinding: CollaborationGrantExpectedBinding;
+  grantUse: NonNullable<AdmittedRoleResult['grantUse']>;
+  assignment: AdmittedRoleResult['assignment'];
+  content: AdmittedRoleResult['content'];
+  directHumanReviewAttestation: AdmittedRoleResult['directHumanReviewAttestation'];
+}>;
+
+/**
+ * Authenticate one exact already-consumed role use without granting any
+ * live reserve/consume or generic signature-verification authority. The proof
+ * is opaque in practice: only the terminal store can mint a value accepted by
+ * `admitConsumedRoleResultReplay`.
+ */
+export type ConsumedRoleResultReplayPort = Readonly<{
+  verify(
+    input: ConsumedRoleResultReplayInput,
+  ): AdmitConsumedRoleResultReplayInput['replay'];
+}>;
+
+export type ConsumedRoleContextSharingReplayInput = Readonly<{
+  repositoryRoot: string;
+  evidence: NonNullable<AdmittedRoleResult['roleContextSharingUse']>;
+  assignment: AdmittedRoleResult['assignment'];
+  author: AdmittedRoleResult['author'];
+  participant: AdmittedRoleResult['participant'];
+  content: AdmittedRoleResult['content'];
+  providerInvocation: NonNullable<AdmittedRoleResult['providerInvocation']>;
+}>;
+export type ConsumedRoleReplayPort = ConsumedRoleResultReplayPort &
+  Readonly<{
+    verifyRoleContextSharing(
+      input: ConsumedRoleContextSharingReplayInput,
+    ): AdmitConsumedRoleContextSharingResultReplayInput['replay'];
   }>;
 
 export type DirectHumanReviewProof = {

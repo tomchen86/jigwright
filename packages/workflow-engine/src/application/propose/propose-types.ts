@@ -13,11 +13,7 @@ import { type GlobalPlanReviewCoverageRequirement } from '../../modules/assuranc
 import { type PlanReviewDispositionSubmission } from '../../modules/assurance/plan-review.ts';
 import type { PlanReviewSubject } from '../../modules/assurance/plan-review-subject.ts';
 import type { PlanReviewTargetSnapshot } from '../../modules/assurance/plan-review-target-snapshot-record.ts';
-import {
-  type ConsumedPlanReviewReplayPort,
-  type ConsumedRoleResultReplayPort,
-  type InvestigationFirstPlanningSubject,
-} from '../../modules/assurance/planning-assurance-validator.ts';
+import { type InvestigationFirstPlanningSubject } from '../../modules/assurance/planning-assurance-validator.ts';
 import { type RoleContextSharingGrantLifecyclePortV1 } from '../../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
 import { type TaskMandateOptions } from '../../modules/authority/task-mandate-access-contract.ts';
 import { type WorkflowPlanDigest } from '../../modules/guidance/renderers/plan-digest.ts';
@@ -46,7 +42,11 @@ import { buildInvestigationV3WhyAuthoring } from '../../modules/investigation/ma
 import { type ActorSignal } from '../../modules/authority/actor-identity.ts';
 import { type ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import { type ProviderExecutionGrantAuthorization } from '../../modules/provider-orchestration/provider-retry-decision.ts';
-import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+import {
+  type AdmittedRoleResult,
+  type ConsumedRoleReplayPort,
+  type ConsumedRoleResultReplayPort,
+} from '../../modules/provider-orchestration/role-admission-contracts.ts';
 
 import {
   type ProviderRoleAssignment,
@@ -128,7 +128,7 @@ export type ProposeResumeOptions = {
     now?: Date;
     verifier?: unknown;
     consumedRoleResultReplay?: ConsumedRoleResultReplayPort;
-    consumedPlanReviewReplay?: ConsumedPlanReviewReplayPort;
+    consumedPlanReviewReplay?: ConsumedRoleReplayPort;
   };
   executionGrantAuthorization?: ProviderExecutionGrantAuthorization & {
     replacementRequest: ProviderInvocationRequest;

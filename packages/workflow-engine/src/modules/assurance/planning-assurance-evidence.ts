@@ -1,6 +1,9 @@
 /** Pure planning evidence admission and exact consumed role replay rules. */
 
-import type { AdmittedRoleResult } from '../provider-orchestration/role-admission-contracts.ts';
+import type {
+  AdmittedRoleResult,
+  ConsumedRoleReplayPort,
+} from '../provider-orchestration/role-admission-contracts.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { bindingFromPayload } from '../authority/collaboration-grant-codec.ts';
 import { readPlanReviewNode } from './plan-review.ts';
@@ -13,7 +16,6 @@ import type {
 import crypto from 'node:crypto';
 import type {
   CurrentPlanReviewRoleResultReplayContext,
-  ConsumedPlanReviewReplayPort,
   ChangeContract,
   EvidenceNode,
 } from './planning-assurance-validator.ts';
@@ -31,7 +33,7 @@ export function replayCurrentPlanReviewRoleResult(
   dependencies: PlanningAssuranceRoleAdmission,
   storedValue: unknown,
   context: CurrentPlanReviewRoleResultReplayContext,
-  consumedPlanReviewReplay?: ConsumedPlanReviewReplayPort,
+  consumedPlanReviewReplay?: ConsumedRoleReplayPort,
 ): AdmittedRoleResult {
   let stored: AdmittedRoleResult;
   try {
@@ -184,7 +186,7 @@ export function requireCurrentPlanReviewRoleResult(
   contract: ChangeContract,
   providerResultNode: EvidenceNode,
   subject: PlanReviewSubject,
-  consumedPlanReviewReplay: ConsumedPlanReviewReplayPort,
+  consumedPlanReviewReplay: ConsumedRoleReplayPort,
 ): AdmittedRoleResult {
   const candidates = contract.planReview?.roleResults ?? [];
   const matches = candidates.filter((candidate) => {

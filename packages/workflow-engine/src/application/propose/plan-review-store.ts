@@ -21,7 +21,6 @@ import {
 import type { PlanReviewSubject } from '../../modules/assurance/plan-review-subject.ts';
 import type { PlanReviewTargetSnapshot } from '../../modules/assurance/plan-review-target-snapshot-record.ts';
 import {
-  type ConsumedPlanReviewReplayPort,
   type InvestigationFirstPlanningSubject,
   replayCurrentPlanReviewRoleResult,
 } from '../../modules/assurance/planning-assurance-validator.ts';
@@ -29,7 +28,10 @@ import {
   PROPOSE_POLICY_DIGEST,
   type ProviderInvocationRequest,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
-import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+import {
+  type AdmittedRoleResult,
+  type ConsumedRoleReplayPort,
+} from '../../modules/provider-orchestration/role-admission-contracts.ts';
 import {
   type ProviderRoleAssignment,
   type RecordedRoleParticipant,
@@ -133,7 +135,7 @@ export function readTrackedPlanReview(
   changeId: string,
   replay?: Readonly<{
     subject: PlanReviewSubject;
-    consumedPlanReviewReplay?: ConsumedPlanReviewReplayPort;
+    consumedPlanReviewReplay?: ConsumedRoleReplayPort;
   }>,
 ): {
   nodes: EvidenceNode[];

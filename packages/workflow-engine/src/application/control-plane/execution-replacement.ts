@@ -75,8 +75,7 @@ import {
   readProviderInvocationRequest,
 } from '../../runtime/storage-journal/provider-invocation-store.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
-
-import type { ConsumedPlanReviewReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
+import type { ConsumedRoleReplayPort } from '../../modules/provider-orchestration/role-admission-contracts.ts';
 
 export type ExecutionRetryRequestResult = Readonly<{
   schemaVersion: 1;
@@ -186,7 +185,7 @@ export type ExecutionReplacementTransaction = Readonly<{
 export type ExecuteGrantedReplacementOptions = {
   now?: Date;
   providerDispatcher?: (cwd: string, invocationId: string) => unknown;
-  consumedRoleResultReplay?: ConsumedPlanReviewReplayPort;
+  consumedRoleResultReplay?: ConsumedRoleReplayPort;
   simulateCrashAfter?:
     | 'prepared'
     | 'grant-consume-before-journal'
@@ -966,7 +965,7 @@ export type ExecutionReplacementPublicationBindingsTypes = {
   InvestigationRuntimePaths: InvestigationRuntimePaths;
   ExecutionReplacementTransaction: ExecutionReplacementTransaction;
   ExecuteGrantedReplacementOptions: ExecuteGrantedReplacementOptions;
-  ConsumedPlanReviewReplayPort: ConsumedPlanReviewReplayPort;
+  ConsumedRoleReplayPort: ConsumedRoleReplayPort;
   ExecutionBudgetGrantRequest: ExecutionBudgetGrantRequest;
   inspectExecutionJob: typeof inspectExecutionJob;
 };

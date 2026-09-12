@@ -6,7 +6,7 @@
  *   authority fields.
  */
 // Shared lifecycle contracts for review commands, inspection, and replay.
-import { type ConsumedRoleResultReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
+
 import {
   type DirectHumanReviewAttestation,
   type CollaborationGrantRequest,
@@ -17,7 +17,10 @@ import {
   type GrantedRoleAssignment,
   type ProviderRoleAssignment,
 } from '../../modules/provider-orchestration/role-assignment.ts';
-import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+import {
+  type AdmittedRoleResult,
+  type ConsumedRoleResultReplayPort,
+} from '../../modules/provider-orchestration/role-admission-contracts.ts';
 
 import type {
   TaskDiffReviewRecord,

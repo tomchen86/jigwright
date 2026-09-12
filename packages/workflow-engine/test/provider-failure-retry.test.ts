@@ -13,8 +13,9 @@ import type {
 } from '../src/modules/provider-orchestration/provider-retry-service-port.ts';
 import type { ProviderAutomaticRetrySchedule } from '../src/modules/provider-orchestration/provider-retry-schedule.ts';
 import type { RetryDecision } from '../src/modules/provider-orchestration/execution-core.ts';
-import type { ConsumedPlanReviewReplayPort } from '../src/modules/assurance/planning-assurance-validator.ts';
+
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
+import type { ConsumedRoleReplayPort } from '../src/modules/provider-orchestration/role-admission-contracts.ts';
 
 const now = '2026-08-03T08:00:00.000Z';
 const hasCode = (code: string) => (error: unknown) =>
@@ -92,7 +93,7 @@ function fixture(purpose: ProviderInvocationRecord['purpose'] = 'survey') {
     publicationError: null as Error | null,
     planReviewInvocationId: 'invocation-review-next' as string | undefined,
     surveyAttempt: 2,
-    forwardedReplay: undefined as ConsumedPlanReviewReplayPort | undefined,
+    forwardedReplay: undefined as ConsumedRoleReplayPort | undefined,
   };
   const publication: ProviderRetryPublication = {
     readSurveyReservation(record) {
@@ -229,7 +230,7 @@ test('matching Survey reservation replays its identity without publishing or rer
 
 test('PlanReview uses its owner with the exact consumed-role replay port', () => {
   const f = fixture('plan-review');
-  const replay = {} as ConsumedPlanReviewReplayPort;
+  const replay = {} as ConsumedRoleReplayPort;
   assert.equal(
     processProviderFailureRetry(f.ports, f.failed.invocationId, {
       now,

@@ -5,10 +5,10 @@ import type {
   PlanningAssuranceSummary,
 } from './planning-assurance-binding.ts';
 import type {
-  ConsumedPlanReviewReplayPort,
   InvestigationFirstPlanningSubject,
   InvestigationFirstPlanningReadiness,
 } from './planning-assurance-validator.ts';
+import type { ConsumedRoleReplayPort } from '../provider-orchestration/role-admission-contracts.ts';
 export type PlanningAssurancePort = Readonly<{
   createTaskBinding(
     contract: ChangeContract,
@@ -21,6 +21,6 @@ export type PlanningAssurancePort = Readonly<{
   validateReadiness(
     repositoryRoot: string,
     contract: ChangeContract,
-    consumedPlanReviewReplay: ConsumedPlanReviewReplayPort,
+    consumedPlanReviewReplay: ConsumedRoleReplayPort,
   ): InvestigationFirstPlanningReadiness;
 }>;

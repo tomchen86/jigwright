@@ -91,8 +91,9 @@ export function preMergeUnavailable(message: string) {
 import type { CiRepositoryObservations } from './commit-replay/ci-git.ts';
 import type { CommittedChangeContractReader } from '../planning-provider/change-contract.ts';
 import type { PlanningAssurancePort } from './planning-assurance-port.ts';
-import type { ConsumedPlanReviewReplayPort } from './planning-assurance-validator.ts';
+
 import type { PreMergeAssuranceNode } from './pre-merge-assurance.ts';
+import type { ConsumedRoleReplayPort } from '../provider-orchestration/role-admission-contracts.ts';
 export type PreMergeVerificationServices = Pick<
   CiRepositoryObservations,
   | 'discoverRepository'
@@ -108,7 +109,7 @@ export type PreMergeVerificationServices = Pick<
 > & {
   loadCommittedChangeContract: CommittedChangeContractReader;
   productionPlanningAssurance: Pick<PlanningAssurancePort, 'validateReadiness'>;
-  productionConsumedPlanReviewReplayPort: ConsumedPlanReviewReplayPort;
+  productionConsumedPlanReviewReplayPort: ConsumedRoleReplayPort;
   storePreMergeAssuranceForRepository(
     cwd: string,
     assurance: PreMergeAssuranceNode,

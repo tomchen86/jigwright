@@ -14,14 +14,14 @@ import {
   readPlanReviewNode,
   readPlanReviewTargetSnapshotNode,
 } from '../../modules/assurance/plan-review.ts';
-import {
-  type ConsumedPlanReviewReplayPort,
-  replayCurrentPlanReviewRoleResult,
-} from '../../modules/assurance/planning-assurance-validator.ts';
+import { replayCurrentPlanReviewRoleResult } from '../../modules/assurance/planning-assurance-validator.ts';
 import { normalizeInvestigationTerm } from '../../modules/investigation/domain/investigation-terms.ts';
 import { assertStoredReviewerTermDelta } from '../../modules/assurance/plan-review-terms.ts';
 import { PROPOSE_POLICY_DIGEST } from '../../modules/provider-orchestration/provider-contracts.ts';
-import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+import {
+  type AdmittedRoleResult,
+  type ConsumedRoleReplayPort,
+} from '../../modules/provider-orchestration/role-admission-contracts.ts';
 
 import {
   hasExactKeys,
@@ -48,7 +48,7 @@ export function readReviewerTermSource(
   nodeId: string | null,
   session: InvestigationSession,
   repositoryRoot: string,
-  consumedPlanReviewReplay?: ConsumedPlanReviewReplayPort,
+  consumedPlanReviewReplay?: ConsumedRoleReplayPort,
 ): ReviewerTermSourceRecord | null {
   if (nodeId === null) {
     return null;
@@ -91,7 +91,7 @@ function readReviewerTermSourceV3(
   sourceNode: EvidenceNode,
   session: InvestigationSession,
   repositoryRoot: string,
-  consumedPlanReviewReplay?: ConsumedPlanReviewReplayPort,
+  consumedPlanReviewReplay?: ConsumedRoleReplayPort,
 ): ReviewerTermSourceRecord {
   const output = sourceNode.output;
   if (

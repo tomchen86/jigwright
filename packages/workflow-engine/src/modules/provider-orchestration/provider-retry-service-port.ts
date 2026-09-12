@@ -3,11 +3,12 @@ import type { ProviderInvocationRecord } from './provider-invocation-record.ts';
 import type { ProviderInvocationRequest } from './provider-contracts.ts';
 import type { ReadOnlyProbeRequest, RetryDecision } from './execution-core.ts';
 import type { GrantRequest } from '../authority/execution-governance-grant-contracts.ts';
-import type { ConsumedPlanReviewReplayPort } from '../assurance/planning-assurance-validator.ts';
+
 import type {
   ProviderAutomaticRetrySchedule,
   ProviderRetryScheduleReceipt,
 } from './provider-retry-schedule.ts';
+import type { ConsumedRoleReplayPort } from './role-admission-contracts.ts';
 
 export type ProviderReadOnlyProbeExecutionResult = Readonly<{
   state: 'succeeded' | 'failed';
@@ -63,7 +64,7 @@ export type ProviderFailureRetryResult =
 export type ProcessProviderFailureRetryOptions = Readonly<{
   now?: string;
   dispatcher?: (cwd: string, invocationId: string) => unknown;
-  consumedRoleResultReplay?: ConsumedPlanReviewReplayPort;
+  consumedRoleResultReplay?: ConsumedRoleReplayPort;
 }>;
 
 export type ProviderFailureRetryStorage = Readonly<{
@@ -119,7 +120,7 @@ export type ProviderRetryPublication = Readonly<{
   ): { invocationId: string; attempt: number };
   publishPlanReview(
     failed: ProviderInvocationRecord,
-    consumedRoleResultReplay?: ConsumedPlanReviewReplayPort,
+    consumedRoleResultReplay?: ConsumedRoleReplayPort,
   ): string | undefined;
 }>;
 

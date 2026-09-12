@@ -27,7 +27,7 @@ import type { ValidatedChangeContract } from '../modules/planning-provider/valid
 import { createOpenSpecPlanningProviderPort } from './openspec-planning-provider-production.ts';
 import { planningProviderBindingReader } from '../runtime/repository-transaction/planning-provider-binding-store.ts';
 import { productionConsumedPlanReviewReplayPort } from './grant-verifier-composition.ts';
-import type { ConsumedPlanReviewReplayPort } from '../modules/assurance/planning-assurance-validator.ts';
+
 import type {
   ChangeRoutingAuthorityFacts,
   ChangeRoutingAuthorityPort,
@@ -35,6 +35,7 @@ import type {
 import { loadRepositoryConsumerConfiguration } from '../runtime/repository-observation/repository-consumer.ts';
 import type { SystemDescriptionSnapshot } from '../modules/source/spec-ownership.ts';
 import { readSystemDescriptionSnapshot } from '../runtime/repository-transaction/system-description-snapshot.ts';
+import type { ConsumedRoleReplayPort } from '../modules/provider-orchestration/role-admission-contracts.ts';
 
 export const productionChangeRoutingAuthorityPort: ChangeRoutingAuthorityPort =
   Object.freeze({
@@ -80,7 +81,7 @@ export function loadStableValidatedChangeContract(
 ): {
   git: GitState;
   contract: ValidatedChangeContract;
-  consumedPlanReviewReplay: ConsumedPlanReviewReplayPort;
+  consumedPlanReviewReplay: ConsumedRoleReplayPort;
   planningAssurance: PlanningAssurancePort;
   planningPaths: PlanningPathPolicy;
   readSystemDescription(): SystemDescriptionSnapshot;
