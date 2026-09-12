@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import {
   createDocumentationClosureRecord,
   encodeDocumentationClosure,
@@ -821,7 +822,7 @@ test('workflow assurance CI is read-only and policy paths have owners', () => {
   );
   assert.match(
     workflow,
-    /\.\.\/trusted-base\/packages\/workflow-engine\/src\/entrypoints\/cli\/workflow-cli\.ts ci/,
+    /\.\.\/trusted-base\/packages\/workflow-engine\/bootstrap\/workflow-engine-host\.ts ci/,
   );
   assert.doesNotMatch(workflow, /secrets\.|pnpm workflow ci/);
   const actionRefs = [...workflow.matchAll(/uses: [^@\s]+@([^\s]+)/g)].map(
@@ -1136,3 +1137,39 @@ function writeCurrentPlanningChange(
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+test('trusted workflow assurance entrypoint actually dispatches CI instead of exiting silently', () => {
+  const workflow = fs.readFileSync(
+    path.join(sourceRepositoryRoot, '.github/workflows/workflow-assurance.yml'),
+    'utf8',
+  );
+  const entrypoint = workflow.match(/\.\.\/trusted-base\/(\S+)\s+ci/u)?.[1];
+  assert.ok(
+    entrypoint,
+    'trusted CI command must identify its executable entrypoint',
+  );
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--experimental-strip-types',
+      path.join(sourceRepositoryRoot, entrypoint),
+      'ci',
+      '--base',
+      'invalid',
+      '--head',
+      'invalid',
+      '--json',
+    ],
+    {
+      cwd: path.parse(sourceRepositoryRoot).root,
+      encoding: 'utf8',
+      env: { ...process.env, NODE_NO_WARNINGS: '1' },
+    },
+  );
+  assert.notEqual(
+    result.status,
+    0,
+    'CI must execute and reject invalid inputs',
+  );
+  assert.equal(JSON.parse(result.stderr).ok, false);
+});

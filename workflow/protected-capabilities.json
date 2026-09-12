@@ -133,15 +133,15 @@
         "packages/workflow-engine/src/runtime/storage-journal/role-context-sharing-store.ts"
       ],
       "sourceDigest": "sha256:053c39f250e0137b0206238fcea60ab8b948a1ea4a52f1ed8cb46f1ccb75858c",
-      "authorizationClosureDigest": "sha256:ad4c7aff25be125a1dda9da3265758e06f1b08403f32982898bb7a8a9fbbf666"
+      "authorizationClosureDigest": "sha256:2173e63bdfe21af4a7643ac54dfa838c068a46567dc3ced5eb9e4ce3e66d2604"
     },
-    "authorizationClosureDigest": "sha256:ad4c7aff25be125a1dda9da3265758e06f1b08403f32982898bb7a8a9fbbf666",
+    "authorizationClosureDigest": "sha256:2173e63bdfe21af4a7643ac54dfa838c068a46567dc3ced5eb9e4ce3e66d2604",
     "humanTrustRootsClosureDigest": "sha256:f16a3754915fc4510e73b302d901ec20989ccadbd23843834fd1d038c73f4911",
     "applyJournalClosureDigest": "sha256:bcd6b3d57df86c1fa9079a9894b91be852e7f38432771c472f05b75a320ba6ab",
     "controlPlaneUpdateClosureDigest": "sha256:b758b8990f8e7060992fae106cef7f5b3c4dc1d2bd3051c576a99600343a320a",
     "recoveryClosureDigest": "sha256:378bc132bbc7707969e2f3974894294196d5e1498bc33da8ebaa9a702b4a8059",
     "repairAuthority": "human-only-authority-plan-or-sealed-recovery",
-    "compositionDigest": "sha256:acb4ead954e7c48f97287150780558c64f55cdd5f9291aa26781e7dbe7867ac5"
+    "compositionDigest": "sha256:af5137bb8de5e58f433966839e1e032a56c07477d7675fd3d98ae13dd5082021"
   },
   "entries": [
     {
@@ -846,8 +846,8 @@
         "workflow/path-roles.json",
         "workflow/protected-capabilities.json"
       ],
-      "contentDigest": "sha256:4eea392969ba8a8bcfc2ff2bd1dcbd74dc1f858708a4a9c7d8622c738f8d3452",
-      "closureDigest": "sha256:ad4c7aff25be125a1dda9da3265758e06f1b08403f32982898bb7a8a9fbbf666"
+      "contentDigest": "sha256:cd48ab1693b7e556cbe4fc6ce8c9771e39bcf5eae1ffd7ee20cb0c4a3ab66600",
+      "closureDigest": "sha256:2173e63bdfe21af4a7643ac54dfa838c068a46567dc3ced5eb9e4ce3e66d2604"
     },
     {
       "capability": "control-plane.update",
@@ -1232,8 +1232,8 @@
         "workflow/schemas/report.schema.json",
         "workflow/schemas/session.schema.json"
       ],
-      "contentDigest": "sha256:d773bedb86d260746b478377a811e2d818d784ad23b95f65fd6a390abb61675b",
-      "closureDigest": "sha256:e5287d446602a7217d01fa2f9b0df346a255d7d06467cac6b0f060b439b3cc4f"
+      "contentDigest": "sha256:f6e1e28c592fee21e123f2e5c93ed8bd4315f0fb34fbf567b0e48b73e6a92d29",
+      "closureDigest": "sha256:de613715586fe8da4dd02cf96182be8856e9449554e7a7e88c391cf72bfb0519"
     },
     {
       "capability": "recovery.rollback",

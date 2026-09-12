@@ -66,7 +66,7 @@ const sourcePackageRoot = path.resolve(import.meta.dirname, '..');
 
 let cliPackageRoot = sourcePackageRoot;
 
-let cliEntrypoint = 'src/entrypoints/cli/workflow-cli.ts';
+let cliEntrypoint = 'bootstrap/workflow-engine-host.ts';
 
 const scenarioReportPath = path.resolve(
   import.meta.dirname,

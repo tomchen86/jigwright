@@ -204,7 +204,7 @@ test('@jigwright/grants remains optional for generic Central Grant inspection an
     }
 
     const cliPath = fs.realpathSync(
-      path.join(fixtureEngineRoot, 'src/entrypoints/cli/workflow-cli.ts'),
+      path.join(fixtureEngineRoot, 'bootstrap/workflow-engine-host.ts'),
     );
     const help = childProcess.spawnSync(
       process.execPath,
