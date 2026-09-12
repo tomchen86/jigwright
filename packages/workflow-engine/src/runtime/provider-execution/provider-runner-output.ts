@@ -28,7 +28,7 @@ import {
   isRecord,
   deepFreeze,
 } from './provider-runner-values.ts';
-import { type ProviderRunInput } from './provider-runner.ts';
+import type { ProviderRunInput } from './provider-runner.ts';
 import { openNoFollowRead } from './provider-runner-files.ts';
 
 export function enforceProcessOutcome(

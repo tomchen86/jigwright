@@ -24,9 +24,9 @@ import {
   isEmptyRecord,
   isSortedUniqueStrings,
 } from './human-resolution-values.ts';
-import {
-  type InvestigationSession,
-  type InvestigationSessionState,
+import type {
+  InvestigationSession,
+  InvestigationSessionState,
 } from './investigation-session-types.ts';
 import {
   deepFreeze,

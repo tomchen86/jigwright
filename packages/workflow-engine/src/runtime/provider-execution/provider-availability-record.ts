@@ -29,9 +29,9 @@ import {
 } from '../../modules/provider-orchestration/provider-contracts.ts';
 import { type ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import type { ProviderResolution } from './provider-runner.ts';
-import {
-  type ProviderAvailabilityPilotObservation,
-  type ProviderAvailabilityPilotRecord,
+import type {
+  ProviderAvailabilityPilotObservation,
+  ProviderAvailabilityPilotRecord,
 } from './provider-availability-pilot.ts';
 
 const SHA256 = /^[0-9a-f]{64}$/u;

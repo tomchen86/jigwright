@@ -1003,7 +1003,7 @@
     {
       "path": "src/application/execute-task/task-strategy-provider-reservations.ts",
       "mode": "100644",
-      "digest": "sha256:7bbcef887918cf2d0f0859262cd144c9a557d54e4329d1152592fe44ce903724"
+      "digest": "sha256:594ab8eb7a28dc76f72ca12f0dd551696e9071bfd0d101e68653e447be4332f8"
     },
     {
       "path": "src/application/execute-task/task-strategy-provider-results.ts",
@@ -2978,7 +2978,7 @@
     {
       "path": "src/modules/investigation/domain/human-resolution-contract.ts",
       "mode": "100644",
-      "digest": "sha256:b1f253a791653c687997e33692c8eb5e15a438d7299b27cab84e272423151816"
+      "digest": "sha256:59ffaf5f5cc9d5853e70921b4475b47b8f4d4efba8dfccd87be3f92065f5f6b7"
     },
     {
       "path": "src/modules/investigation/domain/human-resolution-grant-publication-contract.ts",
@@ -3053,7 +3053,7 @@
     {
       "path": "src/modules/investigation/domain/investigation-session-types.ts",
       "mode": "100644",
-      "digest": "sha256:280355ba10ce96a0249ebca8d738a23df622c126c36c00bec14ba43f807106cf"
+      "digest": "sha256:4879e11d0d455f93da3d836ddbc620c53529c757f0ea19955957f8279857739a"
     },
     {
       "path": "src/modules/investigation/domain/investigation-store-values.ts",
@@ -3918,7 +3918,7 @@
     {
       "path": "src/runtime/provider-execution/provider-availability-record.ts",
       "mode": "100644",
-      "digest": "sha256:8f204dbee5bc7e5512616677f3bf8984072fbd2622b0a80eaff27518834d176f"
+      "digest": "sha256:c89544da24f037a739f0a3bb0dc5d7008d07ca8780e9f2209f06846943970dac"
     },
     {
       "path": "src/runtime/provider-execution/provider-execution-governance.ts",
@@ -3933,7 +3933,7 @@
     {
       "path": "src/runtime/provider-execution/provider-execution-projection.ts",
       "mode": "100644",
-      "digest": "sha256:7d5711d3280d6a1158250cab52d15e33e181ce41371d270e2f5d82c16bf56e1e"
+      "digest": "sha256:6038588d4480bb1be34cdd3af1ca0608d0b1728a2ac96b6e9f2d08ace367f3dd"
     },
     {
       "path": "src/runtime/provider-execution/provider-governance-values.ts",
@@ -3963,7 +3963,7 @@
     {
       "path": "src/runtime/provider-execution/provider-retention-artifacts.ts",
       "mode": "100644",
-      "digest": "sha256:13f3db46b9af3a759a1656c43296a612000538bc1171f5084d9bb05a68e6972e"
+      "digest": "sha256:b78c2909b3320a505322a5151c51f319cee4f7d0eb194fe6aa7654e04f0b3121"
     },
     {
       "path": "src/runtime/provider-execution/provider-retention-files.ts",
@@ -3973,17 +3973,17 @@
     {
       "path": "src/runtime/provider-execution/provider-retention-observation.ts",
       "mode": "100644",
-      "digest": "sha256:2982e0b570bba09ac53318f887b67ff8511c2462a7ebcb8489d228e42a13aecf"
+      "digest": "sha256:ea03c63281a55e5f903017297f41507e6160dbf8976e89a86b2ffa6c11782524"
     },
     {
       "path": "src/runtime/provider-execution/provider-retention-transaction.ts",
       "mode": "100644",
-      "digest": "sha256:be02ad00722b71f7010b4c5b5c14993bbf2425beb6586be99f8656290c1cb055"
+      "digest": "sha256:b35a852ec41aa9b81b46fed3f1b457a6433c1a80ac0fe71ccbc1549fcf50c76b"
     },
     {
       "path": "src/runtime/provider-execution/provider-retention-values.ts",
       "mode": "100644",
-      "digest": "sha256:aab5efc17739dd8a9b2bb229f677664d23d5ce0b3161c0981d5e3a4c322881bc"
+      "digest": "sha256:acd198ac4cc5e2ae10d74c3adc51d79c74bf0df1ea8ec1d0def05a8171e13a43"
     },
     {
       "path": "src/runtime/provider-execution/provider-retention.ts",
@@ -4008,7 +4008,7 @@
     {
       "path": "src/runtime/provider-execution/provider-runner-output.ts",
       "mode": "100644",
-      "digest": "sha256:fae3b1971a511768bc15470b08c990c32a8aea5183da26bce62c89939efdfd00"
+      "digest": "sha256:7c7f2dbc797845d76f31411ec1a1cc561be24171f4a885d1f3a3362226df53dc"
     },
     {
       "path": "src/runtime/provider-execution/provider-runner-preflight.ts",
@@ -4028,7 +4028,7 @@
     {
       "path": "src/runtime/provider-execution/provider-runner-values.ts",
       "mode": "100644",
-      "digest": "sha256:bb443b599ed563577f82c426cf42a7ca862b4f271db6fd3a8b677a70a5410928"
+      "digest": "sha256:65127752354e44f944149f193c22b80cedf95215f9e2014e2d0a35b4a62a152c"
     },
     {
       "path": "src/runtime/provider-execution/provider-runner.ts",
@@ -4368,7 +4368,7 @@
     {
       "path": "src/runtime/repository-transaction/governed-artifact-fingerprints.ts",
       "mode": "100644",
-      "digest": "sha256:c5da2ec35c68ed0204e55fb07df5f03ba15fbacf7a204481bc9bcaed9e4aec2e"
+      "digest": "sha256:ea1370929daee833fe61c8f9d868650d28d8a25adc1d62d54ff7f4d351b19280"
     },
     {
       "path": "src/runtime/repository-transaction/governed-git-fingerprints.ts",
@@ -4678,7 +4678,7 @@
     {
       "path": "src/runtime/storage-journal/control-plane-history-values.ts",
       "mode": "100644",
-      "digest": "sha256:6bfd9ad41e067aa1f48c70f7bc61da7ddb2368b5035e2d4ef167b052f660b531"
+      "digest": "sha256:490f5251e2c9e5e2d721cc63bae291df75d4e047a7331ef11431ab54f7a24027"
     },
     {
       "path": "src/runtime/storage-journal/control-plane-recovery-grant-storage.ts",
@@ -4718,12 +4718,12 @@
     {
       "path": "src/runtime/storage-journal/evidence-plan-review-ownership.ts",
       "mode": "100644",
-      "digest": "sha256:7c3df81aaa652f25b3ddc8758072b1abd4980bf20b425767ba291bc279ba59bf"
+      "digest": "sha256:258056c9ecc2bc088acd7e3d5f714498bf45573de3b37ab401fe31227929eab4"
     },
     {
       "path": "src/runtime/storage-journal/evidence-planning-ownership.ts",
       "mode": "100644",
-      "digest": "sha256:b53eaf2c4593ce59d4e1dc799d230e5f1f408066bb703177f03da07c782a0f74"
+      "digest": "sha256:225f750eb5bdeb7f6f863a9a63a6f56842fa66e09c1abbad31e84291cef29ade"
     },
     {
       "path": "src/runtime/storage-journal/evidence-private-files.ts",

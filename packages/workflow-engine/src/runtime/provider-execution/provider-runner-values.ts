@@ -13,8 +13,8 @@ import {
   ExitCode,
 } from '../../foundation/errors/errors.ts';
 import { type ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
-import { type ProviderResolutionStatus } from './provider-runner.ts';
-import { type ProviderValidationError } from './provider-runner-output.ts';
+import type { ProviderResolutionStatus } from './provider-runner.ts';
+import type { ProviderValidationError } from './provider-runner-output.ts';
 
 export function sha256(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');

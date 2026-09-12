@@ -27,7 +27,7 @@ import {
   assertPlanningMaterializationOwnership,
   dependencyClosureEntry,
 } from './evidence-planning-ownership.ts';
-import { type InvestigationEvidenceDependencyClosureEntry } from './evidence-ref-closure.ts';
+import type { InvestigationEvidenceDependencyClosureEntry } from './evidence-ref-closure.ts';
 import {
   DIGEST_PATTERN,
   hasExactKeys,

@@ -5,7 +5,7 @@ import { isBuiltin } from 'node:module';
 import ts from 'typescript';
 import {
   classifyLayerDependency,
-  readModuleReferences,
+  readModuleDependencies,
 } from './dependency-graph.ts';
 
 export type DependencyEdge = {
@@ -14,6 +14,7 @@ export type DependencyEdge = {
   specifier: string;
   line: number;
   typeOnly: boolean;
+  loadsModule: boolean;
 };
 export type ArchitectureProblem = {
   from: string;
@@ -244,7 +245,12 @@ export function readRepositoryDependencies(root: string) {
     const isFoundation = from.startsWith(
       'packages/workflow-engine/src/foundation/',
     );
-    for (const { specifier, line, typeOnly } of readModuleReferences(
+    for (const {
+      specifier,
+      line,
+      typeOnly,
+      loadsModule,
+    } of readModuleDependencies(
       file,
       fs.readFileSync(file, 'utf8') + additionalSource,
     )) {
@@ -268,7 +274,7 @@ export function readRepositoryDependencies(root: string) {
         if (
           !['crypto', 'node:crypto', 'path', 'node:path'].includes(specifier)
         ) {
-          if (!typeOnly) effects.push({ specifier, line });
+          if (loadsModule) effects.push({ specifier, line });
           if (isDomain || isFoundation)
             problems.push({
               from,
@@ -297,7 +303,7 @@ export function readRepositoryDependencies(root: string) {
             rule: 'unresolved-workspace-dependency',
           });
         else {
-          if (!typeOnly) effects.push({ specifier, line });
+          if (loadsModule) effects.push({ specifier, line });
           if (isDomain || isFoundation)
             problems.push({
               from,
@@ -311,7 +317,7 @@ export function readRepositoryDependencies(root: string) {
         continue;
       }
       const to = relative(resolved);
-      edges.push({ from, to, specifier, line, typeOnly });
+      edges.push({ from, to, specifier, line, typeOnly, loadsModule });
       const rule = classifyLayerDependency(from, to);
       if (rule) problems.push({ from, to, line, rule });
       const targetPackage = packages.find((candidate) =>
@@ -388,11 +394,11 @@ export function readRepositoryDependencyGraph(root: string): {
     if (result.effects.length) effectImports.set(file, result.effects);
     if (result.pure) pureOwners.add(file);
   }
-  // Report a shortest loaded-effect witness, including every local hop. Type-only
-  // references still obey ownership rules, but do not load their target at runtime.
+  // Report a shortest loaded-effect witness using Node's actual erased source.
+  // All type references still obey ownership rules; inline types can retain a load.
   const valueEdges = new Map<string, DependencyEdge[]>();
   for (const edge of edges) {
-    if (edge.typeOnly) continue;
+    if (!edge.loadsModule) continue;
     const outgoing = valueEdges.get(edge.from) ?? [];
     outgoing.push(edge);
     valueEdges.set(edge.from, outgoing);

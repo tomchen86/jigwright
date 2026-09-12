@@ -4,11 +4,15 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { stripTypeScriptTypes } from 'node:module';
+import { spawnSync } from 'node:child_process';
+import vm from 'node:vm';
 import type { TestContext } from 'node:test';
 import {
   classifyLayerDependency,
   findDependencyCycles,
   readModuleReferences,
+  readModuleDependencies,
 } from './support/dependency-graph.ts';
 import {
   dependencyOwner,
@@ -19,7 +23,9 @@ import { repositoryRoot } from './boundary-contract-fixture.ts';
 
 function loadedFileCycles(edges: readonly DependencyEdge[]): string[][] {
   return findDependencyCycles(
-    edges.filter(({ typeOnly }) => !typeOnly).map(({ from, to }) => [from, to]),
+    edges
+      .filter(({ loadsModule }) => loadsModule)
+      .map(({ from, to }) => [from, to]),
   );
 }
 
@@ -60,6 +66,209 @@ function fixture(t: TestContext, additions: Record<string, string>): string {
   }
   return directory;
 }
+
+test('file loading agrees with Node for inline type imports and exports', (t) => {
+  for (const declaration of [
+    "import { type B } from './b.ts';",
+    "export { type B } from './b.ts';",
+  ]) {
+    const a = 'packages/workflow-engine/src/modules/source/a.ts';
+    const b = 'packages/workflow-engine/src/modules/source/b.ts';
+    const source = `${declaration}\nexport type A = string;`;
+    const back = "import './a.ts'; export type B = string;";
+    const native = fixture(t, {
+      [a]: stripTypeScriptTypes(source, { mode: 'strip' }),
+      [b]: stripTypeScriptTypes(back, { mode: 'strip' }),
+    });
+    const original = fixture(t, { [a]: source, [b]: back });
+    const expected = loadedFileCycles(
+      readRepositoryDependencyGraph(native).edges,
+    );
+    assert.deepEqual(expected, [[a, b]]);
+    assert.deepEqual(
+      loadedFileCycles(readRepositoryDependencyGraph(original).edges),
+      expected,
+    );
+  }
+});
+
+test('loading metadata matches native erasure without dropping type ownership references', () => {
+  const cases = [
+    "import type { A } from './a.ts';",
+    "import { type A } from './a.ts';",
+    "export type { A } from './a.ts';",
+    "export { type A } from './a.ts';",
+    "import {} from './a.ts';",
+    "export {} from './a.ts';",
+    "import { type A, value } from './a.ts';",
+    "export { type A, value } from './a.ts';",
+    "import * as ns from './a.ts';",
+    "export * from './a.ts';",
+    "export type * from './a.ts';",
+    "import type * as ns from './a.ts';",
+    "import './a.ts'; const b = import('./b.ts'); require('./c.ts');",
+    "type A = import('./a.ts').A;",
+    "declare namespace Shape { type A = import('./a.ts').A; }",
+    "declare module 'ambient' { import { A } from './a.ts'; }",
+    "import type { A } from './a.ts'; import { type B } from './a.ts';",
+    "const unicode = '🦄'; import { type A } from './a.ts';",
+    "(require as (x: string) => unknown)('./a.ts');",
+    "(require satisfies (x: string) => unknown)('./a.ts');",
+    "require!('./a.ts');",
+    "const load = (require as (x: string) => unknown); load('./a.ts');",
+    "declare const require: (x: string) => unknown; require('./a.ts');",
+    "declare const module: { require(x: string): unknown }; module.require('./a.ts');",
+    'declare const require: (x: string) => unknown; require(target);',
+  ];
+  for (const source of cases) {
+    const dependencies = readModuleDependencies('fixture.ts', source);
+    const retained = dependencies.map(
+      ({ loadsModule: _loads, ...reference }) => reference,
+    );
+    for (const reference of readModuleReferences('fixture.ts', source)) {
+      const index = retained.findIndex(
+        (item) => JSON.stringify(item) === JSON.stringify(reference),
+      );
+      assert.notEqual(index, -1, source);
+      retained.splice(index, 1);
+    }
+    const expected = readModuleReferences(
+      'fixture.ts',
+      stripTypeScriptTypes(source, { mode: 'strip' }),
+    );
+    assert.deepEqual(
+      dependencies
+        .filter(({ loadsModule }) => loadsModule)
+        .map(({ specifier, line }) => ({ specifier, line })),
+      expected.map(({ specifier, line }) => ({ specifier, line })),
+      source,
+    );
+  }
+});
+
+test('JavaScript loader comparisons are not stripped into calls', () => {
+  const comparison = "load < unknown > ('./a.ts');";
+  let calls = 0;
+  vm.runInNewContext(comparison, {
+    unknown: 0,
+    load: () => {
+      calls++;
+    },
+  });
+  assert.equal(calls, 0);
+  for (const extension of ['js', 'mjs', 'cjs']) {
+    const source =
+      extension === 'cjs'
+        ? 'const load = require; ' + comparison
+        : "import { createRequire } from 'node:module'; const load = createRequire(import.meta.url); " +
+          comparison;
+    const dependencies = readModuleDependencies(`fixture.${extension}`, source);
+    assert.deepEqual(
+      dependencies,
+      extension === 'cjs'
+        ? []
+        : [
+            {
+              specifier: 'node:module',
+              line: 1,
+              typeOnly: false,
+              loadsModule: true,
+            },
+          ],
+    );
+  }
+});
+
+test('CommonJS global loaders and aliases agree with execution while lexical shadows remain local', () => {
+  const source = [
+    "require('./a.cjs');",
+    "const load = require; load('./b.cjs');",
+    "module.require('./c.cjs');",
+    "function local(require) { require('./ignored.cjs'); } local(() => {});",
+  ].join('\n');
+  const calls: string[] = [];
+  const require = (specifier: string) => {
+    calls.push(specifier);
+  };
+  vm.runInNewContext(source, { require, module: { require } });
+  assert.deepEqual(calls, ['./a.cjs', './b.cjs', './c.cjs']);
+  assert.deepEqual(
+    readModuleDependencies('fixture.cjs', source)
+      .filter(({ loadsModule }) => loadsModule)
+      .map(({ specifier }) => specifier),
+    calls,
+  );
+});
+
+test('provider availability initializes with either record or pilot loaded first', () => {
+  for (const entry of ['record', 'pilot']) {
+    const target = new URL(
+      `../src/runtime/provider-execution/provider-availability-${entry}.ts`,
+      import.meta.url,
+    );
+    const result = spawnSync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        '--permission',
+        `--allow-fs-read=${repositoryRoot}`,
+        '--input-type=module',
+        '--eval',
+        `await import(${JSON.stringify(target.href)});`,
+      ],
+      { cwd: repositoryRoot, encoding: 'utf8', timeout: 15_000 },
+    );
+    assert.equal(result.error, undefined, `${entry}: ${result.error}`);
+    assert.equal(result.status, 0, `${entry}: ${result.stderr}`);
+  }
+});
+
+test('inline type reexports retain a real transitive effect load and explicit types retain their owner edge', (t) => {
+  const domain = 'packages/workflow-engine/src/modules/source/a.ts';
+  const bridge = 'packages/workflow-engine/src/foundation/bridge.ts';
+  const root = fixture(t, {
+    [domain]: "export { type Bridge } from '../../foundation/bridge.ts';",
+    [bridge]: "import 'node:fs'; export type Bridge = string;",
+  });
+  const loaded = readRepositoryDependencyGraph(root);
+  assert.ok(
+    loaded.edges.some(
+      (edge) =>
+        edge.from === domain &&
+        edge.to === bridge &&
+        edge.typeOnly &&
+        edge.loadsModule,
+    ),
+  );
+  assert.ok(
+    loaded.problems.some(
+      (problem) =>
+        problem.from === domain &&
+        problem.rule === 'pure-transitive-external-effect',
+    ),
+  );
+  fs.writeFileSync(
+    path.join(root, domain),
+    "export type { Bridge } from '../../foundation/bridge.ts';",
+  );
+  const erased = readRepositoryDependencyGraph(root);
+  assert.ok(
+    erased.edges.some(
+      (edge) =>
+        edge.from === domain &&
+        edge.to === bridge &&
+        edge.typeOnly &&
+        !edge.loadsModule,
+    ),
+  );
+  assert.ok(
+    !erased.problems.some(
+      (problem) =>
+        problem.from === domain &&
+        problem.rule === 'pure-transitive-external-effect',
+    ),
+  );
+});
 
 test('architecture scanner recognizes static, type, re-export, dynamic and CommonJS dependencies', () => {
   const references = readModuleReferences(
@@ -345,10 +554,21 @@ test('architecture scanner only excludes the actual generated recovery root', (t
 });
 
 test('architecture scanner reports computed dependencies outside the domain and CommonJS import-equals loaders', (t) => {
+  const unsupported =
+    "import Module = require('node:module'); const load = Module.createRequire(__filename); load('node:fs');";
+  assert.deepEqual(
+    readModuleReferences('syntax.ts', unsupported).map(
+      ({ specifier }) => specifier,
+    ),
+    ['node:module', 'node:fs'],
+  );
+  assert.throws(() => readModuleDependencies('syntax.ts', unsupported), {
+    code: 'ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX',
+  });
   const root = fixture(t, {
     'packages/workflow-engine/src/adapters/consumer/a.ts': 'import(target);',
     'packages/workflow-engine/src/modules/source/a.ts':
-      "import Module = require('node:module'); const load = Module.createRequire(__filename); load('node:fs');",
+      "const Module = require('node:module'); const load = Module.createRequire(__filename); load('node:fs');",
   });
   assert.deepEqual(
     readRepositoryDependencyGraph(root).problems.map(({ rule }) => rule),

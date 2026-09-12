@@ -25,7 +25,7 @@ import {
   type ProviderRetentionReceipt,
   providerRetentionReviewRootArtifact,
 } from '../storage-journal/provider-retention-receipt.ts';
-import { type InvocationBinding } from './provider-retention-observation.ts';
+import type { InvocationBinding } from './provider-retention-observation.ts';
 import {
   runtimeUnsafe,
   normalizeDigest,

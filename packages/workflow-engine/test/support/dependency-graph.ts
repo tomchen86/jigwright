@@ -1,6 +1,7 @@
 /** Current-source import parsing and graph rules; no frozen paths or exception list. */
 import ts from 'typescript';
 import path from 'node:path';
+import { stripTypeScriptTypes } from 'node:module';
 
 export type ModuleReference = {
   specifier: string | null;
@@ -12,6 +13,52 @@ export function readModuleReferences(
   file: string,
   text: string,
 ): ModuleReference[] {
+  return readReferences(file, text).map(
+    ({ position: _position, ...reference }) => reference,
+  );
+}
+
+/** Retain every type reference while measuring loading from Node's actual erased source. */
+export function readModuleDependencies(
+  file: string,
+  text: string,
+): Array<ModuleReference & { loadsModule: boolean }> {
+  const references = readReferences(file, text);
+  // Node loads JavaScript as written; stripping it as TypeScript could turn
+  // a comparison such as load < unknown > ('./file.js') into a loader call.
+  if (!/\.[cm]?ts$/.test(file))
+    return references.map(({ position: _position, ...reference }) => ({
+      ...reference,
+      loadsModule: !reference.typeOnly,
+    }));
+  // Strip mode preserves source positions. Unsupported syntax must fail this
+  // check, rather than being reported as an empty loading graph.
+  const stripped = stripTypeScriptTypes(text, { mode: 'strip' });
+  const key = (reference: ModuleReference & { position: number }) =>
+    JSON.stringify([reference.position, reference.specifier]);
+  const runtimeReferences = readReferences(file, stripped);
+  const loaded = new Set(runtimeReferences.map(key));
+  const original = new Set(references.map(key));
+  // Erasure can expose a loader hidden by a type assertion or an ambient
+  // declaration. Retain those actual dependencies even if the original AST
+  // did not identify a loader at that position.
+  return [
+    ...references.map((reference) => ({
+      ...reference,
+      loadsModule: loaded.has(key(reference)),
+    })),
+    ...runtimeReferences
+      .filter((reference) => !original.has(key(reference)))
+      .map((reference) => ({ ...reference, loadsModule: true })),
+  ]
+    .sort((left, right) => left.position - right.position)
+    .map(({ position: _position, ...reference }) => reference);
+}
+
+function readReferences(
+  file: string,
+  text: string,
+): Array<ModuleReference & { position: number }> {
   const filename = path.resolve(file);
   const source = ts.createSourceFile(
     filename,
@@ -71,7 +118,10 @@ export function readModuleReferences(
   const loaderKind = (node: ts.Node): LoaderKind | undefined => {
     if (ts.isIdentifier(node)) {
       const symbol = checker.getSymbolAtLocation(node);
-      if (symbol) return bindings.get(symbol);
+      // TypeScript synthesizes a declaration-free require symbol for JS.
+      // Real lexical declarations still shadow the global loader.
+      if (symbol && (bindings.has(symbol) || symbol.declarations?.length))
+        return bindings.get(symbol);
       if (node.text === 'require') return 'require';
       if (node.text === 'module') return 'module-global';
     }
@@ -128,13 +178,14 @@ export function readModuleReferences(
         }
     }
   }
-  const result: ModuleReference[] = [];
+  const result: Array<ModuleReference & { position: number }> = [];
   const record = (
     node: ts.Node,
     value: ts.Node | undefined,
     typeOnly = false,
   ): void => {
     result.push({
+      position: node.getStart(source),
       specifier: value && ts.isStringLiteralLike(value) ? value.text : null,
       line:
         source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1,

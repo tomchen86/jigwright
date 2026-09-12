@@ -33,9 +33,9 @@ import {
 } from '../storage-journal/provider-invocation-store.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import { type ProviderRetentionReceipt } from '../storage-journal/provider-retention-receipt.ts';
-import {
-  type ProviderRetentionEligibilityInput,
-  type ProviderRetentionDenyReason,
+import type {
+  ProviderRetentionEligibilityInput,
+  ProviderRetentionDenyReason,
 } from './provider-retention.ts';
 import {
   type PhysicalArtifact,

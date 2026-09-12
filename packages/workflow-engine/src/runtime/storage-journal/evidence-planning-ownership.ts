@@ -20,7 +20,7 @@ import {
 } from '../../modules/provider-orchestration/provider-contracts.ts';
 import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import { readEvidenceNode } from './evidence-node-store.ts';
-import { type InvestigationEvidenceDependencyClosureEntry } from './evidence-ref-closure.ts';
+import type { InvestigationEvidenceDependencyClosureEntry } from './evidence-ref-closure.ts';
 import {
   hasExactKeys,
   isBaseline,

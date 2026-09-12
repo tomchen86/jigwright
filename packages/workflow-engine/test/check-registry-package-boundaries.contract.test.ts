@@ -14,7 +14,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { resolveWorkspaceSourceExports } from '../bootstrap/workspace-source-closure.ts';
-import { readModuleReferences } from './support/dependency-graph.ts';
+import { readModuleDependencies } from './support/dependency-graph.ts';
 import { readRepositoryDependencyGraph } from './support/repository-dependency-graph.ts';
 import { renderBuiltInEngineClosure } from '../bootstrap/generate-built-in-engine-closure.ts';
 import { resolveCheckRunner } from '../src/adapters/consumer/repository/work-registry/runner-resolution.ts';
@@ -159,8 +159,8 @@ test('workflow-engine value-imports core only through the sealed runtime closure
     edges = graph.edges,
     sealed = sealedPaths,
   ) {
-    for (const reference of readModuleReferences(file, source)) {
-      if (reference.typeOnly) continue;
+    for (const reference of readModuleDependencies(file, source)) {
+      if (!reference.loadsModule) continue;
       const edge = edges.find(
         (candidate) =>
           candidate.from === file &&
@@ -214,7 +214,7 @@ test('workflow-engine value-imports core only through the sealed runtime closure
     assertCoreImports(
       probeFile,
       source,
-      readModuleReferences(probeFile, source)
+      readModuleDependencies(probeFile, source)
         .filter((reference) => reference.specifier !== null)
         .map((reference) => ({
           from: probeFile,
@@ -222,13 +222,16 @@ test('workflow-engine value-imports core only through the sealed runtime closure
           specifier: reference.specifier!,
           line: reference.line,
           typeOnly: reference.typeOnly,
+          loadsModule: reference.loadsModule,
         })),
       sealed,
     );
   for (const source of [
     "import { value } from '@jigwright/core/private';",
+    "import { type Value } from '@jigwright/core/private';",
     "import '@jigwright/core/private';",
     "export { value } from '@jigwright/core/private';",
+    "export { type Value } from '@jigwright/core/private';",
     "export * from '@jigwright/core/private';",
     "void import('@jigwright/core/private');",
     "require('@jigwright/core/private');",
@@ -248,7 +251,11 @@ test('workflow-engine value-imports core only through the sealed runtime closure
     () => probe(publicSource, target.source, new Set()),
     /not sealed/,
   );
-  probe(`import type { Value } from '${publicSpecifier}';`);
+  probe(
+    `import type { Value } from '${publicSpecifier}';`,
+    target.source,
+    new Set(),
+  );
   probe(
     `// import '${publicSpecifier}';\nconst text = "import '${publicSpecifier}';";`,
   );

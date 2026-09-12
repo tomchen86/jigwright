@@ -320,7 +320,7 @@ for (const [kind, content] of Object.entries({
   'createRequire alias':
     "import { createRequire as make } from 'node:module'; const load = make(import.meta.url); load(target);",
   'CommonJS namespace':
-    "import Module = require('node:module'); const load = Module.createRequire(__filename); load(target);",
+    "const Module = require('node:module'); const load = Module.createRequire(__filename); load(target);",
 })) {
   test(`domain library rejects unresolved computed ${kind}`, (t) => {
     const root = fixture(t, { [library]: content });

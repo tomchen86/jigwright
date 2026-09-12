@@ -10,7 +10,7 @@ import { type SampleAudit } from './class-sample-audit.ts';
 import { type InvestigationDispositionInput } from './investigation-groups.ts';
 import { type InvestigationMainTermInput } from './investigation-terms.ts';
 import { type InvestigationWhyCheckpointAnswer } from '../manifest/investigation-why-domain.ts';
-import { type InvestigationHumanActionBlocker } from './human-resolution-contract.ts';
+import type { InvestigationHumanActionBlocker } from './human-resolution-contract.ts';
 
 export type InvestigationSessionState =
   | 'actor-resolution-required'

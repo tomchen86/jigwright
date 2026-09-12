@@ -7,7 +7,7 @@
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { type ControlPlaneSupervisorHistoryDigest } from './control-plane-history-contract.ts';
+import type { ControlPlaneSupervisorHistoryDigest } from './control-plane-history-contract.ts';
 
 export const PRIVATE_DIRECTORY_MODE = 0o700;
 

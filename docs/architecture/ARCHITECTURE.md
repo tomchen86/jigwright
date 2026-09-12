@@ -27,9 +27,15 @@ tests. Package roles do not suppress edges or cycles. Missing dependencies,
 computed targets, private cross-package imports, unsafe source/export paths
 and unapproved external modules fail the guard. Domain dependencies permit
 only crypto and path among Node builtins; all other external dependencies
-require an explicit architectural decision. The guard rejects file-loading
-cycles after excluding explicit type-only edges, and rejects cycles between
-module owners including type references. These checks are separate from
+require an explicit architectural decision. The guard retains type-reference
+metadata for direction and owner checks, and separately measures module loading
+from Node's native `stripTypeScriptTypes` output without executing source.
+`import { type X }` and `export { type X }` retain empty module loads; explicit
+`import type` and `export type` declarations are erased. Unsupported stripping
+syntax fails the check rather than producing an empty graph. Actual loading
+edges drive both file-cycle detection and transitive effect witnesses. The
+guard also rejects cycles between module owners including type references.
+These checks are separate from
 dependency direction. Internal type cycles also need review for cohesive
 declaration ownership; their erasure alone does not establish good architecture.
 

@@ -32,11 +32,11 @@ import {
 } from '../../modules/provider-orchestration/execution-core.ts';
 import { bindingFromPayload } from '../../modules/authority/collaboration-grant-codec.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
-import {
-  type TaskStrategyImplementationRuntimeBindings,
-  type TaskStrategyImplementationRuntimeData,
-  type BeginTaskStrategyImplementationOptions,
-  type TaskStrategyImplementationStatus,
+import type {
+  TaskStrategyImplementationRuntimeBindings,
+  TaskStrategyImplementationRuntimeData,
+  BeginTaskStrategyImplementationOptions,
+  TaskStrategyImplementationStatus,
 } from './task-strategy-implementation-lifecycle.ts';
 type TaskStrategyGreenFailureRecord =
   TaskStrategyImplementationRuntimeData['TaskStrategyGreenFailureRecord'];
