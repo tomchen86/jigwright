@@ -20,7 +20,7 @@ import {
 import { readExecutionJobState } from '../storage-journal/execution-store.ts';
 import { WorkflowError } from '../../foundation/errors/errors.ts';
 import { runGitBuffer } from '../repository-transaction/git.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+import { observeInvestigationRuntimeContext } from '../repository-observation/investigation-runtime-context.ts';
 import {
   readProviderInvocation,
   readProviderInvocationRequest,
@@ -93,7 +93,7 @@ function observeProviderEnvironment(
   request: Readonly<ReadOnlyProbeRequest>,
   probeContext: ProviderReadOnlyProbeContext,
 ): unknown {
-  const context = loadInvestigationRuntimeContext(cwd);
+  const context = observeInvestigationRuntimeContext(cwd);
   switch (request.kind) {
     case 'repository-head':
       return {

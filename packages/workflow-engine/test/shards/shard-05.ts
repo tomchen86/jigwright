@@ -74,6 +74,7 @@ import '../investigation-propose-flow.integration.test.ts';
 import '../lifecycle-domain-boundary.contract.test.ts';
 import '../projection-domain-boundary.contract.test.ts';
 import '../provider-native-session-closure.integration.test.ts';
+import '../runtime-context-boundary.contract.test.ts';
 import '../system-document-composition-boundary.contract.test.ts';
 import '../task-mandate-boundary.test.ts';
 import '../task-mandate-protected-finalize.contract.test.ts';

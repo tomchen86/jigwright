@@ -1663,7 +1663,7 @@
     {
       "path": "src/composition-root/lifecycle-context.ts",
       "mode": "100644",
-      "digest": "sha256:a66ad2f33729edc0c99c7137e4251676edf5be8a071133a3082965bb7bd0a497"
+      "digest": "sha256:b1a11e3ad9e06a06bfe252139f920ed3e9db8f3591cda9388aa8dec61d7f4e52"
     },
     {
       "path": "src/composition-root/local-protected-base-initialization-production.ts",
@@ -3953,7 +3953,7 @@
     {
       "path": "src/runtime/provider-execution/execution-runtime.ts",
       "mode": "100644",
-      "digest": "sha256:f1e90382686969c9857f03631de82de0664e3b51664f465fa411fe5c78296eff"
+      "digest": "sha256:ff176a25c196f79571092e97f504127906bb893627349dd3a8363fa014b7e362"
     },
     {
       "path": "src/runtime/provider-execution/provider-availability-pilot.ts",
@@ -3998,7 +3998,7 @@
     {
       "path": "src/runtime/provider-execution/provider-probe-executor.ts",
       "mode": "100644",
-      "digest": "sha256:59769f58e33a08c5611626c029f4c3641ff6932399cd0c3a3ffda5b0c95725e7"
+      "digest": "sha256:a9454cd8e6e7dac3799d1358a36210238c4af8c4a1461f1018dfe22df26c3f03"
     },
     {
       "path": "src/runtime/provider-execution/provider-repair-governance.ts",
@@ -4211,6 +4211,11 @@
       "digest": "sha256:e2d01c82cfef79daaa95e620f42417bbb72399772699cb9659da67d01bf42fa6"
     },
     {
+      "path": "src/runtime/repository-observation/investigation-runtime-context.ts",
+      "mode": "100644",
+      "digest": "sha256:0b6800bed26b4b0341b30f8ec226715b496535119d5cd17357025cb1c1ba8dd2"
+    },
+    {
       "path": "src/runtime/repository-observation/investigation-scanner.ts",
       "mode": "100644",
       "digest": "sha256:e6d0bfa9f17641bb64b68ca20354cfdcb8ff3501e768d45a0206511effe529aa"
@@ -4291,6 +4296,11 @@
       "digest": "sha256:50ca602425d8d2cccb2aa8fed9edaa117ff683f3894e7dd2994067db384cd9c0"
     },
     {
+      "path": "src/runtime/repository-observation/workflow-session-context.ts",
+      "mode": "100644",
+      "digest": "sha256:f14a776c70938a95cc0c37cf68949f6d9377abcf88c0ecd743cc881f9f3e72c9"
+    },
+    {
       "path": "src/runtime/repository-transaction/agent-role-plan-store.ts",
       "mode": "100644",
       "digest": "sha256:e553c5c5b049e8950d3946cde62f805911d359054c51a72ae20e1bc17d20fe22"
@@ -4333,7 +4343,7 @@
     {
       "path": "src/runtime/repository-transaction/commit-recovery.ts",
       "mode": "100644",
-      "digest": "sha256:a95428efdb01b3667237604e492ffffc4f273ba2fbfe5aea8292baa31ccaabad"
+      "digest": "sha256:aa5d066c80d910e457cd6dc0d7531aa390213d97621823c4caf11c3f386ed306"
     },
     {
       "path": "src/runtime/repository-transaction/committed-investigation-manifest.ts",
@@ -5253,7 +5263,7 @@
     {
       "path": "src/runtime/storage-journal/provider-worker-maintenance.ts",
       "mode": "100644",
-      "digest": "sha256:ce8aadc5275dd94e93371b0710e399e809d5d347f8cd1fde9f66c0fcfcb891ec"
+      "digest": "sha256:63ce9b368d9f46e26e47db3ecbbef815ecf4ac2b55f90a67b7a457b1c47985c2"
     },
     {
       "path": "src/runtime/storage-journal/report-store.ts",

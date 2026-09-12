@@ -13,7 +13,7 @@ import { assertCommitObject } from './commit-object-validation.ts';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { commitFacts, updateManagedRef } from './git-transitions.ts';
-import { type loadActiveSessionContext } from '../../composition-root/lifecycle-context.ts';
+import { type readWorkflowSessionContext } from '../repository-observation/workflow-session-context.ts';
 import { readImmutableReport } from '../storage-journal/report-store.ts';
 import {
   reportString,
@@ -35,7 +35,7 @@ export type CommitSessionResult = {
 };
 
 export function resumePendingCommit(
-  context: ReturnType<typeof loadActiveSessionContext>,
+  context: ReturnType<typeof readWorkflowSessionContext>,
   subject: string,
 ): CommitSessionResult {
   const session = context.session;

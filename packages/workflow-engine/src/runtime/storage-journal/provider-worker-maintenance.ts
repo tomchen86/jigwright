@@ -21,7 +21,7 @@ import {
   ensurePrivateInvestigationDirectory,
   readPrivateCanonicalJson,
 } from './investigation-private-files.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+import { observeInvestigationRuntimeContext } from '../repository-observation/investigation-runtime-context.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 
 const WARNING_FILE = /^[0-9a-f]{64}\.json$/;
@@ -73,7 +73,7 @@ export function recordProviderWorkerMaintenanceWarning(
     message: `Provider worker ${operation} failed after the terminal outcome was durable (${errorCode}).`,
     occurredAt: record.updatedAt,
   });
-  const context = loadInvestigationRuntimeContext(cwd);
+  const context = observeInvestigationRuntimeContext(cwd);
   const root = warningRoot(context.runtime.root);
   ensurePrivateInvestigationDirectory(
     context.runtime,
@@ -102,7 +102,7 @@ export function recordProviderWorkerMaintenanceWarning(
 export function listProviderWorkerMaintenanceWarnings(
   cwd: string,
 ): ProviderWorkerMaintenanceWarning[] {
-  const context = loadInvestigationRuntimeContext(cwd);
+  const context = observeInvestigationRuntimeContext(cwd);
   const root = warningRoot(context.runtime.root);
   const stats = fs.lstatSync(root, { throwIfNoEntry: false });
   if (stats === undefined) return [];
