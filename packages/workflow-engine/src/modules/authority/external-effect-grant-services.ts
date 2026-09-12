@@ -63,9 +63,7 @@ export type ExternalEffectRepositoryServices = Pick<
 };
 export type ExternalEffectAuditServices = Pick<
   TaskMandateAuditServices,
-  | 'deriveAuthorityAuditRepositoryId'
-  | 'authorityRefusalDigest'
-  | 'withAuthorityRefusalAudit'
+  'withAuthorityRefusalAudit'
 > & {
   emitAudit: (
     repositoryRoot: string,

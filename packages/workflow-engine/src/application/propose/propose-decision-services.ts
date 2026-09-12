@@ -1,6 +1,12 @@
+import {
+  type TaskMandateProviderAdmission,
+  type TaskMandatePreparationAuthorization,
+  type TaskMandateActiveBinding,
+} from '../../modules/authority/task-mandate-access-contract.ts';
+
 import type { HumanResolutionServices } from '../../modules/authority/maintainer-grant-contracts.ts';
 import type { InvestigationHumanActionBlockerFactory } from '../../modules/investigation/domain/human-resolution-contract.ts';
-import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+
 import type { ReadPinnedPathDiff } from '../../modules/investigation/domain/investigation-floor.ts';
 import type { SemanticLedgerReader } from '../../modules/why-knowledge/semantic-ledger-reader.ts';
 import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
@@ -24,13 +30,16 @@ export type ProposeDecisionServices = Readonly<{
   loadMaintainerPolicyForResolution: HumanResolutionServices['loadMaintainerPolicyForResolution'];
   createInvestigationHumanActionBlocker: InvestigationHumanActionBlockerFactory;
   taskMandate: Pick<
-    TaskMandateOperations,
+    TaskMandateActiveBinding,
     | 'assertActiveTaskMandateBindingUnderLifecycleLock'
-    | 'authorizeTaskMandateOperation'
-    | 'authorizeTaskMandateProviderReservationUnderLifecycleLock'
-    | 'recordTaskMandateProviderInvocationUnderLifecycleLock'
     | 'withActiveTaskMandateBinding'
-  >;
+  > &
+    Pick<TaskMandatePreparationAuthorization, 'authorizeTaskMandateOperation'> &
+    Pick<
+      TaskMandateProviderAdmission,
+      | 'authorizeTaskMandateProviderReservationUnderLifecycleLock'
+      | 'recordTaskMandateProviderInvocationUnderLifecycleLock'
+    >;
   semanticLedger: SemanticLedgerReader;
   planningExecution: PlanningTransitionExecutionServices;
   roleAdmission: RoleAdmissionServices;

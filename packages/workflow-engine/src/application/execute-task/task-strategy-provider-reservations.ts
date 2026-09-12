@@ -1,4 +1,5 @@
-import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+import type { TaskMandateProviderAdmission } from '../../modules/authority/task-mandate-access-contract.ts';
+
 import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 /**
  * Reserves implementation providers and authorizes their retry attempts.
@@ -31,9 +32,11 @@ import {
 } from '../../modules/provider-orchestration/execution-core.ts';
 import { bindingFromPayload } from '../../modules/authority/collaboration-grant-codec.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
-import type {
-  TaskStrategyImplementationRuntimeBindings,
-  TaskStrategyImplementationRuntimeData,
+import {
+  type TaskStrategyImplementationRuntimeBindings,
+  type TaskStrategyImplementationRuntimeData,
+  type BeginTaskStrategyImplementationOptions,
+  type TaskStrategyImplementationStatus,
 } from './task-strategy-implementation-lifecycle.ts';
 type TaskStrategyGreenFailureRecord =
   TaskStrategyImplementationRuntimeData['TaskStrategyGreenFailureRecord'];
@@ -43,10 +46,7 @@ type TaskStrategyImplementationProviderAttempt =
   TaskStrategyImplementationRuntimeData['TaskStrategyImplementationProviderAttempt'];
 type ProviderRetryDecisionBinding =
   TaskStrategyImplementationRuntimeData['ProviderRetryDecisionBinding'];
-import type {
-  BeginTaskStrategyImplementationOptions,
-  TaskStrategyImplementationStatus,
-} from './task-strategy-implementation-lifecycle.ts';
+
 import type { createTaskStrategyImplementationContext } from './task-strategy-implementation-context.ts';
 import type { createTaskStrategyCallerAdmission } from './task-strategy-caller-admission.ts';
 export function createTaskStrategyProviderReservations(
@@ -55,7 +55,7 @@ export function createTaskStrategyProviderReservations(
   context: ReturnType<typeof createTaskStrategyImplementationContext>,
   callerAdmission: ReturnType<typeof createTaskStrategyCallerAdmission>,
   taskMandate: Pick<
-    TaskMandateOperations,
+    TaskMandateProviderAdmission,
     'authorizeTaskMandateProviderReservationUnderLifecycleLock'
   >,
 ) {

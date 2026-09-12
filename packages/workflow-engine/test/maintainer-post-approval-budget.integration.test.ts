@@ -16,10 +16,15 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { SimulatedAuthorityCrash } from '../src/application/control-plane/maintainer-commit.ts';
-import { commitAuthoritySession as commitAuthoritySessionProduction } from '../bootstrap/maintainer-authority-production.ts';
+import {
+  commitAuthoritySession as commitAuthoritySessionProduction,
+  approveAndApplyMaintainerGrantV2 as approveAndApplyMaintainerGrantV2Production,
+  recoverAuthorityCommit as recoverAuthorityCommitProduction,
+  startAuthoritySession,
+} from '../bootstrap/maintainer-authority-production.ts';
 import { readDurableRefGenerationLedger } from '../src/runtime/storage-journal/maintainer-candidate-ref-ledger.ts';
 import { MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE } from '../src/modules/authority/maintainer-grant-v2-codec.ts';
-import { approveAndApplyMaintainerGrantV2 as approveAndApplyMaintainerGrantV2Production } from '../bootstrap/maintainer-authority-production.ts';
+
 import {
   armPostApprovalAdmissionDeadline,
   createPostApprovalAdmissionDeadline,
@@ -27,9 +32,9 @@ import {
   enterPostApprovalTerminalCleanup,
 } from '../src/runtime/repository-transaction/git.ts';
 import { readAuthorityCommitJournal } from '../src/application/control-plane/maintainer-recovery.ts';
-import { recoverAuthorityCommit as recoverAuthorityCommitProduction } from '../bootstrap/maintainer-authority-production.ts';
+
 import { parseMaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
-import { startAuthoritySession } from '../bootstrap/maintainer-authority-production.ts';
+
 import {
   verifySshSignatureWithPublicKey,
   type MaintainerSignerProvider,
@@ -39,7 +44,7 @@ import {
   maintainerGrantStorePaths,
   terminallyFailMaintainerReservation,
 } from '../src/runtime/storage-journal/maintainer-store.ts';
-import { TASK_MANDATE_SIGNATURE_NAMESPACE_V2 } from '../src/modules/authority/task-mandate.ts';
+import { TASK_MANDATE_SIGNATURE_NAMESPACE_V2 } from '../src/modules/authority/task-mandate-values.ts';
 import {
   computeProtectedCapabilityEntryDigests,
   REQUIRED_PROTECTED_CAPABILITIES,

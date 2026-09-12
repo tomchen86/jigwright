@@ -1,7 +1,7 @@
 import { taskMandateOperations } from '../../composition-root/task-mandate-production.ts';
-import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+
 type TaskMandateDependencies = Pick<
-  TaskMandateOperations,
+  typeof taskMandateOperations,
   | 'assertActiveTaskMandateBindingUnderLifecycleLock'
   | 'recordTaskMandateProviderInvocationUnderLifecycleLock'
   | 'withActiveTaskMandateBinding'
@@ -29,28 +29,27 @@ import {
   type ExecutionFailureKind,
   type ReadOnlyProbeRequest,
 } from '../../modules/provider-orchestration/execution-core.ts';
-import type {
-  AgentRuntimeAssignmentBindingV1,
-  AgentRuntimeCompletionReceipt,
-  AgentRuntimeHostExecutionBindingV1,
-  AgentRuntimeHostProbeEvidenceV1,
-  ProviderWorkerRuntimePort,
-  AgentRuntimeProcessProgressProjection,
-  AgentRuntimeSingleShotInput,
-  AgentRuntimeSingleShotOptions,
-  AgentRuntimeSingleShotReport,
-  ProviderInvocationAcceptanceBinding,
-  ProviderRuntimeProtocolReceipt,
-} from '../../composition-root/agent-runtime-production.ts';
-import { readInvestigationSession } from '../../runtime/storage-journal/investigation-session-records.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
 import {
+  type AgentRuntimeAssignmentBindingV1,
+  type AgentRuntimeCompletionReceipt,
+  type AgentRuntimeHostExecutionBindingV1,
+  type AgentRuntimeHostProbeEvidenceV1,
+  type ProviderWorkerRuntimePort,
+  type AgentRuntimeProcessProgressProjection,
+  type AgentRuntimeSingleShotInput,
+  type AgentRuntimeSingleShotOptions,
+  type AgentRuntimeSingleShotReport,
+  type ProviderInvocationAcceptanceBinding,
+  type ProviderRuntimeProtocolReceipt,
   createAgentRuntimeHostExecutionBindingV1,
   createAgentRuntimeProgressTracker,
   productionAgentRuntime,
   providerAcceptanceGovernedRuntimeInputs,
   providerInvocationDurableGovernedRuntimeInputs,
 } from '../../composition-root/agent-runtime-production.ts';
+import { readInvestigationSession } from '../../runtime/storage-journal/investigation-session-records.ts';
+import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+
 import {
   createCurrentAgentRuntimeAssignmentV1,
   type CurrentAgentRuntimeAssignmentV1,

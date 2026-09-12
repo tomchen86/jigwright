@@ -6,7 +6,7 @@ import {
 } from '../repository-transaction/git.ts';
 import { createInteractiveSshSigner } from '../../adapters/signing/ssh/maintainer-signer.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import { isWorkflowFailure } from '../../modules/authority/task-mandate.ts';
+import { isWorkflowFailure } from '../../modules/authority/task-mandate-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type { TaskMandateRepositoryServices } from '../../modules/authority/task-mandate-services.ts';
 function loadPolicyAt(repositoryRoot: string, commit: string) {

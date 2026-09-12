@@ -1,7 +1,6 @@
 /** Human reconciliation and revocation, with fresh locked authority checks and no effect runner. */
-
-import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
+  storedExternalEffectRefusalBinding,
   type ExternalEffectReconciliationRequest,
   type ExternalEffectGrantInspection,
   type ExternalEffectGrantPublicInspection,
@@ -16,6 +15,8 @@ import {
   assertManualReconciliationState,
   assertReconciliationReplay,
 } from '../../modules/authority/external-effect-grant.ts';
+
+import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 
 import {
   parseReconciliationRequest,
@@ -32,7 +33,7 @@ export function createExternalEffectGrantReconciliation(
     externalEffectStorePaths,
     readStoreState,
     validateEnvelopeForRepository,
-    storedExternalEffectRefusalBinding,
+
     refusalAuditOptions,
     loadTrustForPayload,
     createInteractiveSshSigner,
@@ -48,7 +49,6 @@ export function createExternalEffectGrantReconciliation(
     | 'externalEffectStorePaths'
     | 'readStoreState'
     | 'validateEnvelopeForRepository'
-    | 'storedExternalEffectRefusalBinding'
     | 'refusalAuditOptions'
     | 'loadTrustForPayload'
     | 'createInteractiveSshSigner'

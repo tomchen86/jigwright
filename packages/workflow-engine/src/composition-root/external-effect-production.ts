@@ -2,7 +2,10 @@
 import crypto from 'node:crypto';
 import { createExternalEffectGrantOperations } from '../application/control-plane/external-effect-grant.ts';
 import { externalEffectStore } from '../runtime/storage-journal/external-effect-grant-store.ts';
-import { externalEffectRepository } from '../runtime/storage-journal/external-effect-grant-repository.ts';
+import {
+  externalEffectRepository,
+  publishRepository,
+} from '../runtime/storage-journal/external-effect-grant-repository.ts';
 
 import { taskMandateOperations } from './task-mandate-production.ts';
 export const externalEffectGrantOperations =
@@ -11,8 +14,7 @@ export const externalEffectGrantOperations =
     repository: { ...externalEffectRepository, createInteractiveSshSigner },
     audit: {
       emitAudit,
-      deriveAuthorityAuditRepositoryId,
-      authorityRefusalDigest,
+
       withAuthorityRefusalAudit,
     },
     taskMandate: taskMandateOperations,
@@ -35,16 +37,13 @@ export const {
 } = externalEffectGrantOperations;
 
 import { emitAudit } from '../runtime/storage-journal/external-effect-grant-audit.ts';
-import { deriveAuthorityAuditRepositoryId } from '../runtime/storage-journal/authority-audit-ledger.ts';
-import {
-  authorityRefusalDigest,
-  withAuthorityRefusalAudit,
-} from '../modules/authority/authority-refusal-audit.ts';
+
+import { withAuthorityRefusalAudit } from '../modules/authority/authority-refusal-audit.ts';
 import { withRepositoryLifecycleOperation } from '../runtime/session-workspace/session-store.ts';
 
 import { createPublishExecutor } from '../application/control-plane/publish-executor.ts';
 import { createProductionPublishRunner } from '../adapters/remote/github/publish-runner.ts';
-import { publishRepository } from '../runtime/storage-journal/external-effect-grant-repository.ts';
+
 export const executePublishGrant = createPublishExecutor({
   grants: externalEffectGrantOperations,
   repository: publishRepository,

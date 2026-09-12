@@ -6,6 +6,8 @@
  * - This replacement path excludes task implementation and task diff review
  *   invocations.
  */
+import type { TaskMandateActiveBinding } from '../../modules/authority/task-mandate-access-contract.ts';
+
 import { executionReplacementBudgetChanges } from './execution-replacement-budget.ts';
 import {
   parseProviderRetryExplanation,
@@ -58,7 +60,7 @@ export type ExecutionReplacementProposePort = Pick<
   | 'resumePropose'
 > & {
   taskMandate: Pick<
-    TaskMandateOperations,
+    TaskMandateActiveBinding,
     'assertActiveTaskMandateBindingUnderLifecycleLock'
   >;
 };
@@ -73,7 +75,7 @@ import {
   readProviderInvocationRequest,
 } from '../../runtime/storage-journal/provider-invocation-store.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
-import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+
 import type { ConsumedPlanReviewReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
 
 export type ExecutionRetryRequestResult = Readonly<{
@@ -923,7 +925,7 @@ const {
 
 export type ExecutionReplacementPublicationBindings = {
   inspectExecutionBudgetGrantAuthorization: typeof inspectExecutionBudgetGrantAuthorization;
-  assertActiveTaskMandateBindingUnderLifecycleLock: TaskMandateOperations['assertActiveTaskMandateBindingUnderLifecycleLock'];
+  assertActiveTaskMandateBindingUnderLifecycleLock: TaskMandateActiveBinding['assertActiveTaskMandateBindingUnderLifecycleLock'];
   parseMaintainerPolicy: typeof parseMaintainerPolicy;
   runGit: typeof runGit;
   consumeExecutionBudgetGrant: typeof consumeExecutionBudgetGrant;

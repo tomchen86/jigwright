@@ -1,8 +1,6 @@
 /** Issues and inspects exact grants, composing locked transaction and reconciliation operations. */
-import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-
-import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
+  externalEffectRefusalBinding,
   EXTERNAL_EFFECT_SIGNATURE_NAMESPACE,
   EXTERNAL_EFFECT_MAX_TTL_SECONDS,
   type Sha256Digest,
@@ -25,6 +23,11 @@ import {
   unsafeStore,
   isWorkflowFailure,
 } from '../../modules/authority/external-effect-grant.ts';
+
+import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
+
+import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
+
 import {
   parseRequest,
   parsePayload,
@@ -56,7 +59,7 @@ export function createExternalEffectGrantOperations(
     taskMandate,
     clockNow,
     loadTrustContext,
-    externalEffectRefusalBinding,
+
     withAuthorityRefusalAudit,
     externalEffectStorePaths,
     grantPath,

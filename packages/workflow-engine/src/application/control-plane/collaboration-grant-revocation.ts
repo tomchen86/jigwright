@@ -1,6 +1,9 @@
 /** Collaboration revocation preserves lock-bound observation, human authorization and terminal publication order. */
+import type { TaskMandateInspection } from '../../modules/authority/task-mandate-values.ts';
+import type { TaskMandateOptions } from '../../modules/authority/task-mandate-access-contract.ts';
+
 import type { GitState } from '../../modules/repository-consumer/repository-git-state.ts';
-import { type TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+
 import {
   type HumanRevocationAuthorizer,
   type HumanRevocationOptions,
@@ -20,7 +23,13 @@ export type CollaborationGrantRevocationServices = Readonly<{
   discoverRepository: (
     cwd: string,
   ) => Pick<GitState, 'repositoryRoot' | 'gitCommonDirectory'>;
-  taskMandate: Pick<TaskMandateOperations, 'inspectTaskMandate'>;
+  taskMandate: {
+    inspectTaskMandate(
+      cwd: string,
+      requestedTaskId: string,
+      options?: TaskMandateOptions,
+    ): TaskMandateInspection;
+  };
   authorizeHumanRevocation: HumanRevocationAuthorizer;
   collaborationGrants: Pick<
     CollaborationGrantCodec,

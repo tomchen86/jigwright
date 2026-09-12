@@ -1,12 +1,42 @@
-import type { HumanResolutionServices } from '../../../modules/authority/maintainer-grant-contracts.ts';
-import type { HumanResolutionGrantRevoker } from '../../../modules/authority/grant-revocation-contract.ts';
-import type { InvestigationHumanActionBlockerFactory } from '../../../modules/investigation/domain/human-resolution-contract.ts';
-import type { TaskMandateOperations } from '../../../modules/authority/task-mandate.ts';
+import {
+  type TaskMandateProviderAdmission,
+  type TaskMandateActiveBinding,
+} from '../../../modules/authority/task-mandate-access-contract.ts';
+
+import {
+  type HumanResolutionServices,
+  assertResolutionConsequences,
+  assertResolutionDecisionAvailable,
+  humanResolutionBlockerBinding,
+  parseHumanResolutionGrantEnvelope,
+} from '../../../modules/authority/maintainer-grant-contracts.ts';
+import {
+  type HumanResolutionGrantRevoker,
+  type HumanResolutionGrantStoreEntry,
+} from '../../../modules/authority/grant-revocation-contract.ts';
+import {
+  type InvestigationHumanActionBlockerFactory,
+  assertHumanResolutionDecision,
+  createHumanResolutionNode,
+  investigationCurrentRefDigest,
+  investigationResolutionStateDigest,
+  humanResolutionDecisionSchemaDigest,
+  type HumanResolutionConsequences,
+  type HumanResolutionDecision,
+  type HumanResolutionExpectedState,
+  type HumanResolutionNode,
+  type HumanResolutionTarget,
+  type InvestigationResolutionState,
+} from '../../../modules/investigation/domain/human-resolution-contract.ts';
+
 type TaskMandateDependencies = Pick<
-  TaskMandateOperations,
-  | 'assertActiveTaskMandateBindingUnderLifecycleLock'
-  | 'authorizeTaskMandateProviderReservationUnderLifecycleLock'
->;
+  TaskMandateActiveBinding,
+  'assertActiveTaskMandateBindingUnderLifecycleLock'
+> &
+  Pick<
+    TaskMandateProviderAdmission,
+    'authorizeTaskMandateProviderReservationUnderLifecycleLock'
+  >;
 /**
  * Coordinates investigation sessions, authoring checkpoints, provider
  * results and reviewer-driven reopening.
@@ -42,19 +72,7 @@ import {
 } from '../../../runtime/provider-execution/provider-execution-governance.ts';
 import { runGit } from '../../../runtime/repository-transaction/git.ts';
 import { copyGrantDate } from '../../../modules/authority/grant-primitives.ts';
-import {
-  assertHumanResolutionDecision,
-  createHumanResolutionNode,
-  investigationCurrentRefDigest,
-  investigationResolutionStateDigest,
-  humanResolutionDecisionSchemaDigest,
-  type HumanResolutionConsequences,
-  type HumanResolutionDecision,
-  type HumanResolutionExpectedState,
-  type HumanResolutionNode,
-  type HumanResolutionTarget,
-  type InvestigationResolutionState,
-} from '../../../modules/investigation/domain/human-resolution-contract.ts';
+
 import {
   assertInvestigationCheckpointEnvelope,
   checkpointContributionDigest,
@@ -126,14 +144,9 @@ import {
   type HumanResolutionGrantPublicationStoreState,
   type QuarantinedHumanResolutionGrantPublication,
 } from '../../../modules/investigation/domain/human-resolution-grant-publication-contract.ts';
-import { type HumanResolutionGrantStoreEntry } from '../../../modules/authority/grant-revocation-contract.ts';
+
 import { loadInvestigationRuntimeContext } from '../../../composition-root/lifecycle-context.ts';
-import {
-  assertResolutionConsequences,
-  assertResolutionDecisionAvailable,
-  humanResolutionBlockerBinding,
-  parseHumanResolutionGrantEnvelope,
-} from '../../../modules/authority/maintainer-grant-contracts.ts';
+
 import type { HumanRevocationOptions } from '../../../modules/authority/human-revocation-contract.ts';
 import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../../modules/assurance/plan-review-coverage.ts';
 import {

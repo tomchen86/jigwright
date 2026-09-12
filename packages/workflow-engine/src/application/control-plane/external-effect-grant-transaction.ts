@@ -1,7 +1,6 @@
 /** Reservation, dispatch, observation and terminal publication under the lifecycle lock. */
-import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-
 import {
+  storedExternalEffectRefusalBinding,
   PUBLISH_TRANSACTION_ENV,
   type ExternalEffectAuditEventType,
   type ExternalEffectObservation,
@@ -23,6 +22,8 @@ import {
   publishTransactionRequired,
   publishTransactionInvalid,
 } from '../../modules/authority/external-effect-grant.ts';
+
+import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 
 import {
   createTransactionRecord,
@@ -46,7 +47,7 @@ export function createExternalEffectGrantTransaction({
   createPrivateFileAtomic,
   grantPath,
   unlinkIfExact,
-  storedExternalEffectRefusalBinding,
+
   refusalAuditOptions,
   replacePrivateFileAtomic,
   withAuthorityRefusalAudit,
@@ -64,7 +65,6 @@ export function createExternalEffectGrantTransaction({
   | 'createPrivateFileAtomic'
   | 'grantPath'
   | 'unlinkIfExact'
-  | 'storedExternalEffectRefusalBinding'
   | 'refusalAuditOptions'
   | 'replacePrivateFileAtomic'
   | 'withAuthorityRefusalAudit'

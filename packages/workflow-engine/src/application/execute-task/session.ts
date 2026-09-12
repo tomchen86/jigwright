@@ -1,4 +1,8 @@
-import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+import {
+  type TaskMandatePreparationAuthorization,
+  type TaskMandateOptions,
+} from '../../modules/authority/task-mandate-access-contract.ts';
+
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Admits, publishes, inspects, and aborts task execution sessions.
@@ -49,7 +53,7 @@ import {
   writeJsonAtomic,
 } from '../../runtime/session-workspace/session-store.ts';
 import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
-import { type TaskMandateOptions } from '../../modules/authority/task-mandate.ts';
+
 import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import {
   assertTaskMandateOptional,
@@ -245,7 +249,10 @@ export function preflightTaskSession(
 }
 
 export function startMandatedSession(
-  taskMandate: Pick<TaskMandateOperations, 'authorizeTaskMandateOperation'>,
+  taskMandate: Pick<
+    TaskMandatePreparationAuthorization,
+    'authorizeTaskMandateOperation'
+  >,
   routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedChangeId: string,

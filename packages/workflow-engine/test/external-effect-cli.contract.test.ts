@@ -13,7 +13,7 @@ import {
   publishArtifactDigest,
   publishPrestateDigest,
 } from '../src/modules/authority/publish-grant.ts';
-import { TASK_MANDATE_SIGNATURE_NAMESPACE_V2 } from '../src/modules/authority/task-mandate.ts';
+import { TASK_MANDATE_SIGNATURE_NAMESPACE_V2 } from '../src/modules/authority/task-mandate-values.ts';
 import {
   createFixtureRepository,
   git,

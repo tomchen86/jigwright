@@ -5,12 +5,13 @@ import crypto from 'node:crypto';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import { runtimePaths } from '../session-workspace/session-store.ts';
 import { ensurePlainDirectory } from '../repository-transaction/filesystem-safety.ts';
+import { parseCurrentTaskMandateRecord } from '../../modules/authority/task-mandate-records.ts';
+import { assertTaskMandateTaskId } from '../../modules/authority/task-mandate-policy.ts';
 import {
-  parseCurrentTaskMandateRecord,
-  assertTaskMandateTaskId,
   assertMandateId,
   unsafeStore,
-} from '../../modules/authority/task-mandate.ts';
+} from '../../modules/authority/task-mandate-values.ts';
+
 import type { TaskMandateStoreServices } from '../../modules/authority/task-mandate-services.ts';
 
 const taskMandateStorePaths: TaskMandateStoreServices['taskMandateStorePaths'] =

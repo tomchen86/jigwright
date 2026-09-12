@@ -11,7 +11,8 @@ import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maint
 import {
   TASK_MANDATE_SIGNATURE_NAMESPACE_V2,
   type TaskMandateRequest,
-} from '../src/modules/authority/task-mandate.ts';
+} from '../src/modules/authority/task-mandate-values.ts';
+
 import {
   computeProtectedCapabilityEntryDigestsFromWorktree,
   REQUIRED_PROTECTED_CAPABILITIES,

@@ -1,4 +1,5 @@
-import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+import type { TaskMandateProviderAdmission } from '../../modules/authority/task-mandate-access-contract.ts';
+
 /**
  * Reserves provider review and continuation invocations under lifecycle
  * authority.
@@ -63,7 +64,7 @@ export function createTaskDiffReviewProviderReservationsModule(
     'authorizeGrantedOrdinaryRole'
   >,
   taskMandate: Pick<
-    TaskMandateOperations,
+    TaskMandateProviderAdmission,
     'authorizeTaskMandateProviderReservationUnderLifecycleLock'
   >,
 ) {

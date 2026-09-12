@@ -14,8 +14,9 @@ import {
   canonicalTaskMandateEnvelope,
   canonicalTaskMandatePayload,
   parseTaskMandateEnvelope,
-  type TaskMandateEnvelope,
-} from '../src/modules/authority/task-mandate.ts';
+} from '../src/modules/authority/task-mandate-records.ts';
+
+import { type TaskMandateEnvelope } from '../src/modules/authority/task-mandate-values.ts';
 import { git, isWorkflowError, sourceRepositoryRoot } from './fixture.ts';
 import {
   TASK_ID,

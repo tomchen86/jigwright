@@ -1,10 +1,18 @@
-import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+import {
+  type TaskMandatePreparationAuthorization,
+  type TaskMandateActiveBinding,
+  type TaskMandateOptions,
+} from '../../modules/authority/task-mandate-access-contract.ts';
+
 import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
 import type {
   ChangeRoutingInspector,
   ChangeRoutingAdmissionReader,
 } from '../../modules/lifecycle/change-routing.ts';
-import type { ManagedDocumentOperations } from '../../modules/projection/managed-documents.ts';
+import {
+  type ManagedDocumentOperations,
+  type GeneratedDocumentMutation,
+} from '../../modules/projection/managed-documents.ts';
 import type { ChangeContractReader } from '../../modules/planning-provider/change-contract.ts';
 import type { PlanningDraftWorkspacePort } from '../../modules/planning-provider/planning-workspace.ts';
 /**
@@ -45,7 +53,7 @@ import {
 import { validateHandoffForChange } from '../../adapters/consumer/repository/handoff/handoff.ts';
 import { parseManagedTrailers } from '@jigwright/core/managed-transition-trailers';
 import { rollbackGeneratedDocuments } from '../../runtime/managed-documents/validation/managed-documents.ts';
-import { type GeneratedDocumentMutation } from '../../modules/projection/managed-documents.ts';
+
 import {
   assertChangeId,
   assertTaskId,
@@ -77,7 +85,7 @@ import {
   startMandatedSessionUnderLifecycleLock,
   assertProductionChangeRoutingAdmission,
 } from './session.ts';
-import { type TaskMandateOptions } from '../../modules/authority/task-mandate.ts';
+
 import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import {
   assertTaskMandateOptional,
@@ -163,10 +171,10 @@ export type OpenTaskPorts = Readonly<{
   planningExecution: PlanningTransitionExecutionServices;
   planningReplay: Pick<CiPlanningReplayOperations, 'validateCiPlanningCommit'>;
   taskMandate: Pick<
-    TaskMandateOperations,
-    | 'assertActiveTaskMandateBindingUnderLifecycleLock'
-    | 'authorizeTaskMandateOperation'
-  >;
+    TaskMandateActiveBinding,
+    'assertActiveTaskMandateBindingUnderLifecycleLock'
+  > &
+    Pick<TaskMandatePreparationAuthorization, 'authorizeTaskMandateOperation'>;
   routingAdmissionReader: ChangeRoutingAdmissionReader;
   routingInspector: ChangeRoutingInspector;
   managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>;

@@ -1,7 +1,7 @@
 import { taskMandateOperations } from '../../composition-root/task-mandate-production.ts';
-import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+
 type TaskMandateDependencies = Pick<
-  TaskMandateOperations,
+  typeof taskMandateOperations,
   'inspectActiveTaskMandateBinding' | 'withActiveTaskMandateBinding'
 >;
 /**

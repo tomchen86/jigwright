@@ -1,11 +1,11 @@
 /** Exact V2 candidate admission rules and canonical operation contracts. */
+import type { TaskMandateActiveBinding } from './task-mandate-access-contract.ts';
+
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import type {
-  ImmutableCandidateBundleV2,
-  CandidateSupportingArtifactSet,
-  CandidateDependencySnapshot,
-  CandidateChecksAttestationV3,
+import {
+  type ImmutableCandidateBundleV2,
+  type CandidateArtifactObservations,
 } from './maintainer-candidate-contracts.ts';
 import type {
   CapabilityProfile,
@@ -14,8 +14,7 @@ import type {
 import type { MaintainerPolicy } from './maintainer-policy.ts';
 import type { MaintainerSignerProvider } from './maintainer-signer-port.ts';
 import type { HumanResolutionSignerFactory } from './maintainer-grant-contracts.ts';
-import type { TaskMandateBinding } from './task-mandate-contract.ts';
-import type { TaskMandateOperations } from './task-mandate.ts';
+
 import type { GitState } from '../repository-consumer/repository-git-state.ts';
 import type { RefGenerationLedger } from './maintainer-candidate-ref-ledger.ts';
 import {
@@ -83,7 +82,7 @@ export type MaintainerGrantV2IssueResult = {
 };
 
 export type MaintainerTaskMandateOperations = Pick<
-  TaskMandateOperations,
+  TaskMandateActiveBinding,
   | 'inspectActiveTaskMandateBinding'
   | 'assertActiveTaskMandateBindingUnderLifecycleLock'
 >;
@@ -235,5 +234,3 @@ export type MaintainerGrantV2Services = {
   randomGrantId: () => string;
   currentEnvironment: () => NodeJS.ProcessEnv;
 };
-
-import type { CandidateArtifactObservations } from './maintainer-candidate-contracts.ts';

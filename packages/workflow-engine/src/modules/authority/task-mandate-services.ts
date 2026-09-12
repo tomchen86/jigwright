@@ -1,17 +1,17 @@
 /** Required repository, persistence, clock and audit capabilities for mandate rules. */
+
 import type { SessionRuntimeLayoutV1 } from '@jigwright/core/session-runtime-layout-port';
-import type { MaintainerPolicy } from './maintainer-policy.ts';
-import type { MaintainerSignerProvider } from './maintainer-signer-port.ts';
-import type { TaskMandateRecord } from './task-mandate.ts';
 import type {
+  AuthorityAuditEventInput,
   AuthorityAuditLedgerScope,
   AuthorityAuditRecordedEvent,
-  AuthorityAuditEventInput,
   AuthorityAuditServiceHooks,
   AuthorityRefusalAuditBinding,
   AuthorityRefusalAuditOptions,
-  Sha256Digest,
 } from './authority-audit-contract.ts';
+import type { MaintainerPolicy } from './maintainer-policy.ts';
+import type { MaintainerSignerProvider } from './maintainer-signer-port.ts';
+import { type TaskMandateRecord } from './task-mandate-values.ts';
 export type TaskMandateStorePaths = {
   runtime: SessionRuntimeLayoutV1;
   root: string;
@@ -58,14 +58,13 @@ export type TaskMandateRepositoryServices = {
   isPostApprovalAdmissionFailure: (error: unknown) => boolean;
 };
 export type TaskMandateAuditServices = {
-  deriveAuthorityAuditRepositoryId: (value: string) => Sha256Digest;
   scanAuthorityAuditLedger: (scope: AuthorityAuditLedgerScope) => void;
   recordAuthorityAuditEvent: (
     scope: AuthorityAuditLedgerScope,
     input: AuthorityAuditEventInput,
     hooks?: AuthorityAuditServiceHooks,
   ) => AuthorityAuditRecordedEvent;
-  authorityRefusalDigest: (value: unknown) => Sha256Digest;
+
   withAuthorityRefusalAudit: <T>(
     binding: AuthorityRefusalAuditBinding,
     options: AuthorityRefusalAuditOptions,

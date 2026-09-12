@@ -1,17 +1,23 @@
 /** External-effect authority contracts, exact validation and state decisions. */
+import {
+  deriveAuthorityAuditRepositoryId,
+  sha256Digest,
+  type AuthorityRefusalAuditBinding,
+  type AuthorityAuditServiceHooks,
+  type AuthorityAuditRecordedEvent,
+} from './authority-audit-contract.ts';
+import type { TaskMandateActiveBinding } from './task-mandate-access-contract.ts';
+
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import { type TaskMandateBinding } from './task-mandate-contract.ts';
-import { type TaskMandateOperations } from './task-mandate.ts';
+
 import { type MaintainerSignerProvider } from './maintainer-signer-port.ts';
 import { type parseMaintainerPolicy } from './maintainer-policy.ts';
-import {
-  type AuthorityAuditServiceHooks,
-  type AuthorityAuditRecordedEvent,
-} from './authority-audit-contract.ts';
+
 export const EXTERNAL_EFFECT_SIGNATURE_NAMESPACE =
   'HARNESS_EXTERNAL_EFFECT_GRANT_V1' as const;
 
@@ -362,7 +368,7 @@ export const PAYLOAD_KEYS = [
 ] as const;
 
 export type ExternalEffectTaskMandateOperations = Pick<
-  TaskMandateOperations,
+  TaskMandateActiveBinding,
   'inspectActiveTaskMandateBinding' | 'withActiveTaskMandateBinding'
 >;
 
@@ -682,4 +688,74 @@ export function assertExternalAuditRootPath(
       ExitCode.guard,
     );
   }
+}
+
+export function externalEffectRefusalBinding(
+  repositoryRoot: string,
+  repositoryIdentity: string,
+  mandateBinding: TaskMandateBinding,
+  grantId: string,
+  request: ExternalEffectGrantRequest,
+): AuthorityRefusalAuditBinding {
+  const bindingDigest = sha256Digest(canonicalJson(mandateBinding));
+  return {
+    scope: {
+      externalAuditRoot: mandateBinding.externalAuditRoot,
+      repositoryRoot,
+      repositoryId: deriveAuthorityAuditRepositoryId(repositoryIdentity),
+    },
+    family: 'external-effect',
+    operation: 'external-effect.issue',
+    subjectId: grantId,
+    actor: { kind: 'engine', identity: 'workflow-engine' },
+    taskId: mandateBinding.mandateTaskId,
+    changeId: mandateBinding.changeId,
+    workflowId: mandateBinding.mandateId,
+    grantDigest: bindingDigest,
+    bindingDigest,
+    refusalIdentity: {
+      grantId,
+      effectKind: request.effectKind,
+      artifactDigest: request.artifactDigest,
+      prestateDigest: request.prestateDigest,
+      idempotencyKey: request.idempotencyKey,
+    },
+  };
+}
+
+export function storedExternalEffectRefusalBinding(
+  repositoryRoot: string,
+  envelope: ExternalEffectGrantEnvelope,
+  grantDigest: Sha256Digest,
+  operation: string,
+  refusalIdentity: Readonly<Record<string, unknown>>,
+): AuthorityRefusalAuditBinding {
+  const mandateBinding: TaskMandateBinding = {
+    schemaVersion: 1,
+    mandateTaskId: envelope.payload.taskId,
+    mandateId: envelope.payload.mandateId,
+    mandateDigest: envelope.payload.mandateDigest,
+    changeId: envelope.payload.changeId,
+    externalAuditRoot: envelope.payload.externalAuditRoot,
+  };
+  const bindingDigest = sha256Digest(canonicalJson(mandateBinding));
+  return {
+    scope: {
+      externalAuditRoot: envelope.payload.externalAuditRoot,
+      repositoryRoot,
+      repositoryId: deriveAuthorityAuditRepositoryId(
+        envelope.payload.repositoryId,
+      ),
+    },
+    family: 'external-effect',
+    operation,
+    subjectId: envelope.payload.grantId,
+    actor: { kind: 'engine', identity: 'workflow-engine' },
+    taskId: envelope.payload.taskId,
+    changeId: envelope.payload.changeId,
+    workflowId: envelope.payload.mandateId,
+    grantDigest,
+    bindingDigest,
+    refusalIdentity,
+  };
 }

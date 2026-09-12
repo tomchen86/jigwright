@@ -202,6 +202,8 @@ import './retention-control.contract.test.ts';
 import './semantic-reuse-reporting.integration.test.ts';
 import './task-mandate.contract.test.ts';
 import './task-mandate-services.contract.test.ts';
+import './task-mandate-rules.test.ts';
+import './task-mandate-boundary.test.ts';
 import './unified-cli-routing.contract.test.ts';
 import './adaptive-class-sample-gate.integration.test.ts';
 import './amend-plan-change-option.integration.test.ts';

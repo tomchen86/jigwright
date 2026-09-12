@@ -11,8 +11,11 @@ import { productionTaskStrategyExecutionGate } from './task-strategy-gate-produc
 import { archiveEligibilityReplayServices } from './ci-replay-production.ts';
 import { productionPlanningArchiveSourcePolicy } from './planning-archive-projection-production.ts';
 import { taskMandateOperations } from './task-mandate-production.ts';
-import { productionChangeRoutingAdmissionReader } from './change-routing-observation-production.ts';
-import { productionChangeRoutingInspector } from './change-routing-observation-production.ts';
+import {
+  productionChangeRoutingAdmissionReader,
+  productionChangeRoutingInspector,
+} from './change-routing-observation-production.ts';
+
 import { collaborationGrantCodec as productionArchiveGrantCodec } from '../runtime/grants/grant-services.ts';
 import { reconcileArchivedWorkItems as productionArchivedWorkItemReconciler } from './work-registry-production.ts';
 import { managedDocuments } from './managed-documents-production.ts';
@@ -43,7 +46,10 @@ import {
   loadChangeContract as productionChangeContractReader,
   loadCommittedChangeContract as productionCommittedChangeContractReader,
 } from './consumer-contract-production.ts';
-import { resumeTask as resumeTaskWithContractReader } from '../application/revise/task-revision.ts';
+import {
+  resumeTask as resumeTaskWithContractReader,
+  reviseTask as reviseTaskWithRouting,
+} from '../application/revise/task-revision.ts';
 export const resumeTask = resumeTaskWithContractReader.bind(
   undefined,
   productionPlanningExecution,
@@ -51,19 +57,23 @@ export const resumeTask = resumeTaskWithContractReader.bind(
   productionChangeContractReader,
   readAndValidateTaskRevisionApproval,
 );
-import { resolveOpenTaskId as resolveOpenTaskIdWithContractReader } from '../application/execute-task/open-task.ts';
+import {
+  resolveOpenTaskId as resolveOpenTaskIdWithContractReader,
+  contextualizeOpenTaskError as contextualizeOpenTaskErrorWithContractReader,
+  findOpenTaskLifecycleStatus as findOpenTaskLifecycleStatusWithContractReader,
+} from '../application/execute-task/open-task.ts';
 export const resolveOpenTaskId = resolveOpenTaskIdWithContractReader.bind(
   undefined,
   productionChangeContractReader,
 );
-import { contextualizeOpenTaskError as contextualizeOpenTaskErrorWithContractReader } from '../application/execute-task/open-task.ts';
+
 export const contextualizeOpenTaskError =
   contextualizeOpenTaskErrorWithContractReader.bind(
     undefined,
     productionChangeRoutingInspector,
     productionChangeContractReader,
   );
-import { findOpenTaskLifecycleStatus as findOpenTaskLifecycleStatusWithContractReader } from '../application/execute-task/open-task.ts';
+
 export const findOpenTaskLifecycleStatus =
   findOpenTaskLifecycleStatusWithContractReader.bind(
     undefined,
@@ -81,7 +91,10 @@ export const updateTaskSessionBase =
       loadCommittedChangeContract: productionCommittedChangeContractReader,
     },
   );
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../application/propose/planning-transition.ts';
+import {
+  commitPlanningTransition as commitPlanningTransitionWithContractReader,
+  commitPlanAmendment as commitPlanAmendmentWithContractReader,
+} from '../application/propose/planning-transition.ts';
 export const commitPlanningTransition =
   commitPlanningTransitionWithContractReader.bind(
     undefined,
@@ -89,7 +102,7 @@ export const commitPlanningTransition =
     managedDocuments,
     productionChangeContractReader,
   );
-import { commitPlanAmendment as commitPlanAmendmentWithContractReader } from '../application/propose/planning-transition.ts';
+
 export const commitPlanAmendment = commitPlanAmendmentWithContractReader.bind(
   undefined,
   productionPlanningExecution,
@@ -207,7 +220,7 @@ export {
   beginTaskDiffReview,
 } from './task-diff-review-production.ts';
 export { issueTaskRevisionApproval } from './task-revision-approval-production.ts';
-export { parseTaskMandateRequest } from '../modules/authority/task-mandate.ts';
+export { parseTaskMandateRequest } from '../modules/authority/task-mandate-records.ts';
 export const {
   inspectActiveTaskMandateBinding,
   authorizeTaskMandate,
@@ -262,7 +275,6 @@ export type {
   TaskDiffReviewExternalClosureRequestInput,
 } from '../modules/assurance/task-diff-review-input.ts';
 
-import { reviseTask as reviseTaskWithRouting } from '../application/revise/task-revision.ts';
 export const reviseTask = reviseTaskWithRouting.bind(
   undefined,
   productionChangeRoutingAdmissionReader,
@@ -272,12 +284,15 @@ export const commitSession = commitSessionWithRouting.bind(
   undefined,
   productionChangeRoutingAdmissionReader,
 );
-import { preflightTaskSession as preflightTaskSessionWithRouting } from '../application/execute-task/session.ts';
+import {
+  preflightTaskSession as preflightTaskSessionWithRouting,
+  checkSession as checkSessionWithRouting,
+} from '../application/execute-task/session.ts';
 export const preflightTaskSession = preflightTaskSessionWithRouting.bind(
   undefined,
   productionChangeRoutingAdmissionReader,
 );
-import { checkSession as checkSessionWithRouting } from '../application/execute-task/session.ts';
+
 export function createProductionSessionCheck(
   readers: LocalEngineSelectionReaders,
 ) {

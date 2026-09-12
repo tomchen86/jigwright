@@ -3,8 +3,6 @@
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
   EXTERNAL_EFFECT_SIGNATURE_NAMESPACE,
-  type Sha256Digest,
-  type ExternalEffectGrantRequest,
   type ExternalEffectGrantPayload,
   type ExternalEffectGrantEnvelope,
   type ExternalEffectTransitionOptions,
@@ -14,8 +12,7 @@ import { canonicalExternalEffectGrantPayload } from '../../modules/authority/ext
 import { resolveStoreState } from '../../modules/authority/external-effect-grant-records.ts';
 
 import { type MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
-import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
-import { type AuthorityRefusalAuditBinding } from '../../modules/authority/authority-audit-contract.ts';
+
 import { type ExternalEffectGrantServices } from '../../modules/authority/external-effect-grant-services.ts';
 export function createExternalEffectGrantContext(
   services: ExternalEffectGrantServices,
@@ -34,77 +31,6 @@ export function createExternalEffectGrantContext(
     assertExternalAuditRoot,
     createInteractiveSshSigner,
   } = services.repository;
-  const { authorityRefusalDigest, deriveAuthorityAuditRepositoryId } =
-    services.audit;
-  function externalEffectRefusalBinding(
-    repositoryRoot: string,
-    repositoryIdentity: string,
-    mandateBinding: TaskMandateBinding,
-    grantId: string,
-    request: ExternalEffectGrantRequest,
-  ): AuthorityRefusalAuditBinding {
-    const bindingDigest = authorityRefusalDigest(mandateBinding);
-    return {
-      scope: {
-        externalAuditRoot: mandateBinding.externalAuditRoot,
-        repositoryRoot,
-        repositoryId: deriveAuthorityAuditRepositoryId(repositoryIdentity),
-      },
-      family: 'external-effect',
-      operation: 'external-effect.issue',
-      subjectId: grantId,
-      actor: { kind: 'engine', identity: 'workflow-engine' },
-      taskId: mandateBinding.mandateTaskId,
-      changeId: mandateBinding.changeId,
-      workflowId: mandateBinding.mandateId,
-      grantDigest: bindingDigest,
-      bindingDigest,
-      refusalIdentity: {
-        grantId,
-        effectKind: request.effectKind,
-        artifactDigest: request.artifactDigest,
-        prestateDigest: request.prestateDigest,
-        idempotencyKey: request.idempotencyKey,
-      },
-    };
-  }
-
-  function storedExternalEffectRefusalBinding(
-    repositoryRoot: string,
-    envelope: ExternalEffectGrantEnvelope,
-    grantDigest: Sha256Digest,
-    operation: string,
-    refusalIdentity: Readonly<Record<string, unknown>>,
-  ): AuthorityRefusalAuditBinding {
-    const mandateBinding: TaskMandateBinding = {
-      schemaVersion: 1,
-      mandateTaskId: envelope.payload.taskId,
-      mandateId: envelope.payload.mandateId,
-      mandateDigest: envelope.payload.mandateDigest,
-      changeId: envelope.payload.changeId,
-      externalAuditRoot: envelope.payload.externalAuditRoot,
-    };
-    const bindingDigest = authorityRefusalDigest(mandateBinding);
-    return {
-      scope: {
-        externalAuditRoot: envelope.payload.externalAuditRoot,
-        repositoryRoot,
-        repositoryId: deriveAuthorityAuditRepositoryId(
-          envelope.payload.repositoryId,
-        ),
-      },
-      family: 'external-effect',
-      operation,
-      subjectId: envelope.payload.grantId,
-      actor: { kind: 'engine', identity: 'workflow-engine' },
-      taskId: envelope.payload.taskId,
-      changeId: envelope.payload.changeId,
-      workflowId: envelope.payload.mandateId,
-      grantDigest,
-      bindingDigest,
-      refusalIdentity,
-    };
-  }
 
   function refusalAuditOptions(
     now: Date,
@@ -205,8 +131,7 @@ export function createExternalEffectGrantContext(
     clockNow: services.now,
     newTransactionEntropy: services.newTransactionEntropy,
     withRepositoryLifecycleOperation: services.withRepositoryLifecycleOperation,
-    externalEffectRefusalBinding,
-    storedExternalEffectRefusalBinding,
+
     refusalAuditOptions,
     readStoreState,
     validateEnvelopeForRepository,

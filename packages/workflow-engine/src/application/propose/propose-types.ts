@@ -19,7 +19,7 @@ import {
   type InvestigationFirstPlanningSubject,
 } from '../../modules/assurance/planning-assurance-validator.ts';
 import { type RoleContextSharingGrantLifecyclePortV1 } from '../../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
-import { type TaskMandateOptions } from '../../modules/authority/task-mandate.ts';
+import { type TaskMandateOptions } from '../../modules/authority/task-mandate-access-contract.ts';
 import { type WorkflowPlanDigest } from '../../modules/guidance/renderers/plan-digest.ts';
 import { type FloorOverflowDecision } from '../../modules/investigation/domain/floor-overflow-pruning.ts';
 import {

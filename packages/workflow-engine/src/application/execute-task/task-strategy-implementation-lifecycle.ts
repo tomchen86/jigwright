@@ -1,4 +1,5 @@
-import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+import type { TaskMandateProviderAdmission } from '../../modules/authority/task-mandate-access-contract.ts';
+
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 /**
@@ -273,7 +274,7 @@ export function createTaskStrategyImplementationLifecycle(
     'admitRoleResult' | 'authorizeGrantedOrdinaryRole'
   >,
   taskMandate: Pick<
-    TaskMandateOperations,
+    TaskMandateProviderAdmission,
     'authorizeTaskMandateProviderReservationUnderLifecycleLock'
   >,
 ) {

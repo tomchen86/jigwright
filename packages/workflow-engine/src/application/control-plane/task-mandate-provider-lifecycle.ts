@@ -1,65 +1,50 @@
-/**
- * Reserves and records Task Mandate provider calls while the lifecycle lock
- * is held.
- *
- * Invariants:
- * - recordTaskMandateProviderInvocationLocked throws
- *   TASK_MANDATE_PROVIDER_INVOCATION_UNRESERVED unless a stored reservation
- *   matches the invocation's id, providerId, and requestDigest.
- * - A reservation replay with an existing id must match its providerId,
- *   requestDigest, and operationDigest, else it throws
- *   TASK_MANDATE_PROVIDER_RESERVATION_CONFLICT.
- */
-import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
-
-import type {
-  TaskMandateProviderLifecycleBindings,
-  TaskMandateProviderLifecycleTypes,
-} from './task-mandate.ts';
-
-type TaskMandateBinding =
-  TaskMandateProviderLifecycleTypes['TaskMandateBinding'];
-
-type TaskMandateProviderReservationOperation =
-  TaskMandateProviderLifecycleTypes['TaskMandateProviderReservationOperation'];
-
-type TaskMandateOptions =
-  TaskMandateProviderLifecycleTypes['TaskMandateOptions'];
-
-type TaskMandateProviderReservationAuthorization =
-  TaskMandateProviderLifecycleTypes['TaskMandateProviderReservationAuthorization'];
-
-type TaskMandateProviderInvocationAuditInput =
-  TaskMandateProviderLifecycleTypes['TaskMandateProviderInvocationAuditInput'];
-
-type AuthorityAuditRecordedEvent =
-  TaskMandateProviderLifecycleTypes['AuthorityAuditRecordedEvent'];
-
-export function createTaskMandateProviderLifecycle({
-  now: clockNow,
-  assertTaskMandateBinding,
-  assertProviderReservationId,
-  discoverRepository,
-  taskMandateStorePaths,
-  withRepositoryLifecycleOperation,
-  readTaskRecord,
-  validateTaskMandateEnvelopeForRepository,
-  exactDate,
-  assertRecordActive,
-  assertExactTaskMandateBinding,
-  appendTaskMandateAuthorizationAudit,
+/** Provider reservations and invocation audit with exact lifecycle ownership and replay. */
+import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import { type AuthorityAuditRecordedEvent } from '../../modules/authority/authority-audit-contract.ts';
+import {
+  type TaskMandateOptions,
+  type TaskMandateProviderReservationAuthorization,
+} from '../../modules/authority/task-mandate-access-contract.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
+import {
   assertProviderInvocationAuditInput,
-  findTaskMandateProviderReservation,
-  appendTaskMandateProviderInvocationAudit,
+  assertProviderReservationId,
   assertProviderReservationOperation,
-  taskMandateProviderOperationDigest,
-  appendTaskMandateProviderReservationAudit,
+  assertTaskMandateBinding,
   authorizeProviderCall,
-  replacePrivateFileAtomic,
-  taskRecordPath,
-  canonicalTaskMandateRecord,
+  findTaskMandateProviderReservation,
+  taskMandateProviderOperationDigest,
+} from '../../modules/authority/task-mandate-policy.ts';
+import { canonicalTaskMandateRecord } from '../../modules/authority/task-mandate-records.ts';
+import { type TaskMandateServices } from '../../modules/authority/task-mandate-services.ts';
+import {
+  exactDate,
   unsafeStore,
-}: TaskMandateProviderLifecycleBindings) {
+  type TaskMandateProviderInvocationAuditInput,
+  type TaskMandateProviderReservationOperation,
+} from '../../modules/authority/task-mandate-values.ts';
+import {
+  assertExactTaskMandateBinding,
+  assertRecordActive,
+} from '../../modules/authority/task-mandate.ts';
+import {
+  appendTaskMandateAuthorizationAudit,
+  appendTaskMandateProviderInvocationAudit,
+  appendTaskMandateProviderReservationAudit,
+} from './task-mandate-audit.ts';
+import { validateTaskMandateEnvelopeForRepository } from './task-mandate-trust.ts';
+
+export function createTaskMandateProviderLifecycle(
+  services: TaskMandateServices,
+) {
+  const { now: clockNow, withRepositoryLifecycleOperation } = services;
+  const { discoverRepository } = services.repository;
+  const {
+    taskMandateStorePaths,
+    readTaskRecord,
+    replacePrivateFileAtomic,
+    taskRecordPath,
+  } = services.store;
   function authorizeTaskMandateProviderReservation(
     cwd: string,
     binding: TaskMandateBinding,
@@ -120,6 +105,7 @@ export function createTaskMandateProviderLifecycle({
     assertOwned();
     const record = readTaskRecord(paths, exactBinding.mandateTaskId);
     validateTaskMandateEnvelopeForRepository(
+      services,
       repository.repositoryRoot,
       record.envelope,
       options.signer,
@@ -128,6 +114,7 @@ export function createTaskMandateProviderLifecycle({
     assertRecordActive(record, bindingNow);
     assertExactTaskMandateBinding(record, exactBinding);
     appendTaskMandateAuthorizationAudit(
+      services.audit,
       repository.repositoryRoot,
       record,
       bindingNow,
@@ -189,6 +176,7 @@ export function createTaskMandateProviderLifecycle({
     const input = assertProviderInvocationAuditInput(rawInput);
     const record = readTaskRecord(paths, exactBinding.mandateTaskId);
     validateTaskMandateEnvelopeForRepository(
+      services,
       repositoryRoot,
       record.envelope,
       options.signer,
@@ -196,7 +184,12 @@ export function createTaskMandateProviderLifecycle({
     const invocationNow = exactDate(options.now ?? clockNow());
     assertRecordActive(record, invocationNow);
     assertExactTaskMandateBinding(record, exactBinding);
-    appendTaskMandateAuthorizationAudit(repositoryRoot, record, invocationNow);
+    appendTaskMandateAuthorizationAudit(
+      services.audit,
+      repositoryRoot,
+      record,
+      invocationNow,
+    );
     const reservation = findTaskMandateProviderReservation(
       record,
       input.invocationId,
@@ -214,6 +207,7 @@ export function createTaskMandateProviderLifecycle({
     }
     assertOwned();
     const audit = appendTaskMandateProviderInvocationAudit(
+      services.audit,
       repositoryRoot,
       record,
       input,
@@ -233,6 +227,7 @@ export function createTaskMandateProviderLifecycle({
   ): TaskMandateProviderReservationAuthorization {
     const record = readTaskRecord(paths, exactBinding.mandateTaskId);
     validateTaskMandateEnvelopeForRepository(
+      services,
       repositoryRoot,
       record.envelope,
       options.signer,
@@ -240,7 +235,12 @@ export function createTaskMandateProviderLifecycle({
     const now = exactDate(options.now ?? clockNow());
     assertRecordActive(record, now);
     assertExactTaskMandateBinding(record, exactBinding);
-    appendTaskMandateAuthorizationAudit(repositoryRoot, record, now);
+    appendTaskMandateAuthorizationAudit(
+      services.audit,
+      repositoryRoot,
+      record,
+      now,
+    );
     const checkedOperation = assertProviderReservationOperation(operation);
     const operationDigest =
       taskMandateProviderOperationDigest(checkedOperation);
@@ -258,6 +258,7 @@ export function createTaskMandateProviderLifecycle({
         );
       }
       const audit = appendTaskMandateProviderReservationAudit(
+        services.audit,
         repositoryRoot,
         record,
         existing.providerId,
@@ -292,6 +293,7 @@ export function createTaskMandateProviderLifecycle({
     const stored = findTaskMandateProviderReservation(record, reservationId);
     if (stored === null) throw unsafeStore();
     const audit = appendTaskMandateProviderReservationAudit(
+      services.audit,
       repositoryRoot,
       record,
       stored.providerId,

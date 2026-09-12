@@ -1,6 +1,7 @@
-import type { TaskMandateOperations } from '../../modules/authority/task-mandate.ts';
+import type { TaskMandateActiveBinding } from '../../modules/authority/task-mandate-access-contract.ts';
+
 type TaskMandateDependencies = Pick<
-  TaskMandateOperations,
+  TaskMandateActiveBinding,
   'withActiveTaskMandateBinding'
 >;
 /**

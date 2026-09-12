@@ -1,17 +1,25 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createTaskMandateOperations } from '../src/application/control-plane/task-mandate.ts';
 import {
-  createTaskMandateOperations,
   parseCurrentTaskMandateRecord,
   canonicalTaskMandateRecord,
-  type TaskMandateRecord,
-} from '../src/modules/authority/task-mandate.ts';
+  canonicalTaskMandatePayload,
+} from '../src/modules/authority/task-mandate-records.ts';
+
+import { type TaskMandateRecord } from '../src/modules/authority/task-mandate-values.ts';
 import type { TaskMandateServices } from '../src/modules/authority/task-mandate-services.ts';
-import type {
-  AuthorityAuditRecordedEvent,
-  Sha256Digest,
-} from '../src/modules/authority/authority-audit-contract.ts';
+import { type AuthorityAuditRecordedEvent } from '../src/modules/authority/authority-audit-contract.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
+import {
+  appendTaskMandateAuthorizationAudit,
+  appendTaskMandateRevocationAudit,
+  appendTaskMandateProviderReservationAudit,
+  appendTaskMandateProviderInvocationAudit,
+} from '../src/application/control-plane/task-mandate-audit.ts';
+import { validateTaskMandateEnvelopeForRepository } from '../src/application/control-plane/task-mandate-trust.ts';
+
+import { listBuiltInProviders } from '../src/modules/provider-orchestration/provider-registry.ts';
 
 function fixture() {
   const events: string[] = [];
@@ -152,9 +160,6 @@ function fixture() {
       },
     },
     audit: {
-      deriveAuthorityAuditRepositoryId() {
-        return ('sha256:' + 'a'.repeat(64)) as Sha256Digest;
-      },
       scanAuthorityAuditLedger() {
         events.push('scan');
       },
@@ -162,9 +167,7 @@ function fixture() {
         events.push('audit:' + input.eventType + ':' + owned);
         return receipt;
       },
-      authorityRefusalDigest() {
-        return ('sha256:' + 'b'.repeat(64)) as Sha256Digest;
-      },
+
       withAuthorityRefusalAudit(_binding, _options, operation) {
         return operation();
       },
@@ -231,6 +234,152 @@ test('mandate required service construction does not observe repository, clock, 
   assert.ok(
     f.events.indexOf('release') < f.events.indexOf('audit:task-mandate:false'),
   );
+});
+
+test('audit sink preserves plain-call receiver, hook arity and exact receipt or failure', () => {
+  const f = fixture();
+  f.authorize();
+  const value = f.record();
+  const calls: Parameters<
+    TaskMandateServices['audit']['recordAuthorityAuditEvent']
+  >[] = [];
+  const audit = {
+    recordAuthorityAuditEvent(
+      this: unknown,
+      ...args: Parameters<
+        TaskMandateServices['audit']['recordAuthorityAuditEvent']
+      >
+    ) {
+      assert.equal(this, undefined);
+      calls.push(args);
+      return f.receipt;
+    },
+  };
+  assert.equal(
+    appendTaskMandateAuthorizationAudit(audit, '/repo', value),
+    f.receipt,
+  );
+  assert.equal(calls[0]!.length, 3);
+  assert.deepEqual(calls[0]![2], {});
+  appendTaskMandateAuthorizationAudit(audit, '/repo', value, f.now);
+  assert.equal(calls[1]![2]!.now!(), f.now);
+  assert.throws(() => appendTaskMandateRevocationAudit(audit, '/repo', value), {
+    code: 'TASK_MANDATE_STORE_UNSAFE',
+  });
+  assert.equal(calls.length, 2);
+  value.state = 'revoked';
+  value.revokedAt = f.now.toISOString();
+  value.revocationReason = 'Stop';
+  appendTaskMandateRevocationAudit(audit, '/repo', value, f.now);
+  assert.equal(calls[2]!.length, 3);
+  assert.equal(calls[2]![2]!.now!(), f.now);
+  const providerId = listBuiltInProviders()[0]!.id;
+  const reservation = {
+    reservationId: 'reservation-a',
+    authorizedAt: f.now.toISOString(),
+    requestDigest: 'c'.repeat(64),
+    operationDigest: 'd'.repeat(64),
+  };
+  appendTaskMandateProviderReservationAudit(
+    audit,
+    '/repo',
+    value,
+    providerId,
+    reservation,
+  );
+  appendTaskMandateProviderInvocationAudit(audit, '/repo', value, {
+    providerId,
+    invocationId: reservation.reservationId,
+    requestDigest: reservation.requestDigest,
+    occurredAt: f.now.toISOString(),
+  });
+  assert.equal(calls[3]!.length, 2);
+  assert.equal(calls[4]!.length, 2);
+  const failure = new Error('sink lost');
+  assert.throws(
+    () =>
+      appendTaskMandateAuthorizationAudit(
+        {
+          recordAuthorityAuditEvent() {
+            throw failure;
+          },
+        },
+        '/repo',
+        value,
+      ),
+    (error) => error === failure,
+  );
+});
+
+test('trust observes original repository order and preserves the void verifier and admission sentinel', () => {
+  const f = fixture();
+  f.authorize();
+  const envelope = f.record().envelope;
+  f.events.length = 0;
+  const signer = {
+    ...f.signer,
+    verify(
+      bytes: string,
+      signature: string,
+      identity: string,
+      namespace: string,
+    ) {
+      f.events.push('verify');
+      assert.equal(bytes, canonicalTaskMandatePayload(envelope.payload));
+      assert.equal(signature, envelope.signature);
+      assert.equal(identity, envelope.payload.signer);
+      assert.equal(namespace, 'HARNESS_TASK_MANDATE_V2');
+    },
+  };
+  validateTaskMandateEnvelopeForRepository(
+    f.services,
+    '/repo',
+    envelope,
+    signer,
+  );
+  assert.deepEqual(f.events, [
+    'policy',
+    'head',
+    'policy',
+    'origin',
+    'scan',
+    'verify',
+  ]);
+  const admission = new Error('post-approval sentinel');
+  f.loseLockAfter(1, admission);
+  assert.throws(
+    () =>
+      validateTaskMandateEnvelopeForRepository(f.services, '/repo', envelope, {
+        ...signer,
+        verify() {
+          throw admission;
+        },
+      }),
+    (error) => error === admission,
+  );
+  assert.throws(
+    () =>
+      validateTaskMandateEnvelopeForRepository(f.services, '/repo', envelope, {
+        ...signer,
+        verify() {
+          throw new Error('invalid signature');
+        },
+      }),
+    { code: 'TASK_MANDATE_SIGNATURE_INVALID' },
+  );
+  f.events.length = 0;
+  f.changeOrigin('changed');
+  assert.throws(
+    () =>
+      validateTaskMandateEnvelopeForRepository(
+        f.services,
+        '/repo',
+        envelope,
+        signer,
+      ),
+    { code: 'TASK_MANDATE_REPOSITORY_MISMATCH' },
+  );
+  assert.deepEqual(f.events, ['policy', 'head', 'policy', 'origin']);
 });
 
 test('mandate admission reads fresh durable state under its lock and revalidates the live origin', () => {

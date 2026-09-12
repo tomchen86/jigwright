@@ -12,15 +12,19 @@ import {
   publishRepository,
 } from '../src/runtime/storage-journal/external-effect-grant-repository.ts';
 import { emitAudit } from '../src/runtime/storage-journal/external-effect-grant-audit.ts';
-import { deriveAuthorityAuditRepositoryId } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
-import {
-  authorityRefusalDigest,
-  withAuthorityRefusalAudit,
-} from '../src/modules/authority/authority-refusal-audit.ts';
+
+import { withAuthorityRefusalAudit } from '../src/modules/authority/authority-refusal-audit.ts';
 import { withRepositoryLifecycleOperation } from '../src/runtime/session-workspace/session-store.ts';
 import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { assertPureDependencyClosure } from './support/pure-dependency-closure.ts';
+import {
+  externalEffectRefusalBinding,
+  storedExternalEffectRefusalBinding,
+  type ExternalEffectGrantEnvelope,
+  type ExternalEffectGrantRequest,
+} from '../src/modules/authority/external-effect-grant.ts';
+import type { TaskMandateBinding } from '../src/modules/authority/task-mandate-contract.ts';
 import {
   EFFECT_GRANT_ID as GRANT_ID,
   EFFECT_ISSUED_AT as NOW,
@@ -57,8 +61,6 @@ function servicesFixture() {
     },
     taskMandate: taskMandateOperations,
     audit: {
-      deriveAuthorityAuditRepositoryId,
-      authorityRefusalDigest,
       withAuthorityRefusalAudit,
       emitAudit(repository, options, input) {
         events.push(`audit:${input.eventType}:${locked}`);
@@ -143,6 +145,157 @@ test('external-effect domain codecs, records, audit facts and publication rules 
       ),
     );
   }
+});
+
+test('issue needs only early mandate lookup and a generic lock-held continuation', () => {
+  const fixture = prepareExternalEffectFixture();
+  try {
+    const f = servicesFixture();
+    const calls: string[] = [];
+    let scoped = false;
+    let returned: unknown;
+    const taskMandate: ExternalEffectGrantServices['taskMandate'] = {
+      inspectActiveTaskMandateBinding(cwd, taskId, options) {
+        assert.equal(cwd, fs.realpathSync(fixture.repository));
+        assert.equal(taskId, fixture.binding.mandateTaskId);
+        assert.deepEqual(options, { now: NOW, signer: fixture.signer });
+        calls.push('inspect');
+        return fixture.binding;
+      },
+      withActiveTaskMandateBinding(cwd, taskId, options, operation) {
+        assert.equal(cwd, fs.realpathSync(fixture.repository));
+        assert.equal(taskId, fixture.binding.mandateTaskId);
+        assert.deepEqual(options, { now: NOW, signer: fixture.signer });
+        calls.push('scope');
+        scoped = true;
+        try {
+          const result = operation(fixture.binding, () => calls.push('owned'));
+          returned = result;
+          return result;
+        } finally {
+          scoped = false;
+          calls.push('release');
+        }
+      },
+    };
+    const operations = createExternalEffectGrantOperations({
+      ...f.services,
+      taskMandate,
+      store: {
+        ...f.services.store,
+        createPrivateFileAtomic(file, bytes) {
+          assert.equal(scoped, true);
+          calls.push('publish');
+          return f.services.store.createPrivateFileAtomic(file, bytes);
+        },
+      },
+    });
+    assert.equal(calls.length, 0);
+    const result = operations.issueExternalEffectGrant(
+      fixture.repository,
+      publishGrantRequest(fixture),
+      {
+        grantId: GRANT_ID,
+        now: NOW,
+        signer: fixture.signer,
+        onAuditRecord: fixture.audit,
+      },
+    );
+    assert.equal(result, returned);
+    assert.deepEqual(calls.slice(0, 2), ['inspect', 'scope']);
+    assert.ok(calls.includes('owned'));
+    assert.ok(calls.includes('publish'));
+    assert.equal(calls.at(-1), 'release');
+    assert.equal(fs.existsSync(result.recordPath), true);
+  } finally {
+    fixture.dispose();
+  }
+});
+
+test('pure refusal bindings preserve original digest bytes, input priority and retained identity', () => {
+  const binding: TaskMandateBinding = {
+    schemaVersion: 1,
+    mandateTaskId: 'task-one',
+    mandateId: '11111111-1111-4111-8111-111111111111',
+    mandateDigest: `sha256:${'a'.repeat(64)}`,
+    changeId: 'change-one',
+    externalAuditRoot: '/tmp/audit/證據',
+  };
+  // Builders preserve supplied data; admission, including the raw binding digest form, belongs to the caller.
+  const request = {
+    effectKind: 'publish',
+    artifactDigest: `sha256:${'b'.repeat(64)}`,
+    prestateDigest: `sha256:${'c'.repeat(64)}`,
+    idempotencyKey: 'publish-確認',
+  } as unknown as ExternalEffectGrantRequest;
+  const grantId = '22222222-2222-4222-8222-222222222222';
+  const issued = externalEffectRefusalBinding(
+    '/tmp/repository',
+    'example/專案',
+    binding,
+    grantId,
+    request,
+  );
+  assert.equal(
+    issued.bindingDigest,
+    'sha256:f887b857741d824616cc40d56466f6238860def9b887c1cb9d4834f16e53f1ca',
+  );
+  assert.equal(
+    issued.scope.repositoryId,
+    'sha256:e3a145fbb6557b9e5bf3c7dc44a6089c89bde6a411da95bf1b39800f28e96bcf',
+  );
+  const envelope = {
+    payload: {
+      taskId: binding.mandateTaskId,
+      mandateId: binding.mandateId,
+      mandateDigest: binding.mandateDigest,
+      changeId: binding.changeId,
+      externalAuditRoot: binding.externalAuditRoot,
+      repositoryId: 'example/專案',
+      grantId,
+    },
+  } as ExternalEffectGrantEnvelope;
+  const identity = { retry: 1, observed: 'same' };
+  const grantDigest = `sha256:${'d'.repeat(64)}` as const;
+  const stored = storedExternalEffectRefusalBinding(
+    '/tmp/repository',
+    envelope,
+    grantDigest,
+    'external-effect.reserve',
+    identity,
+  );
+  assert.equal(stored.refusalIdentity, identity);
+  assert.equal(stored.grantDigest, grantDigest);
+  assert.equal(stored.bindingDigest, issued.bindingDigest);
+  const unreadRequest = {
+    get effectKind(): never {
+      return assert.fail('read request after invalid authority');
+    },
+  } as unknown as ExternalEffectGrantRequest;
+  assert.throws(
+    () =>
+      externalEffectRefusalBinding(
+        '/tmp/repository',
+        ' ',
+        binding,
+        grantId,
+        unreadRequest,
+      ),
+    { code: 'AUTHORITY_AUDIT_SCOPE_INVALID' },
+  );
+  const cyclic = { ...binding } as TaskMandateBinding & { self?: unknown };
+  cyclic.self = cyclic;
+  assert.throws(
+    () =>
+      externalEffectRefusalBinding(
+        '/tmp/repository',
+        ' ',
+        cyclic,
+        grantId,
+        unreadRequest,
+      ),
+    { code: 'CANONICAL_JSON_INVALID' },
+  );
 });
 
 test('required external-effect and publication construction performs no observations and invalid issue input fails before clock access', () => {

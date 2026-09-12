@@ -8,11 +8,11 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:086e367af19d09f3c6fa309a23b831e9d42bab952bda3b8973589a2285027038 -->
+<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:70285ed88f220fb6a874806dacc497313210c575ff0138a2ec2d61c035ca3cd5 -->
 
 <!-- prettier-ignore-start -->
 
-113 files changed in this module since confirmation.
+115 files changed in this module since confirmation.
 
 ## Commands
 
@@ -202,13 +202,14 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [role-context-sharing-grant.ts](role-context-sharing-grant.ts) | Validates role-context-sharing Grants and applies their reserve and consume transitions. | 2 | History unavailable |
 | [role-independence-continuation-contracts.ts](role-independence-continuation-contracts.ts) | Validates and encodes role-independence continuation owners, parameters and observations. | 2 | Header changed since confirmation |
 | [role-independence-continuation-grant.ts](role-independence-continuation-grant.ts) | Requests degraded role-independence continuation and authenticates its completed activation. | 2 | History unavailable |
-| [task-mandate-audit.ts](task-mandate-audit.ts) | Appends authority audit events for Task Mandate authorization, revocation and provider calls. | 2 | History unavailable |
+| [task-mandate-access-contract.ts](task-mandate-access-contract.ts) | Authority capabilities required by actual mandate consumers. | 0 | History unavailable |
+| [task-mandate-audit.ts](task-mandate-audit.ts) | Pure mandate audit scope, refusal binding and canonical event inputs. | 0 | History unavailable |
 | [task-mandate-contract.ts](task-mandate-contract.ts) | Exact authority binding carried by execution jobs and Grants. | 0 | History unavailable |
-| [task-mandate-policy.ts](task-mandate-policy.ts) | Checks Task Mandate provider scope, retries and budgets, and binds provider reservation identities. | 2 | History unavailable |
-| [task-mandate-provider-lifecycle.ts](task-mandate-provider-lifecycle.ts) | Reserves and records Task Mandate provider calls while the lifecycle lock is held. | 2 | History unavailable |
-| [task-mandate-records.ts](task-mandate-records.ts) | Parses and canonically serializes preparation-only Task Mandate requests, envelopes and records. | 2 | History unavailable |
+| [task-mandate-policy.ts](task-mandate-policy.ts) | Deterministic provider scope, budget, reservation and preparation rules. | 0 | History unavailable |
+| [task-mandate-records.ts](task-mandate-records.ts) | Canonical mandate requests, envelopes, records and issuance data. | 0 | History unavailable |
 | [task-mandate-services.ts](task-mandate-services.ts) | Required repository, persistence, clock and audit capabilities for mandate rules. | 0 | History unavailable |
-| [task-mandate.ts](task-mandate.ts) | Pure Task Mandate rules and required authority operation orchestration. | 0 | History unavailable |
+| [task-mandate-values.ts](task-mandate-values.ts) | Canonical Task Mandate data and deterministic scalar validation. | 0 | History unavailable |
+| [task-mandate.ts](task-mandate.ts) | Pure mandate state, exact binding and observed repository trust decisions. | 0 | History unavailable |
 | [task-revision-approval-contracts.ts](task-revision-approval-contracts.ts) | Validates and encodes exact task-revision widening approvals, including their paths and validity windows. | 2 | Header changed since confirmation |
 
 <!-- prettier-ignore-end -->
