@@ -5,6 +5,7 @@
  * Invariants:
  * - Ordinary manifests require exactly one PlanReview coverage requirement.
  */
+import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST as GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST_V3 } from './plan-review-coverage-policy.ts';
 import type { InvestigationSemanticAuthor } from '../domain/investigation-applicability.ts';
 import type { InvestigationV3Baseline } from './investigation-baseline.ts';
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
@@ -26,22 +27,6 @@ const PREFIXED_DIGEST = /^sha256:[0-9a-f]{64}$/;
 const SEMANTIC_SUBJECT_ID = /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/;
 
 const MAX_STRUCTURED_REQUIREMENTS = 4_096;
-
-const GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST_V3 = digest({
-  schemaVersion: 2,
-  kind: 'plan-review-coverage-policy',
-  activation: 'global',
-  sampling: 'review-coverage.v1',
-  evidence: 'namespace-correct-exact-location',
-  targetFields: [
-    'invariants',
-    'risk-factors',
-    'freshness',
-    'evidence-mode',
-    'degraded-extraction',
-    'cost-profile',
-  ],
-});
 
 const IMPLEMENTATION_RECONCILIATION_POLICY_DIGEST_V3 = digest({
   schemaVersion: 1,

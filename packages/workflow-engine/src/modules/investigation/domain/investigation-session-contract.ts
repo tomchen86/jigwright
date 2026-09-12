@@ -6,7 +6,7 @@
  * - Transitions preserve completed milestones and reject forbidden semantic rewrites.
  */
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
-import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../assurance/plan-review-coverage-policy.ts';
+import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../manifest/plan-review-coverage-policy.ts';
 import {
   assertChangeId,
   assertInvestigationId,

@@ -458,7 +458,7 @@
     {
       "path": "src/adapters/planning/investigation/investigation-session.ts",
       "mode": "100644",
-      "digest": "sha256:dce376a2020b9e6d360bfe793c4bc6e6991754135c2da31c3ed0b0687d9f1f8b"
+      "digest": "sha256:db237d6cf3c9fe9f552b47c6974965d64873314641cf0d88a283adaf4158947a"
     },
     {
       "path": "src/adapters/planning/openspec/documents/colocated-openspec-view.ts",
@@ -2221,14 +2221,9 @@
       "digest": "sha256:a4390ab4c790b7621646d997095083d7bbd5c69bc74167ec4f1e85772c39d30e"
     },
     {
-      "path": "src/modules/assurance/plan-review-coverage-policy.ts",
-      "mode": "100644",
-      "digest": "sha256:26ea964bf324425b32ff5ee875d04f1d913c4d65370d8110af3361a0e95fafd9"
-    },
-    {
       "path": "src/modules/assurance/plan-review-coverage.ts",
       "mode": "100644",
-      "digest": "sha256:a577f5c41196d9bf8d68a814608083daa66d3b4106f196d45667dc7dda25fa62"
+      "digest": "sha256:d148f4e9c2170d39c2c6f5e0d5bad1a4b7c83e0aecd9ff693770e413f170f2a7"
     },
     {
       "path": "src/modules/assurance/plan-review-disposition.ts",
@@ -3098,7 +3093,7 @@
     {
       "path": "src/modules/investigation/domain/investigation-session-contract.ts",
       "mode": "100644",
-      "digest": "sha256:0af7bf5c3778c49dd836f44603723328cdefdf0e671c96f3971af0df9a450854"
+      "digest": "sha256:91a78d12f38be84f86e95cca5ae8bbcd55d25894f526af48c0b43c24c19048ae"
     },
     {
       "path": "src/modules/investigation/domain/investigation-session-types.ts",
@@ -3138,7 +3133,7 @@
     {
       "path": "src/modules/investigation/manifest/investigation-manifest-requirements.ts",
       "mode": "100644",
-      "digest": "sha256:8ce07db743a0105077c53fa6249c9009ddb9c3075d9dd76c058fe972d27d9ad1"
+      "digest": "sha256:f18dbe6ae2895a7bcaa716fa4ed9365b45e10582295e54aa87f296f8379fa058"
     },
     {
       "path": "src/modules/investigation/manifest/investigation-manifest-semantic-evidence.ts",
@@ -3194,6 +3189,11 @@
       "path": "src/modules/investigation/manifest/investigation-why-domain.ts",
       "mode": "100644",
       "digest": "sha256:63129e3ed41ab40bcbd8edce9533578a65fc09f509ed140540cc173ee0274f2f"
+    },
+    {
+      "path": "src/modules/investigation/manifest/plan-review-coverage-policy.ts",
+      "mode": "100644",
+      "digest": "sha256:746dea12c344cd76621bcfa92f3a4229f0ed91f932e335551243d5a74f828176"
     },
     {
       "path": "src/modules/investigation/seal/investigation-v3-failure-record.ts",

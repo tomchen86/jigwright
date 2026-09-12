@@ -6,7 +6,7 @@
  * - Transitions preserve completed milestones and reject forbidden semantic rewrites.
  */
 import { canonicalJson } from "../../../foundation/canonical-json/canonical-json.js";
-import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from "../../assurance/plan-review-coverage-policy.js";
+import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from "../manifest/plan-review-coverage-policy.js";
 import { assertChangeId, assertInvestigationId, assertInvocationId, } from "../../../foundation/repository-path/repository-path.js";
 import { advertisedHumanResolutions, } from "./human-resolution-contract.js";
 import { assertInvestigationCheckpointEnvelope, assertInvestigationScanSaturationAcceptanceEnvelope, checkpointContributionDigest, checkpointEnvelopeDigest, scanSaturationAcceptanceEnvelopeDigest, isBaseline, } from "./investigation-checkpoint-contract.js";

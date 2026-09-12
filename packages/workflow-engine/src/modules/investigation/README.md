@@ -8,11 +8,11 @@ Build the investigation around a manifest of the exact tracked source snapshot s
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.investigation-readme v=1 digest=sha256:a882d5685155fe3d3187dd6c70a2b0abe665349952c995b75109109145b6b407 -->
+<!-- jigwright:region id=documents.investigation-readme v=1 digest=sha256:016e375c31b8033aec96a44fb5092f534e7ff0def1d996b3a8d9cf595eac8ec4 -->
 
 <!-- prettier-ignore-start -->
 
-43 files changed in this module since confirmation.
+44 files changed in this module since confirmation.
 
 ## Commands
 
@@ -87,6 +87,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [manifest/investigation-replay-input.ts](manifest/investigation-replay-input.ts) | Canonical investigation value contracts, separate from replay and repository observation. | 0 | History unavailable |
 | [manifest/investigation-requirement-types.ts](manifest/investigation-requirement-types.ts) | Canonical investigation evidence DTOs, independent of materialization and normalization. | 0 | History unavailable |
 | [manifest/investigation-why-domain.ts](manifest/investigation-why-domain.ts) | Derives Why requirements and maps investigation authoring to exact source anchors. | 1 | History unavailable |
+| [manifest/plan-review-coverage-policy.ts](manifest/plan-review-coverage-policy.ts) | Defines the identity of the global PlanReview coverage policy. | 1 | History unavailable |
 | [seal/investigation-v3-failure-record.ts](seal/investigation-v3-failure-record.ts) | Canonical stored failure facts and exact admission; no repository observation. | 0 | History unavailable |
 | [seal/investigation-v3-failure-source.ts](seal/investigation-v3-failure-source.ts) | Binds canonical failure sources to their exact observer schema. | 0 | History unavailable |
 | [seal/investigation-v3-grant.ts](seal/investigation-v3-grant.ts) | No leading responsibility comment. | 0 | History unavailable |

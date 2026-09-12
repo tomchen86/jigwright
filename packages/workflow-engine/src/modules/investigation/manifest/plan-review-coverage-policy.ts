@@ -7,7 +7,7 @@
  */
 import crypto from 'node:crypto';
 
-import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
+import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 
 export const GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST = crypto
   .createHash('sha256')

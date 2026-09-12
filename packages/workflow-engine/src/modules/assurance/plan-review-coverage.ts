@@ -27,9 +27,7 @@ import type {
   InvestigationPlanReviewCoverageRequirementV3,
   InvestigationPlanReviewCoverageTargetBindingV3,
 } from '../investigation/manifest/investigation-requirement-types.ts';
-import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from './plan-review-coverage-policy.ts';
-
-export { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from './plan-review-coverage-policy.ts';
+import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../investigation/manifest/plan-review-coverage-policy.ts';
 
 /** Observe each reviewed target when the coverage rule reaches its currentness check. */
 export type PlanReviewCoverageTargetReader = (

@@ -8,7 +8,7 @@ Keep the presence and currentness of review evidence separate from the reviewer'
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:54848f41ff798eadee62472c804f77ffc2acce575295fb66ddc4028ebbf88fa5 -->
+<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:cafa4e584620a35a77a460e9ab5f30171b9cbb6a5dcd12beb00fcb2421821f89 -->
 
 <!-- prettier-ignore-start -->
 
@@ -80,7 +80,6 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [implementation-term-dispositions.ts](implementation-term-dispositions.ts) | Canonical bounded implementation-term review evidence. | 0 | History unavailable |
 | [implementation-term-floor.ts](implementation-term-floor.ts) | Pure hunk extraction and bounded implementation-term delta decisions. | 0 | History unavailable |
 | [plan-review-artifact.ts](plan-review-artifact.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [plan-review-coverage-policy.ts](plan-review-coverage-policy.ts) | Defines the identity of the global PlanReview coverage policy. | 1 | History unavailable |
 | [plan-review-coverage.ts](plan-review-coverage.ts) | Builds and verifies PlanReview coverage requirements and reuse bindings. | 1 | History unavailable |
 | [plan-review-disposition.ts](plan-review-disposition.ts) | Constructs and validates PlanReview dispositions and challenge-closure authorization. | 1 | Header changed since confirmation |
 | [plan-review-report.ts](plan-review-report.ts) | Review evidence, submissions, and admitted reports shared by planning rules. | 0 | History unavailable |

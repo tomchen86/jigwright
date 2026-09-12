@@ -23,8 +23,8 @@ import { validatePlanReview } from '../src/modules/assurance/plan-review-validat
 import {
   assertInvestigationPlanReviewCoverageRequirementSatisfied,
   buildGlobalPlanReviewCoverageRequirement,
-  GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST,
 } from '../src/modules/assurance/plan-review-coverage.ts';
+import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../src/modules/investigation/manifest/plan-review-coverage-policy.ts';
 import { createCurrentPlanReviewProviderEvidenceForTest } from './fixture.ts';
 import {
   DIGESTS,

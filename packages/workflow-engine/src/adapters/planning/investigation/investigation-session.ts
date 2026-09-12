@@ -147,7 +147,7 @@ import {
 import { loadInvestigationRuntimeContext } from '../../../composition-root/lifecycle-context.ts';
 
 import type { HumanRevocationOptions } from '../../../modules/authority/human-revocation-contract.ts';
-import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../../modules/assurance/plan-review-coverage.ts';
+import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../../modules/investigation/manifest/plan-review-coverage-policy.ts';
 import {
   assertChangeId,
   assertInvestigationId,
