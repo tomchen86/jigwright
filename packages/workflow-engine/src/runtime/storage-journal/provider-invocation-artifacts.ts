@@ -27,8 +27,8 @@ import {
 import { planReviewSnapshotLineCount } from '../../modules/assurance/plan-review.ts';
 import type { PlanReviewSnapshotRuntime } from '../../modules/assurance/provider-review-manifests.ts';
 import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
-import type { ProviderInvocationManifest } from '../../modules/provider-orchestration/provider-invocation-manifest.ts';
-import type { CreateProviderInvocationInput } from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
+import type { ProviderInvocationManifest } from './provider-invocation-manifest-validation.ts';
+import type { CreateProviderInvocationInput } from './provider-invocation-state.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   providerInvocationDirectory,

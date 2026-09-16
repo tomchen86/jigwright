@@ -57,7 +57,6 @@ export type {
   TaskDiffReviewContinuationManifest,
   PlanReviewSnapshotRuntime,
 } from '../../modules/assurance/provider-review-manifests.ts';
-export type { ProviderInvocationManifest } from '../../modules/provider-orchestration/provider-invocation-manifest.ts';
 export type {
   InvestigationStartReservation,
   InvestigationStartReservationSnapshot,
@@ -82,7 +81,6 @@ export type {
   ProviderExecutionPolicySnapshotCurrent,
 } from '../../modules/provider-orchestration/provider-execution-policy-snapshot.ts';
 export type {
-  CreateProviderInvocationInput,
   ProviderLeaseClaim,
   ProviderWorkerLeaseClaim,
   ProviderCompletionRecovery,

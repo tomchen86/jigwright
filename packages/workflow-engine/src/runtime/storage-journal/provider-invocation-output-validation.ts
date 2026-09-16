@@ -47,7 +47,7 @@ import type {
   ProviderResidualsGeneration,
 } from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
-import type { ProviderInvocationManifest } from '../../modules/provider-orchestration/provider-invocation-manifest.ts';
+import type { ProviderInvocationManifest } from './provider-invocation-manifest-validation.ts';
 import {
   resultInvalid,
   deepFreeze,

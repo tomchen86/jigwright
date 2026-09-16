@@ -31,7 +31,6 @@ import { TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA } from '../../modules/assur
 import type { TaskDiffReviewRecord } from '../../modules/assurance/task-diff-review-artifact-record.ts';
 import { TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
 import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
-import type { ProviderInvocationManifest } from '../../modules/provider-orchestration/provider-invocation-manifest.ts';
 import type {
   ProviderInvocationRecord,
   ProviderInvocationFailure,
@@ -49,7 +48,10 @@ import {
   sha256,
   deepFreeze,
 } from './provider-invocation-common.ts';
-import { blindSurveyIntentDigest } from './provider-invocation-manifest-validation.ts';
+import {
+  blindSurveyIntentDigest,
+  type ProviderInvocationManifest,
+} from './provider-invocation-manifest-validation.ts';
 import { matchesPersistedProviderOutputSchema } from './provider-invocation-output-validation.ts';
 
 export {

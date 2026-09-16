@@ -12,11 +12,11 @@ Keep installed provider profiles on the host so repositories select roles withou
 
 Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessment and planned action, then submit the template with `jigwright job retry-request <job-id> --input retry.json --json`. The timeout may stay unchanged. See [retry behavior and single-use budget exceptions](../../../../../docs/features/PROVIDER_RETRY.md).
 
-<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:81d6c414f18aa3cb972cc899c3efc77b1068fb7c90dd6fccf02ab033f52d5c28 -->
+<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:b35fe466607cd5cba4e86f296dbcde2c381bba0c7816925b472d3ad91de2c9d6 -->
 
 <!-- prettier-ignore-start -->
 
-49 files changed in this module since confirmation.
+48 files changed in this module since confirmation.
 
 ## Commands
 
@@ -42,7 +42,6 @@ Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessmen
 | AttemptRetention | active, debug, pinned | [execution-record-types.ts](execution-record-types.ts) |
 | FailureSource | provider, network, worker, lease, tool, validator, environment, state, effect, policy | [execution-record-types.ts](execution-record-types.ts) |
 | ExecutionFailureKind | provider-timeout, network, rate-limit, provider-process-crash, worker-crash, lease-expiry, temporary-file-lock, provider-capacity, stdout-truncated, process-nonzero, json-parse, schema-mismatch, missing-required-field, citation-out-of-range, probe-transient, needs-user-decision, state-corruption, unknown-side-effect | [execution-record-types.ts](execution-record-types.ts) |
-| ProviderInvocationSupersessionCrashPhase | transaction-written, transaction-prepared, edge-written, predecessor-indexed, successor-indexed | [provider-invocation-lifecycle.ts](provider-invocation-lifecycle.ts) |
 | ProviderOutputSchemaGeneration | code-owned | [provider-invocation-lifecycle.ts](provider-invocation-lifecycle.ts) |
 | ProviderNativeSessionDispositionV1 | usable, rejected, error, cancelled, timeout, indeterminate | [provider-native-session.ts](provider-native-session.ts) |
 | ProviderNativeSessionErrorCode | PROVIDER_NATIVE_SESSION_INVALID, PROVIDER_NATIVE_SESSION_ASSIGNMENT_AUTHORITY_REQUIRED, PROVIDER_NATIVE_SESSION_CALLER_EXISTING_UNSUPPORTED, PROVIDER_NATIVE_SESSION_PROTOCOL_UNSUPPORTED, PROVIDER_NATIVE_SESSION_CAPABILITY_UNSUPPORTED | [provider-native-session.ts](provider-native-session.ts) |
@@ -94,7 +93,6 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [provider-execution-budget-authority.ts](provider-execution-budget-authority.ts) | Binds a provider timeout exception to its exact request and canonical receipt. | 2 | History unavailable |
 | [provider-execution-policy-snapshot.ts](provider-execution-policy-snapshot.ts) | Canonical provider execution policy snapshot DTOs; field and wire semantics are unchanged. | 0 | History unavailable |
 | [provider-invocation-lifecycle.ts](provider-invocation-lifecycle.ts) | Canonical provider invocation lifecycle DTOs; field and wire semantics are unchanged. | 0 | History unavailable |
-| [provider-invocation-manifest.ts](provider-invocation-manifest.ts) | Canonical provider invocation manifest DTOs; field and wire semantics are unchanged. | 0 | History unavailable |
 | [provider-invocation-record.ts](provider-invocation-record.ts) | Defines invocation identity, lease, and failure facts consumed by execution policy. | 1 | History unavailable |
 | [provider-invocation-reservations.ts](provider-invocation-reservations.ts) | Canonical provider invocation reservations DTOs; field and wire semantics are unchanged. | 0 | History unavailable |
 | [provider-limits.ts](provider-limits.ts) | The code-owned positive maxima for a single provider invocation. | 0 | History unavailable |

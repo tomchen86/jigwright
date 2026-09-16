@@ -37,7 +37,7 @@ import type {
 } from '../../modules/assurance/task-diff-review-record.ts';
 import { assertTaskStrategyImplementationManifest } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
 import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
-import type { ProviderInvocationManifest } from '../../modules/provider-orchestration/provider-invocation-manifest.ts';
+import type { TaskStrategyImplementationManifest } from '../../modules/provider-orchestration/task-strategy-implementation-manifest.ts';
 import type {
   PlanReviewManifest,
   TaskDiffReviewManifest,
@@ -59,6 +59,13 @@ import {
   SOURCE_REFERENCE,
   MAX_INTENT_FACT_BYTES,
 } from './provider-invocation-common.ts';
+
+export type ProviderInvocationManifest =
+  | BlindSurveyManifest
+  | PlanReviewManifest
+  | TaskDiffReviewManifest
+  | TaskDiffReviewContinuationManifest
+  | TaskStrategyImplementationManifest;
 
 export function blindSurveyManifestDigest(
   manifest: BlindSurveyManifest,

@@ -34,7 +34,7 @@ import type {
   ProviderRetryReplacementBinding,
   ProviderRetryReservationCurrent,
 } from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
-import type { ProviderInvocationManifest } from '../../modules/provider-orchestration/provider-invocation-manifest.ts';
+import type { ProviderInvocationManifest } from './provider-invocation-manifest-validation.ts';
 import type { ProviderExecutionPolicySnapshotCurrent } from '../../modules/provider-orchestration/provider-execution-policy-snapshot.ts';
 import {
   assertBlindSurveyManifest,

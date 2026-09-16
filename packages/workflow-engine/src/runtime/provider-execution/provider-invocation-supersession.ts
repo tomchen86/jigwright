@@ -63,6 +63,13 @@ type ProviderInvocationEntry = Readonly<{
   request: ProviderInvocationRequest;
 }>;
 
+export type ProviderInvocationSupersessionCrashPhase =
+  | 'transaction-written'
+  | 'transaction-prepared'
+  | 'edge-written'
+  | 'predecessor-indexed'
+  | 'successor-indexed';
+
 export class SimulatedProviderInvocationSupersessionCrash extends WorkflowError {
   readonly phase: ProviderInvocationSupersessionCrashPhase;
 
@@ -804,5 +811,3 @@ function simulateCrash(
     throw new SimulatedProviderInvocationSupersessionCrash(phase);
   }
 }
-
-import type { ProviderInvocationSupersessionCrashPhase } from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';

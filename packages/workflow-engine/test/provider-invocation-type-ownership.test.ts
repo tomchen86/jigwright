@@ -77,11 +77,24 @@ test('intent and blind-survey DTOs have an effect-free, type-inclusive dependenc
 });
 
 test('invocation DTO owners contain only type declarations and no legacy runtime type facade remains', () => {
+  const storageTypeOwners = [
+    [
+      'ProviderInvocationManifest',
+      'runtime/storage-journal/provider-invocation-manifest-validation.ts',
+    ],
+    [
+      'CreateProviderInvocationInput',
+      'runtime/storage-journal/provider-invocation-state.ts',
+    ],
+    [
+      'ProviderInvocationSupersessionCrashPhase',
+      'runtime/provider-execution/provider-invocation-supersession.ts',
+    ],
+  ] as const;
   for (const entry of [
     'modules/source/change-intent.ts',
     'modules/investigation/manifest/blind-survey-manifest.ts',
     'modules/assurance/provider-review-manifests.ts',
-    'modules/provider-orchestration/provider-invocation-manifest.ts',
     'modules/provider-orchestration/provider-invocation-reservations.ts',
     'modules/provider-orchestration/provider-execution-policy-snapshot.ts',
     'modules/provider-orchestration/provider-invocation-lifecycle.ts',
@@ -92,14 +105,48 @@ test('invocation DTO owners contain only type declarations and no legacy runtime
       ts.ScriptTarget.Latest,
       true,
     );
-    for (const statement of source.statements)
+    for (const statement of source.statements) {
       assert.ok(
         ts.isTypeAliasDeclaration(statement) ||
           (ts.isImportDeclaration(statement) &&
             statement.importClause?.isTypeOnly),
         `${entry} contains executable or value-imported content`,
       );
+      assert.ok(
+        !ts.isTypeAliasDeclaration(statement) ||
+          !storageTypeOwners.some(([name]) => name === statement.name.text),
+        `${entry} retains a storage API declaration`,
+      );
+    }
   }
+  for (const [name, owner] of storageTypeOwners) {
+    const source = ts.createSourceFile(
+      owner,
+      fs.readFileSync(path.join(sourceRoot, owner), 'utf8'),
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    const declarations = source.statements.filter(
+      (statement) =>
+        ts.isTypeAliasDeclaration(statement) && statement.name.text === name,
+    );
+    assert.equal(declarations.length, 1, `${name} has one canonical owner`);
+    assert.ok(
+      (declarations[0] as ts.TypeAliasDeclaration).modifiers?.some(
+        (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
+      ),
+      `${name} is exported by ${owner}`,
+    );
+  }
+  assert.equal(
+    fs.existsSync(
+      path.join(
+        sourceRoot,
+        'modules/provider-orchestration/provider-invocation-manifest.ts',
+      ),
+    ),
+    false,
+  );
   assert.equal(
     fs.existsSync(
       path.join(

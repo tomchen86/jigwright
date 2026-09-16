@@ -1,19 +1,7 @@
 /** Canonical provider invocation lifecycle DTOs; field and wire semantics are unchanged. */
 import type { AgentRuntimeCompletionReceipt } from './agent-runtime-port.ts';
-import type { ProviderInvocationManifest } from './provider-invocation-manifest.ts';
 import type { ProviderInvocationRecord } from './provider-invocation-record.ts';
-import type {
-  ProviderInvocationRequest,
-  ProviderProcessResult,
-} from './provider-contracts.ts';
-import type { TaskMandateBinding } from '../authority/task-mandate-contract.ts';
-
-export type ProviderInvocationSupersessionCrashPhase =
-  | 'transaction-written'
-  | 'transaction-prepared'
-  | 'edge-written'
-  | 'predecessor-indexed'
-  | 'successor-indexed';
+import type { ProviderProcessResult } from './provider-contracts.ts';
 
 export type ProviderCompletionCandidate = Readonly<{
   schemaVersion: 1;
@@ -28,21 +16,6 @@ export type ProviderCompletionCandidate = Readonly<{
   completedAt: string;
   candidateDigest: string;
 }>;
-
-export type CreateProviderInvocationInput = {
-  investigationId: string;
-  changeId: string;
-  mandateBinding?: TaskMandateBinding;
-  attempt: number;
-  manifest: ProviderInvocationManifest;
-  request: ProviderInvocationRequest;
-  planReviewSnapshotFiles?: Array<{
-    snapshotFile: string;
-    content: Buffer;
-  }>;
-  createdAt?: string;
-  simulateSupersessionCrashAfter?: ProviderInvocationSupersessionCrashPhase;
-};
 
 export type ProviderLeaseClaim = {
   record: ProviderInvocationRecord;

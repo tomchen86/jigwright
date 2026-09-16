@@ -53,7 +53,7 @@ function readClosure(
 test('review/strategy DTOs have an effect-free, type-inclusive dependency closure', () => {
   for (const entry of [
     'modules/assurance/provider-review-manifests.ts',
-    'modules/provider-orchestration/provider-invocation-manifest.ts',
+    'modules/investigation/manifest/blind-survey-manifest.ts',
     'modules/assurance/plan-review-subject.ts',
     'modules/assurance/planning-generation-record.ts',
     'modules/assurance/plan-review-target-snapshot-record.ts',
@@ -66,7 +66,7 @@ test('review/strategy DTOs have an effect-free, type-inclusive dependency closur
   assert.throws(
     () =>
       readClosure(
-        'modules/provider-orchestration/provider-invocation-manifest.ts',
+        'modules/assurance/provider-review-manifests.ts',
         (file, source) =>
           file.endsWith('/modules/assurance/plan-review-subject.ts')
             ? `${source}\nimport fs from 'node:fs';`

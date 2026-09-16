@@ -72,10 +72,12 @@ import {
   finalizeProviderInvocationSupersession,
   assertProviderInvocationSupersessionEndpointCurrent,
   type ProviderInvocationEvidence,
+  type ProviderInvocationSupersessionCrashPhase,
   readProviderInvocationEvidenceRecord,
   recoverProviderInvocationSupersessionTransaction,
 } from '../provider-execution/provider-invocation-supersession.ts';
-import type { CreateProviderInvocationInput } from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
+import type { ProviderInvocationManifest } from './provider-invocation-manifest-validation.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   invocationInvalid,
@@ -109,6 +111,21 @@ import {
   assertPlanReviewSnapshotFiles,
 } from './provider-invocation-artifacts.ts';
 import { readProviderRetryReservation } from './provider-invocation-reservations.ts';
+
+export type CreateProviderInvocationInput = {
+  investigationId: string;
+  changeId: string;
+  mandateBinding?: TaskMandateBinding;
+  attempt: number;
+  manifest: ProviderInvocationManifest;
+  request: ProviderInvocationRequest;
+  planReviewSnapshotFiles?: Array<{
+    snapshotFile: string;
+    content: Buffer;
+  }>;
+  createdAt?: string;
+  simulateSupersessionCrashAfter?: ProviderInvocationSupersessionCrashPhase;
+};
 
 export function createProviderInvocation(
   paths: InvestigationRuntimePaths,

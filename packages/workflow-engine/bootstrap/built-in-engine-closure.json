@@ -3513,12 +3513,7 @@
     {
       "path": "src/modules/provider-orchestration/provider-invocation-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:1abae9c297975d7d520217f5a34bc4278e2b2aafabd4420cf38d421ae3cb13b2"
-    },
-    {
-      "path": "src/modules/provider-orchestration/provider-invocation-manifest.ts",
-      "mode": "100644",
-      "digest": "sha256:24cb5f61ca9440cb45aa907a4212f805e88cb196d740e3427f189b41fdb76297"
+      "digest": "sha256:c02cef7559cddc59b9551a1837bf7b64719e3b4e43d448c0db006c0cfc3c6c4d"
     },
     {
       "path": "src/modules/provider-orchestration/provider-invocation-record.ts",
@@ -4013,7 +4008,7 @@
     {
       "path": "src/runtime/provider-execution/provider-invocation-supersession.ts",
       "mode": "100644",
-      "digest": "sha256:7a1a0b0a605f080ccb0e6933d808475930aaddb95467f0795872e4efd5d7075b"
+      "digest": "sha256:4568067acb4250c3318c4d33e379f7519b5f2a9d2793f46301094c05e3891fbb"
     },
     {
       "path": "src/runtime/provider-execution/provider-probe-executor.ts",
@@ -5158,7 +5153,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-artifacts.ts",
       "mode": "100644",
-      "digest": "sha256:8dc84769ebb58b0f279d79273753874cac5ffbdb01bfa6947496ecdd9b55647a"
+      "digest": "sha256:01c9670d2486bf6dd74c38b6489bdb6e93b0aaf66233e3a0347af60d6993032f"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-common.ts",
@@ -5178,12 +5173,12 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-manifest-validation.ts",
       "mode": "100644",
-      "digest": "sha256:fe7e6e1805ed789b5cf8829bc5b05250507d6bb94e450237fa2ed3ddefd4ef81"
+      "digest": "sha256:b00c53180d01c70ddfaaa4ecc87707b17a00166009f83cae1946aa8131257a99"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-output-validation.ts",
       "mode": "100644",
-      "digest": "sha256:adf94216c7f2a377340bf82a74a85f1bd3e086c30d3511d7a36d22ef441e108c"
+      "digest": "sha256:de8c97e2d934664d9d984477eee462431c71e5ade1c71d8528601cc945b6f00a"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-policy.ts",
@@ -5193,22 +5188,22 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-reservations.ts",
       "mode": "100644",
-      "digest": "sha256:d949fb1a789da1e8dde74b6efa1330f70bc69dd6dd5502592931a80cde9442c1"
+      "digest": "sha256:a7a48b36bb296b043df54d2e3f1d81d12af5ec6709b57277a260c1be74f36c89"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-state.ts",
       "mode": "100644",
-      "digest": "sha256:41976a874033f0ec86583dd9d7fcde5f26f979afb3d0c45c0734497cc2bb212b"
+      "digest": "sha256:fc7c521f30c144214c24f3f817c4698f4a3e31eacdce69c02a8e7c31a0258383"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-store.ts",
       "mode": "100644",
-      "digest": "sha256:85fbb96ba3e42ea0fd3c4abdd43cf8b1db7edb6778d4ad2ae573d5450d820dff"
+      "digest": "sha256:4ea3d4da5b2177e9d6bf796b559848ebe33d2c624f74aec4d86cb5502fa3775f"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-validation.ts",
       "mode": "100644",
-      "digest": "sha256:06d3fbde5b36adacfa0d099d314c01f4a6ac4ba9ba38dc93486b8e1ac2bbacef"
+      "digest": "sha256:9db930de46fbb80cecdd41312bd7e6ab8f5bde51c81ecddf33fd5b73ef85ba7e"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-workers.ts",
