@@ -1541,9 +1541,14 @@
       "digest": "sha256:b64e8177a85b7eb16b1934e9dbc94f4286f2e98b9e16046f378a2f1fd2f21057"
     },
     {
+      "path": "src/composition-root/collaboration-grant-issuance-production.ts",
+      "mode": "100644",
+      "digest": "sha256:aea860aa8365465480caa6a9381ccadb842b1b0987c53b42f15f2dd059b208bb"
+    },
+    {
       "path": "src/composition-root/collaboration-grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:3975867ac134cdbfeaab581a1168e04abe38e85e137ca4b0843190ce1ef08f36"
+      "digest": "sha256:80b20d0fd309d150135585da3472e1a9a9be70747e1d4194f9184b258c81306b"
     },
     {
       "path": "src/composition-root/consumer-contract-production.ts",
@@ -1613,7 +1618,7 @@
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
       "mode": "100644",
-      "digest": "sha256:b71c4e66fadd86d67ab76180df3d7a17cbe6a4104687f12902f88f3fe2d26078"
+      "digest": "sha256:3b0e0488080983ebb18ffe91841d7bcedcc23d6517a9c41e9466ef682c5a4cd8"
     },
     {
       "path": "src/composition-root/handoff-production.ts",
@@ -1878,12 +1883,12 @@
     {
       "path": "src/composition-root/task-diff-review-production.ts",
       "mode": "100644",
-      "digest": "sha256:536d41f89cde1e403a1060c49e15107ce402a20f0f4db23456fb9282f4bfff3f"
+      "digest": "sha256:d921c68704a3cc3c68012f59077ac95c826997ce45b45801fd66aa1500be6f91"
     },
     {
       "path": "src/composition-root/task-mandate-production.ts",
       "mode": "100644",
-      "digest": "sha256:baa27223c46a7c4e2cc152871d9efdab127467b29ee156c52db9437ec508c445"
+      "digest": "sha256:c53f812ba425e466312565f380f01a81bed093433f9786bf537c643fe982dd0c"
     },
     {
       "path": "src/composition-root/task-revision-approval-production.ts",
@@ -3813,7 +3818,7 @@
     {
       "path": "src/runtime/grants/collaboration-grant-issuance.ts",
       "mode": "100644",
-      "digest": "sha256:63567c855f68dc6829a0aad44246e1cffe53f503b27de5bc880d1587a6b400c6"
+      "digest": "sha256:6c2b5436a3e70d5dad876f1ff1ba534ac4d4c9615a7ee744a24b038a50a8f245"
     },
     {
       "path": "src/runtime/grants/grant-services.ts",
@@ -5368,7 +5373,7 @@
     {
       "path": "src/runtime/storage-journal/task-mandate-repository.ts",
       "mode": "100644",
-      "digest": "sha256:72a9c410cfc48fcf05215a5be6a9fcbe8908390b273da57452b176fbedc6e090"
+      "digest": "sha256:69e2575704d80641427c145a7825cd9e3a3d1da92338bcbd719ef3e76815b7ea"
     },
     {
       "path": "src/runtime/storage-journal/task-mandate-store.ts",

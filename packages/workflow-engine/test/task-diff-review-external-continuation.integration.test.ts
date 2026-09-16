@@ -29,7 +29,7 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   createDirectHumanReviewAttestation,
   issueCollaborationGrant,
-} from '../src/runtime/grants/collaboration-grant-issuance.ts';
+} from '../src/composition-root/collaboration-grant-issuance-production.ts';
 import { failCollaborationReservation } from '../src/runtime/storage-journal/collaboration-grant-consumption.ts';
 import { inspectCollaborationGrants } from '../src/runtime/storage-journal/collaboration-grant-records.ts';
 import { loadWorkflowConfig } from '../src/runtime/repository-observation/workflow-configuration.ts';

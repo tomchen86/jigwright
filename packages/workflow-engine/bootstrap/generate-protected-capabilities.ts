@@ -38,6 +38,7 @@ const COLLABORATION_GRANT_COMPOSITION_SOURCES = [
   'packages/grants/src/role-context-sharing-degradation.ts',
   'packages/grants/src/signed-attestation-envelope-reader.ts',
   'packages/workflow-engine/src/application/control-plane/collaboration-grant-revocation.ts',
+  'packages/workflow-engine/src/composition-root/collaboration-grant-issuance-production.ts',
   'packages/workflow-engine/src/composition-root/collaboration-grant-production.ts',
   'packages/workflow-engine/src/composition-root/grant-verifier-composition.ts',
   'packages/workflow-engine/src/modules/authority/collaboration-grant-codec.ts',

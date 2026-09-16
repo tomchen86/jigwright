@@ -4,7 +4,6 @@ import {
   discoverRepository,
   isPostApprovalAdmissionFailure,
 } from '../repository-transaction/git.ts';
-import { createInteractiveSshSigner } from '../../adapters/signing/ssh/maintainer-signer.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import { isWorkflowFailure } from '../../modules/authority/task-mandate-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -31,10 +30,12 @@ function loadPolicyAt(repositoryRoot: string, commit: string) {
     );
   }
 }
-export const taskMandateRepository: TaskMandateRepositoryServices = {
+export const taskMandateRepository: Omit<
+  TaskMandateRepositoryServices,
+  'createInteractiveSshSigner'
+> = {
   discoverRepository,
   loadPolicyAt,
-  createInteractiveSshSigner,
   isPostApprovalAdmissionFailure,
   repositoryHead(repositoryRoot) {
     return runGit(repositoryRoot, ['rev-parse', 'HEAD']).trim();

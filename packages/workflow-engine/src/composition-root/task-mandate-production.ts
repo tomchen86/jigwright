@@ -3,13 +3,14 @@ import crypto from 'node:crypto';
 import { createTaskMandateOperations } from '../application/control-plane/task-mandate.ts';
 import { taskMandateStore } from '../runtime/storage-journal/task-mandate-store.ts';
 import { taskMandateRepository } from '../runtime/storage-journal/task-mandate-repository.ts';
+import { createInteractiveSshSigner } from '../adapters/signing/ssh/maintainer-signer.ts';
 import { scanAuthorityAuditLedger } from '../runtime/storage-journal/authority-audit-ledger.ts';
 import { recordAuthorityAuditEvent } from '../runtime/storage-journal/authority-audit-service.ts';
 import { withAuthorityRefusalAudit } from './authority-refusal-production.ts';
 import { withRepositoryLifecycleOperation } from '../runtime/session-workspace/session-store.ts';
 export const taskMandateOperations = createTaskMandateOperations({
   store: taskMandateStore,
-  repository: taskMandateRepository,
+  repository: { ...taskMandateRepository, createInteractiveSshSigner },
   audit: {
     scanAuthorityAuditLedger,
     recordAuthorityAuditEvent,

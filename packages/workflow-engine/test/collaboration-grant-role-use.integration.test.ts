@@ -32,7 +32,7 @@ import {
   directHumanReviewAttestationDigest,
   assertUniqueCollaborationGrantUses,
 } from '../src/runtime/grants/grant-services.ts';
-import { createDirectHumanReviewAttestation } from '../src/runtime/grants/collaboration-grant-issuance.ts';
+import { createDirectHumanReviewAttestation } from '../src/composition-root/collaboration-grant-issuance-production.ts';
 import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../src/modules/authority/collaboration-grant-codec.ts';
 import { consumeCollaborationGrant } from '../src/runtime/storage-journal/collaboration-grant-consumption.ts';
 import {

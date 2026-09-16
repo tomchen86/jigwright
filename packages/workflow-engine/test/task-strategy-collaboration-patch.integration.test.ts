@@ -12,7 +12,7 @@ import {
 } from '../src/composition-root/task-strategy-production.ts';
 import assert from 'node:assert/strict';
 import { type CollaborationGrantRequest } from '../src/modules/authority/collaboration-grant-codec.ts';
-import { issueCollaborationGrant } from '../src/runtime/grants/collaboration-grant-issuance.ts';
+import { issueCollaborationGrant } from '../src/composition-root/collaboration-grant-issuance-production.ts';
 import {
   authoritativeCollaborationGrantVerifierForTest,
   runtimeRoot,

@@ -3,7 +3,7 @@ import { productionChangeRoutingAdmissionReader } from './change-routing-observa
 import { roleResultAdmission } from './role-admission-production.ts';
 import { createTaskDiffReviewLifecycle } from '../application/finalize/task-diff-review-lifecycle.ts';
 import { collaborationGrantCodec } from '../runtime/grants/grant-services.ts';
-import { createDirectHumanReviewAttestation } from '../runtime/grants/collaboration-grant-issuance.ts';
+import { createDirectHumanReviewAttestation } from './collaboration-grant-issuance-production.ts';
 
 export const taskDiffReview = createTaskDiffReviewLifecycle(
   productionChangeRoutingAdmissionReader,

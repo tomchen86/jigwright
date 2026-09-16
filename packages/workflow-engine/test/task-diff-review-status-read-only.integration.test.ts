@@ -24,7 +24,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { issueCollaborationGrant } from '../src/runtime/grants/collaboration-grant-issuance.ts';
+import { issueCollaborationGrant } from '../src/composition-root/collaboration-grant-issuance-production.ts';
 import { collaborationGrantStorePaths } from '../src/runtime/storage-journal/collaboration-grant-private-files.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';

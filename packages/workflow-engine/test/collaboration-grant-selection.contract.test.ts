@@ -11,7 +11,7 @@ import {
   type CollaborationGrantRequest,
 } from '../src/modules/authority/collaboration-grant-codec.ts';
 import { collaborationGrantEnvelopeDigest } from '../src/runtime/grants/grant-services.ts';
-import { issueCollaborationGrant } from '../src/runtime/grants/collaboration-grant-issuance.ts';
+import { issueCollaborationGrant } from '../src/composition-root/collaboration-grant-issuance-production.ts';
 import { collaborationGrantStorePaths } from '../src/runtime/storage-journal/collaboration-grant-private-files.ts';
 import { consumeCollaborationGrant } from '../src/runtime/storage-journal/collaboration-grant-consumption.ts';
 import {

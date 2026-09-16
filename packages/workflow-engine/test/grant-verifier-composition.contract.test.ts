@@ -44,6 +44,7 @@ const ROLE_CONTEXT_SHARING_PROTECTED_SOURCE_PATHS = [
   'packages/workflow-engine/src/adapters/signing/ssh/maintainer-signer.ts',
   'packages/workflow-engine/src/application/propose/plan-review-role-topology.ts',
   'packages/workflow-engine/src/application/propose/role-context-sharing-plan-review.ts',
+  'packages/workflow-engine/src/composition-root/collaboration-grant-issuance-production.ts',
   'packages/workflow-engine/src/composition-root/grant-verifier-composition.ts',
   'packages/workflow-engine/src/composition-root/role-admission-production.ts',
   'packages/workflow-engine/src/composition-root/role-context-sharing-grant-approval-production.ts',

@@ -417,6 +417,7 @@
       "packages/workflow-engine/src/application/propose/role-context-sharing-plan-review.ts",
       "packages/workflow-engine/src/application/work-registry/work-registry-grant-policy.ts",
       "packages/workflow-engine/src/application/work-registry/work-registry-grant.ts",
+      "packages/workflow-engine/src/composition-root/collaboration-grant-issuance-production.ts",
       "packages/workflow-engine/src/composition-root/grant-production.ts",
       "packages/workflow-engine/src/composition-root/grant-verifier-composition.ts",
       "packages/workflow-engine/src/composition-root/maintainer-manifest-production.ts",

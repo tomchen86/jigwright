@@ -341,7 +341,7 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
           clone.importModule<
             Pick<CollaborationGrantModule, 'issueCollaborationGrant'>
           >(
-            'packages/workflow-engine/src/runtime/grants/collaboration-grant-issuance.ts',
+            'packages/workflow-engine/src/composition-root/collaboration-grant-issuance-production.ts',
           ),
           clone.importModule<
             Pick<

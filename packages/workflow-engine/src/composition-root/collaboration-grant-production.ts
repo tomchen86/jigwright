@@ -10,7 +10,7 @@ import { taskMandateOperations } from './task-mandate-production.ts';
 import {
   issueCollaborationGrant,
   prepareCollaborationGrantIssue,
-} from '../runtime/grants/collaboration-grant-issuance.ts';
+} from './collaboration-grant-issuance-production.ts';
 import {
   type CollaborationGrantIssueOptions,
   type CollaborationGrantRequest,

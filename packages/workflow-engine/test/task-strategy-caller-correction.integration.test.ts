@@ -19,7 +19,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import type { CollaborationGrantRequest } from '../src/modules/authority/collaboration-grant-codec.ts';
-import { issueCollaborationGrant } from '../src/runtime/grants/collaboration-grant-issuance.ts';
+import { issueCollaborationGrant } from '../src/composition-root/collaboration-grant-issuance-production.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { runGitWithEnvironment } from '../src/runtime/repository-transaction/git.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';

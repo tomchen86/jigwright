@@ -28,7 +28,7 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   createDirectHumanReviewAttestation,
   issueCollaborationGrant,
-} from '../src/runtime/grants/collaboration-grant-issuance.ts';
+} from '../src/composition-root/collaboration-grant-issuance-production.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { finalizeTask } from './support/local-engine-selection-host.ts';

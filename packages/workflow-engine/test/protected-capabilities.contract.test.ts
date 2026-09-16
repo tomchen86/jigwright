@@ -624,6 +624,7 @@ test('protected generator refuses to synthesize a missing Grant verifier composi
     'packages/grants/src/role-context-sharing-degradation.ts',
     'packages/grants/src/signed-attestation-envelope-reader.ts',
     'packages/workflow-engine/src/application/control-plane/collaboration-grant-revocation.ts',
+    'packages/workflow-engine/src/composition-root/collaboration-grant-issuance-production.ts',
     'packages/workflow-engine/src/composition-root/collaboration-grant-production.ts',
     'packages/workflow-engine/src/composition-root/grant-verifier-composition.ts',
     'packages/workflow-engine/src/modules/authority/collaboration-grant-codec.ts',
@@ -695,6 +696,7 @@ test('protected generator refuses to synthesize a missing Grant verifier composi
     for (const omitted of [
       'packages/workflow-engine/src/application/control-plane/collaboration-grant-revocation.ts',
       'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-revocation-store.ts',
+      'packages/workflow-engine/src/composition-root/collaboration-grant-issuance-production.ts',
       'packages/workflow-engine/src/composition-root/collaboration-grant-production.ts',
       'packages/workflow-engine/src/modules/authority/grant-revocation-contract.ts',
       'packages/workflow-engine/src/modules/investigation/domain/human-resolution-grant-contract.ts',

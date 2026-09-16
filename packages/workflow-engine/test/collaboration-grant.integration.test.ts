@@ -1,5 +1,8 @@
 /** Signed collaboration Grant envelopes, CLI authority, durable reservation and revocation. */
 import test from 'node:test';
+import { createCollaborationGrantIssuance } from '../src/runtime/grants/collaboration-grant-issuance.ts';
+import { parseMaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
+import type { MaintainerSignerProvider } from '../src/modules/authority/maintainer-signer-port.ts';
 import {
   git,
   isWorkflowError,
@@ -9,7 +12,7 @@ import {
 import {
   issueCollaborationGrant,
   prepareCollaborationGrantIssue,
-} from '../src/runtime/grants/collaboration-grant-issuance.ts';
+} from '../src/composition-root/collaboration-grant-issuance-production.ts';
 import {
   canonicalCollaborationGrantPayload,
   canonicalCollaborationGrantEnvelope,
@@ -172,6 +175,232 @@ test('collaboration issuance is canonical, domain-separated, and has no authorit
     );
     assert.equal(fs.statSync(paths.root).mode & 0o777, 0o700);
     assert.equal(fs.statSync(issued.availableEnvelopePath).mode & 0o777, 0o600);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('collaboration signer binding is lazy and preserves exact policy, ordering and failures', () => {
+  const events: string[] = [];
+  const sentinel = new Error('signer failure');
+  let failure: 'factory' | 'presence' | 'sign' | 'verify' | undefined;
+  const underlying = vectorSigner();
+  const signer: MaintainerSignerProvider = {
+    assertHumanPresent() {
+      events.push('presence');
+      if (failure === 'presence') throw sentinel;
+      underlying.assertHumanPresent();
+    },
+    identity() {
+      events.push('identity');
+      return underlying.identity();
+    },
+    sign(payload, namespace) {
+      events.push(`sign:${namespace}`);
+      if (failure === 'sign') throw sentinel;
+      return underlying.sign(payload, namespace);
+    },
+    verify(payload, signature, identity, namespace) {
+      events.push(`verify:${namespace}`);
+      if (failure === 'verify') throw sentinel;
+      return underlying.verify(payload, signature, identity, namespace);
+    },
+  };
+  const repository = minimalCollaborationGrantRepository();
+  try {
+    const request = sameProviderRequest(repository);
+    const historicalPolicy = parseMaintainerPolicy(POLICY);
+    // HEAD deliberately differs from the requested, still-ancestral baseline.
+    fs.writeFileSync(
+      path.join(repository, 'workflow/maintainer-policy.json'),
+      JSON.stringify({ ...POLICY, requiredChecks: ['new-current-check'] }),
+    );
+    git(repository, ['add', 'workflow/maintainer-policy.json']);
+    git(repository, [
+      'commit',
+      '-m',
+      'Change current policy after the baseline',
+    ]);
+    const operations = createCollaborationGrantIssuance((root, policy) => {
+      events.push('factory');
+      assert.equal(root, fs.realpathSync(repository));
+      assert.deepEqual(policy, historicalPolicy);
+      if (failure === 'factory') throw sentinel;
+      return signer;
+    });
+    assert.deepEqual(events, []);
+    assert.throws(
+      () =>
+        operations.prepareCollaborationGrantIssue(
+          repository,
+          { ...request, baselineCommit: 'not-an-object-id' },
+          { now: NOW, grantId: GRANT_ID },
+        ),
+      { code: 'COLLABORATION_GRANT_INVALID' },
+    );
+    assert.deepEqual(events, []);
+
+    const issued = operations.issueCollaborationGrant(repository, request, {
+      now: NOW,
+      grantId: GRANT_ID,
+    });
+    const signingOrder = [
+      'presence',
+      'identity',
+      `sign:${NEUTRAL_COLLABORATION_GRANT_NAMESPACE}`,
+      `verify:${NEUTRAL_COLLABORATION_GRANT_NAMESPACE}`,
+    ];
+    assert.deepEqual(events, ['factory', ...signingOrder]);
+    assert.equal(
+      issued.envelope.payload.baselineCommit,
+      request.baselineCommit,
+    );
+    assert.equal(
+      issued.envelope.payload.policyBlob,
+      git(repository, [
+        'rev-parse',
+        `${request.baselineCommit}:workflow/maintainer-policy.json`,
+      ]).trim(),
+    );
+    events.length = 0;
+    assert.throws(
+      () =>
+        operations.issueCollaborationGrant(repository, request, {
+          now: NOW,
+          grantId: GRANT_ID,
+        }),
+      { code: 'COLLABORATION_GRANT_EXISTS' },
+    );
+    assert.deepEqual(events, []);
+
+    const options = {
+      now: NOW,
+      grantId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    };
+    failure = 'factory';
+    operations.prepareCollaborationGrantIssue(repository, request, {
+      ...options,
+      signer,
+    });
+    assert.deepEqual(events, signingOrder);
+    events.length = 0;
+    assert.throws(
+      () =>
+        operations.prepareCollaborationGrantIssue(repository, request, options),
+      (error) => error === sentinel,
+    );
+    assert.deepEqual(events, ['factory']);
+    events.length = 0;
+    failure = 'presence';
+    assert.throws(
+      () =>
+        operations.prepareCollaborationGrantIssue(repository, request, options),
+      (error) => error === sentinel,
+    );
+    assert.deepEqual(events, ['factory', 'presence']);
+    events.length = 0;
+    failure = 'sign';
+    assert.throws(
+      () =>
+        operations.prepareCollaborationGrantIssue(repository, request, options),
+      {
+        code: 'COLLABORATION_SIGNATURE_INVALID',
+        details: { cause: sentinel.message },
+      },
+    );
+    assert.deepEqual(events, ['factory', ...signingOrder.slice(0, 3)]);
+    events.length = 0;
+    failure = undefined;
+
+    const humanGrant = operations.prepareCollaborationGrantIssue(
+      repository,
+      {
+        ...request,
+        lifecyclePhase: 'task-diff-review',
+        taskId: '1.1',
+        rolePair: {
+          authorRole: 'task-implementer',
+          conflictingRole: 'task-diff-reviewer',
+        },
+        degradedForm: 'direct-human-review',
+        availableActor: {
+          kind: 'direct-human',
+          identity: 'fixture-maintainer',
+          assurance: 'maintainer-signed',
+        },
+      },
+      options,
+    );
+    const attestationRequest = {
+      grantEnvelope: humanGrant.envelope,
+      transitionDigest: TRANSITION_DIGEST,
+      reviewNodeId: CONTENT_NODE_ID,
+      reviewResultDigest: CONTENT_RESULT_DIGEST,
+    };
+    const attestationOrder = [
+      `verify:${NEUTRAL_COLLABORATION_GRANT_NAMESPACE}`,
+      'presence',
+      'identity',
+      `sign:${DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE}`,
+      `verify:${DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE}`,
+    ];
+    events.length = 0;
+    const attestation = operations.createDirectHumanReviewAttestation(
+      repository,
+      attestationRequest,
+      { now: NOW },
+    );
+    assert.deepEqual(events, ['factory', ...attestationOrder]);
+    assert.equal(
+      attestation.payload.signer,
+      humanGrant.envelope.payload.signer,
+    );
+    events.length = 0;
+    failure = 'factory';
+    assert.deepEqual(
+      operations.createDirectHumanReviewAttestation(
+        repository,
+        attestationRequest,
+        { now: NOW, signer },
+      ),
+      attestation,
+    );
+    assert.deepEqual(events, attestationOrder);
+    events.length = 0;
+    assert.throws(
+      () =>
+        operations.createDirectHumanReviewAttestation(
+          repository,
+          attestationRequest,
+          { now: NOW },
+        ),
+      (error) => error === sentinel,
+    );
+    assert.deepEqual(events, ['factory']);
+    events.length = 0;
+    failure = 'presence';
+    assert.throws(
+      () =>
+        operations.createDirectHumanReviewAttestation(
+          repository,
+          attestationRequest,
+          { now: NOW },
+        ),
+      (error) => error === sentinel,
+    );
+    assert.deepEqual(events, ['factory', ...attestationOrder.slice(0, 2)]);
+    events.length = 0;
+    failure = 'verify';
+    assert.throws(
+      () =>
+        operations.createDirectHumanReviewAttestation(
+          repository,
+          attestationRequest,
+          { now: NOW },
+        ),
+      { code: 'COLLABORATION_SIGNATURE_INVALID' },
+    );
+    assert.deepEqual(events, ['factory', attestationOrder[0]]);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

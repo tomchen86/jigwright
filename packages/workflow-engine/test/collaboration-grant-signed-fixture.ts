@@ -10,7 +10,7 @@ import {
   createFixtureRepository,
   authoritativeCollaborationGrantVerifierForTest,
 } from './fixture.ts';
-import { issueCollaborationGrant } from '../src/runtime/grants/collaboration-grant-issuance.ts';
+import { issueCollaborationGrant } from '../src/composition-root/collaboration-grant-issuance-production.ts';
 import type {
   CollaborationGrantRequest,
   CollaborationGrantEnvelope,
