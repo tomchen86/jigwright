@@ -14,6 +14,7 @@ import {
   createTaskDiffFinalAssuranceRecord,
   assertTaskDiffFinalAssuranceCurrent,
 } from '../../modules/assurance/task-diff-review-artifact.ts';
+import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 import type {
   TaskDiffReviewChallengeResponseRecord,
   TaskDiffReviewRecord,
@@ -287,7 +288,7 @@ export function createTaskDiffReviewExternalContinuationBindingModule(
       throw externalTaskDiffContinuationProviderShortageRequired();
     }
 
-    const callableProviderIds = (['codex', 'claude'] as const).filter(
+    const callableProviderIds = listProviderIds().filter(
       (providerId) =>
         baselineAdapterPolicy(
           context.git.repositoryRoot,

@@ -7,6 +7,7 @@
  * - An exception covers one next attempt and never rewrites default policy.
  */
 import { executionRetryBudgetChanges } from '../../modules/provider-orchestration/execution-retry.ts';
+import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import type { ExecutionJobInspection } from '../../runtime/provider-execution/execution-runtime.ts';
 import type { LoadedAiAdapterPolicy } from '../../runtime/provider-execution/ai-adapter-policy.ts';
 
@@ -17,9 +18,7 @@ export function executionReplacementBudgetChanges(
 ) {
   const attempt = inspection.attempts.at(-1)!;
   const reservation =
-    policy.policy.retryAccounting.reservations[
-      attempt.provider as 'codex' | 'claude'
-    ];
+    policy.policy.retryAccounting.reservations[attempt.provider as ProviderId];
   return executionRetryBudgetChanges({
     job: inspection.job,
     attempt,

@@ -1,4 +1,5 @@
 import type { TaskMandateProviderAdmission } from '../../modules/authority/task-mandate-access-contract.ts';
+import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 
 import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 /**
@@ -134,7 +135,7 @@ export function createTaskStrategyProviderReservations(
       identityAssurance: redAuthor.identityAssurance,
       engineSpawned: false,
     };
-    const candidates = (['codex', 'claude'] as const).map((providerId) => ({
+    const candidates = listProviderIds().map((providerId) => ({
       providerId,
       sessionId: providerSessionId,
       enabled: policy.policy.providers[providerId].enabled,
@@ -713,7 +714,7 @@ export function createTaskStrategyProviderReservations(
       identityAssurance: redAuthor.identityAssurance,
       engineSpawned: false,
     };
-    let candidates = (['codex', 'claude'] as const)
+    let candidates = listProviderIds()
       .filter(
         (providerId) =>
           providerId !== input.failedAttempt.assignment.providerId &&

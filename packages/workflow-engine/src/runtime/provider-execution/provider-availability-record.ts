@@ -7,6 +7,7 @@
  */
 
 import crypto from 'node:crypto';
+import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -41,7 +42,7 @@ const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
 const PILOT_RECORD_PATH =
   /^workflow\/provider-availability-pilots\/[a-z0-9][a-z0-9-]{0,127}\.json$/u;
 
-export const PROVIDERS = Object.freeze(['codex', 'claude'] as const);
+export const PROVIDERS = listProviderIds();
 
 export function successfulObservation(
   providerId: ProviderId,

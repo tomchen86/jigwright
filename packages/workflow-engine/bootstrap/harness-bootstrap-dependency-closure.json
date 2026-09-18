@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:45aefd6198b55d7d2b5c0e1d66c95ad432ed6484a761f1c0e5f6b2ee27855e7c"
+      "digest": "sha256:d0d6c10c0b42c1165c5ba932f0be78e88110be98be6e0a54c49202271118c32c"
     },
     {
       "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js",
@@ -608,7 +608,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/provider-registry.js",
       "mode": "100644",
-      "digest": "sha256:4261dfba710e5d0ba370284cfe3d235285924da9506919541fc05c877c352a99"
+      "digest": "sha256:11cad93e17656be824d848130b7beb53e34b4000422e921cd231525e1c020db9"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/repository-consumer/repository-consumer-policy.js",

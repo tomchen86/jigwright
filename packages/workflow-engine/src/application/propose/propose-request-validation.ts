@@ -8,6 +8,8 @@
  */
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
+import { isProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
+import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { type ActorSignal } from '../../modules/authority/actor-identity.ts';
 import {
@@ -321,7 +323,7 @@ export function readProposeAuthorization(
   request: ProviderInvocationRequest,
 ): {
   actor: {
-    providerId: 'codex' | 'claude';
+    providerId: ProviderId;
     assurance: 'self-declared' | 'runtime-hint' | 'adapter-assigned';
   };
   signals: ActorSignal[];
@@ -354,7 +356,7 @@ export function readProposeAuthorization(
     ]) ||
     !isRecord(output.actor) ||
     !hasExactKeys(output.actor, ['providerId', 'assurance']) ||
-    !['codex', 'claude'].includes(output.actor.providerId as string) ||
+    !isProviderId(output.actor.providerId) ||
     !['self-declared', 'runtime-hint', 'adapter-assigned'].includes(
       output.actor.assurance as string,
     ) ||
@@ -376,7 +378,7 @@ export function readProposeAuthorization(
     throw proposeAuthorizationInvalid();
   }
   const actor = output.actor as {
-    providerId: 'codex' | 'claude';
+    providerId: ProviderId;
     assurance: 'self-declared' | 'runtime-hint' | 'adapter-assigned';
   };
   const signals = output.signals.map((signal) => {

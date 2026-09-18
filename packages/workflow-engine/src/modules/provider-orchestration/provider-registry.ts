@@ -9,6 +9,7 @@
 import {
   isBuiltInProviderFamily,
   listBuiltInProviderCapabilityDescriptors,
+  listBuiltInProviderFamilies,
   type BuiltInProviderCapability,
   type BuiltInProviderCapabilityProfile,
   type BuiltInProviderCapabilityPurpose,
@@ -49,6 +50,14 @@ const BUILT_IN_PROVIDERS: readonly BuiltInProvider[] = Object.freeze(
  * Return the deeply frozen built-in provider registry. The same immutable
  * value is returned on every call, so no caller can mutate the shared registry.
  */
+/**
+ * The reviewed provider identities in stable preference order. Callers build
+ * per-provider candidates from this instead of repeating the identities.
+ */
+export function listProviderIds(): readonly ProviderId[] {
+  return listBuiltInProviderFamilies();
+}
+
 export function listBuiltInProviders(): readonly BuiltInProvider[] {
   return BUILT_IN_PROVIDERS;
 }

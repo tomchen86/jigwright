@@ -6,6 +6,8 @@
  * - Creation and replay retain their existing planning lock and private file semantics.
  */
 import crypto from 'node:crypto';
+import { isProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
+import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import path from 'node:path';
 
 import type { ActorSignal } from '../../modules/authority/actor-identity.ts';
@@ -48,7 +50,7 @@ const SESSION_PREFIX = 'investigation-exemption-';
 const CURRENT_REF = 'propose/exemption-session';
 
 export type ProposeExemptionActor = {
-  providerId: 'codex' | 'claude';
+  providerId: ProviderId;
   assurance: 'self-declared' | 'runtime-hint' | 'adapter-assigned';
 };
 
@@ -499,7 +501,7 @@ function assertActor(value: unknown): ProposeExemptionActor {
   if (
     !isRecord(value) ||
     !hasExactKeys(value, ['providerId', 'assurance']) ||
-    !['codex', 'claude'].includes(String(value.providerId)) ||
+    !isProviderId(value.providerId) ||
     !['self-declared', 'runtime-hint', 'adapter-assigned'].includes(
       String(value.assurance),
     )

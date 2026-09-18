@@ -17,6 +17,7 @@ import type {
   CollaborationGrantCodec,
   CollaborationGrantExpectedBinding,
 } from './collaboration-grant-codec.ts';
+import type { BuiltInProviderFamily as ProviderId } from '@jigwright/core/built-in-provider-catalog';
 import type { HumanRevocationAuthorization } from './human-revocation-contract.ts';
 import type {
   AuthoritativeCollaborationGrantVerifier,
@@ -26,7 +27,7 @@ import type { MaintainerPolicy } from './maintainer-policy.ts';
 
 export type CollaborationGrantedAssignmentRecord = {
   role: 'plan-reviewer' | 'task-diff-reviewer' | 'task-implementer';
-  providerId: 'codex' | 'claude' | null;
+  providerId: ProviderId | null;
   sessionId: string | null;
   targetDigest: string;
   requiredIndependence: 'provider-independent';
@@ -41,7 +42,7 @@ export type CollaborationGrantedAssignmentRecord = {
   authorizedEffect: typeof COLLABORATION_GRANT_AUTHORIZED_EFFECT;
   author: CollaborationParticipantRecord;
   participant: CollaborationParticipantRecord;
-  callableProviderIds: readonly ('codex' | 'claude')[];
+  callableProviderIds: readonly ProviderId[];
   degradedAuthorityOverride?: Readonly<{
     kind: 'task-diff-challenge-closure';
     targetDigest: string;
@@ -53,7 +54,7 @@ export type CollaborationGrantedAssignmentRecord = {
 };
 
 export type CollaborationParticipantRecord = {
-  providerId: 'codex' | 'claude' | null;
+  providerId: ProviderId | null;
   sessionId: string | null;
   principalId: string | null;
   identityAssurance:

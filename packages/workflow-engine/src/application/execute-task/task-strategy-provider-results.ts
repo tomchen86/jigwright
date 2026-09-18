@@ -1,4 +1,5 @@
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 /**
  * Admits implementation provider results and reconciles correction round
@@ -470,7 +471,7 @@ export function createTaskStrategyProviderResults(
         input.context.git.repositoryRoot,
         input.context.session.baseline.head,
       );
-      const callableProviderIds = (['codex', 'claude'] as const).filter(
+      const callableProviderIds = listProviderIds().filter(
         (providerId) => adapterPolicy.policy.providers[providerId].enabled,
       );
       const grantCallableProviderIds =

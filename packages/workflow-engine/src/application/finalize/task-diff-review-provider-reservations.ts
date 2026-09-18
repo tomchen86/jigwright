@@ -1,4 +1,5 @@
 import type { TaskMandateProviderAdmission } from '../../modules/authority/task-mandate-access-contract.ts';
+import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 
 /**
  * Reserves provider review and continuation invocations under lifecycle
@@ -159,7 +160,7 @@ export function createTaskDiffReviewProviderReservationsModule(
       role: 'task-diff-reviewer',
       author,
       targetDigest: subject.subjectDigest,
-      candidates: (['codex', 'claude'] as const).map((providerId) => ({
+      candidates: listProviderIds().map((providerId) => ({
         providerId,
         sessionId: providerSessionId,
         enabled: policy.policy.providers[providerId].enabled,
@@ -168,7 +169,7 @@ export function createTaskDiffReviewProviderReservationsModule(
     });
     let assignment: ProviderRoleAssignment;
     if (scheduled.outcome !== 'assigned') {
-      const callableProviderIds = (['codex', 'claude'] as const).filter(
+      const callableProviderIds = listProviderIds().filter(
         (providerId) => policy.policy.providers[providerId].enabled,
       );
       const grantRequest = taskDiffReviewGrantRequest({
@@ -414,7 +415,7 @@ export function createTaskDiffReviewProviderReservationsModule(
       preferredProviderId !== null &&
       preferredProviderId !== implementationActor.providerId
         ? preferredProviderId
-        : (['codex', 'claude'] as const).find(
+        : listProviderIds().find(
             (providerId) =>
               policy.policy.providers[providerId].enabled &&
               providerId !== implementationActor.providerId,

@@ -7,6 +7,7 @@
  */
 // Begin and reconcile provider reviews, preserving durable result and replay order.
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
+import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 import { type TaskDiffReviewChallengeResponseInput } from '../../modules/assurance/task-diff-review-input.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
@@ -879,7 +880,7 @@ export function createTaskDiffReviewProviderCommandsModule(
         input.context.git.repositoryRoot,
         input.context.session.baseline.head,
       );
-      const callableProviderIds = (['codex', 'claude'] as const).filter(
+      const callableProviderIds = listProviderIds().filter(
         (providerId) => policy.policy.providers[providerId].enabled,
       );
       const grantRequest = taskDiffReviewGrantRequest({

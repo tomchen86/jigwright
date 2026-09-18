@@ -728,7 +728,7 @@
     {
       "path": "src/application/control-plane/execution-replacement-budget.ts",
       "mode": "100644",
-      "digest": "sha256:ffb0cd47aefaefc321e5093de61d81e2fb832a884273f993f82a48d546db5dad"
+      "digest": "sha256:a5dab101c07ce6fc47729671b2ddf7c7ac51aaa23fef2372f1ffc23519a257d1"
     },
     {
       "path": "src/application/control-plane/execution-replacement-publication.ts",
@@ -1013,12 +1013,12 @@
     {
       "path": "src/application/execute-task/task-strategy-provider-reservations.ts",
       "mode": "100644",
-      "digest": "sha256:594ab8eb7a28dc76f72ca12f0dd551696e9071bfd0d101e68653e447be4332f8"
+      "digest": "sha256:111e8a86c7b9c4042fd2b747c89875a3f803a0ea71b2c6d5fd1ecb70e1ef4aed"
     },
     {
       "path": "src/application/execute-task/task-strategy-provider-results.ts",
       "mode": "100644",
-      "digest": "sha256:65be55b1eace464cce08e6cd33d55056ef31f13c8a38ec7e7e3c46264bf2428f"
+      "digest": "sha256:5f8d021f14f93ee33e3d85fe5ad7ded90f2a510954d64b58f102deb279a6899f"
     },
     {
       "path": "src/application/execute-task/task-strategy-red-revision.ts",
@@ -1078,7 +1078,7 @@
     {
       "path": "src/application/finalize/task-diff-review-completion.ts",
       "mode": "100644",
-      "digest": "sha256:0c46a44fd445cf74bb923ef91c11aeed1d3bfe1e89bda4baf9e1603b051b58ff"
+      "digest": "sha256:d71564305fdba2e660045913e86f39b1b3559270a69c854ddf161c540b97bd0d"
     },
     {
       "path": "src/application/finalize/task-diff-review-contracts.ts",
@@ -1098,7 +1098,7 @@
     {
       "path": "src/application/finalize/task-diff-review-external-continuation-binding.ts",
       "mode": "100644",
-      "digest": "sha256:af3dfd4fc0a44adb6fe5b0c07b805cdc2501ab2c18a622e07f8221e741d24284"
+      "digest": "sha256:795effeb3efb9cdea446314ffb70e55cfa45967e275d622c35fcc54e12a14aa1"
     },
     {
       "path": "src/application/finalize/task-diff-review-inspection.ts",
@@ -1123,12 +1123,12 @@
     {
       "path": "src/application/finalize/task-diff-review-provider-commands.ts",
       "mode": "100644",
-      "digest": "sha256:fe3f1ac4eb5f4bca3b810db8acc5c7ffdc795615dc99e4777aa39c7a56329ca6"
+      "digest": "sha256:6c9b1989ac065f5ff203746563e3edfaefef7e7ce291d633a644ca1b41de0c0b"
     },
     {
       "path": "src/application/finalize/task-diff-review-provider-reservations.ts",
       "mode": "100644",
-      "digest": "sha256:5894dd765d6543dafde589ea267e6390ba11077f79fdd179d48bd8608e68b053"
+      "digest": "sha256:7b064f399e825f61116e79331c9d2fa4368ee4d379b772651bf2c570d27eb9f8"
     },
     {
       "path": "src/application/finalize/task-diff-review-subject.ts",
@@ -1163,12 +1163,12 @@
     {
       "path": "src/application/propose/plan-review-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:677b5e644cc76aaea590ffb6452561b649c79cbb82ac5412929bc49433c08032"
+      "digest": "sha256:7a536e976313253d5ab468d81a41e571ba01fab32a7d6faafd47949d0a55d295"
     },
     {
       "path": "src/application/propose/plan-review-preparation.ts",
       "mode": "100644",
-      "digest": "sha256:e3adfcb20a4843d82fc7b55a047e9bec08f7140f65e734c15eede4ef1907e06a"
+      "digest": "sha256:a107f6d1d12e91aba8942f562cb3e055c8350cdee30060fc1c11ed7aaca4f858"
     },
     {
       "path": "src/application/propose/plan-review-result.ts",
@@ -1283,7 +1283,7 @@
     {
       "path": "src/application/propose/propose-request-validation.ts",
       "mode": "100644",
-      "digest": "sha256:0ad6d1a9697a839eef6b8206543993685c89f69e57b1d9eebbbcc0b28d044b21"
+      "digest": "sha256:7ce059355cb728d3ec9e47399223b6fbf8a5431a6abf5f1a4cb32d1d69c73a72"
     },
     {
       "path": "src/application/propose/propose-resume.ts",
@@ -1308,7 +1308,7 @@
     {
       "path": "src/application/propose/propose-start.ts",
       "mode": "100644",
-      "digest": "sha256:1e6e0a89b49b6adb00a22b9003c483b36e577dde62d0053e233aefce0cad25ea"
+      "digest": "sha256:d9032de2e89724140b535f43043d067151531f775d38dbc066634141f37c35bf"
     },
     {
       "path": "src/application/propose/propose-status.ts",
@@ -1318,7 +1318,7 @@
     {
       "path": "src/application/propose/propose-types.ts",
       "mode": "100644",
-      "digest": "sha256:596141943c7276c18a3bf82cd38c8878e85d5f55adddf8b5abd72398faa6f5d4"
+      "digest": "sha256:88ec4cdf2bd5004ca7bd2a6020e211a30959c43b3e1e8126063305dfdb18cdc3"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -2493,12 +2493,12 @@
     {
       "path": "src/modules/authority/collaboration-grant-records.ts",
       "mode": "100644",
-      "digest": "sha256:750c7e6af438834d7f0db84247c64c781a464927fd19a032412e93cc035bac45"
+      "digest": "sha256:2fe9a8981518c5f06edcef983680337f69c9250e7e73485e1b4f3032901e79bb"
     },
     {
       "path": "src/modules/authority/collaboration-grant-use.ts",
       "mode": "100644",
-      "digest": "sha256:46cca7982f4ec393a1103084a61c7582cecda45bf5a7baf61ae5261efc453b7b"
+      "digest": "sha256:cc8ee5a42519138ecdaac04ca03aa76c5a3d4a737bd171ba20526ad6e5792ba8"
     },
     {
       "path": "src/modules/authority/collaboration-grant-values.ts",
@@ -2858,7 +2858,7 @@
     {
       "path": "src/modules/authority/role-independence-continuation-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:811156acdc227a3e2a266116126f3acd112ea99d4863a20c3480c3d893110bf5"
+      "digest": "sha256:e1811d8254d2e0e24288fc2884bdf6b2036b4ef3305ddce1be2ef7a4e74da438"
     },
     {
       "path": "src/modules/authority/role-independence-continuation-grant.ts",
@@ -3548,7 +3548,7 @@
     {
       "path": "src/modules/provider-orchestration/provider-registry.ts",
       "mode": "100644",
-      "digest": "sha256:74b3ec881e8fbec06ba593c53423a4e1bc1290dacc5b4184c088c568141b9395"
+      "digest": "sha256:a9c69dd220661edd3a2f22821e5417b587f92291ed721df71d15034090303b22"
     },
     {
       "path": "src/modules/provider-orchestration/provider-retention.ts",
@@ -3938,7 +3938,7 @@
     {
       "path": "src/runtime/provider-execution/agent-provider-config-dry-run.ts",
       "mode": "100644",
-      "digest": "sha256:833f46d397a6719cc8ecf4875215c1c6c6e6f666115540c4af2a8dfce82b3e52"
+      "digest": "sha256:b80dad2150acc2872d8b90ef29e7b5387779d1b27d8bf6857293dc25525e42af"
     },
     {
       "path": "src/runtime/provider-execution/agent-provider-config-file.ts",
@@ -3988,7 +3988,7 @@
     {
       "path": "src/runtime/provider-execution/provider-availability-record.ts",
       "mode": "100644",
-      "digest": "sha256:c89544da24f037a739f0a3bb0dc5d7008d07ca8780e9f2209f06846943970dac"
+      "digest": "sha256:67989e750ac605bb82a841e5e576ad83b0385cc5c422edc2d0af24b12f404d1a"
     },
     {
       "path": "src/runtime/provider-execution/provider-execution-governance.ts",
@@ -4798,7 +4798,7 @@
     {
       "path": "src/runtime/storage-journal/evidence-plan-review-grants.ts",
       "mode": "100644",
-      "digest": "sha256:f839a90be8bb29ada3fafdbc082329ffac6a8ab0b77e3f92a3dfeb90bd3d0bc9"
+      "digest": "sha256:776fa805009102be8d6112a298194959a5ff7d79024652ead2716e050b2e9ea1"
     },
     {
       "path": "src/runtime/storage-journal/evidence-plan-review-ownership.ts",
@@ -5143,7 +5143,7 @@
     {
       "path": "src/runtime/storage-journal/propose-exemption-store.ts",
       "mode": "100644",
-      "digest": "sha256:4c06497908fdef6c98aaf944cf6992b7c2acfce49ce64b17e109285f712f64dc"
+      "digest": "sha256:b9ca5e8bc6becc1986100580eabe37315eab740fd862292e686cee55e58c3820"
     },
     {
       "path": "src/runtime/storage-journal/provider-execution-admission-authority.ts",

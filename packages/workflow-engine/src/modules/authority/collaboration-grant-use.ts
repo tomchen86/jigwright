@@ -1,4 +1,6 @@
 import type { CollaborationGrantCodec } from './collaboration-grant-codec.ts';
+import { isBuiltInProviderFamily as isProviderId } from '@jigwright/core/built-in-provider-catalog';
+import type { BuiltInProviderFamily as ProviderId } from '@jigwright/core/built-in-provider-catalog';
 /**
  * Validates exact collaboration assignments, structured content, and consumed-use projections.
  *
@@ -101,7 +103,7 @@ function assertRecordedParticipant(
       'identityAssurance',
       'engineSpawned',
     ]) ||
-    ![null, 'codex', 'claude'].includes(value.providerId as null | string) ||
+    (value.providerId !== null && !isProviderId(value.providerId)) ||
     (value.sessionId !== null &&
       (typeof value.sessionId !== 'string' || value.sessionId.length === 0)) ||
     (value.principalId !== null &&
@@ -118,7 +120,7 @@ function assertRecordedParticipant(
     throw invalidUse();
   }
   return deepFreeze({
-    providerId: value.providerId as 'codex' | 'claude' | null,
+    providerId: value.providerId as ProviderId | null,
     sessionId: value.sessionId as string | null,
     principalId: value.principalId as string | null,
     identityAssurance: value.identityAssurance as
@@ -130,18 +132,16 @@ function assertRecordedParticipant(
   });
 }
 
-function assertCallableProviderIds(
-  value: unknown,
-): readonly ('codex' | 'claude')[] {
+function assertCallableProviderIds(value: unknown): readonly ProviderId[] {
   if (
     !Array.isArray(value) ||
-    value.some((providerId) => !['codex', 'claude'].includes(providerId)) ||
+    value.some((providerId) => !isProviderId(providerId)) ||
     value.length !== new Set(value).size ||
     JSON.stringify(value) !== JSON.stringify([...value].sort())
   ) {
     throw invalidUse();
   }
-  return Object.freeze([...value] as ('codex' | 'claude')[]);
+  return Object.freeze([...value] as ProviderId[]);
 }
 
 function assertStructuredContent(

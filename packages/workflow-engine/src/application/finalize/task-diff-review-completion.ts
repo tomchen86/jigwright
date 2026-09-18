@@ -1,4 +1,5 @@
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 /**
  * Applies authenticated task diff review and assurance requirements to
  * completion.
@@ -433,7 +434,7 @@ export function createTaskDiffReviewCompletionModule(
       context.git.repositoryRoot,
       context.session.baseline.head,
     );
-    const callableProviderIds = (['codex', 'claude'] as const).filter(
+    const callableProviderIds = listProviderIds().filter(
       (providerId) => policy.policy.providers[providerId].enabled,
     );
     const sameProvider = taskDiffReviewGrantRequestForProvider({

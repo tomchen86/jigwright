@@ -76,7 +76,7 @@ export type AgentProviderConfigDryRunReport = Readonly<{
   dataAuthorization: Readonly<{
     allowed: boolean;
     policyDigest: string;
-    providerId: 'codex' | 'claude' | null;
+    providerId: ProviderId | null;
     reason:
       | 'BUILT_IN_PROVIDER_AUTHORIZED'
       | 'HOST_PROFILE_DISABLED'

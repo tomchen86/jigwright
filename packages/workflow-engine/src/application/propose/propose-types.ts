@@ -8,6 +8,7 @@
  */
 
 import type { ProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
+import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import { type AssuranceAssessmentReport } from '../../modules/assurance/assurance-assessment-chain.ts';
 import { type GlobalPlanReviewCoverageRequirement } from '../../modules/assurance/plan-review-coverage.ts';
 import { type PlanReviewDispositionSubmission } from '../../modules/assurance/plan-review.ts';
@@ -304,7 +305,7 @@ export type ProposePlanReviewStatus = {
   planningGenerationId: string;
   invocationId: string;
   requestDigest: string;
-  providerId: 'codex' | 'claude';
+  providerId: ProviderId;
   state: 'prepared' | 'leased' | 'succeeded' | 'failed';
   failure: { kind: string; code: string; message: string } | null;
   reviewNodeId: string | null;
@@ -389,7 +390,7 @@ export type ProposeOutput = {
   actorResolution:
     | {
         outcome: 'resolved';
-        providerId: 'codex' | 'claude';
+        providerId: ProviderId;
         assurance: 'self-declared' | 'runtime-hint' | 'adapter-assigned';
         signals: ActorSignal[];
       }

@@ -6,6 +6,7 @@
  * - A retry keeps its deterministic identity and the failed request's semantic inputs.
  */
 import type { ProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
+import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { assertPlanReviewSubject } from '../../modules/assurance/plan-review.ts';
@@ -65,7 +66,7 @@ export function blindSurveyGrantRequest(input: {
   baseline: { head: string; tree: string };
   targetDigest: string;
   author: RoleParticipant;
-  callableProviderIds: Array<'codex' | 'claude'>;
+  callableProviderIds: Array<ProviderId>;
 }): CollaborationGrantRequest | null {
   if (
     input.author.providerId === undefined ||
@@ -102,7 +103,7 @@ export function planReviewGrantRequest(input: {
   baseline: { head: string; tree: string };
   targetDigest: string;
   author: RoleParticipant;
-  callableProviderIds: Array<'codex' | 'claude'>;
+  callableProviderIds: Array<ProviderId>;
 }): CollaborationGrantRequest | null {
   if (
     input.author.providerId === undefined ||
@@ -832,7 +833,7 @@ export function assertPlanReviewGrantAuthorization(
 export function assertProposeGrantAuthorization(
   value: unknown,
   actor: {
-    providerId: 'codex' | 'claude';
+    providerId: ProviderId;
     assurance: 'self-declared' | 'runtime-hint' | 'adapter-assigned';
   },
   request: ProviderInvocationRequest,

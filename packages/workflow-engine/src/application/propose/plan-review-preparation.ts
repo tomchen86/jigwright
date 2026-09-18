@@ -1,4 +1,5 @@
 import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
+import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 /**
  * Reserves a reviewer and immutable plan snapshot before preparing provider work.
  *
@@ -273,17 +274,15 @@ export function preparePlanReviewInvocation(
     durableRoleContextRequirement === null
       ? createRuntimeId('provider-session')
       : durableRoleContextRequirement.requirement.reviewerPlacement.sessionId;
-  const schedulingCandidates = (['codex', 'claude'] as const).map(
-    (providerId) => ({
-      providerId,
-      sessionId:
-        providerId === author.providerId
-          ? `author-${providerSessionId}`
-          : providerSessionId,
-      enabled: policy.policy.providers[providerId].enabled,
-      available: policy.policy.providers[providerId].enabled,
-    }),
-  );
+  const schedulingCandidates = listProviderIds().map((providerId) => ({
+    providerId,
+    sessionId:
+      providerId === author.providerId
+        ? `author-${providerSessionId}`
+        : providerSessionId,
+    enabled: policy.policy.providers[providerId].enabled,
+    available: policy.policy.providers[providerId].enabled,
+  }));
   const scheduled =
     durableRoleContextRequirement === null &&
     roleTopologyResolution === undefined
@@ -295,7 +294,7 @@ export function preparePlanReviewInvocation(
           candidates: schedulingCandidates,
         })
       : null;
-  const callableProviderIds = (['codex', 'claude'] as const).filter(
+  const callableProviderIds = listProviderIds().filter(
     (providerId) => policy.policy.providers[providerId].enabled,
   );
   const grantRequest =

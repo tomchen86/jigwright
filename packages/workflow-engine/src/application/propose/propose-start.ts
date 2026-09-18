@@ -1,4 +1,5 @@
 import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
+import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 /**
  * Starts ordinary investigations and carries structured exemptions into planning.
  *
@@ -132,7 +133,7 @@ export function startPropose(
       inputSchema: {
         schemaVersion: 1,
         kind: 'actor-selection',
-        allowedProviders: ['claude', 'codex'],
+        allowedProviders: [...listProviderIds()],
       },
       work: null,
       materializedArtifacts: null,
@@ -225,7 +226,7 @@ export function startPropose(
     identityAssurance: actorResolution.actor.assurance,
     engineSpawned: false,
   };
-  const candidates = (['codex', 'claude'] as const).map((providerId) => ({
+  const candidates = listProviderIds().map((providerId) => ({
     providerId,
     sessionId:
       providerId === actorResolution.actor.providerId

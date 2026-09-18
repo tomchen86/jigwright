@@ -51,6 +51,12 @@ const INVESTIGATION_ID = /^investigation-[A-Za-z0-9-]+$/u;
 
 const IDENTITY = /^[A-Za-z0-9][A-Za-z0-9._@:+/-]{0,127}$/u;
 
+/**
+ * Provider identities in the order this grant's canonical bytes were defined
+ * with. Issued digests depend on it, so it cannot follow the registry's
+ * preference order; a contract test fails if the registry gains an identity
+ * this list omits.
+ */
 export const PROVIDER_IDS = Object.freeze(['claude', 'codex'] as const);
 
 export const ASSURANCE_LEVELS = Object.freeze([
