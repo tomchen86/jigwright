@@ -1,4 +1,5 @@
 import type { SystemDocumentDispositionService } from './system-document-dispositions.ts';
+import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
 import type { DocumentationReviewCapture } from '../../modules/assurance/documentation-closure.ts';
 import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
@@ -128,6 +129,7 @@ export type FinalizeTaskOptions = Readonly<{
 }>;
 
 export function finalizeTaskUnlocked(
+  reviewedAssets: ReviewedGeneratedAssetInventory,
   taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
   routingAdmissionReader: ChangeRoutingAdmissionReader,
   taskDiffReview: Pick<
@@ -198,7 +200,7 @@ export function finalizeTaskUnlocked(
     );
   }
   assertCurrentImplementationReconciliation(initial);
-  ensureTaskMechanicalTransformationEvidence(initial);
+  ensureTaskMechanicalTransformationEvidence(reviewedAssets, initial);
   taskStrategyExecutionGate(initial, environment);
 
   const reconciliation = reconcilePredecessor(

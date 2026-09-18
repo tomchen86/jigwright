@@ -3,6 +3,7 @@ import {
   bootstrapInterventionStateRoot,
   resolveLocalEngineSelection,
 } from '../../bootstrap/control-plane-trust.ts';
+import { reviewedGeneratedAssets } from '../../src/composition-root/planning-provider-authoring-production.ts';
 import type { LocalEngineSelectionReaders } from '../../src/modules/authority/local-engine-selection.ts';
 import { checkSession as checkSessionWithLocalEngineSelection } from '../../src/application/finalize/verification.ts';
 import { createProductionFinalizationService } from '../../src/composition-root/finalization-production.ts';
@@ -15,6 +16,7 @@ export const localEngineSelectionReaders: LocalEngineSelectionReaders =
 
 export const checkSession = checkSessionWithLocalEngineSelection.bind(
   undefined,
+  reviewedGeneratedAssets,
   localEngineSelectionReaders,
 );
 

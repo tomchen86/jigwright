@@ -16,6 +16,7 @@ import {
   type AgentRuntimeProbeEvidenceV1,
 } from '@jigwright/core/agent-runtime-port';
 
+import type { BuiltInProviderAdapterCatalog } from '../../modules/provider-orchestration/provider-contracts.ts';
 import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import {
@@ -36,13 +37,14 @@ const BUILT_IN_CAPABILITIES = createAgentRuntimeCapabilitiesV1({
 
 /** Observe one fixed family without persisting or deciding availability. */
 export function probeBuiltInProviderFamilyEvidence(
+  adapters: BuiltInProviderAdapterCatalog,
   providerId: ProviderId,
   options: ProviderPreflightOptions,
 ): AgentRuntimeProbeEvidenceV1 {
   return projectBuiltInProviderResolutionEvidence(
     providerId,
     options.platform,
-    preflightBuiltInProvider(providerId, options),
+    preflightBuiltInProvider(adapters, providerId, options),
   );
 }
 

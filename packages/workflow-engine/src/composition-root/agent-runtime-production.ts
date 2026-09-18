@@ -6,6 +6,7 @@
  * - Native session turns require the asynchronous host-wrapper path;
  *   synchronous execution rejects them.
  */
+import { builtInProviderAdapters } from './built-in-provider-adapter-production.ts';
 import type { ProviderWorkerRuntimePort } from '../modules/provider-orchestration/agent-runtime-port.ts';
 import { runBuiltInProvider } from '../runtime/provider-execution/provider-runner.ts';
 import { runBuiltInProviderThroughAgentRuntimeV1 } from './agent-runtime-v1-production.ts';
@@ -19,7 +20,7 @@ const builtInAgentRuntime: ProviderWorkerRuntimePort = {
         'Host-wrapper AgentRuntime execution requires the asynchronous production path.',
       );
     }
-    return runBuiltInProvider(input, options);
+    return runBuiltInProvider(builtInProviderAdapters, input, options);
   },
   runSingleShotAsync(input, options) {
     return input.nativeSessionTurn === undefined

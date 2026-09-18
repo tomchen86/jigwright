@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -225,6 +226,7 @@ test('checkSession reobserves local selection after immutable report publication
     assert.throws(
       () =>
         checkSession(
+          reviewedGeneratedAssets,
           readers,
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,

@@ -1,4 +1,5 @@
 import { readAndValidateTaskRevisionApproval } from '../src/composition-root/task-revision-approval-production.ts';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';

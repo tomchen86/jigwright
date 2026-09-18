@@ -2,6 +2,7 @@ import {
   normalizeCompletionRollbackReason,
   type RollbackCompletionResult,
 } from '../modules/lifecycle/completion-rollback.ts';
+import { reviewedGeneratedAssets } from './planning-provider-authoring-production.ts';
 import { rollbackCompletionProjection } from '../runtime/managed-documents/transaction/completion-rollback.ts';
 import {
   loadActiveSessionContext,
@@ -21,6 +22,7 @@ export function createProductionFinalizationService(
   localEngineSelection: LocalEngineSelectionReaders,
 ) {
   const finalization = createFinalizationService(
+    reviewedGeneratedAssets,
     localEngineSelection,
     maintainerManifestOperations,
     productionTaskStrategyExecutionGate,

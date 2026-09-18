@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { builtInProviderAdapters } from '../src/composition-root/built-in-provider-adapter-production.ts';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -779,6 +780,7 @@ test('malformed native output creates bounded durable repair evidence and replac
         platform: 'darwin',
         runner(input) {
           return createProviderRunnerForTesting(
+            builtInProviderAdapters,
             malformedClaudeRunnerHost(malformed),
           ).run(input, { platform: 'darwin' });
         },

@@ -1,4 +1,5 @@
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
 import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';

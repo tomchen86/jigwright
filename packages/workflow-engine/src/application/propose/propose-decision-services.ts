@@ -1,4 +1,5 @@
 import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
+import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
 import type {
   PlanningProviderAuthoringPort,
   PlanningProviderReviewedAssetMirror,
@@ -34,6 +35,7 @@ import type { ProviderRetryAccountingReader } from '../../modules/provider-orche
 export type ProposeDecisionServices = Readonly<{
   createInteractiveSshSigner: MaintainerSignerFactory;
   planningProvider: Readonly<{
+    reviewedGeneratedAssets: ReviewedGeneratedAssetInventory;
     createAuthoringPort(repositoryRoot: string): PlanningProviderAuthoringPort;
     reviewedAssetMirrors(
       repositoryRoot: string,

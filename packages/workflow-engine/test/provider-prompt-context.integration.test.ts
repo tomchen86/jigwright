@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { builtInProviderAdapters } from '../src/composition-root/built-in-provider-adapter-production.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -83,9 +84,12 @@ test('production prompt assembly reads only the exact current manifest and exclu
         }),
       );
     });
-    createProviderRunnerForTesting(host).run(fixture.input, {
-      platform: 'darwin',
-    });
+    createProviderRunnerForTesting(builtInProviderAdapters, host).run(
+      fixture.input,
+      {
+        platform: 'darwin',
+      },
+    );
     assert.equal(managedPrompt.includes(oldEvidence), false);
     const parsed = JSON.parse(managedPrompt) as { manifest: unknown };
     assert.deepEqual(parsed.manifest, manifest);
@@ -317,9 +321,12 @@ test('managed prompt exposes the scope and v3 structured coverage contracts only
           }),
         );
       });
-      createProviderRunnerForTesting(host).run(fixture.input, {
-        platform: 'darwin',
-      });
+      createProviderRunnerForTesting(builtInProviderAdapters, host).run(
+        fixture.input,
+        {
+          platform: 'darwin',
+        },
+      );
       assert.equal(executeCount, 1);
     } finally {
       fixture.cleanup();

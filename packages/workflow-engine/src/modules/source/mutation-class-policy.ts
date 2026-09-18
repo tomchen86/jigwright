@@ -80,6 +80,17 @@ const POLICY_SCHEMA = 'mutation-class-policy.v1';
  * never changes identity. A malformed rule, an unknown class, a duplicate rule
  * ID, a non-canonical raw selector, or a hidden extra key fails closed.
  */
+/**
+ * The reviewed generated assets one planning provider owns. Implementations
+ * know the provider's asset layout and belong to adapters.
+ */
+export type ReviewedGeneratedAssetInventory = Readonly<{
+  manifestPath: string;
+  assets: ReadonlyArray<
+    Readonly<{ destinationPath: string; mirrorOf: string | null }>
+  >;
+}>;
+
 export function createMutationClassPolicy(input: {
   rules: MutationClassRule[];
 }): MutationClassPolicy {

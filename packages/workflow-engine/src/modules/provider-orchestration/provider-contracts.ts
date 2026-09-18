@@ -94,6 +94,41 @@ export type ProviderInvocationPlan = {
   stdinSource: string;
 };
 
+/**
+ * The bounded probes that prove one reviewed provider executable is the
+ * expected program before any model is invoked.
+ */
+export type ProviderPreflightSpec = {
+  helpProbes: ReadonlyArray<{
+    args: readonly string[];
+    requiredFlags: readonly string[];
+  }>;
+  authArgs: readonly string[];
+};
+
+/** Everything a provider needs to turn one engine-owned request into argv. */
+export type ProviderInvocationOptions = Readonly<{
+  executable: string;
+  repositoryRoot: string;
+  promptPath: string;
+  schemaPath: string;
+  semanticOutputPath: string;
+  semanticOutputSchema: unknown;
+}>;
+
+/**
+ * One reviewed provider's external command shape. Implementations know the
+ * external CLI and belong to adapters; composition binds the catalog.
+ */
+export type BuiltInProviderAdapter = Readonly<{
+  preflight: ProviderPreflightSpec;
+  buildInvocation(options: ProviderInvocationOptions): ProviderInvocationPlan;
+}>;
+
+export type BuiltInProviderAdapterCatalog = Readonly<
+  Record<ProviderId, BuiltInProviderAdapter>
+>;
+
 export type ProviderOutputSchema = {
   id: string;
   version: number;

@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import {
   createDocumentationClosureRecord,
   encodeDocumentationClosure,

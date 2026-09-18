@@ -7,6 +7,7 @@
  *   provider availability.
  */
 import os from 'node:os';
+import type { BuiltInProviderAdapterCatalog } from '../../modules/provider-orchestration/provider-contracts.ts';
 
 import {
   loadAiAdapterPolicy,
@@ -69,6 +70,7 @@ const EVALUATION_REASONS = [
 ];
 
 export function evaluateAiAdapter(
+  adapters: BuiltInProviderAdapterCatalog,
   repositoryRoot: string,
   platform: NodeJS.Platform = process.platform,
 ): AiAdapterEvaluation {
@@ -81,7 +83,7 @@ export function evaluateAiAdapter(
         purpose: capability.purpose,
         profile: capability.profile,
       })),
-      resolver: preflightBuiltInProvider(provider.id, {
+      resolver: preflightBuiltInProvider(adapters, provider.id, {
         platform,
         enabled: loaded.policy.providers[provider.id].enabled,
         sourceEnvironment: process.env,

@@ -246,7 +246,10 @@ function createProposeRuntime(decisions: ProposeDecisionServices) {
       parseTasks,
       assertTaskMandateOptional,
       loadInvestigationRuntimeContext,
-      deriveReviewedMutationClassPolicy,
+      deriveReviewedMutationClassPolicy: deriveReviewedMutationClassPolicy.bind(
+        undefined,
+        decisions.planningProvider.reviewedGeneratedAssets,
+      ),
       replaceTextAtomic,
       discoverRepository,
       resolveProtectedBaseRef,

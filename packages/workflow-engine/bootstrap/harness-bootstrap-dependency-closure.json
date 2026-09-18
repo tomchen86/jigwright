@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:3d42769582e0fefac9d8dd8dc63061220dd2680766bc69338cfe4ea3f8b7ad21"
+      "digest": "sha256:45aefd6198b55d7d2b5c0e1d66c95ad432ed6484a761f1c0e5f6b2ee27855e7c"
     },
     {
       "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js",
@@ -643,7 +643,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/source/mutation-class-policy.js",
       "mode": "100644",
-      "digest": "sha256:a91ea0ef6a0a7386ebdf3e6e3f49be2556e0d55741553ab2fcc7a87f5a53ff43"
+      "digest": "sha256:51d9b2901ac3b2bbe89ca6d08f6e9e2de9bf21e25b849aa9330312d5b143de12"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/source/path-role-registry.js",

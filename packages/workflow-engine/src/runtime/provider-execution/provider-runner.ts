@@ -12,15 +12,6 @@ import { preflightProviderSnapshot } from './provider-runner-preflight.ts';
 import { spawnSync } from 'node:child_process';
 import { AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT } from './ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import {
-  CLAUDE_REQUIRED_HELP_FLAGS,
-  buildClaudeProviderInvocation,
-} from '../../adapters/providers/claude/claude-provider-adapter.ts';
-import {
-  CODEX_REQUIRED_ROOT_HELP_FLAGS,
-  CODEX_REQUIRED_EXEC_HELP_FLAGS,
-  buildCodexProviderInvocation,
-} from '../../adapters/providers/codex/codex-provider-adapter.ts';
 import { loadWorkflowConfig } from '../repository-observation/workflow-configuration.ts';
 import { createProviderExecutionEnvironment } from './execution-environment.ts';
 import { executionJobStatePath } from '../storage-journal/execution-store.ts';
@@ -51,6 +42,7 @@ import {
   assertProviderPromptContextCurrent,
 } from './provider-execution-governance.ts';
 import {
+  type BuiltInProviderAdapterCatalog,
   type ProviderExecutableIdentity,
   type ProviderProcessOutcome,
   type ProviderRunnerReport,
@@ -206,24 +198,18 @@ export type ProviderRunOptions = AgentRuntimeSingleShotOptions;
 
 export type ProviderAsyncRunOptions = AgentRuntimeAsyncSingleShotOptions;
 
-const PROVIDER_PREFLIGHT: Record<ProviderId, ProviderPreflightSpec> = {
-  claude: {
-    helpProbes: [
-      { args: ['--help'], requiredFlags: CLAUDE_REQUIRED_HELP_FLAGS },
-    ],
-    authArgs: ['auth', 'status'],
-  },
-  codex: {
-    helpProbes: [
-      { args: ['--help'], requiredFlags: CODEX_REQUIRED_ROOT_HELP_FLAGS },
-      {
-        args: ['exec', '--help'],
-        requiredFlags: CODEX_REQUIRED_EXEC_HELP_FLAGS,
-      },
-    ],
-    authArgs: ['login', 'status'],
-  },
-};
+function preflightSpecs(
+  adapters: BuiltInProviderAdapterCatalog,
+): Readonly<Record<ProviderId, ProviderPreflightSpec>> {
+  return Object.freeze(
+    Object.fromEntries(
+      Object.entries(adapters).map(([providerId, adapter]) => [
+        providerId,
+        adapter.preflight,
+      ]),
+    ),
+  ) as Readonly<Record<ProviderId, ProviderPreflightSpec>>;
+}
 
 type ProviderRunner = {
   preflight(
@@ -249,9 +235,10 @@ type ProviderRunner = {
  * bounded provider behaviour is exercised without spawning a real process.
  */
 export function createProviderRunnerForTesting(
+  adapters: BuiltInProviderAdapterCatalog,
   host: ProviderRunnerHost,
 ): ProviderRunner {
-  return createProviderRunner(host);
+  return createProviderRunner(adapters, host);
 }
 
 /**
@@ -261,10 +248,11 @@ export function createProviderRunnerForTesting(
  * never invokes a model.
  */
 export function preflightBuiltInProvider(
+  adapters: BuiltInProviderAdapterCatalog,
   providerId: ProviderId,
   options: ProviderPreflightOptions,
 ): ProviderResolution {
-  return createProviderRunner(realProviderRunnerHost()).preflight(
+  return createProviderRunner(adapters, realProviderRunnerHost()).preflight(
     providerId,
     options,
   );
@@ -275,13 +263,14 @@ export function preflightBuiltInProvider(
  * assignment. It never falls through to another safe family candidate.
  */
 export function preflightBuiltInProviderProfile(
+  adapters: BuiltInProviderAdapterCatalog,
   profile: BuiltInReviewedProviderProfileSnapshot,
   options: ProviderPreflightOptions,
 ): ProviderResolution {
-  return createProviderRunner(realProviderRunnerHost()).preflightProfile(
-    profile,
-    options,
-  );
+  return createProviderRunner(
+    adapters,
+    realProviderRunnerHost(),
+  ).preflightProfile(profile, options);
 }
 
 /**
@@ -291,13 +280,17 @@ export function preflightBuiltInProviderProfile(
  * read-only launch and returns the non-durable observation.
  */
 export function runBuiltInProvider(
+  adapters: BuiltInProviderAdapterCatalog,
   input: ProviderRunInput,
   options: ProviderRunOptions,
 ): ProviderRunnerReport {
   if (input.acceptanceBinding === undefined) {
     throw requestUnbound();
   }
-  return createProviderRunner(realProviderRunnerHost()).run(input, options);
+  return createProviderRunner(adapters, realProviderRunnerHost()).run(
+    input,
+    options,
+  );
 }
 
 /**
@@ -305,19 +298,23 @@ export function runBuiltInProvider(
  * projection contract while replacing only the model process wait with spawn.
  */
 export async function runBuiltInProviderAsync(
+  adapters: BuiltInProviderAdapterCatalog,
   input: ProviderRunInput,
   options: ProviderAsyncRunOptions,
 ): Promise<ProviderRunnerReport> {
   if (input.acceptanceBinding === undefined) {
     throw requestUnbound();
   }
-  return await createProviderRunner(realProviderRunnerHost()).runAsync(
-    input,
-    options,
-  );
+  return await createProviderRunner(
+    adapters,
+    realProviderRunnerHost(),
+  ).runAsync(input, options);
 }
 
-function createProviderRunner(host: ProviderRunnerHost): ProviderRunner {
+function createProviderRunner(
+  adapters: BuiltInProviderAdapterCatalog,
+  host: ProviderRunnerHost,
+): ProviderRunner {
   function preflight(
     providerId: ProviderId,
     options: ProviderPreflightOptions,
@@ -334,7 +331,7 @@ function createProviderRunner(host: ProviderRunnerHost): ProviderRunner {
     }
     return preflightProviderSnapshot(
       host,
-      PROVIDER_PREFLIGHT,
+      preflightSpecs(adapters),
       definitionSnapshot,
       options,
     );
@@ -368,7 +365,7 @@ function createProviderRunner(host: ProviderRunnerHost): ProviderRunner {
     }
     return preflightProviderSnapshot(
       host,
-      PROVIDER_PREFLIGHT,
+      preflightSpecs(adapters),
       definitionSnapshot,
       options,
       profile.executable,
@@ -647,7 +644,7 @@ function createProviderRunner(host: ProviderRunnerHost): ProviderRunner {
       );
       const resolution = preflightProviderSnapshot(
         host,
-        PROVIDER_PREFLIGHT,
+        preflightSpecs(adapters),
         providerDefinitionSnapshot,
         {
           platform: options.platform,
@@ -674,11 +671,16 @@ function createProviderRunner(host: ProviderRunnerHost): ProviderRunner {
         '',
       );
 
-      const plan = buildInvocationPlan(input, identityBefore.realPath, {
-        promptPath,
-        schemaPath,
-        semanticOutputPath,
-      });
+      const plan = buildInvocationPlan(
+        adapters,
+        input,
+        identityBefore.realPath,
+        {
+          promptPath,
+          schemaPath,
+          semanticOutputPath,
+        },
+      );
       const environment = createProviderExecutionEnvironment(
         input.providerId,
         process.execPath,
@@ -923,20 +925,12 @@ function createWrapperProtocolExecution(
 }
 
 function buildInvocationPlan(
+  adapters: BuiltInProviderAdapterCatalog,
   input: ProviderRunInput,
   executable: string,
   paths: { promptPath: string; schemaPath: string; semanticOutputPath: string },
 ): ProviderInvocationPlan {
-  if (input.providerId === 'codex') {
-    return buildCodexProviderInvocation({
-      executable,
-      repositoryRoot: input.repositoryRoot,
-      promptPath: paths.promptPath,
-      schemaPath: paths.schemaPath,
-      semanticOutputPath: paths.semanticOutputPath,
-    });
-  }
-  return buildClaudeProviderInvocation({
+  return adapters[input.providerId].buildInvocation({
     executable,
     repositoryRoot: input.repositoryRoot,
     promptPath: paths.promptPath,

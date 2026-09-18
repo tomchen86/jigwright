@@ -2,6 +2,7 @@ import { createInteractiveSshSigner } from '../adapters/signing/ssh/maintainer-s
 import {
   createPlanningProviderAuthoringPort,
   planningProviderReviewedAssetMirrors,
+  reviewedGeneratedAssets,
 } from './planning-provider-authoring-production.ts';
 import { loadMaintainerPolicyForResolution } from '../runtime/repository-observation/human-resolution-grants.ts';
 import { createInvestigationHumanActionBlocker } from './investigation-retry-production.ts';
@@ -46,6 +47,7 @@ import { readProviderRetryAccountingEvidence } from '../runtime/storage-journal/
 export const productionProposeOperations = createProposeOperations({
   createInteractiveSshSigner,
   planningProvider: {
+    reviewedGeneratedAssets,
     createAuthoringPort: createPlanningProviderAuthoringPort,
     reviewedAssetMirrors: planningProviderReviewedAssetMirrors,
   },

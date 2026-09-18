@@ -16,11 +16,8 @@ import {
   type MutationClass,
   type MutationClassPolicy,
   type MutationClassRule,
+  type ReviewedGeneratedAssetInventory,
 } from '../../../modules/source/mutation-class-policy.ts';
-import {
-  OPENSPEC_ASSET_DEFINITIONS,
-  OPENSPEC_ASSET_MANIFEST_PATH,
-} from '../../../adapters/planning/openspec/documents/openspec-planning-asset-contract.ts';
 import { normalizePolicyPath } from '../../../foundation/repository-path/repository-path.ts';
 import type { TrackedTreeSnapshot } from '../../repository-transaction/tracked-tree-reader.ts';
 
@@ -41,6 +38,7 @@ const DOCUMENT_POLICY_MODES = new Set([
  * come only from the candidate tree's canonical document-policy file.
  */
 export function deriveReviewedMutationClassPolicy(
+  reviewedAssets: ReviewedGeneratedAssetInventory,
   snapshot: TrackedTreeSnapshot,
 ): MutationClassPolicy {
   const rules = new Map<string, MutationClassRule>();
@@ -63,7 +61,7 @@ export function deriveReviewedMutationClassPolicy(
     });
   };
 
-  for (const asset of OPENSPEC_ASSET_DEFINITIONS) {
+  for (const asset of reviewedAssets.assets) {
     addExactRule(
       `OPENSPEC_ASSET_DEFINITIONS:${asset.destinationPath}`,
       asset.mirrorOf === null ? 'generated' : 'mirror',
@@ -73,7 +71,7 @@ export function deriveReviewedMutationClassPolicy(
   addExactRule(
     'OPENSPEC_ASSET_MANIFEST_PATH',
     'generated',
-    OPENSPEC_ASSET_MANIFEST_PATH,
+    reviewedAssets.manifestPath,
   );
 
   const documentPolicy = readPinnedDocumentPolicy(snapshot);

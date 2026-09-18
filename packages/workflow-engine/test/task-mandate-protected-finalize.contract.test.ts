@@ -1,4 +1,5 @@
 import { createFinalizationService } from '../src/application/finalize/lifecycle.ts';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import { createProductionProtectedTaskApplyGrantPort as createProtectedApplyPort } from '../src/composition-root/protected-task-apply-grant-production.ts';
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
@@ -606,6 +607,7 @@ test('prepared protected apply reaches the injected document service after real 
       },
     };
     const service = createFinalizationService(
+      reviewedGeneratedAssets,
       localEngineSelectionReaders,
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,

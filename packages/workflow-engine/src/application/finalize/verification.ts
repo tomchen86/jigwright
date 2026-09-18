@@ -1,4 +1,5 @@
 import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
+import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
 import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 /**
@@ -116,6 +117,7 @@ type TrustedCheckPolicy = {
 };
 
 export function checkSession(
+  reviewedAssets: ReviewedGeneratedAssetInventory,
   localEngineSelection: LocalEngineSelectionReaders,
   manifestOperations: MaintainerManifestOperations,
   taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
@@ -133,6 +135,7 @@ export function checkSession(
   const sessionId = assertSessionId(requestedSessionId);
   return withSessionOperation(runtime, sessionId, () =>
     checkSessionUnlocked(
+      reviewedAssets,
       localEngineSelection,
       manifestOperations,
       taskStrategyExecutionGate,
@@ -145,6 +148,7 @@ export function checkSession(
 }
 
 function checkSessionUnlocked(
+  reviewedAssets: ReviewedGeneratedAssetInventory,
   localEngineSelection: LocalEngineSelectionReaders,
   manifestOperations: MaintainerManifestOperations,
   taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
@@ -167,7 +171,7 @@ function checkSessionUnlocked(
     cwd,
     requestedSessionId,
   );
-  ensureTaskMechanicalTransformationEvidence(initial);
+  ensureTaskMechanicalTransformationEvidence(reviewedAssets, initial);
   taskStrategyExecutionGate(initial, options.environment ?? process.env);
   const trustedPolicy = tryLoadTrustedCheckPolicy(
     manifestOperations,

@@ -6,6 +6,7 @@
  * - Public execution requires a current built-in provider definition.
  * - Observed process activity reaches the consumer even when the run fails.
  */
+import { builtInProviderAdapters } from './built-in-provider-adapter-production.ts';
 import crypto from 'node:crypto';
 
 import {
@@ -302,10 +303,14 @@ export const runBuiltInProviderThroughAgentRuntimeV1 =
   createBuiltInAgentRuntimeV1Bridge({
     preflight(providerId, options, selectedProfile) {
       return selectedProfile === null
-        ? preflightBuiltInProvider(providerId, options)
-        : preflightBuiltInProviderProfile(selectedProfile, options);
+        ? preflightBuiltInProvider(builtInProviderAdapters, providerId, options)
+        : preflightBuiltInProviderProfile(
+            builtInProviderAdapters,
+            selectedProfile,
+            options,
+          );
     },
-    runAsync: runBuiltInProviderAsync,
+    runAsync: runBuiltInProviderAsync.bind(undefined, builtInProviderAdapters),
   });
 
 function createStartInput(

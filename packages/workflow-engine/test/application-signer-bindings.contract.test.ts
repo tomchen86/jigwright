@@ -528,6 +528,7 @@ import { planningDraftWorkspace } from '../src/composition-root/planning-workspa
 import {
   createPlanningProviderAuthoringPort,
   planningProviderReviewedAssetMirrors,
+  reviewedGeneratedAssets,
 } from '../src/composition-root/planning-provider-authoring-production.ts';
 /** Binds proposal workflows to required current planning and retry observations. */
 import { createProposeOperations } from '../src/application/propose/propose-orchestrator.ts';
@@ -543,6 +544,7 @@ function proposeOperations(
   const decisions = {
     createInteractiveSshSigner,
     planningProvider: {
+      reviewedGeneratedAssets,
       createAuthoringPort: createPlanningProviderAuthoringPort,
       reviewedAssetMirrors: planningProviderReviewedAssetMirrors,
     },

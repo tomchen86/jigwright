@@ -5,6 +5,7 @@
  * Invariants:
  * - Built-in probe preflight must observe the exact selected executable.
  */
+import { builtInProviderAdapters } from './built-in-provider-adapter-production.ts';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -157,12 +158,16 @@ function probeBuiltInProviderProfileEvidence(
   )
     throw new AgentProviderConfigError();
   const executableObservation = inspectProviderExecutable(profile.executable);
-  const resolution = preflightBuiltInProviderProfile(profile, {
-    platform: context.platform,
-    enabled: profile.enabled,
-    sourceEnvironment: context.sourceEnvironment,
-    temporaryDirectory: context.temporaryDirectory,
-  });
+  const resolution = preflightBuiltInProviderProfile(
+    builtInProviderAdapters,
+    profile,
+    {
+      platform: context.platform,
+      enabled: profile.enabled,
+      sourceEnvironment: context.sourceEnvironment,
+      temporaryDirectory: context.temporaryDirectory,
+    },
+  );
   assertProviderExecutableObservationCurrent(executableObservation);
   if (
     resolution.executable !== undefined &&

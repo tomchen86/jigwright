@@ -1,4 +1,5 @@
 import { createInteractiveSshSigner } from '../adapters/signing/ssh/maintainer-signer.ts';
+import { reviewedGeneratedAssets } from './planning-provider-authoring-production.ts';
 import { readAndValidateTaskRevisionApproval } from './task-revision-approval-production.ts';
 export type { ControlPlanePromotionBootstrapObservations } from '../modules/authority/intervention-bootstrap-contract.ts';
 import {
@@ -305,6 +306,7 @@ export function createProductionSessionCheck(
 ) {
   return checkSessionWithRouting.bind(
     undefined,
+    reviewedGeneratedAssets,
     readers,
     maintainerManifestOperations,
     productionTaskStrategyExecutionGate,

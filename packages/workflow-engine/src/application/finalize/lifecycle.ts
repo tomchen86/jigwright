@@ -1,4 +1,5 @@
 import type { SystemDocumentDispositionService } from './system-document-dispositions.ts';
+import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
 import type { LocalEngineSelectionReaders } from '../../modules/authority/local-engine-selection.ts';
 import {
   createDocumentationClosureRecord,
@@ -1616,6 +1617,7 @@ export function findTaskCommits(
 
 /** Required reconciliation capability is bound once at the production boundary. */
 export function createFinalizationService(
+  reviewedAssets: ReviewedGeneratedAssetInventory,
   localEngineSelection: LocalEngineSelectionReaders,
   manifestOperations: MaintainerManifestOperations,
   taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
@@ -1702,6 +1704,7 @@ export function createFinalizationService(
       return session.state === 'committed'
         ? replayCompletedFinalize(cwd, session)
         : finalizeTaskUnlocked(
+            reviewedAssets,
             taskStrategyExecutionGate,
             routingAdmissionReader,
             taskDiffReview,
@@ -1810,6 +1813,7 @@ export function createFinalizationService(
         );
       }
       finalized = finalizeTaskUnlocked(
+        reviewedAssets,
         taskStrategyExecutionGate,
         routingAdmissionReader,
         taskDiffReview,
@@ -1878,6 +1882,7 @@ export function createFinalizationService(
     return runSessionOperation(cwd, requestedSessionId, () => {
       assertCurrentTaskMayUseOrdinaryFinalize(cwd, requestedSessionId);
       return finalizeTaskUnlocked(
+        reviewedAssets,
         taskStrategyExecutionGate,
         routingAdmissionReader,
         taskDiffReview,

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { builtInProviderAdapters } from '../src/composition-root/built-in-provider-adapter-production.ts';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -326,7 +327,10 @@ test('async runner consumes harness-jsonl-v1 only after explicit adapter opt-in'
       });
     };
 
-    const report = await createProviderRunnerForTesting(host).runAsync(input, {
+    const report = await createProviderRunnerForTesting(
+      builtInProviderAdapters,
+      host,
+    ).runAsync(input, {
       platform: 'darwin',
     });
 
@@ -1002,21 +1006,24 @@ for (const fixtureMode of ['error', 'cancel-ack', 'cancel-ignore'] as const) {
         });
 
       await assert.rejects(
-        createProviderRunnerForTesting(host).runAsync(input, {
-          platform: 'darwin',
-          ...(fixtureMode === 'error' ? {} : { signal: controller.signal }),
-          onProtocolReceipt(receipt) {
-            if (receipt.kind !== 'provider-wrapper-protocol-receipt') {
-              assert.fail(
-                'harness-jsonl-v1 emitted a session protocol receipt',
-              );
-            }
-            observed.push(receipt);
-            if (fixtureMode === 'error') {
-              throw new Error('receipt observer must be non-authoritative');
-            }
+        createProviderRunnerForTesting(builtInProviderAdapters, host).runAsync(
+          input,
+          {
+            platform: 'darwin',
+            ...(fixtureMode === 'error' ? {} : { signal: controller.signal }),
+            onProtocolReceipt(receipt) {
+              if (receipt.kind !== 'provider-wrapper-protocol-receipt') {
+                assert.fail(
+                  'harness-jsonl-v1 emitted a session protocol receipt',
+                );
+              }
+              observed.push(receipt);
+              if (fixtureMode === 'error') {
+                throw new Error('receipt observer must be non-authoritative');
+              }
+            },
           },
-        }),
+        ),
         (error: unknown) =>
           error instanceof WorkflowError &&
           error.code ===
@@ -1057,9 +1064,12 @@ test('async runner releases its concurrency slot after execution rejects', async
     };
 
     await assert.rejects(
-      createProviderRunnerForTesting(host).runAsync(fixture.input, {
-        platform: 'darwin',
-      }),
+      createProviderRunnerForTesting(builtInProviderAdapters, host).runAsync(
+        fixture.input,
+        {
+          platform: 'darwin',
+        },
+      ),
       expected,
     );
     assert.deepEqual(

@@ -1,4 +1,5 @@
 import { createFinalizationService } from '../src/application/finalize/lifecycle.ts';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import { finalizeTaskUnlocked } from '../src/application/finalize/projected-finalization.ts';
 import type { SystemDocumentDispositionService } from '../src/application/finalize/system-document-dispositions.ts';
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
@@ -460,6 +461,7 @@ function finalizationWithDocuments(
   >,
 ) {
   return createFinalizationService(
+    reviewedGeneratedAssets,
     localEngineSelectionReaders,
     maintainerManifestOperations,
     productionTaskStrategyExecutionGate,
@@ -501,6 +503,7 @@ test('ordinary finalization uses the injected document receiver at the original 
       () => service.completeTask(repository, sessionId),
       () =>
         finalizeTaskUnlocked(
+          reviewedGeneratedAssets,
           productionTaskStrategyExecutionGate,
           productionChangeRoutingAdmissionReader,
           taskDiffReview,

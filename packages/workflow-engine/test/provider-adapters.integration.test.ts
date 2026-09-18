@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { builtInProviderAdapters } from '../src/composition-root/built-in-provider-adapter-production.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -323,7 +324,10 @@ test('provider preflight inspects only fixed candidates and records canonical id
     },
   });
 
-  const preflight = createProviderRunnerForTesting(host).preflight;
+  const preflight = createProviderRunnerForTesting(
+    builtInProviderAdapters,
+    host,
+  ).preflight;
   const resolution = preflight('claude', {
     platform: 'darwin',
     enabled: true,
@@ -348,6 +352,7 @@ test('provider preflight inspects only fixed candidates and records canonical id
   assert.deepEqual(probed, [['--version'], ['--help'], ['auth', 'status']]);
 
   const disabled = createProviderRunnerForTesting(
+    builtInProviderAdapters,
     fakeHost({
       inspectCandidate() {
         assert.fail('disabled providers must not be inspected');
@@ -368,6 +373,7 @@ test('provider preflight preserves shared executable observation states', () => 
   const identity = executableIdentity(candidate, candidate);
   const resolve = (observation: ProviderExecutableObservation) =>
     createProviderRunnerForTesting(
+      builtInProviderAdapters,
       fakeHost({
         inspectCandidate(observedCandidate) {
           return observedCandidate === candidate ? observation : null;
@@ -430,6 +436,7 @@ test('Codex preflight probes root and exec capability surfaces with its own auth
     '/Applications/ChatGPT.app/Contents/Resources/codex',
   );
   const resolution = createProviderRunnerForTesting(
+    builtInProviderAdapters,
     fakeHost({
       inspectCandidate(candidate) {
         return candidate === identity.candidatePath ? identity : null;
@@ -491,6 +498,7 @@ test('provider preflight rejects ambiguous successful authentication output', ()
         : candidate,
     );
     const resolution = createProviderRunnerForTesting(
+      builtInProviderAdapters,
       fakeHost({
         inspectCandidate(observed) {
           return observed === candidate ? identity : null;
@@ -543,6 +551,7 @@ test('preflight continues to a later reviewed candidate when the first is incomp
   );
   const probed: string[] = [];
   const resolution = createProviderRunnerForTesting(
+    builtInProviderAdapters,
     fakeHost({
       inspectCandidate(candidate) {
         return candidate === first.candidatePath
@@ -593,6 +602,7 @@ test('assigned built-in preflight probes only the exact selected profile executa
   const inspected: string[] = [];
   const probed: string[] = [];
   const runner = createProviderRunnerForTesting(
+    builtInProviderAdapters,
     fakeHost({
       inspectCandidate(candidate) {
         inspected.push(candidate);
@@ -637,6 +647,7 @@ test('assigned built-in preflight probes only the exact selected profile executa
 test('provider preflight rejects a reviewed symlink that resolves outside reviewed roots', () => {
   let probeCount = 0;
   const resolution = createProviderRunnerForTesting(
+    builtInProviderAdapters,
     fakeHost({
       inspectCandidate(candidate) {
         return candidate === '/opt/homebrew/bin/claude'
@@ -666,6 +677,7 @@ test('provider preflight rejects real paths outside exact reviewed install roots
   ]) {
     let probeCount = 0;
     const resolution = createProviderRunnerForTesting(
+      builtInProviderAdapters,
       fakeHost({
         inspectCandidate(candidate) {
           return candidate === '/opt/homebrew/bin/claude'

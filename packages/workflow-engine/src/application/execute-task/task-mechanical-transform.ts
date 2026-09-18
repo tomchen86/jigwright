@@ -6,6 +6,7 @@
  * - Mechanical-transform checks require current engine-minted closure
  *   evidence.
  */
+import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
 import crypto from 'node:crypto';
 import path from 'node:path';
 
@@ -119,6 +120,7 @@ type MechanicalEvidenceOutput = Readonly<{
  * The task contract is only input: it cannot claim that the closure succeeded.
  */
 export function ensureTaskMechanicalTransformationEvidence(
+  reviewedAssets: ReviewedGeneratedAssetInventory,
   inspection: SessionInspection,
 ): TaskMechanicalTransformationEvidenceRecord | null {
   const task = mechanicalTask(inspection);
@@ -139,7 +141,10 @@ export function ensureTaskMechanicalTransformationEvidence(
     repositoryRoot: inspection.git.repositoryRoot,
     treeOid: inspection.session.baseline.tree,
   });
-  const mutationPolicy = deriveReviewedMutationClassPolicy(baselineSnapshot);
+  const mutationPolicy = deriveReviewedMutationClassPolicy(
+    reviewedAssets,
+    baselineSnapshot,
+  );
   const candidateSnapshot = readPinnedTrackedTree({
     repositoryRoot: inspection.git.repositoryRoot,
     treeOid: candidate.tree,

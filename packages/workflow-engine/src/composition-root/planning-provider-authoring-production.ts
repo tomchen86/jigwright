@@ -8,7 +8,11 @@
 import crypto from 'node:crypto';
 
 import { createOpenSpecAdapter } from './openspec-adapter-production.ts';
-import { OPENSPEC_ASSET_DEFINITIONS } from '../adapters/planning/openspec/documents/openspec-planning-asset-contract.ts';
+import {
+  OPENSPEC_ASSET_DEFINITIONS,
+  OPENSPEC_ASSET_MANIFEST_PATH,
+} from '../adapters/planning/openspec/documents/openspec-planning-asset-contract.ts';
+import type { ReviewedGeneratedAssetInventory } from '../modules/source/mutation-class-policy.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import type {
   PlanningProviderAuthoringPort,
@@ -90,3 +94,10 @@ export function planningProviderReviewedAssetMirrors(
 function sha256(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
+
+/** The reviewed generated assets the current planning provider owns. */
+export const reviewedGeneratedAssets: ReviewedGeneratedAssetInventory =
+  Object.freeze({
+    manifestPath: OPENSPEC_ASSET_MANIFEST_PATH,
+    assets: OPENSPEC_ASSET_DEFINITIONS,
+  });

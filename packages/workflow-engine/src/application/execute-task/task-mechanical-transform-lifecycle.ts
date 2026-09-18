@@ -6,6 +6,7 @@ import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/chang
  * Invariants:
  * - Transformation resume rejects a pre-existing staged projection.
  */
+import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -130,6 +131,7 @@ export type ResumeTaskMechanicalTransformationOptions = Readonly<{
 
 /** Read-only projection status; it never creates evidence or runtime state. */
 export function inspectTaskMechanicalTransformLifecycle(
+  reviewedAssets: ReviewedGeneratedAssetInventory,
   routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
@@ -157,20 +159,25 @@ export function inspectTaskMechanicalTransformLifecycle(
         : {}),
     },
   );
-  return inspectPreparedMechanicalTransformLifecycle(inspection, {
-    ...(projectionApplied
-      ? { expectedChangedPaths: [...finalizeTransaction.changedPaths] }
-      : {}),
-  });
+  return inspectPreparedMechanicalTransformLifecycle(
+    reviewedAssets,
+    inspection,
+    {
+      ...(projectionApplied
+        ? { expectedChangedPaths: [...finalizeTransaction.changedPaths] }
+        : {}),
+    },
+  );
 }
 
 export function inspectPreparedMechanicalTransformLifecycle(
+  reviewedAssets: ReviewedGeneratedAssetInventory,
   inspection: SessionInspection,
   options: Readonly<{ expectedChangedPaths?: readonly string[] }> = {},
 ): TaskMechanicalTransformLifecycleStatus | null {
   const task = mechanicalTask(inspection);
   if (task === null) return null;
-  const plan = prepareProjection(inspection, task);
+  const plan = prepareProjection(reviewedAssets, inspection, task);
   const runtime = investigationRuntimePaths(
     inspection.git.gitCommonDirectory,
     inspection.contract.config.runtimeDirectory,
@@ -208,6 +215,7 @@ export function inspectPreparedMechanicalTransformLifecycle(
  * overwritten.
  */
 export function resumeTaskMechanicalTransformation(
+  reviewedAssets: ReviewedGeneratedAssetInventory,
   routingAdmissionReader: ChangeRoutingAdmissionReader,
   cwd: string,
   requestedSessionId: string,
@@ -243,7 +251,7 @@ export function resumeTaskMechanicalTransformation(
           { details: { stagedPaths: staged } },
         );
       }
-      const plan = prepareProjection(inspection, task);
+      const plan = prepareProjection(reviewedAssets, inspection, task);
       if (plan.operations.length === 0) {
         throw workflowError(
           'TASK_MECHANICAL_TRANSFORMATION_NO_CHANGE',
@@ -315,6 +323,7 @@ export function resumeTaskMechanicalTransformation(
 }
 
 function prepareProjection(
+  reviewedAssets: ReviewedGeneratedAssetInventory,
   inspection: SessionInspection,
   task: MechanicalTransformExecution,
 ): MechanicalProjectionPlan {
@@ -322,7 +331,10 @@ function prepareProjection(
     repositoryRoot: inspection.git.repositoryRoot,
     treeOid: inspection.session.baseline.tree,
   });
-  const mutationPolicy = deriveReviewedMutationClassPolicy(baseline);
+  const mutationPolicy = deriveReviewedMutationClassPolicy(
+    reviewedAssets,
+    baseline,
+  );
   const scoped = baseline.entries.filter(
     (entry) =>
       entry.path.utf8 !== null &&

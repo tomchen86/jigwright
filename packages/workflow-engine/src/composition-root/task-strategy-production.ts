@@ -1,4 +1,5 @@
 import { taskMandateOperations } from './task-mandate-production.ts';
+import { reviewedGeneratedAssets } from './planning-provider-authoring-production.ts';
 import { productionChangeRoutingAdmissionReader } from './change-routing-observation-production.ts';
 import {
   beginTaskStrategyRedRevision,
@@ -22,6 +23,7 @@ export const beginTaskStrategyImplementation =
   );
 export const resumeTaskStrategy = resume.bind(
   undefined,
+  reviewedGeneratedAssets,
   productionChangeRoutingAdmissionReader,
   implementation,
   { beginTaskStrategyRedRevision, continueTaskStrategyRedRevision },
@@ -39,5 +41,6 @@ import { inspectTaskStrategyLifecycle as inspectTaskStrategyLifecycleWithRouting
 export const inspectTaskStrategyLifecycle =
   inspectTaskStrategyLifecycleWithRouting.bind(
     undefined,
+    reviewedGeneratedAssets,
     productionChangeRoutingAdmissionReader,
   );

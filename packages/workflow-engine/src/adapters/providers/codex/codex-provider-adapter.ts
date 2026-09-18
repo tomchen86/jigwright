@@ -6,7 +6,10 @@
  * - The invocation fixes noninteractive read-only execution with ephemeral
  *   state and a supplied output schema.
  */
-import type { ProviderInvocationPlan } from '../../../modules/provider-orchestration/provider-contracts.ts';
+import type {
+  BuiltInProviderAdapter,
+  ProviderInvocationPlan,
+} from '../../../modules/provider-orchestration/provider-contracts.ts';
 export { CODEX_EXECUTABLE_CANDIDATES } from '@jigwright/core/built-in-provider-definition';
 
 /**
@@ -87,3 +90,21 @@ export function buildCodexProviderInvocation(
   Object.freeze(plan);
   return plan;
 }
+
+/** This provider's external command shape, for the composed catalog. */
+export const codexProviderAdapter: BuiltInProviderAdapter = Object.freeze({
+  preflight: Object.freeze({
+    helpProbes: Object.freeze([
+      Object.freeze({
+        args: Object.freeze(['--help']),
+        requiredFlags: CODEX_REQUIRED_ROOT_HELP_FLAGS,
+      }),
+      Object.freeze({
+        args: Object.freeze(['exec', '--help']),
+        requiredFlags: CODEX_REQUIRED_EXEC_HELP_FLAGS,
+      }),
+    ]),
+    authArgs: Object.freeze(['login', 'status']),
+  }),
+  buildInvocation: buildCodexProviderInvocation,
+});
