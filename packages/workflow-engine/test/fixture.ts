@@ -26,7 +26,10 @@ import {
 import { type InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
 import { investigationManifestPublicationNamespace } from '../src/modules/investigation/manifest/investigation-publication-contracts.ts';
 import { OPENSPEC_REPOSITORY_REVIEWED_SOURCES } from '../src/adapters/planning/openspec/documents/openspec-planning-asset-contract.ts';
-import { generateOpenSpecPlanningAssets } from '../src/adapters/planning/openspec/documents/openspec-planning-assets.ts';
+import { generateOpenSpecPlanningAssets as generateOpenSpecPlanningAssetsWithRunner } from '../src/adapters/planning/openspec/documents/openspec-planning-assets.ts';
+import { resolveCheckRunner } from '../src/adapters/consumer/repository/work-registry/runner-resolution.ts';
+const generateOpenSpecPlanningAssets =
+  generateOpenSpecPlanningAssetsWithRunner.bind(undefined, resolveCheckRunner);
 import {
   createPlanReviewNode,
   createPlanReviewProviderResultNode,

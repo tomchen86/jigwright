@@ -46,10 +46,10 @@ import { dispatchCentralRoleProviderDefaultCommand } from './central-role-provid
 import { inspectChangeAssurance } from '../../runtime/repository-transaction/assurance-inspection.ts';
 import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
 import {
-  generateOpenSpecPlanningAssets,
   checkOpenSpecPlanningAssets,
   installOpenSpecPlanningPrompts,
 } from '../../adapters/planning/openspec/documents/openspec-planning-assets.ts';
+import { generateOpenSpecPlanningAssets } from '../../composition-root/planning-provider-authoring-production.ts';
 
 import { dispatchDocumentRefreshCommand } from './document-refresh-cli.ts';
 import { systemDocumentDispositions } from '../../composition-root/system-document-disposition-production.ts';

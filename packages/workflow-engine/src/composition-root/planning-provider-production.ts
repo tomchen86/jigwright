@@ -36,6 +36,7 @@ import { readCurrentPlanningRoleOverridePolicy } from '../runtime/repository-tra
 import { planningProviderBindingReader } from '../runtime/repository-transaction/planning-provider-binding-store.ts';
 import { loadRepositoryConsumerConfiguration } from '../runtime/repository-observation/repository-consumer.ts';
 import { loadCommittedChangeContract } from './consumer-contract-production.ts';
+import { loadStableValidatedChangeContract } from './validated-contract-context.ts';
 import { planPlanningSemanticLedger } from '../runtime/managed-documents/transaction/semantic-ledger-projection.ts';
 
 export {
@@ -91,9 +92,10 @@ export function inspectPlanningTransition(
 export function validatePlanningTransition(
   repositoryRoot: string,
   changeId: string,
-  schemaName: Parameters<typeof validatePlanningTransitionWithAdapter>[2],
+  schemaName: Parameters<typeof validatePlanningTransitionWithAdapter>[3],
 ): ReturnType<typeof validatePlanningTransitionWithAdapter> {
   return validatePlanningTransitionWithAdapter(
+    loadStableValidatedChangeContract,
     repositoryRoot,
     changeId,
     schemaName,

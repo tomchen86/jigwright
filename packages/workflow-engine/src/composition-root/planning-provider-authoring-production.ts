@@ -8,6 +8,8 @@
 import crypto from 'node:crypto';
 
 import { createOpenSpecAdapter } from './openspec-adapter-production.ts';
+import { generateOpenSpecPlanningAssets as generateOpenSpecPlanningAssetsWithRunner } from '../adapters/planning/openspec/documents/openspec-planning-assets.ts';
+import { resolveCheckRunner } from '../adapters/consumer/repository/work-registry/runner-resolution.ts';
 import {
   OPENSPEC_ASSET_DEFINITIONS,
   OPENSPEC_ASSET_MANIFEST_PATH,
@@ -101,3 +103,7 @@ export const reviewedGeneratedAssets: ReviewedGeneratedAssetInventory =
     manifestPath: OPENSPEC_ASSET_MANIFEST_PATH,
     assets: OPENSPEC_ASSET_DEFINITIONS,
   });
+
+/** The asset generator bound to the reviewed check-runner resolver. */
+export const generateOpenSpecPlanningAssets =
+  generateOpenSpecPlanningAssetsWithRunner.bind(undefined, resolveCheckRunner);

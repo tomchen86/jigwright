@@ -27,6 +27,16 @@ export type ResolvedCheckRunner = {
 
 export type PinnedCheckRunner = Readonly<ResolvedCheckRunner>;
 
+/**
+ * Resolves one configured check command to a reviewed executable identity.
+ * Implementations know the repository layout and belong to the consumer adapter.
+ */
+export type CheckRunnerResolver = (
+  repositoryRoot: string,
+  checkId: string,
+  definition: CheckDefinition,
+) => ResolvedCheckRunner;
+
 import type { CheckDefinition } from '@jigwright/core/check-command';
 /** Resolves a pinned executable identity for a declared repository check. */
 export type CheckRunnerPin = (

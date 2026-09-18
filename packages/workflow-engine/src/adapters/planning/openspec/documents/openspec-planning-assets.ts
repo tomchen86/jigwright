@@ -36,7 +36,7 @@ import {
 import { createTrustedExecutionEnvironment } from '../../../../runtime/provider-execution/execution-environment.ts';
 import { ensurePlainDirectory } from '../../../../runtime/repository-transaction/filesystem-safety.ts';
 import { resolveOpenSpecInstallation } from './openspec-executor.ts';
-import { resolveCheckRunner } from '../../../consumer/repository/work-registry/runner-resolution.ts';
+import type { CheckRunnerResolver } from '../../../../modules/source/check-command.ts';
 
 const EXPECTED_GENERATOR_STDERR =
   '- Setting up Codex...\n' +
@@ -78,12 +78,14 @@ export type OpenSpecPlanningAssetOptions = {
 };
 
 export function generateOpenSpecPlanningAssets(
+  resolveCheckRunner: CheckRunnerResolver,
   repositoryRoot: string,
   options: OpenSpecPlanningAssetOptions = {},
 ): { assetPaths: string[]; manifestPath: string } {
   const root = canonicalOpenSpecAssetDirectory(repositoryRoot);
   verifyOpenSpecRepositoryWritePlan(root);
   const formatter = createAssetFormatter(
+    resolveCheckRunner,
     options.formatterRepositoryRoot ?? root,
   );
   const generated = generateUpstreamAssets(root, options);
@@ -323,7 +325,10 @@ function generateUpstreamAssets(
   }
 }
 
-function createAssetFormatter(repositoryRoot: string): {
+function createAssetFormatter(
+  resolveCheckRunner: CheckRunnerResolver,
+  repositoryRoot: string,
+): {
   metadata: OpenSpecFormatterMetadata;
   formatMarkdown: (content: string) => string;
   formatJson: (content: string) => string;

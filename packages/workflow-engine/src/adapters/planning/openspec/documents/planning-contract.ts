@@ -36,7 +36,7 @@ import {
   planningSourceObjectPaths,
 } from '../../../../modules/source/planning-paths.ts';
 import type { CurrentChangeOriginReader } from '../../../../modules/governance-intake/work-registry-contracts.ts';
-import { loadStableValidatedChangeContract } from '../../../../composition-root/validated-contract-context.ts';
+import type { StableValidatedChangeContractLoader } from '../../../../modules/assurance/validated-change-contract.ts';
 
 import type { ResolvedPlanningProviderBinding } from '../../../../modules/planning-provider/planning-provider-binding.ts';
 import { planningProviderBindingPath } from '../../../../modules/source/planning-paths.ts';
@@ -205,6 +205,7 @@ export function inspectPlanningTransition(
 }
 
 export function validateOpenSpecPlanning(
+  loadStableValidatedChangeContract: StableValidatedChangeContractLoader,
   repositoryRoot: string,
   changeId: string,
   schemaName: ManagedSchemaName,
