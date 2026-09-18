@@ -176,12 +176,31 @@ test('propose authoring crosses the production planning-provider composition roo
     ),
     'utf8',
   );
+  const proposeCompositionSource = fs.readFileSync(
+    new URL('../src/composition-root/propose-production.ts', import.meta.url),
+    'utf8',
+  );
 
   assert.doesNotMatch(
     proposeSource,
     /adapters\/planning\/openspec\/documents\/(?:openspec-adapter|openspec-planning-asset-contract)/u,
   );
-  assert.match(proposeSource, /context\.planningProviderAuthoring\(\)/u);
+  assert.match(
+    proposeSource,
+    /decisions\.planningProvider\.createAuthoringPort\(/u,
+  );
+  assert.match(
+    proposeSource,
+    /decisions\.planningProvider\.reviewedAssetMirrors\(/u,
+  );
+  assert.match(
+    proposeCompositionSource,
+    /from '\.\/planning-provider-authoring-production\.ts';/u,
+  );
+  assert.match(
+    proposeCompositionSource,
+    /createAuthoringPort: createPlanningProviderAuthoringPort/u,
+  );
   assert.doesNotMatch(
     proposeSource,
     /composition-root\/(?:planning-provider-authoring|openspec-adapter)-production/u,
