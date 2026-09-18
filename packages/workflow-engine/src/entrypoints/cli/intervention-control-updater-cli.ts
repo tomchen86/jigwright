@@ -5,7 +5,7 @@
  * - Approve-and-apply requires a controlling-terminal signer and summary
  *   presenter.
  */
-import { bootstrapInterventionStateRoot } from '../../../bootstrap/control-plane-trust.ts';
+import type { ControlPlanePromotionBootstrapObservations } from '../../composition-root/cli-command-services.ts';
 import { deriveAuthorityAuditRepositoryId } from '../../runtime/storage-journal/authority-audit-ledger.ts';
 import { authorityRefusalDigest } from '../../modules/authority/authority-refusal-audit.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -100,6 +100,7 @@ export function taskMandateBindingFromControlPlane(
  * sink supplied by the embedding process.
  */
 export function dispatchProductionControlPlaneUpdaterCommand(
+  bootstrapInterventionStateRoot: ControlPlanePromotionBootstrapObservations['bootstrapInterventionStateRoot'],
   argv: readonly string[],
   stateRoot: string,
   dependencies: ControlPlaneUpdaterCliDependencies,
@@ -112,7 +113,11 @@ export function dispatchProductionControlPlaneUpdaterCommand(
     argv[2] === '--task' &&
     isNonEmpty(argv[3])
   ) {
-    assertProductionControlPlaneStateRoot(requestBaseDirectory, stateRoot);
+    assertProductionControlPlaneStateRoot(
+      bootstrapInterventionStateRoot,
+      requestBaseDirectory,
+      stateRoot,
+    );
     const candidateId = argv[1];
     const parentTaskId = argv[3];
     const signer = dependencies.approvalSigner;
@@ -164,7 +169,11 @@ export function dispatchProductionControlPlaneUpdaterCommand(
   }
 
   if (argv[0] === 'recover' && argv.length === 2 && isNonEmpty(argv[1])) {
-    assertProductionControlPlaneStateRoot(requestBaseDirectory, stateRoot);
+    assertProductionControlPlaneStateRoot(
+      bootstrapInterventionStateRoot,
+      requestBaseDirectory,
+      stateRoot,
+    );
     if (!dependencies.revalidateTaskMandateBinding) {
       throw workflowError(
         'CONTROL_PLANE_TASK_MANDATE_VALIDATOR_REQUIRED',
@@ -188,7 +197,11 @@ export function dispatchProductionControlPlaneUpdaterCommand(
   }
 
   if (argv[0] === 'status' && argv.length === 2 && isNonEmpty(argv[1])) {
-    assertProductionControlPlaneStateRoot(requestBaseDirectory, stateRoot);
+    assertProductionControlPlaneStateRoot(
+      bootstrapInterventionStateRoot,
+      requestBaseDirectory,
+      stateRoot,
+    );
     return result({
       action: 'status',
       grantId: argv[1],
@@ -470,6 +483,7 @@ function result(
 }
 
 function assertProductionControlPlaneStateRoot(
+  bootstrapInterventionStateRoot: ControlPlanePromotionBootstrapObservations['bootstrapInterventionStateRoot'],
   requestBaseDirectory: string,
   stateRoot: string,
 ): void {

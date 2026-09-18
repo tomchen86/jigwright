@@ -1,4 +1,5 @@
 import { controlPlanePromotionBootstrapObservations } from './control-plane-promotion-fixture.ts';
+import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -381,6 +382,7 @@ test('production successor producer derives and persists the initial history anc
     );
     assert.deepEqual(calls, { human: 1, sign: 1 });
     const promoted = dispatchProductionControlPlaneUpdaterCommand(
+      bootstrapInterventionStateRoot,
       [
         'approve-and-apply',
         produced.candidate.candidateId,
@@ -451,6 +453,7 @@ test('production successor producer extends an independently verified current te
       successor.frozen.candidateCommit,
     );
     const promoted = dispatchProductionControlPlaneUpdaterCommand(
+      bootstrapInterventionStateRoot,
       [
         'approve-and-apply',
         produced.candidate.candidateId,
@@ -528,6 +531,7 @@ test('production successor producer extends an independently verified current te
         terminalHistory.leaf.recordDigest,
       );
       const promotedAgain = dispatchProductionControlPlaneUpdaterCommand(
+        bootstrapInterventionStateRoot,
         [
           'approve-and-apply',
           producedAgain.candidate.candidateId,
@@ -627,6 +631,7 @@ test('successor recovery publishes an already durable history transition before 
     assert.throws(
       () =>
         dispatchProductionControlPlaneUpdaterCommand(
+          bootstrapInterventionStateRoot,
           [
             'approve-and-apply',
             produced.candidate.candidateId,
@@ -659,6 +664,7 @@ test('successor recovery publishes an already durable history transition before 
     );
 
     const recovered = dispatchProductionControlPlaneUpdaterCommand(
+      bootstrapInterventionStateRoot,
       ['recover', grantId],
       fixture.stateRoot,
       controlPlaneFixtureUpdaterDependencies(
@@ -725,6 +731,7 @@ test('successor recovery seals an already terminal transaction exactly once', as
     assert.throws(
       () =>
         dispatchProductionControlPlaneUpdaterCommand(
+          bootstrapInterventionStateRoot,
           [
             'approve-and-apply',
             produced.candidate.candidateId,
@@ -750,6 +757,7 @@ test('successor recovery seals an already terminal transaction exactly once', as
     );
 
     const recovered = dispatchProductionControlPlaneUpdaterCommand(
+      bootstrapInterventionStateRoot,
       ['recover', grantId],
       fixture.stateRoot,
       controlPlaneFixtureUpdaterDependencies(
@@ -815,6 +823,7 @@ test('successor switch crash seals the exact rollback lineage for bootstrap sele
     assert.throws(
       () =>
         dispatchProductionControlPlaneUpdaterCommand(
+          bootstrapInterventionStateRoot,
           [
             'approve-and-apply',
             produced.candidate.candidateId,
@@ -829,6 +838,7 @@ test('successor switch crash seals the exact rollback lineage for bootstrap sele
     );
     const grantId = approvalGrantId(produced.candidate.candidateId);
     const recovered = dispatchProductionControlPlaneUpdaterCommand(
+      bootstrapInterventionStateRoot,
       ['recover', grantId],
       fixture.stateRoot,
       controlPlaneFixtureUpdaterDependencies(
@@ -887,6 +897,7 @@ test('sealed successor selection rejects a fully redigested signature substituti
       },
     );
     const promoted = dispatchProductionControlPlaneUpdaterCommand(
+      bootstrapInterventionStateRoot,
       [
         'approve-and-apply',
         produced.candidate.candidateId,

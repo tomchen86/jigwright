@@ -1,4 +1,5 @@
 import { controlPlanePromotionBootstrapObservations } from './control-plane-promotion-fixture.ts';
+import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -243,6 +244,7 @@ test('approve-and-apply derives the summary, signs exact bytes, promotes, and re
   const approval = productionApprovalDependencies(value);
   try {
     const promoted = dispatchProductionControlPlaneUpdaterCommand(
+      bootstrapInterventionStateRoot,
       productionApprovalArgv(value),
       value.stateRoot,
       approval.dependencies,
@@ -316,6 +318,7 @@ test('approve-and-apply derives the summary, signs exact bytes, promotes, and re
       );
     }
     const status = dispatchProductionControlPlaneUpdaterCommand(
+      bootstrapInterventionStateRoot,
       ['status', promoted.grantId],
       value.stateRoot,
       approval.dependencies,
@@ -389,6 +392,7 @@ test('approval rejects cross-task, cross-root, revoked, and replaced mandates be
       assert.throws(
         () =>
           dispatchProductionControlPlaneUpdaterCommand(
+            bootstrapInterventionStateRoot,
             [
               'approve-and-apply',
               value.produced.candidate.candidateId,
@@ -426,6 +430,7 @@ test('approval rejects cross-task, cross-root, revoked, and replaced mandates be
         assert.throws(
           () =>
             dispatchProductionControlPlaneUpdaterCommand(
+              bootstrapInterventionStateRoot,
               productionApprovalArgv(value),
               value.stateRoot,
               approval.dependencies,
@@ -457,6 +462,7 @@ test('approval rejects cross-task, cross-root, revoked, and replaced mandates be
       assert.throws(
         () =>
           dispatchProductionControlPlaneUpdaterCommand(
+            bootstrapInterventionStateRoot,
             productionApprovalArgv(value),
             value.stateRoot,
             approval.dependencies,
@@ -489,6 +495,7 @@ test('approval rejects cross-task, cross-root, revoked, and replaced mandates be
       assert.throws(
         () =>
           dispatchProductionControlPlaneUpdaterCommand(
+            bootstrapInterventionStateRoot,
             productionApprovalArgv(value),
             value.stateRoot,
             approval.dependencies,
@@ -553,6 +560,7 @@ test('production updater rejects caller-supplied signed promotion request JSON w
     assert.throws(
       () =>
         dispatchProductionControlPlaneUpdaterCommand(
+          bootstrapInterventionStateRoot,
           ['promote', '--request', 'caller-request.json'],
           value.stateRoot,
           approval.dependencies,
@@ -565,6 +573,7 @@ test('production updater rejects caller-supplied signed promotion request JSON w
     assert.throws(
       () =>
         dispatchProductionControlPlaneUpdaterCommand(
+          bootstrapInterventionStateRoot,
           [
             'recover',
             'caller-grant',
@@ -594,6 +603,7 @@ test('approval failures are read-only before the atomic switch', async (suite) =
       assert.throws(
         () =>
           dispatchProductionControlPlaneUpdaterCommand(
+            bootstrapInterventionStateRoot,
             productionApprovalArgv(value),
             value.stateRoot,
             approval.dependencies,
@@ -621,6 +631,7 @@ test('approval failures are read-only before the atomic switch', async (suite) =
       assert.throws(
         () =>
           dispatchProductionControlPlaneUpdaterCommand(
+            bootstrapInterventionStateRoot,
             productionApprovalArgv(value),
             value.stateRoot,
             approval.dependencies,
@@ -654,6 +665,7 @@ test('approval failures are read-only before the atomic switch', async (suite) =
       assert.throws(
         () =>
           dispatchProductionControlPlaneUpdaterCommand(
+            bootstrapInterventionStateRoot,
             productionApprovalArgv(value),
             value.stateRoot,
             approval.dependencies,
@@ -680,6 +692,7 @@ test('approval failures are read-only before the atomic switch', async (suite) =
       assert.throws(
         () =>
           dispatchProductionControlPlaneUpdaterCommand(
+            bootstrapInterventionStateRoot,
             productionApprovalArgv(value),
             value.stateRoot,
             approval.dependencies,
@@ -707,6 +720,7 @@ test('approve-and-apply rolls back an unhealthy candidate and consumes the one-s
       },
     });
     const result = dispatchProductionControlPlaneUpdaterCommand(
+      bootstrapInterventionStateRoot,
       productionApprovalArgv(value),
       value.stateRoot,
       approval.dependencies,
@@ -729,6 +743,7 @@ test('approve-and-apply replay is rejected without a second signature or mutatio
   try {
     const approval = productionApprovalDependencies(value);
     dispatchProductionControlPlaneUpdaterCommand(
+      bootstrapInterventionStateRoot,
       productionApprovalArgv(value),
       value.stateRoot,
       approval.dependencies,
@@ -739,6 +754,7 @@ test('approve-and-apply replay is rejected without a second signature or mutatio
     assert.throws(
       () =>
         dispatchProductionControlPlaneUpdaterCommand(
+          bootstrapInterventionStateRoot,
           productionApprovalArgv(value),
           value.stateRoot,
           approval.dependencies,

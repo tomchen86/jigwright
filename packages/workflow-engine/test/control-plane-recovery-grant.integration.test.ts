@@ -1,4 +1,5 @@
 import { controlPlaneRecoveryGrantPersistence } from '../src/runtime/storage-journal/control-plane-recovery-grant.ts';
+import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';
 import { controlPlanePromotionBootstrapObservations } from './control-plane-promotion-fixture.ts';
 import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
@@ -635,6 +636,7 @@ async function sealedBrokenFixture() {
     assert.throws(
       () =>
         dispatchProductionControlPlaneUpdaterCommand(
+          bootstrapInterventionStateRoot,
           [
             'approve-and-apply',
             produced.candidate.candidateId,

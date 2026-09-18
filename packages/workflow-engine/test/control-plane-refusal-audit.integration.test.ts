@@ -1,4 +1,5 @@
 import { controlPlanePromotionBootstrapObservations } from './control-plane-promotion-fixture.ts';
+import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';
 import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
 import fs from 'node:fs';
@@ -83,6 +84,7 @@ test('verified control-plane pre-switch refusal is audited once while unverified
       assert.throws(
         () =>
           dispatchProductionControlPlaneUpdaterCommand(
+            bootstrapInterventionStateRoot,
             argv,
             fixture.stateRoot,
             dependencies,
@@ -118,6 +120,7 @@ test('verified control-plane pre-switch refusal is audited once while unverified
     assert.throws(
       () =>
         dispatchProductionControlPlaneUpdaterCommand(
+          bootstrapInterventionStateRoot,
           [
             'approve-and-apply',
             produced.candidate.candidateId,
@@ -133,6 +136,7 @@ test('verified control-plane pre-switch refusal is audited once while unverified
     assert.throws(
       () =>
         dispatchProductionControlPlaneUpdaterCommand(
+          bootstrapInterventionStateRoot,
           argv,
           `${fixture.stateRoot}-other`,
           dependencies,
@@ -151,6 +155,7 @@ test('verified control-plane pre-switch refusal is audited once while unverified
     assert.throws(
       () =>
         dispatchProductionControlPlaneUpdaterCommand(
+          bootstrapInterventionStateRoot,
           argv,
           fixture.stateRoot,
           dependencies,

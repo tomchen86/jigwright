@@ -285,6 +285,7 @@ export async function setupFinalizedControlPlanePromotionFixture(
     );
     const approvalSummaries: ControlPlaneApprovalSummaryV3[] = [];
     const promoted = dispatchProductionControlPlaneUpdaterCommand(
+      bootstrapInterventionStateRoot,
       [
         'approve-and-apply',
         produced.candidate.candidateId,

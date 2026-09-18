@@ -589,6 +589,7 @@ function dispatchProductionControlPlaneCommand(
     );
   }
   return dispatchProductionControlPlaneUpdaterCommand(
+    bootstrapObservations.bootstrapInterventionStateRoot,
     rest,
     stateRoot,
     dependencies,

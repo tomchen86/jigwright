@@ -1,4 +1,5 @@
 import { controlPlanePromotionBootstrapObservations } from './control-plane-promotion-fixture.ts';
+import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -93,6 +94,7 @@ test('current missing artifact authority at RECOVERY_VERIFIED fails before super
     assert.throws(
       () =>
         dispatchProductionControlPlaneUpdaterCommand(
+          bootstrapInterventionStateRoot,
           value.argv,
           value.stateRoot,
           dependencies,
@@ -158,6 +160,7 @@ test('current signed provenance rejects a coherent replacement artifact record',
     assert.throws(
       () =>
         dispatchProductionControlPlaneUpdaterCommand(
+          bootstrapInterventionStateRoot,
           value.argv,
           value.stateRoot,
           value.dependencies,
@@ -193,6 +196,7 @@ test('current FINALIZED replay cannot succeed without its pinned artifact record
     assert.throws(
       () =>
         dispatchProductionControlPlaneUpdaterCommand(
+          bootstrapInterventionStateRoot,
           value.argv,
           value.stateRoot,
           dependencies,
@@ -249,6 +253,7 @@ test('current rollback terminalizes the exact reserved sidecar pin', async () =>
       },
     };
     const rolledBack = dispatchProductionControlPlaneUpdaterCommand(
+      bootstrapInterventionStateRoot,
       value.argv,
       value.stateRoot,
       dependencies,

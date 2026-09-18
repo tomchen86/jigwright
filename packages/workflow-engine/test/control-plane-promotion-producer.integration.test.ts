@@ -1,4 +1,5 @@
 import { controlPlanePromotionBootstrapObservations } from './control-plane-promotion-fixture.ts';
+import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
@@ -125,6 +126,7 @@ test('clean frozen Class-C candidate produces exact current reviewed material an
     assert.throws(
       () =>
         dispatchProductionControlPlaneUpdaterCommand(
+          bootstrapInterventionStateRoot,
           [
             'approve-and-apply',
             produced.candidate.candidateId,
@@ -179,6 +181,7 @@ test('clean frozen Class-C candidate produces exact current reviewed material an
       approvalSummaries,
     );
     const promoted = dispatchProductionControlPlaneUpdaterCommand(
+      bootstrapInterventionStateRoot,
       [
         'approve-and-apply',
         independentlyReviewed.candidate.candidateId,
@@ -276,6 +279,7 @@ test('producer rejects a caller-selected state store before reading or signing',
     assert.throws(
       () =>
         dispatchProductionControlPlaneUpdaterCommand(
+          bootstrapInterventionStateRoot,
           [
             'approve-and-apply',
             digest('nonexistent-persisted-candidate'),

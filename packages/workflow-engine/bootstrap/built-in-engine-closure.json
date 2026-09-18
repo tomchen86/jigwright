@@ -1973,7 +1973,7 @@
     {
       "path": "src/entrypoints/cli/authority-management-cli.ts",
       "mode": "100644",
-      "digest": "sha256:e3ef47f5651389b1d9d7bee82254ea5b0a8826aa417a89cc1df883ee92838fab"
+      "digest": "sha256:f3974445ce64622977e519ff3aa7b2b646778c325f7ee6e364ec38005719cab3"
     },
     {
       "path": "src/entrypoints/cli/boundary-cli.ts",
@@ -2058,7 +2058,7 @@
     {
       "path": "src/entrypoints/cli/intervention-control-updater-cli.ts",
       "mode": "100644",
-      "digest": "sha256:8c7765034c368911105d0846f65e9ecb58639ce9c45318c2d1412ead3f81fb26"
+      "digest": "sha256:a717af6e237d393655b77bc56bcb9b1f6fe2b4ab9dc054915d784d8abcf4f11a"
     },
     {
       "path": "src/entrypoints/cli/provider-operations-cli.ts",
