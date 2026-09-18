@@ -663,7 +663,7 @@
     {
       "path": "src/application/control-plane/authority-plan.ts",
       "mode": "100644",
-      "digest": "sha256:95b8de9b84620b30b790d72ad3308f8b41db2080f6130607434da4a18c85a498"
+      "digest": "sha256:e5b4011d3e1e78f1f58868a8e955857b09bb3b20a91f3b3f14fedc8014644cb8"
     },
     {
       "path": "src/application/control-plane/collaboration-grant-revocation.ts",
@@ -868,12 +868,12 @@
     {
       "path": "src/application/control-plane/maintainer-apply-reissue.ts",
       "mode": "100644",
-      "digest": "sha256:64f5170518ff06337b5a793f3eca0cd3aafba571951cf709cdaebacafb0b8173"
+      "digest": "sha256:43d19f1aa1c4debf5a15959fb790d6900cf9253849ae036e1a800553ddebf134"
     },
     {
       "path": "src/application/control-plane/maintainer-approve.ts",
       "mode": "100644",
-      "digest": "sha256:b0494b469dfa3da7398b0bc119e4b45a7142ab66a2753e2c3d65fb994c1d8186"
+      "digest": "sha256:0315a48474b50d102370411c10c71480e760c99fbfdfc5faed6da32282fbcd13"
     },
     {
       "path": "src/application/control-plane/maintainer-attestation.ts",
@@ -883,7 +883,7 @@
     {
       "path": "src/application/control-plane/maintainer-commit.ts",
       "mode": "100644",
-      "digest": "sha256:0c6c8359538d1fb47e97a0d99c7e9cd5b0d91127bfc63e6693bdfcd290189aea"
+      "digest": "sha256:a1c5acbb7e609fabbc45266b1921870971ee4e6a05a3f15ff7448eeb37d3efc7"
     },
     {
       "path": "src/application/control-plane/maintainer-grant-v2.ts",
@@ -893,7 +893,7 @@
     {
       "path": "src/application/control-plane/maintainer-recovery-audit.ts",
       "mode": "100644",
-      "digest": "sha256:5fe38900f6d2650f686e21ffd2c88fe175862610a9f072751619ad65ce26c1e8"
+      "digest": "sha256:6c94c1987b11b4ed264ef99f529e7f21bc149d636687d5ec17d763f956ac7582"
     },
     {
       "path": "src/application/control-plane/maintainer-recovery-journal.ts",
@@ -913,7 +913,7 @@
     {
       "path": "src/application/control-plane/maintainer-recovery.ts",
       "mode": "100644",
-      "digest": "sha256:e6fec944d5670d6f35341e30de71e7aa410f2c8e69c489dcfc179b0e85aa7b90"
+      "digest": "sha256:d42340a8a1ef70e2283b85172fec18cc611606e3bb4c231853eb2550cd8b642c"
     },
     {
       "path": "src/application/control-plane/maintainer-session-inspection.ts",
@@ -1223,7 +1223,7 @@
     {
       "path": "src/application/propose/propose-decision-services.ts",
       "mode": "100644",
-      "digest": "sha256:42ce0e7ac16ead378460c04a01fed6891ddad0757c31396228829ec221d89eb8"
+      "digest": "sha256:3d7339461219123e4e0c3a6cc2e3d9c634d3f3c19262d7e06798036da6549171"
     },
     {
       "path": "src/application/propose/propose-evidence.ts",
@@ -1253,7 +1253,7 @@
     {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:50576ad9df100704498dd59b6638f66e6b540dc6615f48eec103ffc5991f05ec"
+      "digest": "sha256:2c7b0e15a4fa69caeab4cdd704f3e60985b7d0730d0065c095fc87ef91dadec9"
     },
     {
       "path": "src/application/propose/propose-output.ts",
@@ -1538,7 +1538,7 @@
     {
       "path": "src/composition-root/cli-command-services.ts",
       "mode": "100644",
-      "digest": "sha256:b64e8177a85b7eb16b1934e9dbc94f4286f2e98b9e16046f378a2f1fd2f21057"
+      "digest": "sha256:ed7bb06260981565e8c1a01ff3efe6be35e1293b46c51edffbede23f3aa670c4"
     },
     {
       "path": "src/composition-root/collaboration-grant-issuance-production.ts",
@@ -1683,7 +1683,7 @@
     {
       "path": "src/composition-root/maintainer-authority-production.ts",
       "mode": "100644",
-      "digest": "sha256:751932bd20f78b01cdcbb0cba71c6426077a3cf8bae1e5dd223ac1f97475a474"
+      "digest": "sha256:c628611acbc36d9d83e8e1b14271390448de8c5a9d75e1c1e91ed75a80f759f0"
     },
     {
       "path": "src/composition-root/maintainer-grant-v2-production.ts",
@@ -1768,7 +1768,7 @@
     {
       "path": "src/composition-root/propose-production.ts",
       "mode": "100644",
-      "digest": "sha256:06f96689373bcd3746d8b4fbcfdaf469e750c438b9b28acc986bacb8fe4818d2"
+      "digest": "sha256:02defe298f8c7798b410d18eb46b94ff8bf3f15ed0ded99cee625f3aa6979b7e"
     },
     {
       "path": "src/composition-root/protected-base-initialization-production.ts",

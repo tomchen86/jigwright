@@ -1,3 +1,4 @@
+import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
 import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
 import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
 /**
@@ -28,6 +29,7 @@ export function createMaintainerApplyReissue(
   bindings: () => MaintainerApplyReissueBindings,
 ) {
   function reissueAndApplyMaintainerGrantV2(
+    createSigner: MaintainerSignerFactory,
     withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
     grantServices: MaintainerGrantExecutionServices,
     authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
@@ -48,6 +50,7 @@ export function createMaintainerApplyReissue(
     );
     return withPostApprovalAdmissionDeadline(deadline, () =>
       reissueAndApplyMaintainerGrantV2WithDeadline(
+        createSigner,
         withAuthorityRefusalAudit,
         grantServices,
         authorityApplicationReceipts,
@@ -62,6 +65,7 @@ export function createMaintainerApplyReissue(
   }
 
   function reissueAndApplyMaintainerGrantV2WithDeadline(
+    createSigner: MaintainerSignerFactory,
     withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
     grantServices: MaintainerGrantExecutionServices,
     authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
@@ -98,6 +102,7 @@ export function createMaintainerApplyReissue(
     );
     const envelope = prior.envelope;
     const trusted = verifyHistoricalApplyGrantTrust(
+      createSigner,
       repository,
       envelope,
       options.signer,
@@ -228,6 +233,7 @@ export function createMaintainerApplyReissue(
             ),
         );
         const committed = commitAuthoritySession(
+          createSigner,
           withAuthorityRefusalAudit,
           grantServices,
           authorityApplicationReceipts,
@@ -276,6 +282,7 @@ export function createMaintainerApplyReissue(
   }
 
   function verifyHistoricalApplyGrantTrust(
+    createSigner: MaintainerSignerFactory,
     repository: ReturnType<typeof discoverRepository>,
     envelope: MaintainerGrantV2Envelope,
     providedSigner: MaintainerSignerProvider | undefined,
@@ -286,7 +293,7 @@ export function createMaintainerApplyReissue(
     const {
       parseMaintainerPolicy,
       runGit,
-      createInteractiveSshSigner,
+
       canonicalMaintainerGrantV2Payload,
       MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
       workflowError,
@@ -312,8 +319,7 @@ export function createMaintainerApplyReissue(
       ),
     );
     const signer =
-      providedSigner ??
-      createInteractiveSshSigner(repository.repositoryRoot, currentPolicy);
+      providedSigner ?? createSigner(repository.repositoryRoot, currentPolicy);
     try {
       signer.verify(
         canonicalMaintainerGrantV2Payload(envelope.payload),

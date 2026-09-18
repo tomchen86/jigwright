@@ -12,9 +12,9 @@
   },
   "sourceTelemetryRunId": "run-20260912023916307-f369e0a2-e7a4-441a-bca1-57c8300410a4",
   "sourceTelemetryDigest": "sha256:9b45f37d8baf330b4fbd88d81456c97b50767229cf3cb6646d9dcdc1fdb4661d",
-  "physicalFileCount": 526,
-  "executionUnitCount": 523,
-  "inventoryDigest": "sha256:4f9a4167d78a2155768cebae95eee6428bd8dca788238fae8649d3dcf002d7cd",
+  "physicalFileCount": 527,
+  "executionUnitCount": 524,
+  "inventoryDigest": "sha256:133c592d25117fc75f18d39e35251650c5af0726497297a0ab06c6250dc10535",
   "shards": [
     {
       "shardNumber": 1,
@@ -2585,11 +2585,19 @@
           "estimatedDurationMs": 0
         },
         {
+          "entrypoint": "packages/workflow-engine/test/application-signer-bindings.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/application-signer-bindings.contract.test.ts"
+          ],
+          "legacyOrdinal": 509,
+          "estimatedDurationMs": 0
+        },
+        {
           "entrypoint": "packages/workflow-engine/test/authority-provider-family-boundary.contract.test.ts",
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/authority-provider-family-boundary.contract.test.ts"
           ],
-          "legacyOrdinal": 509,
+          "legacyOrdinal": 510,
           "estimatedDurationMs": 0
         },
         {
@@ -2597,7 +2605,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/completion-rollback-boundary.contract.test.ts"
           ],
-          "legacyOrdinal": 510,
+          "legacyOrdinal": 511,
           "estimatedDurationMs": 0
         },
         {
@@ -2605,7 +2613,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/control-plane-recovery-grant-boundary.test.ts"
           ],
-          "legacyOrdinal": 511,
+          "legacyOrdinal": 512,
           "estimatedDurationMs": 0
         },
         {
@@ -2613,7 +2621,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/control-plane-recovery-grant-rules.test.ts"
           ],
-          "legacyOrdinal": 512,
+          "legacyOrdinal": 513,
           "estimatedDurationMs": 0
         },
         {
@@ -2621,7 +2629,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/evidence-retention-boundary.test.ts"
           ],
-          "legacyOrdinal": 513,
+          "legacyOrdinal": 514,
           "estimatedDurationMs": 0
         },
         {
@@ -2629,7 +2637,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/investigation-propose-flow.integration.test.ts"
           ],
-          "legacyOrdinal": 514,
+          "legacyOrdinal": 515,
           "estimatedDurationMs": 0
         },
         {
@@ -2637,7 +2645,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/lifecycle-domain-boundary.contract.test.ts"
           ],
-          "legacyOrdinal": 515,
+          "legacyOrdinal": 516,
           "estimatedDurationMs": 0
         },
         {
@@ -2645,7 +2653,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/projection-domain-boundary.contract.test.ts"
           ],
-          "legacyOrdinal": 516,
+          "legacyOrdinal": 517,
           "estimatedDurationMs": 0
         },
         {
@@ -2653,7 +2661,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/provider-native-session-closure.integration.test.ts"
           ],
-          "legacyOrdinal": 517,
+          "legacyOrdinal": 518,
           "estimatedDurationMs": 0
         },
         {
@@ -2661,7 +2669,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/runtime-context-boundary.contract.test.ts"
           ],
-          "legacyOrdinal": 518,
+          "legacyOrdinal": 519,
           "estimatedDurationMs": 0
         },
         {
@@ -2669,7 +2677,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/system-document-composition-boundary.contract.test.ts"
           ],
-          "legacyOrdinal": 519,
+          "legacyOrdinal": 520,
           "estimatedDurationMs": 0
         },
         {
@@ -2677,7 +2685,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/task-mandate-boundary.test.ts"
           ],
-          "legacyOrdinal": 520,
+          "legacyOrdinal": 521,
           "estimatedDurationMs": 0
         },
         {
@@ -2685,7 +2693,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/task-mandate-protected-finalize.contract.test.ts"
           ],
-          "legacyOrdinal": 521,
+          "legacyOrdinal": 522,
           "estimatedDurationMs": 0
         },
         {
@@ -2693,7 +2701,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/task-mandate-rules.test.ts"
           ],
-          "legacyOrdinal": 522,
+          "legacyOrdinal": 523,
           "estimatedDurationMs": 0
         },
         {
@@ -2701,7 +2709,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/task-revision-approval-boundary.test.ts"
           ],
-          "legacyOrdinal": 523,
+          "legacyOrdinal": 524,
           "estimatedDurationMs": 0
         }
       ]

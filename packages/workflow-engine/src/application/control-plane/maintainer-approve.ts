@@ -1,3 +1,4 @@
+import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
 import type {
   CandidateChecksAttestationV3,
   CandidateExternalEffect,
@@ -81,10 +82,7 @@ import {
 import { type MaintainerGrantV2PreflightResult } from '../../modules/authority/maintainer-grant-v2.ts';
 
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import {
-  createInteractiveSshSigner,
-  type MaintainerSignerProvider,
-} from '../../adapters/signing/ssh/maintainer-signer.ts';
+import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
 import { startAuthoritySession } from './maintainer-session.ts';
 import {
   maintainerGrantStorePaths,
@@ -173,6 +171,7 @@ export type PrepareMaintainerGrantV2ChecksOptions = {
 };
 
 export function approveAndApplyMaintainerGrantV2(
+  createSigner: MaintainerSignerFactory,
   withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
   grantServices: MaintainerGrantExecutionServices,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
@@ -203,6 +202,7 @@ export function approveAndApplyMaintainerGrantV2(
       },
       () =>
         approveAndApplyMaintainerGrantV2WithBinding(
+          createSigner,
           withAuthorityRefusalAudit,
           grantServices,
           authorityApplicationReceipts,
@@ -219,6 +219,7 @@ export function approveAndApplyMaintainerGrantV2(
 }
 
 function approveAndApplyMaintainerGrantV2WithBinding(
+  createSigner: MaintainerSignerFactory,
   withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
   grantServices: MaintainerGrantExecutionServices,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
@@ -300,8 +301,7 @@ function approveAndApplyMaintainerGrantV2WithBinding(
     ),
   );
   const signer =
-    options.signer ??
-    createInteractiveSshSigner(repository.repositoryRoot, policy);
+    options.signer ?? createSigner(repository.repositoryRoot, policy);
   const auditScope = maintainerAuditScope(
     repository.repositoryRealPath,
     policy.repository.id,
@@ -486,6 +486,7 @@ function approveAndApplyMaintainerGrantV2WithBinding(
       ),
   );
   const committed = commitAuthoritySession(
+    createSigner,
     withAuthorityRefusalAudit,
     grantServices,
     authorityApplicationReceipts,
@@ -530,6 +531,7 @@ function approveAndApplyMaintainerGrantV2WithBinding(
 }
 
 export function revokeMaintainerGrantV2(
+  createSigner: MaintainerSignerFactory,
   withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
   cwd: string,
   request: RevokeMaintainerGrantV2Request,
@@ -550,6 +552,7 @@ export function revokeMaintainerGrantV2(
   );
   const envelope = initial.envelope;
   const trusted = verifyHistoricalApplyGrantTrust(
+    createSigner,
     repository,
     envelope,
     options.signer,
@@ -905,7 +908,6 @@ export type MaintainerApplyReissueBindings = {
   authorityApplicationReceiptTagRef: typeof authorityApplicationReceiptTagRef;
   parseMaintainerPolicy: typeof parseMaintainerPolicy;
   runGit: typeof runGit;
-  createInteractiveSshSigner: typeof createInteractiveSshSigner;
   canonicalMaintainerGrantV2Payload: typeof canonicalMaintainerGrantV2Payload;
   MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE: typeof MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE;
   maintainerAuditScope: typeof maintainerAuditScope;
@@ -942,7 +944,7 @@ const { reissueAndApplyMaintainerGrantV2, verifyHistoricalApplyGrantTrust } =
     authorityApplicationReceiptTagRef,
     parseMaintainerPolicy,
     runGit,
-    createInteractiveSshSigner,
+
     canonicalMaintainerGrantV2Payload,
     MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
     maintainerAuditScope,

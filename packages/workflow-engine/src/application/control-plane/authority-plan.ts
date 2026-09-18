@@ -1,3 +1,4 @@
+import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
 import type { CandidateExternalEffect } from '../../modules/authority/maintainer-candidate-contracts.ts';
 import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
 import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
@@ -301,6 +302,7 @@ export function inspectAuthorityPlan(
 }
 
 export function approveAndApplyAuthorityPlan(
+  createSigner: MaintainerSignerFactory,
   withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
   grantServices: MaintainerGrantExecutionServices,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
@@ -352,6 +354,7 @@ export function approveAndApplyAuthorityPlan(
       options.approveAndApply ??
       ((root: string, request: ApproveAndApplyMaintainerGrantV2Request) =>
         approveAndApplyMaintainerGrantV2(
+          createSigner,
           withAuthorityRefusalAudit,
           grantServices,
           authorityApplicationReceipts,

@@ -1,3 +1,4 @@
+import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
 import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
 /**
  * Reconstructs portable application and transaction audit receipts during
@@ -40,6 +41,7 @@ export function createMaintainerRecoveryAudit(
   bindings: () => MaintainerRecoveryAuditBindings,
 ) {
   function ensurePortableApplicationReceipt(
+    createSigner: MaintainerSignerFactory,
     authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
     session: AuthoritySession,
     journal: AuthorityCommitJournal,
@@ -56,7 +58,6 @@ export function createMaintainerRecoveryAudit(
       signedGrantEnvelopeDigest,
       canonicalMaintainerGrantV2Envelope,
       authorityApplicationReceiptTagRef,
-      createInteractiveSshSigner,
     } = boundServices;
 
     const terminal = readTerminalMaintainerGrant(
@@ -152,7 +153,7 @@ export function createMaintainerRecoveryAudit(
     ).trim();
     let signer = providedSigner;
     if (!alreadyPublished) {
-      signer ??= createInteractiveSshSigner(session.repositoryRoot, policy);
+      signer ??= createSigner(session.repositoryRoot, policy);
       signer.assertHumanPresent();
     }
     authorityApplicationReceipts.publishAuthorityApplicationReceipt(

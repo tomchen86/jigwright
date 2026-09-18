@@ -1,3 +1,4 @@
+import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
 import {
   type TaskMandateProviderAdmission,
   type TaskMandatePreparationAuthorization,
@@ -27,6 +28,7 @@ import type { PlanningAssurancePort } from '../../modules/assurance/planning-ass
 import type { ProviderRetryAccountingReader } from '../../modules/provider-orchestration/provider-retry-accounting.ts';
 
 export type ProposeDecisionServices = Readonly<{
+  createInteractiveSshSigner: MaintainerSignerFactory;
   loadMaintainerPolicyForResolution: HumanResolutionServices['loadMaintainerPolicyForResolution'];
   createInvestigationHumanActionBlocker: InvestigationHumanActionBlockerFactory;
   taskMandate: Pick<

@@ -1,3 +1,4 @@
+import { createInteractiveSshSigner } from '../adapters/signing/ssh/maintainer-signer.ts';
 import { withAuthorityRefusalAudit } from './authority-refusal-production.ts';
 /** Assemble authority commands around required current grant and candidate services. */
 import { authorityAttestationOperations } from './maintainer-attestation-production.ts';
@@ -41,6 +42,7 @@ export function createMaintainerAuthorityProduction(
   const approveAndApplyMaintainerGrantV2 =
     approveAndApplyMaintainerGrantV2WithMandate.bind(
       undefined,
+      createInteractiveSshSigner,
       withAuthorityRefusalAudit,
       maintainerGrantExecutionServices,
       authorityApplicationReceipts,
@@ -50,6 +52,7 @@ export function createMaintainerAuthorityProduction(
   const reissueAndApplyMaintainerGrantV2 =
     reissueAndApplyMaintainerGrantV2WithMandate.bind(
       undefined,
+      createInteractiveSshSigner,
       withAuthorityRefusalAudit,
       maintainerGrantExecutionServices,
       authorityApplicationReceipts,
@@ -58,6 +61,7 @@ export function createMaintainerAuthorityProduction(
     );
   const recoverAuthorityCommit = recoverAuthorityCommitWithMandate.bind(
     undefined,
+    createInteractiveSshSigner,
     maintainerGrantExecutionServices,
     authorityApplicationReceipts,
     taskMandateOperations,
@@ -85,6 +89,7 @@ export function createMaintainerAuthorityProduction(
   );
   const commitAuthoritySession = commitAuthoritySessionWithMandate.bind(
     undefined,
+    createInteractiveSshSigner,
     withAuthorityRefusalAudit,
     maintainerGrantExecutionServices,
     authorityApplicationReceipts,
@@ -94,6 +99,7 @@ export function createMaintainerAuthorityProduction(
   const approveAndApplyAuthorityPlan =
     approveAndApplyAuthorityPlanWithMandate.bind(
       undefined,
+      createInteractiveSshSigner,
       withAuthorityRefusalAudit,
       maintainerGrantExecutionServices,
       authorityApplicationReceipts,

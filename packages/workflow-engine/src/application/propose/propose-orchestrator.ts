@@ -41,10 +41,7 @@ import {
   startInvestigationSessionUnderLifecycleLock,
   type InvestigationStatus,
 } from '../../adapters/planning/investigation/investigation-session.ts';
-import {
-  createInteractiveSshSigner,
-  type MaintainerSignerProvider,
-} from '../../adapters/signing/ssh/maintainer-signer.ts';
+import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
 import { type InvestigationManifestV3 } from '../../modules/investigation/manifest/investigation-manifest-types.ts';
 import { type ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
@@ -331,7 +328,7 @@ function createProposeRuntime(decisions: ProposeDecisionServices) {
       retireCurrentProposeExemptionSession,
     },
     grants: {
-      createInteractiveSshSigner,
+      createInteractiveSshSigner: decisions.createInteractiveSshSigner,
       consumeCollaborationGrant,
       consumeCollaborationGrantUnderLifecycleLock,
       readExactConsumedCollaborationGrantUse,

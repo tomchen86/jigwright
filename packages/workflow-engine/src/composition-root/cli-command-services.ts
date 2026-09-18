@@ -1,3 +1,4 @@
+import { createInteractiveSshSigner } from '../adapters/signing/ssh/maintainer-signer.ts';
 import { readAndValidateTaskRevisionApproval } from './task-revision-approval-production.ts';
 export type { ControlPlanePromotionBootstrapObservations } from '../modules/authority/intervention-bootstrap-contract.ts';
 import {
@@ -164,6 +165,7 @@ import { revokeMaintainerGrantV2 as revokeMaintainerGrantV2WithAudit } from '../
 import { withAuthorityRefusalAudit } from './authority-refusal-production.ts';
 export const revokeMaintainerGrantV2 = revokeMaintainerGrantV2WithAudit.bind(
   undefined,
+  createInteractiveSshSigner,
   withAuthorityRefusalAudit,
 );
 

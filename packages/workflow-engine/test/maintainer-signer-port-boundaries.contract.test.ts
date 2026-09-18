@@ -70,7 +70,12 @@ test('production code has no type-only dependency on the SSH signer adapter', ()
         if (
           clause &&
           (!hasRuntimeBinding(clause) ||
-            entryPath.startsWith(path.join(SOURCE_ROOT, 'runtime') + path.sep))
+            entryPath.startsWith(
+              path.join(SOURCE_ROOT, 'runtime') + path.sep,
+            ) ||
+            entryPath.startsWith(
+              path.join(SOURCE_ROOT, 'application') + path.sep,
+            ))
         ) {
           offenders.push(path.relative(SOURCE_ROOT, entryPath));
         }

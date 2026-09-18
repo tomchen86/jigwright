@@ -68,6 +68,7 @@ import '../execution-core-terminal-failures.contract.test.ts';
 import '../ci-planning.integration.test.ts';
 import '../colocated-spec-admission.integration.test.ts';
 import '../actor-authority-boundary.contract.test.ts';
+import '../application-signer-bindings.contract.test.ts';
 import '../authority-provider-family-boundary.contract.test.ts';
 import '../completion-rollback-boundary.contract.test.ts';
 import '../control-plane-recovery-grant-boundary.test.ts';

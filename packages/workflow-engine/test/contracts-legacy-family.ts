@@ -258,6 +258,7 @@ import './agent-provider-config-dry-run.integration.test.ts';
 import './collaboration-grant-composition-drift.integration.test.ts';
 import './grant-verifier-composition.contract.test.ts';
 import './maintainer-signer-port-boundaries.contract.test.ts';
+import './application-signer-bindings.contract.test.ts';
 import './markdown-sections-package-boundary.contract.test.ts';
 import './openspec-archive-projection-package.contract.test.ts';
 import './role-context-sharing-grant.contract.test.ts';

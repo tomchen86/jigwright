@@ -1,3 +1,4 @@
+import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
 import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
 import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
 /**
@@ -61,7 +62,6 @@ import {
 } from './maintainer-session.ts';
 import type { AuthoritySession } from '../../modules/authority/authority-session-contract.ts';
 import { maintainerGrantStorePaths } from '../../runtime/storage-journal/maintainer-store.ts';
-import { createInteractiveSshSigner } from '../../adapters/signing/ssh/maintainer-signer.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
 
 export type AuthorityCommitOptions = AuthoritySessionOptions & {
@@ -106,6 +106,7 @@ class AuthorityPoststateVerificationFailed extends Error {
 }
 
 export function commitAuthoritySession(
+  createSigner: MaintainerSignerFactory,
   withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
   grantServices: MaintainerGrantExecutionServices,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
@@ -172,6 +173,7 @@ export function commitAuthoritySession(
     }
     return withPostApprovalAdmissionDeadline(deadline, () =>
       commitAuthoritySessionWithDeadline(
+        createSigner,
         withAuthorityRefusalAudit,
         grantServices,
         authorityApplicationReceipts,
@@ -219,6 +221,7 @@ export function commitAuthoritySession(
 }
 
 function commitAuthoritySessionWithDeadline(
+  createSigner: MaintainerSignerFactory,
   withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
   grantServices: MaintainerGrantExecutionServices,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
@@ -239,6 +242,7 @@ function commitAuthoritySessionWithDeadline(
   const journalPath = path.join(store.journals, `${requestedSessionId}.json`);
   if (fs.existsSync(journalPath)) {
     return recoverAuthorityCommit(
+      createSigner,
       grantServices,
       authorityApplicationReceipts,
       taskMandate,
@@ -284,10 +288,7 @@ function commitAuthoritySessionWithDeadline(
   const executeCommit = (): AuthorityCommitResult => {
     const signer =
       options.signer ??
-      createInteractiveSshSigner(
-        inspection.git.repositoryRoot,
-        inspection.policy,
-      );
+      createSigner(inspection.git.repositoryRoot, inspection.policy);
     let journalCreated = false;
     const stagedProjection: {
       current: {
@@ -512,6 +513,7 @@ function commitAuthoritySessionWithDeadline(
         );
       }
       return recoverAuthorityCommit(
+        createSigner,
         grantServices,
         authorityApplicationReceipts,
         taskMandate,
@@ -598,6 +600,7 @@ function commitAuthoritySessionWithDeadline(
       if (journalCreated) {
         try {
           return recoverAuthorityCommit(
+            createSigner,
             grantServices,
             authorityApplicationReceipts,
             taskMandate,

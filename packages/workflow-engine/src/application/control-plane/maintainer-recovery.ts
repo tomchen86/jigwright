@@ -1,3 +1,4 @@
+import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
 import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
 /**
  * Journals authority commits and recovers their durable completion phases.
@@ -57,10 +58,7 @@ import {
 } from '../../runtime/repository-transaction/git.ts';
 import { canonicalMaintainerGrantV2Envelope } from '../../modules/authority/maintainer-grant-v2-codec.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import {
-  createInteractiveSshSigner,
-  type MaintainerSignerProvider,
-} from '../../adapters/signing/ssh/maintainer-signer.ts';
+import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
 import {
   failAuthoritySession,
   markAuthoritySessionCommitted,
@@ -273,6 +271,7 @@ export function recordAuthorityCasPrepared(
 }
 
 export function recoverAuthorityCommit(
+  createSigner: MaintainerSignerFactory,
   records: RefGenerationRecords,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   taskMandate: MaintainerTaskMandateOperations,
@@ -323,6 +322,7 @@ export function recoverAuthorityCommit(
     }
     return withPostApprovalAdmissionDeadline(deadline, () =>
       recoverAuthorityCommitWithDeadline(
+        createSigner,
         records,
         authorityApplicationReceipts,
         taskMandate,
@@ -352,6 +352,7 @@ export function recoverAuthorityCommit(
 }
 
 function recoverAuthorityCommitWithDeadline(
+  createSigner: MaintainerSignerFactory,
   records: RefGenerationRecords,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   taskMandate: MaintainerTaskMandateOperations,
@@ -464,6 +465,7 @@ function recoverAuthorityCommitWithDeadline(
         }
         if (currentJournal.state === 'audited') {
           return finalizeAudited(
+            createSigner,
             authorityApplicationReceipts,
             cwd,
             currentSession,
@@ -475,6 +477,7 @@ function recoverAuthorityCommitWithDeadline(
         }
         if (currentJournal.state === 'consumed') {
           return finalizeConsumed(
+            createSigner,
             authorityApplicationReceipts,
             cwd,
             currentSession,
@@ -676,6 +679,7 @@ function recoverAuthorityCommitWithDeadline(
           },
         );
         return finalizeConsumed(
+          createSigner,
           authorityApplicationReceipts,
           cwd,
           currentSession,
@@ -736,6 +740,7 @@ function recoverAuthorityCommitWithDeadline(
 }
 
 function finalizeConsumed(
+  createSigner: MaintainerSignerFactory,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   cwd: string,
   session: AuthoritySession,
@@ -818,6 +823,7 @@ function finalizeConsumed(
     },
   );
   return finalizeAudited(
+    createSigner,
     authorityApplicationReceipts,
     cwd,
     session,
@@ -829,6 +835,7 @@ function finalizeConsumed(
 }
 
 function finalizeAudited(
+  createSigner: MaintainerSignerFactory,
   authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   cwd: string,
   session: AuthoritySession,
@@ -885,6 +892,7 @@ function finalizeAudited(
     now,
   );
   ensurePortableApplicationReceipt(
+    createSigner,
     authorityApplicationReceipts,
     session,
     verified,
@@ -1076,7 +1084,6 @@ export type MaintainerRecoveryAuditBindings = {
   signedGrantEnvelopeDigest: typeof signedGrantEnvelopeDigest;
   canonicalMaintainerGrantV2Envelope: typeof canonicalMaintainerGrantV2Envelope;
   authorityApplicationReceiptTagRef: typeof authorityApplicationReceiptTagRef;
-  createInteractiveSshSigner: typeof createInteractiveSshSigner;
   canonicalJson: typeof canonicalJson;
   authorityAuditLedgerPaths: typeof authorityAuditLedgerPaths;
   authorityAuditAppendInputForEvent: typeof authorityAuditAppendInputForEvent;
@@ -1119,7 +1126,7 @@ const {
   signedGrantEnvelopeDigest,
   canonicalMaintainerGrantV2Envelope,
   authorityApplicationReceiptTagRef,
-  createInteractiveSshSigner,
+
   canonicalJson,
   authorityAuditLedgerPaths,
   authorityAuditAppendInputForEvent,

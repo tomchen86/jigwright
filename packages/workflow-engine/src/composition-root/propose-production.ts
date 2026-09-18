@@ -1,3 +1,4 @@
+import { createInteractiveSshSigner } from '../adapters/signing/ssh/maintainer-signer.ts';
 import { loadMaintainerPolicyForResolution } from '../runtime/repository-observation/human-resolution-grants.ts';
 import { createInvestigationHumanActionBlocker } from './investigation-retry-production.ts';
 import { taskMandateOperations } from './task-mandate-production.ts';
@@ -39,6 +40,7 @@ import {
 import { readProviderRetryAccountingEvidence } from '../runtime/storage-journal/provider-retry-accounting-reader.ts';
 
 export const productionProposeOperations = createProposeOperations({
+  createInteractiveSshSigner,
   loadMaintainerPolicyForResolution,
   createInvestigationHumanActionBlocker,
   taskMandate: taskMandateOperations,
