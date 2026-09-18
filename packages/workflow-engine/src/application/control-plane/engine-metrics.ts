@@ -29,7 +29,7 @@ import {
   WORKFLOW_SUPERSEDE_REASONS,
   type WorkflowSupersedeReason,
 } from '../../modules/authority/intervention-control.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 import { type InvestigationRuntimePaths } from '../../runtime/session-workspace/paths.ts';
 import { assertInvestigationId } from '../../foundation/repository-path/repository-path.ts';
 import type {

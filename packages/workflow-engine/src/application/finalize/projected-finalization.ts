@@ -48,7 +48,7 @@ import {
   fingerprintUnstagedRepositoryProjection,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
-import { loadActiveSessionContext } from '../../composition-root/lifecycle-context.ts';
+import { loadActiveSessionContext } from '../../runtime/repository-observation/workflow-session-context.ts';
 import { applyGeneratedDocumentMutations } from '../../runtime/managed-documents/validation/managed-documents.ts';
 import type { ImplementationReconciliationGate } from '../reconciliation/implementation-reconciliation.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';

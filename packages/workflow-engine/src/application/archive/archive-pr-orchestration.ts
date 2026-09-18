@@ -43,7 +43,7 @@ import {
 } from './archive-transition.ts';
 
 import { ensurePlainDirectory } from '../../runtime/repository-transaction/filesystem-safety.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 import {
   persistArchivePublicationPreparation,
   readArchivePublicationPreparation,

@@ -14,10 +14,8 @@ import { writeEvidenceNode } from '../../runtime/storage-journal/evidence-object
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { readFinalizeTransaction } from '../../runtime/repository-transaction/finalize-transaction.ts';
 import type { ImplementationReconciliationGate } from '../reconciliation/implementation-reconciliation.ts';
-import {
-  loadActiveSessionContext,
-  loadInvestigationRuntimeContext,
-} from '../../composition-root/lifecycle-context.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
+import { loadActiveSessionContext } from '../../runtime/repository-observation/workflow-session-context.ts';
 import { restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock } from './task-strategy-patch.ts';
 import {
   readTaskStrategyPatchCurrentBinding,

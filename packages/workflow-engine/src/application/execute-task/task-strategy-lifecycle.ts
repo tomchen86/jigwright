@@ -18,7 +18,7 @@ import type {
 } from '../../modules/planning-provider/planning-artifact-types.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 import {
   providerInvocationExists,
   readProviderInvocation,

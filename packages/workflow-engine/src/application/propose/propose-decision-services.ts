@@ -1,4 +1,8 @@
 import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
+import type {
+  PlanningProviderAuthoringPort,
+  PlanningProviderReviewedAssetMirror,
+} from '../../modules/planning-provider/planning-provider-authoring-port.ts';
 import {
   type TaskMandateProviderAdmission,
   type TaskMandatePreparationAuthorization,
@@ -29,6 +33,12 @@ import type { ProviderRetryAccountingReader } from '../../modules/provider-orche
 
 export type ProposeDecisionServices = Readonly<{
   createInteractiveSshSigner: MaintainerSignerFactory;
+  planningProvider: Readonly<{
+    createAuthoringPort(repositoryRoot: string): PlanningProviderAuthoringPort;
+    reviewedAssetMirrors(
+      repositoryRoot: string,
+    ): readonly PlanningProviderReviewedAssetMirror[];
+  }>;
   loadMaintainerPolicyForResolution: HumanResolutionServices['loadMaintainerPolicyForResolution'];
   createInvestigationHumanActionBlocker: InvestigationHumanActionBlockerFactory;
   taskMandate: Pick<

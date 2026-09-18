@@ -72,10 +72,9 @@ import {
   assertTaskId,
 } from '../../foundation/repository-path/repository-path.ts';
 import {
-  assertFinishProjection,
   loadActiveSessionContext,
   runSessionOperation,
-} from '../../composition-root/lifecycle-context.ts';
+} from '../../runtime/repository-observation/workflow-session-context.ts';
 import { reconcilePredecessor } from './predecessor-reconciliation.ts';
 import {
   removeFinalizeTransaction,
@@ -1254,6 +1253,29 @@ function assertFinalizeTransactionMatchesSession(
     JSON.stringify(transaction.baseline) !== JSON.stringify(session.baseline)
   ) {
     throw invalidCompletedFinalize();
+  }
+}
+
+function assertFinishProjection(
+  report: WorkflowReport,
+  inspection: SessionInspection,
+): void {
+  const stagedPaths = reportStringArray(
+    report,
+    'stagedPaths',
+    'FINISH_REPORT_STALE',
+  );
+  const currentStaged = listStagedPaths(
+    inspection.git.repositoryRoot,
+    inspection.session.baseline.head,
+  );
+  const tree = runGit(inspection.git.repositoryRoot, ['write-tree']).trim();
+  if (
+    JSON.stringify(stagedPaths) !== JSON.stringify(currentStaged) ||
+    JSON.stringify(stagedPaths) !== JSON.stringify(inspection.changedPaths) ||
+    reportString(report, 'tree', 'FINISH_REPORT_STALE') !== tree
+  ) {
+    throw staleReport('FINISH_REPORT_STALE');
   }
 }
 

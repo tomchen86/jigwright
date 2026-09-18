@@ -40,10 +40,8 @@ import { previewExactStaging } from '../../runtime/repository-transaction/git-tr
 
 import { runGit } from '../../runtime/repository-transaction/git.ts';
 
-import {
-  loadActiveSessionContext,
-  loadInvestigationRuntimeContext,
-} from '../../composition-root/lifecycle-context.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
+import { loadActiveSessionContext } from '../../runtime/repository-observation/workflow-session-context.ts';
 
 import {
   createProviderInvocation,

@@ -42,7 +42,7 @@ import {
   type InvestigationStatus,
 } from '../../adapters/planning/investigation/investigation-session.ts';
 import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 import { type InvestigationManifestV3 } from '../../modules/investigation/manifest/investigation-manifest-types.ts';
 import { type ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import { deriveReviewedMutationClassPolicy } from '../../runtime/managed-documents/ownership/reviewed-mutation-policy.ts';
@@ -260,10 +260,16 @@ function createProposeRuntime(decisions: ProposeDecisionServices) {
       ...decisions.semanticLedger,
       planningProviderAuthoring: (
         context: ReturnType<typeof loadInvestigationRuntimeContext>,
-      ) => context.planningProviderAuthoring(),
+      ) =>
+        decisions.planningProvider.createAuthoringPort(
+          context.git.repositoryRoot,
+        ),
       planningProviderReviewedAssetMirrors: (
         context: ReturnType<typeof loadInvestigationRuntimeContext>,
-      ) => context.planningProviderReviewedAssetMirrors(),
+      ) =>
+        decisions.planningProvider.reviewedAssetMirrors(
+          context.git.repositoryRoot,
+        ),
     },
     evidence: {
       assertStoredEvidenceNode,

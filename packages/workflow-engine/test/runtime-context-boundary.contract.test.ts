@@ -3,15 +3,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { READ_ONLY_PROBE_KINDS_V1 } from '@jigwright/core/read-only-probe';
-import {
-  loadActiveSessionContext,
-  loadInvestigationRuntimeContext,
-} from '../src/composition-root/lifecycle-context.ts';
+import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { ExitCode, WorkflowError } from '../src/foundation/errors/errors.ts';
 import type { WorkflowSession } from '../src/modules/lifecycle/workflow-session-contract.ts';
 import { executeProviderReadOnlyProbe } from '../src/runtime/provider-execution/provider-probe-executor.ts';
 import { observeInvestigationRuntimeContext } from '../src/runtime/repository-observation/investigation-runtime-context.ts';
-import { readWorkflowSessionContext } from '../src/runtime/repository-observation/workflow-session-context.ts';
+import {
+  loadActiveSessionContext,
+  readWorkflowSessionContext,
+} from '../src/runtime/repository-observation/workflow-session-context.ts';
 import { resumePendingCommit } from '../src/runtime/repository-transaction/commit-recovery.ts';
 import { managedCommitMessage } from '../src/runtime/repository-transaction/git-transitions.ts';
 import {
@@ -180,7 +180,7 @@ test('runtime observation retains both layouts while composed providers remain l
   }
 });
 
-test('raw session observation retains full stored states and composition alone requires active state', () => {
+test('raw session observation retains full stored states and active admission alone requires active state', () => {
   const repository = createFixtureRepository();
   try {
     const active = storedSession(repository);
@@ -431,8 +431,8 @@ test('runtime context readers and consumers reject type and value dependencies o
     };
     check();
     for (const declaration of [
-      "import { loadActiveSessionContext } from '../../composition-root/lifecycle-context.ts';",
-      "import type { loadActiveSessionContext } from '../../composition-root/lifecycle-context.ts';",
+      "import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';",
+      "import type { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';",
     ])
       assert.throws(() => check('\n' + declaration), assert.AssertionError);
   }

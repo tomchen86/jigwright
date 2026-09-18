@@ -93,7 +93,7 @@ import {
   terminallyRevokeAvailableMaintainerGrantV2UnderLifecycleLock,
 } from '../../runtime/storage-journal/maintainer-store.ts';
 import { listProviderInvocationLifecycleProjections } from '../../runtime/storage-journal/provider-invocation-lifecycle.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 import { readProviderInvocation } from '../../runtime/storage-journal/provider-invocation-store.ts';
 import {
   listConflictingActiveWorkflowSessionIds,

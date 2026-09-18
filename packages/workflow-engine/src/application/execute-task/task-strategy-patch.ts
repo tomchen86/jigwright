@@ -28,7 +28,7 @@ import {
 import {
   loadActiveSessionContext,
   runSessionOperation,
-} from '../../composition-root/lifecycle-context.ts';
+} from '../../runtime/repository-observation/workflow-session-context.ts';
 import { investigationRuntimePaths } from '../../runtime/session-workspace/paths.ts';
 import {
   matchesAllowedPath,

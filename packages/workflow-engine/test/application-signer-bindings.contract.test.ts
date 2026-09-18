@@ -525,6 +525,10 @@ import {
   captureGovernanceSource,
 } from '../src/composition-root/governance-sources-production.ts';
 import { planningDraftWorkspace } from '../src/composition-root/planning-workspace-production.ts';
+import {
+  createPlanningProviderAuthoringPort,
+  planningProviderReviewedAssetMirrors,
+} from '../src/composition-root/planning-provider-authoring-production.ts';
 /** Binds proposal workflows to required current planning and retry observations. */
 import { createProposeOperations } from '../src/application/propose/propose-orchestrator.ts';
 import {
@@ -538,6 +542,10 @@ function proposeOperations(
 ) {
   const decisions = {
     createInteractiveSshSigner,
+    planningProvider: {
+      createAuthoringPort: createPlanningProviderAuthoringPort,
+      reviewedAssetMirrors: planningProviderReviewedAssetMirrors,
+    },
     loadMaintainerPolicyForResolution,
     createInvestigationHumanActionBlocker,
     taskMandate: taskMandateOperations,

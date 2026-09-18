@@ -23,10 +23,8 @@ import { writeEvidenceNode } from '../../runtime/storage-journal/evidence-object
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { previewExactStaging } from '../../runtime/repository-transaction/git-transitions.ts';
 import { runGit } from '../../runtime/repository-transaction/git.ts';
-import {
-  loadInvestigationRuntimeContext,
-  runSessionOperation,
-} from '../../composition-root/lifecycle-context.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
+import { runSessionOperation } from '../../runtime/repository-observation/workflow-session-context.ts';
 import { matchesAllowedPath } from '../../foundation/repository-path/repository-path.ts';
 import {
   createTaskStrategyTransaction,

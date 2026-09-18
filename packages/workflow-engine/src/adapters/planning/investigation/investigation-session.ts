@@ -144,7 +144,7 @@ import {
   type QuarantinedHumanResolutionGrantPublication,
 } from '../../../modules/investigation/domain/human-resolution-grant-publication-contract.ts';
 
-import { loadInvestigationRuntimeContext } from '../../../composition-root/lifecycle-context.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../../runtime/repository-observation/investigation-runtime-context.ts';
 
 import type { HumanRevocationOptions } from '../../../modules/authority/human-revocation-contract.ts';
 import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../../modules/investigation/manifest/plan-review-coverage-policy.ts';
