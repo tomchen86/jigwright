@@ -38,13 +38,15 @@ import {
 } from '../../modules/provider-orchestration/role-assignment.ts';
 import {
   assertDurableCollaborationPlanReviewRequirement,
-  assertDurablePlanReviewRoleTopology,
-  assertDurableRoleContextSharingPlanReviewRequirement,
-  assertPlanReviewGrantAuthorization,
   assertPlanReviewRetryDecisionBinding,
   type DurablePlanReviewGrantRequirementV3,
   type PlanReviewGrantRequirement,
 } from './plan-review-contracts.ts';
+import {
+  assertDurablePlanReviewRoleTopology,
+  assertDurableRoleContextSharingPlanReviewRequirement,
+} from './plan-review-role-topology.ts';
+import { assertPlanReviewGrantAuthorization } from './plan-review-grant-authorization.ts';
 import {
   DIGEST,
   hasExactKeys,

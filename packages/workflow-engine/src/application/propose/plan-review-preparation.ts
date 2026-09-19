@@ -36,10 +36,10 @@ import {
 } from '../../modules/provider-orchestration/role-topology-resolution.ts';
 import {
   type ProposeGrantAuthorization,
-  collaborationTransitionDigest,
   createCollaborationPlanReviewRequirementV3,
   planReviewGrantRequest,
 } from './plan-review-contracts.ts';
+import { collaborationTransitionDigest } from './plan-review-grant-authorization.ts';
 import { preparePlanReviewRoleTopology } from './plan-review-role-topology.ts';
 import {
   persistPlanReviewGrantRequirement,

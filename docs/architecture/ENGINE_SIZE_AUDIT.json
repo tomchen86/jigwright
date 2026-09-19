@@ -10,8 +10,9 @@
   "filesOver800": 93,
   "fileClassification": {
     "justified-prior-audit": 55,
-    "unjustified": 25,
+    "justified-single-component": 23,
     "prior-reason-stale": 6,
+    "split": 2,
     "declaration-surface": 6,
     "dispatch-or-container": 1
   },
@@ -29,7 +30,7 @@
     "thresholds": ">=1000 lines or >=250-line function",
     "coversAtCurrentPath": 61
   },
-  "verdict": "Criterion 6 is not met, but the gap is narrower than the raw counts suggest. Of 93 files over 800 lines: 55 carry a prior justification that still fits the current file, 6 carry one that has drifted more than 10% and needs re-reading, 7 are justified by measured shape alone, and 25 have no justification at all. At function level 606 of 886 bodies over 80 lines are neither a dispatch nor a factory container; none of those has a recorded reason.",
+  "verdict": "Criterion 6 is met at file level and not met at function level. Every file over 800 lines now carries a justification: 55 from the earlier audit whose reason still fits, 6 whose earlier reason has drifted past 10% and should be re-read, 7 that are a contract surface or pure dispatch, 23 that are a single connected component with no seam, and 2 that had a real seam and were split. At function level 606 of 886 bodies over 80 lines are neither a dispatch nor a factory container and none carries a recorded reason. That is the remaining criterion 6 work.",
   "files": [
     {
       "file": "packages/workflow-engine/src/adapters/planning/investigation/investigation-session.ts",
@@ -49,9 +50,15 @@
       "lines": 2393,
       "exports": 18,
       "functionsOver80": 5,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: readWorkItemPromotionTransaction (241), abortWorkItemPromotionTransaction (128), <anonymous> (84)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 62 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 62,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [2180]
+      }
     },
     {
       "file": "packages/workflow-engine/src/application/finalize/lifecycle.ts",
@@ -604,9 +611,15 @@
       "lines": 1013,
       "exports": 6,
       "functionsOver80": 3,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: evaluateMechanicalClosure (113), ensureTaskMechanicalTransformationEvidence (102), assertDeterministicMechanicalProjection (93)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 38 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 38,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [883]
+      }
     },
     {
       "file": "packages/workflow-engine/src/runtime/provider-execution/provider-runner.ts",
@@ -626,27 +639,45 @@
       "lines": 1000,
       "exports": 6,
       "functionsOver80": 2,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: createNativeSessionTurnController (185), resolveCurrentAgentRuntimeAssignmentPreGrant (108)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 35 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 35,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [836]
+      }
     },
     {
       "file": "packages/workflow-engine/src/application/execute-task/session.ts",
       "lines": 997,
       "exports": 10,
       "functionsOver80": 2,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: persistSessionStart (171), inspectSessionStart (100)",
-      "priorAudit": null
+      "classification": "split",
+      "reason": "Split at the seam the cohesion analysis found. session.ts 997 -> 740 with the abort path in session-abort.ts (333).",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 20,
+        "connectedComponents": 2,
+        "componentsOver150Lines": 2,
+        "largestComponents": [608, 222]
+      }
     },
     {
       "file": "packages/workflow-engine/src/modules/guidance/next-steps/workflow-guidance.ts",
       "lines": 980,
       "exports": 8,
       "functionsOver80": 1,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: taskDiffReviewNextSteps (86)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 35 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 35,
+        "connectedComponents": 2,
+        "componentsOver150Lines": 1,
+        "largestComponents": [880, 3]
+      }
     },
     {
       "file": "packages/workflow-engine/src/application/control-plane/maintainer-session.ts",
@@ -679,9 +710,15 @@
       "lines": 968,
       "exports": 4,
       "functionsOver80": 2,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: createOrReadExactChangeRoleAssignmentRecordV1 (121), inspectHistoricalChangeRoleAssignmentRecordV1 (87)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 51 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 51,
+        "connectedComponents": 3,
+        "componentsOver150Lines": 1,
+        "largestComponents": [829, 10, 3]
+      }
     },
     {
       "file": "packages/workflow-engine/src/application/control-plane/maintainer-approve.ts",
@@ -723,9 +760,15 @@
       "lines": 954,
       "exports": 37,
       "functionsOver80": 2,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: prepareEngineAdoption (130), validateMaintenancePayload (93)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 20 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 20,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [735]
+      }
     },
     {
       "file": "packages/workflow-engine/src/modules/assurance/planning-assurance-validator.ts",
@@ -758,18 +801,30 @@
       "lines": 946,
       "exports": 33,
       "functionsOver80": 2,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: createControlPlanePromotionMaterial (128), createControlPlaneRecoveryBundleMaterial (82)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 24 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 24,
+        "connectedComponents": 2,
+        "componentsOver150Lines": 1,
+        "largestComponents": [680, 104]
+      }
     },
     {
       "file": "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-state.ts",
       "lines": 946,
       "exports": 13,
       "functionsOver80": 3,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: createProviderInvocation (179), <anonymous> (120)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 15 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 15,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [792]
+      }
     },
     {
       "file": "packages/workflow-engine/src/application/propose/propose-input.ts",
@@ -833,9 +888,15 @@
       "lines": 913,
       "exports": 1,
       "functionsOver80": 4,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: doctor (108)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 6 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 6,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [773]
+      }
     },
     {
       "file": "packages/workflow-engine/src/application/finalize/task-diff-review-lineage.ts",
@@ -855,18 +916,30 @@
       "lines": 906,
       "exports": 19,
       "functionsOver80": 2,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: assertDurablePlanReviewRoleTopology (163), assertPlanReviewGrantAuthorization (133)",
-      "priorAudit": null
+      "classification": "split",
+      "reason": "Split at the seam the cohesion analysis found. plan-review-contracts.ts 906 -> 448; the durable role topology assertions joined the existing plan-review-role-topology.ts and the grant authorization assertions became plan-review-grant-authorization.ts.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 15,
+        "connectedComponents": 7,
+        "componentsOver150Lines": 3,
+        "largestComponents": [228, 217, 199, 55]
+      }
     },
     {
       "file": "packages/workflow-engine/src/modules/assurance/plan-target.ts",
       "lines": 896,
       "exports": 7,
       "functionsOver80": 2,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: componentSemantic (153), assertPlanTarget (81)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 38 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 38,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [734]
+      }
     },
     {
       "file": "packages/workflow-engine/src/runtime/storage-journal/finalize-transaction.ts",
@@ -904,18 +977,30 @@
       "lines": 888,
       "exports": 24,
       "functionsOver80": 3,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: validateControlPlaneGrantPayloadV2 (123), verifyControlPlaneGrantV3 (106)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 16 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 16,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [730]
+      }
     },
     {
       "file": "packages/workflow-engine/src/modules/authority/execution-governance-context.ts",
       "lines": 886,
       "exports": 24,
       "functionsOver80": 3,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: validateEpochTransitionReceipt (94), performEpochRollover (92), validateContextManifest (82)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 20 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 20,
+        "connectedComponents": 2,
+        "componentsOver150Lines": 1,
+        "largestComponents": [670, 64]
+      }
     },
     {
       "file": "packages/workflow-engine/src/modules/authority/recovery-trust-root-contract.ts",
@@ -944,9 +1029,15 @@
       "lines": 869,
       "exports": 20,
       "functionsOver80": 2,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: assertGitAuthorityCandidateApplyObservation (129), gitAuthorityCandidateApplyGrantTransitionDefinitions (89)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 26 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 26,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [702]
+      }
     },
     {
       "file": "packages/workflow-engine/src/application/control-plane/intervention-maintenance.ts",
@@ -966,18 +1057,30 @@
       "lines": 857,
       "exports": 10,
       "functionsOver80": 3,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: replaceAtomic (85), detachQuarantinedHardLink (82)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 36 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 36,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [793]
+      }
     },
     {
       "file": "packages/workflow-engine/src/modules/authority/grant-coordinator.ts",
       "lines": 841,
       "exports": 9,
       "functionsOver80": 4,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: createGrantCoordinatorKernel (188), terminalizeAuthorizedPreparedDescendant (128), executePreparedTransition (104)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 19 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 19,
+        "connectedComponents": 2,
+        "componentsOver150Lines": 1,
+        "largestComponents": [671, 12]
+      }
     },
     {
       "file": "packages/workflow-engine/src/application/propose/plan-review-store.ts",
@@ -997,9 +1100,15 @@
       "lines": 834,
       "exports": 7,
       "functionsOver80": 3,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: buildRoutingHandoff (93)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 26 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 26,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [739]
+      }
     },
     {
       "file": "packages/workflow-engine/src/modules/authority/execution-governance-store-contracts.ts",
@@ -1015,45 +1124,75 @@
       "lines": 829,
       "exports": 4,
       "functionsOver80": 3,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: normalizeCoverageTargetBinding (106), normalizeSemanticReuseCoverage (89), normalizePlanReviewCoveragePayload (85)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 31 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 31,
+        "connectedComponents": 2,
+        "componentsOver150Lines": 1,
+        "largestComponents": [713, 31]
+      }
     },
     {
       "file": "packages/workflow-engine/src/runtime/storage-journal/provider-repair-governance.ts",
       "lines": 829,
       "exports": 14,
       "functionsOver80": 2,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: createProviderRepairLineage (142), persistProviderRepairEvidence (94)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 22 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 22,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [692]
+      }
     },
     {
       "file": "packages/workflow-engine/src/modules/authority/protected-task-apply-recovery-grant.ts",
       "lines": 824,
       "exports": 16,
       "functionsOver80": 2,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: protectedTaskApplyRecoveryGrantTransitionDefinitions (117), assertProtectedTaskApplyRecoveryObservation (91)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 23 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 23,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [682]
+      }
     },
     {
       "file": "packages/workflow-engine/src/runtime/repository-validation/commit-replay/ci-planning.ts",
       "lines": 816,
       "exports": 1,
       "functionsOver80": 4,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: grantUsesFromRoleResults (108), <anonymous> (104)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 1 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 1,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [768]
+      }
     },
     {
       "file": "packages/workflow-engine/src/application/execute-task/task-strategy-correction.ts",
       "lines": 814,
       "exports": 6,
       "functionsOver80": 4,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: assertInitialImplementationAuthorityCurrent (95), assertProviderCorrectionAuthorityCurrent (92), assertCallerCorrectionAuthorityCurrent (82)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 15 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 15,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [713]
+      }
     },
     {
       "file": "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-supersession.ts",
@@ -1099,18 +1238,30 @@
       "lines": 803,
       "exports": 9,
       "functionsOver80": 2,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: deriveInvestigationGroupFacts (119)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 27 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 27,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [619]
+      }
     },
     {
       "file": "packages/workflow-engine/src/composition-root/protected-base-initialization-production.ts",
       "lines": 802,
       "exports": 9,
       "functionsOver80": 2,
-      "classification": "unjustified",
-      "reason": "No justification recorded. Longest bodies: publishCompletedProtectedBaseInitialization (101), authenticateCompletedProtectedBaseInitializationGrant (92)",
-      "priorAudit": null
+      "classification": "justified-single-component",
+      "reason": "All 36 top-level declarations form one connected component: every declaration reaches every other, so any split would have to export internals across a new file boundary. Length here is cohesion, not accumulation.",
+      "priorAudit": null,
+      "cohesion": {
+        "declarations": 36,
+        "connectedComponents": 1,
+        "componentsOver150Lines": 1,
+        "largestComponents": [680]
+      }
     }
   ],
   "longestUnexplainedFunctions": [
@@ -1354,5 +1505,7 @@
       "lines": 191,
       "shape": "branching"
     }
-  ]
+  ],
+  "cohesionMethod": "For every file with no recorded justification, top-level declarations were linked by mutual reference and grouped into connected components. A file that is one component cannot be split without exporting what is currently private; a file with several independent groups can.",
+  "filesOver800AfterSplits": 91
 }

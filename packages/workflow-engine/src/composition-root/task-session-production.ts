@@ -1,5 +1,5 @@
 /** Bind session-abort Grant recovery preflight to the repository's durable records. */
-import { abortSession as abort } from '../application/execute-task/session.ts';
+import { abortSession as abort } from '../application/execute-task/session-abort.ts';
 import {
   createFileGrantRecordStore,
   grantStorePaths,

@@ -961,9 +961,14 @@
       "digest": "sha256:2ee3bc37d41318197d9d3fa789a86eb8cda4d4fe2411cc2e08ad774870746c8a"
     },
     {
+      "path": "src/application/execute-task/session-abort.ts",
+      "mode": "100644",
+      "digest": "sha256:3cf46b691a4b3fa2b3780fd80e91abdb4455adc66be9c4ac4050eaf2d33d3a14"
+    },
+    {
       "path": "src/application/execute-task/session.ts",
       "mode": "100644",
-      "digest": "sha256:29b1ffa38a9aa02ab01cdc6151c8d4f13b2a00be9b364c16ca20e42422a268af"
+      "digest": "sha256:b31917cc2a37d96ad7ba06a7432b30415a41702fa8e03eb00356422356645d59"
     },
     {
       "path": "src/application/execute-task/task-mechanical-transform-lifecycle.ts",
@@ -1158,12 +1163,17 @@
     {
       "path": "src/application/propose/plan-review-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:7a536e976313253d5ab468d81a41e571ba01fab32a7d6faafd47949d0a55d295"
+      "digest": "sha256:fcbd113e49d329378ac6bfd5c0c422482933e8c62d8b32785a3fcef3eecdea67"
+    },
+    {
+      "path": "src/application/propose/plan-review-grant-authorization.ts",
+      "mode": "100644",
+      "digest": "sha256:e8fb1bf8d53a965a8b793b81ced971b13ad1ac7c6df072a8c8ae782325828ea2"
     },
     {
       "path": "src/application/propose/plan-review-preparation.ts",
       "mode": "100644",
-      "digest": "sha256:a107f6d1d12e91aba8942f562cb3e055c8350cdee30060fc1c11ed7aaca4f858"
+      "digest": "sha256:cbec02012c36855cb0dd70493274ce2786097b6ad54c8fe13bd2c21150b80fdf"
     },
     {
       "path": "src/application/propose/plan-review-result.ts",
@@ -1178,12 +1188,12 @@
     {
       "path": "src/application/propose/plan-review-role-topology.ts",
       "mode": "100644",
-      "digest": "sha256:33fadf15263ecdb03dc15507c1281e7bffcf22103b3fab87bf9cf8552a52cecc"
+      "digest": "sha256:f91bbc5a2b7b4d6810fe4b6926a3fbcab0b29ae8c3235248fb024a22a6bf2ba3"
     },
     {
       "path": "src/application/propose/plan-review-store.ts",
       "mode": "100644",
-      "digest": "sha256:fbcf85580446b63f035d6df145173360598e43e459ffbba58e313f9f72c2a03e"
+      "digest": "sha256:ed48e9dd531e69429fe1fdef6e2419208555904f43544594e18df6d4cd696365"
     },
     {
       "path": "src/application/propose/planning-execution-epoch.ts",
@@ -1278,7 +1288,7 @@
     {
       "path": "src/application/propose/propose-request-validation.ts",
       "mode": "100644",
-      "digest": "sha256:7ce059355cb728d3ec9e47399223b6fbf8a5431a6abf5f1a4cb32d1d69c73a72"
+      "digest": "sha256:76e42b1fd1206c6d299dee962789e123cd59b9a368a73412717b55a8b96656b0"
     },
     {
       "path": "src/application/propose/propose-resume.ts",
@@ -1303,7 +1313,7 @@
     {
       "path": "src/application/propose/propose-start.ts",
       "mode": "100644",
-      "digest": "sha256:688c822d2a5e6aa4231c4261be335ce49f1f45568bc4a7d52bb81baf1ccfa4b4"
+      "digest": "sha256:76cb68ecc20e7b8cf2933d427e7d0d66345181e9e594e58458a6345faa5795ba"
     },
     {
       "path": "src/application/propose/propose-status.ts",
@@ -1798,7 +1808,7 @@
     {
       "path": "src/composition-root/protected-task-apply-recovery-grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:88018e53b002c1539c3814931767444c525d51ab6f53a88e38fc6036ae63d26e"
+      "digest": "sha256:d41b33786a21a3879dc43cf6a25656125ac3b71870c6a4d73d2f31fd3a5eebac"
     },
     {
       "path": "src/composition-root/provider-availability-pilot-production.ts",
@@ -1908,7 +1918,7 @@
     {
       "path": "src/composition-root/task-session-production.ts",
       "mode": "100644",
-      "digest": "sha256:58582b93b3c99ddbb5f737501bf1cc690019dd545dbe0934346a5af9d365e90e"
+      "digest": "sha256:01369c9eba9336a35bd8c3bdda19eed16e09d40f5d9cdf623da533d1d3f19a04"
     },
     {
       "path": "src/composition-root/task-strategy-gate-production.ts",

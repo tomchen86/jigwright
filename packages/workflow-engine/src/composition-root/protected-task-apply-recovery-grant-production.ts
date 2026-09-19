@@ -10,7 +10,7 @@ import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { cancelProtectedTaskApplyRecoveryUnderGrant } from './finalization-production.ts';
 import { readProtectedFinalizeCancellation } from '../application/finalize/finalize-cancellation.ts';
-import { abortSessionAfterProtectedTaskApplyRecoveryUnderGrant } from '../application/execute-task/session.ts';
+import { abortSessionAfterProtectedTaskApplyRecoveryUnderGrant } from '../application/execute-task/session-abort.ts';
 import { getSession } from '../runtime/repository-observation/workflow-session-context.ts';
 import {
   approvalSubjectDigest,

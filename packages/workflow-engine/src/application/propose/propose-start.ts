@@ -27,9 +27,9 @@ import {
 } from '../../modules/provider-orchestration/role-assignment.ts';
 import {
   blindSurveyGrantRequest,
-  collaborationTransitionDigest,
   type ProposeGrantAuthorization,
 } from './plan-review-contracts.ts';
+import { collaborationTransitionDigest } from './plan-review-grant-authorization.ts';
 import { readCallerJson } from './propose-artifacts.ts';
 import { createRuntimeId, sha256 } from './propose-common.ts';
 import {

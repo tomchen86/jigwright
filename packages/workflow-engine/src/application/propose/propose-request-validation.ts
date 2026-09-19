@@ -16,10 +16,8 @@ import {
   type ProviderInvocationRequest,
   PROPOSE_POLICY_DIGEST,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
-import {
-  type ProposeGrantAuthorization,
-  assertProposeGrantAuthorization,
-} from './plan-review-contracts.ts';
+import { type ProposeGrantAuthorization } from './plan-review-contracts.ts';
+import { assertProposeGrantAuthorization } from './plan-review-grant-authorization.ts';
 import {
   hasExactKeys,
   isBaseline,
