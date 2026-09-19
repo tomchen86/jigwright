@@ -36,7 +36,7 @@ import { readFinalizeTransaction } from '../src/runtime/repository-transaction/f
 import { beginTaskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
 import { assertPreparedProtectedTaskApplyAuthorization } from '../src/application/finalize/protected-task-apply-authorization.ts';
 import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import { getSession } from '../src/application/execute-task/session.ts';
+import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
 import {
   authoritativeCollaborationGrantVerifierForTest,
   git,

@@ -43,10 +43,8 @@ import {
   type WorkflowReport,
 } from '../src/runtime/storage-journal/report-store.ts';
 import { checkSession } from './support/local-engine-selection-host.ts';
-import {
-  getSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
+import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
 import {
   createFixtureRepository,
   git,

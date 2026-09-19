@@ -25,10 +25,8 @@ import {
   isWorkflowError,
   runtimeRoot,
 } from './fixture.ts';
-import {
-  getSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
+import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
 import { abortSession } from '../src/composition-root/task-session-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

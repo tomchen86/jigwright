@@ -987,45 +987,6 @@ function releaseAbortedSessionLocks(
   releaseTaskSessionIsolationLeases(runtime, session);
 }
 
-export function getSession(
-  cwd: string,
-  requestedSessionId: string,
-): WorkflowSession {
-  const git = discoverRepository(cwd);
-  return loadSession(
-    git.gitCommonDirectory,
-    git.repositoryRoot,
-    requestedSessionId,
-  );
-}
-
-export function listSessions(cwd: string): WorkflowSession[] {
-  const git = discoverRepository(cwd);
-  const config = loadWorkflowConfig(git.repositoryRoot);
-  const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
-  if (
-    !fs.statSync(runtime.sessions, { throwIfNoEntry: false })?.isDirectory()
-  ) {
-    return [];
-  }
-  return fs
-    .readdirSync(runtime.sessions)
-    .filter((entry) => entry.endsWith('.json'))
-    .sort()
-    .map((entry) => readSessionFile(path.join(runtime.sessions, entry)));
-}
-
-function loadSession(
-  gitCommonDirectory: string,
-  repositoryRoot: string,
-  requestedSessionId: string,
-): WorkflowSession {
-  const config = loadWorkflowConfig(repositoryRoot);
-  const runtime = runtimePaths(gitCommonDirectory, config.runtimeDirectory);
-  const sessionId = assertSessionId(requestedSessionId);
-  return readSessionFile(path.join(runtime.sessions, `${sessionId}.json`));
-}
-
 function expectedBranch(template: string, changeId: string): string {
   return template.replaceAll('{changeId}', changeId);
 }

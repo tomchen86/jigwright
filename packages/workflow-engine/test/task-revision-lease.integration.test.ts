@@ -53,11 +53,11 @@ import { completeTask } from './support/local-engine-selection-host.ts';
 import { readImmutableReport } from '../src/runtime/storage-journal/report-store.ts';
 import { startPropose } from '../src/composition-root/propose-production.ts';
 import { checkSession } from './support/local-engine-selection-host.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
 import {
   getSession,
   listSessions,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+} from '../src/runtime/repository-observation/workflow-session-context.ts';
 import { abortSession } from '../src/composition-root/task-session-production.ts';
 import {
   createFixtureRepository,

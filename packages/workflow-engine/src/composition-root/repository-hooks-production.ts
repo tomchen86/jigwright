@@ -3,7 +3,7 @@ import { createRepositoryHookRules } from '../modules/lifecycle/repository-hooks
 import { repositoryHookObservations } from '../runtime/repository-observation/repository-hooks.ts';
 import { validateRepositoryState } from './repository-validation.ts';
 import { validateWorkflowIntegrationAssets } from '../adapters/consumer/repository/work-registry/integration-assets.ts';
-import { listSessions } from '../application/execute-task/session.ts';
+import { listSessions } from '../runtime/repository-observation/workflow-session-context.ts';
 import { assertActivePublishTransaction } from './external-effect-production.ts';
 
 export const { runRepositoryHook } = createRepositoryHookRules({

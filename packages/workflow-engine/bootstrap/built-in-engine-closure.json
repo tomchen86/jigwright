@@ -963,17 +963,12 @@
     {
       "path": "src/application/execute-task/session.ts",
       "mode": "100644",
-      "digest": "sha256:5b01915cb89a78afbf8ff38dfb4e4affb267f020602bd31d7df3c36eee0ac2bf"
+      "digest": "sha256:917c6daf20209ef99a9f48a76925e8b4ef9533e3768d8fc3e64eca0df244354e"
     },
     {
       "path": "src/application/execute-task/task-mechanical-transform-lifecycle.ts",
       "mode": "100644",
       "digest": "sha256:94a25776896eeac7b1e935d4705ed6fdbe065656c1fc92c860f1b749a860068b"
-    },
-    {
-      "path": "src/application/execute-task/task-mechanical-transform.ts",
-      "mode": "100644",
-      "digest": "sha256:4287ced4627f01e1ac8dabf79c20c45f69e002688bd3b7f116de399f6e867e59"
     },
     {
       "path": "src/application/execute-task/task-strategy-caller-admission.ts",
@@ -1003,7 +998,7 @@
     {
       "path": "src/application/execute-task/task-strategy-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:25d28c4b9be727b66171b7813f68c1fdd9c887ce7d08f47f9fac0fab2fc90f8d"
+      "digest": "sha256:768070be4c7891e06fb573cdf209d6ec45586d894deacf41b6aeea3d6b8b3739"
     },
     {
       "path": "src/application/execute-task/task-strategy-patch.ts",
@@ -1028,7 +1023,7 @@
     {
       "path": "src/application/execute-task/update-base.ts",
       "mode": "100644",
-      "digest": "sha256:d6dbe4f89eb8e215462a987c62ab51277bd4bd0729ae2a777e2b2188b48ddc52"
+      "digest": "sha256:7b991ab878a6d4ed41b92f044a547d3289280045a1fd3b1a503073722e238a6d"
     },
     {
       "path": "src/application/finalize/finalize-cancellation.ts",
@@ -1038,7 +1033,7 @@
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:3de7f56cbecdddc304f9a1221b2fa60eb79ad5a9c276dbc66c09073f66fa58c7"
+      "digest": "sha256:ad2d9100bef757c60484d39ae87f64ac1d3886f6d4bc506edea078bfc155d1ac"
     },
     {
       "path": "src/application/finalize/predecessor-reconciliation.ts",
@@ -1048,7 +1043,7 @@
     {
       "path": "src/application/finalize/projected-finalization.ts",
       "mode": "100644",
-      "digest": "sha256:729a7cf3e5e14b85a0a84539328da629ef0dcbe2670cab712215f8f19e1cdf64"
+      "digest": "sha256:add4f37bf6fc70baf6104a90ac5dd43ad97fd648e7d2b25126c5f448a924145a"
     },
     {
       "path": "src/application/finalize/protected-task-apply-authorization.ts",
@@ -1136,6 +1131,11 @@
       "digest": "sha256:2b49a4e058e1ee40a2dde00a25bc3be99e0f66c1fa127b03b25a3790c58d49c3"
     },
     {
+      "path": "src/application/finalize/task-mechanical-transform.ts",
+      "mode": "100644",
+      "digest": "sha256:4287ced4627f01e1ac8dabf79c20c45f69e002688bd3b7f116de399f6e867e59"
+    },
+    {
       "path": "src/application/finalize/task-strategy-gate.ts",
       "mode": "100644",
       "digest": "sha256:073e734aef466d51bde0b164ad26145c4d7c23cb913cb70bcb38a58a7cbb4c11"
@@ -1143,7 +1143,7 @@
     {
       "path": "src/application/finalize/verification.ts",
       "mode": "100644",
-      "digest": "sha256:742f210c956fe6e6cbc0692c7cded7d421de27744fbdb782df53fdbbc21dcbde"
+      "digest": "sha256:200a881fc27c7b425d7e19863d57c19ca3ee988f4975cad3e04132531f99b18e"
     },
     {
       "path": "src/application/governance-intake/governance-findings.ts",
@@ -1218,7 +1218,7 @@
     {
       "path": "src/application/propose/propose-context.ts",
       "mode": "100644",
-      "digest": "sha256:4433582adcb56044a17af97c2b52ee7b7d0b12263195663a338d7ef4631076c3"
+      "digest": "sha256:99143206c3a3ee80966f83953df5cf0aff5434c32a6e250a63a0006cf2a33e95"
     },
     {
       "path": "src/application/propose/propose-decision-services.ts",
@@ -1543,7 +1543,7 @@
     {
       "path": "src/composition-root/cli-command-services.ts",
       "mode": "100644",
-      "digest": "sha256:5916e0662aff9afe832cd35931b585d9fc9246c8933339ba673e8ca557ad6e90"
+      "digest": "sha256:9d55732dbe6486e1b1dcd069f627d4a4eacd379b6e5cc8a4b83c20e0173b65c4"
     },
     {
       "path": "src/composition-root/collaboration-grant-issuance-production.ts",
@@ -1648,7 +1648,7 @@
     {
       "path": "src/composition-root/implementation-reconciliation-production.ts",
       "mode": "100644",
-      "digest": "sha256:7bee3dddedea61195a9268f77446d51c211afde788e55325d9504013051398e6"
+      "digest": "sha256:32923b73693cf217b38ac9aafd11215bdf0fa04865cec4a27644bf9a60ea4379"
     },
     {
       "path": "src/composition-root/implementation-term-floor-production.ts",
@@ -1793,7 +1793,7 @@
     {
       "path": "src/composition-root/protected-task-apply-recovery-grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:7072c6629642434c2afbb55d2c71c75b148bfcb74b17613e01461e310569f806"
+      "digest": "sha256:523d77e115be82ea0cee0c710a00a5fd4d97ea0b993061b99caae5ca1b62a1f6"
     },
     {
       "path": "src/composition-root/provider-availability-pilot-production.ts",
@@ -1838,7 +1838,7 @@
     {
       "path": "src/composition-root/repository-hooks-production.ts",
       "mode": "100644",
-      "digest": "sha256:95fe829c3123b639b3208243de6da7250c1033ad34263569ad9df75bd7a708af"
+      "digest": "sha256:0f4694bd0ab24044e33585265777faf47d368fea70908d49e241c792062c3a2b"
     },
     {
       "path": "src/composition-root/repository-validation.ts",
@@ -1908,7 +1908,7 @@
     {
       "path": "src/composition-root/task-strategy-gate-production.ts",
       "mode": "100644",
-      "digest": "sha256:714cb65c15f795cbe82636866d1438ecff2d61c866eb4298ce5c7f9990acad86"
+      "digest": "sha256:93a4782cbe892908a1d2770aff66e63a2ce39abc48c76b449ead65b29dacf036"
     },
     {
       "path": "src/composition-root/task-strategy-production.ts",
@@ -2088,7 +2088,7 @@
     {
       "path": "src/entrypoints/cli/workflow-cli.ts",
       "mode": "100644",
-      "digest": "sha256:a17d6c025918cc5c051cc15b96a9640cb8b628d360517c228e6eb8bb75fbc4e1"
+      "digest": "sha256:e876015af37388debc54b774156afeeeb5d64c396c68aff4041476494452b453"
     },
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
@@ -4313,7 +4313,7 @@
     {
       "path": "src/runtime/repository-observation/workflow-session-context.ts",
       "mode": "100644",
-      "digest": "sha256:04258633b0196619e3ffca53e26f883161a65bcdc26b0c56b515008caa2ca72e"
+      "digest": "sha256:144ee3e7864d20d13006a408eeee72c4084501424ef415651ae747e662140760"
     },
     {
       "path": "src/runtime/repository-transaction/agent-role-plan-store.ts",

@@ -10,10 +10,8 @@ import {
   checkSession,
   reconcileSessionChecksAfterLocalEngineAdoption,
 } from '../src/application/finalize/verification.ts';
-import {
-  startSession,
-  getSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
+import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
 import { createProductionFinalizationService } from '../src/composition-root/finalization-production.ts';
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';

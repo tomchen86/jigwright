@@ -3,7 +3,7 @@ import { productionChangeContract } from './change-routing-observation-productio
 /** Binds reconciliation to repository observation, session locking and immutable storage. */
 import { createImplementationReconciliationService } from '../application/reconciliation/implementation-reconciliation.ts';
 import { readCurrentImplementationReconciliationRequirement } from '../application/reconciliation/investigation-reconciliation.ts';
-import { listSessions } from '../application/execute-task/session.ts';
+import { listSessions } from '../runtime/repository-observation/workflow-session-context.ts';
 import {
   inspectSession,
   persistSession,

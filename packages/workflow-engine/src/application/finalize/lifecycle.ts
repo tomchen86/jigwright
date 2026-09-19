@@ -114,7 +114,7 @@ import {
   writeJsonAtomic,
   type WorkflowSession,
 } from '../../runtime/session-workspace/session-store.ts';
-import { getSession } from '../execute-task/session.ts';
+import { getSession } from '../../runtime/repository-observation/workflow-session-context.ts';
 import {
   executeChecks,
   inspectSession,

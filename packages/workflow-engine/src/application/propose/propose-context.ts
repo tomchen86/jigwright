@@ -27,7 +27,7 @@ import {
 } from '../../modules/authority/role-context-sharing-grant-verifier-port.ts';
 import type { GovernanceSourceV1 } from '@jigwright/core/governance-source';
 
-import { listSessions } from '../execute-task/session.ts';
+import { listSessions } from '../../runtime/repository-observation/workflow-session-context.ts';
 import { withTaskRevisionPlanningOperation } from '../revise/task-revision.ts';
 import type {
   HeldChangeTransitionAuthority,

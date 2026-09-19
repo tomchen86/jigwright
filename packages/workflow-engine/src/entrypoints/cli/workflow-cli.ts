@@ -79,7 +79,7 @@ import {
   inspectImplementationReconciliation,
   recordImplementationReconciliation,
 } from '../../composition-root/implementation-reconciliation-production.ts';
-import { listSessions } from '../../application/execute-task/session.ts';
+import { listSessions } from '../../runtime/repository-observation/workflow-session-context.ts';
 import { validateManagedDocuments } from '../../composition-root/managed-documents-production.ts';
 import {
   renderSystemDocuments,

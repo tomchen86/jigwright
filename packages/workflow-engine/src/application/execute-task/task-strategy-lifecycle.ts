@@ -25,7 +25,8 @@ import {
   providerInvocationExists,
   readProviderInvocation,
 } from '../../runtime/storage-journal/provider-invocation-store.ts';
-import { getSession, type WorkflowSession } from './session.ts';
+import { type WorkflowSession } from './session.ts';
+import { getSession } from '../../runtime/repository-observation/workflow-session-context.ts';
 import {
   inspectTaskMechanicalTransformLifecycle,
   resumeTaskMechanicalTransformation,

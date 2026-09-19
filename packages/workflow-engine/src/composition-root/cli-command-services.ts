@@ -266,7 +266,7 @@ export {
 export {
   getSession,
   listSessions,
-} from '../application/execute-task/session.ts';
+} from '../runtime/repository-observation/workflow-session-context.ts';
 export { abortSession } from './task-session-production.ts';
 
 export { resumeTaskStrategy } from './task-strategy-production.ts';

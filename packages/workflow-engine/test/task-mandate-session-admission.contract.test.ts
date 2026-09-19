@@ -18,10 +18,8 @@ import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { readPinnedAgentRuntimePathRoleSource } from '../src/composition-root/change-role-assignment-production.ts';
-import {
-  getSession,
-  startMandatedSession as startMandatedSessionWithMandate,
-} from '../src/application/execute-task/session.ts';
+import { startMandatedSession as startMandatedSessionWithMandate } from '../src/application/execute-task/session.ts';
+import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 
 import { resolveTaskAuthorizationRequirement } from '../src/adapters/consumer/repository/work-registry/task-authorization-policy.ts';

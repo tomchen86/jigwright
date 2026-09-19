@@ -37,7 +37,7 @@ import {
   writeJsonAtomic,
   type WorkflowSession,
 } from '../../runtime/session-workspace/session-store.ts';
-import { listSessions } from './session.ts';
+import { listSessions } from '../../runtime/repository-observation/workflow-session-context.ts';
 
 export type TaskBaseUpdateResult = Readonly<{
   schemaVersion: 1;

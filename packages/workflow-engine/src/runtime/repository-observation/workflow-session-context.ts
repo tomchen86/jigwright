@@ -6,6 +6,7 @@
  * - The raw reader performs no active-state admission.
  * - Session operations retain their runtime identity checks and session lock.
  */
+import fs from 'node:fs';
 import path from 'node:path';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -15,6 +16,7 @@ import {
   readSessionFile,
   runtimePaths,
   withSessionOperation,
+  type WorkflowSession,
 } from '../session-workspace/session-store.ts';
 import { loadWorkflowConfig } from './workflow-configuration.ts';
 
@@ -62,4 +64,43 @@ export function runSessionOperation<T>(
     assertSessionId(requestedSessionId),
     operation,
   );
+}
+
+export function getSession(
+  cwd: string,
+  requestedSessionId: string,
+): WorkflowSession {
+  const git = discoverRepository(cwd);
+  return loadSession(
+    git.gitCommonDirectory,
+    git.repositoryRoot,
+    requestedSessionId,
+  );
+}
+
+export function listSessions(cwd: string): WorkflowSession[] {
+  const git = discoverRepository(cwd);
+  const config = loadWorkflowConfig(git.repositoryRoot);
+  const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
+  if (
+    !fs.statSync(runtime.sessions, { throwIfNoEntry: false })?.isDirectory()
+  ) {
+    return [];
+  }
+  return fs
+    .readdirSync(runtime.sessions)
+    .filter((entry) => entry.endsWith('.json'))
+    .sort()
+    .map((entry) => readSessionFile(path.join(runtime.sessions, entry)));
+}
+
+function loadSession(
+  gitCommonDirectory: string,
+  repositoryRoot: string,
+  requestedSessionId: string,
+): WorkflowSession {
+  const config = loadWorkflowConfig(repositoryRoot);
+  const runtime = runtimePaths(gitCommonDirectory, config.runtimeDirectory);
+  const sessionId = assertSessionId(requestedSessionId);
+  return readSessionFile(path.join(runtime.sessions, `${sessionId}.json`));
 }

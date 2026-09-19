@@ -41,7 +41,7 @@ import {
 } from '../src/runtime/session-workspace/session-store.ts';
 import { beginTaskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
 import { preflightProviderWorkerAssignment } from '../src/entrypoints/worker/provider-worker.ts';
-import { getSession } from '../src/application/execute-task/session.ts';
+import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 
 import {

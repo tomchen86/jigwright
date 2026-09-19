@@ -73,7 +73,7 @@ import {
 } from '../../runtime/session-workspace/session-store.ts';
 
 import { recordTaskStrategyGreenFailure } from '../execute-task/task-strategy-correction.ts';
-import { ensureTaskMechanicalTransformationEvidence } from '../execute-task/task-mechanical-transform.ts';
+import { ensureTaskMechanicalTransformationEvidence } from './task-mechanical-transform.ts';
 import { assertTaskProjectionSourceDigest } from '../../runtime/managed-documents/transaction/task-projection.ts';
 
 import {

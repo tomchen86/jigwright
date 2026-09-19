@@ -42,10 +42,8 @@ import { readFinalizeTransaction } from '../src/runtime/repository-transaction/f
 import { readFinalizeCancellation } from '../src/application/finalize/finalize-cancellation.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import {
-  abortSessionAfterProtectedTaskApplyRecoveryUnderGrant,
-  getSession,
-} from '../src/application/execute-task/session.ts';
+import { abortSessionAfterProtectedTaskApplyRecoveryUnderGrant } from '../src/application/execute-task/session.ts';
+import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
 import { abortSession } from '../src/composition-root/task-session-production.ts';
 import {
   createProtectedReviewFixture,

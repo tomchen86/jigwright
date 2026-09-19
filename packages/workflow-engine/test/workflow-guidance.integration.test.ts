@@ -35,10 +35,8 @@ import {
 import { finalizeTask } from './support/local-engine-selection-host.ts';
 import { reviseTask } from '../src/application/revise/task-revision.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
-import {
-  getSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
+import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
 import {
   configureChecks,
   createFixtureRepository,

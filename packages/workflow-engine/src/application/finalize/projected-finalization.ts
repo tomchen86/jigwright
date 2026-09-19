@@ -73,7 +73,7 @@ import {
   type TaskDiffReviewCompletionGateOptions,
 } from './task-diff-review-lifecycle.ts';
 
-import { ensureTaskMechanicalTransformationEvidence } from '../execute-task/task-mechanical-transform.ts';
+import { ensureTaskMechanicalTransformationEvidence } from './task-mechanical-transform.ts';
 import {
   executeChecks,
   inspectSession,
