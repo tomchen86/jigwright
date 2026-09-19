@@ -2495,9 +2495,9 @@
         "packages/workflow-engine/src/runtime/storage-journal/evidence-ref-closure.ts",
         "packages/workflow-engine/src/runtime/storage-journal/evidence-ref-lock.ts",
         "packages/workflow-engine/src/runtime/storage-journal/evidence-ref-store.ts",
-        "packages/workflow-engine/src/runtime/storage-journal/evidence-store-values.ts",
+        "packages/workflow-engine/src/runtime/journal-primitives/evidence-store-values.ts",
         "packages/workflow-engine/src/runtime/storage-journal/evidence-task-invocation-ownership.ts",
-        "packages/workflow-engine/src/runtime/storage-journal/evidence-unsafe-observation.ts"
+        "packages/workflow-engine/src/runtime/journal-primitives/evidence-unsafe-observation.ts"
       ]
     },
     {
@@ -2580,12 +2580,12 @@
         "packages/workflow-engine/src/runtime/storage-journal/human-resolution-grant-publication.ts",
         "packages/workflow-engine/src/runtime/storage-journal/human-resolution-grant-store.ts",
         "packages/workflow-engine/src/runtime/storage-journal/human-resolution-journal-contract.ts",
-        "packages/workflow-engine/src/runtime/storage-journal/human-resolution-journal.ts",
+        "packages/workflow-engine/src/runtime/lifecycle-ledgers/human-resolution-journal.ts",
         "packages/workflow-engine/src/runtime/storage-journal/human-resolution-nodes.ts",
         "packages/workflow-engine/src/runtime/storage-journal/human-resolution-provider-state.ts",
         "packages/workflow-engine/src/runtime/storage-journal/human-resolution-state.ts",
         "packages/workflow-engine/src/runtime/storage-journal/investigation-checkpoint-contract.ts",
-        "packages/workflow-engine/src/runtime/storage-journal/investigation-resolution-values.ts",
+        "packages/workflow-engine/src/runtime/journal-primitives/investigation-resolution-values.ts",
         "packages/workflow-engine/src/runtime/storage-journal/investigation-session-contract.ts",
         "packages/workflow-engine/src/runtime/storage-journal/investigation-session-records.ts",
         "packages/workflow-engine/src/runtime/storage-journal/investigation-session-types.ts",
@@ -5531,13 +5531,13 @@
     "packages/workflow-engine/src/runtime/storage-journal/evidence-ref-store.ts": [
       "packages/workflow-engine/src/runtime/storage-journal/evidence-object-store.ts"
     ],
-    "packages/workflow-engine/src/runtime/storage-journal/evidence-store-values.ts": [
+    "packages/workflow-engine/src/runtime/journal-primitives/evidence-store-values.ts": [
       "packages/workflow-engine/src/runtime/storage-journal/evidence-object-store.ts"
     ],
     "packages/workflow-engine/src/runtime/storage-journal/evidence-task-invocation-ownership.ts": [
       "packages/workflow-engine/src/runtime/storage-journal/evidence-object-store.ts"
     ],
-    "packages/workflow-engine/src/runtime/storage-journal/evidence-unsafe-observation.ts": [
+    "packages/workflow-engine/src/runtime/journal-primitives/evidence-unsafe-observation.ts": [
       "packages/workflow-engine/src/runtime/storage-journal/evidence-object-store.ts"
     ],
     "packages/workflow-engine/src/runtime/storage-journal/execution-provider-projection.ts": [
@@ -5576,7 +5576,7 @@
     "packages/workflow-engine/src/runtime/storage-journal/human-resolution-journal-contract.ts": [
       "packages/workflow-engine/src/runtime/storage-journal/investigation-session-store.ts"
     ],
-    "packages/workflow-engine/src/runtime/storage-journal/human-resolution-journal.ts": [
+    "packages/workflow-engine/src/runtime/lifecycle-ledgers/human-resolution-journal.ts": [
       "packages/workflow-engine/src/runtime/storage-journal/investigation-session-store.ts"
     ],
     "packages/workflow-engine/src/runtime/storage-journal/human-resolution-nodes.ts": [
@@ -5624,7 +5624,7 @@
     "packages/workflow-engine/src/runtime/storage-journal/investigation-checkpoint-contract.ts": [
       "packages/workflow-engine/src/runtime/storage-journal/investigation-session-store.ts"
     ],
-    "packages/workflow-engine/src/runtime/storage-journal/investigation-resolution-values.ts": [
+    "packages/workflow-engine/src/runtime/journal-primitives/investigation-resolution-values.ts": [
       "packages/workflow-engine/src/runtime/storage-journal/investigation-session-store.ts"
     ],
     "packages/workflow-engine/src/runtime/storage-journal/investigation-session-contract.ts": [

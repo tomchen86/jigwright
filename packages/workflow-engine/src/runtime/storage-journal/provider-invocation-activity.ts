@@ -18,7 +18,7 @@ import {
   privatePathExists,
   readPrivateCanonicalJson,
   writePrivateCanonicalJsonAtomic,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   hasExactKeys,
   isRecord,

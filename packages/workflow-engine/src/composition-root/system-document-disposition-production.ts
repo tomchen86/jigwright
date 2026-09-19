@@ -17,7 +17,7 @@ import {
 import {
   grantStorePaths,
   createFileGrantRecordStore,
-} from '../runtime/storage-journal/grant-store.ts';
+} from '../runtime/lifecycle-ledgers/grant-store.ts';
 import {
   readSystemDocumentReviewRecord,
   writeSystemDocumentReviewRecord,

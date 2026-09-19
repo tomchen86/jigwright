@@ -20,7 +20,7 @@ import {
   assertPrivateInvestigationDirectory,
   readPrivateCanonicalJson,
   withPrivateRuntimeLock,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   type ReserveTaskStrategyCorrectionRoundInput,
   type TaskStrategyCorrectionRoundReservation,

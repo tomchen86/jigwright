@@ -35,8 +35,8 @@ import {
   refInvalid,
   refUnsafe,
   sha256,
-} from './evidence-store-values.ts';
-import { exactUnsafePathObservationDigest } from './evidence-unsafe-observation.ts';
+} from '../journal-primitives/evidence-store-values.ts';
+import { exactUnsafePathObservationDigest } from '../journal-primitives/evidence-unsafe-observation.ts';
 
 export type InvestigationEvidenceRefsClosure = Readonly<{
   snapshot: EvidenceRefsSnapshot;

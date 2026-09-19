@@ -15,7 +15,7 @@ import {
 import {
   assertHumanResolutionLifecycleBarrier,
   readActiveHumanResolutionJournal,
-} from '../src/runtime/storage-journal/human-resolution-journal.ts';
+} from '../src/runtime/lifecycle-ledgers/human-resolution-journal.ts';
 import {
   inspectInvestigationQuarantineState,
   inspectInvestigationResolutionState,

@@ -70,7 +70,7 @@ import {
 import {
   grantStorePaths,
   createFileGrantRecordStore,
-} from '../src/runtime/storage-journal/grant-store.ts';
+} from '../src/runtime/lifecycle-ledgers/grant-store.ts';
 import {
   assertPinnedAgentRolePlanV2Snapshot,
   readPinnedAgentRolePlanV2Snapshot,

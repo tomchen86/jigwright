@@ -21,11 +21,11 @@ import {
   privatePathExists,
   readPrivateCanonicalJson,
   readPrivateFile,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   humanResolutionStateInvalid,
   investigationStartReservationPath,
-} from './investigation-resolution-values.ts';
+} from '../journal-primitives/investigation-resolution-values.ts';
 import {
   isBoundedResolutionText,
   isEmptyRecord,

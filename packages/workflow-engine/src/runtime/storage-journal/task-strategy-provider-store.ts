@@ -28,7 +28,7 @@ import {
   createPrivateCanonicalJson,
   privatePathExists,
   readPrivateCanonicalJson,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 
 export {
   type TaskStrategyImplementationReservation,

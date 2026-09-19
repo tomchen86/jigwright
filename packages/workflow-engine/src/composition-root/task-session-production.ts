@@ -3,7 +3,7 @@ import { abortSession as abort } from '../application/execute-task/session.ts';
 import {
   createFileGrantRecordStore,
   grantStorePaths,
-} from '../runtime/storage-journal/grant-store.ts';
+} from '../runtime/lifecycle-ledgers/grant-store.ts';
 
 export const abortSession = abort.bind(null, (runtimeRoot) =>
   createFileGrantRecordStore(grantStorePaths(runtimeRoot)),

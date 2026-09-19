@@ -13,7 +13,7 @@ import {
   createPrivateCanonicalJson,
   privatePathExists,
   readPrivateCanonicalJson,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
 import {
@@ -26,7 +26,10 @@ import {
   PROVIDER_INVOCATION_CANCELLATION_CONSEQUENCE_DIGEST,
   assertProviderInvocationCancellationParameters,
 } from '../../modules/authority/provider-invocation-cancellation-grant.ts';
-import { grantStorePaths, createFileGrantRecordStore } from './grant-store.ts';
+import {
+  grantStorePaths,
+  createFileGrantRecordStore,
+} from '../lifecycle-ledgers/grant-store.ts';
 import { grantRecordDigest } from '../../modules/authority/grant-records.ts';
 import {
   invocationLockInvalid,

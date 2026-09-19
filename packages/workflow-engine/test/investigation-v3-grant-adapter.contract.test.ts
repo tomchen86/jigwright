@@ -24,7 +24,7 @@ import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../src/modules/invest
 import {
   grantStorePaths,
   createFileGrantRecordStore,
-} from '../src/runtime/storage-journal/grant-store.ts';
+} from '../src/runtime/lifecycle-ledgers/grant-store.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
   createInvestigationV3Blocker,

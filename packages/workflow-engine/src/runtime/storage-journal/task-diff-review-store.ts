@@ -13,7 +13,7 @@ import {
   privatePathExists,
   readPrivateCanonicalJson,
   assertPrivateInvestigationDirectory,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import {

@@ -67,7 +67,7 @@ import {
   assertPrivateInvestigationDirectory,
   createPrivateCanonicalJson,
   readPrivateCanonicalJson,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES,
   assertProviderExecutionAdmissionAuthority,

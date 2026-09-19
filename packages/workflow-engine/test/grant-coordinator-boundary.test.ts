@@ -6,7 +6,7 @@ import {
   inspectPreparedGrantDescendants,
 } from '../src/modules/authority/grant-coordinator.ts';
 import { createGrantRecordStore } from '../src/modules/authority/grant-record-store.ts';
-import { createFileGrantRecordStore } from '../src/runtime/storage-journal/grant-store.ts';
+import { createFileGrantRecordStore } from '../src/runtime/lifecycle-ledgers/grant-store.ts';
 import {
   createTransitionRegistry,
   type TransitionDefinition,

@@ -34,7 +34,7 @@ import {
   readPrivateCanonicalJson,
   assertPrivateInvestigationDirectory,
   withPrivateRuntimeLock,
-} from '../../runtime/storage-journal/investigation-private-files.ts';
+} from '../../runtime/journal-primitives/investigation-private-files.ts';
 import {
   type AuthorityAttestationOperations,
   type AuthorityAttestationRelayProjection,

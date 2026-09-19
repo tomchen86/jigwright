@@ -4,7 +4,7 @@ import {
   grantStorePaths,
   assertGrantLifecycleBarrier,
   createFileGrantRecordStore,
-} from '../src/runtime/storage-journal/grant-store.ts';
+} from '../src/runtime/lifecycle-ledgers/grant-store.ts';
 import { isWorkflowError } from './fixture.ts';
 import { workflowError, ExitCode } from '../src/foundation/errors/errors.ts';
 import {

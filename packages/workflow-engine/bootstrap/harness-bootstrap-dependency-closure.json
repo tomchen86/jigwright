@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:9b69eb62542a30dcd99da81e62eace68ad00e08d1a157388b2082334188da042"
+      "digest": "sha256:4735cf21b4ebbc0f9502b3a48c74a5c782ccb2c9df0bff44b2208801b8184738"
     },
     {
       "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js",
@@ -686,6 +686,36 @@
       "digest": "sha256:d5f5cc486fad1f7181d3f7e661e0a19b33313f00addc2fe719aca2c871a00ad5"
     },
     {
+      "path": "bootstrap/recovery-runtime/src/runtime/journal-primitives/evidence-store-values.js",
+      "mode": "100644",
+      "digest": "sha256:1399755f7dcf109934f6ecf9553544b41166a144dd09e4a2628b09d7326a7a18"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/journal-primitives/evidence-unsafe-observation.js",
+      "mode": "100644",
+      "digest": "sha256:6b6fb6ff02da4754d6aa002b5663515c86f7adfbbf4e182255f4eb5511781ad1"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/journal-primitives/investigation-private-files.js",
+      "mode": "100644",
+      "digest": "sha256:ff03efe7cd52a4f93c98311a5b75a80b9060b481a0e6632f1820b27bf23c6e83"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/journal-primitives/investigation-resolution-values.js",
+      "mode": "100644",
+      "digest": "sha256:ebb4e16f3396a9700497f3dd90aa03cf6664afc5511320a2b22e7c3b58c02093"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/lifecycle-ledgers/grant-store.js",
+      "mode": "100644",
+      "digest": "sha256:b222698ec195cde37d7c11714afffd19d23320f811ef465c77f1dae4294fef8f"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/lifecycle-ledgers/human-resolution-journal.js",
+      "mode": "100644",
+      "digest": "sha256:049633491f832cd889184a1db009504c551d0b24984cb44d38afa203483971a0"
+    },
+    {
       "path": "bootstrap/recovery-runtime/src/runtime/paths/runtime-paths.js",
       "mode": "100644",
       "digest": "sha256:6098f9eaf8f79b6c9286b774d0a8e3a07648d0a2e464f6f67152cf6a7e30db0d"
@@ -793,7 +823,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/session-workspace/repository-lifecycle-lock.js",
       "mode": "100644",
-      "digest": "sha256:41af55f861f1c3f7746cf1991af3db83b55d7d82fbb16df422d9537bc7b97f74"
+      "digest": "sha256:f8cc313b5b3fdbf258e6c694b57b3004b803e8273573921e1bc711143ca2b80b"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/session-workspace/session-operation-locks.js",
@@ -936,39 +966,19 @@
       "digest": "sha256:c4e977684132901ff34774c53efaeafde5c97543aa4c29a468c9ed2562e69ee3"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/evidence-store-values.js",
-      "mode": "100644",
-      "digest": "sha256:1399755f7dcf109934f6ecf9553544b41166a144dd09e4a2628b09d7326a7a18"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/evidence-unsafe-observation.js",
-      "mode": "100644",
-      "digest": "sha256:6b6fb6ff02da4754d6aa002b5663515c86f7adfbbf4e182255f4eb5511781ad1"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/grant-store.js",
-      "mode": "100644",
-      "digest": "sha256:b222698ec195cde37d7c11714afffd19d23320f811ef465c77f1dae4294fef8f"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/human-resolution-grant-lock.js",
       "mode": "100644",
-      "digest": "sha256:9ae720dc7b1891832bf68880bd530b63b3ddeeebddffbab4916f017fa7490c87"
+      "digest": "sha256:6587a13f802be59244488ff89c1d92f20515f5e7d7bfa149e5e233c0c8dcfbf6"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/human-resolution-grant-store.js",
       "mode": "100644",
-      "digest": "sha256:92a1655aba2d668942e465daab1511df7127c67a185b966988e0c66d6813917f"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/human-resolution-journal.js",
-      "mode": "100644",
-      "digest": "sha256:d5343c696ad49a617d1fb500fb7fa893eac01dfa7b11cfc5ce2cb8ed8039208a"
+      "digest": "sha256:2b8d6b3c80fe9f577d6af28eea8bbd8621fbb08e5eef02e60f119b6dd85efd58"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/human-resolution-revocation-store.js",
       "mode": "100644",
-      "digest": "sha256:7ca4d59a24433f77e235fe4a2304f205c48d9007af0c245d65e3cfbb0cc33735"
+      "digest": "sha256:d8062fd079264da7ba16d7926379d051cdaf4bcdfdc2baa5eae0cc5b8b4a477e"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/human-revocation-preparation.js",
@@ -1041,19 +1051,9 @@
       "digest": "sha256:eb508af1c5e1a3a0a240f1ea7b4af1809ccba0d0fcd2ed63e5adda07aaafbb30"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/investigation-private-files.js",
-      "mode": "100644",
-      "digest": "sha256:ff03efe7cd52a4f93c98311a5b75a80b9060b481a0e6632f1820b27bf23c6e83"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/investigation-resolution-values.js",
-      "mode": "100644",
-      "digest": "sha256:ebb4e16f3396a9700497f3dd90aa03cf6664afc5511320a2b22e7c3b58c02093"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/investigation-session-records.js",
       "mode": "100644",
-      "digest": "sha256:c51069dcc7df6aa1d71a9184da19af2da32223f7e20f02c0de60c2b0f28e3a35"
+      "digest": "sha256:6cef14d6102d18f640101d2c515bfc80fff971238dd7bc07dd9ffb49a11411a6"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/workflow-configuration/repository-consumer.js",

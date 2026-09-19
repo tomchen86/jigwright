@@ -26,7 +26,7 @@ import {
   privatePathExists,
   readPrivateCanonicalJson,
   writePrivateCanonicalJsonAtomic,
-} from '../../runtime/storage-journal/investigation-private-files.ts';
+} from '../../runtime/journal-primitives/investigation-private-files.ts';
 import { loadActiveSessionContext } from '../../runtime/repository-observation/workflow-session-context.ts';
 import { classifyMutationPath } from '../../modules/source/mutation-class-policy.ts';
 import { investigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';

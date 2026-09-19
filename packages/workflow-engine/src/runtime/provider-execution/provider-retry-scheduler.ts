@@ -18,7 +18,7 @@ import {
   readPrivateCanonicalJson,
   assertPrivateInvestigationDirectory,
   withPrivateRuntimeLock,
-} from '../storage-journal/investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   readProviderInvocation,
   readProviderInvocationRequest,

@@ -26,7 +26,7 @@ import {
   refLocked,
   refLockInvalid,
   refUnsafe,
-} from './evidence-store-values.ts';
+} from '../journal-primitives/evidence-store-values.ts';
 
 export function withRefLock<T>(
   paths: InvestigationRuntimePaths,

@@ -24,7 +24,7 @@ import {
   readPrivateCanonicalJson,
   createPrivateCanonicalJson,
   writePrivateCanonicalJsonAtomic,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
   readTaskStrategyTransactionByDigest,

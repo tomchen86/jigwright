@@ -17,7 +17,7 @@ import {
   ExitCode,
 } from '../../foundation/errors/errors.ts';
 import { listProviderInvocationLifecycleProjections } from '../storage-journal/provider-invocation-lifecycle.ts';
-import { privatePathExists } from '../storage-journal/investigation-private-files.ts';
+import { privatePathExists } from '../journal-primitives/investigation-private-files.ts';
 import type { InvestigationRuntimePaths } from '@jigwright/core/runtime-path-kernel';
 import type { SessionRuntimeLayoutV1 } from '@jigwright/core/session-runtime-layout-port';
 import { classifyProviderRetentionEligibility } from '../../modules/provider-orchestration/provider-retention.ts';

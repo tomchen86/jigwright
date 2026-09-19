@@ -6,8 +6,8 @@
  * - Operation errors keep precedence over release errors and lock cleanup preserves ownership.
  */
 import { assertChangeId } from "../../foundation/repository-path/repository-path.js";
-import { assertGrantLifecycleBarrier } from "../storage-journal/grant-store.js";
-import { assertHumanResolutionLifecycleBarrier, reclaimHumanResolutionJournalTemporaries, } from "../storage-journal/human-resolution-journal.js";
+import { assertGrantLifecycleBarrier } from "../lifecycle-ledgers/grant-store.js";
+import { assertHumanResolutionLifecycleBarrier, reclaimHumanResolutionJournalTemporaries, } from "../lifecycle-ledgers/human-resolution-journal.js";
 import fs from 'node:fs';
 import { assertPlainDirectory, ensurePlainDirectory, publishPreparedExclusiveLock, reclaimDeadPreparedLock, } from "../repository-transaction/filesystem-safety.js";
 import { workflowError, ExitCode } from "../../foundation/errors/errors.js";

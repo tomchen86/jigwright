@@ -10,7 +10,7 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import {
   createPrivateCanonicalJson,
   readPrivateCanonicalJson,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { parseTaskDiffReviewRecord } from '../../modules/assurance/task-diff-review-artifact.ts';
 import {

@@ -19,7 +19,7 @@ import {
   ensurePrivateInvestigationDirectory,
   createPrivateCanonicalJson,
   writePrivateCanonicalJsonAtomic,
-} from '../storage-journal/investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {

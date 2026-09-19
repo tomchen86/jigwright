@@ -31,7 +31,7 @@ import { createTransitionRegistry } from '../src/modules/authority/grant-transit
 import {
   grantStorePaths,
   createFileGrantRecordStore,
-} from '../src/runtime/storage-journal/grant-store.ts';
+} from '../src/runtime/lifecycle-ledgers/grant-store.ts';
 import { createProposeProtectedBaseFailGrantResult } from '../bootstrap/workflow-engine-host.ts';
 import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';

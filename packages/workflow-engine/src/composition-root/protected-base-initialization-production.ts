@@ -45,7 +45,7 @@ import {
 import {
   grantStorePaths,
   createFileGrantRecordStore,
-} from '../runtime/storage-journal/grant-store.ts';
+} from '../runtime/lifecycle-ledgers/grant-store.ts';
 import { loadInvestigationRuntimeContext } from './lifecycle-context.ts';
 
 const COMMIT_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;

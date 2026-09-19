@@ -24,7 +24,7 @@ import {
   readPrivateCanonicalJson,
   withPrivateRuntimeLock,
   writePrivateCanonicalJsonAtomic,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 
 export function executionStorePaths(paths: InvestigationRuntimePaths) {
   const root = path.join(paths.root, 'execution');

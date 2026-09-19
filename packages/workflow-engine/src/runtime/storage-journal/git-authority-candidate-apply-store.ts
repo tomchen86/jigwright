@@ -36,7 +36,7 @@ import {
   createPrivateCanonicalJson,
   readPrivateCanonicalJson,
   writePrivateCanonicalJsonAtomic,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 
 const COMMIT_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
 

@@ -12,7 +12,7 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import {
   privatePathExists,
   readPrivateCanonicalJson,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';

@@ -30,7 +30,7 @@ import {
   isPlainRecord,
   refInvalid,
   sha256,
-} from './evidence-store-values.ts';
+} from '../journal-primitives/evidence-store-values.ts';
 
 export type InvestigationEvidenceOwnership = Readonly<{
   ownerInvestigationId: string;

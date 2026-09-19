@@ -20,7 +20,7 @@ import {
   captureGovernedProviderProjection,
   compareGovernedProviderProjections,
 } from '../repository-transaction/git.ts';
-import { readPrivateCanonicalJson } from '../storage-journal/investigation-private-files.ts';
+import { readPrivateCanonicalJson } from '../journal-primitives/investigation-private-files.ts';
 import {
   investigationRuntimePaths,
   type InvestigationRuntimePaths,

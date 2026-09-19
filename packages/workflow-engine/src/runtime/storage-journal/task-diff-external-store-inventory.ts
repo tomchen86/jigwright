@@ -10,7 +10,7 @@ import path from 'node:path';
 import {
   assertPrivateInvestigationDirectory,
   readPrivateCanonicalJson,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   taskDiffExternalStoreRoot,

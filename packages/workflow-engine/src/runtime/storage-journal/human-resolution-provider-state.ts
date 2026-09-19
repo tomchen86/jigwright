@@ -22,8 +22,8 @@ import {
   readPrivateCanonicalJson,
   readPrivateFile,
   walkPrivateDirectory,
-} from './investigation-private-files.ts';
-import { observeUnsafePath } from './investigation-resolution-values.ts';
+} from '../journal-primitives/investigation-private-files.ts';
+import { observeUnsafePath } from '../journal-primitives/investigation-resolution-values.ts';
 import { type InvestigationSession } from '../../modules/investigation/domain/investigation-session-types.ts';
 import {
   hasExactKeys,

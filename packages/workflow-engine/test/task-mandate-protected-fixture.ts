@@ -19,7 +19,7 @@ import { discoverRepository } from '../src/runtime/repository-transaction/git.ts
 import {
   grantStorePaths,
   createFileGrantRecordStore,
-} from '../src/runtime/storage-journal/grant-store.ts';
+} from '../src/runtime/lifecycle-ledgers/grant-store.ts';
 import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import { loadGrantPolicyV2 } from '../src/runtime/repository-observation/grant-policy-reader.ts';

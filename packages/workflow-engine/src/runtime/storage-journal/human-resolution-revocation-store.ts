@@ -13,19 +13,19 @@ import {
   inspectStoredHumanResolutionGrant,
   reconcileTerminalHumanResolutionGrantResidual,
 } from './human-resolution-grant-store.ts';
-import { readHumanResolutionJournal } from './human-resolution-journal.ts';
+import { readHumanResolutionJournal } from '../lifecycle-ledgers/human-resolution-journal.ts';
 import {
   createPrivateCanonicalJson,
   fsyncDirectory,
   privatePathExists,
   readPrivateCanonicalJson,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   assertHumanResolutionGrantId,
   humanResolutionGrantUnsafe,
 } from '../../modules/investigation/domain/human-resolution-values.ts';
 import { humanResolutionGrantNotFound } from '../../modules/investigation/domain/human-resolution-values.ts';
-import { humanResolutionPaths } from './investigation-resolution-values.ts';
+import { humanResolutionPaths } from '../journal-primitives/investigation-resolution-values.ts';
 import { readInvestigationSession } from './investigation-session-records.ts';
 
 import {

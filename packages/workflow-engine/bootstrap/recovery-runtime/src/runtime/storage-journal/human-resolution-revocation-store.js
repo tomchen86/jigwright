@@ -4,11 +4,11 @@ import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { withHumanResolutionGrantStoreLock } from "./human-resolution-grant-lock.js";
 import { humanResolutionRevocationBinding, } from "../../modules/investigation/domain/human-resolution-grant-contract.js";
 import { inspectStoredHumanResolutionGrant, reconcileTerminalHumanResolutionGrantResidual, } from "./human-resolution-grant-store.js";
-import { readHumanResolutionJournal } from "./human-resolution-journal.js";
-import { createPrivateCanonicalJson, fsyncDirectory, privatePathExists, readPrivateCanonicalJson, } from "./investigation-private-files.js";
+import { readHumanResolutionJournal } from "../lifecycle-ledgers/human-resolution-journal.js";
+import { createPrivateCanonicalJson, fsyncDirectory, privatePathExists, readPrivateCanonicalJson, } from "../journal-primitives/investigation-private-files.js";
 import { assertHumanResolutionGrantId, humanResolutionGrantUnsafe, } from "../../modules/investigation/domain/human-resolution-values.js";
 import { humanResolutionGrantNotFound } from "../../modules/investigation/domain/human-resolution-values.js";
-import { humanResolutionPaths } from "./investigation-resolution-values.js";
+import { humanResolutionPaths } from "../journal-primitives/investigation-resolution-values.js";
 import { readInvestigationSession } from "./investigation-session-records.js";
 import { canonicalHumanRevocationAuthorization, } from "../../modules/authority/human-revocation-contract.js";
 export const openHumanResolutionRevocationStore = (paths) => ({

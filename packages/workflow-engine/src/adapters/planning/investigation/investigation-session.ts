@@ -126,7 +126,7 @@ import {
   writeHumanResolutionArchive,
   writeHumanResolutionJournal,
   writeHumanResolutionReceipt,
-} from '../../../runtime/storage-journal/human-resolution-journal.ts';
+} from '../../../runtime/lifecycle-ledgers/human-resolution-journal.ts';
 import {
   type GroupDispositionsPayload,
   type InvestigationCheckpointEnvelope,

@@ -29,7 +29,7 @@ import {
   readPrivateCanonicalJson,
   walkPrivateDirectory,
   writePrivateCanonicalJsonAtomic,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   activeHumanResolutionJournalPath,
   humanResolutionArchiveUnsafe,
@@ -38,7 +38,7 @@ import {
   humanResolutionReceiptUnsafe,
   humanResolutionRecoveryAmbiguous,
   humanResolutionStateInvalid,
-} from './investigation-resolution-values.ts';
+} from '../journal-primitives/investigation-resolution-values.ts';
 import { humanResolutionJournalUnsafe } from '../../modules/investigation/domain/human-resolution-journal-contract.ts';
 import { assertHumanResolutionGrantId } from '../../modules/investigation/domain/human-resolution-values.ts';
 import {

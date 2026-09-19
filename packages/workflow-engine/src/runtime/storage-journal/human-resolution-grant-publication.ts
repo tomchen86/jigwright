@@ -30,7 +30,7 @@ import {
   ACTIVE_HUMAN_RESOLUTION_JOURNAL,
   readActiveHumanResolutionJournal,
   scanActiveHumanResolutionJournalDirectory,
-} from './human-resolution-journal.ts';
+} from '../lifecycle-ledgers/human-resolution-journal.ts';
 import {
   assertPrivateFile,
   createPrivateRawFile,
@@ -41,7 +41,7 @@ import {
   readPrivateCanonicalJson,
   walkPrivateDirectory,
   writePrivateCanonicalJsonAtomic,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   assertHumanResolutionGrantId,
   humanResolutionGrantUnsafe,
@@ -52,7 +52,7 @@ import {
   humanResolutionGrantPublicationRecoveryInvalid,
   humanResolutionJournalPath,
   humanResolutionPaths,
-} from './investigation-resolution-values.ts';
+} from '../journal-primitives/investigation-resolution-values.ts';
 import { humanResolutionGrantPublicationRecoveryStale } from '../../modules/investigation/domain/human-resolution-grant-publication-contract.ts';
 import { humanResolutionJournalUnsafe } from '../../modules/investigation/domain/human-resolution-journal-contract.ts';
 import {

@@ -46,7 +46,7 @@ import {
   privatePathExists,
   readPrivateCanonicalJson,
   writePrivateCanonicalJsonAtomic,
-} from '../../runtime/storage-journal/investigation-private-files.ts';
+} from '../../runtime/journal-primitives/investigation-private-files.ts';
 import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import type { InvestigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';

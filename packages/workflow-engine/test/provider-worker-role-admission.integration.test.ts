@@ -65,7 +65,7 @@ import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coo
 import {
   grantStorePaths,
   createFileGrantRecordStore,
-} from '../src/runtime/storage-journal/grant-store.ts';
+} from '../src/runtime/lifecycle-ledgers/grant-store.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
   parseGrantPolicyV2,

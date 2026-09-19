@@ -11,8 +11,8 @@ import { assertHumanRevocationAuthorization, } from "../../modules/authority/hum
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { assertNoPreparedHumanResolutionGrantPublicationRecovery, listHumanResolutionGrantIds, readHumanResolutionGrantPublicationRecovery, withHumanResolutionGrantStoreLock, } from "./human-resolution-grant-lock.js";
-import { createPrivateCanonicalJson, createPrivateRawFile, ensurePrivateInvestigationDirectory, fsyncDirectory, privatePathExists, readPrivateCanonicalJson, readPrivateFile, withPrivateRuntimeLock, } from "./investigation-private-files.js";
-import { assertCanonicalResolutionEnvelopeBytes, humanResolutionGrantUnavailable, humanResolutionPaths, } from "./investigation-resolution-values.js";
+import { createPrivateCanonicalJson, createPrivateRawFile, ensurePrivateInvestigationDirectory, fsyncDirectory, privatePathExists, readPrivateCanonicalJson, readPrivateFile, withPrivateRuntimeLock, } from "../journal-primitives/investigation-private-files.js";
+import { assertCanonicalResolutionEnvelopeBytes, humanResolutionGrantUnavailable, humanResolutionPaths, } from "../journal-primitives/investigation-resolution-values.js";
 import { humanResolutionGrantNotFound } from "../../modules/investigation/domain/human-resolution-values.js";
 import { assertHumanResolutionGrantId, humanResolutionGrantUnsafe, isBoundedResolutionText, } from "../../modules/investigation/domain/human-resolution-values.js";
 import { deepFreeze, hasExactKeys, isDigest, isRecord, isTimestamp, } from "../../modules/investigation/domain/investigation-store-values.js";

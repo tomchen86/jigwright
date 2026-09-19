@@ -19,13 +19,13 @@ import {
   readPrivateCanonicalJson,
   withPrivateRuntimeLock,
   writePrivateCanonicalJsonAtomic,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   humanResolutionNodePath,
   humanResolutionPaths,
   humanResolutionRefPath,
   humanResolutionRefUnsafe,
-} from './investigation-resolution-values.ts';
+} from '../journal-primitives/investigation-resolution-values.ts';
 import { humanResolutionObjectUnsafe } from '../../modules/investigation/domain/human-resolution-values.ts';
 import {
   hasExactKeys,

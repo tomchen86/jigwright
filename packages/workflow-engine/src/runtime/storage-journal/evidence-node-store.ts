@@ -34,7 +34,7 @@ import {
   isNodeError,
   objectInvalid,
   objectUnsafe,
-} from './evidence-store-values.ts';
+} from '../journal-primitives/evidence-store-values.ts';
 
 export function writeEvidenceNode(
   paths: InvestigationRuntimePaths,

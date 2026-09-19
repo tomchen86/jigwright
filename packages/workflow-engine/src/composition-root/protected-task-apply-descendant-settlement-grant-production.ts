@@ -25,7 +25,7 @@ import { discoverRepository } from '../runtime/repository-transaction/git.ts';
 import {
   grantStorePaths,
   createFileGrantRecordStore,
-} from '../runtime/storage-journal/grant-store.ts';
+} from '../runtime/lifecycle-ledgers/grant-store.ts';
 import {
   grantRecordDigest,
   type GrantRecord,

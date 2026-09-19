@@ -30,7 +30,7 @@ import {
 import {
   readHumanResolutionArchive,
   readHumanResolutionJournal,
-} from './human-resolution-journal.ts';
+} from '../lifecycle-ledgers/human-resolution-journal.ts';
 import {
   readHumanResolutionHead,
   readHumanResolutionHeadReference,
@@ -51,7 +51,7 @@ import {
   normalizeAmbiguityObservations,
   observeUnsafePath,
   startReservationUnsafe,
-} from './investigation-resolution-values.ts';
+} from '../journal-primitives/investigation-resolution-values.ts';
 import { isBoundedResolutionText } from '../../modules/investigation/domain/human-resolution-values.ts';
 import {
   readCurrentInvestigationRef,

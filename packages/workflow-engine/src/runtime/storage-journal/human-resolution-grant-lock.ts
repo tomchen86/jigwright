@@ -21,7 +21,7 @@ import {
   readPrivateCanonicalJson,
   walkPrivateDirectory,
   withPrivateRuntimeLock,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   assertHumanResolutionGrantId,
   humanResolutionGrantUnsafe,
@@ -29,7 +29,7 @@ import {
 import {
   humanResolutionGrantPublicationRecoveryRequired,
   humanResolutionPaths,
-} from './investigation-resolution-values.ts';
+} from '../journal-primitives/investigation-resolution-values.ts';
 
 export function humanResolutionGrantPublicationRecoveryPath(
   stores: ReturnType<typeof humanResolutionPaths>,

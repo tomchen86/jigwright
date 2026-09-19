@@ -30,12 +30,12 @@ import {
   readPrivateCanonicalJson,
   readPrivateFile,
   withPrivateRuntimeLock,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   assertCanonicalResolutionEnvelopeBytes,
   humanResolutionGrantUnavailable,
   humanResolutionPaths,
-} from './investigation-resolution-values.ts';
+} from '../journal-primitives/investigation-resolution-values.ts';
 import { humanResolutionGrantNotFound } from '../../modules/investigation/domain/human-resolution-values.ts';
 import {
   assertHumanResolutionGrantId,

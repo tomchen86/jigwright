@@ -13,7 +13,7 @@ import {
   readPrivateCanonicalJson,
   assertPrivateInvestigationDirectory,
   writePrivateCanonicalJsonAtomic,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   type TaskStrategyRedRevisionRequest,
   type TaskStrategyRedRevisionRequestSnapshot,

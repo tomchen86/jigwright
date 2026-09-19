@@ -43,7 +43,7 @@ import {
 import {
   assertPrivateInvestigationDirectory,
   readPrivateCanonicalJson,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   hasExactKeys,
   isDigest,

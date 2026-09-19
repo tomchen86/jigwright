@@ -82,7 +82,7 @@ import {
 import {
   grantStorePaths,
   createFileGrantRecordStore,
-} from '../src/runtime/storage-journal/grant-store.ts';
+} from '../src/runtime/lifecycle-ledgers/grant-store.ts';
 import { productionChangeRoutingAuthorityPort } from '../src/composition-root/validated-contract-context.ts';
 
 test('managed routing projects mixed repository state and recovers idempotently', () => {

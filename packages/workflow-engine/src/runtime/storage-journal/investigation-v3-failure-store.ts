@@ -26,7 +26,7 @@ import { type InvestigationManifestPublicationFailure } from '../../modules/inve
 import {
   readPrivateCanonicalJson,
   writePrivateCanonicalJsonAtomic,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   assertChangeId,

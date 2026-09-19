@@ -8,7 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { assertPrivateInvestigationDirectory } from './investigation-private-files.ts';
+import { assertPrivateInvestigationDirectory } from '../journal-primitives/investigation-private-files.ts';
 import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import {

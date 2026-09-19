@@ -21,7 +21,7 @@ import {
   readPrivateCanonicalJson,
   withPrivateRuntimeLock,
   writePrivateCanonicalJsonAtomic,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   currentInvestigationRefPath,
   investigationCasMismatch,
@@ -29,7 +29,7 @@ import {
   refUnsafe,
   sessionLockInvalid,
   sessionUnsafe,
-} from './investigation-resolution-values.ts';
+} from '../journal-primitives/investigation-resolution-values.ts';
 import { sessionTransitionInvalid } from '../../modules/investigation/domain/investigation-session-contract.ts';
 import {
   assertInvestigationSession,

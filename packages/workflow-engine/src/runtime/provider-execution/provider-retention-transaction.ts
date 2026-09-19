@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
-import { assertPrivateInvestigationDirectory } from '../storage-journal/investigation-private-files.ts';
+import { assertPrivateInvestigationDirectory } from '../journal-primitives/investigation-private-files.ts';
 import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { readProviderInvocation } from '../storage-journal/provider-invocation-store.ts';
 import {

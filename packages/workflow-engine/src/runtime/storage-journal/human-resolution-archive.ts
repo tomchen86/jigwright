@@ -23,7 +23,7 @@ import {
   readPrivateFile,
   walkPrivateDirectory,
   withPrivateRuntimeLock,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   currentInvestigationRefPath,
   humanResolutionArchiveUnsafe,
@@ -35,7 +35,7 @@ import {
   observeUnsafePath,
   refUnsafe,
   startReservationUnsafe,
-} from './investigation-resolution-values.ts';
+} from '../journal-primitives/investigation-resolution-values.ts';
 import { isBoundedResolutionText } from '../../modules/investigation/domain/human-resolution-values.ts';
 import { readCurrentInvestigationRef } from './investigation-session-records.ts';
 import {

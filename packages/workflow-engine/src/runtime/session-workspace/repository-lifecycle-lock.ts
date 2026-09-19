@@ -6,11 +6,11 @@
  * - Operation errors keep precedence over release errors and lock cleanup preserves ownership.
  */
 import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
-import { assertGrantLifecycleBarrier } from '../storage-journal/grant-store.ts';
+import { assertGrantLifecycleBarrier } from '../lifecycle-ledgers/grant-store.ts';
 import {
   assertHumanResolutionLifecycleBarrier,
   reclaimHumanResolutionJournalTemporaries,
-} from '../storage-journal/human-resolution-journal.ts';
+} from '../lifecycle-ledgers/human-resolution-journal.ts';
 import fs from 'node:fs';
 import {
   assertPlainDirectory,

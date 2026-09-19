@@ -23,7 +23,7 @@ import {
 import {
   privatePathExists,
   readPrivateCanonicalJson,
-} from '../../runtime/storage-journal/investigation-private-files.ts';
+} from '../../runtime/journal-primitives/investigation-private-files.ts';
 import { readHumanResolutionNode } from '../../runtime/storage-journal/human-resolution-nodes.ts';
 import {
   WORKFLOW_SUPERSEDE_REASONS,

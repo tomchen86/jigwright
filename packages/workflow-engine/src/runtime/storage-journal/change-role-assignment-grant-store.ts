@@ -30,11 +30,14 @@ import {
   type ChangeRoleAssignmentGrantParametersV1,
 } from '../../modules/provider-orchestration/change-role-assignment-grant.ts';
 import type { ChangeRoleAssignmentRecordV1 } from '../../modules/provider-orchestration/change-role-assignment-record.ts';
-import { grantStorePaths, createFileGrantRecordStore } from './grant-store.ts';
+import {
+  grantStorePaths,
+  createFileGrantRecordStore,
+} from '../lifecycle-ledgers/grant-store.ts';
 import {
   createPrivateCanonicalJson,
   readPrivateCanonicalJson,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import { inspectHistoricalChangeRoleAssignmentRecordV1 } from './change-role-assignment-store.ts';
 import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 

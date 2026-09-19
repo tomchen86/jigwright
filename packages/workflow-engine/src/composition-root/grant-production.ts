@@ -102,7 +102,7 @@ import {
 import {
   grantStorePaths,
   createFileGrantRecordStore,
-} from '../runtime/storage-journal/grant-store.ts';
+} from '../runtime/lifecycle-ledgers/grant-store.ts';
 import { grantRecordDigest } from '../modules/authority/grant-records.ts';
 import { readCurrentInvestigationV3FailureObservation } from '../runtime/storage-journal/investigation-v3-failure-store.ts';
 import { resolveArchivePullRequestPublicationTarget } from './archive-pr-publication-production.ts';

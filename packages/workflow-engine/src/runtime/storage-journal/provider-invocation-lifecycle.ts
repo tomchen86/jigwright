@@ -24,14 +24,14 @@ import {
   type InvestigationEvidenceRefsClosure,
   readInvestigationEvidenceRefsClosure,
 } from './evidence-ref-closure.ts';
-import { exactUnsafePathObservationDigest } from './evidence-unsafe-observation.ts';
+import { exactUnsafePathObservationDigest } from '../journal-primitives/evidence-unsafe-observation.ts';
 import { readEvidenceNode } from './evidence-node-store.ts';
 import { resolvePlanReviewInvocationOwner } from './evidence-plan-review-ownership.ts';
 import {
   privatePathExists,
   readPrivateCanonicalJson,
   walkPrivateDirectory,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   deepFreeze,
   hasExactKeys,
