@@ -1,4 +1,5 @@
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';
 import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
 import { productionPlanningArchiveSourcePolicy } from '../src/composition-root/planning-archive-projection-production.ts';
 import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
@@ -64,6 +65,7 @@ test('archive transformation returns an exact full-index patch without mutating 
   try {
     const before = realState(repository);
     const result = withArchiveEligibility(
+      loadStableValidatedChangeContract,
       productionPlanningExecution,
       archiveEligibilityReplayServices,
       productionArchiveGrantCodec,
@@ -118,6 +120,7 @@ test('archive reconciliation failure prevents handoff and cleans its temporary p
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -173,6 +176,7 @@ test('archive transformation refuses a bound provider projection that rejects re
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -210,6 +214,7 @@ test('archive transformation rejects an eligibility manifest that differs from t
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -234,6 +239,7 @@ test('archive transformation rejects a schema selection that contradicts its man
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -265,6 +271,7 @@ for (const fault of [
         () =>
           withPlanningFaultDisabled(repository, fault[0], () =>
             withArchiveEligibility(
+              loadStableValidatedChangeContract,
               productionPlanningExecution,
               archiveEligibilityReplayServices,
               productionArchiveGrantCodec,

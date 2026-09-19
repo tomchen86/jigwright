@@ -1,4 +1,5 @@
 import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
+import type { StableValidatedChangeContractLoader } from '../../modules/assurance/validated-change-contract.ts';
 import type { ArchiveEligibilityReplayServices } from '../../modules/assurance/commit-replay/ci-archive.ts';
 /**
  * Inspects archive eligibility under change transition authority and checks
@@ -34,7 +35,6 @@ import { committedPlanningGeneration } from '../../runtime/repository-transactio
 import { withChangeTransitionAuthority } from '../../runtime/session-workspace/planning-lock.ts';
 import { assertPlanningPaths } from '../../modules/source/planning-paths.ts';
 import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
-import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
 import { completionDocumentPaths } from '../../runtime/managed-documents/validation/managed-documents.ts';
 import { loadRepositoryConsumerConfiguration } from '../../runtime/repository-observation/repository-consumer.ts';
 import type { ResolvedPlanningProviderBinding } from '../../modules/planning-provider/planning-provider-binding.ts';
@@ -65,6 +65,7 @@ export type ArchiveEligibility = {
 };
 
 export function withArchiveEligibility<T>(
+  loadStableValidatedChangeContract: StableValidatedChangeContractLoader,
   planningExecution: PlanningTransitionExecutionServices,
   replay: ArchiveEligibilityReplayServices,
   collaborationGrants: Pick<
@@ -92,6 +93,7 @@ export function withArchiveEligibility<T>(
     'archive',
     (assertOwned) => {
       const eligibility = inspectEligibility(
+        loadStableValidatedChangeContract,
         planningExecution,
         replay,
         collaborationGrants,
@@ -103,6 +105,7 @@ export function withArchiveEligibility<T>(
       return operation(eligibility, assertOwned, (refreshedNow) => {
         assertOwned();
         const refreshed = inspectEligibility(
+          loadStableValidatedChangeContract,
           planningExecution,
           replay,
           collaborationGrants,
@@ -219,6 +222,7 @@ function isUtcDate(value: string): boolean {
 }
 
 function inspectEligibility(
+  loadStableValidatedChangeContract: StableValidatedChangeContractLoader,
   planningExecution: PlanningTransitionExecutionServices,
   replay: ArchiveEligibilityReplayServices,
   collaborationGrants: Pick<

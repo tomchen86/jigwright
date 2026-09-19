@@ -1,4 +1,5 @@
 import { productionChangeRoutingInspector } from '../src/composition-root/change-routing-observation-production.ts';
+import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const renderHandoff = renderHandoffWithContractReader.bind(
   undefined,
@@ -413,6 +414,7 @@ test('installed tarball drives two complete current lifecycles over unrelated se
       syncProtectedBase(repository);
 
       const candidate = discoverArchivePullRequestCandidate(
+        loadStableValidatedChangeContract,
         repository,
         'demo-change',
       );

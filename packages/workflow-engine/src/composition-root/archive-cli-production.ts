@@ -1,4 +1,5 @@
 import { preparePullRequestPreMergeAssurance } from './ci-verification-production.ts';
+import { loadStableValidatedChangeContract } from './validated-contract-context.ts';
 import { planningTransitionExecution as productionPlanningExecution } from './planning-execution-epoch-production.ts';
 import { archiveEligibilityReplayServices } from './ci-replay-production.ts';
 import { productionPlanningArchiveSourcePolicy } from './planning-archive-projection-production.ts';
@@ -8,6 +9,7 @@ import { renderHandoffFromTrackedFacts as productionTrackedHandoffRenderer } fro
 const preparePostMergeArchivePullRequest =
   preparePostMergeArchivePullRequestWithHandoff.bind(
     undefined,
+    loadStableValidatedChangeContract,
     preparePullRequestPreMergeAssurance,
     productionPlanningExecution,
     productionPlanningArchiveSourcePolicy,

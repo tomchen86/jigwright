@@ -4,6 +4,7 @@
  * Invariants:
  * - Archive publication options must be recognized, paired, and unique.
  */
+import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -42,7 +43,11 @@ export async function dispatchArchivePullRequest(
       command: 'archive-pr',
       action,
       ok: true,
-      result: dependencies.discover(cwd, rest[1]!),
+      result: dependencies.discover(
+        loadStableValidatedChangeContract,
+        cwd,
+        rest[1]!,
+      ),
     };
   }
   if (action === 'status') {
@@ -327,7 +332,11 @@ export function dispatchArchiveCommand(
       return {
         command,
         ok: true,
-        result: discoverArchivePullRequestCandidates(cwd, rest[1]!),
+        result: discoverArchivePullRequestCandidates(
+          loadStableValidatedChangeContract,
+          cwd,
+          rest[1]!,
+        ),
       };
     }
     case 'after-merge': {

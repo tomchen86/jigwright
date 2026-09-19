@@ -1,4 +1,5 @@
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';
 import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
 import { collaborationGrantCodec as productionArchiveGrantCodec } from '../src/runtime/grants/grant-services.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
@@ -572,6 +573,7 @@ test('archive admission projects completed required-impact execution into the cu
     syncOriginMain(repository);
 
     withArchiveEligibility(
+      loadStableValidatedChangeContract,
       productionPlanningExecution,
       archiveEligibilityReplayServices,
       productionArchiveGrantCodec,
@@ -625,6 +627,7 @@ test('archive admission recovers an amendment committed before its epoch publica
     syncOriginMain(repository);
 
     withArchiveEligibility(
+      loadStableValidatedChangeContract,
       productionPlanningExecution,
       archiveEligibilityReplayServices,
       productionArchiveGrantCodec,

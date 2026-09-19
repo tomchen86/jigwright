@@ -1,4 +1,5 @@
 import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
+import type { StableValidatedChangeContractLoader } from '../../modules/assurance/validated-change-contract.ts';
 import type { ArchiveEligibilityReplayServices } from '../../modules/assurance/commit-replay/ci-archive.ts';
 import type { PlanningArchiveSourcePolicy } from '../../modules/planning-provider/planning-archive-projection-port.ts';
 import type { ReadSystemSpecDeltaInputs } from '../../modules/source/system-spec-deltas.ts';
@@ -96,6 +97,7 @@ export type VerifiedArchiveTransitionEvidence = Readonly<{
 }>;
 
 export function commitArchiveTransition(
+  loadStableValidatedChangeContract: StableValidatedChangeContractLoader,
   planningExecution: PlanningTransitionExecutionServices,
   sourcePolicy: PlanningArchiveSourcePolicy,
   archiveReplayServices: ArchiveEligibilityReplayServices,
@@ -114,6 +116,7 @@ export function commitArchiveTransition(
   if (existing) return existing;
   const now = testHooks.now ?? (() => new Date());
   return withArchiveEligibility(
+    loadStableValidatedChangeContract,
     planningExecution,
     archiveReplayServices,
     collaborationGrants,

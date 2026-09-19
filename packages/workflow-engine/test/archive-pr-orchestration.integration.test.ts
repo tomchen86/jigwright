@@ -1,4 +1,5 @@
 import { preparePullRequestPreMergeAssurance } from '../src/composition-root/ci-verification-production.ts';
+import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
 import { productionPlanningArchiveSourcePolicy } from '../src/composition-root/planning-archive-projection-production.ts';
@@ -10,6 +11,7 @@ import { renderHandoffFromTrackedFacts as productionTrackedHandoffRenderer } fro
 const preparePostMergeArchivePullRequest =
   preparePostMergeArchivePullRequestWithHandoff.bind(
     undefined,
+    loadStableValidatedChangeContract,
     preparePullRequestPreMergeAssurance,
     productionPlanningExecution,
     productionPlanningArchiveSourcePolicy,
@@ -94,10 +96,12 @@ test('discovers one read-only current-v3 independently reviewed archive candidat
   try {
     const before = repositoryProjection(repository);
     const candidate = discoverArchivePullRequestCandidate(
+      loadStableValidatedChangeContract,
       repository,
       'demo-change',
     );
     const inventory = discoverArchivePullRequestCandidates(
+      loadStableValidatedChangeContract,
       repository,
       'origin/main',
     );
@@ -124,7 +128,11 @@ test('opens the same completed Grant-bound fake archive PR publication twice wit
   try {
     const remote = createFakeArchivePullRequestRemote();
     const publication = fakeArchivePullRequestPublication(
-      discoverArchivePullRequestCandidate(repository, 'demo-change'),
+      discoverArchivePullRequestCandidate(
+        loadStableValidatedChangeContract,
+        repository,
+        'demo-change',
+      ),
     );
     const first = openArchivePullRequest(publication, remote);
     const second = openArchivePullRequest(publication, remote);
@@ -735,7 +743,12 @@ test('candidate discovery fails closed when local protected base differs from re
     git(repository, ['add', 'remote-drift.txt']);
     git(repository, ['commit', '-m', 'Advance local protected base']);
     assert.throws(
-      () => discoverArchivePullRequestCandidate(repository, 'demo-change'),
+      () =>
+        discoverArchivePullRequestCandidate(
+          loadStableValidatedChangeContract,
+          repository,
+          'demo-change',
+        ),
       (error) => isWorkflowError(error, 'ARCHIVE_PR_REMOTE_BASE_MISMATCH'),
     );
   } finally {

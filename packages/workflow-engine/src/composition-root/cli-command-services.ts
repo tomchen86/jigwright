@@ -1,4 +1,5 @@
 import { createInteractiveSshSigner } from '../adapters/signing/ssh/maintainer-signer.ts';
+import { loadStableValidatedChangeContract } from './validated-contract-context.ts';
 import { reviewedGeneratedAssets } from './planning-provider-authoring-production.ts';
 import { readAndValidateTaskRevisionApproval } from './task-revision-approval-production.ts';
 export type { ControlPlanePromotionBootstrapObservations } from '../modules/authority/intervention-bootstrap-contract.ts';
@@ -25,6 +26,7 @@ import { renderHandoffFromTrackedFacts as productionTrackedHandoffRenderer } fro
 import { commitArchiveTransition as commitArchiveTransitionWithHandoff } from '../application/archive/archive-transition.ts';
 export const commitArchiveTransition = commitArchiveTransitionWithHandoff.bind(
   undefined,
+  loadStableValidatedChangeContract,
   productionPlanningExecution,
   productionPlanningArchiveSourcePolicy,
   archiveEligibilityReplayServices,
@@ -36,6 +38,7 @@ import { preparePostMergeArchivePullRequest as preparePostMergeArchivePullReques
 export const preparePostMergeArchivePullRequest =
   preparePostMergeArchivePullRequestWithHandoff.bind(
     undefined,
+    loadStableValidatedChangeContract,
     preparePullRequestPreMergeAssurance,
     productionPlanningExecution,
     productionPlanningArchiveSourcePolicy,

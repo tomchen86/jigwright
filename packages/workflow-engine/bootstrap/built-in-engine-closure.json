@@ -598,7 +598,7 @@
     {
       "path": "src/application/archive/archive-eligibility.ts",
       "mode": "100644",
-      "digest": "sha256:c8daadd1b0f3ea73bab5d5396c2e0a4e5ff7021d4d8b747d808d9cb0e1171248"
+      "digest": "sha256:9e92767260190832da56320064c76ed71b72dac2cd5f5885a152dd02eb3aef10"
     },
     {
       "path": "src/application/archive/archive-pr-grant.ts",
@@ -608,7 +608,7 @@
     {
       "path": "src/application/archive/archive-pr-orchestration.ts",
       "mode": "100644",
-      "digest": "sha256:fe95de2d32c10b3bdb630510e868129f28c8b858930b49e5a59a198ad88d1aee"
+      "digest": "sha256:9c87afe007b3e4fbf09472e5ddba80aaad9507db2c4eec15f6efeb7d2da0daf7"
     },
     {
       "path": "src/application/archive/archive-transformation.ts",
@@ -618,7 +618,7 @@
     {
       "path": "src/application/archive/archive-transition.ts",
       "mode": "100644",
-      "digest": "sha256:ac942354f6c3b3f978541048e176e359063965793bd5d21ae5cd7c87711cd300"
+      "digest": "sha256:13266c16fbff2ae1316034338a6c0f6c3af39009732d46145f5fc2c0defd1e62"
     },
     {
       "path": "src/application/assurance/base-authority-attestation.ts",
@@ -1433,7 +1433,7 @@
     {
       "path": "src/composition-root/archive-cli-production.ts",
       "mode": "100644",
-      "digest": "sha256:929d86ac54e3b4bbf8d1e8a466dcb8adadc3ef5e3a4db7855b8dc77ddf3c0c5a"
+      "digest": "sha256:0b54169419a6b086dd3ee4e53bd3f3e258791d86c5a41cac3fd6537a973eb79c"
     },
     {
       "path": "src/composition-root/archive-pr-grant-production.ts",
@@ -1543,7 +1543,7 @@
     {
       "path": "src/composition-root/cli-command-services.ts",
       "mode": "100644",
-      "digest": "sha256:fc946e76e61ef8b146b15fef74f5b6a15a527a2363e8f117e862acd8c6a19b3f"
+      "digest": "sha256:826f3ecd741d7f03fce8a95feada2584781b6ceb17fca88fe420a25c2b28a034"
     },
     {
       "path": "src/composition-root/collaboration-grant-issuance-production.ts",
@@ -1963,7 +1963,7 @@
     {
       "path": "src/entrypoints/cli/archive-cli.ts",
       "mode": "100644",
-      "digest": "sha256:88ea92852a5229566a1d273e9d07558e15c7f51b20f32c44bd61f64b7791f558"
+      "digest": "sha256:3cdeeaa4df90b88664cb7e8e1a3de1b4977ab75674e53a69b390a9690a0bf0a5"
     },
     {
       "path": "src/entrypoints/cli/authority-audit-cli.ts",

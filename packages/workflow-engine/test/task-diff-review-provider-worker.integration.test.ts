@@ -1,4 +1,5 @@
 import { parseDocumentationClosureFromCommitMessage } from '../src/modules/assurance/documentation-closure.ts';
+import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import {
   productionChangeRoutingInspector,
@@ -236,6 +237,7 @@ test('activated final task review binds documentation closure into commit and CI
     runFixtureGit(fixture.repository, ['checkout', '-b', 'work/archive-demo']);
     assert.equal(
       withArchiveEligibility(
+        loadStableValidatedChangeContract,
         productionPlanningExecution,
         archiveEligibilityReplayServices,
         productionArchiveGrantCodec,

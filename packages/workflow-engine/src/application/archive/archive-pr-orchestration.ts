@@ -1,4 +1,5 @@
 import type { PreMergeVerifier } from '../assurance/pre-merge-verification.ts';
+import type { StableValidatedChangeContractLoader } from '../../modules/assurance/validated-change-contract.ts';
 import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
 import type { ArchiveEligibilityReplayServices } from '../../modules/assurance/commit-replay/ci-archive.ts';
 import type { PlanningArchiveSourcePolicy } from '../../modules/planning-provider/planning-archive-projection-port.ts';
@@ -27,7 +28,6 @@ import type {
   OpenedGitHubArchivePullRequestV1,
 } from '@jigwright/github-adapter';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   discoverRepository,
@@ -268,6 +268,7 @@ export type PublishedPostMergeArchivePullRequestV1 = Readonly<{
  * exact PlanReview binding before this projection is admitted.
  */
 export function discoverArchivePullRequestCandidate(
+  loadStableValidatedChangeContract: StableValidatedChangeContractLoader,
   cwd: string,
   requestedChangeId: string,
 ): ArchivePullRequestCandidateV1 {
@@ -353,6 +354,7 @@ export function discoverArchivePullRequestCandidate(
 }
 
 export function discoverArchivePullRequestCandidates(
+  loadStableValidatedChangeContract: StableValidatedChangeContractLoader,
   cwd: string,
   requestedBase: string,
 ): ArchivePullRequestCandidateInventoryV1 {
@@ -383,6 +385,7 @@ export function discoverArchivePullRequestCandidates(
     activeIds.map((changeId) => {
       try {
         const candidate = discoverArchivePullRequestCandidate(
+          loadStableValidatedChangeContract,
           repository.repositoryRoot,
           changeId,
         );
@@ -583,6 +586,7 @@ export function openArchivePullRequest(
  * deliberately a later explicit operation.
  */
 export function preparePostMergeArchivePullRequest(
+  loadStableValidatedChangeContract: StableValidatedChangeContractLoader,
   preparePullRequestPreMergeAssurance: PreMergeVerifier['preparePullRequestPreMergeAssurance'],
   planningExecution: PlanningTransitionExecutionServices,
   sourcePolicy: PlanningArchiveSourcePolicy,
@@ -597,7 +601,11 @@ export function preparePostMergeArchivePullRequest(
   requestedChangeId: string,
   options: PreparePostMergeArchivePullRequestOptions,
 ): PreparedPostMergeArchivePullRequestV1 {
-  const candidate = discoverArchivePullRequestCandidate(cwd, requestedChangeId);
+  const candidate = discoverArchivePullRequestCandidate(
+    loadStableValidatedChangeContract,
+    cwd,
+    requestedChangeId,
+  );
   const repository = discoverRepository(cwd);
   const archiveBranch = `work/archive-${candidate.changeId}`;
   const worktreePath = prepareArchiveWorktree(
@@ -611,6 +619,7 @@ export function preparePostMergeArchivePullRequest(
     worktreePath,
   );
   const archive = commitArchiveTransition(
+    loadStableValidatedChangeContract,
     planningExecution,
     sourcePolicy,
     archiveReplayServices,
@@ -627,6 +636,7 @@ export function preparePostMergeArchivePullRequest(
     },
   );
   const archiveReplay = commitArchiveTransition(
+    loadStableValidatedChangeContract,
     planningExecution,
     sourcePolicy,
     archiveReplayServices,

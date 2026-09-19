@@ -2,6 +2,7 @@ import {
   createDocumentationClosureRecord,
   encodeDocumentationClosure,
 } from '../src/modules/assurance/documentation-closure.ts';
+import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
 import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
@@ -41,6 +42,7 @@ test('archive eligibility binds completed task evidence to the configured base',
   const repository = completedFixture();
   try {
     const result = withArchiveEligibility(
+      loadStableValidatedChangeContract,
       productionPlanningExecution,
       archiveEligibilityReplayServices,
       productionArchiveGrantCodec,
@@ -93,6 +95,7 @@ test('archive eligibility propagates injected grant validation failure before th
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           {
@@ -130,6 +133,7 @@ test('archive eligibility rejects a non-managed schema', () => {
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -166,6 +170,7 @@ test('archive eligibility requires documentation closure on the current path', (
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -199,6 +204,7 @@ test('archive eligibility rejects a historical v1 investigation on the current-v
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -221,6 +227,7 @@ test('archive eligibility rejects incomplete and unevidenced task state', () => 
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -238,6 +245,7 @@ test('archive eligibility rejects incomplete and unevidenced task state', () => 
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -263,6 +271,7 @@ test('archive eligibility rejects task evidence not reachable from configured ba
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -286,6 +295,7 @@ test('archive eligibility rejects dirty state, active sessions, and lock collisi
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -306,6 +316,7 @@ test('archive eligibility rejects dirty state, active sessions, and lock collisi
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -325,6 +336,7 @@ test('archive eligibility rejects dirty state, active sessions, and lock collisi
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -355,6 +367,7 @@ test('archive eligibility rejects strict-validation failures and unsafe targets'
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -377,6 +390,7 @@ test('archive eligibility rejects strict-validation failures and unsafe targets'
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -415,6 +429,7 @@ test('archive eligibility rejects an exact dated destination collision', () => {
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -441,6 +456,7 @@ test('archive eligibility rejects pre-epoch task completions without current evi
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -471,6 +487,7 @@ test('archive eligibility ignores a backdated parallel plan commit as epoch', ()
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -497,6 +514,7 @@ test('archive eligibility keeps canonical-era completions enforced', () => {
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -523,6 +541,7 @@ test('archive eligibility resolves the base from the protected remote-tracking r
     git(repository, ['branch', '-f', 'main', `${integrationTip}~1`]);
 
     const result = withArchiveEligibility(
+      loadStableValidatedChangeContract,
       productionPlanningExecution,
       archiveEligibilityReplayServices,
       productionArchiveGrantCodec,
@@ -545,6 +564,7 @@ test('archive eligibility fails closed when the remote-tracking base is unresolv
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
@@ -591,6 +611,7 @@ test('archive and attestation resolve the same configured protected ref without 
     assert.throws(
       () =>
         withArchiveEligibility(
+          loadStableValidatedChangeContract,
           productionPlanningExecution,
           archiveEligibilityReplayServices,
           productionArchiveGrantCodec,
