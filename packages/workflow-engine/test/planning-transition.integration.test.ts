@@ -144,9 +144,11 @@ test('propose immutable Git reads cross the repository transaction boundary', ()
     /export function readFileAtCommit\(/u,
   );
   assert.match(gitSource, /export function readFileAtCommit\(/u);
+  // The boundary, not the formatting: ci-planning reads committed files through
+  // the shared git-command module rather than reimplementing the read.
   assert.match(
     ciPlanningReplaySource,
-    /import \{ readFileAtCommit \} from '\.\.\/\.\.\/repository-transaction\/git-command\.ts';/u,
+    /import \{[^}]*\breadFileAtCommit\b[^}]*\} from '\.\.\/\.\.\/repository-transaction\/git-command\.ts';/su,
   );
 });
 
