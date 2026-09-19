@@ -43,7 +43,7 @@ import {
 import { readTaskStrategyImplementationResultBinding } from '../src/runtime/storage-journal/task-strategy-provider-store.ts';
 import { sealTaskStrategyRed } from '../src/application/execute-task/task-strategy-execution.ts';
 import { checkSession } from './support/local-engine-selection-host.ts';
-import { inspectSession } from '../src/application/finalize/verification.ts';
+import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
 import {
   configureChecks,
   createFixtureRepository,

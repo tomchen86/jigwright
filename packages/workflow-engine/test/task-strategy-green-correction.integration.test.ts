@@ -12,7 +12,7 @@ import {
 } from '../src/application/execute-task/task-strategy-patch.ts';
 import assert from 'node:assert/strict';
 import { checkSession } from './support/local-engine-selection-host.ts';
-import { inspectSession } from '../src/application/finalize/verification.ts';
+import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
 import {
   readCurrentTaskStrategyGreenFailure,
   resolveCurrentTaskStrategyCorrection,

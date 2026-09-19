@@ -53,7 +53,7 @@ import {
   writeJsonAtomic,
   type WorkflowSession,
 } from '../../runtime/session-workspace/session-store.ts';
-import { inspectSession } from '../finalize/verification.ts';
+import { inspectSession } from '../session-inspection/session-inspection.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 
 export type TaskStrategyRedRevisionResult = Readonly<{

@@ -8,7 +8,7 @@
  */
 // Lifecycle lock selection, authority checks, and shared digest helpers.
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { assertPreparedProtectedTaskApplyAuthorization } from './protected-task-apply-authorization.ts';
+import { assertPreparedProtectedTaskApplyAuthorization } from '../task-apply-authorization/protected-task-apply-authorization.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
   type AuthoritativeCollaborationGrantVerifier,

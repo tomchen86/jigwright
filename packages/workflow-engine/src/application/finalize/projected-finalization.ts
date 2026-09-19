@@ -76,10 +76,10 @@ import {
 import { ensureTaskMechanicalTransformationEvidence } from './task-mechanical-transform.ts';
 import {
   executeChecks,
-  inspectSession,
   persistSession,
   writeSessionReport,
 } from './verification.ts';
+import { inspectSession } from '../session-inspection/session-inspection.ts';
 
 /**
  * A projected single-pass finalize builds the final implementation, checkbox,

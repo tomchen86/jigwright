@@ -80,7 +80,7 @@ import {
   type TaskStrategyPatchRecord,
   type TaskStrategyPatchReservation,
 } from '../../runtime/storage-journal/task-strategy-patch-store.ts';
-import { inspectSession } from '../finalize/verification.ts';
+import { inspectSession } from '../session-inspection/session-inspection.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 
 const MAX_PATCH_BYTES = 8 * 1024 * 1024;

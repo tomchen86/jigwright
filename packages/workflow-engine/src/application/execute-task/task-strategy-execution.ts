@@ -33,7 +33,7 @@ import {
   type TaskStrategyFrozenFile,
   type TaskStrategyTransaction,
 } from '../../runtime/storage-journal/task-strategy-store.ts';
-import { inspectSession } from '../finalize/verification.ts';
+import { inspectSession } from '../session-inspection/session-inspection.ts';
 
 const TASK_STRATEGY_RED_POLICY = Object.freeze({
   schemaVersion: 1,

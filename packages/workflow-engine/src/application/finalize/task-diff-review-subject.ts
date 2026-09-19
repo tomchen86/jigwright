@@ -25,7 +25,8 @@ import type {
   TaskDiffTreeEntry,
 } from '../../modules/assurance/task-diff-review-record.ts';
 import type { TaskDiffReviewRecord } from '../../modules/assurance/task-diff-review-artifact-record.ts';
-import { inspectSession, persistSession } from './verification.ts';
+import { persistSession } from './verification.ts';
+import { inspectSession } from '../session-inspection/session-inspection.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';

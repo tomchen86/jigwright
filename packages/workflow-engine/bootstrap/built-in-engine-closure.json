@@ -968,7 +968,7 @@
     {
       "path": "src/application/execute-task/task-mechanical-transform-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:8366cc6d433ed8f6af564d7f6acba6dc5cec14db8f5ecee3809702a0edf89da7"
+      "digest": "sha256:c26d9ed8bfccfcc254d4f4f85c058c21956f8c917b3c47cc4bbbee22eb720b02"
     },
     {
       "path": "src/application/execute-task/task-strategy-caller-admission.ts",
@@ -983,12 +983,12 @@
     {
       "path": "src/application/execute-task/task-strategy-execution.ts",
       "mode": "100644",
-      "digest": "sha256:ed7f1c5c3a128f420c42a53ea4037e9f6a6934e4b8184a2893e0f337d1226658"
+      "digest": "sha256:e8a6cc3e5290bbe181721485ee6162f7ea253386ed24ab12440f023227c59926"
     },
     {
       "path": "src/application/execute-task/task-strategy-implementation-context.ts",
       "mode": "100644",
-      "digest": "sha256:264d1daf53044975a91f4ef328605d85df372857d8903089944c3aa58a95cb44"
+      "digest": "sha256:02d844f5c447bdfc6534a60636f4d29d3cb4873f21ef115de5ccc87307cc4c8c"
     },
     {
       "path": "src/application/execute-task/task-strategy-implementation-lifecycle.ts",
@@ -998,12 +998,12 @@
     {
       "path": "src/application/execute-task/task-strategy-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:768070be4c7891e06fb573cdf209d6ec45586d894deacf41b6aeea3d6b8b3739"
+      "digest": "sha256:a25c8fade12c18b9313c98755d8756c5bd34e2e3b9b15c8f3a91dc2429b12562"
     },
     {
       "path": "src/application/execute-task/task-strategy-patch.ts",
       "mode": "100644",
-      "digest": "sha256:cff2e11901caf3cfda5a95ab00032ae5489e52fcd3eda1e9fc916e9fc09c2e0b"
+      "digest": "sha256:bc08b8cde70e36d6c223fa7f7c06afcce9e6be15df4b81c3e4ab38a5d91b68ee"
     },
     {
       "path": "src/application/execute-task/task-strategy-provider-reservations.ts",
@@ -1018,7 +1018,7 @@
     {
       "path": "src/application/execute-task/task-strategy-red-revision.ts",
       "mode": "100644",
-      "digest": "sha256:bf050c906caab5f1cb37f5990402e7f3d215087a8f5c6bb7f2737ec3382cd246"
+      "digest": "sha256:94315b900507cdaa6dc0fad810f60c60d199967972d9c5b3d478858df210620d"
     },
     {
       "path": "src/application/execute-task/update-base.ts",
@@ -1033,7 +1033,7 @@
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:5cc0846578e21fe15ad137d02bae23cc47871d8c3dd38cd9fb5f90881cfaa21d"
+      "digest": "sha256:cb18cc0147c5caf56646f1cd0b72345c57e81f160ec6ce3c0eab2a1b5313d0fb"
     },
     {
       "path": "src/application/finalize/predecessor-reconciliation.ts",
@@ -1043,12 +1043,7 @@
     {
       "path": "src/application/finalize/projected-finalization.ts",
       "mode": "100644",
-      "digest": "sha256:87a22631aab73aaa274b5befe976f84d98b540fa2717a0e9f1850fa7a080775e"
-    },
-    {
-      "path": "src/application/finalize/protected-task-apply-authorization.ts",
-      "mode": "100644",
-      "digest": "sha256:fa9e6b8bc6d05d32b4bad2b42783537156a1a99aa3426dcc2abdebfcb175d6b5"
+      "digest": "sha256:595ba64de45099f0f5bc534be08dc138809975bbbf71a1ec306beeb4812d26c3"
     },
     {
       "path": "src/application/finalize/system-document-candidate.ts",
@@ -1068,12 +1063,12 @@
     {
       "path": "src/application/finalize/task-diff-review-common.ts",
       "mode": "100644",
-      "digest": "sha256:eb13ba2b216dfa640092dae12e574924a2f809ffc340ee1a81a10d27c935c273"
+      "digest": "sha256:a021d499fab9dcce9aaf3e0510f756e74c5c46fa2088abc0a91e5f010017d715"
     },
     {
       "path": "src/application/finalize/task-diff-review-completion.ts",
       "mode": "100644",
-      "digest": "sha256:d3b5b7965c0e00f183bc647868685117fdc0b9521b3936c1e794a1a92a5cbf83"
+      "digest": "sha256:fb6111bd42a207a910deadd0ba0c58353c6baf3aa093fb2dcd76fe2c7126d661"
     },
     {
       "path": "src/application/finalize/task-diff-review-contracts.ts",
@@ -1128,7 +1123,7 @@
     {
       "path": "src/application/finalize/task-diff-review-subject.ts",
       "mode": "100644",
-      "digest": "sha256:d1d905027c90821280e04a90a8a42be0a09f7a2a0944e3875a481f51375c372d"
+      "digest": "sha256:f2efc053dabe413ebc60d78101d3ce11582d3988571b21e50142b2b9d867a115"
     },
     {
       "path": "src/application/finalize/task-mechanical-transform.ts",
@@ -1143,7 +1138,7 @@
     {
       "path": "src/application/finalize/verification.ts",
       "mode": "100644",
-      "digest": "sha256:78fb23859400999743c5fa8bd64b7431eba7cea9797ca79200f3c66ef62c047c"
+      "digest": "sha256:ebb41f47c31f04d9893fb2870565e4603fa540c6b3396f5ed8af7175367cd42d"
     },
     {
       "path": "src/application/governance-intake/governance-findings.ts",
@@ -1363,7 +1358,17 @@
     {
       "path": "src/application/revise/task-revision.ts",
       "mode": "100644",
-      "digest": "sha256:35209cb51361edcabc58ee5f3197511de9db1da9e0e8b0eb781037af3a4a5995"
+      "digest": "sha256:4a6dcdba0c65bc42b0927bcef2aed4fd3d873e5e27beb4e85c77bfbebdeb7995"
+    },
+    {
+      "path": "src/application/session-inspection/session-inspection.ts",
+      "mode": "100644",
+      "digest": "sha256:25e9ccb8731fce75879d810be8e3be1b5eb5b2b25b9a62140f92dd244659ed2b"
+    },
+    {
+      "path": "src/application/task-apply-authorization/protected-task-apply-authorization.ts",
+      "mode": "100644",
+      "digest": "sha256:fa9e6b8bc6d05d32b4bad2b42783537156a1a99aa3426dcc2abdebfcb175d6b5"
     },
     {
       "path": "src/application/work-registry/work-registry-grant-policy.ts",
@@ -1648,7 +1653,7 @@
     {
       "path": "src/composition-root/implementation-reconciliation-production.ts",
       "mode": "100644",
-      "digest": "sha256:32923b73693cf217b38ac9aafd11215bdf0fa04865cec4a27644bf9a60ea4379"
+      "digest": "sha256:b0228ee666d3b7be595b1d510ee38fc4bc284c2387380fdf5f091fdae6654fa9"
     },
     {
       "path": "src/composition-root/implementation-term-floor-production.ts",

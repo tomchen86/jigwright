@@ -49,7 +49,7 @@ import {
 } from '../src/application/execute-task/task-strategy-correction.ts';
 import { readTaskStrategyCorrectionRound } from '../src/runtime/storage-journal/task-strategy-correction-round-store.ts';
 import { checkSession } from './support/local-engine-selection-host.ts';
-import { inspectSession } from '../src/application/finalize/verification.ts';
+import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
 import {
   configureChecks,
   createFixtureRepository,

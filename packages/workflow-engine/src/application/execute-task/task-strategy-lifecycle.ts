@@ -63,7 +63,7 @@ import {
   readTaskStrategyTransaction,
   type TaskStrategyTransaction,
 } from '../../runtime/storage-journal/task-strategy-store.ts';
-import { inspectSession } from '../finalize/verification.ts';
+import { inspectSession } from '../session-inspection/session-inspection.ts';
 
 type TddStrategy = 'cross-agent-tdd' | 'tdd-single-agent';
 

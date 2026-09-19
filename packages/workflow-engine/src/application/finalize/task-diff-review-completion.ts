@@ -17,7 +17,7 @@ import {
   ExitCode,
   WorkflowError,
 } from '../../foundation/errors/errors.ts';
-import { inspectSession } from './verification.ts';
+import { inspectSession } from '../session-inspection/session-inspection.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   type CollaborationGrantRequest,

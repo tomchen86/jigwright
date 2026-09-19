@@ -117,11 +117,11 @@ import {
 import { getSession } from '../../runtime/repository-observation/workflow-session-context.ts';
 import {
   executeChecks,
-  inspectSession,
   persistSession,
   reconcileSessionChecksAfterLocalEngineAdoption,
   writeSessionReport,
 } from './verification.ts';
+import { inspectSession } from '../session-inspection/session-inspection.ts';
 import { rollbackGeneratedDocuments } from '../../runtime/managed-documents/validation/managed-documents.ts';
 import { type GeneratedDocumentMutation } from '../../modules/projection/managed-documents.ts';
 import {
@@ -147,7 +147,7 @@ import {
   type ProtectedTaskApplyRecoveryParametersV1,
 } from '../../modules/authority/protected-task-apply-recovery-grant.ts';
 import { grantSha256 } from '../../modules/authority/grant-primitives.ts';
-import { assertPreparedProtectedTaskApplyAuthorization } from './protected-task-apply-authorization.ts';
+import { assertPreparedProtectedTaskApplyAuthorization } from '../task-apply-authorization/protected-task-apply-authorization.ts';
 import { parsePathRoleRegistry } from '../../modules/source/path-role-registry.ts';
 
 export type CompleteTaskResult = {

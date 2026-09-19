@@ -9,7 +9,7 @@ import type { ChangeContractServices } from '../../modules/lifecycle/change-rout
  *   identities.
  */
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
-import { inspectSession } from '../finalize/verification.ts';
+import { inspectSession } from '../session-inspection/session-inspection.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   resolveCurrentTaskStrategyCorrection,
