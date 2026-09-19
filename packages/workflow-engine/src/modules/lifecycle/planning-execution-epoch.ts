@@ -1,5 +1,6 @@
 /** Exact epoch manifests, evidence, and recovery predicates. */
 import crypto from 'node:crypto';
+import type { SpecDeltaPreflightRecord } from '@jigwright/core/planning-archive-projection-port';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { buildContextManifest } from '../authority/execution-governance-context.ts';
@@ -328,7 +329,7 @@ export type PlanningTransitionExecutionServices = Readonly<{
   /** Runs the archive applicability preflight before the transition commits. */
   projectArchiveApplicability(
     input: import('../planning-provider/planning-archive-projection-port.ts').ArchiveApplicabilityProjectionInput,
-  ): import('@jigwright/openspec-adapter/archive-projection').SpecDeltaPreflightRecord;
+  ): SpecDeltaPreflightRecord;
   /** Validates the transition against the configured current schema. */
   validatePlanningTransition(
     repositoryRoot: string,

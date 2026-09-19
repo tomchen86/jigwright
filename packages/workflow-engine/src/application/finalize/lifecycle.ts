@@ -22,7 +22,7 @@ import {
   finalizeCommittedSession,
   resumePendingCommit,
   type CommitSessionResult,
-} from '../../runtime/recovery/commit-recovery.ts';
+} from './commit-recovery.ts';
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
 import {
   ExitCode,
@@ -160,7 +160,7 @@ export type FinishSessionResult = {
   tree: string;
 };
 
-export type { CommitSessionResult } from '../../runtime/recovery/commit-recovery.ts';
+export type { CommitSessionResult } from './commit-recovery.ts';
 export type { FinalizeTaskResult } from './projected-finalization.ts';
 
 export type FinalizeSessionResult = Omit<FinalizeTaskResult, 'session'> & {

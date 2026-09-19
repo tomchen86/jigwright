@@ -12,7 +12,7 @@ import {
   loadActiveSessionContext,
   readWorkflowSessionContext,
 } from '../src/runtime/repository-observation/workflow-session-context.ts';
-import { resumePendingCommit } from '../src/runtime/recovery/commit-recovery.ts';
+import { resumePendingCommit } from '../src/application/finalize/commit-recovery.ts';
 import { managedCommitMessage } from '../src/runtime/repository-transaction/git-transitions.ts';
 import {
   acquireTaskSessionIsolationLeases,
@@ -419,7 +419,7 @@ test('runtime context readers and consumers reject type and value dependencies o
     'runtime/storage-journal/provider-worker-maintenance.ts',
     'runtime/provider-execution/execution-runtime.ts',
     'runtime/provider-execution/provider-probe-executor.ts',
-    'runtime/recovery/commit-recovery.ts',
+    'application/finalize/commit-recovery.ts',
   ]) {
     const check = (extra = '') => {
       const { edges } = resolver.read(path.join(root, prefix, relative), extra);

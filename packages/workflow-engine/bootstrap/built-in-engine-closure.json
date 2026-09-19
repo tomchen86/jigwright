@@ -223,7 +223,7 @@
     {
       "path": "node_modules/@jigwright/core/src/planning-archive-projection-port.ts",
       "mode": "100644",
-      "digest": "sha256:215f40a822bea3825156f6ef1245587bd7c666a2f0f594457a8e0dab98b1787a"
+      "digest": "sha256:13a35259274c0476ac86245967e08628d81a8ac7f583c298e26415f0f55a6dc9"
     },
     {
       "path": "node_modules/@jigwright/core/src/planning-provider-binding.ts",
@@ -353,7 +353,7 @@
     {
       "path": "node_modules/@jigwright/openspec-adapter/src/archive-projection.ts",
       "mode": "100644",
-      "digest": "sha256:93f347807041b5826658dd3a8ee0305d35dfe72421365915265441771240a18a"
+      "digest": "sha256:5c251edda4c42393afe2c6f1c2a02b3517141456a99730f638aecbc4d339dc86"
     },
     {
       "path": "node_modules/@jigwright/openspec-adapter/src/index.ts",
@@ -613,7 +613,7 @@
     {
       "path": "src/application/archive/archive-transformation.ts",
       "mode": "100644",
-      "digest": "sha256:8c6e58948dfb858e111ee2b4663948d102e304050addd9bc3d3ae2b26e08a883"
+      "digest": "sha256:600952c4636018ff8b3f79ff527c0741f2a0bab25655e0318d3d4edb89296d2b"
     },
     {
       "path": "src/application/archive/archive-transition.ts",
@@ -1031,6 +1031,11 @@
       "digest": "sha256:21af601d1cdcaefb3dab924f8b03bfd7a7269283af89f37bf701223091c87c19"
     },
     {
+      "path": "src/application/finalize/commit-recovery.ts",
+      "mode": "100644",
+      "digest": "sha256:b34d06b94e86670d5db5a89fd4dd37f6293570bbf2aa653d320e707d0fca7cef"
+    },
+    {
       "path": "src/application/finalize/finalize-cancellation.ts",
       "mode": "100644",
       "digest": "sha256:7e7f682648f639c0eb49f7f79374c759ec109d58f9858cd40988684e9b4b6313"
@@ -1038,7 +1043,7 @@
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:bceef380c3e1899c035000837b5c3c482fa35e53c51d587e761a781a2b76441a"
+      "digest": "sha256:720901ce32737de55ceb43b8151869ab1e0a8669d5c514eecf36bf6c30002bf3"
     },
     {
       "path": "src/application/finalize/predecessor-reconciliation.ts",
@@ -3293,7 +3298,7 @@
     {
       "path": "src/modules/lifecycle/planning-execution-epoch.ts",
       "mode": "100644",
-      "digest": "sha256:d7b829468374e59edcc349c772e723c297fe7d2e608c7aa8f9cc547597f81790"
+      "digest": "sha256:d75fca8411ff33b36ee5d017c1ad74f8a211298e53bb340722a1a03370374a11"
     },
     {
       "path": "src/modules/lifecycle/planning-transition-report.ts",
@@ -4146,11 +4151,6 @@
       "digest": "sha256:42d32cf54dce93cdce4ed8f159a44e2952d6361ec750bf996509d8937aaf479d"
     },
     {
-      "path": "src/runtime/recovery/commit-recovery.ts",
-      "mode": "100644",
-      "digest": "sha256:c1cff00ade91e6fa3531bc8618a743457d32cb2c2bfb038e501f46ea915f3a16"
-    },
-    {
       "path": "src/runtime/recovery/recovery-authority-store.ts",
       "mode": "100644",
       "digest": "sha256:1e9e7a3d1fdb58cd834ac60f398916aeaa6cdddcd17ba9f5b2128e2be4f93bf1"
@@ -4333,7 +4333,7 @@
     {
       "path": "src/runtime/repository-transaction/archive-delta-verifier.ts",
       "mode": "100644",
-      "digest": "sha256:b3e8daac146d72b187461c257038e74809b781654f2496c67d61b0126bfd6ca1"
+      "digest": "sha256:45d0e67fbf6b3f7b738217905587c91bc82cdc7e1c4523875450f5b9a2f0948a"
     },
     {
       "path": "src/runtime/repository-transaction/archive-output-safety.ts",

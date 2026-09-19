@@ -82,6 +82,19 @@ export type PlanningArchiveProjection = Readonly<{
   totals?: PlanningArchiveTotals;
 }>;
 
+/**
+ * Outcome of the spec-delta preflight an archive projection depends on.
+ * Declared here so a domain module can name it without reaching into an
+ * adapter package.
+ */
+export type SpecDeltaPreflightRecord = Readonly<{
+  status: 'passed';
+  validatedAt: string;
+  validatedBaseCommit: string;
+  validatedBaseSpecDigests: Record<string, string>;
+  validatorVersion: string;
+}>;
+
 export type PlanningArchiveProjectedSpecValidation = Readonly<{
   providerId: string;
   adapterContractVersion: number;

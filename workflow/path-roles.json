@@ -282,7 +282,7 @@
       "packages/workflow-engine/src/runtime/repository-observation/workflow-contract-artifacts.ts",
       "packages/workflow-engine/src/runtime/repository-observation/workflow-session-context.ts",
       "packages/workflow-engine/src/runtime/repository-transaction/agent-role-plan-store.ts",
-      "packages/workflow-engine/src/runtime/recovery/commit-recovery.ts",
+      "packages/workflow-engine/src/application/finalize/commit-recovery.ts",
       "packages/workflow-engine/src/runtime/repository-transaction/filesystem-safety.ts",
       "packages/workflow-engine/src/runtime/repository-transaction/git-command.ts",
       "packages/workflow-engine/src/runtime/repository-transaction/git-commit-history.ts",

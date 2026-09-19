@@ -7,6 +7,7 @@
  *   errors; other failures propagate.
  */
 import fs from 'node:fs';
+import type { SpecDeltaPreflightRecord } from '@jigwright/core/planning-archive-projection-port';
 import path from 'node:path';
 
 import {
@@ -27,7 +28,6 @@ import {
   type DeltaApplicabilityFault,
   type OpenSpecArchiveProjectionReader,
   type SpecDeltaAssessment,
-  type SpecDeltaPreflightRecord,
 } from '@jigwright/openspec-adapter/archive-projection';
 
 import { readFileAtCommit } from './git.ts';

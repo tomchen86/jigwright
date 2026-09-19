@@ -1,4 +1,5 @@
 import type { ArchiveApplicabilityProjectionInput } from '../../modules/planning-provider/planning-archive-projection-port.ts';
+import type { SpecDeltaPreflightRecord } from '@jigwright/core/planning-archive-projection-port';
 import type { ArchiveProjectionDependencies } from '../../modules/planning-provider/planning-archive-projection-port.ts';
 export type { ArchiveApplicabilityProjectionInput } from '../../modules/planning-provider/planning-archive-projection-port.ts';
 import type { PlanningArchiveSourcePolicy } from '../../modules/planning-provider/planning-archive-projection-port.ts';
@@ -29,7 +30,6 @@ import type { ArchiveEligibility } from './archive-eligibility.ts';
 import {
   assertSpecDeltaPreconditions,
   verifyProjectedSpecDeltaOutcome,
-  type SpecDeltaPreflightRecord,
 } from '../../runtime/repository-transaction/archive-delta-verifier.ts';
 import {
   assertPlainArchiveOutputFile,

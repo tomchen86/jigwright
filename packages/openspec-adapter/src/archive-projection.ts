@@ -7,6 +7,7 @@
  *   operation totals and output identity are returned.
  */
 import crypto from 'node:crypto';
+import type { SpecDeltaPreflightRecord } from '@jigwright/core/planning-archive-projection-port';
 import { markdownLines } from '@jigwright/core/markdown-sections';
 
 export type OpenSpecArchiveOperation =
@@ -359,14 +360,6 @@ export function assertSpecDeltaScenarioPreservation(
 }
 
 export const SPEC_DELTA_VALIDATOR_VERSION = 'spec-delta-preflight-v2';
-
-export type SpecDeltaPreflightRecord = Readonly<{
-  status: 'passed';
-  validatedAt: string;
-  validatedBaseCommit: string;
-  validatedBaseSpecDigests: Record<string, string>;
-  validatorVersion: string;
-}>;
 
 export type DeltaApplicabilityFault = {
   operation: OpenSpecArchiveOperation;
