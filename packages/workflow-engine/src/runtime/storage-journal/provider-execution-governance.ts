@@ -40,7 +40,7 @@ import {
   providerContextStale,
   digestCanonical,
   isDigest,
-} from '../provider-execution/provider-governance-values.ts';
+} from './provider-governance-values.ts';
 
 export type {
   ProviderPromptContextBinding,

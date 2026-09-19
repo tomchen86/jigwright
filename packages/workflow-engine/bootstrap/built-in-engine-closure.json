@@ -4006,11 +4006,6 @@
       "digest": "sha256:6038588d4480bb1be34cdd3af1ca0608d0b1728a2ac96b6e9f2d08ace367f3dd"
     },
     {
-      "path": "src/runtime/provider-execution/provider-governance-values.ts",
-      "mode": "100644",
-      "digest": "sha256:38b0e922ddb7df1c4f8acb3c2957c9ce3c3b3c708b4a86447c53d21e08b0c08a"
-    },
-    {
       "path": "src/runtime/provider-execution/provider-probe-executor.ts",
       "mode": "100644",
       "digest": "sha256:4cdaef1d6b5dbdb85007560424af1f852c2c2d733acc94b7419575ee62c0aeed"
@@ -4089,16 +4084,6 @@
       "path": "src/runtime/provider-execution/provider-runner.ts",
       "mode": "100644",
       "digest": "sha256:22fe4dc4b1557d079a7a516a5088d81d44e86e3fdbd67c825a055b5b9bdf7300"
-    },
-    {
-      "path": "src/runtime/provider-execution/provider-supersession-evidence.ts",
-      "mode": "100644",
-      "digest": "sha256:c330ab761df325f8d3eec07077182fe47679623957e085f8df822b283965411a"
-    },
-    {
-      "path": "src/runtime/provider-execution/provider-supersession-values.ts",
-      "mode": "100644",
-      "digest": "sha256:7a20f6dc383f9bdc3ee438cecdc6a494bda45c171a36ddf64eba2a68645a6334"
     },
     {
       "path": "src/runtime/provider-execution/retention-control.ts",
@@ -5128,12 +5113,17 @@
     {
       "path": "src/runtime/storage-journal/provider-execution-governance.ts",
       "mode": "100644",
-      "digest": "sha256:a457292ffb8e3d1d7e46a533b47829895fc1cce0a279cd1b163ccf1e8ccf39a5"
+      "digest": "sha256:dcd2cfae79d5cd0c17e069ed6b28ae2c30240d1a7ce9f717f2e7893c8cdef2bb"
     },
     {
       "path": "src/runtime/storage-journal/provider-execution-policy-authority.ts",
       "mode": "100644",
       "digest": "sha256:6ed325f90de8f4892a1fda12a6f1344564845374c7fda857a24b962a1acca55b"
+    },
+    {
+      "path": "src/runtime/storage-journal/provider-governance-values.ts",
+      "mode": "100644",
+      "digest": "sha256:38b0e922ddb7df1c4f8acb3c2957c9ce3c3b3c708b4a86447c53d21e08b0c08a"
     },
     {
       "path": "src/runtime/storage-journal/provider-host-wrapper-evidence.ts",
@@ -5203,7 +5193,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-supersession.ts",
       "mode": "100644",
-      "digest": "sha256:eb56610e5c399d8048abfeecad7802ff4f8103d097d12c89ec3793216c8ecea6"
+      "digest": "sha256:b707fc65c24435827b69139de40f8c682069408dd36b9007ec0d8042bd808ef2"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-validation.ts",
@@ -5253,7 +5243,7 @@
     {
       "path": "src/runtime/storage-journal/provider-repair-governance.ts",
       "mode": "100644",
-      "digest": "sha256:5bbde738ca8186855ff87314b9bbe8d181b6cde171d318c681bd56a1b4021bc1"
+      "digest": "sha256:ec4dee08bf5e5ff204cdeaf6dbc12a74ecd3a0b448b5aeda5096ad8f2588e14e"
     },
     {
       "path": "src/runtime/storage-journal/provider-retention-catalog.ts",
@@ -5284,6 +5274,16 @@
       "path": "src/runtime/storage-journal/provider-runtime-retention.ts",
       "mode": "100644",
       "digest": "sha256:b33ba532b2a1ca10802121e62b2fb74b76d282784db9c8cb1d6387273916dfcc"
+    },
+    {
+      "path": "src/runtime/storage-journal/provider-supersession-evidence.ts",
+      "mode": "100644",
+      "digest": "sha256:27ca4fd99770ae17c2086cc448bbe616679999edd302322c62592d7b0a2a593d"
+    },
+    {
+      "path": "src/runtime/storage-journal/provider-supersession-values.ts",
+      "mode": "100644",
+      "digest": "sha256:7a20f6dc383f9bdc3ee438cecdc6a494bda45c171a36ddf64eba2a68645a6334"
     },
     {
       "path": "src/runtime/storage-journal/provider-worker-maintenance.ts",

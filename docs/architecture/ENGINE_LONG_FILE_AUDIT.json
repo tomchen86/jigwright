@@ -2302,7 +2302,7 @@
       "decision": "refactored",
       "reason": "Separated repair budget replay, immutable failure evidence and repair lineage into one repair authority module, with primitive values separate. Remaining entrypoint binds prompt/context epoch, runtime evidence and retention authority using its actual composition dependencies.",
       "extractedFiles": [
-        "packages/workflow-engine/src/runtime/provider-execution/provider-governance-values.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/provider-governance-values.ts",
         "packages/workflow-engine/src/runtime/storage-journal/provider-repair-governance.ts"
       ]
     },
@@ -2315,8 +2315,8 @@
       "decision": "refactored",
       "reason": "Separated immutable artifact evidence and shared values. Remaining prepare/finalize/recovery functions implement one supersession transaction across invocation/evidence stores, with exact relation and receipt replay. Largest function191 lines; keeping these transaction paths together preserves reviewability of interrupted publication.",
       "extractedFiles": [
-        "packages/workflow-engine/src/runtime/provider-execution/provider-supersession-evidence.ts",
-        "packages/workflow-engine/src/runtime/provider-execution/provider-supersession-values.ts"
+        "packages/workflow-engine/src/runtime/storage-journal/provider-supersession-evidence.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/provider-supersession-values.ts"
       ]
     },
     {
@@ -5327,7 +5327,7 @@
     "packages/workflow-engine/src/runtime/provider-execution/provider-execution-projection.ts": [
       "packages/workflow-engine/src/runtime/provider-execution/execution-runtime.ts"
     ],
-    "packages/workflow-engine/src/runtime/provider-execution/provider-governance-values.ts": [
+    "packages/workflow-engine/src/runtime/storage-journal/provider-governance-values.ts": [
       "packages/workflow-engine/src/runtime/storage-journal/provider-execution-governance.ts"
     ],
     "packages/workflow-engine/src/runtime/storage-journal/provider-repair-governance.ts": [
@@ -5372,10 +5372,10 @@
     "packages/workflow-engine/src/runtime/provider-execution/provider-runner-values.ts": [
       "packages/workflow-engine/src/runtime/provider-execution/provider-runner.ts"
     ],
-    "packages/workflow-engine/src/runtime/provider-execution/provider-supersession-evidence.ts": [
+    "packages/workflow-engine/src/runtime/storage-journal/provider-supersession-evidence.ts": [
       "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-supersession.ts"
     ],
-    "packages/workflow-engine/src/runtime/provider-execution/provider-supersession-values.ts": [
+    "packages/workflow-engine/src/runtime/storage-journal/provider-supersession-values.ts": [
       "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-supersession.ts"
     ],
     "packages/workflow-engine/src/runtime/repository-transaction/git-command.ts": [

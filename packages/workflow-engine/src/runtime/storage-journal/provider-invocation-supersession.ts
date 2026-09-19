@@ -47,12 +47,12 @@ import {
 import {
   currentEvidenceSnapshot,
   assertSnapshotStableCurrent,
-} from '../provider-execution/provider-supersession-evidence.ts';
+} from './provider-supersession-evidence.ts';
 import {
   isTimestamp,
   deepFreeze,
   isRecord,
-} from '../provider-execution/provider-supersession-values.ts';
+} from './provider-supersession-values.ts';
 
 const MAX_SUPERSESSION_TRANSACTIONS = 4_096;
 

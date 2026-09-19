@@ -55,7 +55,7 @@ import {
   digestCanonical,
   digestText,
   isDigest,
-} from '../provider-execution/provider-governance-values.ts';
+} from './provider-governance-values.ts';
 
 const MAX_REPAIR_VALUE_BYTES = 262_144;
 

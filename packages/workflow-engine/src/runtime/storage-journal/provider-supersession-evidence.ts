@@ -12,19 +12,19 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import {
   privatePathExists,
   readPrivateCanonicalJson,
-} from '../storage-journal/investigation-private-files.ts';
+} from './investigation-private-files.ts';
 import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   readCompleteProviderRetentionReceipt,
   providerRetentionArtifact,
-} from '../storage-journal/provider-retention-receipt.ts';
+} from './provider-retention-receipt.ts';
 import {
   type ProviderInvocationEvidenceSnapshot,
   providerInvocationSupersessionUnsafe,
   createProviderInvocationEvidenceSnapshot,
-} from '../storage-journal/provider-invocation-supersession-schema.ts';
+} from './provider-invocation-supersession-schema.ts';
 import {
   digestText,
   isRecord,
