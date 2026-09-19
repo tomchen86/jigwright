@@ -310,4 +310,28 @@ export function recoverablePlanningAmendment(
 export type PlanningTransitionExecutionServices = Readonly<{
   planningExecutionEpoch: PlanningExecutionEpochOperations;
   taskExecutionGeneration: import('../assurance/task-execution-evidence.ts').TaskExecutionGenerationReader;
+  /** Observes the transition before it is committed. */
+  inspectPlanningTransition(
+    repositoryRoot: string,
+    baselineHead: string,
+    changeRoot: string,
+    changeId: string,
+    changedPaths: string[],
+    deletedPaths?: readonly string[],
+    reopenAuthorized?: boolean,
+  ): import('../planning-provider/change-contract.ts').PlanningInspection &
+    Readonly<{
+      planningRoleOverride:
+        | import('../provider-orchestration/planning-role-provider-policy.ts').CurrentPlanningRoleOverridePolicy
+        | null;
+    }>;
+  /** Validates the transition against the configured current schema. */
+  validatePlanningTransition(
+    repositoryRoot: string,
+    changeId: string,
+    schemaName: import('../planning-provider/change-contract.ts').ManagedSchemaName,
+  ): Pick<
+    import('./planning-transition-report.ts').PlanningTransitionReport,
+    'openspec' | 'planningAssurance'
+  >;
 }>;

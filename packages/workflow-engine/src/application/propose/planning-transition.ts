@@ -51,10 +51,8 @@ import {
 import {
   amendmentLeftWorkMarkedDone,
   assertPlanningTaskHistory,
-  inspectPlanningTransition,
   taskStates,
-  validatePlanningTransition,
-} from '../../composition-root/planning-provider-production.ts';
+} from '../../modules/planning-provider/planning-task-history.ts';
 import {
   readPlanningTransitionReport,
   writePlanningTransitionReport,
@@ -493,7 +491,7 @@ function commitPlanningTransitionLocked(
           priorGeneration,
         );
   const reopenAuthorized = amendmentDecision?.executionImpact === 'required';
-  const inspection = inspectPlanningTransition(
+  const inspection = planningExecution.inspectPlanningTransition(
     initial.repositoryRoot,
     initial.head,
     config.changeRoot,
@@ -502,7 +500,7 @@ function commitPlanningTransitionLocked(
     deletedPaths,
     reopenAuthorized,
   );
-  const planningValidation = validatePlanningTransition(
+  const planningValidation = planningExecution.validatePlanningTransition(
     initial.repositoryRoot,
     changeId,
     inspection.schemaName,
@@ -592,7 +590,7 @@ function commitPlanningTransitionLocked(
     allInitialChangedPaths,
     initialFingerprint,
   );
-  const verified = inspectPlanningTransition(
+  const verified = planningExecution.inspectPlanningTransition(
     initial.repositoryRoot,
     initial.head,
     config.changeRoot,

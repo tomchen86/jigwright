@@ -533,7 +533,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/planning-contract.ts",
       "mode": "100644",
-      "digest": "sha256:b84b9a938ead0c61d7833f4378ec547f34057098879f250b465c9166170050e9"
+      "digest": "sha256:9925700c0ce5184e5623268c8fff3ed557b0f754b9ce3fdf76c56646fa1ad724"
     },
     {
       "path": "src/adapters/planning/openspec/documents/planning-path-policy.ts",
@@ -1198,7 +1198,7 @@
     {
       "path": "src/application/propose/planning-transition.ts",
       "mode": "100644",
-      "digest": "sha256:6348a7501e38e24d04f7f3e4f71316cba84275fe11559b483d1b79dffdee6add"
+      "digest": "sha256:e77e2dbfcb8161de8cf3eabffbfb24f281d00eb44569162a511d1d84a614db82"
     },
     {
       "path": "src/application/propose/propose-artifacts.ts",
@@ -1748,7 +1748,7 @@
     {
       "path": "src/composition-root/planning-execution-epoch-production.ts",
       "mode": "100644",
-      "digest": "sha256:a599d9ce771f97ce0188277fe24e7db5f912023b840b84732d21f016b9bf5367"
+      "digest": "sha256:cab2dcb573d69ebf1167952c2d0589c401e1bfddb60a0201a69c87f344b53620"
     },
     {
       "path": "src/composition-root/planning-provider-authoring-production.ts",
@@ -3278,7 +3278,7 @@
     {
       "path": "src/modules/lifecycle/planning-execution-epoch.ts",
       "mode": "100644",
-      "digest": "sha256:e1fa0c8ec6b05e4d479db25f687e4c43907376b11025575ac86cf11d78a32a08"
+      "digest": "sha256:9148ac48f8f9ab2a40be7d96fc06ca6bd69dc336ee3822e8c9d2974d4e6ae9a3"
     },
     {
       "path": "src/modules/lifecycle/planning-transition-report.ts",
@@ -3318,7 +3318,7 @@
     {
       "path": "src/modules/planning-provider/change-contract.ts",
       "mode": "100644",
-      "digest": "sha256:38554ec4ba3f58a0b6b50184345bd68ea21a49deed1416dbd70ab94d34488dfb"
+      "digest": "sha256:fa5d4e5ff62dcdee81a6c3e756ee99dcea0b0943088be23ebb8b2949ac5f3c51"
     },
     {
       "path": "src/modules/planning-provider/change-metadata-policy.ts",

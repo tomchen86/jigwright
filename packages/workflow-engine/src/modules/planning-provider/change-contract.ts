@@ -1,3 +1,4 @@
+import type { ResolvedPlanningProviderBinding } from '@jigwright/core/planning-provider-binding';
 /** Parsed change artifact facts, before provider readiness and planning-assurance admission. */
 import type { InvestigationManifestV3 } from '../investigation/manifest/investigation-manifest-types.ts';
 import type { ImmutableGitTreeInvestigationObservation } from '../investigation/manifest/investigation-observation.ts';
@@ -69,3 +70,20 @@ export type ChangeContractReaders = Readonly<{
   loadChangeContract: ChangeContractReader;
   loadCommittedChangeContract: CommittedChangeContractReader;
 }>;
+
+/**
+ * What inspecting one planning transition observes, before anything is
+ * committed. A data contract: the provider adapter produces it, the planning
+ * transition reads it.
+ */
+export type PlanningInspection = {
+  /** Completed tasks this transition reopened, named rather than counted. */
+  reopenedTasks: string[];
+  transitionKind: 'introduction' | 'revision';
+  schemaName: ManagedSchemaName;
+  contract: ReturnType<ChangeContractReader>;
+  beforeTasks: ParsedTask[] | undefined;
+  currentPaths: string[];
+  artifactDigests: Record<string, string>;
+  planningProvider: ResolvedPlanningProviderBinding;
+};

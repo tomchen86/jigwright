@@ -46,17 +46,8 @@ import {
   resolveHistoricalOpenSpecPlanningTransitionBinding as resolveHistoricalOpenSpecPlanningTransitionBindingWithReader,
 } from './openspec-provider-binding.ts';
 
-export type PlanningInspection = {
-  /** Completed tasks this transition reopened, named rather than counted. */
-  reopenedTasks: string[];
-  transitionKind: 'introduction' | 'revision';
-  schemaName: ManagedSchemaName;
-  contract: ReturnType<ChangeContractReader>;
-  beforeTasks: ParsedTask[] | undefined;
-  currentPaths: string[];
-  artifactDigests: Record<string, string>;
-  planningProvider: ResolvedPlanningProviderBinding;
-};
+export type { PlanningInspection } from '../../../../modules/planning-provider/change-contract.ts';
+import type { PlanningInspection } from '../../../../modules/planning-provider/change-contract.ts';
 
 export const assertPlanningPaths = assertPlanningPathsWithAdmission.bind(
   undefined,
