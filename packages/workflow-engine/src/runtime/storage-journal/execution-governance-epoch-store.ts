@@ -54,7 +54,7 @@ import {
   createDurablePrivateFileAtomic,
   replacePrivateFileAtomic,
 } from './execution-governance-private-files.ts';
-import { recoverPreparedPruneReceipts } from '../recovery/execution-governance-prune-recovery.ts';
+import { recoverPreparedPruneReceipts } from './execution-governance-prune-recovery.ts';
 
 /**
  * Creates the first durable context generation and its retention catalog as one

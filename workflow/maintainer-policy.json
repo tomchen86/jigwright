@@ -40,11 +40,11 @@
     "packages/workflow-engine/src/modules/investigation/domain/human-resolution-contract.ts",
     "packages/workflow-engine/src/modules/lifecycle/managed-trailers.ts",
     "packages/workflow-engine/src/runtime/grants/human-resolution-grant-verification.ts",
-    "packages/workflow-engine/src/runtime/repository-observation/ci-verification.ts",
     "packages/workflow-engine/src/runtime/repository-observation/human-resolution-grants.ts",
     "packages/workflow-engine/src/runtime/repository-observation/maintainer-policy.ts",
     "packages/workflow-engine/src/runtime/repository-transaction/maintainer-audit-tag.ts",
     "packages/workflow-engine/src/runtime/repository-validation/commit-replay/ci-authority.ts",
+    "packages/workflow-engine/src/runtime/repository-validation/commit-replay/ci-verification.ts",
     "packages/workflow-engine/src/runtime/repository-validation/commit-replay/services.ts",
     "workflow/maintainer-policy.json",
     "workflow/schemas/maintainer-policy.schema.json"

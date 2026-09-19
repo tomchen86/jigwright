@@ -2,7 +2,7 @@
 import { createPullRequestVerifier } from '../application/assurance/pull-request-verification.ts';
 import { createBaseAuthorityAttestationVerifier } from '../application/assurance/base-authority-attestation.ts';
 import { createPreMergeVerifier } from '../application/assurance/pre-merge-verification.ts';
-import { ciRepositoryObservations } from '../runtime/repository-observation/ci-verification.ts';
+import { ciRepositoryObservations } from '../runtime/repository-validation/commit-replay/ci-verification.ts';
 import {
   readPreMergeAssuranceForRepository,
   storePreMergeAssuranceForRepository,

@@ -1533,7 +1533,7 @@
     {
       "path": "src/composition-root/ci-verification-production.ts",
       "mode": "100644",
-      "digest": "sha256:fbf32690926cdfdaaf0b311ed4bfb1d7c07628c4c8187a8da0b0074e5db1e45f"
+      "digest": "sha256:27abdd4900de19b5223e4232dd1ebff2afad743c5bcebf7df4bfc8b037948d24"
     },
     {
       "path": "src/composition-root/cli-authority-production.ts",
@@ -4121,11 +4121,6 @@
       "digest": "sha256:5504b1db2dee22716d1360203e4ab457c80cc1870700ca8ea53983e5c21c0082"
     },
     {
-      "path": "src/runtime/recovery/execution-governance-prune-recovery.ts",
-      "mode": "100644",
-      "digest": "sha256:f5cec6b024204649764b8ee7a3e083d8822ebfa6011ad94ebf478fe2b80abe57"
-    },
-    {
       "path": "src/runtime/recovery/recovery-authority-store.ts",
       "mode": "100644",
       "digest": "sha256:1e9e7a3d1fdb58cd834ac60f398916aeaa6cdddcd17ba9f5b2128e2be4f93bf1"
@@ -4174,11 +4169,6 @@
       "path": "src/runtime/repository-observation/change-routing.ts",
       "mode": "100644",
       "digest": "sha256:7baaf499689f32740fd730aa026f36defec1d86eb8791894cb7fe08f58d95080"
-    },
-    {
-      "path": "src/runtime/repository-observation/ci-verification.ts",
-      "mode": "100644",
-      "digest": "sha256:615cbffaa411602b924cc08c5b2aa0bf72c810cfaeafdc192ad2f9e2cc077c58"
     },
     {
       "path": "src/runtime/repository-observation/committed-checkout.ts",
@@ -4556,6 +4546,11 @@
       "digest": "sha256:c9c707d64d965cdb2c7db7da02523972b6accb8c13683fcc2fc09c640e7793c6"
     },
     {
+      "path": "src/runtime/repository-validation/commit-replay/ci-verification.ts",
+      "mode": "100644",
+      "digest": "sha256:4780af99ac47afb4700bbd77f35b0f963e976677348697b1e65753fe5e957a7c"
+    },
+    {
       "path": "src/runtime/repository-validation/commit-replay/services.ts",
       "mode": "100644",
       "digest": "sha256:3a540180c4fd14c7dda979976a1bcfb017fe88144e471a8115a004b6a1d28f17"
@@ -4853,12 +4848,12 @@
     {
       "path": "src/runtime/storage-journal/execution-governance-epoch-store.ts",
       "mode": "100644",
-      "digest": "sha256:950435fa8fcedd7dd9c83a8f7de64445e0a8a141eaec542bd98304e5f07c90af"
+      "digest": "sha256:40c3f77514c08e616e31877d1c6506fbfd0adad8b8b4ad25c43be07b028814e2"
     },
     {
       "path": "src/runtime/storage-journal/execution-governance-evidence-store.ts",
       "mode": "100644",
-      "digest": "sha256:ddc9f8427278f5532c5d5df7d3c1770c1ba8b9f03c7edd00744dc958a2624626"
+      "digest": "sha256:087b3853222b3ce75354f95845b9a51ee572dbc33c853c9980b96001ad5fb397"
     },
     {
       "path": "src/runtime/storage-journal/execution-governance-grant-store.ts",
@@ -4874,6 +4869,11 @@
       "path": "src/runtime/storage-journal/execution-governance-private-files.ts",
       "mode": "100644",
       "digest": "sha256:966a1f3273479ce574164d546cce37e3a37f6dcd150bad4571d75c60ed81c6c1"
+    },
+    {
+      "path": "src/runtime/storage-journal/execution-governance-prune-recovery.ts",
+      "mode": "100644",
+      "digest": "sha256:758d7e55731d5ba735397ae2c4dca60099568f500144368dabedaf4ced303fb3"
     },
     {
       "path": "src/runtime/storage-journal/execution-governance-store-objects.ts",

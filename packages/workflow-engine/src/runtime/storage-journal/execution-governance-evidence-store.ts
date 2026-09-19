@@ -55,7 +55,7 @@ import {
   recoverPreparedPruneReceipts,
   deleteUnreferencedReceiptObjects,
   readDurablePruneReceipt,
-} from '../recovery/execution-governance-prune-recovery.ts';
+} from './execution-governance-prune-recovery.ts';
 import { isDurablePruneReceiptTemporary } from '../../modules/authority/execution-governance-store-contracts.ts';
 import {
   createDurablePrivateFileAtomic,

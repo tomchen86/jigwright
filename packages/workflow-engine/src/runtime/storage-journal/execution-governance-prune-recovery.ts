@@ -30,12 +30,12 @@ import {
   readPrivateFile,
   replacePrivateFileAtomic,
   fsyncDirectory,
-} from '../storage-journal/execution-governance-private-files.ts';
+} from './execution-governance-private-files.ts';
 import {
   durableWorkflowReceiptDirectory,
   durableWorkflowObjectDirectory,
   durableObjectPath,
-} from '../storage-journal/execution-governance-store-objects.ts';
+} from './execution-governance-store-objects.ts';
 
 export function readDurablePruneReceipt(filePath: string): DurablePruneReceipt {
   try {

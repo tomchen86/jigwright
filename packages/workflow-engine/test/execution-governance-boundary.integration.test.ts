@@ -21,7 +21,7 @@ import {
   ensureDurableGovernanceStore,
   readDurableGovernanceState,
 } from '../src/runtime/storage-journal/execution-governance-store-objects.ts';
-import { recoverPreparedPruneReceipts } from '../src/runtime/recovery/execution-governance-prune-recovery.ts';
+import { recoverPreparedPruneReceipts } from '../src/runtime/storage-journal/execution-governance-prune-recovery.ts';
 import {
   withDurableGovernanceLock,
   withExecutionGrantLock,
