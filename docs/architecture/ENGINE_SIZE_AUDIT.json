@@ -1,0 +1,1358 @@
+{
+  "schemaVersion": 1,
+  "commit": "4d59c5f8dd6ac118ec70eded004476a0bc58a004",
+  "thresholds": {
+    "file": 800,
+    "function": 80,
+    "source": "the user's criterion 6"
+  },
+  "method": "TypeScript AST over packages/workflow-engine/src. Function length is declaration start to end, so a factory counts its nested bodies. Classification is mechanical and shape-based, not a line-by-line human review.",
+  "filesOver800": 93,
+  "fileClassification": {
+    "justified-prior-audit": 55,
+    "unjustified": 25,
+    "prior-reason-stale": 6,
+    "declaration-surface": 6,
+    "dispatch-or-container": 1
+  },
+  "functionsOver80": 886,
+  "functionShapes": {
+    "dispatch": 131,
+    "branching": 550,
+    "container": 149,
+    "straight-line": 56
+  },
+  "unjustifiedFunctions": 606,
+  "priorAudit": {
+    "file": "docs/architecture/ENGINE_LONG_FILE_AUDIT.json",
+    "baselineCommit": "9acbd6ef35bb92211bc1a8efdcc2d9a9e98f1129",
+    "thresholds": ">=1000 lines or >=250-line function",
+    "coversAtCurrentPath": 61
+  },
+  "verdict": "Criterion 6 is not met, but the gap is narrower than the raw counts suggest. Of 93 files over 800 lines: 55 carry a prior justification that still fits the current file, 6 carry one that has drifted more than 10% and needs re-reading, 7 are justified by measured shape alone, and 25 have no justification at all. At function level 606 of 886 bodies over 80 lines are neither a dispatch nor a factory container; none of those has a recorded reason.",
+  "files": [
+    {
+      "file": "packages/workflow-engine/src/adapters/planning/investigation/investigation-session.ts",
+      "lines": 2487,
+      "exports": 30,
+      "functionsOver80": 5,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"refactored\" at 2371 lines; now 2487, 5% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 2371,
+        "lineDrift": 0.049
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/work-registry/transactions.ts",
+      "lines": 2393,
+      "exports": 18,
+      "functionsOver80": 5,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: readWorkItemPromotionTransaction (241), abortWorkItemPromotionTransaction (128), <anonymous> (84)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/lifecycle.ts",
+      "lines": 2258,
+      "exports": 15,
+      "functionsOver80": 8,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 2343 lines; now 2258, 4% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 2343,
+        "lineDrift": 0.036
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/execute-task/open-task.ts",
+      "lines": 2012,
+      "exports": 11,
+      "functionsOver80": 5,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1851 lines; now 2012, 9% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1851,
+        "lineDrift": 0.087
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/composition-root/authority-remap.ts",
+      "lines": 1920,
+      "exports": 7,
+      "functionsOver80": 8,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 2023 lines; now 1920, 5% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 2023,
+        "lineDrift": 0.051
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/execute-task/task-mechanical-transform-lifecycle.ts",
+      "lines": 1796,
+      "exports": 6,
+      "functionsOver80": 6,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1770 lines; now 1796, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1770,
+        "lineDrift": 0.015
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/revise/task-revision.ts",
+      "lines": 1794,
+      "exports": 12,
+      "functionsOver80": 11,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"refactored\" at 1705 lines; now 1794, 5% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 1705,
+        "lineDrift": 0.052
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/control-plane/intervention-control-updater.ts",
+      "lines": 1658,
+      "exports": 27,
+      "functionsOver80": 3,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"refactored\" at 1663 lines; now 1658, 0% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 1663,
+        "lineDrift": 0.003
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-planning-asset-contract.ts",
+      "lines": 1648,
+      "exports": 31,
+      "functionsOver80": 2,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"refactored\" at 1639 lines; now 1648, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 1639,
+        "lineDrift": 0.005
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/task-diff-review-external-commands.ts",
+      "lines": 1622,
+      "exports": 1,
+      "functionsOver80": 10,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1597 lines; now 1622, 2% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1597,
+        "lineDrift": 0.016
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/archive/archive-pr-orchestration.ts",
+      "lines": 1570,
+      "exports": 21,
+      "functionsOver80": 5,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1515 lines; now 1570, 4% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1515,
+        "lineDrift": 0.036
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/entrypoints/cli/intervention-control-bootstrap-cli.ts",
+      "lines": 1557,
+      "exports": 5,
+      "functionsOver80": 4,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1572 lines; now 1557, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1572,
+        "lineDrift": 0.01
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/provider-orchestration/change-role-assignment.ts",
+      "lines": 1544,
+      "exports": 15,
+      "functionsOver80": 2,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1536 lines; now 1544, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1536,
+        "lineDrift": 0.005
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/execute-task/task-strategy-patch.ts",
+      "lines": 1518,
+      "exports": 12,
+      "functionsOver80": 7,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1459 lines; now 1518, 4% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1459,
+        "lineDrift": 0.04
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/archive/archive-transformation.ts",
+      "lines": 1491,
+      "exports": 6,
+      "functionsOver80": 3,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"refactored\" at 1471 lines; now 1491, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 1471,
+        "lineDrift": 0.014
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/composition-root/git-authority-candidate-apply-production.ts",
+      "lines": 1446,
+      "exports": 7,
+      "functionsOver80": 3,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1435 lines; now 1446, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1435,
+        "lineDrift": 0.008
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/authority/maintainer-candidate-contracts.ts",
+      "lines": 1383,
+      "exports": 43,
+      "functionsOver80": 3,
+      "classification": "prior-reason-stale",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1078 lines; now 1383, 28% drift. Needs re-reading before the reason can be relied on.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1078,
+        "lineDrift": 0.283
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/assurance/plan-review-submission.ts",
+      "lines": 1354,
+      "exports": 1,
+      "functionsOver80": 1,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1343 lines; now 1354, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1343,
+        "lineDrift": 0.008
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/adapters/planning/investigation/human-resolution-lifecycle.ts",
+      "lines": 1347,
+      "exports": 6,
+      "functionsOver80": 6,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1341 lines; now 1347, 0% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1341,
+        "lineDrift": 0.004
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/authority/collaboration-grant-codec.ts",
+      "lines": 1347,
+      "exports": 49,
+      "functionsOver80": 2,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1385 lines; now 1347, 3% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1385,
+        "lineDrift": 0.027
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/authority/recovery-quarantine-contract.ts",
+      "lines": 1326,
+      "exports": 64,
+      "functionsOver80": 1,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1217 lines; now 1326, 9% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1217,
+        "lineDrift": 0.09
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/entrypoints/worker/provider-worker.ts",
+      "lines": 1310,
+      "exports": 11,
+      "functionsOver80": 1,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1255 lines; now 1310, 4% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1255,
+        "lineDrift": 0.044
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/investigation/manifest/investigation-manifest.ts",
+      "lines": 1302,
+      "exports": 7,
+      "functionsOver80": 2,
+      "classification": "prior-reason-stale",
+      "reason": "9acbd6e audit recorded \"refactored\" at 1534 lines; now 1302, 15% drift. Needs re-reading before the reason can be relied on.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 1534,
+        "lineDrift": 0.151
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/entrypoints/cli/governance-intake-cli.ts",
+      "lines": 1297,
+      "exports": 2,
+      "functionsOver80": 5,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"reviewed-updated\" at 1192 lines; now 1297, 9% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "reviewed-updated",
+        "auditedLines": 1192,
+        "lineDrift": 0.088
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/assurance/plan-review.ts",
+      "lines": 1295,
+      "exports": 41,
+      "functionsOver80": 3,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"refactored\" at 1388 lines; now 1295, 7% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 1388,
+        "lineDrift": 0.067
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/lifecycle/change-routing.ts",
+      "lines": 1278,
+      "exports": 47,
+      "functionsOver80": 2,
+      "classification": "prior-reason-stale",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1698 lines; now 1278, 25% drift. Needs re-reading before the reason can be relied on.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1698,
+        "lineDrift": 0.247
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/propose/planning-transition.ts",
+      "lines": 1268,
+      "exports": 7,
+      "functionsOver80": 1,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1229 lines; now 1268, 3% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1229,
+        "lineDrift": 0.032
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/control-plane/maintainer-recovery.ts",
+      "lines": 1262,
+      "exports": 18,
+      "functionsOver80": 3,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"refactored\" at 1214 lines; now 1262, 4% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 1214,
+        "lineDrift": 0.04
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/composition-root/agent-runtime-host-wrapper-production.ts",
+      "lines": 1251,
+      "exports": 1,
+      "functionsOver80": 5,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1238 lines; now 1251, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1238,
+        "lineDrift": 0.011
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/entrypoints/cli/authority-management-cli.ts",
+      "lines": 1244,
+      "exports": 1,
+      "functionsOver80": 4,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"reviewed-updated\" at 1191 lines; now 1244, 4% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "reviewed-updated",
+        "auditedLines": 1191,
+        "lineDrift": 0.045
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-completion.ts",
+      "lines": 1195,
+      "exports": 12,
+      "functionsOver80": 8,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"reviewed-updated\" at 1197 lines; now 1195, 0% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "reviewed-updated",
+        "auditedLines": 1197,
+        "lineDrift": 0.002
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/composition-root/grant-production.ts",
+      "lines": 1137,
+      "exports": 9,
+      "functionsOver80": 2,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1053 lines; now 1137, 8% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1053,
+        "lineDrift": 0.08
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/control-plane/intervention-control-bootstrap.ts",
+      "lines": 1123,
+      "exports": 18,
+      "functionsOver80": 1,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"refactored\" at 1151 lines; now 1123, 2% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 1151,
+        "lineDrift": 0.024
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts",
+      "lines": 1118,
+      "exports": 17,
+      "functionsOver80": 2,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1109 lines; now 1118, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1109,
+        "lineDrift": 0.008
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/assurance/task-diff-review-submission.ts",
+      "lines": 1117,
+      "exports": 1,
+      "functionsOver80": 2,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1112 lines; now 1117, 0% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1112,
+        "lineDrift": 0.004
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/provider-orchestration/provider-contracts.ts",
+      "lines": 1095,
+      "exports": 23,
+      "functionsOver80": 2,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1039 lines; now 1095, 5% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1039,
+        "lineDrift": 0.054
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/projected-finalization.ts",
+      "lines": 1083,
+      "exports": 7,
+      "functionsOver80": 4,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1005 lines; now 1083, 8% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1005,
+        "lineDrift": 0.078
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/task-diff-review-external-continuation-binding.ts",
+      "lines": 1067,
+      "exports": 1,
+      "functionsOver80": 4,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1054 lines; now 1067, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1054,
+        "lineDrift": 0.012
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/authority/immutable-git-candidate.ts",
+      "lines": 1059,
+      "exports": 12,
+      "functionsOver80": 3,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"refactored\" at 1048 lines; now 1059, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 1048,
+        "lineDrift": 0.01
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/task-diff-review-external-binding.ts",
+      "lines": 1043,
+      "exports": 1,
+      "functionsOver80": 2,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1022 lines; now 1043, 2% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1022,
+        "lineDrift": 0.021
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/provider-orchestration/provider-native-session.ts",
+      "lines": 1034,
+      "exports": 17,
+      "functionsOver80": 4,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1025 lines; now 1034, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1025,
+        "lineDrift": 0.009
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-workspace.ts",
+      "lines": 1027,
+      "exports": 1,
+      "functionsOver80": 4,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1018 lines; now 1027, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1018,
+        "lineDrift": 0.009
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/entrypoints/cli/task-lifecycle-cli.ts",
+      "lines": 1026,
+      "exports": 3,
+      "functionsOver80": 5,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"reviewed-updated\" at 999 lines; now 1026, 3% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "reviewed-updated",
+        "auditedLines": 999,
+        "lineDrift": 0.027
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/control-plane/execution-replacement.ts",
+      "lines": 1013,
+      "exports": 14,
+      "functionsOver80": 4,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"refactored\" at 949 lines; now 1013, 7% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 949,
+        "lineDrift": 0.067
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/task-mechanical-transform.ts",
+      "lines": 1013,
+      "exports": 6,
+      "functionsOver80": 3,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: evaluateMechanicalClosure (113), ensureTaskMechanicalTransformationEvidence (102), assertDeterministicMechanicalProjection (93)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/provider-execution/provider-runner.ts",
+      "lines": 1003,
+      "exports": 17,
+      "functionsOver80": 3,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"refactored\" at 1011 lines; now 1003, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 1011,
+        "lineDrift": 0.008
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/composition-root/change-role-assignment-production.ts",
+      "lines": 1000,
+      "exports": 6,
+      "functionsOver80": 2,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: createNativeSessionTurnController (185), resolveCurrentAgentRuntimeAssignmentPreGrant (108)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/application/execute-task/session.ts",
+      "lines": 997,
+      "exports": 10,
+      "functionsOver80": 2,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: persistSessionStart (171), inspectSessionStart (100)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/guidance/next-steps/workflow-guidance.ts",
+      "lines": 980,
+      "exports": 8,
+      "functionsOver80": 1,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: taskDiffReviewNextSteps (86)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/application/control-plane/maintainer-session.ts",
+      "lines": 975,
+      "exports": 10,
+      "functionsOver80": 2,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"refactored\" at 970 lines; now 975, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 970,
+        "lineDrift": 0.005
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/task-diff-review-provider-commands.ts",
+      "lines": 970,
+      "exports": 1,
+      "functionsOver80": 11,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 959 lines; now 970, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 959,
+        "lineDrift": 0.011
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/storage-journal/change-role-assignment-store.ts",
+      "lines": 968,
+      "exports": 4,
+      "functionsOver80": 2,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: createOrReadExactChangeRoleAssignmentRecordV1 (121), inspectHistoricalChangeRoleAssignmentRecordV1 (87)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/application/control-plane/maintainer-approve.ts",
+      "lines": 964,
+      "exports": 15,
+      "functionsOver80": 2,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"refactored\" at 927 lines; now 964, 4% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 927,
+        "lineDrift": 0.04
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/task-diff-review-provider-binding.ts",
+      "lines": 961,
+      "exports": 1,
+      "functionsOver80": 4,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 942 lines; now 961, 2% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 942,
+        "lineDrift": 0.02
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/storage-journal/role-context-sharing-store.ts",
+      "lines": 956,
+      "exports": 17,
+      "functionsOver80": 0,
+      "classification": "declaration-surface",
+      "reason": "17 exports and 0 function(s) over 80 lines: one contract vocabulary, not a tangle. Splitting scatters names that are always read together.",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/authority/intervention-control-adoption.ts",
+      "lines": 954,
+      "exports": 37,
+      "functionsOver80": 2,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: prepareEngineAdoption (130), validateMaintenancePayload (93)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/assurance/planning-assurance-validator.ts",
+      "lines": 953,
+      "exports": 13,
+      "functionsOver80": 2,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"refactored\" at 1002 lines; now 953, 5% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 1002,
+        "lineDrift": 0.049
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/verification.ts",
+      "lines": 946,
+      "exports": 7,
+      "functionsOver80": 4,
+      "classification": "prior-reason-stale",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1282 lines; now 946, 26% drift. Needs re-reading before the reason can be relied on.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1282,
+        "lineDrift": 0.262
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/authority/intervention-control-promotion-material.ts",
+      "lines": 946,
+      "exports": 33,
+      "functionsOver80": 2,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: createControlPlanePromotionMaterial (128), createControlPlaneRecoveryBundleMaterial (82)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-state.ts",
+      "lines": 946,
+      "exports": 13,
+      "functionsOver80": 3,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: createProviderInvocation (179), <anonymous> (120)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/application/propose/propose-input.ts",
+      "lines": 942,
+      "exports": 32,
+      "functionsOver80": 0,
+      "classification": "declaration-surface",
+      "reason": "32 exports and 0 function(s) over 80 lines: one contract vocabulary, not a tangle. Splitting scatters names that are always read together.",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/application/execute-task/task-strategy-provider-reservations.ts",
+      "lines": 937,
+      "exports": 1,
+      "functionsOver80": 4,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 902 lines; now 937, 4% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 902,
+        "lineDrift": 0.039
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/assurance/task-diff-review.ts",
+      "lines": 937,
+      "exports": 9,
+      "functionsOver80": 2,
+      "classification": "prior-reason-stale",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 1054 lines; now 937, 11% drift. Needs re-reading before the reason can be relied on.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 1054,
+        "lineDrift": 0.111
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/assurance/task-diff-review-artifact.ts",
+      "lines": 930,
+      "exports": 26,
+      "functionsOver80": 2,
+      "classification": "prior-reason-stale",
+      "reason": "9acbd6e audit recorded \"refactored\" at 1126 lines; now 930, 17% drift. Needs re-reading before the reason can be relied on.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 1126,
+        "lineDrift": 0.174
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/assurance/pre-merge-assurance.ts",
+      "lines": 927,
+      "exports": 18,
+      "functionsOver80": 1,
+      "classification": "declaration-surface",
+      "reason": "18 exports and 1 function(s) over 80 lines: one contract vocabulary, not a tangle. Splitting scatters names that are always read together.",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts",
+      "lines": 913,
+      "exports": 1,
+      "functionsOver80": 4,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: doctor (108)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/task-diff-review-lineage.ts",
+      "lines": 912,
+      "exports": 1,
+      "functionsOver80": 4,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 903 lines; now 912, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 903,
+        "lineDrift": 0.01
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/propose/plan-review-contracts.ts",
+      "lines": 906,
+      "exports": 19,
+      "functionsOver80": 2,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: assertDurablePlanReviewRoleTopology (163), assertPlanReviewGrantAuthorization (133)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/assurance/plan-target.ts",
+      "lines": 896,
+      "exports": 7,
+      "functionsOver80": 2,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: componentSemantic (153), assertPlanTarget (81)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/storage-journal/finalize-transaction.ts",
+      "lines": 894,
+      "exports": 13,
+      "functionsOver80": 1,
+      "classification": "dispatch-or-container",
+      "reason": "every function over 80 lines is a command dispatch or a factory whose body is nested functions; both get longer, not shorter, when split.",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/task-diff-review-inspection.ts",
+      "lines": 893,
+      "exports": 1,
+      "functionsOver80": 4,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 885 lines; now 893, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 885,
+        "lineDrift": 0.009
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/provider-orchestration/change-role-assignment-record.ts",
+      "lines": 890,
+      "exports": 17,
+      "functionsOver80": 2,
+      "classification": "declaration-surface",
+      "reason": "17 exports and 1 function(s) over 80 lines: one contract vocabulary, not a tangle. Splitting scatters names that are always read together.",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/authority/intervention-control-promotion-grant.ts",
+      "lines": 888,
+      "exports": 24,
+      "functionsOver80": 3,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: validateControlPlaneGrantPayloadV2 (123), verifyControlPlaneGrantV3 (106)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/authority/execution-governance-context.ts",
+      "lines": 886,
+      "exports": 24,
+      "functionsOver80": 3,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: validateEpochTransitionReceipt (94), performEpochRollover (92), validateContextManifest (82)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/authority/recovery-trust-root-contract.ts",
+      "lines": 884,
+      "exports": 37,
+      "functionsOver80": 0,
+      "classification": "declaration-surface",
+      "reason": "37 exports and 0 function(s) over 80 lines: one contract vocabulary, not a tangle. Splitting scatters names that are always read together.",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/task-diff-review-subject.ts",
+      "lines": 876,
+      "exports": 1,
+      "functionsOver80": 4,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 844 lines; now 876, 4% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 844,
+        "lineDrift": 0.038
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/authority/git-authority-candidate-apply-grant.ts",
+      "lines": 869,
+      "exports": 20,
+      "functionsOver80": 2,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: assertGitAuthorityCandidateApplyObservation (129), gitAuthorityCandidateApplyGrantTransitionDefinitions (89)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/application/control-plane/intervention-maintenance.ts",
+      "lines": 867,
+      "exports": 17,
+      "functionsOver80": 2,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"refactored\" at 881 lines; now 867, 2% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 881,
+        "lineDrift": 0.016
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/storage-journal/control-plane-recovery-grant-storage.ts",
+      "lines": 857,
+      "exports": 10,
+      "functionsOver80": 3,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: replaceAtomic (85), detachQuarantinedHardLink (82)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/authority/grant-coordinator.ts",
+      "lines": 841,
+      "exports": 9,
+      "functionsOver80": 4,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: createGrantCoordinatorKernel (188), terminalizeAuthorizedPreparedDescendant (128), executePreparedTransition (104)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/application/propose/plan-review-store.ts",
+      "lines": 839,
+      "exports": 7,
+      "functionsOver80": 3,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 833 lines; now 839, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 833,
+        "lineDrift": 0.007
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/adapters/consumer/repository/handoff/handoff.ts",
+      "lines": 834,
+      "exports": 7,
+      "functionsOver80": 3,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: buildRoutingHandoff (93)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/authority/execution-governance-store-contracts.ts",
+      "lines": 834,
+      "exports": 29,
+      "functionsOver80": 1,
+      "classification": "declaration-surface",
+      "reason": "29 exports and 1 function(s) over 80 lines: one contract vocabulary, not a tangle. Splitting scatters names that are always read together.",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/investigation/manifest/investigation-manifest-requirements.ts",
+      "lines": 829,
+      "exports": 4,
+      "functionsOver80": 3,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: normalizeCoverageTargetBinding (106), normalizeSemanticReuseCoverage (89), normalizePlanReviewCoveragePayload (85)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/storage-journal/provider-repair-governance.ts",
+      "lines": 829,
+      "exports": 14,
+      "functionsOver80": 2,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: createProviderRepairLineage (142), persistProviderRepairEvidence (94)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/authority/protected-task-apply-recovery-grant.ts",
+      "lines": 824,
+      "exports": 16,
+      "functionsOver80": 2,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: protectedTaskApplyRecoveryGrantTransitionDefinitions (117), assertProtectedTaskApplyRecoveryObservation (91)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/repository-validation/commit-replay/ci-planning.ts",
+      "lines": 816,
+      "exports": 1,
+      "functionsOver80": 4,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: grantUsesFromRoleResults (108), <anonymous> (104)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/application/execute-task/task-strategy-correction.ts",
+      "lines": 814,
+      "exports": 6,
+      "functionsOver80": 4,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: assertInitialImplementationAuthorityCurrent (95), assertProviderCorrectionAuthorityCurrent (92), assertCallerCorrectionAuthorityCurrent (82)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-supersession.ts",
+      "lines": 814,
+      "exports": 9,
+      "functionsOver80": 5,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"refactored\" at 818 lines; now 814, 0% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "refactored",
+        "auditedLines": 818,
+        "lineDrift": 0.005
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/control-plane/intervention-artifact-production.ts",
+      "lines": 808,
+      "exports": 1,
+      "functionsOver80": 3,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 800 lines; now 808, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 800,
+        "lineDrift": 0.01
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/application/propose/propose-start.ts",
+      "lines": 807,
+      "exports": 6,
+      "functionsOver80": 4,
+      "classification": "justified-prior-audit",
+      "reason": "9acbd6e audit recorded \"retain-cohesive-responsibility\" at 799 lines; now 807, 1% drift, so that reason still describes the file.",
+      "priorAudit": {
+        "decision": "retain-cohesive-responsibility",
+        "auditedLines": 799,
+        "lineDrift": 0.01
+      }
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/investigation/domain/investigation-groups.ts",
+      "lines": 803,
+      "exports": 9,
+      "functionsOver80": 2,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: deriveInvestigationGroupFacts (119)",
+      "priorAudit": null
+    },
+    {
+      "file": "packages/workflow-engine/src/composition-root/protected-base-initialization-production.ts",
+      "lines": 802,
+      "exports": 9,
+      "functionsOver80": 2,
+      "classification": "unjustified",
+      "reason": "No justification recorded. Longest bodies: publishCompletedProtectedBaseInitialization (101), authenticateCompletedProtectedBaseInitializationGrant (92)",
+      "priorAudit": null
+    }
+  ],
+  "longestUnexplainedFunctions": [
+    {
+      "file": "packages/workflow-engine/src/application/control-plane/intervention-control-updater.ts",
+      "name": "driveControlPlanePromotion",
+      "lines": 334,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/control-plane/maintainer-approve.ts",
+      "name": "approveAndApplyMaintainerGrantV2WithBinding",
+      "lines": 312,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/control-plane/maintainer-grant-v2.ts",
+      "name": "issueMaintainerGrantV2",
+      "lines": 281,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/task-diff-review-provider-reservations.ts",
+      "name": "createNewTaskDiffReviewReservation",
+      "lines": 272,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/composition-root/git-authority-candidate-apply-production.ts",
+      "name": "createProductionGitAuthorityCandidateApplyPort",
+      "lines": 260,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/propose/propose-reviewer-terms.ts",
+      "name": "readReviewerTermSourceV3",
+      "lines": 254,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/propose/propose-reviewer-reconciliation.ts",
+      "name": "reconcileReviewerTermPlanningRevision",
+      "lines": 252,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/control-plane/maintainer-apply-checks.ts",
+      "name": "prepareMaintainerGrantV2Checks",
+      "lines": 251,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/execute-task/task-strategy-provider-reservations.ts",
+      "name": "createImplementationReservation",
+      "lines": 243,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/work-registry/transactions.ts",
+      "name": "readWorkItemPromotionTransaction",
+      "lines": 241,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/execute-task/update-base.ts",
+      "name": "updateFinishedTaskBaseLocked",
+      "lines": 238,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/storage-journal/human-resolution-state.ts",
+      "name": "inspectInvestigationQuarantineState",
+      "lines": 238,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/control-plane/external-effect-grant.ts",
+      "name": "issueExternalEffectGrant",
+      "lines": 233,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/task-diff-review-provider-commands.ts",
+      "name": "reconcileTaskDiffReview",
+      "lines": 233,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/assurance/pre-merge-verification.ts",
+      "name": "derivePreMergeAssurancePreparation",
+      "lines": 228,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/propose/propose-reviewer-reconciliation.ts",
+      "name": "<anonymous>",
+      "lines": 223,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/task-diff-review-provider-commands.ts",
+      "name": "<anonymous>",
+      "lines": 222,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/task-diff-review-provider-commands.ts",
+      "name": "<anonymous>",
+      "lines": 221,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/execute-task/task-strategy-provider-reservations.ts",
+      "name": "reserveProviderRetryAttempt",
+      "lines": 217,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/control-plane/maintainer-apply-reissue.ts",
+      "name": "reissueAndApplyMaintainerGrantV2WithDeadline",
+      "lines": 216,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/task-diff-review-provider-reservations.ts",
+      "name": "createNewTaskDiffReviewContinuationReservation",
+      "lines": 216,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/lifecycle.ts",
+      "name": "commitSessionUnlocked",
+      "lines": 214,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/propose/propose-start.ts",
+      "name": "<anonymous>",
+      "lines": 213,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/propose/propose-investigation-manifest.ts",
+      "name": "buildProposeInvestigationManifestV3",
+      "lines": 212,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/propose/plan-review-retry.ts",
+      "name": "<anonymous>",
+      "lines": 209,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/composition-root/git-authority-candidate-apply-production.ts",
+      "name": "apply",
+      "lines": 207,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/assurance/task-diff-review-continuation-submission.ts",
+      "name": "createTaskDiffReviewContinuationSubmissionProtocol",
+      "lines": 207,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/control-plane/maintainer-session.ts",
+      "name": "<anonymous>",
+      "lines": 206,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/provider-execution/provider-availability-pilot.ts",
+      "name": "runAvailableProvider",
+      "lines": 205,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/archive/archive-transformation.ts",
+      "name": "createArchiveApplicabilityProjection",
+      "lines": 203,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/finalize/task-diff-review-external-continuation-binding.ts",
+      "name": "assertCurrentExternalTaskDiffContinuationBinding",
+      "lines": 201,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/execute-task/task-strategy-provider-results.ts",
+      "name": "reconcileProviderImplementationResult",
+      "lines": 200,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/propose/propose-planning-materialization.ts",
+      "name": "materializeExemptionPlanningContribution",
+      "lines": 199,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/storage-journal/intervention-adoption-store.ts",
+      "name": "preparePersistedEngineAdoption",
+      "lines": 199,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/repository-validation/commit-replay/ci-authority.ts",
+      "name": "validateCiAuthorityCandidateCommit",
+      "lines": 198,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/provider-orchestration/execution-core.ts",
+      "name": "projectProviderInvocationRecord",
+      "lines": 197,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/application/session-inspection/session-inspection.ts",
+      "name": "inspectSession",
+      "lines": 194,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/modules/authority/maintainer-candidate-contracts.ts",
+      "name": "assertCandidateSupportingArtifact",
+      "lines": 193,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/storage-journal/evidence-plan-review-grants.ts",
+      "name": "assertPlanReviewAuthorizationGrantOwnership",
+      "lines": 191,
+      "shape": "branching"
+    },
+    {
+      "file": "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-supersession.ts",
+      "name": "prepareProviderInvocationSupersession",
+      "lines": 191,
+      "shape": "branching"
+    }
+  ]
+}
