@@ -141,10 +141,10 @@
     "authorizationClosureDigest": "sha256:84059e2683e32ddb97c1e8d1cca04f6cbb8acdefc5161cf04971f518c7db97e1",
     "humanTrustRootsClosureDigest": "sha256:29c778d9452543fb17d0d03f4faf2cefd0d137a30a22cdcd1661ebf1c7fe8cf5",
     "applyJournalClosureDigest": "sha256:56670315555c2ae8d205a507d28483ba1a837980318af2e0ed60b73af5e11ff2",
-    "controlPlaneUpdateClosureDigest": "sha256:e9982a29b65826bb662bc3eff36f0fcf1684c0b9d7bc2c575218bc86b7b2b4ba",
-    "recoveryClosureDigest": "sha256:8e879f8b476975b0edf5c287614a4a7a83cb12652479dbe747a828d975360c4e",
+    "controlPlaneUpdateClosureDigest": "sha256:48552c1bb77f8e50c0d241cc747722a0dc124d1a8093bf85dc763b56c45ffd3e",
+    "recoveryClosureDigest": "sha256:81ce8dd858163a026975dd532be2553f1c6ca255c1e8b2f0cfad74ea69bc1e6f",
     "repairAuthority": "human-only-authority-plan-or-sealed-recovery",
-    "compositionDigest": "sha256:fcaacc407972460746cb0d1bf2cca37c72cc82e2c0a314388202a84d7d7c2764"
+    "compositionDigest": "sha256:980f28a0e5da62aba915ea0ef407973915ff7981f7635d876af25e7c8acceeac"
   },
   "entries": [
     {
@@ -246,8 +246,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/intervention-sidecar-store.ts",
         "packages/workflow-engine/src/runtime/storage-journal/intervention-update-store.ts"
       ],
-      "contentDigest": "sha256:be29b09751db75f254fe9fe6f5129f675605c9c8abc53d61d00ba1277218c367",
-      "closureDigest": "sha256:47bf2f06b703f70dade29ead0737845379b3be21a0a1bbb96ee6f839c62087bd"
+      "contentDigest": "sha256:7b374fa51ddb071191c90c86619e6eb96aa5c1af346101bf23e775c1f040ee21",
+      "closureDigest": "sha256:d435dc55985d013881fa352f9e5ef32b60746d16e007394e2b12d19b698665d4"
     },
     {
       "capability": "apply.journal",
@@ -1020,8 +1020,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/task-mandate-store.ts",
         "workflow/protected-capabilities.json"
       ],
-      "contentDigest": "sha256:63dd8e4a46ca45d8a0b651a7fb58bf2655e61de227649824c569aa3120fb43c4",
-      "closureDigest": "sha256:e9982a29b65826bb662bc3eff36f0fcf1684c0b9d7bc2c575218bc86b7b2b4ba"
+      "contentDigest": "sha256:d8bbfacebc186a5cfc18ab0a0404f60422003c26a1b5bce3b968024e555ccbbc",
+      "closureDigest": "sha256:48552c1bb77f8e50c0d241cc747722a0dc124d1a8093bf85dc763b56c45ffd3e"
     },
     {
       "capability": "effect.monitor",
@@ -1196,8 +1196,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/task-mandate-store.ts",
         "workflow/ai-adapter-policy.json"
       ],
-      "contentDigest": "sha256:feb7247c261278a84abd416fefe9b61583ffa1149e68e444076f1f9f22623c31",
-      "closureDigest": "sha256:2ba572e54e81bce3e9ae80c34223737a69a7644fec4a0f7f5653494d90a2df5d"
+      "contentDigest": "sha256:56be47f28069ed1f9d7e038d8ff831f73e8942eef0935c84d8d5fafe6f48e6a8",
+      "closureDigest": "sha256:82e1252befe40ecb2570d2b56ba1ae42b27beb062ea0d271326d2347bc68639a"
     },
     {
       "capability": "human.trust-roots",
@@ -1413,8 +1413,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/maintainer-grant-values.ts",
         "packages/workflow-engine/src/runtime/storage-journal/maintainer-store.ts"
       ],
-      "contentDigest": "sha256:220e0722f4800e4114bc5e67ece1a5cd26703c40ee93cc3e7c826931555b00ed",
-      "closureDigest": "sha256:8e879f8b476975b0edf5c287614a4a7a83cb12652479dbe747a828d975360c4e"
+      "contentDigest": "sha256:9291c33b82cd1424cc3b7b5bfb6bed0450a370a8084b9ee9a05d51b55eb17738",
+      "closureDigest": "sha256:81ce8dd858163a026975dd532be2553f1c6ca255c1e8b2f0cfad74ea69bc1e6f"
     },
     {
       "capability": "ref-generation.ledger",

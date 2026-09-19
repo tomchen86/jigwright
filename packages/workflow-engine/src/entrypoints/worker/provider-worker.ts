@@ -125,6 +125,7 @@ import { runEvidenceRetentionMaintenance } from '../../composition-root/retentio
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
 import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import { recordProviderWorkerMaintenanceWarning } from '../../runtime/storage-journal/provider-worker-maintenance.ts';
+import { observeInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 
 const PROVIDER_CANCELLATION_POLL_INTERVAL_MS = 25;
 
@@ -1266,7 +1267,12 @@ function recordTerminalWarning(
   error: unknown,
 ): void {
   try {
-    recordProviderWorkerMaintenanceWarning(cwd, terminal, operation, error);
+    recordProviderWorkerMaintenanceWarning(
+      observeInvestigationRuntimeContext(cwd).runtime,
+      terminal,
+      operation,
+      error,
+    );
   } catch (warningError) {
     process.emitWarning(
       `Provider worker ${operation} failed after durable ${terminal.state}; its warning journal also failed (${warningError instanceof WorkflowError ? warningError.code : 'PROVIDER_WORKER_MAINTENANCE_WARNING_UNSAFE'}).`,

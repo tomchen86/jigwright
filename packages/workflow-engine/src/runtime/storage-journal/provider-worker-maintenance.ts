@@ -21,7 +21,7 @@ import {
   ensurePrivateInvestigationDirectory,
   readPrivateCanonicalJson,
 } from './investigation-private-files.ts';
-import { observeInvestigationRuntimeContext } from '../repository-observation/investigation-runtime-context.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 
 const WARNING_FILE = /^[0-9a-f]{64}\.json$/;
@@ -41,7 +41,7 @@ export type ProviderWorkerMaintenanceWarning = Readonly<{
 }>;
 
 export function recordProviderWorkerMaintenanceWarning(
-  cwd: string,
+  runtime: InvestigationRuntimePaths,
   record: ProviderInvocationRecord,
   operation: ProviderWorkerMaintenanceWarning['operation'],
   error: unknown,
@@ -73,21 +73,20 @@ export function recordProviderWorkerMaintenanceWarning(
     message: `Provider worker ${operation} failed after the terminal outcome was durable (${errorCode}).`,
     occurredAt: record.updatedAt,
   });
-  const context = observeInvestigationRuntimeContext(cwd);
-  const root = warningRoot(context.runtime.root);
+  const root = warningRoot(runtime.root);
   ensurePrivateInvestigationDirectory(
-    context.runtime,
+    runtime,
     root,
     providerWorkerMaintenanceUnsafe,
   );
   createPrivateCanonicalJson(
-    context.runtime,
+    runtime,
     path.join(root, `${warning.warningId.slice('sha256:'.length)}.json`),
     warning,
     providerWorkerMaintenanceUnsafe,
     'PROVIDER_WORKER_MAINTENANCE_WARNING_CONFLICT',
   );
-  const durable = listProviderWorkerMaintenanceWarnings(cwd).find(
+  const durable = listProviderWorkerMaintenanceWarnings(runtime).find(
     ({ warningId }) => warningId === warning.warningId,
   );
   if (
@@ -100,14 +99,13 @@ export function recordProviderWorkerMaintenanceWarning(
 }
 
 export function listProviderWorkerMaintenanceWarnings(
-  cwd: string,
+  runtime: InvestigationRuntimePaths,
 ): ProviderWorkerMaintenanceWarning[] {
-  const context = observeInvestigationRuntimeContext(cwd);
-  const root = warningRoot(context.runtime.root);
+  const root = warningRoot(runtime.root);
   const stats = fs.lstatSync(root, { throwIfNoEntry: false });
   if (stats === undefined) return [];
   assertPrivateInvestigationDirectory(
-    context.runtime,
+    runtime,
     root,
     providerWorkerMaintenanceUnsafe,
   );
@@ -124,7 +122,7 @@ export function listProviderWorkerMaintenanceWarnings(
       }
       const warning = assertProviderWorkerMaintenanceWarning(
         readPrivateCanonicalJson(
-          context.runtime,
+          runtime,
           path.join(root, entry.name),
           providerWorkerMaintenanceUnsafe,
         ),

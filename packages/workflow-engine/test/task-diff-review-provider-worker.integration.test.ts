@@ -55,6 +55,7 @@ import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/pro
 import { readProviderAutomaticRetrySchedule } from '../src/composition-root/provider-retry-production.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { listProviderWorkerMaintenanceWarnings } from '../src/runtime/storage-journal/provider-worker-maintenance.ts';
+import { observeInvestigationRuntimeContext } from '../src/runtime/repository-observation/investigation-runtime-context.ts';
 import {
   preparePullRequestPreMergeAssurance,
   verifyPullRequestWithPreMergeAssurance,
@@ -630,7 +631,9 @@ test('TaskDiffReview provider failure cannot enter the legacy survey or plan-rev
       null,
     );
     assert.deepEqual(
-      listProviderWorkerMaintenanceWarnings(fixture.repository),
+      listProviderWorkerMaintenanceWarnings(
+        observeInvestigationRuntimeContext(fixture.repository).runtime,
+      ),
       [],
     );
   } finally {

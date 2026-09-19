@@ -1,3 +1,4 @@
+import { observeInvestigationRuntimeContext } from '../src/runtime/repository-observation/investigation-runtime-context.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -232,7 +233,9 @@ test('replacement role-assignment Fail-Grant reaches the caller and resumes the 
       'started',
     );
     assert.deepEqual(
-      listProviderWorkerMaintenanceWarnings(fixture.repository),
+      listProviderWorkerMaintenanceWarnings(
+        observeInvestigationRuntimeContext(fixture.repository).runtime,
+      ),
       [],
     );
 
@@ -937,7 +940,9 @@ test('terminal retention failure is journaled without overwriting the durable ou
       readProviderInvocation(fixture.runtime, fixture.invocationId).state,
       'succeeded',
     );
-    const warnings = listProviderWorkerMaintenanceWarnings(fixture.repository);
+    const warnings = listProviderWorkerMaintenanceWarnings(
+      observeInvestigationRuntimeContext(fixture.repository).runtime,
+    );
     assert.equal(warnings.length, 1);
     assert.equal(warnings[0]?.operation, 'retention-maintenance');
     assert.equal(warnings[0]?.errorCode, 'RETENTION_FIXTURE_FAILURE');
@@ -954,7 +959,9 @@ test('terminal retention failure is journaled without overwriting the durable ou
       },
     });
     assert.equal(
-      listProviderWorkerMaintenanceWarnings(fixture.repository).length,
+      listProviderWorkerMaintenanceWarnings(
+        observeInvestigationRuntimeContext(fixture.repository).runtime,
+      ).length,
       1,
     );
   } finally {
@@ -1030,7 +1037,11 @@ function requiredSchedule(
   const schedule = readProviderAutomaticRetrySchedule(repository, invocationId);
   assert.ok(
     schedule,
-    canonicalJson(listProviderWorkerMaintenanceWarnings(repository)),
+    canonicalJson(
+      listProviderWorkerMaintenanceWarnings(
+        observeInvestigationRuntimeContext(repository).runtime,
+      ),
+    ),
   );
   if (
     schedule.route === 'provider-replacement' &&

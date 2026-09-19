@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:eea49aefcbe69f09c53ddab00bd5741310b52149c044b4ec2afaf50b50c561e6"
+      "digest": "sha256:cf4f4efe91cde692f7e53cfcadf59314a70f188376b3e4a60ada270534d4ff0c"
     },
     {
       "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js",
