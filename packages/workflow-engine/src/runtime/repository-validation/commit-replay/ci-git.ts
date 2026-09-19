@@ -1,5 +1,9 @@
 /** Immutable commit replay operations; caller-owned semantic services are required. */
 import { commitChangedPaths } from '../../repository-transaction/git-transitions.ts';
+import {
+  resolveCommitOid,
+  resolveTreeOid,
+} from '../../repository-transaction/git-object-ids.ts';
 import { commitFacts } from '../../repository-transaction/git-transitions.ts';
 import { runGit } from '../../repository-transaction/git.ts';
 import { ManagedTrailerSyntaxError } from '@jigwright/core/managed-transition-trailers';
@@ -13,10 +17,7 @@ export function assertCiCommit(repositoryRoot: string, value: string): string {
   if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(value)) {
     throw ciGitError('CI_COMMIT_ID_INVALID', 'CI requires an exact commit ID.');
   }
-  const resolved = runGit(repositoryRoot, [
-    'rev-parse',
-    `${value}^{commit}`,
-  ]).trim();
+  const resolved = resolveCommitOid(repositoryRoot, value);
   if (resolved !== value) {
     throw ciGitError(
       'CI_COMMIT_ID_INVALID',
@@ -128,7 +129,7 @@ export function lastCommitChangingPath(
 
 export function treeAtCommit(repositoryRoot: string, commit: string): string {
   const exactCommit = assertCiCommit(repositoryRoot, commit);
-  return runGit(repositoryRoot, ['rev-parse', `${exactCommit}^{tree}`]).trim();
+  return resolveTreeOid(repositoryRoot, exactCommit);
 }
 
 export function listChangesAtCommit(

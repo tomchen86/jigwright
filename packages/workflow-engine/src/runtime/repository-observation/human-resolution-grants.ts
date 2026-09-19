@@ -8,16 +8,19 @@ import {
   type HumanResolutionGrantEnvelope,
 } from '../../modules/investigation/domain/human-resolution-grant-contract.ts';
 import { assertMaintainerGrantId } from '../../modules/authority/maintainer-grant-contracts.ts';
-
-/** Reads historical Grant policy, exact annotated tags and successor sessions. */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   parseMaintainerPolicy,
   type MaintainerPolicy,
 } from '../../modules/authority/maintainer-policy.ts';
-
 import { runGit } from '../repository-transaction/git.ts';
 import { readInvestigationSession } from '../storage-journal/investigation-session-records.ts';
+import {
+  resolveBlobOid,
+  resolveCommitOid,
+} from '../repository-transaction/git-object-ids.ts';
+
+/** Reads historical Grant policy, exact annotated tags and successor sessions. */
 
 export const readHumanResolutionAuditTag: HumanResolutionAuditTagReader = (
   repositoryRoot,
@@ -53,10 +56,7 @@ export const readHumanResolutionAuditTag: HumanResolutionAuditTagReader = (
       tagHeaders.length !== 1 ||
       tagHeaders[0] !== `tag ${observedRef.slice('refs/tags/'.length)}` ||
       canonicalHumanResolutionGrantEnvelope(envelope) !== message ||
-      runGit(repositoryRoot, [
-        'rev-parse',
-        `${observedRef}^{commit}`,
-      ]).trim() !== payload.trustBaseCommit
+      resolveCommitOid(repositoryRoot, observedRef) !== payload.trustBaseCommit
     ) {
       throw new Error('tag binding mismatch');
     }
@@ -113,10 +113,11 @@ export const loadMaintainerPolicyForResolution: HumanResolutionServices['loadMai
   (repositoryRoot, trustBaseCommit) => {
     return {
       policy: loadBasePolicy(repositoryRoot, trustBaseCommit),
-      policyBlob: runGit(repositoryRoot, [
-        'rev-parse',
-        `${trustBaseCommit}:workflow/maintainer-policy.json`,
-      ]).trim(),
+      policyBlob: resolveBlobOid(
+        repositoryRoot,
+        trustBaseCommit,
+        'workflow/maintainer-policy.json',
+      ),
     };
   };
 

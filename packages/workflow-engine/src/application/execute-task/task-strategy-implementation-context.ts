@@ -46,6 +46,7 @@ import type {
   TaskStrategyRedAuthor,
   TaskStrategyImplementationStatus,
 } from './task-strategy-implementation-lifecycle.ts';
+import { resolveBlobOid } from '../../runtime/repository-transaction/git-object-ids.ts';
 export function createTaskStrategyImplementationContext(
   changeContract: ChangeContractServices,
   runtime: TaskStrategyImplementationRuntimeBindings,
@@ -511,10 +512,11 @@ export function createTaskStrategyImplementationContext(
     return {
       repositoryId: policy.repository.id,
       repositoryOrigin: policy.repository.origin,
-      policyBlob: runGit(repositoryRoot, [
-        'rev-parse',
-        `${request.baselineCommit}:workflow/maintainer-policy.json`,
-      ]).trim(),
+      policyBlob: resolveBlobOid(
+        repositoryRoot,
+        request.baselineCommit,
+        'workflow/maintainer-policy.json',
+      ),
       collaborationPolicyDigest: collaborationPolicyDigestForPhase(
         request.lifecyclePhase,
       ),

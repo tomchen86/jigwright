@@ -1,4 +1,8 @@
 import fs from 'node:fs';
+import {
+  resolveCommitOid,
+  resolveTreeOid,
+} from '../../repository-transaction/git-object-ids.ts';
 import path from 'node:path';
 import {
   discoverRepository,
@@ -66,10 +70,10 @@ export const ciRepositoryObservations: CiRepositoryObservations = {
     return runGit(repositoryRoot, ['cat-file', 'tag', ref]);
   },
   resolveTagCommit(repositoryRoot, ref) {
-    return runGit(repositoryRoot, ['rev-parse', `${ref}^{commit}`]).trim();
+    return resolveCommitOid(repositoryRoot, ref);
   },
   resolveCommitTree(repositoryRoot, commit) {
-    return runGit(repositoryRoot, ['rev-parse', `${commit}^{tree}`]).trim();
+    return resolveTreeOid(repositoryRoot, commit);
   },
   readHistoricalPolicyBlob(repositoryRoot, commit) {
     return runGit(

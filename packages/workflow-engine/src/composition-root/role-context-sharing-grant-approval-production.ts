@@ -38,6 +38,7 @@ import {
 } from '../runtime/repository-transaction/git.ts';
 import { storeAvailableRoleContextSharingGrant } from '../runtime/storage-journal/role-context-sharing-store.ts';
 import { createCurrentAuthoritativeRoleContextSharingGrantVerifier } from './grant-verifier-composition.ts';
+import { resolveBlobOid } from '../runtime/repository-transaction/git-object-ids.ts';
 
 export type RoleContextSharingGrantCandidate = Readonly<{
   requirementNodeId: string;
@@ -79,10 +80,11 @@ export function approveAndStoreRoleContextSharingGrant(
       ]),
     ),
   );
-  const policyBlob = runGit(repository.repositoryRoot, [
-    'rev-parse',
-    `${requirement.baseline.head}:workflow/maintainer-policy.json`,
-  ]).trim();
+  const policyBlob = resolveBlobOid(
+    repository.repositoryRoot,
+    requirement.baseline.head,
+    'workflow/maintainer-policy.json',
+  );
   return approveAndStoreRoleContextSharingGrantForCurrentRequirement({
     repositoryRoot: repository.repositoryRoot,
     gitCommonDirectory: repository.gitCommonDirectory,

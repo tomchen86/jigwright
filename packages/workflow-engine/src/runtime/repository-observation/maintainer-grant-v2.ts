@@ -51,10 +51,11 @@ export const loadV2TrustContext: MaintainerGrantV2Services['loadV2TrustContext']
         ExitCode.guard,
       );
     }
-    const policyBlob = runGit(repository.repositoryRoot, [
-      'rev-parse',
-      `${repository.head}:workflow/maintainer-policy.json`,
-    ]).trim();
+    const policyBlob = resolveBlobOid(
+      repository.repositoryRoot,
+      repository.head,
+      'workflow/maintainer-policy.json',
+    );
     return {
       repository,
       policy,
@@ -106,6 +107,7 @@ export const readPolicyContent: MaintainerGrantV2Services['readPolicyContent'] =
   };
 
 import { maintainerChecksEnvironmentDigest } from '../../modules/authority/maintainer-grant-v2-codec.ts';
+import { resolveBlobOid } from '../repository-transaction/git-object-ids.ts';
 /** Resolves database identity only when the original check evidence requires it. */
 export function createMaintainerChecksEnvironmentDigest(
   databaseIdentity: (

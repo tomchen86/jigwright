@@ -19,12 +19,11 @@ import {
   readCollaborationGrantInspection,
 } from '../../runtime/storage-journal/collaboration-grant-records.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  discoverRepository,
-  runGit,
-} from '../../runtime/repository-transaction/git.ts';
+import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
 import { isProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import { assertOptionalGrantsPackageAvailable } from '../../composition-root/optional-grants-package-production.ts';
+import { revokeCollaborationGrant } from '../../composition-root/collaboration-grant-production.ts';
+import { resolveTreeOid } from '../../runtime/repository-transaction/git-object-ids.ts';
 
 type ActorAssurance = Extract<
   CollaborationAvailableActor,
@@ -166,10 +165,10 @@ export function parseCollaborationGrantArguments(
 
   const actor = parseAvailableActor(single, degradedForm);
   const repository = discoverRepository(cwd);
-  const baselineTree = runGit(repository.repositoryRoot, [
-    'rev-parse',
-    `${baselineCommit}^{tree}`,
-  ]).trim();
+  const baselineTree = resolveTreeOid(
+    repository.repositoryRoot,
+    baselineCommit,
+  );
   const ttl = single.get('--ttl');
   const uses = single.get('--uses');
   if (
@@ -305,5 +304,3 @@ export function collaborationUsage() {
     ExitCode.usage,
   );
 }
-
-import { revokeCollaborationGrant } from '../../composition-root/collaboration-grant-production.ts';

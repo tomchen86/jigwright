@@ -1,5 +1,10 @@
 import { runGit } from '../repository-transaction/git.ts';
 import {
+  resolveBlobOid,
+  resolveCommitOid,
+  resolveTreeOid,
+} from '../repository-transaction/git-object-ids.ts';
+import {
   type CollaborationGrantEnvelope,
   validateCollaborationGrantPayload,
 } from '../../modules/authority/collaboration-grant-codec.ts';
@@ -8,7 +13,6 @@ import {
   parseCollaborationGrantEnvelope,
 } from '../grants/grant-services.ts';
 import { withRepositoryLifecycleOperation } from '../session-workspace/repository-lifecycle-lock.ts';
-
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import path from 'node:path';
 import type {
@@ -48,6 +52,7 @@ import type {
   CollaborationRevocationTarget,
 } from '../../modules/authority/grant-revocation-contract.ts';
 import { canonicalHumanRevocationAuthorization } from '../../modules/authority/human-revocation-contract.ts';
+
 export const withCollaborationRevocationStore: WithCollaborationRevocationStore =
   (gitCommonDirectory, repositoryRoot, operation) => {
     const paths = collaborationGrantStorePaths(gitCommonDirectory);
@@ -76,18 +81,16 @@ function assertIndependentHumanRevocationTarget(
   now: Date,
 ): void {
   const payload = envelope.payload;
-  const baselineCommit = runGit(repositoryRoot, [
-    'rev-parse',
-    `${payload.baselineCommit}^{commit}`,
-  ]).trim();
-  const baselineTree = runGit(repositoryRoot, [
-    'rev-parse',
-    `${baselineCommit}^{tree}`,
-  ]).trim();
-  const policyBlob = runGit(repositoryRoot, [
-    'rev-parse',
-    `${baselineCommit}:workflow/maintainer-policy.json`,
-  ]).trim();
+  const baselineCommit = resolveCommitOid(
+    repositoryRoot,
+    payload.baselineCommit,
+  );
+  const baselineTree = resolveTreeOid(repositoryRoot, baselineCommit);
+  const policyBlob = resolveBlobOid(
+    repositoryRoot,
+    baselineCommit,
+    'workflow/maintainer-policy.json',
+  );
   const origin = runGit(repositoryRoot, ['remote', 'get-url', 'origin']).trim();
   const policy = loadPolicyAtCommit(repositoryRoot, baselineCommit);
   if (

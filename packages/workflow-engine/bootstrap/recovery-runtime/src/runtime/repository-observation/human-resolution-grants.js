@@ -1,10 +1,11 @@
 import { canonicalHumanResolutionGrantEnvelope, parseHumanResolutionGrantEnvelope, assertHumanResolutionAuditPayload, humanResolutionGrantInvalid, } from "../../modules/investigation/domain/human-resolution-grant-contract.js";
 import { assertMaintainerGrantId } from "../../modules/authority/maintainer-grant-contracts.js";
-/** Reads historical Grant policy, exact annotated tags and successor sessions. */
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { parseMaintainerPolicy, } from "../../modules/authority/maintainer-policy.js";
 import { runGit } from "../repository-transaction/git.js";
 import { readInvestigationSession } from "../storage-journal/investigation-session-records.js";
+import { resolveBlobOid, resolveCommitOid, } from "../repository-transaction/git-object-ids.js";
+/** Reads historical Grant policy, exact annotated tags and successor sessions. */
 export const readHumanResolutionAuditTag = (repositoryRoot, policy, observedRef) => {
     const resolutionPrefix = `${policy.auditTagPrefix}resolution-`;
     if (!observedRef.startsWith(resolutionPrefix)) {
@@ -33,10 +34,7 @@ export const readHumanResolutionAuditTag = (repositoryRoot, policy, observedRef)
             tagHeaders.length !== 1 ||
             tagHeaders[0] !== `tag ${observedRef.slice('refs/tags/'.length)}` ||
             canonicalHumanResolutionGrantEnvelope(envelope) !== message ||
-            runGit(repositoryRoot, [
-                'rev-parse',
-                `${observedRef}^{commit}`,
-            ]).trim() !== payload.trustBaseCommit) {
+            resolveCommitOid(repositoryRoot, observedRef) !== payload.trustBaseCommit) {
             throw new Error('tag binding mismatch');
         }
         const trustBase = loadMaintainerPolicyForResolution(repositoryRoot, payload.trustBaseCommit);
@@ -64,10 +62,7 @@ export function assertHumanResolutionAuditTag(repositoryRoot, envelope, policy) 
 export const loadMaintainerPolicyForResolution = (repositoryRoot, trustBaseCommit) => {
     return {
         policy: loadBasePolicy(repositoryRoot, trustBaseCommit),
-        policyBlob: runGit(repositoryRoot, [
-            'rev-parse',
-            `${trustBaseCommit}:workflow/maintainer-policy.json`,
-        ]).trim(),
+        policyBlob: resolveBlobOid(repositoryRoot, trustBaseCommit, 'workflow/maintainer-policy.json'),
     };
 };
 function loadBasePolicy(repositoryRoot, baseCommit) {

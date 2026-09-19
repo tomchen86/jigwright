@@ -20,10 +20,11 @@ const loadPolicyAt: ExternalEffectRepositoryServices['loadPolicyAt'] =
       ]);
       return {
         policy: parseMaintainerPolicy(JSON.parse(content)),
-        policyBlob: runGit(repositoryRoot, [
-          'rev-parse',
-          `${commit}:workflow/maintainer-policy.json`,
-        ]).trim(),
+        policyBlob: resolveBlobOid(
+          repositoryRoot,
+          commit,
+          'workflow/maintainer-policy.json',
+        ),
       };
     } catch (error) {
       if (isWorkflowFailure(error)) throw error;
@@ -68,6 +69,7 @@ export const externalEffectRepository: Omit<
 import { discoverRepository } from '../repository-transaction/git.ts';
 
 import { type PublishRepositoryServices } from '../../modules/authority/publish-grant.ts';
+import { resolveBlobOid } from '../repository-transaction/git-object-ids.ts';
 export const publishRepository: PublishRepositoryServices = {
   discoverRepository,
   resolveSourceOid: externalEffectRepository.resolveSourceOid,

@@ -1,19 +1,7 @@
 import type {
   CollaborationGrantIssueOptions,
-  DirectHumanReviewAttestationOptions,
   DirectHumanReviewAttestationIssuer,
 } from '../../modules/authority/collaboration-grant-codec.ts';
-/**
- * Prepares and issues signed collaboration Grants and direct human review
- * attestations.
- *
- * Invariants:
- * - The requested baseline must be an ancestor of the current HEAD:
- *   issuance rejects when the merge-base of baseline and HEAD is not the
- *   baseline commit.
- * - Issuance refuses when the grantId already has any local available,
- *   reserved, or terminal state.
- */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -59,9 +47,24 @@ import {
   type CollaborationGrantIssueResult,
   type PreparedCollaborationGrantIssue,
   type DirectHumanReviewAttestationPayload,
-  type DirectHumanReviewAttestation,
-  type DirectHumanReviewAttestationRequest,
 } from '../../modules/authority/collaboration-grant-codec.ts';
+import {
+  resolveBlobOid,
+  resolveCommitOid,
+  resolveTreeOid,
+} from '../repository-transaction/git-object-ids.ts';
+
+/**
+ * Prepares and issues signed collaboration Grants and direct human review
+ * attestations.
+ *
+ * Invariants:
+ * - The requested baseline must be an ancestor of the current HEAD:
+ *   issuance rejects when the merge-base of baseline and HEAD is not the
+ *   baseline commit.
+ * - Issuance refuses when the grantId already has any local available,
+ *   reserved, or terminal state.
+ */
 
 export function createCollaborationGrantIssuance(services: {
   createSigner: MaintainerSignerFactory;
@@ -105,10 +108,10 @@ export function createCollaborationGrantIssuance(services: {
       repository.repositoryRoot,
       request.baselineCommit,
     );
-    const baselineTree = runGit(repository.repositoryRoot, [
-      'rev-parse',
-      `${baselineCommit}^{tree}`,
-    ]).trim();
+    const baselineTree = resolveTreeOid(
+      repository.repositoryRoot,
+      baselineCommit,
+    );
     if (request.baselineTree !== baselineTree) {
       throw collaborationBindingMismatch(
         'Requested baseline tree does not match the exact baseline commit.',
@@ -139,10 +142,11 @@ export function createCollaborationGrantIssuance(services: {
         'Repository origin does not match the trusted maintainer policy.',
       );
     }
-    const policyBlob = runGit(repository.repositoryRoot, [
-      'rev-parse',
-      `${baselineCommit}:workflow/maintainer-policy.json`,
-    ]).trim();
+    const policyBlob = resolveBlobOid(
+      repository.repositoryRoot,
+      baselineCommit,
+      'workflow/maintainer-policy.json',
+    );
     const now = exactDate(options.now ?? new Date());
     const ttlMinutes =
       request.ttlMinutes ?? COLLABORATION_GRANT_MAX_TTL_MINUTES;
@@ -364,10 +368,7 @@ function exactRepositoryCommit(
       'Collaboration grant baseline must be a full commit object ID.',
     );
   }
-  const resolved = runGit(repositoryRoot, [
-    'rev-parse',
-    `${requested}^{commit}`,
-  ]).trim();
+  const resolved = resolveCommitOid(repositoryRoot, requested);
   if (resolved !== requested) {
     throw collaborationBindingMismatch(
       'Collaboration grant baseline is not the exact requested commit.',

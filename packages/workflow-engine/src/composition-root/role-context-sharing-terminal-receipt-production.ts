@@ -46,6 +46,7 @@ import {
   parseRoleContextSharingJournalRecord,
   readRoleContextSharingRecord,
 } from '../runtime/storage-journal/role-context-sharing-store.ts';
+import { resolveBlobOid } from '../runtime/repository-transaction/git-object-ids.ts';
 
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -561,10 +562,11 @@ function loadHistoricalPolicy(
     `${baselineCommit}:workflow/maintainer-policy.json`,
   ]);
   const policy = parseMaintainerPolicy(JSON.parse(raw));
-  const policyBlob = runGit(repositoryRoot, [
-    'rev-parse',
-    `${baselineCommit}:workflow/maintainer-policy.json`,
-  ]).trim();
+  const policyBlob = resolveBlobOid(
+    repositoryRoot,
+    baselineCommit,
+    'workflow/maintainer-policy.json',
+  );
   if (!OBJECT_ID.test(policyBlob)) throw receiptInvalid();
   return Object.freeze({ policy, policyBlob });
 }

@@ -1,5 +1,9 @@
 /** Validates documentation closure commitments against exact tracked Git state. */
 import { runGit } from '../../repository-transaction/git.ts';
+import {
+  resolveParentCommitOid,
+  resolveTreeOid,
+} from '../../repository-transaction/git-object-ids.ts';
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import {
   parseDocumentationClosureFromCommitMessage,
@@ -29,10 +33,7 @@ export function assertDocumentationClosureCommitCurrent(input: {
     input.repositoryRoot,
     input.changeBaseCommit,
   );
-  const parent = runGit(input.repositoryRoot, [
-    'rev-parse',
-    `${input.commitHash}^`,
-  ]).trim();
+  const parent = resolveParentCommitOid(input.repositoryRoot, input.commitHash);
   const allowedProjectionPaths = canonicalSet(
     input.allowedProjectionPaths.map(normalizeExactPath),
   );
@@ -122,9 +123,7 @@ function treeChangedPaths(
 }
 
 function resolvedTree(repositoryRoot: string, commit: string): string {
-  return objectId(
-    runGit(repositoryRoot, ['rev-parse', `${commit}^{tree}`]).trim(),
-  );
+  return objectId(resolveTreeOid(repositoryRoot, commit));
 }
 
 function readTreeEntry(

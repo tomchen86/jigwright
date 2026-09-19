@@ -1,5 +1,5 @@
 import { parseDocumentationClosureFromCommitMessage } from '../../../modules/assurance/documentation-closure.ts';
-/** Immutable commit replay operations; caller-owned semantic services are required. */
+import { resolveParentCommitOid } from '../../repository-transaction/git-object-ids.ts';
 import { validateCiRouteCommit } from './ci-routing.ts';
 import type { HistoricalTaskAuthority } from '../../../modules/assurance/commit-replay/ci-historical-contract.ts';
 import { listCommitPaths } from './ci-git.ts';
@@ -14,10 +14,8 @@ import type { CompletedTask } from '../../../modules/assurance/commit-replay/ci-
 import { parseTasks } from '../../../modules/planning-provider/planning-artifact-parsers.ts';
 import type { ChangeContract } from '../../../modules/planning-provider/change-contract.ts';
 import { assertDocumentationClosureCommitCurrent } from '../../managed-documents/contracts/documentation-closure.ts';
-
 import { commitFacts } from '../../repository-transaction/git-transitions.ts';
 import { findCurrentExecutionTaskCommits } from '../../repository-transaction/git-transitions.ts';
-import { runGit } from '../../repository-transaction/git.ts';
 import { completionDocumentPaths } from '../../managed-documents/validation/managed-documents.ts';
 import { matchesAllowedPath } from '../../../foundation/repository-path/repository-path.ts';
 import { assertExactTaskProjection } from '../../managed-documents/transaction/task-projection.ts';
@@ -25,9 +23,11 @@ import type { CommitSequenceResult } from '../../../modules/assurance/commit-rep
 import { recordTransitions } from '../../../modules/assurance/commit-replay/ci-sequence.ts';
 import { recordDefinitions } from '../../../modules/assurance/commit-replay/ci-sequence.ts';
 import { ciError } from '../../../modules/assurance/commit-replay/ci-sequence.ts';
-
 import type { CiSequenceReplayServices } from './services.ts';
 import type { CiSequenceReplayOperations } from '../../../modules/assurance/commit-replay/ci-sequence.ts';
+
+/** Immutable commit replay operations; caller-owned semantic services are required. */
+
 export function createCiSequenceReplay(
   services: CiSequenceReplayServices,
 ): CiSequenceReplayOperations {
@@ -255,10 +255,10 @@ export function createCiSequenceReplay(
       }
       changeBaseCommit = commit.parents[0]!;
     } else if (firstTaskCommits.length === 1) {
-      changeBaseCommit = runGit(repositoryRoot, [
-        'rev-parse',
-        `${firstTaskCommits[0]!.hash}^`,
-      ]).trim();
+      changeBaseCommit = resolveParentCommitOid(
+        repositoryRoot,
+        firstTaskCommits[0]!.hash,
+      );
     } else {
       throw ciError(
         'CI_DOCUMENTATION_CLOSURE_INVALID',

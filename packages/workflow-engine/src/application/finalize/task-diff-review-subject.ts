@@ -1,15 +1,9 @@
-import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import {
+  resolveParentCommitOid,
+  resolveTreeOid,
+} from '../../runtime/repository-transaction/git-object-ids.ts';
 import type { TaskStrategyCorrectionProjection } from '../../runtime/storage-journal/task-strategy-patch-store.ts';
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
-/**
- * Reconstructs checked review candidates and their documentation
- * requirements.
- *
- * Invariants:
- * - Documentation remediation binds only to a checked or later finalize
- *   transaction.
- */
-// Reconstruct the checked candidate and verify its baseline, index, and documentation.
 import {
   deriveTaskDiffReviewCandidatePlan,
   createTaskDiffReviewSubject,
@@ -46,6 +40,16 @@ import { resolveActorIdentity } from '../../modules/authority/actor-identity.ts'
 import type { TaskDiffReviewRuntimeBindings } from './task-diff-review-lifecycle.ts';
 import type { BeginTaskDiffReviewOptions } from './task-diff-review-contracts.ts';
 import type { createTaskDiffReviewCommonModule } from './task-diff-review-common.ts';
+
+/**
+ * Reconstructs checked review candidates and their documentation
+ * requirements.
+ *
+ * Invariants:
+ * - Documentation remediation binds only to a checked or later finalize
+ *   transaction.
+ */
+// Reconstruct the checked candidate and verify its baseline, index, and documentation.
 
 export function createTaskDiffReviewSubjectModule(
   resolveCurrentTaskStrategyCorrection: (
@@ -335,15 +339,15 @@ export function createTaskDiffReviewSubjectModule(
           { details: { taskId: firstTask.id, commitCount: commits.length } },
         );
       }
-      changeBaseCommit = runGit(inspection.git.repositoryRoot, [
-        'rev-parse',
-        `${commits[0]!.hash}^`,
-      ]).trim();
+      changeBaseCommit = resolveParentCommitOid(
+        inspection.git.repositoryRoot,
+        commits[0]!.hash,
+      );
     }
-    const changeBaseTree = runGit(inspection.git.repositoryRoot, [
-      'rev-parse',
-      `${changeBaseCommit}^{tree}`,
-    ]).trim();
+    const changeBaseTree = resolveTreeOid(
+      inspection.git.repositoryRoot,
+      changeBaseCommit,
+    );
     const ignoredPaths = new Set([
       `${inspection.contract.config.changeRoot}/${inspection.session.changeId}/tasks.md`,
       ...completionDocumentPaths(inspection.git.repositoryRoot),

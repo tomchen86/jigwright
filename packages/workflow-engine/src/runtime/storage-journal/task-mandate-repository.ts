@@ -8,6 +8,7 @@ import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy
 import { isWorkflowFailure } from '../../modules/authority/task-mandate-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type { TaskMandateRepositoryServices } from '../../modules/authority/task-mandate-services.ts';
+import { resolveBlobOid } from '../repository-transaction/git-object-ids.ts';
 function loadPolicyAt(repositoryRoot: string, commit: string) {
   try {
     const content = runGit(repositoryRoot, [
@@ -16,10 +17,11 @@ function loadPolicyAt(repositoryRoot: string, commit: string) {
     ]);
     return {
       policy: parseMaintainerPolicy(JSON.parse(content)),
-      policyBlob: runGit(repositoryRoot, [
-        'rev-parse',
-        `${commit}:workflow/maintainer-policy.json`,
-      ]).trim(),
+      policyBlob: resolveBlobOid(
+        repositoryRoot,
+        commit,
+        'workflow/maintainer-policy.json',
+      ),
     };
   } catch (error) {
     if (isWorkflowFailure(error)) throw error;

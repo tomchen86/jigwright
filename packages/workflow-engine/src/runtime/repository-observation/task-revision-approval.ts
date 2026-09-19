@@ -9,6 +9,7 @@ import {
   approvalInvalid,
   type TaskRevisionApprovalRepository,
 } from '../../modules/authority/task-revision-approval-contracts.ts';
+import { resolveBlobOid } from '../repository-transaction/git-object-ids.ts';
 
 export const taskRevisionApprovalRepository: TaskRevisionApprovalRepository = {
   inspect: discoverRepository,
@@ -34,10 +35,11 @@ function loadPolicyAtCommit(
           ]),
         ),
       ),
-      policyBlob: runGit(repositoryRoot, [
-        'rev-parse',
-        `${commit}:workflow/maintainer-policy.json`,
-      ]).trim(),
+      policyBlob: resolveBlobOid(
+        repositoryRoot,
+        commit,
+        'workflow/maintainer-policy.json',
+      ),
     };
   } catch {
     throw approvalInvalid(

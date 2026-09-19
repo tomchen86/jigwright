@@ -33,6 +33,7 @@ import { ciAuthorityError } from '../../../modules/assurance/commit-replay/ci-au
 
 import type { CiAuthorityReplayServices } from '../../../modules/assurance/commit-replay/ci-authority.ts';
 import type { CiAuthorityReplayOperations } from '../../../modules/assurance/commit-replay/ci-authority.ts';
+import { resolveBlobOid } from '../../repository-transaction/git-object-ids.ts';
 export function createCiAuthorityReplay(
   services: CiAuthorityReplayServices,
 ): CiAuthorityReplayOperations {
@@ -152,10 +153,11 @@ export function createCiAuthorityReplay(
       MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
       'CI_AUTHORITY_V2_GRANT_SIGNATURE_INVALID',
     );
-    const policyBlob = runGit(repositoryRoot, [
-      'rev-parse',
-      `${parent}:workflow/maintainer-policy.json`,
-    ]).trim();
+    const policyBlob = resolveBlobOid(
+      repositoryRoot,
+      parent,
+      'workflow/maintainer-policy.json',
+    );
     const candidate = envelope.payload.candidateBundle;
     if (
       candidate === null ||

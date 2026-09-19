@@ -40,7 +40,6 @@ import type {
   CollaborationGrantSelectableDegradedForm,
   CollaborationGrantSelectionCoreBinding,
 } from '../../modules/authority/collaboration-grant-records.ts';
-
 import fs from 'node:fs';
 import { assertAuthoritativeCollaborationGrantVerifier } from '../../modules/authority/grant-verifier-port.ts';
 import { executeGrantLifecycleTransitionV1 } from '../grants/optional-grants-package.ts';
@@ -69,6 +68,11 @@ import {
   parseMaintainerPolicy,
 } from '../../modules/authority/maintainer-policy.ts';
 import crypto from 'node:crypto';
+import {
+  resolveBlobOid,
+  resolveCommitOid,
+  resolveTreeOid,
+} from '../repository-transaction/git-object-ids.ts';
 
 export function storeAvailableCollaborationGrant(
   gitCommonDirectory: string,
@@ -143,10 +147,10 @@ export function reserveCollaborationGrantUnderLifecycleLock(
     repository.repositoryRoot,
     request.expected.baselineCommit,
   );
-  const baselineTree = runGit(repository.repositoryRoot, [
-    'rev-parse',
-    `${baselineCommit}^{tree}`,
-  ]).trim();
+  const baselineTree = resolveTreeOid(
+    repository.repositoryRoot,
+    baselineCommit,
+  );
   const mergeBase = runGit(repository.repositoryRoot, [
     'merge-base',
     baselineCommit,
@@ -156,10 +160,11 @@ export function reserveCollaborationGrantUnderLifecycleLock(
     throw bindingMismatch();
   }
   const policy = loadPolicyAtCommit(repository.repositoryRoot, baselineCommit);
-  const policyBlob = runGit(repository.repositoryRoot, [
-    'rev-parse',
-    `${baselineCommit}:workflow/maintainer-policy.json`,
-  ]).trim();
+  const policyBlob = resolveBlobOid(
+    repository.repositoryRoot,
+    baselineCommit,
+    'workflow/maintainer-policy.json',
+  );
   const origin = runGit(repository.repositoryRoot, [
     'remote',
     'get-url',
@@ -541,10 +546,7 @@ function loadSelectionValidationContext(
     repositoryRoot,
     expectedCore.baselineCommit,
   );
-  const baselineTree = runGit(repositoryRoot, [
-    'rev-parse',
-    `${baselineCommit}^{tree}`,
-  ]).trim();
+  const baselineTree = resolveTreeOid(repositoryRoot, baselineCommit);
   const head = runGit(repositoryRoot, ['rev-parse', 'HEAD']).trim();
   const mergeBase = runGit(repositoryRoot, [
     'merge-base',
@@ -552,10 +554,11 @@ function loadSelectionValidationContext(
     head,
   ]).trim();
   const policy = loadPolicyAtCommit(repositoryRoot, baselineCommit);
-  const policyBlob = runGit(repositoryRoot, [
-    'rev-parse',
-    `${baselineCommit}:workflow/maintainer-policy.json`,
-  ]).trim();
+  const policyBlob = resolveBlobOid(
+    repositoryRoot,
+    baselineCommit,
+    'workflow/maintainer-policy.json',
+  );
   const origin = runGit(repositoryRoot, ['remote', 'get-url', 'origin']).trim();
   if (
     mergeBase !== baselineCommit ||
@@ -620,10 +623,7 @@ export function exactRepositoryCommit(
   if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(requested)) {
     throw bindingMismatch();
   }
-  const resolved = runGit(repositoryRoot, [
-    'rev-parse',
-    `${requested}^{commit}`,
-  ]).trim();
+  const resolved = resolveCommitOid(repositoryRoot, requested);
   if (resolved !== requested) {
     throw bindingMismatch();
   }

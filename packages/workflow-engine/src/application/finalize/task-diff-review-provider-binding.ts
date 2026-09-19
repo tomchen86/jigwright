@@ -48,6 +48,7 @@ import type {
 } from './task-diff-review-contracts.ts';
 import type { createTaskDiffReviewCommonModule } from './task-diff-review-common.ts';
 import type { createTaskDiffReviewSubjectModule } from './task-diff-review-subject.ts';
+import { resolveBlobOid } from '../../runtime/repository-transaction/git-object-ids.ts';
 
 type TaskDiffReviewReservationRecord =
   TaskDiffReviewRuntimeData['TaskDiffReviewReservationRecord'];
@@ -179,10 +180,11 @@ export function createTaskDiffReviewProviderBindingModule(
     return {
       repositoryId: policy.repository.id,
       repositoryOrigin: policy.repository.origin,
-      policyBlob: runGit(repositoryRoot, [
-        'rev-parse',
-        `${request.baselineCommit}:workflow/maintainer-policy.json`,
-      ]).trim(),
+      policyBlob: resolveBlobOid(
+        repositoryRoot,
+        request.baselineCommit,
+        'workflow/maintainer-policy.json',
+      ),
       collaborationPolicyDigest: collaborationPolicyDigestForPhase(
         request.lifecyclePhase,
       ),

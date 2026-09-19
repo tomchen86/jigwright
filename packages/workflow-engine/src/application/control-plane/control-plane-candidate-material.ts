@@ -15,6 +15,8 @@ import type {
   ControlPlaneCandidateMaterialBindings,
   ControlPlaneCandidateMaterialBindingsTypes,
 } from './control-plane-promotion-producer.ts';
+import { resolveTreeOid } from '../../runtime/repository-transaction/git-object-ids.ts';
+
 type VerifiedControlPlaneSupervisorHistory =
   ControlPlaneCandidateMaterialBindingsTypes['VerifiedControlPlaneSupervisorHistory'];
 type ImmutableCandidateBundleV2 =
@@ -201,10 +203,10 @@ export function createControlPlaneCandidateMaterial(
         ExitCode.staleState,
       );
     }
-    const tree = runGit(repository.repositoryRoot, [
-      'rev-parse',
-      `${candidate.candidateCommit}^{tree}`,
-    ]).trim();
+    const tree = resolveTreeOid(
+      repository.repositoryRoot,
+      candidate.candidateCommit,
+    );
     const parents = runGit(repository.repositoryRoot, [
       'rev-list',
       '--parents',

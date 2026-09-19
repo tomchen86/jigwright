@@ -7,6 +7,7 @@
  */
 
 import crypto from 'node:crypto';
+import { resolveTreeOid } from '../repository-transaction/git-object-ids.ts';
 import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -278,10 +279,7 @@ export function assertProviderAvailabilityPilotRecord(
     `${value.baseCommit}:workflow/ai-adapter-policy.json`,
   ]);
   const loadedPolicy = parseAiAdapterPolicyDocument(policyContent);
-  const baseTree = runGit(repositoryRoot, [
-    'rev-parse',
-    `${value.baseCommit}^{tree}`,
-  ]).trim();
+  const baseTree = resolveTreeOid(repositoryRoot, value.baseCommit);
   const config = JSON.parse(
     runGit(repositoryRoot, [
       'show',

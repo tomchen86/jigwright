@@ -59,6 +59,7 @@ import type {
   ConsumedRoleReplayPort,
   ConsumedRoleResultReplayPort,
 } from '../modules/provider-orchestration/role-admission-contracts.ts';
+import { resolveBlobOid } from '../runtime/repository-transaction/git-object-ids.ts';
 
 const COLLABORATION_EFFECT = 'role-independence-degradation-only' as const;
 const REQUIRED_PACKAGE_EXPORTS = Object.freeze({
@@ -366,10 +367,11 @@ export const productionConsumedPlanReviewReplayPort: ConsumedRoleReplayPort =
             ]),
           ),
         );
-        policyBlob = runGit(input.repositoryRoot, [
-          'rev-parse',
-          `${input.evidence.expectedBinding.baselineCommit}:workflow/maintainer-policy.json`,
-        ]).trim();
+        policyBlob = resolveBlobOid(
+          input.repositoryRoot,
+          input.evidence.expectedBinding.baselineCommit,
+          'workflow/maintainer-policy.json',
+        );
       } catch {
         throw roleContextSharingConsumedReplayUnavailable();
       }

@@ -1,6 +1,14 @@
 import type { TaskCommit } from '../../modules/assurance/task-execution-evidence.ts';
-export type { TaskCommit } from '../../modules/assurance/task-execution-evidence.ts';
+import { resolveCommitOid } from './git-object-ids.ts';
 import type { CommitFacts } from '../../modules/repository-consumer/commit-facts.ts';
+import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import { parseManagedTrailers } from '@jigwright/core/managed-transition-trailers';
+import { normalizeChangedPath } from '../../foundation/repository-path/repository-path.ts';
+import { splitNull } from './git-transition-values.ts';
+import { runGit } from './git.ts';
+
+export type { TaskCommit } from '../../modules/assurance/task-execution-evidence.ts';
+
 /**
  * Reads immutable commit facts and finds task commits after the current execution boundary.
  *
@@ -8,20 +16,12 @@ import type { CommitFacts } from '../../modules/repository-consumer/commit-facts
  * - Exact trailer matching and changed-path ordering preserve their current semantics.
  * - Task queries exclude commits from superseded execution boundaries.
  */
-import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { parseManagedTrailers } from '@jigwright/core/managed-transition-trailers';
-import { normalizeChangedPath } from '../../foundation/repository-path/repository-path.ts';
-import { splitNull } from './git-transition-values.ts';
-import { runGit } from './git.ts';
 
 export function commitFacts(
   repositoryRoot: string,
   commitHash: string,
 ): CommitFacts {
-  const hash = runGit(repositoryRoot, [
-    'rev-parse',
-    `${commitHash}^{commit}`,
-  ]).trim();
+  const hash = resolveCommitOid(repositoryRoot, commitHash);
   const parents = runGit(repositoryRoot, ['show', '-s', '--format=%P', hash])
     .trim()
     .split(/\s+/)

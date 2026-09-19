@@ -751,10 +751,11 @@ function loadBasePolicy(repositoryRoot: string, baseCommit: string) {
       `${baseCommit}:workflow/maintainer-policy.json`,
     ]);
     const policy = parseMaintainerPolicy(JSON.parse(policyContent));
-    const policyBlob = runGit(repositoryRoot, [
-      'rev-parse',
-      `${baseCommit}:workflow/maintainer-policy.json`,
-    ]).trim();
+    const policyBlob = resolveBlobOid(
+      repositoryRoot,
+      baseCommit,
+      'workflow/maintainer-policy.json',
+    );
     return { policy, policyContent, policyBlob };
   } catch (error) {
     if (isPostApprovalAdmissionFailure(error)) throw error;
@@ -972,3 +973,4 @@ export type {
 } from '../../modules/authority/authority-session-contract.ts';
 
 import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
+import { resolveBlobOid } from '../../runtime/repository-transaction/git-object-ids.ts';

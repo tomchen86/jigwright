@@ -11,6 +11,7 @@ import type {
   MaintainerRecoveryVerificationBindings,
   MaintainerRecoveryVerificationBindingsTypes,
 } from './maintainer-recovery.ts';
+import { resolveBlobOid } from '../../runtime/repository-transaction/git-object-ids.ts';
 type AuthoritySession =
   MaintainerRecoveryVerificationBindingsTypes['AuthoritySession'];
 type AuthorityCommitJournal =
@@ -119,10 +120,11 @@ export function createMaintainerRecoveryVerification(
       `${session.baseCommit}:workflow/maintainer-policy.json`,
     ]);
     const policy = parseMaintainerPolicy(JSON.parse(policyContent));
-    const policyBlob = runGit(repositoryRoot, [
-      'rev-parse',
-      `${session.baseCommit}:workflow/maintainer-policy.json`,
-    ]).trim();
+    const policyBlob = resolveBlobOid(
+      repositoryRoot,
+      session.baseCommit,
+      'workflow/maintainer-policy.json',
+    );
     const signer = policy.trustedSigners.find(
       ({ identity }) => identity === session.signer,
     );

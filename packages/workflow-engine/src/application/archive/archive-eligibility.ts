@@ -1,19 +1,11 @@
 import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
+import { resolveParentCommitOid } from '../../runtime/repository-transaction/git-object-ids.ts';
 import type { StableValidatedChangeContractLoader } from '../../modules/assurance/validated-change-contract.ts';
 import type { ArchiveEligibilityReplayServices } from '../../modules/assurance/commit-replay/ci-archive.ts';
-/**
- * Inspects archive eligibility under change transition authority and checks
- * refreshed date-bound eligibility.
- *
- * Invariants:
- * - Eligibility and rollover refresh are evaluated while the archive
- *   transition authority is held.
- */
 import fs from 'node:fs';
 import path from 'node:path';
 import { baseSpecPathForCapability } from '../../modules/source/system-spec-catalog.ts';
 import type { SystemDescriptionSnapshot } from '../../modules/source/spec-ownership.ts';
-
 import type { CollaborationGrantCodec } from '../../modules/authority/collaboration-grant-codec.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
@@ -31,13 +23,21 @@ import {
 } from '../../runtime/repository-transaction/git.ts';
 import type { TaskCommit } from '../../runtime/repository-transaction/git-transitions.ts';
 import { committedPlanningGeneration } from '../../runtime/repository-transaction/planning-generation-history.ts';
-
 import { withChangeTransitionAuthority } from '../../runtime/session-workspace/planning-lock.ts';
 import { assertPlanningPaths } from '../../modules/source/planning-paths.ts';
 import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
 import { completionDocumentPaths } from '../../runtime/managed-documents/validation/managed-documents.ts';
 import { loadRepositoryConsumerConfiguration } from '../../runtime/workflow-configuration/repository-consumer.ts';
 import type { ResolvedPlanningProviderBinding } from '../../modules/planning-provider/planning-provider-binding.ts';
+
+/**
+ * Inspects archive eligibility under change transition authority and checks
+ * refreshed date-bound eligibility.
+ *
+ * Invariants:
+ * - Eligibility and rollover refresh are evaluated while the archive
+ *   transition authority is held.
+ */
 
 export type ArchiveEligibility = {
   changeId: string;
@@ -504,10 +504,10 @@ function assertArchiveDocumentationClosure(input: {
     );
   }
   const finalCommit = finalCandidates[0]!;
-  const finalParent = runGit(input.repositoryRoot, [
-    'rev-parse',
-    `${finalCommit.hash}^`,
-  ]).trim();
+  const finalParent = resolveParentCommitOid(
+    input.repositoryRoot,
+    finalCommit.hash,
+  );
   const taskHashes = new Set(input.taskCommits.map(({ hash }) => hash));
   const firstTaskCommit = runGit(input.repositoryRoot, [
     'rev-list',
@@ -523,10 +523,10 @@ function assertArchiveDocumentationClosure(input: {
       'Archive cannot resolve the first managed task commit.',
     );
   }
-  const changeBaseCommit = runGit(input.repositoryRoot, [
-    'rev-parse',
-    `${firstTaskCommit}^`,
-  ]).trim();
+  const changeBaseCommit = resolveParentCommitOid(
+    input.repositoryRoot,
+    firstTaskCommit,
+  );
   try {
     assertDocumentationClosureCommitCurrent({
       repositoryRoot: input.repositoryRoot,

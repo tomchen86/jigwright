@@ -1,5 +1,10 @@
 /** Reads exact Git evidence and verifies original commit signatures for attestation. */
 import fs from 'node:fs';
+import {
+  resolveBlobOid,
+  resolveCommitOid,
+  resolveTreeOid,
+} from '../repository-transaction/git-object-ids.ts';
 import os from 'node:os';
 import path from 'node:path';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -24,6 +29,7 @@ import {
   resolveProtectedBaseRef,
   runGit,
 } from '../repository-transaction/git.ts';
+
 const MAINTAINER_POLICY_PATH = 'workflow/maintainer-policy.json';
 export function loadHeadPolicy(repositoryRoot: string): MaintainerPolicy {
   try {
@@ -63,10 +69,7 @@ export function readGrantEnvelope(
   }
   const rawEnvelope = raw.slice(boundary + 2);
   const envelope = parseMaintainerGrantV2Envelope(rawEnvelope);
-  const target = runGit(repositoryRoot, [
-    'rev-parse',
-    `${tagRef}^{commit}`,
-  ]).trim();
+  const target = resolveCommitOid(repositoryRoot, tagRef);
   if (
     envelope.payload.grantId !== grantId ||
     envelope.payload.baseCommit !== target
@@ -88,10 +91,7 @@ export function attestedFacts(
   const facts = commitFacts(repositoryRoot, commitOid);
   const parentTree =
     facts.parents.length === 1
-      ? runGit(repositoryRoot, [
-          'rev-parse',
-          `${facts.parents[0]}^{tree}`,
-        ]).trim()
+      ? resolveTreeOid(repositoryRoot, facts.parents[0])
       : undefined;
   return {
     oid: facts.hash,
@@ -212,10 +212,11 @@ export function readPolicyBlob(
   repositoryRoot: string,
   baseCommit: string,
 ): string {
-  return runGit(repositoryRoot, [
-    'rev-parse',
-    `${baseCommit}:${MAINTAINER_POLICY_PATH}`,
-  ]).trim();
+  return resolveBlobOid(
+    repositoryRoot,
+    baseCommit,
+    `${MAINTAINER_POLICY_PATH}`,
+  );
 }
 export function readAuditTagRefs(
   repositoryRoot: string,
