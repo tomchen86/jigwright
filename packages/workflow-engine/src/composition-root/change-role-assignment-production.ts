@@ -78,7 +78,7 @@ import {
   completeProviderNativeSessionTurnV1,
   readProviderNativeSessionChainV1,
 } from '../runtime/storage-journal/provider-native-session-store.ts';
-import type { InvestigationRuntimePaths } from '../runtime/session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../runtime/paths/runtime-paths.ts';
 
 const ROLE_BY_PURPOSE = Object.freeze({
   survey: 'author',

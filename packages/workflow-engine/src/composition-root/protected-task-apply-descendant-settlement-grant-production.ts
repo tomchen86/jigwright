@@ -20,7 +20,7 @@ import {
   type ProtectedTaskApplyDescendantSettlementParametersV1,
 } from '../modules/authority/protected-task-apply-descendant-settlement-grant.ts';
 import type { TransitionObservationContext } from '../modules/authority/grant-transition-registry.ts';
-import { loadWorkflowConfig } from '../runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../runtime/workflow-configuration/workflow-configuration.ts';
 import { discoverRepository } from '../runtime/repository-transaction/git.ts';
 import {
   grantStorePaths,

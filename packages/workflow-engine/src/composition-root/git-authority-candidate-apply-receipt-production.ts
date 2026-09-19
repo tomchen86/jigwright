@@ -62,7 +62,7 @@ import {
   readGitAuthorityCandidateApplyJournal,
   type GitAuthorityCandidateApplyJournalV2,
 } from '../runtime/storage-journal/git-authority-candidate-apply-store.ts';
-import { investigationRuntimePaths } from '../runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../runtime/paths/runtime-paths.ts';
 import { runtimePaths } from '../runtime/session-workspace/session-store.ts';
 import { readProductionGitBaseAuthorityContext } from './git-authority-candidate-apply-production.ts';
 

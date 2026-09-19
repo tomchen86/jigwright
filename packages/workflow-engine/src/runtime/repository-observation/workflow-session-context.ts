@@ -18,7 +18,7 @@ import {
   withSessionOperation,
   type WorkflowSession,
 } from '../session-workspace/session-store.ts';
-import { loadWorkflowConfig } from './workflow-configuration.ts';
+import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
 
 export function readWorkflowSessionContext(
   cwd: string,

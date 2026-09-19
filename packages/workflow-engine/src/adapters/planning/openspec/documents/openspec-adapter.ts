@@ -19,7 +19,7 @@ import {
   type OpenSpecInstallation,
 } from './openspec-executor.ts';
 import { assertChangeId } from '../../../../foundation/repository-path/repository-path.ts';
-import { loadRepositoryConsumerConfiguration } from '../../../../runtime/repository-observation/repository-consumer.ts';
+import { loadRepositoryConsumerConfiguration } from '../../../../runtime/workflow-configuration/repository-consumer.ts';
 import { parseDoctor, type OpenSpecDoctor } from './openspec-doctor-payload.ts';
 import {
   parseChangeList,

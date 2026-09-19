@@ -12,7 +12,7 @@ import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;

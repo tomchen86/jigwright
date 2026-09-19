@@ -13,7 +13,7 @@ import {
   COLLABORATION_GRANT_RETAINED_OBLIGATIONS,
   COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
 } from '../src/modules/authority/collaboration-grant-codec.ts';
-import type { InvestigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { admitRoleResult } from '../src/composition-root/role-admission-production.ts';
 import { scheduleOrdinaryRole } from '../src/modules/provider-orchestration/role-assignment.ts';

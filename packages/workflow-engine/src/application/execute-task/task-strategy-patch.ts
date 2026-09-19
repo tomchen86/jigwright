@@ -30,7 +30,7 @@ import {
   loadActiveSessionContext,
   runSessionOperation,
 } from '../../runtime/repository-observation/workflow-session-context.ts';
-import { investigationRuntimePaths } from '../../runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';
 import {
   matchesAllowedPath,
   normalizeChangedPath,

@@ -18,7 +18,7 @@ import {
  */
 import path from 'node:path';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { exactUnsafePathObservationDigest } from './evidence-unsafe-observation.ts';
 
 export function investigationSessionPath(

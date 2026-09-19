@@ -1,7 +1,7 @@
 import test from 'node:test';
 import { parseTasks } from '../src/modules/planning-provider/planning-artifact-parsers.ts';
 import assert from 'node:assert/strict';
-import { assertPolicyPathInsideRepository } from '../src/runtime/session-workspace/paths.ts';
+import { assertPolicyPathInsideRepository } from '../src/runtime/paths/runtime-paths.ts';
 import {
   normalizePolicyPath,
   matchesAllowedPath,

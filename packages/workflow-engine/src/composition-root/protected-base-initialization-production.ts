@@ -12,7 +12,7 @@ import path from 'node:path';
 
 import type { CentralGrantCompletedAuthorityRefV1 } from '@jigwright/core/central-grant-port';
 
-import { loadWorkflowConfig } from '../runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../runtime/workflow-configuration/workflow-configuration.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';

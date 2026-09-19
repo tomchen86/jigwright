@@ -16,7 +16,7 @@ import {
   loadChangeContract,
   loadCommittedChangeContract,
 } from './consumer-contract-production.ts';
-import { loadWorkflowConfig } from '../runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../runtime/workflow-configuration/workflow-configuration.ts';
 import { type ChangeContract } from '../modules/planning-provider/change-contract.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { normalizeExactRepositoryPath } from '../foundation/repository-path/repository-path.ts';

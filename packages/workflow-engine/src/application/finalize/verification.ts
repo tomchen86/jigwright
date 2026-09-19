@@ -18,7 +18,7 @@ import path from 'node:path';
 import type { LocalEngineSelectionReaders } from '../../modules/authority/local-engine-selection.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { digestArtifacts } from '../../runtime/repository-observation/contract-artifact-observation.ts';
-import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
 import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
 import { type TaskPolicy } from '../../modules/planning-provider/planning-artifact-types.ts';
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';

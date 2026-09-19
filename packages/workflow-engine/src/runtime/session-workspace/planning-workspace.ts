@@ -6,7 +6,7 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import {
   loadWorkflowConfig,
   repositoryCurrentSchemaName,
-} from '../repository-observation/workflow-configuration.ts';
+} from '../workflow-configuration/workflow-configuration.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   assertPlainDirectory,

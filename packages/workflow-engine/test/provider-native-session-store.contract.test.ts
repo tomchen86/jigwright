@@ -62,7 +62,7 @@ import {
   readProviderNativeSessionChainV1,
   recoverProviderNativeSessionTurnV1,
 } from '../src/runtime/storage-journal/provider-native-session-store.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   providerNativeSessionClaimObjectPathV1,
   providerNativeSessionClaimRefPathV1,

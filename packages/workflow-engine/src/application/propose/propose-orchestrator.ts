@@ -10,8 +10,8 @@ import type { ProposeDecisionServices } from './propose-decision-services.ts';
 import {
   loadChecksConfig,
   loadWorkflowConfig,
-} from '../../runtime/repository-observation/workflow-configuration.ts';
-import { parseCurrentInvestigationManifest } from '../../runtime/repository-observation/change-contract-reader.ts';
+} from '../../runtime/workflow-configuration/workflow-configuration.ts';
+import { parseCurrentInvestigationManifest } from '../../runtime/repository-validation/change-contract-reader.ts';
 import {
   parseExecutionArtifact,
   parseTasks,

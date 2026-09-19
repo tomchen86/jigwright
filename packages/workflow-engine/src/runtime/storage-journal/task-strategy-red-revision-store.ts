@@ -5,7 +5,7 @@
  * - Request, predecessor, and phase checks retain their original order before publication.
  * - Journal compare-and-swap and exact replay preserve immutable prior state and current-ref authority.
  */
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import {
   createPrivateCanonicalJson,

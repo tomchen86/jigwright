@@ -17,7 +17,7 @@ import {
   type WorkflowPlanDigestTouchedFile,
 } from '../../modules/guidance/renderers/plan-digest.ts';
 import { PROPOSE_POLICY_DIGEST } from '../../modules/provider-orchestration/provider-contracts.ts';
-import { loadRepositoryConsumerConfiguration } from '../../runtime/repository-observation/repository-consumer.ts';
+import { loadRepositoryConsumerConfiguration } from '../../runtime/workflow-configuration/repository-consumer.ts';
 import {
   assertRequiredPlanningArtifacts,
   readMaterializedPlanningArtifactDigests,

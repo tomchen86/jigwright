@@ -16,8 +16,8 @@ import {
   type CoverageTier,
   type InvestigationChangeClass,
 } from '../../modules/assurance/assurance-assessment-chain.ts';
-import { loadWorkflowConfig } from './workflow-configuration.ts';
-import { parseCurrentInvestigationManifest } from './change-contract-reader.ts';
+import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
+import { parseCurrentInvestigationManifest } from '../repository-validation/change-contract-reader.ts';
 import { type CurrentInvestigationManifest } from '../../modules/planning-provider/change-contract.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { discoverRepository } from '../repository-transaction/git.ts';

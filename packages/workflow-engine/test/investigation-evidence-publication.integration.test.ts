@@ -8,7 +8,7 @@ import {
 } from '../src/runtime/storage-journal/evidence-object-store.ts';
 import { canonicalEvidenceNodeEnvelope } from '../src/foundation/evidence-node/evidence-node.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { createFixtureRepository, isWorkflowError } from './fixture.ts';
 import {
   createCrashPublicationEvidenceNode,

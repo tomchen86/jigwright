@@ -3,7 +3,7 @@ import type {
   ProviderInvocationRequest,
   ProviderProcessOutcome,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import {

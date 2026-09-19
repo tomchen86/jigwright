@@ -10,7 +10,7 @@ import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-nod
 import {
   investigationRuntimePaths,
   type InvestigationRuntimePaths,
-} from '../src/runtime/session-workspace/paths.ts';
+} from '../src/runtime/paths/runtime-paths.ts';
 import {
   compareAndSwapTaskStrategyCurrentRef,
   createTaskStrategyCurrentRef,

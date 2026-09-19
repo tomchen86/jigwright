@@ -23,7 +23,7 @@ import { loadChangeContract } from '../src/composition-root/consumer-contract-pr
 import assert from 'node:assert/strict';
 import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   createPlanReviewTargetSnapshotNode,
   readPlanReviewTargetSnapshotNode,

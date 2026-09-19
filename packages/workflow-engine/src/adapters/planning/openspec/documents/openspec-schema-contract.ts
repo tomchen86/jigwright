@@ -14,7 +14,7 @@ import {
   ExitCode,
   workflowError,
 } from '../../../../foundation/errors/errors.ts';
-import { loadRepositoryConsumerConfiguration } from '../../../../runtime/repository-observation/repository-consumer.ts';
+import { loadRepositoryConsumerConfiguration } from '../../../../runtime/workflow-configuration/repository-consumer.ts';
 import {
   PINNED_OPENSPEC_VERSION,
   resolveOpenSpecInstallation,

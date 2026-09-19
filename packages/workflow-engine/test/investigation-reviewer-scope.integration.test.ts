@@ -32,7 +32,7 @@ import {
   compareAndSwapInvestigationSession,
   readInvestigationSession,
 } from '../src/runtime/storage-journal/investigation-session-records.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { isWorkflowError } from './fixture.ts';
 import {
   fakeRunnerReport,

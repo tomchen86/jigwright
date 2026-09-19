@@ -9,7 +9,7 @@ import {
   expireInvestigationProviderLease,
   getInvestigationStatus,
 } from '../src/adapters/planning/investigation/investigation-session.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { startPropose } from '../src/composition-root/propose-production.ts';
 import {
   claimProviderInvocation,

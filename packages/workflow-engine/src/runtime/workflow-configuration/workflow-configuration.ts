@@ -12,8 +12,8 @@ import {
   parseChecksConfigSource,
   type ChecksConfig,
 } from '../../modules/source/check-command.ts';
-import { assertPolicyPathInsideRepository } from '../session-workspace/paths.ts';
-import { relative } from './contract-artifact-observation.ts';
+import { assertPolicyPathInsideRepository } from '../paths/runtime-paths.ts';
+
 import {
   loadRepositoryConsumerConfiguration,
   repositoryConsumerPath,
@@ -85,7 +85,7 @@ export function readJson(filePath: string, label: string): unknown {
   } catch (error) {
     throw workflowError(
       'UNREADABLE_CONTRACT',
-      `Unable to read ${label}: ${relative(process.cwd(), filePath)}`,
+      `Unable to read ${label}: ${path.relative(process.cwd(), filePath).split(path.sep).join('/')}`,
       ExitCode.unsafeEnvironment,
       {
         details: {

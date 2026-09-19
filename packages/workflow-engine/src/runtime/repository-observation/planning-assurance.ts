@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { runGit, runGitBuffer } from '../repository-transaction/git.ts';
-import { repositoryCurrentSchemaName } from './workflow-configuration.ts';
+import { repositoryCurrentSchemaName } from '../workflow-configuration/workflow-configuration.ts';
 import {
   planningNotReady,
   sha256,

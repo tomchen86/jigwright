@@ -40,7 +40,7 @@ import {
   assertDurableProviderExecutionBudgetAuthority,
   validateProviderExecutionBudgetAuthority,
 } from './provider-execution-policy-authority.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   assertChangeId,
   assertInvestigationId,

@@ -11,7 +11,7 @@ import type { ChangeOriginV1 } from '../../modules/governance-intake/work-regist
 import {
   repositoryConsumerPath,
   loadRepositoryConsumerConfiguration,
-} from '../repository-observation/repository-consumer.ts';
+} from '../workflow-configuration/repository-consumer.ts';
 export function listOriginPaths(repositoryRoot: string): string[] {
   const changesRoot = repositoryConsumerPath(
     repositoryRoot,

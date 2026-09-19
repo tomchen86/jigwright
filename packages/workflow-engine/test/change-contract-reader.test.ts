@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import { createChangeContractReaders } from '../src/runtime/repository-observation/change-contract-reader.ts';
+import { createChangeContractReaders } from '../src/runtime/repository-validation/change-contract-reader.ts';
 import {
   createFixtureRepository,
   writeManagedChangeArtifacts,

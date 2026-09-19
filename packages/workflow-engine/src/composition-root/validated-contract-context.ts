@@ -32,7 +32,7 @@ import type {
   ChangeRoutingAuthorityFacts,
   ChangeRoutingAuthorityPort,
 } from '../modules/lifecycle/change-routing.ts';
-import { loadRepositoryConsumerConfiguration } from '../runtime/repository-observation/repository-consumer.ts';
+import { loadRepositoryConsumerConfiguration } from '../runtime/workflow-configuration/repository-consumer.ts';
 import type { SystemDescriptionSnapshot } from '../modules/source/spec-ownership.ts';
 import { readSystemDescriptionSnapshot } from '../runtime/repository-transaction/system-description-snapshot.ts';
 import type { ConsumedRoleReplayPort } from '../modules/provider-orchestration/role-admission-contracts.ts';

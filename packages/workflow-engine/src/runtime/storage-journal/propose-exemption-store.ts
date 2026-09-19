@@ -35,7 +35,7 @@ import {
   type InvestigationExemption,
 } from '../../modules/investigation/domain/investigation-applicability.ts';
 import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
 import {
   assertHeldChangeTransitionAuthority,

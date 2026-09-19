@@ -1,7 +1,7 @@
 import { planningAssuranceDependencies } from '../../src/composition-root/planning-assurance-production.ts';
 import { readCurrentPlanningRoleOverridePolicy } from '../../src/runtime/repository-transaction/planning-role-provider-policy-reader.ts';
 import { discoverRepository } from '../../src/runtime/repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../../src/runtime/paths/runtime-paths.ts';
 import {
   runtimePaths,
   withRepositoryLifecycleOperationAsync,

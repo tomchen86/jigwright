@@ -50,7 +50,7 @@ import type {
   AgentRuntimeCompletionReceipt,
   ProviderInvocationAcceptanceBinding,
 } from '../../modules/provider-orchestration/agent-runtime-port.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   assertInvestigationId,
   assertChangeId,

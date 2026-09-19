@@ -13,7 +13,7 @@ import {
   type ProviderInvocationRequest,
   recreateProviderInvocationRequest,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   assertPrivateFile,
   MAX_HUMAN_RESOLUTION_BYTES,

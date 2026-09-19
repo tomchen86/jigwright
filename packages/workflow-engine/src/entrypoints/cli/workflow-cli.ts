@@ -44,7 +44,7 @@ import { inspectProjectionStatus } from '../../composition-root/projection-statu
 import { dispatchCentralRoleProviderDefaultCommand } from './central-role-provider-default-cli.ts';
 
 import { inspectChangeAssurance } from '../../runtime/repository-observation/assurance-inspection.ts';
-import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
 import {
   checkOpenSpecPlanningAssets,
   installOpenSpecPlanningPrompts,

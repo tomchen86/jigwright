@@ -27,7 +27,7 @@ import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { assertCommitObject } from '../../runtime/repository-validation/commit-replay/commit-object-validation.ts';
 
-import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
 import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
 import {
   finalizeCommittedSession,

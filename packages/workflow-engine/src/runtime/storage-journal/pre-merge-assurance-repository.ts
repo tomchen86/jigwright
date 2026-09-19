@@ -1,6 +1,6 @@
 import { discoverRepository } from '../repository-transaction/git.ts';
-import { loadWorkflowConfig } from '../repository-observation/workflow-configuration.ts';
-import { investigationRuntimePaths } from '../session-workspace/paths.ts';
+import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
+import { investigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   readPreMergeAssurance,
   storePreMergeAssurance,

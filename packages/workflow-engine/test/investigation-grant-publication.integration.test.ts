@@ -15,7 +15,7 @@ import {
   storeAvailableHumanResolutionGrant,
 } from '../src/runtime/storage-journal/human-resolution-grant-store.ts';
 import { writeHumanResolutionJournal } from '../src/runtime/storage-journal/human-resolution-journal.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 import {
   FIRST_INSTANT,

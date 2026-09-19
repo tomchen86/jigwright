@@ -15,7 +15,7 @@ import { registryInvalid } from '../../modules/governance-intake/work-registry-r
 import {
   loadRepositoryConsumerConfiguration,
   repositoryConsumerPath,
-} from '../repository-observation/repository-consumer.ts';
+} from '../workflow-configuration/repository-consumer.ts';
 import { runGit } from '../repository-transaction/git.ts';
 import { createWorkRegistryStorage } from './storage.ts';
 import {

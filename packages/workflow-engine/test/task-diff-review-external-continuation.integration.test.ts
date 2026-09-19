@@ -32,7 +32,7 @@ import {
 } from '../src/composition-root/collaboration-grant-issuance-production.ts';
 import { failCollaborationReservation } from '../src/runtime/storage-journal/collaboration-grant-consumption.ts';
 import { inspectCollaborationGrants } from '../src/runtime/storage-journal/collaboration-grant-records.ts';
-import { loadWorkflowConfig } from '../src/runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../src/runtime/workflow-configuration/workflow-configuration.ts';
 import { readEvidenceNode } from '../src/runtime/storage-journal/evidence-object-store.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
@@ -42,7 +42,7 @@ import {
   verifySshSignatureWithPublicKey,
   type MaintainerSignerProvider,
 } from '../src/adapters/signing/ssh/maintainer-signer.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';

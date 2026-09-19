@@ -19,7 +19,7 @@ import fs from 'node:fs';
 import {
   repositoryConsumerPath,
   loadRepositoryConsumerConfiguration,
-} from '../repository-observation/repository-consumer.ts';
+} from '../workflow-configuration/repository-consumer.ts';
 import crypto from 'node:crypto';
 import type { createWorkRegistryPromotionLocks } from './transactions.ts';
 export type WorkRegistryStorageBindings = Pick<

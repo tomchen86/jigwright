@@ -16,7 +16,7 @@ import {
   repositoryRelativePath,
   sameArtifactIdentity,
 } from './contract-artifact-observation.ts';
-import { loadRepositoryConsumerConfiguration } from './repository-consumer.ts';
+import { loadRepositoryConsumerConfiguration } from '../workflow-configuration/repository-consumer.ts';
 
 export function readManagedSchemaName(
   repositoryRoot: string,

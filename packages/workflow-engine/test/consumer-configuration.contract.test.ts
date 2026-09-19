@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import {
   loadRepositoryConsumerConfiguration,
   repositoryConsumerPath,
-} from '../src/runtime/repository-observation/repository-consumer.ts';
+} from '../src/runtime/workflow-configuration/repository-consumer.ts';
 import { readChangeSchemaName } from '../src/runtime/repository-observation/change-metadata.ts';
 import { createWorkItem } from '../src/composition-root/work-registry-production.ts';
 import { assertDisposableDatabaseForRepository } from '../src/adapters/consumer/repository/work-registry/database-policy.ts';

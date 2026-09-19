@@ -12,7 +12,7 @@ import path from 'node:path';
 import type { AgentRuntimeProbeEvidenceV1 } from '@jigwright/core/agent-runtime-port';
 import { loadAiAdapterPolicy } from '../provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { loadWorkflowConfig } from '../repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
 import { createEvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';
 import { writeEvidenceNode } from '../storage-journal/evidence-node-store.ts';
 import {
@@ -20,7 +20,7 @@ import {
   durableFailureMessage,
 } from '../../foundation/errors/errors.ts';
 import { discoverRepository } from '../repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   type ProviderRunnerReport,
   createProviderInvocationRequest,

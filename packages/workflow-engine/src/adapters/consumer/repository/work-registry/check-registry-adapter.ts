@@ -11,7 +11,7 @@ import type {
   CheckRegistryPortV1,
 } from '@jigwright/core/check-registry-port';
 
-import { loadChecksConfig } from '../../../../runtime/repository-observation/workflow-configuration.ts';
+import { loadChecksConfig } from '../../../../runtime/workflow-configuration/workflow-configuration.ts';
 import {
   type CheckDefinition,
   type ChecksConfig,

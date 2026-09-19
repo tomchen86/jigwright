@@ -16,7 +16,7 @@ import type { SystemDescriptionSnapshot } from '../../modules/source/spec-owners
 
 import type { CollaborationGrantCodec } from '../../modules/authority/collaboration-grant-codec.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
 import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
 import { type ManagedSchemaName } from '../../modules/planning-provider/change-contract.ts';
 import { assertDocumentationClosureCommitCurrent } from '../../runtime/managed-documents/contracts/documentation-closure.ts';
@@ -36,7 +36,7 @@ import { withChangeTransitionAuthority } from '../../runtime/session-workspace/p
 import { assertPlanningPaths } from '../../modules/source/planning-paths.ts';
 import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
 import { completionDocumentPaths } from '../../runtime/managed-documents/validation/managed-documents.ts';
-import { loadRepositoryConsumerConfiguration } from '../../runtime/repository-observation/repository-consumer.ts';
+import { loadRepositoryConsumerConfiguration } from '../../runtime/workflow-configuration/repository-consumer.ts';
 import type { ResolvedPlanningProviderBinding } from '../../modules/planning-provider/planning-provider-binding.ts';
 
 export type ArchiveEligibility = {

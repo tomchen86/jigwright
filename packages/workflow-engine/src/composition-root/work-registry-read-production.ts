@@ -12,7 +12,7 @@ import {
   createCurrentOriginReader,
 } from '../runtime/work-registry/origin-observation.ts';
 import { createWorkRegistryProjectionStorage } from '../runtime/work-registry/projection-storage.ts';
-import { repositoryConsumerConfigurationExists } from '../runtime/repository-observation/repository-consumer.ts';
+import { repositoryConsumerConfigurationExists } from '../runtime/workflow-configuration/repository-consumer.ts';
 import {
   readGovernanceSource,
   listGovernanceSources,

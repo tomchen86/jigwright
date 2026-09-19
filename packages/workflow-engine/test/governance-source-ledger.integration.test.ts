@@ -23,7 +23,7 @@ import { renderHandoff as renderHandoffWithContractReader } from '../src/adapter
 import {
   loadRepositoryConsumerConfiguration,
   repositoryConsumerConfigurationExists,
-} from '../src/runtime/repository-observation/repository-consumer.ts';
+} from '../src/runtime/workflow-configuration/repository-consumer.ts';
 import {
   linkSourceToChange,
   reconcileArchivedWorkItems,

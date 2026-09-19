@@ -18,7 +18,7 @@ import { digestArtifacts } from '../../../../runtime/repository-observation/cont
 import {
   loadWorkflowConfig,
   repositoryCurrentSchemaName,
-} from '../../../../runtime/repository-observation/workflow-configuration.ts';
+} from '../../../../runtime/workflow-configuration/workflow-configuration.ts';
 import { readManagedSchemaName } from '../../../../runtime/repository-observation/change-metadata.ts';
 import {
   type ChangeContract,

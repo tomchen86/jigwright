@@ -36,7 +36,7 @@ import {
   privatePathExists,
   readPrivateCanonicalJson,
 } from './investigation-private-files.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   assertSessionId,
   normalizeChangedPath,

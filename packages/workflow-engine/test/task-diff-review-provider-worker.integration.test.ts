@@ -44,7 +44,7 @@ import {
   finalizeSession,
   finalizeTask,
 } from './support/local-engine-selection-host.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import {
   readProviderInvocation,

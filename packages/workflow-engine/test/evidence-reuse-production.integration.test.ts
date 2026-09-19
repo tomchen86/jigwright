@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { parseCurrentInvestigationManifest } from '../src/runtime/repository-observation/change-contract-reader.ts';
+import { parseCurrentInvestigationManifest } from '../src/runtime/repository-validation/change-contract-reader.ts';
 import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
 import { driveProposeToDispositions } from './propose-drive-fixture.ts';
 

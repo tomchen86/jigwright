@@ -16,7 +16,7 @@ import path from 'node:path';
 import {
   loadWorkflowConfig,
   repositoryHandoffPath,
-} from '../../runtime/repository-observation/workflow-configuration.ts';
+} from '../../runtime/workflow-configuration/workflow-configuration.ts';
 import {
   renderHandoff,
   validateHandoff,

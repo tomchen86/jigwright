@@ -30,7 +30,7 @@ import {
   type WorkflowSupersedeReason,
 } from '../../modules/authority/intervention-control.ts';
 import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
-import { type InvestigationRuntimePaths } from '../../runtime/session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';
 import { assertInvestigationId } from '../../foundation/repository-path/repository-path.ts';
 import type {
   ProviderRetentionMetrics,

@@ -59,7 +59,7 @@ import {
   type ArchivePublicationPreparationV1,
 } from '../../modules/authority/archive-publication-preparation.ts';
 import type { ArchivePullRequestGrantAuthenticator } from './archive-pr-grant.ts';
-import { loadRepositoryConsumerConfiguration } from '../../runtime/repository-observation/repository-consumer.ts';
+import { loadRepositoryConsumerConfiguration } from '../../runtime/workflow-configuration/repository-consumer.ts';
 
 export type ArchivePullRequestCandidateProjectionInput = Readonly<{
   repositoryId: string;

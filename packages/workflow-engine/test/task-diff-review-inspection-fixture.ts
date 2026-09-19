@@ -22,14 +22,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { loadWorkflowConfig } from '../src/runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../src/runtime/workflow-configuration/workflow-configuration.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import {
   verifySshSignatureWithPublicKey,
   type MaintainerSignerProvider,
 } from '../src/adapters/signing/ssh/maintainer-signer.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import {

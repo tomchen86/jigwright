@@ -52,7 +52,7 @@
       },
       {
         "from": "packages/workflow-engine/src/modules/authority/collaboration-grant.ts",
-        "to": "packages/workflow-engine/src/runtime/session-workspace/paths.ts",
+        "to": "packages/workflow-engine/src/runtime/paths/runtime-paths.ts",
         "rule": "module-to-runtime",
         "replacement": "packages/workflow-engine/src/modules/authority/collaboration-grant-codec.ts",
         "reason": "Facade reexports the single pure codec instance; runtime paths are no longer needed."
@@ -1638,7 +1638,7 @@
       "currentLines": 433,
       "sha256": "dfbda5803dc40bb5f60fdc284f4d119da5ae16e646fb9e0660acec5494db1bc8",
       "decision": "refactored",
-      "reason": "Processed: policy/type contracts, canonical Grant/direct-review codecs, exact payload/binding guards and verifier-port execution moved to standalone collaboration-grant-codec. The 433-line original keeps repository trust loading, issuance/signing and storage composition; it imports and re-exports the single codec instance, so public calls and issuance use identical functions. Root/coordinator approved retirement of collaboration-grant.ts -> runtime/session-workspace/paths.ts after removing the duplicate facade factory. The standalone Task ID adapter is copied from runtime/session-workspace/paths.ts:assertTaskId with identical function AST, including the core delegation and error callback.",
+      "reason": "Processed: policy/type contracts, canonical Grant/direct-review codecs, exact payload/binding guards and verifier-port execution moved to standalone collaboration-grant-codec. The 433-line original keeps repository trust loading, issuance/signing and storage composition; it imports and re-exports the single codec instance, so public calls and issuance use identical functions. Root/coordinator approved retirement of collaboration-grant.ts -> runtime/paths/runtime-paths.ts after removing the duplicate facade factory. The standalone Task ID adapter is copied from runtime/paths/runtime-paths.ts:assertTaskId with identical function AST, including the core delegation and error callback.",
       "extractedFiles": [
         "packages/workflow-engine/src/modules/authority/collaboration-grant-codec.ts"
       ]
@@ -5169,7 +5169,7 @@
     ],
     "packages/workflow-engine/src/modules/authority/collaboration-grant-codec.ts": [
       "packages/workflow-engine/src/modules/authority/collaboration-grant.ts",
-      "packages/workflow-engine/src/runtime/session-workspace/paths.ts"
+      "packages/workflow-engine/src/runtime/paths/runtime-paths.ts"
     ],
     "packages/workflow-engine/src/modules/authority/control-plane-recovery-grant-records.ts": [
       "packages/workflow-engine/src/modules/authority/control-plane-recovery-grant.ts"

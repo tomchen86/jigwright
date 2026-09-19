@@ -2,7 +2,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadWorkflowConfig } from "./workflow-configuration.js";
+import { loadWorkflowConfig } from "../workflow-configuration/workflow-configuration.js";
 import { discoverRepository } from "../repository-transaction/git.js";
 import { listActiveWorkflowSessionIds, readSessionFile, runtimePaths, } from "../session-workspace/session-store.js";
 export const observeParentSessions = (cwd, parentChangeId) => {

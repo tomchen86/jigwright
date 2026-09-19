@@ -40,7 +40,7 @@ import {
   type HumanResolutionConsequences,
   type HumanResolutionDecision,
 } from '../src/modules/investigation/domain/human-resolution-contract.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { investigationManifestPublicationNamespace } from '../src/modules/investigation/manifest/investigation-publication-contracts.ts';
 import {
   createProviderInvocationRequest,
@@ -90,7 +90,7 @@ export const WORKFLOW_SOURCE_MODULE_PATHS = {
   'evidence-object-store.ts':
     'runtime/storage-journal/evidence-object-store.ts',
   'filesystem-safety.ts': 'runtime/repository-transaction/filesystem-safety.ts',
-  'paths.ts': 'runtime/session-workspace/paths.ts',
+  'paths.ts': 'runtime/paths/runtime-paths.ts',
   'session.ts': 'application/execute-task/session.ts',
 } as const;
 

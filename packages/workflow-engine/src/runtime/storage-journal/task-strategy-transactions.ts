@@ -23,7 +23,7 @@ import {
   type EvidenceNode,
   assertStoredEvidenceNode,
 } from '../../foundation/evidence-node/evidence-node.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   assertSessionId,
   normalizeChangedPath,

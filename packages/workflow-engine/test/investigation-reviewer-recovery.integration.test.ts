@@ -36,7 +36,7 @@ import {
   inspectInvestigationResolutionState,
 } from '../src/runtime/storage-journal/human-resolution-state.ts';
 import { readHumanResolutionJournal } from '../src/runtime/storage-journal/human-resolution-journal.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { PROPOSE_POLICY_DIGEST } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   claimProviderInvocation,

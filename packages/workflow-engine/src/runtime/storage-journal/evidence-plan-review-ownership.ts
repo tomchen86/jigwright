@@ -18,7 +18,7 @@ import {
   PROPOSE_POLICY_DIGEST,
   recreateProviderInvocationRequest,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
 import { readEvidenceNode } from './evidence-node-store.ts';
 import { assertPlanReviewAuthorizationGrantOwnership } from './evidence-plan-review-grants.ts';

@@ -5,7 +5,7 @@
  * - The same per-lineage lock protects publication, exact replay, and contiguous round checks.
  * - Failure validation precedes publication and imported rounds preserve their predecessor bindings.
  */
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import {
   parseTaskStrategyCorrectionPolicy,

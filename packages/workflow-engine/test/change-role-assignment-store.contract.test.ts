@@ -80,7 +80,7 @@ import {
   CENTRAL_ROLE_PROVIDER_DEFAULT_PATH,
   readPinnedCentralRoleProviderDefaultSnapshot,
 } from '../src/runtime/repository-transaction/central-role-provider-default-store.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   changeRoleAssignmentObjectPathV1,
   changeRoleAssignmentRefPathV1,

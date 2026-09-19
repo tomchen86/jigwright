@@ -18,7 +18,7 @@ import {
   writeEvidenceNode,
 } from '../src/runtime/storage-journal/evidence-object-store.ts';
 import { ExitCode, WorkflowError } from '../src/foundation/errors/errors.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { loadWorkflowConformanceVectors } from './support/conformance-vectors.ts';
 
 const DIGESTS = {

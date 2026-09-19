@@ -24,7 +24,7 @@ import { planningInvestigationRoleResultDependency } from '../src/modules/assura
 import { type ProviderRunnerReport } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { readInvestigationSession } from '../src/runtime/storage-journal/investigation-session-records.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { renderPlanningProviderBinding } from '../src/modules/planning-provider/planning-provider-binding.ts';
 import {
   claimProviderInvocation,

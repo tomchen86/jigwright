@@ -27,7 +27,7 @@ import {
 } from '../src/modules/planning-provider/planning-provider-port.ts';
 import { loadValidatedChangeContract as loadValidatedChangeContractWithReaderWithContractReader } from '../src/adapters/planning/openspec/documents/managed-change-contract.ts';
 import { createOpenSpecPlanningProviderPort } from '../src/composition-root/openspec-planning-provider-production.ts';
-import { repositoryPlanningPolicy } from '../src/runtime/repository-observation/workflow-configuration.ts';
+import { repositoryPlanningPolicy } from '../src/runtime/workflow-configuration/workflow-configuration.ts';
 import { parseValidation } from '../src/adapters/planning/openspec/documents/openspec-payloads.ts';
 import { resolveCurrentOpenSpecProviderBinding } from '../src/adapters/planning/openspec/documents/openspec-provider-binding.ts';
 import { planningProviderBindingReader } from '../src/runtime/repository-transaction/planning-provider-binding-store.ts';

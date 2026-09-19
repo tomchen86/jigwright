@@ -20,7 +20,7 @@ import {
   loadWorkflowConfig,
   loadChecksConfig,
   repositoryCurrentSchemaName,
-} from '../../repository-observation/workflow-configuration.ts';
+} from '../../workflow-configuration/workflow-configuration.ts';
 import { committedPlanningGeneration } from '../../repository-transaction/planning-generation-history.ts';
 import type { CiRepositoryObservations } from '../../../modules/assurance/commit-replay/ci-git.ts';
 

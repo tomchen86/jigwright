@@ -5,8 +5,7 @@ import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { invalidContract } from "../../modules/planning-provider/change-contract-errors.js";
 import { parseWorkflowConfig, } from "../../modules/repository-consumer/workflow-config.js";
 import { parseChecksConfigSource, } from "../../modules/source/check-command.js";
-import { assertPolicyPathInsideRepository } from "../session-workspace/paths.js";
-import { relative } from "./contract-artifact-observation.js";
+import { assertPolicyPathInsideRepository } from "../paths/runtime-paths.js";
 import { loadRepositoryConsumerConfiguration, repositoryConsumerPath, } from "./repository-consumer.js";
 export function repositoryCurrentSchemaName(repositoryRoot) {
     return loadRepositoryConsumerConfiguration(repositoryRoot).configuration
@@ -48,7 +47,7 @@ export function readJson(filePath, label) {
         return JSON.parse(fs.readFileSync(filePath, 'utf8'));
     }
     catch (error) {
-        throw workflowError('UNREADABLE_CONTRACT', `Unable to read ${label}: ${relative(process.cwd(), filePath)}`, ExitCode.unsafeEnvironment, {
+        throw workflowError('UNREADABLE_CONTRACT', `Unable to read ${label}: ${path.relative(process.cwd(), filePath).split(path.sep).join('/')}`, ExitCode.unsafeEnvironment, {
             details: {
                 filePath,
                 cause: error instanceof Error ? error.message : String(error),

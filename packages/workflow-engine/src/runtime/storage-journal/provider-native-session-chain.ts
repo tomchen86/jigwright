@@ -47,7 +47,7 @@ import {
   providerExecutionAdmissionAuthorityPath,
   MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES,
 } from './provider-execution-admission-authority.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   providerNativeSessionStorePathsV1 as storePaths,
   providerNativeSessionClaimRefPathV1 as claimRefPath,

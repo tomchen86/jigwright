@@ -9,7 +9,7 @@ import {
   resolvePathRole,
   type PathRole,
 } from '../src/modules/source/path-role-registry.ts';
-import { loadWorkflowConfig } from '../src/runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../src/runtime/workflow-configuration/workflow-configuration.ts';
 import { resolveTaskAuthorizationRequirement } from '../src/adapters/consumer/repository/work-registry/task-authorization-policy.ts';
 
 const EXPECTED_ROLES: ReadonlyArray<

@@ -14,7 +14,7 @@ import {
 } from '../../modules/authority/human-revocation-contract.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   assertNoPreparedHumanResolutionGrantPublicationRecovery,
   listHumanResolutionGrantIds,

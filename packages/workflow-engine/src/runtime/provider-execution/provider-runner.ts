@@ -12,7 +12,7 @@ import { preflightProviderSnapshot } from './provider-runner-preflight.ts';
 import { spawnSync } from 'node:child_process';
 import { AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT } from '../provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { loadWorkflowConfig } from '../repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
 import { createProviderExecutionEnvironment } from '../process-environment/execution-environment.ts';
 import { executionJobStatePath } from '../storage-journal/execution-store.ts';
 import {
@@ -24,7 +24,7 @@ import { readPrivateCanonicalJson } from '../storage-journal/investigation-priva
 import {
   investigationRuntimePaths,
   type InvestigationRuntimePaths,
-} from '../session-workspace/paths.ts';
+} from '../paths/runtime-paths.ts';
 import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
 import {
   readProviderInvocationRequest,

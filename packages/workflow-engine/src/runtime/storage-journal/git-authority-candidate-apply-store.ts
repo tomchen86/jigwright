@@ -31,7 +31,7 @@ import {
   GRANT_STABLE_ID,
   GRANT_UUID_V4,
 } from '../../modules/authority/grant-primitives.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   createPrivateCanonicalJson,
   readPrivateCanonicalJson,

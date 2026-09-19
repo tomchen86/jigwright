@@ -18,7 +18,7 @@ import {
   publishPreparedExclusiveLock,
   reclaimDeadPreparedLock,
 } from '../repository-transaction/filesystem-safety.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   hasExactKeys,
   isNodeError,

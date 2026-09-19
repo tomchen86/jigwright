@@ -8,7 +8,7 @@
  */
 import path from 'node:path';
 
-import { loadRepositoryConsumerConfiguration } from '../../../../runtime/repository-observation/repository-consumer.ts';
+import { loadRepositoryConsumerConfiguration } from '../../../../runtime/workflow-configuration/repository-consumer.ts';
 import { WorkflowError } from '../../../../foundation/errors/errors.ts';
 import { assertOpenSpecSchemaDirectory } from './openspec-adapter.ts';
 import {

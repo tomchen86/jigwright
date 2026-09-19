@@ -8,7 +8,7 @@ import { ExitCode, WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
   assertPolicyPathInsideRepository,
   investigationRuntimePaths,
-} from '../src/runtime/session-workspace/paths.ts';
+} from '../src/runtime/paths/runtime-paths.ts';
 import {
   assertChangeId,
   assertInvestigationId,
@@ -51,7 +51,7 @@ test('repository filesystem paths depend on pure core contracts', () => {
   const core = readSource('packages/core/src/runtime-path-kernel.ts');
   assert.doesNotMatch(core, /from 'node:fs'|@jigwright\/repository-runtime/);
   const facade = readSource(
-    'packages/workflow-engine/src/runtime/session-workspace/paths.ts',
+    'packages/workflow-engine/src/runtime/paths/runtime-paths.ts',
   );
   assert.match(facade, /@jigwright\/repository-runtime\/paths/);
   const identifiers = readSource(

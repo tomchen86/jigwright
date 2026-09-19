@@ -34,7 +34,7 @@ import {
 import { validateCiPlanningCommit } from '../src/composition-root/ci-replay-production.ts';
 import { validatePlanningTransition as validateOpenSpecPlanning } from '../src/composition-root/planning-provider-production.ts';
 import { readPlanningTransitionReport } from '../src/runtime/storage-journal/planning-report.ts';
-import { loadWorkflowConfig } from '../src/runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../src/runtime/workflow-configuration/workflow-configuration.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { committedPlanningGeneration } from '../src/runtime/repository-transaction/planning-generation-history.ts';
 

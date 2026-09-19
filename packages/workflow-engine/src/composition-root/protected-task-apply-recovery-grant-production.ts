@@ -32,7 +32,7 @@ import {
 } from '../modules/authority/protected-task-apply-grant.ts';
 import { grantSha256 } from '../modules/authority/grant-primitives.ts';
 import { parseMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
-import { loadWorkflowConfig } from '../runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../runtime/workflow-configuration/workflow-configuration.ts';
 import {
   discoverRepository,
   runGit,

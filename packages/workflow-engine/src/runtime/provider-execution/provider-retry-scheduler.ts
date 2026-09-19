@@ -1,7 +1,7 @@
 /** Durable retry schedules and bounded lock-scoped dispatch/probe receipt pumping. */
 import fs from 'node:fs';
 import path from 'node:path';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   assertReadOnlyProbe,
   type ReadOnlyProbeRequest,

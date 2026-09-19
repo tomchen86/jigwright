@@ -14,7 +14,7 @@ import {
   prettyJson,
 } from '../../modules/lifecycle/change-routing.ts';
 import { discoverRepository } from '../repository-transaction/git.ts';
-import { loadWorkflowConfig } from '../repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
 import {
   runtimePaths,
   withRepositoryLifecycleOperation,

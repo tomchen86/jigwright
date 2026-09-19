@@ -14,7 +14,7 @@ import {
   recreateProviderInvocationRequest,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
 import { inspectProviderInvocationSupersessionRelations } from './provider-invocation-supersession-schema.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   assertChangeId,
   assertInvestigationId,

@@ -13,7 +13,7 @@ import {
   assertPrivateInvestigationDirectory,
   privatePathExists,
 } from '../storage-journal/investigation-private-files.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   readProviderInvocationRequest,
   readProviderInvocationManifest,

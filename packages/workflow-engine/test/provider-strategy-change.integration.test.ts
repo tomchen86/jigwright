@@ -14,7 +14,7 @@ import {
 import { inspectExecutionJob } from '../src/runtime/provider-execution/execution-runtime.ts';
 import { readExecutionJobState } from '../src/runtime/storage-journal/execution-store.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { startPropose } from '../src/composition-root/propose-production.ts';
 import {
   readProviderInvocation,

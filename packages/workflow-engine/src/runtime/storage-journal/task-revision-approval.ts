@@ -7,7 +7,7 @@ import {
   approvalInvalid,
   type TaskRevisionApprovalRecords,
 } from '../../modules/authority/task-revision-approval-contracts.ts';
-import { loadWorkflowConfig } from '../repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
 import { ensurePlainDirectory } from '../repository-transaction/filesystem-safety.ts';
 import {
   readContentRecord,

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as repositoryContracts from '../src/runtime/repository-observation/change-contract-reader.ts';
-import { loadWorkflowConfig } from '../src/runtime/repository-observation/workflow-configuration.ts';
+import * as repositoryContracts from '../src/runtime/repository-validation/change-contract-reader.ts';
+import { loadWorkflowConfig } from '../src/runtime/workflow-configuration/workflow-configuration.ts';
 import { workflowNamespaceConfig } from '../src/modules/repository-consumer/workflow-config.ts';
 import path from 'node:path';
 import fs from 'node:fs';

@@ -61,7 +61,7 @@ import {
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
 
-import { repositoryHandoffRelativePath } from '../../runtime/repository-observation/workflow-configuration.ts';
+import { repositoryHandoffRelativePath } from '../../runtime/workflow-configuration/workflow-configuration.ts';
 import { assertPlanningPaths } from '../../modules/source/planning-paths.ts';
 
 import { completionDocumentPaths } from '../../runtime/managed-documents/validation/managed-documents.ts';

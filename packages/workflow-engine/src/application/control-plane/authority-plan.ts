@@ -18,7 +18,7 @@ import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
-import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
 import { authorityTagPublishCommand } from '../../adapters/remote/github/authority-relay-command.ts';
 import {
   ExitCode,
@@ -57,7 +57,7 @@ import {
 import {
   assertPolicyPathInsideRepository,
   investigationRuntimePaths,
-} from '../../runtime/session-workspace/paths.ts';
+} from '../../runtime/paths/runtime-paths.ts';
 import {
   assertChangeId,
   assertTaskId,

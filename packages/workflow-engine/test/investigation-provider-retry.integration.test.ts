@@ -32,7 +32,7 @@ import {
   inspectInvestigationResolutionState,
 } from '../src/runtime/storage-journal/human-resolution-state.ts';
 import { readInvestigationSession } from '../src/runtime/storage-journal/investigation-session-records.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   claimProviderInvocation,

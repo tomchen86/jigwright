@@ -24,7 +24,7 @@ import {
   createTaskStrategyCorrectionSubject,
   createTaskStrategyImplementationSubject,
 } from '../src/modules/provider-orchestration/task-strategy-provider-contract.ts';
-import type { InvestigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 
 const SESSION_ID = 'session-correction-round-store';
 const RED_TRANSACTION_DIGEST = digest('red-transaction');

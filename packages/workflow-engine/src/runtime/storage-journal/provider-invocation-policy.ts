@@ -26,7 +26,7 @@ import {
 } from './provider-execution-policy-authority.ts';
 import type { ProviderExecutionBudgetAuthority } from '../../modules/provider-orchestration/provider-execution-budget-authority.ts';
 import { type ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
 import type { ProviderExecutionPolicySnapshotCurrent } from '../../modules/provider-orchestration/provider-execution-policy-snapshot.ts';
 import type {

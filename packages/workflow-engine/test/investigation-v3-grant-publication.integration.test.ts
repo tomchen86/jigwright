@@ -44,7 +44,7 @@ import {
   createInvestigationSessionRecord,
   readInvestigationSession,
 } from '../src/runtime/storage-journal/investigation-session-records.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { runtimePaths } from '../src/runtime/session-workspace/session-store.ts';
 import { git } from './fixture.ts';
 

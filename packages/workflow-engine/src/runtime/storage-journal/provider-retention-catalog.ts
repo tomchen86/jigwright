@@ -20,7 +20,7 @@ import {
   withPrivateRuntimeLock,
   writePrivateCanonicalJsonAtomic,
 } from './investigation-private-files.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
 import { providerRetentionRoot } from './provider-retention-receipt.ts';
 

@@ -30,7 +30,7 @@ import type { systemDocumentContext } from '../../modules/source/system-document
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 
-import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
 import type { CiPlanningReplayOperations } from '../../modules/assurance/commit-replay/ci-planning.ts';
 import { isEngineProjectionPathForTransition } from '../../modules/projection/engine-projection-registry.ts';
 import {

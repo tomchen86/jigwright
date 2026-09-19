@@ -29,7 +29,7 @@ import {
 } from '../../runtime/storage-journal/investigation-private-files.ts';
 import { loadActiveSessionContext } from '../../runtime/repository-observation/workflow-session-context.ts';
 import { classifyMutationPath } from '../../modules/source/mutation-class-policy.ts';
-import { investigationRuntimePaths } from '../../runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';
 import {
   matchesAllowedPath,
   normalizeChangedPath,

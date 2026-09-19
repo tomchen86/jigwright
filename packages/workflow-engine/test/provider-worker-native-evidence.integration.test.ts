@@ -9,7 +9,7 @@ import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/
 import { readEvidenceNode } from '../src/runtime/storage-journal/evidence-node-store.ts';
 import { PROPOSE_POLICY_DIGEST } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   readProviderInvocationRequest,
   readProviderInvocation,

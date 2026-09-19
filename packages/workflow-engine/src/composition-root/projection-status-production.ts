@@ -16,8 +16,8 @@ const projectHandoff = projectHandoffWithContractReader.bind(
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { loadWorkflowConfig } from '../runtime/repository-observation/workflow-configuration.ts';
-import { parseCurrentInvestigationManifest } from '../runtime/repository-observation/change-contract-reader.ts';
+import { loadWorkflowConfig } from '../runtime/workflow-configuration/workflow-configuration.ts';
+import { parseCurrentInvestigationManifest } from '../runtime/repository-validation/change-contract-reader.ts';
 import { projectHandoff as projectHandoffWithContractReader } from '../adapters/consumer/repository/handoff/handoff.ts';
 import { statusAgentGuidance } from './agent-guidance-production.ts';
 import { inspectWorkRegistryProjectionStatus } from './work-registry-production.ts';
@@ -33,7 +33,7 @@ import {
   createProjectionService,
   type ProjectionStatus,
 } from '../modules/projection/projection-service.ts';
-import { loadRepositoryConsumerConfiguration } from '../runtime/repository-observation/repository-consumer.ts';
+import { loadRepositoryConsumerConfiguration } from '../runtime/workflow-configuration/repository-consumer.ts';
 import { inspectRepositorySystemDocuments } from '../runtime/managed-documents/validation/system-documents.ts';
 import {
   readLedgerIndex,

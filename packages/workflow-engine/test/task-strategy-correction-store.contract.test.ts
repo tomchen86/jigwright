@@ -18,7 +18,7 @@ import {
 } from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
 
 import type { CheckDefinition } from '../src/modules/source/check-command.ts';
-import type { InvestigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   DEFAULT_TASK_STRATEGY_CORRECTION_POLICY,
   createTaskStrategyGreenFailureRecord,

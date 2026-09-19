@@ -30,7 +30,7 @@ import {
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { readHumanResolutionJournal } from '../src/runtime/storage-journal/human-resolution-journal.ts';
 import { withHumanResolutionGrantExecution } from '../src/runtime/storage-journal/human-resolution-grant-store.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   withChangeTransitionAuthority,
   withHumanResolutionTransitionAuthority,

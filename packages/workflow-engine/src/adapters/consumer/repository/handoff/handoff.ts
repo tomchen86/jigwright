@@ -25,7 +25,7 @@ import {
 } from '../../../../runtime/repository-transaction/atomic-text.ts';
 
 import { parseTasks } from '../../../../modules/planning-provider/planning-artifact-parsers.ts';
-import { loadWorkflowConfig } from '../../../../runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../../../../runtime/workflow-configuration/workflow-configuration.ts';
 import { type ParsedTask } from '../../../../modules/planning-provider/planning-artifact-types.ts';
 import {
   ExitCode,
@@ -43,7 +43,7 @@ import {
 import {
   repositoryConsumerPath,
   loadRepositoryConsumerConfiguration,
-} from '../../../../runtime/repository-observation/repository-consumer.ts';
+} from '../../../../runtime/workflow-configuration/repository-consumer.ts';
 
 const LEGACY_SECTIONS = [
   'Current Change',

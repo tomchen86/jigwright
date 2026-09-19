@@ -1,7 +1,7 @@
 /** Binds document refresh use cases to the repository configuration and filesystem store. */
 import * as refresh from '../application/documents/document-refresh.ts';
 import { assertReviewInput } from '../modules/projection/document-refresh-policy.ts';
-import { loadWorkflowConfig } from '../runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../runtime/workflow-configuration/workflow-configuration.ts';
 import { discoverRepository } from '../runtime/repository-transaction/git.ts';
 import { runtimePaths } from '../runtime/session-workspace/session-store.ts';
 import { createDocumentRefreshStorage } from '../runtime/managed-documents/transaction/document-refresh.ts';

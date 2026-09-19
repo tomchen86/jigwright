@@ -36,7 +36,7 @@ import {
   readPrivateCanonicalJson,
 } from './investigation-private-files.ts';
 import { inspectHistoricalChangeRoleAssignmentRecordV1 } from './change-role-assignment-store.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/u;
 const SHA256_DIGEST = /^sha256:[0-9a-f]{64}$/u;

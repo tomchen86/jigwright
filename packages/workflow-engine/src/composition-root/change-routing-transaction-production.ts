@@ -23,7 +23,7 @@ import { renderHandoff as renderHandoffWithContractReader } from '../adapters/co
 import {
   loadWorkflowConfig,
   repositoryHandoffRelativePath,
-} from '../runtime/repository-observation/workflow-configuration.ts';
+} from '../runtime/workflow-configuration/workflow-configuration.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { applyChangeRoutingReviewUnderLifecycleLock } from '../runtime/change-routing/routing-review-apply.ts';
 import {

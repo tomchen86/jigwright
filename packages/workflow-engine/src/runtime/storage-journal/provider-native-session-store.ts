@@ -30,7 +30,7 @@ import {
   assertProviderNativeSessionClaimV1,
   assertProviderNativeSessionCompletionV1,
 } from '../../modules/provider-orchestration/provider-native-session.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   providerNativeSessionStorePathsV1 as storePaths,
   providerNativeSessionClaimObjectPathV1 as claimObjectPath,

@@ -2,7 +2,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadWorkflowConfig } from './workflow-configuration.ts';
+import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
 import { discoverRepository } from '../repository-transaction/git.ts';
 import {
   listActiveWorkflowSessionIds,

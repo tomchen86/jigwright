@@ -19,7 +19,7 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
 import { isPlanningAssuranceBinding } from '../../modules/assurance/planning-assurance-binding.ts';
 
-import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { ensurePlainDirectory } from '../../runtime/repository-transaction/filesystem-safety.ts';
 import {

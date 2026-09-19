@@ -7,8 +7,8 @@ import { canonicalCheckDefinition } from '../../../modules/assurance/commit-repl
 import { assertArchiveReplayContent } from './ci-archive-tree.ts';
 import { inspectArchiveCommitTree } from './ci-archive-tree.ts';
 import { normalizeArchivePaths } from '../../../modules/assurance/commit-replay/ci-archive-tree.ts';
-import { loadChecksConfig } from '../../repository-observation/workflow-configuration.ts';
-import { loadWorkflowConfig } from '../../repository-observation/workflow-configuration.ts';
+import { loadChecksConfig } from '../../workflow-configuration/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../../workflow-configuration/workflow-configuration.ts';
 import type { ChangeContract } from '../../../modules/planning-provider/change-contract.ts';
 import { createTrustedExecutionEnvironment } from '../../process-environment/execution-environment.ts';
 import { archiveCommitMessage } from '../../repository-transaction/git-transitions.ts';

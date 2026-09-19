@@ -5,7 +5,7 @@
  * - Evidence reads and validation retain the original order before accepting authority.
  * - Reservations, results, assignments, and exact output digests remain bound to their original subject.
  */
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   assertTaskStrategyImplementationOutput,

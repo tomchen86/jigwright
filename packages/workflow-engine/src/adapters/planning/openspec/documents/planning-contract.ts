@@ -16,7 +16,7 @@ import { digestArtifacts } from '../../../../runtime/repository-observation/cont
 
 import { parseTasks } from '../../../../modules/planning-provider/planning-artifact-parsers.ts';
 import { readManagedSchemaName } from '../../../../runtime/repository-observation/change-metadata.ts';
-import { repositoryPlanningPolicy as loadRepositoryPlanningPolicy } from '../../../../runtime/repository-observation/workflow-configuration.ts';
+import { repositoryPlanningPolicy as loadRepositoryPlanningPolicy } from '../../../../runtime/workflow-configuration/workflow-configuration.ts';
 import { type ManagedSchemaName } from '../../../../modules/planning-provider/change-contract.ts';
 import { type ParsedTask } from '../../../../modules/planning-provider/planning-artifact-types.ts';
 import {

@@ -20,7 +20,7 @@ import type {
   PlanningProviderAuthoringPort,
   PlanningProviderReviewedAssetMirror,
 } from '../modules/planning-provider/planning-provider-authoring-port.ts';
-import { loadRepositoryConsumerConfiguration } from '../runtime/repository-observation/repository-consumer.ts';
+import { loadRepositoryConsumerConfiguration } from '../runtime/workflow-configuration/repository-consumer.ts';
 
 export function createPlanningProviderAuthoringPort(
   repositoryRoot: string,

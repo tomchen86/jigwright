@@ -28,7 +28,7 @@ import {
 } from '../src/runtime/storage-journal/provider-invocation-activity.ts';
 import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import { digestPrivateDirectoryEntries } from '../src/runtime/storage-journal/provider-runtime-retention.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   readProviderInvocation,
   readProviderInvocationRequest,

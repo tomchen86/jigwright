@@ -1,4 +1,4 @@
-import { materializeInvestigationEvidenceView } from './investigation-replay.ts';
+import { materializeInvestigationEvidenceView } from '../repository-observation/investigation-replay.ts';
 import { engineProjectionDefinitions } from '../../modules/projection/engine-projection-registry.ts';
 import type { CurrentChangeOriginReader } from '../../modules/governance-intake/work-registry-contracts.ts';
 import type { ChangeContractReaders } from '../../modules/planning-provider/change-contract.ts';
@@ -12,24 +12,24 @@ import {
   parseGuardContract,
   validateTaskPolicy,
 } from '../../modules/planning-provider/guard-policy.ts';
-import { readChangeSchemaName } from './change-metadata.ts';
+import { readChangeSchemaName } from '../repository-observation/change-metadata.ts';
 import {
   assertCommittedCheckoutUnchanged,
   assertCommittedProjectionMatchesCheckout,
   captureExactCleanCommittedCheckout,
-} from './committed-checkout.ts';
+} from '../repository-observation/committed-checkout.ts';
 import {
   canonicalRepositoryRoot,
   compareText,
   digestArtifacts,
   inspectArtifact,
   relative,
-} from './contract-artifact-observation.ts';
+} from '../repository-observation/contract-artifact-observation.ts';
 import {
   loadChecksConfig,
   loadWorkflowConfig,
   readJson,
-} from './workflow-configuration.ts';
+} from '../workflow-configuration/workflow-configuration.ts';
 /**
  * Loads repository workflow contracts and binds planning artifacts to
  * configured policy and evidence.
@@ -53,11 +53,11 @@ import { validateForAuthority } from '../../modules/investigation/manifest/inves
 import { planningProviderBindingPath } from '../../modules/source/planning-paths.ts';
 import { readBoundInvestigationManifestPublicationRef } from '../managed-documents/transaction/investigation-publication.ts';
 import { investigationManifestPublicationNamespace } from '../../modules/investigation/manifest/investigation-publication-contracts.ts';
-import { loadRepositoryConsumerConfiguration } from './repository-consumer.ts';
-import { readCommittedInvestigationManifestV3 } from '../repository-validation/commit-replay/committed-investigation-manifest.ts';
+import { loadRepositoryConsumerConfiguration } from '../workflow-configuration/repository-consumer.ts';
+import { readCommittedInvestigationManifestV3 } from './commit-replay/committed-investigation-manifest.ts';
 import { discoverRepository } from '../repository-transaction/git.ts';
-import { assertPolicyPathInsideRepository } from '../session-workspace/paths.ts';
-import { workflowContractArtifactPaths } from './workflow-contract-artifacts.ts';
+import { assertPolicyPathInsideRepository } from '../paths/runtime-paths.ts';
+import { workflowContractArtifactPaths } from '../repository-observation/workflow-contract-artifacts.ts';
 
 import { type WorkflowConfig } from '../../modules/repository-consumer/workflow-config.ts';
 

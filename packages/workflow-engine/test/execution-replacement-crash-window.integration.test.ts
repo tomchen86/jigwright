@@ -11,7 +11,7 @@ import {
 import { issueExecutionBudgetGrant } from '../src/entrypoints/cli/execution-grant-cli.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   createPlanningContributionEnvelope,
   createPlanReviewRetryEnvelope,

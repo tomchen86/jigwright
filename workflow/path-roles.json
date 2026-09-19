@@ -311,7 +311,7 @@
       "packages/workflow-engine/src/runtime/repository-validation/commit-replay/ci-sequence.ts",
       "packages/workflow-engine/src/runtime/repository-validation/commit-replay/ci-verification.ts",
       "packages/workflow-engine/src/runtime/repository-validation/commit-replay/services.ts",
-      "packages/workflow-engine/src/runtime/session-workspace/paths.ts",
+      "packages/workflow-engine/src/runtime/paths/runtime-paths.ts",
       "packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-consumption.ts",
       "packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-private-files.ts",
       "packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-records.ts",
@@ -741,11 +741,11 @@
       "packages/workflow-engine/src/modules/source/spec.md",
       "packages/workflow-engine/src/modules/why-knowledge/semantic-ledger-reader.ts",
       "packages/workflow-engine/src/runtime/managed-documents/transaction/semantic-ledger-projection.ts",
-      "packages/workflow-engine/src/runtime/repository-observation/change-contract-reader.ts",
+      "packages/workflow-engine/src/runtime/repository-validation/change-contract-reader.ts",
       "packages/workflow-engine/src/runtime/repository-observation/change-metadata.ts",
       "packages/workflow-engine/src/runtime/repository-observation/committed-checkout.ts",
       "packages/workflow-engine/src/runtime/repository-observation/contract-artifact-observation.ts",
-      "packages/workflow-engine/src/runtime/repository-observation/workflow-configuration.ts",
+      "packages/workflow-engine/src/runtime/workflow-configuration/workflow-configuration.ts",
       "spec.md"
     ],
     "ordinary": [

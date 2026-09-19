@@ -5,7 +5,7 @@
  * - Retries retain the root semantic subject and exact predecessor invocation chain.
  * - Attempt selection and retry schema checks preserve existing rejection and replay order.
  */
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
 import {
   readProviderInvocation,

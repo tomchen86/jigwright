@@ -132,7 +132,7 @@ export type { GitHubArchiveAdapterModuleV1 } from '../application/archive/archiv
 export { inspectAuthorityPlan } from '../application/control-plane/authority-plan.ts';
 
 export type { AuthorityPlanIntent } from '../application/control-plane/authority-plan.ts';
-export { loadWorkflowConfig } from '../runtime/repository-observation/workflow-configuration.ts';
+export { loadWorkflowConfig } from '../runtime/workflow-configuration/workflow-configuration.ts';
 export { parseExecutionBudgetGrantRequest } from '../modules/authority/execution-governance-grant-contracts.ts';
 export { externalEffectStorePaths } from '../runtime/storage-journal/external-effect-grant-store.ts';
 export {

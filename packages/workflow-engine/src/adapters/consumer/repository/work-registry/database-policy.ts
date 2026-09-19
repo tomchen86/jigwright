@@ -12,7 +12,7 @@ import {
 } from '../../../../foundation/errors/errors.ts';
 import { createTrustedExecutionEnvironment } from '../../../../runtime/process-environment/execution-environment.ts';
 import { resolveGitExecutable } from '../../../../runtime/repository-transaction/git.ts';
-import { loadRepositoryConsumerConfiguration } from '../../../../runtime/repository-observation/repository-consumer.ts';
+import { loadRepositoryConsumerConfiguration } from '../../../../runtime/workflow-configuration/repository-consumer.ts';
 
 export type DisposableDatabaseEvidence = {
   identity: string;

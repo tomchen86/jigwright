@@ -64,7 +64,7 @@ import {
   readGitAuthorityCandidateApplyJournal,
   readOptionalGitAuthorityCandidateApplyJournal,
 } from '../src/runtime/storage-journal/git-authority-candidate-apply-store.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   runtimePaths,
   withRepositoryLifecycleOperationAsync,

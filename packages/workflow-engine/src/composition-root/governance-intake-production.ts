@@ -26,7 +26,7 @@ import { renderHandoff as renderHandoffWithContractReader } from '../adapters/co
 import {
   loadWorkflowConfig,
   repositoryHandoffRelativePath,
-} from '../runtime/repository-observation/workflow-configuration.ts';
+} from '../runtime/workflow-configuration/workflow-configuration.ts';
 import type { GovernanceFindingContextV1 } from '../modules/governance-intake/governance-intake.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { discoverRepository } from '../runtime/repository-transaction/git.ts';

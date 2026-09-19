@@ -14,7 +14,7 @@ import { TextDecoder } from 'node:util';
 import { canonicalJson } from '@jigwright/core/canonical-json';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { loadRepositoryConsumerConfiguration } from '../repository-observation/repository-consumer.ts';
+import { loadRepositoryConsumerConfiguration } from '../workflow-configuration/repository-consumer.ts';
 import type { WorkItemPromotionTestHooks } from '../../modules/governance-intake/work-registry-contracts.ts';
 import {
   publishPreparedExclusiveLock,

@@ -27,7 +27,7 @@ import {
   providerExecutionAdmissionAuthorityPath,
   readExecutionJobState,
 } from '../src/runtime/storage-journal/execution-store.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { productionAgentRuntime } from '../src/composition-root/agent-runtime-production.ts';
 import {
   type ProviderNativeSessionClaimV1,

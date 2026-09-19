@@ -8,8 +8,8 @@ import { assertCollaborationGrantId } from '../../../modules/authority/collabora
 import { readFileAtCommit } from '../../repository-transaction/git-command.ts';
 import { isRecord } from '../../../foundation/canonical-json/contract-values.ts';
 import type { AmendPlanManagedTrailers } from '@jigwright/core/managed-transition-trailers';
-import { loadWorkflowConfig } from '../../repository-observation/workflow-configuration.ts';
-import { repositoryCurrentSchemaName } from '../../repository-observation/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../../workflow-configuration/workflow-configuration.ts';
+import { repositoryCurrentSchemaName } from '../../workflow-configuration/workflow-configuration.ts';
 import { parseTasks } from '../../../modules/planning-provider/planning-artifact-parsers.ts';
 import { readManagedSchemaName } from '../../repository-observation/change-metadata.ts';
 import type { ChangeContract } from '../../../modules/planning-provider/change-contract.ts';

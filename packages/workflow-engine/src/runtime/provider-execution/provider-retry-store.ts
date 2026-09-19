@@ -20,7 +20,7 @@ import {
   createPrivateCanonicalJson,
   writePrivateCanonicalJsonAtomic,
 } from '../storage-journal/investigation-private-files.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   type ProviderAutomaticRetrySchedule,

@@ -4,7 +4,7 @@ import { defaultSessionRuntimeLayoutPort } from '@jigwright/core/session-runtime
 import type { PlanningExecutionEpochObservations } from '../../modules/lifecycle/planning-execution-epoch-observations.ts';
 import { discoverRepository, runGit } from '../repository-transaction/git.ts';
 import { commitFacts } from '../repository-transaction/git-commit-history.ts';
-import { loadWorkflowConfig } from './workflow-configuration.ts';
+import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
 import { readPlanningTransitionReport } from '../storage-journal/planning-report.ts';
 export const resolvePlanningExecutionEpochEnvironment: PlanningExecutionEpochObservations['resolveEnvironment'] =
   (cwd) => {

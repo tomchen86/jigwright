@@ -22,7 +22,7 @@ import {
   getProposeStatus,
   resumePropose,
 } from '../src/composition-root/propose-production.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   createProviderInvocationRequest,
   type ProviderInvocationRequest,

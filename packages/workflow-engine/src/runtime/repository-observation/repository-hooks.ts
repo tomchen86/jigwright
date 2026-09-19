@@ -4,7 +4,7 @@ import path from 'node:path';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { discoverRepository, runGit } from '../repository-transaction/git.ts';
 import { listStagedPaths } from '../repository-transaction/git-transitions.ts';
-import { loadWorkflowConfig } from './workflow-configuration.ts';
+import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
 import { createRepositorySpecificationPolicy } from '../../modules/lifecycle/repository-specification-policy.ts';
 import {
   invalidCommitMessage,

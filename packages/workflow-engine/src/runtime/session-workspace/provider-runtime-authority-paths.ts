@@ -8,7 +8,7 @@
  */
 import path from 'node:path';
 
-import type { InvestigationRuntimePaths } from './paths.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 
 const CHANGE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const DIGEST = /^[0-9a-f]{64}$/u;

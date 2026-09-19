@@ -70,7 +70,7 @@ import {
   readOptionalGitAuthorityCandidateApplyJournal,
   type GitAuthorityCandidateApplyJournalV2,
 } from '../runtime/storage-journal/git-authority-candidate-apply-store.ts';
-import { investigationRuntimePaths } from '../runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../runtime/paths/runtime-paths.ts';
 import { runtimePaths } from '../runtime/session-workspace/session-store.ts';
 import type { TransitionObservationContext } from '../modules/authority/grant-transition-registry.ts';
 

@@ -35,7 +35,7 @@ import {
   classifyMutationPath,
   type MutationClass,
 } from '../../modules/source/mutation-class-policy.ts';
-import { investigationRuntimePaths } from '../../runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';
 import {
   matchesAllowedPath,
   normalizeChangedPath,

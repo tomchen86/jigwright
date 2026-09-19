@@ -2,7 +2,7 @@ import test from 'node:test';
 import { createFixtureRepository, git } from './fixture.ts';
 import { startPropose } from '../src/composition-root/propose-production.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { type ProviderWorkerRuntimePort } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
 import assert from 'node:assert/strict';
 import { type ProviderRunnerReport } from '../src/modules/provider-orchestration/provider-contracts.ts';

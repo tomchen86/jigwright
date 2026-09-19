@@ -34,7 +34,7 @@ import {
 } from '../modules/source/planning-role-policy-paths.ts';
 import { readCurrentPlanningRoleOverridePolicy } from '../runtime/repository-transaction/planning-role-provider-policy-reader.ts';
 import { planningProviderBindingReader } from '../runtime/repository-transaction/planning-provider-binding-store.ts';
-import { loadRepositoryConsumerConfiguration } from '../runtime/repository-observation/repository-consumer.ts';
+import { loadRepositoryConsumerConfiguration } from '../runtime/workflow-configuration/repository-consumer.ts';
 import { loadCommittedChangeContract } from './consumer-contract-production.ts';
 import { loadStableValidatedChangeContract } from './validated-contract-context.ts';
 import { planPlanningSemanticLedger } from '../runtime/managed-documents/transaction/semantic-ledger-projection.ts';

@@ -11,7 +11,7 @@ import {
   createPrivateCanonicalJson,
   readPrivateCanonicalJson,
 } from './investigation-private-files.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { parseTaskDiffReviewRecord } from '../../modules/assurance/task-diff-review-artifact.ts';
 import {
   parseTaskDiffReviewSubject,

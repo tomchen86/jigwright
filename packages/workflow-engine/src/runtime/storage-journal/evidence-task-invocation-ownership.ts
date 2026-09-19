@@ -16,7 +16,7 @@ import {
   assertTaskStrategyImplementationSubject,
   TASK_STRATEGY_IMPLEMENTATION_POLICY_DIGEST,
 } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   assertChangeId,
   assertInvestigationId,

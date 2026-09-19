@@ -1,8 +1,8 @@
 /** Observes repository/configuration and both investigation runtime layouts. */
 import { discoverRepository } from '../repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { runtimePaths } from '../session-workspace/session-store.ts';
-import { loadWorkflowConfig } from './workflow-configuration.ts';
+import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
 
 export function observeInvestigationRuntimeContext(cwd: string) {
   const git = discoverRepository(cwd);
