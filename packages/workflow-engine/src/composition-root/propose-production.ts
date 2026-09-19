@@ -1,4 +1,5 @@
 import { createInteractiveSshSigner } from '../adapters/signing/ssh/maintainer-signer.ts';
+import { withTaskRevisionPlanningOperation } from '../application/revise/task-revision.ts';
 import {
   createPlanningProviderAuthoringPort,
   planningProviderReviewedAssetMirrors,
@@ -46,6 +47,7 @@ import { readProviderRetryAccountingEvidence } from '../runtime/storage-journal/
 
 export const productionProposeOperations = createProposeOperations({
   createInteractiveSshSigner,
+  withTaskRevisionPlanningOperation,
   planningProvider: {
     reviewedGeneratedAssets,
     createAuthoringPort: createPlanningProviderAuthoringPort,

@@ -144,7 +144,12 @@ export function createPlanReviewRetryEnvelope(
 export function completeInterruptedPlanReviewReplacement(
   services: Pick<
     ProposeRuntime,
-    'taskMandate' | 'evidence' | 'investigation' | 'provider' | 'workspace'
+    | 'taskMandate'
+    | 'evidence'
+    | 'investigation'
+    | 'provider'
+    | 'workspace'
+    | 'withTaskRevisionPlanningOperation'
   >,
   cwd: string,
   input: {

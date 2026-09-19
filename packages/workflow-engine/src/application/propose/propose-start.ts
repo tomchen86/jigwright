@@ -580,6 +580,7 @@ function startExemptionPropose(
     | 'planningEvidence'
     | 'roleContextSharingGrants'
     | 'roleAdmission'
+    | 'withTaskRevisionPlanningOperation'
   >,
   cwd: string,
   changeId: string,

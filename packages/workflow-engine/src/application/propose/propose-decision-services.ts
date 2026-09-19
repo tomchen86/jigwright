@@ -1,4 +1,5 @@
 import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
+import type { HeldChangeTransitionAuthority } from '../../runtime/session-workspace/planning-lock.ts';
 import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
 import type {
   PlanningProviderAuthoringPort,
@@ -34,6 +35,12 @@ import type { ProviderRetryAccountingReader } from '../../modules/provider-orche
 
 export type ProposeDecisionServices = Readonly<{
   createInteractiveSshSigner: MaintainerSignerFactory;
+  /** Routes planning authority to an active task revision. */
+  withTaskRevisionPlanningOperation<T>(
+    cwd: string,
+    requestedSessionId: string,
+    operation: (authority: HeldChangeTransitionAuthority) => T,
+  ): T;
   planningProvider: Readonly<{
     reviewedGeneratedAssets: ReviewedGeneratedAssetInventory;
     createAuthoringPort(repositoryRoot: string): PlanningProviderAuthoringPort;

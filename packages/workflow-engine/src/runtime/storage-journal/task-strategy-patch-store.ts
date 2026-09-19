@@ -1,3 +1,6 @@
+import type { TaskStrategyCorrectionState } from './task-strategy-correction-round-contract.ts';
+import type { TaskStrategyGreenFailureRecord } from '../../modules/provider-orchestration/task-strategy-correction-record.ts';
+import { readTaskStrategyTransaction } from './task-strategy-store.ts';
 import type {
   TaskStrategyPatchEntry,
   TaskStrategyPatchChange,
@@ -776,3 +779,20 @@ function stateCorrupt() {
     ExitCode.staleState,
   );
 }
+
+/** The current patch head, as the three readers beside it return it. */
+export type CurrentTaskStrategyPatchHead = Readonly<{
+  binding: NonNullable<ReturnType<typeof readTaskStrategyPatchCurrentBinding>>;
+  record: NonNullable<ReturnType<typeof readTaskStrategyPatchRecord>>;
+  receipt: NonNullable<ReturnType<typeof readTaskStrategyPatchImportReceipt>>;
+}>;
+
+/** What a correction round looks like once its durable records are read. */
+export type TaskStrategyCorrectionProjection = Readonly<{
+  transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>;
+  head: CurrentTaskStrategyPatchHead | null;
+  failure: TaskStrategyGreenFailureRecord | null;
+  completedCorrectionRounds: number;
+  exhausted: boolean;
+  correctionState: TaskStrategyCorrectionState | null;
+}>;

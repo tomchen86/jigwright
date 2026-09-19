@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { withTaskRevisionPlanningOperation } from '../src/application/revise/task-revision.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -543,6 +544,7 @@ function proposeOperations(
 ) {
   const decisions = {
     createInteractiveSshSigner,
+    withTaskRevisionPlanningOperation,
     planningProvider: {
       reviewedGeneratedAssets,
       createAuthoringPort: createPlanningProviderAuthoringPort,

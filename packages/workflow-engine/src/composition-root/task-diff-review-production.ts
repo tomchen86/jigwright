@@ -1,4 +1,5 @@
 import { taskMandateOperations } from './task-mandate-production.ts';
+import { resolveCurrentTaskStrategyCorrection } from '../application/execute-task/task-strategy-correction.ts';
 import { productionChangeContract } from './change-routing-observation-production.ts';
 import { roleResultAdmission } from './role-admission-production.ts';
 import { createTaskDiffReviewLifecycle } from '../application/finalize/task-diff-review-lifecycle.ts';
@@ -6,6 +7,7 @@ import { collaborationGrantCodec } from '../runtime/grants/grant-services.ts';
 import { createDirectHumanReviewAttestation } from './collaboration-grant-issuance-production.ts';
 
 export const taskDiffReview = createTaskDiffReviewLifecycle(
+  resolveCurrentTaskStrategyCorrection,
   productionChangeContract,
   {
     taskMandate: taskMandateOperations,

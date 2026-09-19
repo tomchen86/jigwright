@@ -1,4 +1,5 @@
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { TaskStrategyCorrectionProjection } from '../../runtime/storage-journal/task-strategy-patch-store.ts';
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Reconstructs checked review candidates and their documentation
@@ -36,7 +37,6 @@ import {
 } from '../../modules/source/path-role-registry.ts';
 import { type ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import { type RecordedRoleParticipant } from '../../modules/provider-orchestration/role-assignment.ts';
-import { resolveCurrentTaskStrategyCorrection } from '../execute-task/task-strategy-correction.ts';
 import {
   createTaskStrategyImplementationSubject,
   createTaskStrategyCorrectionSubject,
@@ -47,6 +47,9 @@ import type { BeginTaskDiffReviewOptions } from './task-diff-review-contracts.ts
 import type { createTaskDiffReviewCommonModule } from './task-diff-review-common.ts';
 
 export function createTaskDiffReviewSubjectModule(
+  resolveCurrentTaskStrategyCorrection: (
+    inspection: SessionInspection,
+  ) => TaskStrategyCorrectionProjection,
   changeContract: ChangeContractServices,
   runtime: TaskDiffReviewRuntimeBindings,
   common: ReturnType<typeof createTaskDiffReviewCommonModule>,

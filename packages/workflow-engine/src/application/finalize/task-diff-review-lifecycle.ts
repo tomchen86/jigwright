@@ -1,4 +1,6 @@
 import type { TaskMandateProviderAdmission } from '../../modules/authority/task-mandate-access-contract.ts';
+import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
+import type { TaskStrategyCorrectionProjection } from '../../runtime/storage-journal/task-strategy-patch-store.ts';
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { DocumentationReviewCapture } from '../../modules/assurance/documentation-closure.ts';
 
@@ -286,11 +288,15 @@ export type TaskDiffReviewGrantServices = Readonly<{
 }>;
 
 export function createTaskDiffReviewLifecycle(
+  resolveCurrentTaskStrategyCorrection: (
+    inspection: SessionInspection,
+  ) => TaskStrategyCorrectionProjection,
   changeContract: ChangeContractServices,
   services: TaskDiffReviewGrantServices,
 ) {
   const common = createTaskDiffReviewCommonModule(runtime);
   const subject = createTaskDiffReviewSubjectModule(
+    resolveCurrentTaskStrategyCorrection,
     changeContract,
     runtime,
     common,

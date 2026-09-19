@@ -59,20 +59,14 @@ import { readTaskStrategyTransaction } from '../../runtime/storage-journal/task-
 import type { TaskStrategyTransaction } from '../../runtime/storage-journal/task-strategy-store.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 
-export type CurrentTaskStrategyPatchHead = Readonly<{
-  binding: NonNullable<ReturnType<typeof readTaskStrategyPatchCurrentBinding>>;
-  record: NonNullable<ReturnType<typeof readTaskStrategyPatchRecord>>;
-  receipt: NonNullable<ReturnType<typeof readTaskStrategyPatchImportReceipt>>;
-}>;
-
-export type TaskStrategyCorrectionProjection = Readonly<{
-  transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>;
-  head: CurrentTaskStrategyPatchHead | null;
-  failure: TaskStrategyGreenFailureRecord | null;
-  completedCorrectionRounds: number;
-  exhausted: boolean;
-  correctionState: TaskStrategyCorrectionState | null;
-}>;
+export type {
+  CurrentTaskStrategyPatchHead,
+  TaskStrategyCorrectionProjection,
+} from '../../runtime/storage-journal/task-strategy-patch-store.ts';
+import type {
+  CurrentTaskStrategyPatchHead,
+  TaskStrategyCorrectionProjection,
+} from '../../runtime/storage-journal/task-strategy-patch-store.ts';
 
 export type CurrentTaskStrategyImplementationAuthority = Readonly<{
   subject: TaskStrategyImplementationSubject;

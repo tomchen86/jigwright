@@ -28,7 +28,6 @@ import {
 import type { GovernanceSourceV1 } from '@jigwright/core/governance-source';
 
 import { listSessions } from '../../runtime/repository-observation/workflow-session-context.ts';
-import { withTaskRevisionPlanningOperation } from '../revise/task-revision.ts';
 import type {
   HeldChangeTransitionAuthority,
   InvestigationCheckpointEnvelope,
@@ -155,7 +154,10 @@ export function currentRevisingTaskSession(cwd: string, changeId: string) {
 }
 
 export function withProposeTransitionAuthority<T>(
-  services: Pick<ProposeRuntime, 'workspace'>,
+  services: Pick<
+    ProposeRuntime,
+    'workspace' | 'withTaskRevisionPlanningOperation'
+  >,
   cwd: string,
   lifecycleRuntime: Parameters<
     ProposeRuntime['workspace']['withInvestigationTransitionAuthority']
@@ -171,7 +173,7 @@ export function withProposeTransitionAuthority<T>(
       operation,
     );
   }
-  return withTaskRevisionPlanningOperation(
+  return services.withTaskRevisionPlanningOperation(
     revising.repositoryRoot,
     revising.sessionId,
     operation,
@@ -179,7 +181,10 @@ export function withProposeTransitionAuthority<T>(
 }
 
 export function resumeInvestigationForPropose(
-  services: Pick<ProposeRuntime, 'investigation' | 'workspace'>,
+  services: Pick<
+    ProposeRuntime,
+    'investigation' | 'workspace' | 'withTaskRevisionPlanningOperation'
+  >,
   cwd: string,
   changeId: string,
   investigationId: string,

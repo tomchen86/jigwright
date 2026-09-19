@@ -978,7 +978,7 @@
     {
       "path": "src/application/execute-task/task-strategy-correction.ts",
       "mode": "100644",
-      "digest": "sha256:711ab569511cd8c4c9097a11370f9984b4f765049a2f8759659e9077bd0c73ea"
+      "digest": "sha256:95c7b14566cbbfc3b5b9f513fed8cc9b0862be5ad6d27f987815c76068ced7c9"
     },
     {
       "path": "src/application/execute-task/task-strategy-execution.ts",
@@ -1103,7 +1103,7 @@
     {
       "path": "src/application/finalize/task-diff-review-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:0cfa38ec8587f87fbd07f5682a7e2f24dc8f1b08cdf9a142eddbe8efd27e08b7"
+      "digest": "sha256:991136e6f387d1a4cc3ebea083bebc35cc38307a6899709407c66edea5f5758f"
     },
     {
       "path": "src/application/finalize/task-diff-review-lineage.ts",
@@ -1128,7 +1128,7 @@
     {
       "path": "src/application/finalize/task-diff-review-subject.ts",
       "mode": "100644",
-      "digest": "sha256:2b49a4e058e1ee40a2dde00a25bc3be99e0f66c1fa127b03b25a3790c58d49c3"
+      "digest": "sha256:d1d905027c90821280e04a90a8a42be0a09f7a2a0944e3875a481f51375c372d"
     },
     {
       "path": "src/application/finalize/task-mechanical-transform.ts",
@@ -1178,7 +1178,7 @@
     {
       "path": "src/application/propose/plan-review-retry.ts",
       "mode": "100644",
-      "digest": "sha256:e4480021c5d22c2823bbd630b505357e00929736f3d3bdf401d4784fd5478fb3"
+      "digest": "sha256:dbfd42e5435094b3e3a9bc1ece0fa6f4c25a3029ddb5146b7af833b2611e850d"
     },
     {
       "path": "src/application/propose/plan-review-role-topology.ts",
@@ -1218,12 +1218,12 @@
     {
       "path": "src/application/propose/propose-context.ts",
       "mode": "100644",
-      "digest": "sha256:99143206c3a3ee80966f83953df5cf0aff5434c32a6e250a63a0006cf2a33e95"
+      "digest": "sha256:ce721a55bf247a27915f5f61218ab449911331ddf76ee5b7fb7815918f03f291"
     },
     {
       "path": "src/application/propose/propose-decision-services.ts",
       "mode": "100644",
-      "digest": "sha256:0049aa4eae30cccd05a40f68a6c8770f540d2b1a8f7c43fea5aa47109590df1f"
+      "digest": "sha256:a966c8fa03318b5e04966f17b963cf2162063075455ea99de7746a1ed5a93d3b"
     },
     {
       "path": "src/application/propose/propose-evidence.ts",
@@ -1308,7 +1308,7 @@
     {
       "path": "src/application/propose/propose-start.ts",
       "mode": "100644",
-      "digest": "sha256:d9032de2e89724140b535f43043d067151531f775d38dbc066634141f37c35bf"
+      "digest": "sha256:688c822d2a5e6aa4231c4261be335ce49f1f45568bc4a7d52bb81baf1ccfa4b4"
     },
     {
       "path": "src/application/propose/propose-status.ts",
@@ -1773,7 +1773,7 @@
     {
       "path": "src/composition-root/propose-production.ts",
       "mode": "100644",
-      "digest": "sha256:b78f81f1ff936ec77c7415825fa9b2dbe4f497f40174e3bb8169e6d6701923f0"
+      "digest": "sha256:b2925fa35c81b40fb886fe54c8db25d0acea993357cbfa044d6d8bba48a53c9a"
     },
     {
       "path": "src/composition-root/protected-base-initialization-production.ts",
@@ -1888,7 +1888,7 @@
     {
       "path": "src/composition-root/task-diff-review-production.ts",
       "mode": "100644",
-      "digest": "sha256:318020554e8870220a1c849814471e5ad555eb9bfc8db5e9921a56579c33d56e"
+      "digest": "sha256:b6b7e8081da77e9e76d268fe1f6594467f5369447c21edc13eccac6056f6b5c3"
     },
     {
       "path": "src/composition-root/task-mandate-production.ts",
@@ -5423,7 +5423,7 @@
     {
       "path": "src/runtime/storage-journal/task-strategy-patch-store.ts",
       "mode": "100644",
-      "digest": "sha256:77413560f5ed093e822bcfcc05df036ef0c5ed0f9e3b24d1d00fa9c388b785eb"
+      "digest": "sha256:b2595656379ca5e9f4a171628c85b2ee9ec0ca0944d73788f23531db8c8a5462"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-provider-attempts.ts",
