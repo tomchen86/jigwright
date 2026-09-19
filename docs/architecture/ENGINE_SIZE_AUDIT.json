@@ -30,7 +30,7 @@
     "thresholds": ">=1000 lines or >=250-line function",
     "coversAtCurrentPath": 61
   },
-  "verdict": "Criterion 6 is met at file level and not met at function level. Every file over 800 lines now carries a justification: 55 from the earlier audit whose reason still fits, 6 whose earlier reason has drifted past 10% and should be re-read, 7 that are a contract surface or pure dispatch, 23 that are a single connected component with no seam, and 2 that had a real seam and were split. At function level 606 of 886 bodies over 80 lines are neither a dispatch nor a factory container and none carries a recorded reason. That is the remaining criterion 6 work.",
+  "verdict": "Criterion 6 is met at file level and not met at function level. Every file over 800 lines now carries a justification: 55 from the earlier audit whose reason still fits, 6 whose earlier reason has drifted past 10% and should be re-read, 7 that are a contract surface or pure dispatch, 23 that are a single connected component with no seam, and 2 that had a real seam and were split. At function level 886 bodies exceed 80 lines: 341 have a structural feature that accounts for the length (factory container, dispatch table, guard chain or record builder) and 545 do not. Criterion 6 is therefore met at file level and open at function level, with the 23 bodies over 200 lines named as the starting point.",
   "files": [
     {
       "file": "packages/workflow-engine/src/adapters/planning/investigation/investigation-session.ts",
@@ -1507,5 +1507,201 @@
     }
   ],
   "cohesionMethod": "For every file with no recorded justification, top-level declarations were linked by mutual reference and grouped into connected components. A file that is one component cannot be split without exporting what is currently private; a file with several independent groups can.",
-  "filesOver800AfterSplits": 91
+  "filesOver800AfterSplits": 91,
+  "functionAudit": {
+    "method": "Every function body over 80 lines was measured for branch count, case clauses, nested function declarations, await count and large object literals, then classified by the structural feature that accounts for its length. The classification is mechanical. It is a filter that separates length with a reason from length without one; it is not a line-by-line human review and does not claim to be.",
+    "total": 886,
+    "byShape": {
+      "validation-chain": 128,
+      "unexplained": 545,
+      "factory-container": 149,
+      "record-builder": 58,
+      "dispatch-table": 6
+    },
+    "justified": {
+      "factory-container": "the body is mostly nested function declarations, so it is a service object being assembled; splitting moves the nesting rather than removing it",
+      "dispatch-table": "eight or more case clauses over a closed set; splitting hides the set the dispatch is exhaustive over",
+      "validation-chain": "twelve or more branches with throws; a guard chain where length is the number of rules, each guard short",
+      "record-builder": "nearly half the body is one large object literal; the length is the shape of the record produced"
+    },
+    "justifiedCount": 341,
+    "unexplainedCount": 545,
+    "unexplainedByLength": {
+      "81-120": 363,
+      "121-200": 159,
+      "201-400": 23
+    },
+    "unexplainedByLayer": {
+      "adapters": 24,
+      "application": 204,
+      "composition-root": 23,
+      "entrypoints": 14,
+      "modules": 126,
+      "runtime": 154
+    },
+    "observation": "363 of the 545 unexplained bodies are 120 lines or fewer, so most of the gap sits just over the threshold. The 23 bodies over 200 lines are where the length is not marginal, and they are listed below as the place to start.",
+    "worstUnexplained": [
+      {
+        "file": "packages/workflow-engine/src/application/control-plane/maintainer-approve.ts",
+        "name": "approveAndApplyMaintainerGrantV2WithBinding",
+        "lines": 313,
+        "shape": "unexplained",
+        "reason": "3 branches, 0 cases, 0 awaits, 81 object-literal lines. No structural feature accounts for 313 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/control-plane/maintainer-grant-v2.ts",
+        "name": "issueMaintainerGrantV2",
+        "lines": 281,
+        "shape": "unexplained",
+        "reason": "11 branches, 0 cases, 0 awaits, 81 object-literal lines. No structural feature accounts for 281 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/propose/propose-reviewer-terms.ts",
+        "name": "readReviewerTermSourceV3",
+        "lines": 254,
+        "shape": "unexplained",
+        "reason": "9 branches, 0 cases, 0 awaits, 19 object-literal lines. No structural feature accounts for 254 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/control-plane/maintainer-apply-checks.ts",
+        "name": "prepareMaintainerGrantV2Checks",
+        "lines": 252,
+        "shape": "unexplained",
+        "reason": "9 branches, 0 cases, 0 awaits, 55 object-literal lines. No structural feature accounts for 252 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/propose/propose-reviewer-reconciliation.ts",
+        "name": "reconcileReviewerTermPlanningRevision",
+        "lines": 252,
+        "shape": "unexplained",
+        "reason": "10 branches, 0 cases, 0 awaits, 0 object-literal lines. No structural feature accounts for 252 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/runtime/work-registry/transactions.ts",
+        "name": "readWorkItemPromotionTransaction",
+        "lines": 241,
+        "shape": "unexplained",
+        "reason": "10 branches, 0 cases, 0 awaits, 0 object-literal lines. No structural feature accounts for 241 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/execute-task/update-base.ts",
+        "name": "updateFinishedTaskBaseLocked",
+        "lines": 238,
+        "shape": "unexplained",
+        "reason": "7 branches, 0 cases, 0 awaits, 23 object-literal lines. No structural feature accounts for 238 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/runtime/storage-journal/human-resolution-state.ts",
+        "name": "inspectInvestigationQuarantineState",
+        "lines": 238,
+        "shape": "unexplained",
+        "reason": "11 branches, 0 cases, 0 awaits, 36 object-literal lines. No structural feature accounts for 238 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/control-plane/external-effect-grant.ts",
+        "name": "issueExternalEffectGrant",
+        "lines": 233,
+        "shape": "unexplained",
+        "reason": "11 branches, 0 cases, 0 awaits, 26 object-literal lines. No structural feature accounts for 233 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/finalize/task-diff-review-provider-commands.ts",
+        "name": "reconcileTaskDiffReview",
+        "lines": 233,
+        "shape": "unexplained",
+        "reason": "9 branches, 0 cases, 0 awaits, 101 object-literal lines. No structural feature accounts for 233 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/assurance/pre-merge-verification.ts",
+        "name": "derivePreMergeAssurancePreparation",
+        "lines": 228,
+        "shape": "unexplained",
+        "reason": "11 branches, 0 cases, 0 awaits, 39 object-literal lines. No structural feature accounts for 228 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/propose/propose-reviewer-reconciliation.ts",
+        "name": "<anonymous>",
+        "lines": 223,
+        "shape": "unexplained",
+        "reason": "10 branches, 0 cases, 0 awaits, 0 object-literal lines. No structural feature accounts for 223 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/execute-task/task-strategy-provider-reservations.ts",
+        "name": "reserveProviderRetryAttempt",
+        "lines": 217,
+        "shape": "unexplained",
+        "reason": "11 branches, 0 cases, 0 awaits, 24 object-literal lines. No structural feature accounts for 217 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/control-plane/maintainer-apply-reissue.ts",
+        "name": "reissueAndApplyMaintainerGrantV2WithDeadline",
+        "lines": 216,
+        "shape": "unexplained",
+        "reason": "6 branches, 0 cases, 0 awaits, 21 object-literal lines. No structural feature accounts for 216 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/finalize/lifecycle.ts",
+        "name": "commitSessionUnlocked",
+        "lines": 214,
+        "shape": "unexplained",
+        "reason": "9 branches, 0 cases, 0 awaits, 18 object-literal lines. No structural feature accounts for 214 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/propose/propose-start.ts",
+        "name": "<anonymous>",
+        "lines": 213,
+        "shape": "unexplained",
+        "reason": "9 branches, 0 cases, 0 awaits, 23 object-literal lines. No structural feature accounts for 213 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/propose/propose-investigation-manifest.ts",
+        "name": "buildProposeInvestigationManifestV3",
+        "lines": 212,
+        "shape": "unexplained",
+        "reason": "7 branches, 0 cases, 0 awaits, 56 object-literal lines. No structural feature accounts for 212 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/propose/plan-review-retry.ts",
+        "name": "<anonymous>",
+        "lines": 209,
+        "shape": "unexplained",
+        "reason": "10 branches, 0 cases, 0 awaits, 18 object-literal lines. No structural feature accounts for 209 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/composition-root/git-authority-candidate-apply-production.ts",
+        "name": "apply",
+        "lines": 207,
+        "shape": "unexplained",
+        "reason": "9 branches, 0 cases, 0 awaits, 0 object-literal lines. No structural feature accounts for 207 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/control-plane/maintainer-session.ts",
+        "name": "<anonymous>",
+        "lines": 206,
+        "shape": "unexplained",
+        "reason": "11 branches, 0 cases, 0 awaits, 50 object-literal lines. No structural feature accounts for 206 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/runtime/provider-execution/provider-availability-pilot.ts",
+        "name": "runAvailableProvider",
+        "lines": 205,
+        "shape": "unexplained",
+        "reason": "5 branches, 0 cases, 0 awaits, 84 object-literal lines. No structural feature accounts for 205 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/archive/archive-transformation.ts",
+        "name": "createArchiveApplicabilityProjection",
+        "lines": 203,
+        "shape": "unexplained",
+        "reason": "9 branches, 0 cases, 0 awaits, 0 object-literal lines. No structural feature accounts for 203 lines."
+      },
+      {
+        "file": "packages/workflow-engine/src/application/finalize/task-diff-review-external-continuation-binding.ts",
+        "name": "assertCurrentExternalTaskDiffContinuationBinding",
+        "lines": 201,
+        "shape": "unexplained",
+        "reason": "10 branches, 0 cases, 0 awaits, 35 object-literal lines. No structural feature accounts for 201 lines."
+      }
+    ]
+  }
 }
