@@ -1028,7 +1028,7 @@
     {
       "path": "src/application/execute-task/update-base.ts",
       "mode": "100644",
-      "digest": "sha256:c063879500901ad7aaa781b84138b7b67eab5500aa7fda7951be616b802733e1"
+      "digest": "sha256:d6dbe4f89eb8e215462a987c62ab51277bd4bd0729ae2a777e2b2188b48ddc52"
     },
     {
       "path": "src/application/finalize/finalize-cancellation.ts",
@@ -1543,7 +1543,7 @@
     {
       "path": "src/composition-root/cli-command-services.ts",
       "mode": "100644",
-      "digest": "sha256:662e53375b4788e5c3b9a344c12607c0d91a1f36606527dd2ebf8fc6772d1259"
+      "digest": "sha256:5916e0662aff9afe832cd35931b585d9fc9246c8933339ba673e8ca557ad6e90"
     },
     {
       "path": "src/composition-root/collaboration-grant-issuance-production.ts",

@@ -90,6 +90,7 @@ import { updateTaskSessionBase as updateTaskSessionBaseWithContractReader } from
 export const updateTaskSessionBase =
   updateTaskSessionBaseWithContractReader.bind(
     undefined,
+    productionChangeContract,
     verifyPullRequest,
     productionChangeRoutingInspector,
     {

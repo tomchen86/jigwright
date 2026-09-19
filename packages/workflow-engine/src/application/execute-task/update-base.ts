@@ -1,5 +1,6 @@
 import type { PullRequestVerifier } from '../assurance/pull-request-verification.ts';
 import type { ChangeRoutingInspector } from '../../modules/lifecycle/change-routing.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { ChangeContractReaders } from '../../modules/planning-provider/change-contract.ts';
 /**
  * Replays finished task work onto a new base and records the refreshed
@@ -20,7 +21,6 @@ import {
   renderHandoff,
   validateHandoff,
 } from '../../adapters/consumer/repository/handoff/handoff.ts';
-import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { replaceTextAtomic } from '../../runtime/repository-transaction/atomic-text.ts';
@@ -101,6 +101,10 @@ type TaskBaseUpdateTestHooks = Readonly<{
  * operates while a task writer is active.
  */
 export function updateTaskSessionBase(
+  changeContract: Pick<
+    ChangeContractServices,
+    'loadStableValidatedChangeContract'
+  >,
   verifyPullRequest: PullRequestVerifier['verifyPullRequest'],
   routingInspector: ChangeRoutingInspector,
   readers: ChangeContractReaders,
@@ -143,6 +147,7 @@ export function updateTaskSessionBase(
     return withSessionOperation(runtime, lockedAnchor.sessionId, () => {
       assertRepositoryLock();
       return updateFinishedTaskBaseLocked(
+        changeContract,
         verifyPullRequest,
         routingInspector,
         readers,
@@ -219,6 +224,10 @@ function resolveFinishedSessionAnchor(
 }
 
 function updateFinishedTaskBaseLocked(
+  changeContract: Pick<
+    ChangeContractServices,
+    'loadStableValidatedChangeContract'
+  >,
   verifyPullRequest: PullRequestVerifier['verifyPullRequest'],
   routingInspector: ChangeRoutingInspector,
   readers: ChangeContractReaders,
@@ -297,7 +306,7 @@ function updateFinishedTaskBaseLocked(
   try {
     assertRepositoryLock();
     const afterReplay = discoverRepository(cwd);
-    const validated = loadStableValidatedChangeContract(
+    const validated = changeContract.loadStableValidatedChangeContract(
       afterReplay,
       session.changeId,
     );

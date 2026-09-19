@@ -9,6 +9,7 @@ import {
 } from '../src/composition-root/consumer-contract-production.ts';
 const updateTaskSessionBase = updateTaskSessionBaseWithContractReader.bind(
   undefined,
+  productionChangeContract,
   verifyPullRequest,
   productionChangeRoutingInspector,
   {
