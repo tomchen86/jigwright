@@ -1658,7 +1658,7 @@
     {
       "path": "src/composition-root/investigation-failure-production.ts",
       "mode": "100644",
-      "digest": "sha256:23948c30f89135f8c538a516d0c79ff162c335e186effaad9067f1608ae2fd97"
+      "digest": "sha256:a4eb71aa8f336506471b4928c669274e1f0c561bd65f91366e6958242b55657c"
     },
     {
       "path": "src/composition-root/investigation-production.ts",
@@ -4213,7 +4213,7 @@
     {
       "path": "src/runtime/repository-observation/investigation-v3-failure-source.ts",
       "mode": "100644",
-      "digest": "sha256:5a12cf333a1e6788a64e958689c28e128901542e3eea5d6acbee296c93ff4fa6"
+      "digest": "sha256:dcde69891328cda925bf754ec7c88f152f3e9ec6e3112e68044e38d1c3e1c798"
     },
     {
       "path": "src/runtime/repository-observation/maintainer-attestation.ts",

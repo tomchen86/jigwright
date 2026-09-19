@@ -25,12 +25,11 @@ import {
   investigationManifestPublicationNamespace,
   type InvestigationManifestPublicationFailure,
 } from '../../modules/investigation/manifest/investigation-publication-contracts.ts';
-import {
-  investigationManifestPublicationGitStateDigest,
-  investigationManifestPublicationStateDigest,
-  observeInvestigationManifestPublicationState,
-  readBoundInvestigationManifestPublicationRef,
-} from '../managed-documents/transaction/investigation-publication.ts';
+import type { GitState } from '../../modules/repository-consumer/repository-git-state.ts';
+import type {
+  InvestigationManifestPublicationObservationSource,
+  InvestigationManifestPublicationStateObservation,
+} from '../../modules/investigation/manifest/investigation-publication-contracts.ts';
 import {
   readCurrentInvestigationRef,
   readInvestigationSession,
@@ -48,7 +47,7 @@ import {
 import { readInvestigationV3FailureObservation } from '../storage-journal/investigation-v3-failure-store.ts';
 
 export type InvestigationFailureObservationContext = Readonly<{
-  git: Parameters<typeof investigationManifestPublicationGitStateDigest>[0];
+  git: GitState;
   config: Pick<
     WorkflowConfig,
     'repositoryName' | 'changeRoot' | 'runtimeDirectory'
@@ -56,11 +55,44 @@ export type InvestigationFailureObservationContext = Readonly<{
   runtime: Parameters<typeof readInvestigationSession>[0];
 }>;
 
+/** Manifest publication observations this failure source reads. */
+export type InvestigationPublicationObservations = Readonly<{
+  investigationManifestPublicationGitStateDigest(
+    git: GitState,
+  ): `sha256:${string}`;
+  investigationManifestPublicationStateDigest(
+    publication: InvestigationManifestPublicationStateObservation,
+  ): `sha256:${string}`;
+  observeInvestigationManifestPublicationState(input: {
+    repositoryRoot: string;
+    privateRoot?: string;
+    source: InvestigationManifestPublicationObservationSource;
+  }): InvestigationManifestPublicationStateObservation;
+  readBoundInvestigationManifestPublicationRef(input: {
+    repositoryRoot: string;
+    privateRoot?: string;
+    currentRefPath: string;
+    lifecycle: InvestigationV3FailureIdentity;
+    expected: {
+      manifestPath: string;
+      manifestDigest: string;
+      investigationTargetDigest: string;
+    };
+  }): { outcome: 'read' | 'blocked' };
+}>;
+
 export function createInvestigationV3FailureObservations(
   loadInvestigationRuntimeContext: (
     cwd: string,
   ) => InvestigationFailureObservationContext,
+  publication: InvestigationPublicationObservations,
 ): InvestigationV3FailureObservations {
+  const {
+    investigationManifestPublicationGitStateDigest,
+    investigationManifestPublicationStateDigest,
+    observeInvestigationManifestPublicationState,
+    readBoundInvestigationManifestPublicationRef,
+  } = publication;
   function initialInvestigationV3FailureSourceObservation(
     input: Parameters<
       InvestigationV3FailureObservations['initialInvestigationV3FailureSourceObservation']

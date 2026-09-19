@@ -1,6 +1,25 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createInvestigationV3FailureObservations } from '../src/runtime/repository-observation/investigation-v3-failure-source.ts';
+import {
+  createInvestigationV3FailureObservations,
+  type InvestigationPublicationObservations,
+} from '../src/runtime/repository-observation/investigation-v3-failure-source.ts';
+
+/** This suite only exercises the context loader failing before publication is reached. */
+const unusedPublicationObservations: InvestigationPublicationObservations = {
+  investigationManifestPublicationGitStateDigest() {
+    throw new Error('publication observation is not reached');
+  },
+  investigationManifestPublicationStateDigest() {
+    throw new Error('publication observation is not reached');
+  },
+  observeInvestigationManifestPublicationState() {
+    throw new Error('publication observation is not reached');
+  },
+  readBoundInvestigationManifestPublicationRef() {
+    throw new Error('publication observation is not reached');
+  },
+};
 import { createInvestigationV3Blocker } from '../src/modules/investigation/manifest/investigation-manifest.ts';
 import {
   investigationV3DirectFailureSource,
@@ -54,7 +73,7 @@ test('initial failure observation and direct capture preserve fail-closed errors
   const observations = createInvestigationV3FailureObservations(() => {
     calls++;
     throw failure;
-  });
+  }, unusedPublicationObservations);
   assert.throws(
     () =>
       observations.initialInvestigationV3FailureSourceObservation({
