@@ -22,4 +22,8 @@ export const revokeStoredHumanResolutionGrant = createHumanResolutionGrantRevoke
 import { revokeMaintenanceGrantForParent as revokeMaintenance } from "../application/control-plane/intervention-maintenance.js";
 export const revokeMaintenanceGrantForParent = revokeMaintenance.bind(undefined, authorizeHumanRevocation);
 import { createHumanResolutionGrantVerification } from "../runtime/grants/human-resolution-grant-verification.js";
-export const { verifyHumanResolutionGrantEnvelope, verifyHumanResolutionGrantForRevocation, } = createHumanResolutionGrantVerification(createInteractiveSshSigner);
+import { loadMaintainerPolicyForResolution } from "../runtime/repository-observation/human-resolution-grants.js";
+export const { verifyHumanResolutionGrantEnvelope, verifyHumanResolutionGrantForRevocation, } = createHumanResolutionGrantVerification({
+    createSigner: createInteractiveSshSigner,
+    loadMaintainerPolicyForResolution,
+});

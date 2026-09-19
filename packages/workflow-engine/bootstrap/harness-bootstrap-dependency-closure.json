@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:b82bfd017d7debb77278d69a9fb96ac154f38e79b9f76d756f3045dadb0fe44b"
+      "digest": "sha256:d18e104383641557822c633b3c8dad526a9b56603e5ee85576564fc2087d8d0e"
     },
     {
       "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js",
@@ -243,7 +243,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/composition-root/human-revocation-production.js",
       "mode": "100644",
-      "digest": "sha256:7cfb34f98a27acafc70acbd09e0a894e197259891935cb2d7fb3a34c7388252c"
+      "digest": "sha256:66b5dc2cb5b29cd199d5fe9e282823429dcf34e353f6489f9438d854280c6f4a"
     },
     {
       "path": "bootstrap/recovery-runtime/src/composition-root/maintainer-signer.js",
@@ -683,7 +683,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/grants/human-resolution-grant-verification.js",
       "mode": "100644",
-      "digest": "sha256:657953b6c9bb35ceca862e6cbaca747d45f7288fc24631b3682f786b874f34bf"
+      "digest": "sha256:d5f5cc486fad1f7181d3f7e661e0a19b33313f00addc2fe719aca2c871a00ad5"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/paths/runtime-paths.js",

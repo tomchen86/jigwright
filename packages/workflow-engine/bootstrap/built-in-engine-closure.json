@@ -1638,7 +1638,7 @@
     {
       "path": "src/composition-root/human-revocation-production.ts",
       "mode": "100644",
-      "digest": "sha256:f09e007a4ad59f5813b9d17d609fdca090133c83edc46f53959a576d4e313ea4"
+      "digest": "sha256:d662577eba16f3b143844c3da1bf450107d9172690f5dd666eb44fae3aa27519"
     },
     {
       "path": "src/composition-root/immutable-git-candidate-production.ts",
@@ -2088,7 +2088,7 @@
     {
       "path": "src/entrypoints/cli/workflow-cli.ts",
       "mode": "100644",
-      "digest": "sha256:cf77cf47bb1c0f99ef1e20adfbc7da9064a5a323f77f42a1924c16595bb0570d"
+      "digest": "sha256:79374b29cfed9f62bf3db2bd5d42e5a6c9aa6a9faac3362da0b6def677c9db47"
     },
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
@@ -3843,7 +3843,7 @@
     {
       "path": "src/runtime/grants/human-resolution-grant-verification.ts",
       "mode": "100644",
-      "digest": "sha256:2ece250dd624213c770f448b7e473fb5533f307d3438115b8472880478d4303a"
+      "digest": "sha256:54bb20111ca102bfd68855a9c39d148a4de61ea48b28b9451ef9e765ca8797e9"
     },
     {
       "path": "src/runtime/grants/maintainer-grant-v2-publication.ts",
@@ -4129,11 +4129,6 @@
       "path": "src/runtime/recovery/recovery-trust-root-store.ts",
       "mode": "100644",
       "digest": "sha256:fe94133ea3286d378475f4593a34d22ebd0b3b61f370f833f6384e929b280de7"
-    },
-    {
-      "path": "src/runtime/repository-observation/assurance-inspection.ts",
-      "mode": "100644",
-      "digest": "sha256:057dc855480ffd9803dd76928586c5d687933a4ac8e2edd5d6486e064e62238b"
     },
     {
       "path": "src/runtime/repository-observation/authority-application-receipt.ts",
@@ -4439,6 +4434,11 @@
       "path": "src/runtime/repository-transaction/tracked-tree-reader.ts",
       "mode": "100644",
       "digest": "sha256:7d0fa7dff06549905624c5efdcc78ceb5b98afbd158674daff5b8b478697b43e"
+    },
+    {
+      "path": "src/runtime/repository-validation/assurance-inspection.ts",
+      "mode": "100644",
+      "digest": "sha256:b7bc3b04612e63f4a04733120121328c5ab02d4a1b739d4b18b2913528310183"
     },
     {
       "path": "src/runtime/repository-validation/change-contract-reader.ts",

@@ -9,11 +9,11 @@ import type { MaintainerSignerFactory } from '../../modules/authority/maintainer
 
 import { assertHumanResolutionDecision } from '../../modules/investigation/domain/human-resolution-contract.ts';
 
-import { loadMaintainerPolicyForResolution } from '../repository-observation/human-resolution-grants.ts';
-
-export function createHumanResolutionGrantVerification(
-  createSigner: MaintainerSignerFactory,
-) {
+export function createHumanResolutionGrantVerification(services: {
+  createSigner: MaintainerSignerFactory;
+  loadMaintainerPolicyForResolution: HumanResolutionServices['loadMaintainerPolicyForResolution'];
+}) {
+  const { createSigner, loadMaintainerPolicyForResolution } = services;
   const verifyHumanResolutionGrantEnvelope: HumanResolutionServices['verifyHumanResolutionGrantEnvelope'] =
     (repositoryRoot, envelope, policy, verifier) => {
       assertHumanResolutionDecision(envelope.payload.decision);

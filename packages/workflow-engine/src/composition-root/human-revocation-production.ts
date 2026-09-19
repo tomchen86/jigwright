@@ -40,7 +40,11 @@ export const revokeMaintenanceGrantForParent = revokeMaintenance.bind(
 );
 
 import { createHumanResolutionGrantVerification } from '../runtime/grants/human-resolution-grant-verification.ts';
+import { loadMaintainerPolicyForResolution } from '../runtime/repository-observation/human-resolution-grants.ts';
 export const {
   verifyHumanResolutionGrantEnvelope,
   verifyHumanResolutionGrantForRevocation,
-} = createHumanResolutionGrantVerification(createInteractiveSshSigner);
+} = createHumanResolutionGrantVerification({
+  createSigner: createInteractiveSshSigner,
+  loadMaintainerPolicyForResolution,
+});

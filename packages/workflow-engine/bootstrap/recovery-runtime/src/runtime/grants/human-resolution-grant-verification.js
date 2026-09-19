@@ -1,8 +1,8 @@
 import { canonicalHumanResolutionGrantPayload, assertHumanResolutionAuditPayload, HUMAN_RESOLUTION_SIGNATURE_NAMESPACE, } from "../../modules/investigation/domain/human-resolution-grant-contract.js";
 /** Verifies exact human-resolution bytes with the selected historical signer. */
 import { assertHumanResolutionDecision } from "../../modules/investigation/domain/human-resolution-contract.js";
-import { loadMaintainerPolicyForResolution } from "../repository-observation/human-resolution-grants.js";
-export function createHumanResolutionGrantVerification(createSigner) {
+export function createHumanResolutionGrantVerification(services) {
+    const { createSigner, loadMaintainerPolicyForResolution } = services;
     const verifyHumanResolutionGrantEnvelope = (repositoryRoot, envelope, policy, verifier) => {
         assertHumanResolutionDecision(envelope.payload.decision);
         const signer = verifier ?? createSigner(repositoryRoot, policy);
