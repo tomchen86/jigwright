@@ -608,17 +608,17 @@
     {
       "path": "src/application/archive/archive-pr-orchestration.ts",
       "mode": "100644",
-      "digest": "sha256:9c87afe007b3e4fbf09472e5ddba80aaad9507db2c4eec15f6efeb7d2da0daf7"
+      "digest": "sha256:560103c824d947d5732aebb64dada68c54ddda7280ae939ed735fbd35bd0c29c"
     },
     {
       "path": "src/application/archive/archive-transformation.ts",
       "mode": "100644",
-      "digest": "sha256:b8be56a147248fda231d5e8a57399cb4a765c2d676990f09a18000bf58b7e4bd"
+      "digest": "sha256:26a11c0725e97a4674e6ed8b75debbc8b65e304eda0514d4b4038f0a4821b056"
     },
     {
       "path": "src/application/archive/archive-transition.ts",
       "mode": "100644",
-      "digest": "sha256:13266c16fbff2ae1316034338a6c0f6c3af39009732d46145f5fc2c0defd1e62"
+      "digest": "sha256:d07b7037105a59df051e330862ee328eceea0f6acb5d7afd8d193319909b86d8"
     },
     {
       "path": "src/application/assurance/base-authority-attestation.ts",
@@ -1198,7 +1198,7 @@
     {
       "path": "src/application/propose/planning-transition.ts",
       "mode": "100644",
-      "digest": "sha256:e77e2dbfcb8161de8cf3eabffbfb24f281d00eb44569162a511d1d84a614db82"
+      "digest": "sha256:fed6104a07193cfe27b89602cea2ae1d8d205e0563cc9420241f84fedb856b12"
     },
     {
       "path": "src/application/propose/propose-artifacts.ts",
@@ -1433,7 +1433,7 @@
     {
       "path": "src/composition-root/archive-cli-production.ts",
       "mode": "100644",
-      "digest": "sha256:0b54169419a6b086dd3ee4e53bd3f3e258791d86c5a41cac3fd6537a973eb79c"
+      "digest": "sha256:e2049688c1bc7dcf29226d05317566ab47d30da62b4d4892c0a3222a149aef7f"
     },
     {
       "path": "src/composition-root/archive-pr-grant-production.ts",
@@ -1528,7 +1528,7 @@
     {
       "path": "src/composition-root/ci-replay-production.ts",
       "mode": "100644",
-      "digest": "sha256:6f57f24c8061ee76c40ec84347f9555822aad8de3213da804b2d512eb781bd84"
+      "digest": "sha256:3ac9eb51ba3a3ef861b16294e9d89d3853aea1991938c935ddaf9799ac01a983"
     },
     {
       "path": "src/composition-root/ci-verification-production.ts",
@@ -1543,7 +1543,7 @@
     {
       "path": "src/composition-root/cli-command-services.ts",
       "mode": "100644",
-      "digest": "sha256:9d55732dbe6486e1b1dcd069f627d4a4eacd379b6e5cc8a4b83c20e0173b65c4"
+      "digest": "sha256:237a2281a8cf6589054845a1d5e4c64a196d157572d85567278a705f01851040"
     },
     {
       "path": "src/composition-root/collaboration-grant-issuance-production.ts",
@@ -1748,7 +1748,7 @@
     {
       "path": "src/composition-root/planning-execution-epoch-production.ts",
       "mode": "100644",
-      "digest": "sha256:cab2dcb573d69ebf1167952c2d0589c401e1bfddb60a0201a69c87f344b53620"
+      "digest": "sha256:4f4c85f195c9b49e0f590afe4309600a6d60c834bce492330df4b9df1483d6b9"
     },
     {
       "path": "src/composition-root/planning-provider-authoring-production.ts",
@@ -3278,7 +3278,7 @@
     {
       "path": "src/modules/lifecycle/planning-execution-epoch.ts",
       "mode": "100644",
-      "digest": "sha256:9148ac48f8f9ab2a40be7d96fc06ca6bd69dc336ee3822e8c9d2974d4e6ae9a3"
+      "digest": "sha256:d7b829468374e59edcc349c772e723c297fe7d2e608c7aa8f9cc547597f81790"
     },
     {
       "path": "src/modules/lifecycle/planning-transition-report.ts",
@@ -3333,7 +3333,7 @@
     {
       "path": "src/modules/planning-provider/planning-archive-projection-port.ts",
       "mode": "100644",
-      "digest": "sha256:bde8e5d706fc60bbb2cb81e8d49837c431b5bb0b96e28f608643ba3030f0b3b1"
+      "digest": "sha256:18d1094cadd95c4acb9b3b66be5ef04cb5356de8c295f4567e95ab9581eef8d5"
     },
     {
       "path": "src/modules/planning-provider/planning-artifact-parsers.ts",

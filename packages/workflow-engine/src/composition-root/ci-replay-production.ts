@@ -1,4 +1,5 @@
 import { authorityApplicationReceipts } from './authority-application-receipt-production.ts';
+import { createArchiveProjectionDependencies } from './planning-archive-projection-production.ts';
 import type { ArchiveEligibilityReplayServices } from '../modules/assurance/commit-replay/ci-archive.ts';
 import { createTaskExecutionGenerationReader } from '../runtime/repository-validation/commit-replay/task-execution-evidence.ts';
 /** Binds immutable commit replay to the selected providers and repository services. */
@@ -49,7 +50,11 @@ export const ciPlanningReplay = createCiPlanningReplay({
   productionConsumedPlanReviewReplayPort,
   parsePlanReviewArtifact,
   validateForAuthority,
-  createArchiveApplicabilityProjection,
+  createArchiveApplicabilityProjection:
+    createArchiveApplicabilityProjection.bind(
+      undefined,
+      createArchiveProjectionDependencies(),
+    ),
   loadCommittedPlanningDocumentProjection,
   resolveHistoricalOpenSpecPlanningTransitionBinding,
   resolveHistoricalOpenSpecProviderBinding,

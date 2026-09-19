@@ -1,4 +1,5 @@
 import type { ArchiveApplicabilityProjectionInput } from '../../modules/planning-provider/planning-archive-projection-port.ts';
+import type { ArchiveProjectionDependencies } from '../../modules/planning-provider/planning-archive-projection-port.ts';
 export type { ArchiveApplicabilityProjectionInput } from '../../modules/planning-provider/planning-archive-projection-port.ts';
 import type { PlanningArchiveSourcePolicy } from '../../modules/planning-provider/planning-archive-projection-port.ts';
 import type { PlanningPathPolicy } from '../../modules/source/planning-paths.ts';
@@ -51,10 +52,6 @@ import {
   type PlanningArchiveProjectionContext,
   type PlanningArchiveProjectionPort,
 } from '../../modules/planning-provider/planning-archive-projection-port.ts';
-import {
-  createOpenSpecPlanningArchiveProjectionPort,
-  createArchiveProjectionDependencies,
-} from '../../composition-root/planning-archive-projection-production.ts';
 import { createTrustedExecutionEnvironment } from '../../runtime/provider-execution/execution-environment.ts';
 import {
   discoverRepository,
@@ -109,7 +106,7 @@ type ArchivePayload = {
 type PublicArchivePayload = ArchivePayload & { archivePath: string };
 
 export function createArchiveTransformation(
-  sourcePolicy: PlanningArchiveSourcePolicy,
+  archiveProjection: ArchiveProjectionDependencies,
   renderTrackedHandoff: (repositoryRoot: string) => string,
   reconcileArchivedWorkItems: ArchivedWorkItemReconciler,
   eligibility: ArchiveEligibility,
@@ -120,10 +117,12 @@ export function createArchiveTransformation(
   } = {},
 ): ArchiveTransformation {
   assertEligibilityCurrent(eligibility);
-  assertEligibilityArtifactManifest(sourcePolicy.planningPaths, eligibility);
+  assertEligibilityArtifactManifest(
+    archiveProjection.sourcePolicy.planningPaths,
+    eligibility,
+  );
   const archiveProjectionPort =
-    options.archiveProjectionPort ??
-    createOpenSpecPlanningArchiveProjectionPort();
+    options.archiveProjectionPort ?? archiveProjection.archiveProjectionPort;
   const temporaryBase = createTrustedExecutionEnvironment().TMPDIR;
   if (!temporaryBase) {
     throw archiveError(
@@ -278,6 +277,7 @@ export function refreshArchiveManagedHandoff(
  * The application retains all Git, ref, and authority ownership.
  */
 export function createArchiveApplicabilityProjection(
+  dependencies: ArchiveProjectionDependencies,
   input: ArchiveApplicabilityProjectionInput,
   options: {
     archiveProjectionPort?: PlanningArchiveProjectionPort;
@@ -292,7 +292,6 @@ export function createArchiveApplicabilityProjection(
     activeRoot,
     input.activeArtifactPaths,
   );
-  const dependencies = createArchiveProjectionDependencies();
   const archiveProjectionPort =
     options.archiveProjectionPort ?? dependencies.archiveProjectionPort;
   const temporaryBase = createTrustedExecutionEnvironment().TMPDIR;

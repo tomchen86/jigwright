@@ -1,4 +1,5 @@
 import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
+import type { ArchiveProjectionDependencies } from '../../modules/planning-provider/planning-archive-projection-port.ts';
 import type { StableValidatedChangeContractLoader } from '../../modules/assurance/validated-change-contract.ts';
 import type { ArchiveEligibilityReplayServices } from '../../modules/assurance/commit-replay/ci-archive.ts';
 import type { PlanningArchiveSourcePolicy } from '../../modules/planning-provider/planning-archive-projection-port.ts';
@@ -99,7 +100,7 @@ export type VerifiedArchiveTransitionEvidence = Readonly<{
 export function commitArchiveTransition(
   loadStableValidatedChangeContract: StableValidatedChangeContractLoader,
   planningExecution: PlanningTransitionExecutionServices,
-  sourcePolicy: PlanningArchiveSourcePolicy,
+  archiveProjection: ArchiveProjectionDependencies,
   archiveReplayServices: ArchiveEligibilityReplayServices,
   collaborationGrants: Pick<
     CollaborationGrantCodec,
@@ -126,7 +127,7 @@ export function commitArchiveTransition(
       assertExpectedRemoteBase(eligibility, testHooks.expectedRemoteBase);
       try {
         return commitEligibleArchive(
-          sourcePolicy,
+          archiveProjection,
           renderTrackedHandoff,
           reconcileArchivedWorkItems,
           eligibility,
@@ -142,7 +143,7 @@ export function commitArchiveTransition(
           new Date(`${rolloverDate}T00:00:00.000Z`),
         );
         return commitEligibleArchive(
-          sourcePolicy,
+          archiveProjection,
           renderTrackedHandoff,
           reconcileArchivedWorkItems,
           refreshed,
@@ -224,7 +225,7 @@ export function inspectExistingArchiveTransition(
 }
 
 function commitEligibleArchive(
-  sourcePolicy: PlanningArchiveSourcePolicy,
+  archiveProjection: ArchiveProjectionDependencies,
   renderTrackedHandoff: (repositoryRoot: string) => string,
   reconcileArchivedWorkItems: ArchivedWorkItemReconciler,
   eligibility: ArchiveEligibility,
@@ -235,7 +236,7 @@ function commitEligibleArchive(
 ): ArchiveTransitionResult {
   assertExpectedRemoteBase(eligibility, testHooks.expectedRemoteBase);
   const transformation = createArchiveTransformation(
-    sourcePolicy,
+    archiveProjection,
     renderTrackedHandoff,
     reconcileArchivedWorkItems,
     eligibility,
@@ -245,7 +246,7 @@ function commitEligibleArchive(
     },
   );
   const delta = verifyArchiveDeltaOutcomesForTransition(
-    sourcePolicy.readSystemSpecDeltaInputs,
+    archiveProjection.sourcePolicy.readSystemSpecDeltaInputs,
     eligibility,
     transformation,
   );

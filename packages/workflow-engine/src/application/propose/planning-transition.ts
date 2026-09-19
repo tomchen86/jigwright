@@ -17,8 +17,6 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { createArchiveApplicabilityProjection } from '../archive/archive-transformation.ts';
-
 import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
 import {
   ExitCode,
@@ -692,7 +690,7 @@ function commitPlanningTransitionLocked(
     // late. Run the public projection only after the exact candidate tree is
     // pinned; failure still rolls this reversible index lease back below.
     const createApplicability = () =>
-      createArchiveApplicabilityProjection({
+      planningExecution.projectArchiveApplicability({
         repositoryRoot: initial.repositoryRoot,
         changeRoot: config.changeRoot,
         changeId,

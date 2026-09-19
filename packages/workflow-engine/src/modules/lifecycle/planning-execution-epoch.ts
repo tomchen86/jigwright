@@ -325,6 +325,10 @@ export type PlanningTransitionExecutionServices = Readonly<{
         | import('../provider-orchestration/planning-role-provider-policy.ts').CurrentPlanningRoleOverridePolicy
         | null;
     }>;
+  /** Runs the archive applicability preflight before the transition commits. */
+  projectArchiveApplicability(
+    input: import('../planning-provider/planning-archive-projection-port.ts').ArchiveApplicabilityProjectionInput,
+  ): import('@jigwright/openspec-adapter/archive-projection').SpecDeltaPreflightRecord;
   /** Validates the transition against the configured current schema. */
   validatePlanningTransition(
     repositoryRoot: string,

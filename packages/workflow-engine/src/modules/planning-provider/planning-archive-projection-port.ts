@@ -1,3 +1,4 @@
+import type { SystemDescriptionSnapshot } from '../source/spec-ownership.ts';
 import type { ResolvedPlanningProviderBinding } from './planning-provider-binding.ts';
 import type { PlanningPathPolicy } from '../source/planning-paths.ts';
 import type { ReadSystemSpecDeltaInputs } from '../source/system-spec-deltas.ts';
@@ -92,3 +93,15 @@ export type ArchiveApplicabilityProjectionInput = {
   source: 'worktree' | 'commit';
   now?: Date;
 };
+
+/**
+ * What projecting an archive needs from the planning provider: the projection
+ * port, the source policy it reads deltas through, and the system description
+ * it compares against. Composition binds the trio; archive and planning
+ * transition receive it.
+ */
+export type ArchiveProjectionDependencies = Readonly<{
+  archiveProjectionPort: PlanningArchiveProjectionPort;
+  sourcePolicy: PlanningArchiveSourcePolicy;
+  readSystemDescriptionSnapshot(root: string): SystemDescriptionSnapshot;
+}>;

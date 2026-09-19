@@ -6,6 +6,8 @@ import {
   inspectPlanningTransition,
   validatePlanningTransition,
 } from './planning-provider-production.ts';
+import { createArchiveApplicabilityProjection } from '../application/archive/archive-transformation.ts';
+import { createArchiveProjectionDependencies } from './planning-archive-projection-production.ts';
 import type { PlanningTransitionExecutionServices } from '../modules/lifecycle/planning-execution-epoch.ts';
 export const planningExecutionEpoch = createPlanningExecutionEpochOperations({
   executionEpochStore,
@@ -21,4 +23,9 @@ export const planningTransitionExecution: PlanningTransitionExecutionServices =
     taskExecutionGeneration: resolveTaskExecutionGenerationEvidence,
     inspectPlanningTransition,
     validatePlanningTransition,
+    projectArchiveApplicability: (input) =>
+      createArchiveApplicabilityProjection(
+        createArchiveProjectionDependencies(),
+        input,
+      ),
   });

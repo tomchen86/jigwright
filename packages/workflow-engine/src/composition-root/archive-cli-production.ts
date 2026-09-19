@@ -1,4 +1,5 @@
 import { preparePullRequestPreMergeAssurance } from './ci-verification-production.ts';
+import { createArchiveProjectionDependencies } from './planning-archive-projection-production.ts';
 import { loadStableValidatedChangeContract } from './validated-contract-context.ts';
 import { planningTransitionExecution as productionPlanningExecution } from './planning-execution-epoch-production.ts';
 import { archiveEligibilityReplayServices } from './ci-replay-production.ts';
@@ -12,7 +13,7 @@ const preparePostMergeArchivePullRequest =
     loadStableValidatedChangeContract,
     preparePullRequestPreMergeAssurance,
     productionPlanningExecution,
-    productionPlanningArchiveSourcePolicy,
+    createArchiveProjectionDependencies(),
     archiveEligibilityReplayServices,
     productionArchiveGrantCodec,
     productionTrackedHandoffRenderer,

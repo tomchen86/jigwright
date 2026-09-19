@@ -1,4 +1,5 @@
 import type { PreMergeVerifier } from '../assurance/pre-merge-verification.ts';
+import type { ArchiveProjectionDependencies } from '../../modules/planning-provider/planning-archive-projection-port.ts';
 import type { StableValidatedChangeContractLoader } from '../../modules/assurance/validated-change-contract.ts';
 import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
 import type { ArchiveEligibilityReplayServices } from '../../modules/assurance/commit-replay/ci-archive.ts';
@@ -589,7 +590,7 @@ export function preparePostMergeArchivePullRequest(
   loadStableValidatedChangeContract: StableValidatedChangeContractLoader,
   preparePullRequestPreMergeAssurance: PreMergeVerifier['preparePullRequestPreMergeAssurance'],
   planningExecution: PlanningTransitionExecutionServices,
-  sourcePolicy: PlanningArchiveSourcePolicy,
+  archiveProjection: ArchiveProjectionDependencies,
   archiveReplayServices: ArchiveEligibilityReplayServices,
   collaborationGrants: Pick<
     CollaborationGrantCodec,
@@ -621,7 +622,7 @@ export function preparePostMergeArchivePullRequest(
   const archive = commitArchiveTransition(
     loadStableValidatedChangeContract,
     planningExecution,
-    sourcePolicy,
+    archiveProjection,
     archiveReplayServices,
     collaborationGrants,
     renderTrackedHandoff,
@@ -638,7 +639,7 @@ export function preparePostMergeArchivePullRequest(
   const archiveReplay = commitArchiveTransition(
     loadStableValidatedChangeContract,
     planningExecution,
-    sourcePolicy,
+    archiveProjection,
     archiveReplayServices,
     collaborationGrants,
     renderTrackedHandoff,

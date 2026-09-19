@@ -1,4 +1,5 @@
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { createArchiveProjectionDependencies } from '../src/composition-root/planning-archive-projection-production.ts';
 import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';
 import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
 import { productionPlanningArchiveSourcePolicy } from '../src/composition-root/planning-archive-projection-production.ts';
@@ -10,7 +11,7 @@ const commitArchiveTransition = commitArchiveTransitionWithHandoff.bind(
   undefined,
   loadStableValidatedChangeContract,
   productionPlanningExecution,
-  productionPlanningArchiveSourcePolicy,
+  createArchiveProjectionDependencies(),
   archiveEligibilityReplayServices,
   productionArchiveGrantCodec,
   productionTrackedHandoffRenderer,

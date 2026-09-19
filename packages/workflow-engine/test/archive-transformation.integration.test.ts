@@ -1,4 +1,5 @@
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { createArchiveProjectionDependencies } from '../src/composition-root/planning-archive-projection-production.ts';
 import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';
 import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
 import { productionPlanningArchiveSourcePolicy } from '../src/composition-root/planning-archive-projection-production.ts';
@@ -9,7 +10,7 @@ import { managedDocuments } from '../src/composition-root/managed-documents-prod
 import { renderHandoffFromTrackedFacts as productionTrackedHandoffRenderer } from '../src/composition-root/handoff-production.ts';
 const createArchiveTransformation = createArchiveTransformationWithHandoff.bind(
   undefined,
-  productionPlanningArchiveSourcePolicy,
+  createArchiveProjectionDependencies(),
   productionTrackedHandoffRenderer,
   productionArchivedWorkItemReconciler,
 );
@@ -128,7 +129,7 @@ test('archive reconciliation failure prevents handoff and cleans its temporary p
           'demo-change',
           (eligible) =>
             createArchiveTransformationWithHandoff(
-              productionPlanningArchiveSourcePolicy,
+              createArchiveProjectionDependencies(),
               () => {
                 handoffCalls++;
                 throw new Error('handoff must not run');
