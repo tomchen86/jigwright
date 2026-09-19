@@ -29,7 +29,10 @@ import {
   resolveProtectedBaseRef,
   runGit,
 } from '../repository-transaction/git.ts';
-import { readFileAtRevision } from '../repository-transaction/git-command.ts';
+import {
+  readFileAtRevision,
+  readTagObject,
+} from '../repository-transaction/git-command.ts';
 
 const MAINTAINER_POLICY_PATH = 'workflow/maintainer-policy.json';
 export function loadHeadPolicy(repositoryRoot: string): MaintainerPolicy {
@@ -63,7 +66,7 @@ export function readGrantEnvelope(
   if (runGit(repositoryRoot, ['cat-file', '-t', tagRef]).trim() !== 'tag') {
     throw grantInvalid(grantId);
   }
-  const raw = runGit(repositoryRoot, ['cat-file', 'tag', tagRef]);
+  const raw = readTagObject(repositoryRoot, tagRef);
   const boundary = raw.indexOf('\n\n');
   if (boundary === -1) {
     throw grantInvalid(grantId);

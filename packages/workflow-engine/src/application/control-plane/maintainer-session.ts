@@ -80,7 +80,10 @@ import type {
 } from '../../modules/authority/authority-session-contract.ts';
 import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
 import { resolveBlobOid } from '../../runtime/repository-transaction/git-object-ids.ts';
-import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+import {
+  readFileAtRevision,
+  readTagObject,
+} from '../../runtime/repository-transaction/git-command.ts';
 
 /**
  * Starts and tracks authority sessions bound to reserved grants and
@@ -782,7 +785,7 @@ function assertExactAuditTag(
 ): void {
   const tagRef = `${policy.auditTagPrefix}${envelope.payload.grantId}`;
   try {
-    const raw = runGit(repositoryRoot, ['cat-file', 'tag', tagRef]);
+    const raw = readTagObject(repositoryRoot, tagRef);
     const separator = raw.indexOf('\n\n');
     const headers = raw.slice(0, separator).split('\n');
     const object = headers.find((line) => line.startsWith('object '))?.slice(7);

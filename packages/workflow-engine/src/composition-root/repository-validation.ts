@@ -1,16 +1,7 @@
 import type { RepositoryValidation } from '../modules/repository-consumer/repository-validation.ts';
-/**
- * Validates repository changes and documents against worktree or exact
- * committed sources.
- *
- * Invariants:
- * - Committed validation requires checkout configuration to match the
- *   committed bytes.
- */
 import fs from 'node:fs';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
-
 import { assertCommittedCheckoutDirectoryProjection } from '../runtime/repository-observation/committed-checkout.ts';
 import {
   loadChangeContract,
@@ -29,6 +20,16 @@ import { validateManagedDocuments } from './managed-documents-production.ts';
 import { type ManagedDocumentValidationContext } from '../modules/projection/managed-documents.ts';
 import { changeLifecycleRelativePath } from '../modules/lifecycle/change-routing.ts';
 import { readSystemDescriptionSnapshot } from '../runtime/repository-transaction/system-description-snapshot.ts';
+import { readBlobBytes } from '../runtime/repository-transaction/git-command.ts';
+
+/**
+ * Validates repository changes and documents against worktree or exact
+ * committed sources.
+ *
+ * Invariants:
+ * - Committed validation requires checkout configuration to match the
+ *   committed bytes.
+ */
 
 const OBJECT_ID = '[0-9a-f]{40}|[0-9a-f]{64}';
 const MAX_COMMITTED_DOCUMENT_BYTES = 16 * 1024 * 1024;
@@ -372,7 +373,7 @@ function readCommittedText(
       'u',
     ).exec(listing);
     if (match === null) throw new Error('committed text is not 100644');
-    const bytes = runGitBuffer(repositoryRoot, ['cat-file', 'blob', match[1]!]);
+    const bytes = readBlobBytes(repositoryRoot, match[1]!);
     if (bytes.length > MAX_COMMITTED_DOCUMENT_BYTES) {
       throw new Error('committed text exceeds its byte bound');
     }

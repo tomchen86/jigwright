@@ -37,7 +37,10 @@ import {
   readRoleContextSharingRecord,
 } from '../runtime/storage-journal/role-context-sharing-store.ts';
 import { resolveBlobOid } from '../runtime/repository-transaction/git-object-ids.ts';
-import { readFileAtRevision } from '../runtime/repository-transaction/git-command.ts';
+import {
+  readFileAtRevision,
+  readTagObject,
+} from '../runtime/repository-transaction/git-command.ts';
 
 /**
  * Publishes and verifies portable receipts for terminal role context
@@ -412,7 +415,7 @@ function readAndVerifyReceiptTag(
 ): VerifiedRoleContextSharingTerminalReceiptV1 {
   try {
     if (!TAG_REF.test(ref)) throw new Error('invalid ref');
-    const raw = runGit(repositoryRoot, ['cat-file', 'tag', ref]);
+    const raw = readTagObject(repositoryRoot, ref);
     const separator = raw.indexOf('\n\n');
     if (separator === -1) throw new Error('tag body missing');
     const envelope = parseRoleContextSharingTerminalReceiptEnvelopeV1(

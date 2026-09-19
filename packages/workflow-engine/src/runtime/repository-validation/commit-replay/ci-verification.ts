@@ -15,6 +15,7 @@ import {
 import {
   readFileAtCommit,
   readFileAtRevision,
+  readTagObject,
 } from '../../repository-transaction/git-command.ts';
 import {
   assertCiCommit,
@@ -70,7 +71,7 @@ export const ciRepositoryObservations: CiRepositoryObservations = {
       .filter(Boolean);
   },
   readTagObject(repositoryRoot, ref) {
-    return runGit(repositoryRoot, ['cat-file', 'tag', ref]);
+    return readTagObject(repositoryRoot, ref);
   },
   resolveTagCommit(repositoryRoot, ref) {
     return resolveCommitOid(repositoryRoot, ref);

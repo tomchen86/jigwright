@@ -428,7 +428,7 @@
     {
       "path": "src/adapters/consumer/repository/work-registry/protected-capabilities.ts",
       "mode": "100644",
-      "digest": "sha256:83ecee4f9877eeb900075e8ae89d0c4a0f8464cde66feff1376ef039f2749b7f"
+      "digest": "sha256:e6980f2b1290c5a357358fcc8008457605a95b5e8d51f0419d49b0baf6f20643"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/runner-resolution.ts",
@@ -673,7 +673,7 @@
     {
       "path": "src/application/control-plane/control-plane-candidate-material.ts",
       "mode": "100644",
-      "digest": "sha256:9f2a00233919fc1a040bea63bce93bb77e241a2d9d5eaafe18a33bbd3235c2a8"
+      "digest": "sha256:af2289d4d79970ea91c44724f9e13045c35ec335a9b1de7eceaf547af1550d55"
     },
     {
       "path": "src/application/control-plane/control-plane-promotion-producer.ts",
@@ -923,7 +923,7 @@
     {
       "path": "src/application/control-plane/maintainer-session.ts",
       "mode": "100644",
-      "digest": "sha256:c11a2ef18fc0f2fee96ad7d67cc56d0e037673491b439327e7d2a945c3e88921"
+      "digest": "sha256:a0b65aba8b4e81e2e1c1de3e7f1f1a56a320bc785624bfdb9921beba32baeabc"
     },
     {
       "path": "src/application/control-plane/publish-executor.ts",
@@ -1508,7 +1508,7 @@
     {
       "path": "src/composition-root/change-role-assignment-production.ts",
       "mode": "100644",
-      "digest": "sha256:5493638bd89597f25231e6c1ed781d378f1e79e54808c28fcb332ad08ca2e009"
+      "digest": "sha256:a748f8d323acf28e566a3ea66126e523b01f3f5f2411e44ba15adf8eca396ef5"
     },
     {
       "path": "src/composition-root/change-role-assignment-simulation-production.ts",
@@ -1613,7 +1613,7 @@
     {
       "path": "src/composition-root/git-authority-candidate-apply-production.ts",
       "mode": "100644",
-      "digest": "sha256:e32ff64df7cb334f626b88b4ec1eb6686b6e3e7a4e2d6fa116eebf2430b14966"
+      "digest": "sha256:be081768bb4c49955a8c9a2d7fd99d73f9b648df8a5fddf931dbe2836a3f4931"
     },
     {
       "path": "src/composition-root/git-authority-candidate-apply-receipt-production.ts",
@@ -1863,7 +1863,7 @@
     {
       "path": "src/composition-root/repository-validation.ts",
       "mode": "100644",
-      "digest": "sha256:279a05460d1420ddb91690cfe9f0952ddd6f4cd6e3ad256da8bb825aa2eed2a3"
+      "digest": "sha256:a962f7121bdffe037b01e210d7a9b311335dc509c2bc911865fd85fd860df431"
     },
     {
       "path": "src/composition-root/retention-production.ts",
@@ -1888,7 +1888,7 @@
     {
       "path": "src/composition-root/role-context-sharing-terminal-receipt-production.ts",
       "mode": "100644",
-      "digest": "sha256:fdf8c05091ab533f1c14d0aa95fd4d511ad66cb7f29c2044a8ba208c6ba7b6c5"
+      "digest": "sha256:96a2bc1ed583f91249492550a4d539df4e276a7b4d19b99d7987aa9bde4fafb1"
     },
     {
       "path": "src/composition-root/role-topology-resolution-production.ts",
@@ -4178,7 +4178,7 @@
     {
       "path": "src/runtime/repository-observation/authority-application-receipt.ts",
       "mode": "100644",
-      "digest": "sha256:e12fc2520b4efa1a315fc4ff6e62017279be0cb5e0492e481c8758a28f9f9c97"
+      "digest": "sha256:333a56260c1be21c7461b3dbda5d3cfef089cba93d43797f95038b211c387141"
     },
     {
       "path": "src/runtime/repository-observation/authority-audit-input.ts",
@@ -4193,7 +4193,7 @@
     {
       "path": "src/runtime/repository-observation/committed-checkout.ts",
       "mode": "100644",
-      "digest": "sha256:39d85eead6ce12fd9410107001590f6de57e5e20d771c1a71a0757c56689a937"
+      "digest": "sha256:ce6098f32f0c17716639c4ff6d79e65f09a708a89cd4c3e79e2a2b3901048771"
     },
     {
       "path": "src/runtime/repository-observation/contract-artifact-observation.ts",
@@ -4213,7 +4213,7 @@
     {
       "path": "src/runtime/repository-observation/human-resolution-grants.ts",
       "mode": "100644",
-      "digest": "sha256:c500927a9053361c43ed4aec78d1c441c555c5bf12beea6b919d97619eef0a20"
+      "digest": "sha256:bba4d8dc30b2a61a7375a6200fd914cd69ecc0a876885dad73fec5f60290145a"
     },
     {
       "path": "src/runtime/repository-observation/human-revocation.ts",
@@ -4263,7 +4263,7 @@
     {
       "path": "src/runtime/repository-observation/maintainer-attestation.ts",
       "mode": "100644",
-      "digest": "sha256:b1530b7780c264f399c22ac08cfea060d29a4b20e3203a3b0093210bf709c65d"
+      "digest": "sha256:a66c394166d5dcef65cdf3d8ba8a2e963a2b33ca09674a2a04cb1385a09e36f8"
     },
     {
       "path": "src/runtime/repository-observation/maintainer-candidate-dependencies.ts",
@@ -4328,7 +4328,7 @@
     {
       "path": "src/runtime/repository-transaction/agent-role-plan-store.ts",
       "mode": "100644",
-      "digest": "sha256:e553c5c5b049e8950d3946cde62f805911d359054c51a72ae20e1bc17d20fe22"
+      "digest": "sha256:644e053ae12fd4d7c103fe3700b031c285866118898bb381bace79dc1984ce29"
     },
     {
       "path": "src/runtime/repository-transaction/archive-delta-verifier.ts",
@@ -4348,7 +4348,7 @@
     {
       "path": "src/runtime/repository-transaction/central-role-provider-default-store.ts",
       "mode": "100644",
-      "digest": "sha256:a01be6138cb47b5c388931986afefa03a5563aa678e24f11ec33f54bd12c6bda"
+      "digest": "sha256:90847f36a51307403aebb83f7bce5ddc2815283b83be1f430bf4138918335597"
     },
     {
       "path": "src/runtime/repository-transaction/conformance-vectors.ts",
@@ -4363,7 +4363,7 @@
     {
       "path": "src/runtime/repository-transaction/git-command.ts",
       "mode": "100644",
-      "digest": "sha256:0e2518e6d2ff72f23cae7d508c2ba60ec71caf8647f5ed08d227a16f328a8d89"
+      "digest": "sha256:f322b8e98138c0e1c2f9b940e391eec1cf50cd33b649b783e321cee9b538b2ae"
     },
     {
       "path": "src/runtime/repository-transaction/git-commit-history.ts",
@@ -4458,7 +4458,7 @@
     {
       "path": "src/runtime/repository-transaction/planning-provider-binding-store.ts",
       "mode": "100644",
-      "digest": "sha256:102a70019610f13886f353ee83776e4818754d17b42bba02e1354e247fa1ed97"
+      "digest": "sha256:32245eea3e6cc23cf87d2d613d6a58b2437655869bb3642f9066223eaa2fce71"
     },
     {
       "path": "src/runtime/repository-transaction/planning-role-provider-policy-reader.ts",
@@ -4508,7 +4508,7 @@
     {
       "path": "src/runtime/repository-validation/commit-replay/ci-authority.ts",
       "mode": "100644",
-      "digest": "sha256:189d7dcd0d504125974bc059f295f2ee9d8fa0aed69c0b81f7f2f73a8a887f1b"
+      "digest": "sha256:551c9ed622f00bdb98582604e9ca9ad8f1ea94248ddd964b3bc2b92afe1bae9b"
     },
     {
       "path": "src/runtime/repository-validation/commit-replay/ci-git.ts",
@@ -4538,7 +4538,7 @@
     {
       "path": "src/runtime/repository-validation/commit-replay/ci-verification.ts",
       "mode": "100644",
-      "digest": "sha256:6714de5e4133f6c7ce4ca1bfadfc10c0a2d838c7171618dfc908e851bd560982"
+      "digest": "sha256:5cfdf99b3a4d22393a7109c1240e0cb52701693c50e651426f262cfab47498d7"
     },
     {
       "path": "src/runtime/repository-validation/commit-replay/commit-object-validation.ts",
@@ -4923,7 +4923,7 @@
     {
       "path": "src/runtime/storage-journal/governance-finding-ref.ts",
       "mode": "100644",
-      "digest": "sha256:19c92b71cf036adce7b25ea7c78e22067b07c81df7f136be8d23446894a409af"
+      "digest": "sha256:bb6dcf6a553dc0e342888c7e6dd11b595b7d2c2bb163ee66593b7810d81ae041"
     },
     {
       "path": "src/runtime/storage-journal/human-resolution-archive.ts",

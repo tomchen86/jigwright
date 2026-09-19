@@ -6,7 +6,10 @@ import type { AuthorityApplicationReceiptTag } from '../../../modules/authority/
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import { canonicalCheckDefinition } from '../../../modules/assurance/commit-replay/ci-historical-contract.ts';
 import { listCommitPaths } from './ci-git.ts';
-import { readFileAtCommit } from '../../repository-transaction/git-command.ts';
+import {
+  readFileAtCommit,
+  readTagObject,
+} from '../../repository-transaction/git-command.ts';
 import type { RangeCommit } from '../../../modules/assurance/commit-replay/ci-git.ts';
 import { parseCheckCommand } from '../../../modules/source/check-command.ts';
 import type { CheckDefinition } from '@jigwright/core/check-command';
@@ -30,10 +33,10 @@ import { hasExactKeys } from '../../../modules/assurance/commit-replay/ci-author
 import { isRecord } from '../../../modules/assurance/commit-replay/ci-authority.ts';
 import { isStringArray } from '../../../modules/assurance/commit-replay/ci-authority.ts';
 import { ciAuthorityError } from '../../../modules/assurance/commit-replay/ci-authority.ts';
-
 import type { CiAuthorityReplayServices } from '../../../modules/assurance/commit-replay/ci-authority.ts';
 import type { CiAuthorityReplayOperations } from '../../../modules/assurance/commit-replay/ci-authority.ts';
 import { resolveBlobOid } from '../../repository-transaction/git-object-ids.ts';
+
 export function createCiAuthorityReplay(
   services: CiAuthorityReplayServices,
 ): CiAuthorityReplayOperations {
@@ -364,7 +367,7 @@ export function createCiAuthorityReplay(
       );
     }
     try {
-      const raw = runGit(repositoryRoot, ['cat-file', 'tag', expectedRef]);
+      const raw = readTagObject(repositoryRoot, expectedRef);
       const separator = raw.indexOf('\n\n');
       if (separator === -1) throw new Error('tag body missing');
       const headers = raw.slice(0, separator).split('\n');

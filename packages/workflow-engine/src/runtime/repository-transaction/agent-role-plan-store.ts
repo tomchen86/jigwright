@@ -9,7 +9,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -22,6 +21,7 @@ import {
 } from '../../modules/provider-orchestration/agent-role-plan.ts';
 import { agentRolePlanV2Path } from '../../modules/source/planning-role-policy-paths.ts';
 import { runGitBuffer } from './git.ts';
+import { readBlobBytes } from './git-command.ts';
 
 const FULL_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
 const TREE_ENTRY = /^(100644) blob ([0-9a-f]{40}|[0-9a-f]{64})\t([^\0]+)\0$/u;
@@ -169,7 +169,7 @@ export function readPinnedAgentRolePlanV2Snapshot(
       'Pinned agent-role plan must be one exact non-executable regular blob.',
     );
   }
-  const bytes = runGitBuffer(repositoryRoot, ['cat-file', 'blob', entry[2]!]);
+  const bytes = readBlobBytes(repositoryRoot, entry[2]!);
   if (bytes.length > MAX_AGENT_ROLE_PLAN_BYTES) {
     throw planStoreInvalid('Pinned agent-role plan exceeds the bounded size.');
   }

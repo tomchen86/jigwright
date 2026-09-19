@@ -29,6 +29,19 @@ export function runGit(
  * remain distinguishable from empty files, and the literal tree lookup prevents
  * pathspec expansion before the blob is read.
  */
+/** Raw bytes of the blob at `objectId`. */
+export function readBlobBytes(
+  repositoryRoot: string,
+  objectId: string,
+): Buffer {
+  return runGitBuffer(repositoryRoot, ['cat-file', 'blob', objectId]);
+}
+
+/** Text of the annotated tag object at `ref`. */
+export function readTagObject(repositoryRoot: string, ref: string): string {
+  return runGit(repositoryRoot, ['cat-file', 'tag', ref]);
+}
+
 /**
  * Content of `filePath` at `revision`. Unlike readFileAtCommit this requires
  * the path to exist and lets Git's own failure surface.

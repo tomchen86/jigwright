@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:2a49ae59e604f580e440338f5517f9cdb721231be9c3a471e59db1fd50728776"
+      "digest": "sha256:3a1b09d586135596166bb55d6dc058a30c1f17e6b0674aefe6efd7fbcda5fd6b"
     },
     {
       "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js",
@@ -758,7 +758,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/repository-observation/human-resolution-grants.js",
       "mode": "100644",
-      "digest": "sha256:655fd024c28242adb785a7c1c6e91fb6d5126982ddfeb24be6f156c60388efcb"
+      "digest": "sha256:e4378050a70b41bc1097b01bc5ca65b6f4fa19fc0d948953101d3ea95a3236a1"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/repository-observation/human-revocation.js",
@@ -773,7 +773,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/git-command.js",
       "mode": "100644",
-      "digest": "sha256:363084dce167261a6f823d13193e348bb59777c9356bb3060b993f02c231a686"
+      "digest": "sha256:98bcb82ae1d4e84231b13f549d29b0414c2d6a80cbd8d5e57643cf793e6a3a6d"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/git-object-ids.js",

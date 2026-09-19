@@ -30,7 +30,10 @@ import {
   normalizeExactRepositoryPath,
   normalizePolicyPath,
 } from '../../../../foundation/repository-path/repository-path.ts';
-import { readFileAtRevision } from '../../../../runtime/repository-transaction/git-command.ts';
+import {
+  readBlobBytes,
+  readFileAtRevision,
+} from '../../../../runtime/repository-transaction/git-command.ts';
 
 const MANIFEST_PATH = 'workflow/protected-capabilities.json';
 const LOADER_PATH =
@@ -1025,11 +1028,7 @@ function readPinnedCompositionSource(
     );
   }
   try {
-    return runGitBuffer(repositoryRoot, [
-      'cat-file',
-      'blob',
-      matches[0]!.objectId,
-    ]);
+    return readBlobBytes(repositoryRoot, matches[0]!.objectId);
   } catch {
     throw protectedManifestInvalid(
       `Collaboration Grant verifier source ${sourcePath} is unreadable.`,

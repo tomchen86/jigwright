@@ -16,6 +16,7 @@ import type {
   ControlPlaneCandidateMaterialBindingsTypes,
 } from './control-plane-promotion-producer.ts';
 import { resolveTreeOid } from '../../runtime/repository-transaction/git-object-ids.ts';
+import { readBlobBytes } from '../../runtime/repository-transaction/git-command.ts';
 
 type VerifiedControlPlaneSupervisorHistory =
   ControlPlaneCandidateMaterialBindingsTypes['VerifiedControlPlaneSupervisorHistory'];
@@ -449,11 +450,7 @@ export function createControlPlaneCandidateMaterial(
     ) {
       throw gitMaterialInvalid(filePath);
     }
-    const content = runGitBuffer(repositoryRoot, [
-      'cat-file',
-      'blob',
-      match[2]!,
-    ]);
+    const content = readBlobBytes(repositoryRoot, match[2]!);
     return {
       path: filePath,
       mode: match[1] as '100644' | '100755',

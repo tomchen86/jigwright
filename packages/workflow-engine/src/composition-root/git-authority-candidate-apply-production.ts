@@ -9,7 +9,6 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../foundation/canonical-json/contract-values.ts';
 import {
@@ -73,6 +72,7 @@ import {
 import { investigationRuntimePaths } from '../runtime/paths/runtime-paths.ts';
 import { runtimePaths } from '../runtime/session-workspace/session-store.ts';
 import type { TransitionObservationContext } from '../modules/authority/grant-transition-registry.ts';
+import { readBlobBytes } from '../runtime/repository-transaction/git-command.ts';
 
 export type GitAuthorityCandidateApplyCrashPoint =
   | 'prepared'
@@ -521,7 +521,7 @@ function readExactRegularBlob(
   );
   if (match?.[2] !== filePath) throw authorityContextChanged();
   const objectId = match[1]!;
-  const bytes = runGitBuffer(repositoryRoot, ['cat-file', 'blob', objectId]);
+  const bytes = readBlobBytes(repositoryRoot, objectId);
   const observedObjectId = exactUtf8(
     runGitBuffer(repositoryRoot, ['hash-object', '--stdin'], { input: bytes }),
   ).trim();

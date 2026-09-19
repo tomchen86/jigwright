@@ -2,10 +2,9 @@ import { canonicalHumanResolutionGrantEnvelope, parseHumanResolutionGrantEnvelop
 import { assertMaintainerGrantId } from "../../modules/authority/maintainer-grant-contracts.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { parseMaintainerPolicy, } from "../../modules/authority/maintainer-policy.js";
-import { runGit } from "../repository-transaction/git.js";
 import { readInvestigationSession } from "../storage-journal/investigation-session-records.js";
 import { resolveBlobOid, resolveCommitOid, } from "../repository-transaction/git-object-ids.js";
-import { readFileAtRevision } from "../repository-transaction/git-command.js";
+import { readFileAtRevision, readTagObject, } from "../repository-transaction/git-command.js";
 /** Reads historical Grant policy, exact annotated tags and successor sessions. */
 export const readHumanResolutionAuditTag = (repositoryRoot, policy, observedRef) => {
     const resolutionPrefix = `${policy.auditTagPrefix}resolution-`;
@@ -15,7 +14,7 @@ export const readHumanResolutionAuditTag = (repositoryRoot, policy, observedRef)
     try {
         const observedGrantId = observedRef.slice(resolutionPrefix.length);
         assertMaintainerGrantId(observedGrantId);
-        const raw = runGit(repositoryRoot, ['cat-file', 'tag', observedRef]);
+        const raw = readTagObject(repositoryRoot, observedRef);
         const separator = raw.indexOf('\n\n');
         if (separator === -1) {
             throw new Error('missing tag message');

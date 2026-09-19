@@ -9,7 +9,6 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
-
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
@@ -22,6 +21,7 @@ import {
   type CentralRoleProviderDefaultV1,
 } from '../../modules/provider-orchestration/central-role-provider-default.ts';
 import { runGitBuffer } from './git.ts';
+import { readBlobBytes } from './git-command.ts';
 
 export { CENTRAL_ROLE_PROVIDER_DEFAULT_PATH };
 
@@ -117,7 +117,7 @@ export function readPinnedCentralRoleProviderDefaultSnapshot(
       ExitCode.verification,
     );
   }
-  const bytes = runGitBuffer(root, ['cat-file', 'blob', entry[2]!]);
+  const bytes = readBlobBytes(root, entry[2]!);
   if (bytes.length === 0 || bytes.length > MAX_CONFIGURATION_BYTES) {
     throw storeError(
       'CENTRAL_ROLE_PROVIDER_DEFAULT_PIN_INVALID',

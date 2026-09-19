@@ -16,6 +16,7 @@ import {
   isFindingRefDirectoryPath,
   findingRefUnsafe,
 } from '../../modules/governance-intake/governance-finding-ref.ts';
+import { readBlobBytes } from '../repository-transaction/git-command.ts';
 
 const REMOTE_SUFFIX = '/jigwright/findings';
 
@@ -70,7 +71,7 @@ export function readFindingRef(runtimeRoot: string): FindingRefSnapshot {
         !isFindingRefRecordPath(recordPath)
       )
         throw findingRefUnsafe(recordPath);
-      const bytes = runGitBuffer(gitDirectory, ['cat-file', 'blob', oid]);
+      const bytes = readBlobBytes(gitDirectory, oid);
       const existing = records.get(recordPath);
       if (existing !== undefined && !existing.equals(bytes))
         throw findingRefCollision(recordPath);

@@ -2,6 +2,7 @@
 import type { AuthorityApplicationReceiptObservations } from '../../modules/authority/authority-application-receipt.ts';
 import { runGit } from '../repository-transaction/git.ts';
 import { createMaintainerAuditTag } from '../repository-transaction/maintainer-audit-tag.ts';
+import { readTagObject } from '../repository-transaction/git-command.ts';
 
 export const authorityApplicationReceiptRepository: Omit<
   AuthorityApplicationReceiptObservations,
@@ -15,7 +16,7 @@ export const authorityApplicationReceiptRepository: Omit<
     ]);
   },
   readAnnotatedReceiptTag(repositoryRoot, ref) {
-    return runGit(repositoryRoot, ['cat-file', 'tag', ref]);
+    return readTagObject(repositoryRoot, ref);
   },
   readReceiptTagObjectId(repositoryRoot, ref) {
     return runGit(repositoryRoot, [

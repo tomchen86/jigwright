@@ -15,6 +15,7 @@ import {
   sameArtifactIdentity,
   type CanonicalRepository,
 } from './contract-artifact-observation.ts';
+import { readBlobBytes } from '../repository-transaction/git-command.ts';
 
 export type ExactCleanCommittedCheckout = Readonly<{
   repositoryRoot: string;
@@ -133,11 +134,7 @@ export function assertCommittedCheckoutDirectoryProjection(input: {
       if (checkoutBytes === undefined) {
         throw new Error('committed projection file is absent from checkout');
       }
-      const committedBytes = runGitBuffer(input.repositoryRoot, [
-        'cat-file',
-        'blob',
-        entry.blob,
-      ]);
+      const committedBytes = readBlobBytes(input.repositoryRoot, entry.blob);
       if (!checkoutBytes.equals(committedBytes)) {
         throw new Error('checkout bytes differ from committed blob');
       }

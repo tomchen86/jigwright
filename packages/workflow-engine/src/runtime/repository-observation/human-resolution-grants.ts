@@ -13,13 +13,15 @@ import {
   parseMaintainerPolicy,
   type MaintainerPolicy,
 } from '../../modules/authority/maintainer-policy.ts';
-import { runGit } from '../repository-transaction/git.ts';
 import { readInvestigationSession } from '../storage-journal/investigation-session-records.ts';
 import {
   resolveBlobOid,
   resolveCommitOid,
 } from '../repository-transaction/git-object-ids.ts';
-import { readFileAtRevision } from '../repository-transaction/git-command.ts';
+import {
+  readFileAtRevision,
+  readTagObject,
+} from '../repository-transaction/git-command.ts';
 
 /** Reads historical Grant policy, exact annotated tags and successor sessions. */
 
@@ -36,7 +38,7 @@ export const readHumanResolutionAuditTag: HumanResolutionAuditTagReader = (
   try {
     const observedGrantId = observedRef.slice(resolutionPrefix.length);
     assertMaintainerGrantId(observedGrantId);
-    const raw = runGit(repositoryRoot, ['cat-file', 'tag', observedRef]);
+    const raw = readTagObject(repositoryRoot, observedRef);
     const separator = raw.indexOf('\n\n');
     if (separator === -1) {
       throw new Error('missing tag message');

@@ -9,13 +9,11 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
-
 import type {
   AgentProviderConfigSnapshot,
   AgentProviderProfileSnapshot,
 } from '@jigwright/core/agent-provider-config';
 import type { ProviderDefinitionSnapshot } from '@jigwright/core/provider-definition-snapshot';
-
 import { loadChangeContract } from './consumer-contract-production.ts';
 import { parseTaskAuthorizationPolicyFromWorkflowConfig } from '../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
@@ -79,6 +77,7 @@ import {
   readProviderNativeSessionChainV1,
 } from '../runtime/storage-journal/provider-native-session-store.ts';
 import type { InvestigationRuntimePaths } from '../runtime/paths/runtime-paths.ts';
+import { readBlobBytes } from '../runtime/repository-transaction/git-command.ts';
 
 const ROLE_BY_PURPOSE = Object.freeze({
   survey: 'author',
@@ -400,7 +399,7 @@ function readPinnedPolicyBlob(
   if (entry === null || entry[3] !== policyPath) {
     throw pinnedPathRoleInvalid();
   }
-  return runGitBuffer(repositoryRoot, ['cat-file', 'blob', entry[2]!]);
+  return readBlobBytes(repositoryRoot, entry[2]!);
 }
 
 function pinnedPathRoleInvalid() {
