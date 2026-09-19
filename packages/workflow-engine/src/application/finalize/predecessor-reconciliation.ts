@@ -1,4 +1,5 @@
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Reconciles one immediately preceding incomplete task from pinned commit
  * and check evidence.
@@ -28,7 +29,7 @@ export type ReconciledTask = {
 };
 
 export function reconcilePredecessor(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   inspection: SessionInspection,
   environment: NodeJS.ProcessEnv,
@@ -80,7 +81,7 @@ export function reconcilePredecessor(
   }
 
   const verified = executeChecks(
-    routingAdmissionReader,
+    changeContract,
     cwd,
     inspection,
     policy.requiredChecks,

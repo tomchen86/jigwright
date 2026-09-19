@@ -1,4 +1,5 @@
 import type { SystemDocumentDispositionService } from './system-document-dispositions.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
 import type { DocumentationReviewCapture } from '../../modules/assurance/documentation-closure.ts';
 import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
@@ -131,7 +132,7 @@ export type FinalizeTaskOptions = Readonly<{
 export function finalizeTaskUnlocked(
   reviewedAssets: ReviewedGeneratedAssetInventory,
   taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   taskDiffReview: Pick<
     TaskDiffReviewOperations,
     | 'assertTaskDiffReviewCompletionGateSatisfied'
@@ -159,7 +160,7 @@ export function finalizeTaskUnlocked(
     assertProtectedApplyRequestMatches(existing, options);
     try {
       return continueFinalizeTransaction(
-        routingAdmissionReader,
+        changeContract,
         taskDiffReview,
         cwd,
         existing,
@@ -177,16 +178,11 @@ export function finalizeTaskUnlocked(
     cwd,
     requestedSessionId,
   );
-  const initial = inspectSession(
-    routingAdmissionReader,
-    cwd,
-    requestedSessionId,
-    {
-      ...(options.protectedApply === undefined
-        ? {}
-        : { protectedApplyAuthorization: options.protectedApply }),
-    },
-  );
+  const initial = inspectSession(changeContract, cwd, requestedSessionId, {
+    ...(options.protectedApply === undefined
+      ? {}
+      : { protectedApplyAuthorization: options.protectedApply }),
+  });
   const session = initial.session;
   if (
     session.latestCheckReportId ||
@@ -204,7 +200,7 @@ export function finalizeTaskUnlocked(
   taskStrategyExecutionGate(initial, environment);
 
   const reconciliation = reconcilePredecessor(
-    routingAdmissionReader,
+    changeContract,
     cwd,
     initial,
     environment,
@@ -301,7 +297,7 @@ export function finalizeTaskUnlocked(
     );
     maybeInterrupt(options, 'projection-prepared');
     return continueFinalizeTransaction(
-      routingAdmissionReader,
+      changeContract,
       taskDiffReview,
       cwd,
       transaction,
@@ -319,7 +315,7 @@ export function finalizeTaskUnlocked(
 }
 
 function continueFinalizeTransaction(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   taskDiffReview: Pick<
     TaskDiffReviewOperations,
     | 'assertTaskDiffReviewCompletionGateSatisfied'
@@ -334,7 +330,7 @@ function continueFinalizeTransaction(
   while (true) {
     if (transaction.phase === 'projection-prepared') {
       transaction = applyPreparedFinalizeProjection(
-        routingAdmissionReader,
+        changeContract,
         cwd,
         transaction,
         options,
@@ -342,11 +338,7 @@ function continueFinalizeTransaction(
       continue;
     }
     assertCandidateTransaction(transaction);
-    const state = inspectFinalizeTransaction(
-      routingAdmissionReader,
-      cwd,
-      transaction,
-    );
+    const state = inspectFinalizeTransaction(changeContract, cwd, transaction);
     const session = state.inspection.session;
     if (transaction.phase === 'candidate-prepared') {
       if (state.indexState !== 'previous') throw transactionDiverged();
@@ -363,7 +355,7 @@ function continueFinalizeTransaction(
       );
       maybeInterrupt(options, 'checks-running');
       const verified = executeChecks(
-        routingAdmissionReader,
+        changeContract,
         cwd,
         state.inspection,
         transactionRequiredChecks(transaction, session),
@@ -514,7 +506,7 @@ type CandidateFinalizeTransaction = FinalizeTransaction & {
 };
 
 function applyPreparedFinalizeProjection(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   transaction: FinalizeTransaction,
   options: FinalizeTaskOptions,
@@ -561,20 +553,15 @@ function applyPreparedFinalizeProjection(
   );
   maybeInterrupt(options, 'projection-applied');
 
-  const projected = inspectSession(
-    routingAdmissionReader,
-    cwd,
-    transaction.sessionId,
-    {
-      expectedSession: context.session,
-      projectedTaskIds: [...transaction.completedTaskIds],
-      projectionSourceDigest: transaction.projectionSourceDigest,
-      authorizedTransitionPaths: [...transaction.transitionPaths],
-      ...(transaction.protectedApply === undefined
-        ? {}
-        : { protectedApplyAuthorization: transaction.protectedApply }),
-    },
-  );
+  const projected = inspectSession(changeContract, cwd, transaction.sessionId, {
+    expectedSession: context.session,
+    projectedTaskIds: [...transaction.completedTaskIds],
+    projectionSourceDigest: transaction.projectionSourceDigest,
+    authorizedTransitionPaths: [...transaction.transitionPaths],
+    ...(transaction.protectedApply === undefined
+      ? {}
+      : { protectedApplyAuthorization: transaction.protectedApply }),
+  });
   assertProjectionBaseCurrent(projected.git, transaction, projectionPaths);
   const preview = previewExactStaging(
     projected.git.repositoryRoot,
@@ -631,7 +618,7 @@ function assertCandidateTransaction(
 }
 
 function inspectFinalizeTransaction(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   transaction: CandidateFinalizeTransaction,
 ) {
@@ -646,7 +633,7 @@ function inspectFinalizeTransaction(
     }
   }
   const inspection = inspectSession(
-    routingAdmissionReader,
+    changeContract,
     cwd,
     transaction.sessionId,
     {

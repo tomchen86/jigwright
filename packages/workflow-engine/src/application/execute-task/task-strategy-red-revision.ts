@@ -1,4 +1,5 @@
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Opens and continues durable revisions of sealed RED task evidence.
  *
@@ -72,7 +73,7 @@ export type BeginTaskStrategyRedRevisionOptions = Readonly<{
 }>;
 
 function reconcileRevisionOpening(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   context: ReturnType<typeof loadInvestigationRuntimeContext>,
   initial: TaskStrategyRedRevisionJournal,
@@ -87,18 +88,14 @@ function reconcileRevisionOpening(
   );
   if (predecessor === null) throw revisionStateCorrupt();
   assertJournalBindingMatchesPredecessor(journal, predecessor);
-  const inspection = inspectSession(
-    routingAdmissionReader,
-    cwd,
-    journal.sessionId,
-  );
+  const inspection = inspectSession(changeContract, cwd, journal.sessionId);
   assertPredecessorMatchesInspection(predecessor, inspection);
   assertRevisionMayProceed(cwd, predecessor, inspection.session);
   assertJournalDurableRelations(context, journal, inspection.session);
   if (journal.phase === 'prepared') {
     const restored =
       restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock(
-        routingAdmissionReader,
+        changeContract,
         cwd,
         journal.sessionId,
         predecessor,
@@ -398,7 +395,7 @@ function revisionStateCorrupt() {
 
 /** Required reconciliation capability is bound once at the production boundary. */
 export function createTaskStrategyRedRevisionService(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   assertCurrentImplementationReconciliation: ImplementationReconciliationGate<SessionInspection>,
 ) {
   function beginTaskStrategyRedRevision(
@@ -423,7 +420,7 @@ export function createTaskStrategyRedRevisionService(
           }
           return revisionResult(
             reconcileRevisionOpening(
-              routingAdmissionReader,
+              changeContract,
               cwd,
               context,
               exactJournal,
@@ -469,7 +466,7 @@ export function createTaskStrategyRedRevisionService(
         );
         options.testAfterJournalPersist?.();
         const opened = reconcileRevisionOpening(
-          routingAdmissionReader,
+          changeContract,
           cwd,
           context,
           journal,
@@ -514,7 +511,7 @@ export function createTaskStrategyRedRevisionService(
             ),
           );
         journal = reconcileRevisionOpening(
-          routingAdmissionReader,
+          changeContract,
           cwd,
           context,
           journal,
@@ -522,7 +519,7 @@ export function createTaskStrategyRedRevisionService(
         );
         if (journal.phase === 'session-evidence-cleared') {
           const prepared = prepareTaskStrategyRedSuccessorUnlocked(
-            routingAdmissionReader,
+            changeContract,
             cwd,
             requestedSessionId,
             {
@@ -620,11 +617,7 @@ export function createTaskStrategyRedRevisionService(
         ExitCode.staleState,
       );
     }
-    const inspection = inspectSession(
-      routingAdmissionReader,
-      cwd,
-      request.sessionId,
-    );
+    const inspection = inspectSession(changeContract, cwd, request.sessionId);
     assertPredecessorMatchesInspection(predecessor, inspection);
     assertRevisionMayProceed(cwd, predecessor, inspection.session);
     const patchBinding = readTaskStrategyPatchCurrentBinding(

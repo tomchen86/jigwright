@@ -1,7 +1,7 @@
 import { readAndValidateTaskRevisionApproval } from '../src/composition-root/task-revision-approval-production.ts';
 import { blockInvestigationForPlanReviewRetryUnderAuthority } from '../src/composition-root/investigation-retry-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { readPlanReviewCoverageTarget } from '../src/runtime/repository-observation/plan-review-coverage.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
@@ -14,6 +14,7 @@ const commitPlanningTransition =
   );
 const resumeTask = resumeTaskWithContractReader.bind(
   undefined,
+  productionChangeContract,
   productionPlanningExecution,
   managedDocuments,
   productionChangeContractReader,
@@ -400,7 +401,7 @@ test('a revising task regenerates ordinary investigation and PlanReview before s
     commitPlanningTransition(repository, 'demo-change');
 
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -408,7 +409,7 @@ test('a revising task regenerates ordinary investigation and PlanReview before s
     const implementation = `${TARGET_CONTENT}export const revised = true;\n`;
     fs.writeFileSync(path.join(repository, TARGET), implementation);
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'regenerate-reviewed-plan',

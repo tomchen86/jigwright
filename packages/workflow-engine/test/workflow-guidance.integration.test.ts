@@ -1,5 +1,5 @@
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const commitPlanningTransition =
@@ -316,7 +316,7 @@ test('JSON status stays read-only and same-digest resume emits at most three cat
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -352,7 +352,7 @@ test('JSON status stays read-only and same-digest resume emits at most three cat
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.writeFileSync(implementationPath, 'export const value = 1;\n');
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'Keep the reviewed plan.',
@@ -753,7 +753,7 @@ test('retired finalize-task cannot mutate while preferred finalize resumes one d
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',

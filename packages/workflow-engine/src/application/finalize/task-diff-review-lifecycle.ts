@@ -1,4 +1,5 @@
 import type { TaskMandateProviderAdmission } from '../../modules/authority/task-mandate-access-contract.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { DocumentationReviewCapture } from '../../modules/assurance/documentation-closure.ts';
 
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
@@ -285,12 +286,12 @@ export type TaskDiffReviewGrantServices = Readonly<{
 }>;
 
 export function createTaskDiffReviewLifecycle(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   services: TaskDiffReviewGrantServices,
 ) {
   const common = createTaskDiffReviewCommonModule(runtime);
   const subject = createTaskDiffReviewSubjectModule(
-    routingAdmissionReader,
+    changeContract,
     runtime,
     common,
   );
@@ -363,7 +364,7 @@ export function createTaskDiffReviewLifecycle(
     services.roleResultAdmission,
   );
   const completion = createTaskDiffReviewCompletionModule(
-    routingAdmissionReader,
+    changeContract,
     runtime,
     common,
     subject,

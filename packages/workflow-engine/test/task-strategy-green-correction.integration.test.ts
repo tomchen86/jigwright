@@ -1,6 +1,6 @@
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import { startSession } from '../src/application/execute-task/session.ts';
 import path from 'node:path';
@@ -36,7 +36,7 @@ test('engine GREEN failure persists one bounded correction subject for the exact
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -45,7 +45,7 @@ test('engine GREEN failure persists one bounded correction subject for the exact
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -57,7 +57,7 @@ test('engine GREEN failure persists one bounded correction subject for the exact
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     const imported = adoptCurrentTaskStrategyImplementation(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     )!;
@@ -67,7 +67,7 @@ test('engine GREEN failure persists one bounded correction subject for the exact
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           { environment: {} },
@@ -75,11 +75,7 @@ test('engine GREEN failure persists one bounded correction subject for the exact
       hasCode('CHECK_FAILED'),
     );
     const failure = readCurrentTaskStrategyGreenFailure(
-      inspectSession(
-        productionChangeRoutingAdmissionReader,
-        repository,
-        session.sessionId,
-      ),
+      inspectSession(productionChangeContract, repository, session.sessionId),
     );
     assert.equal(failure?.currentRedTransactionDigest, red.recordDigest);
     assert.equal(
@@ -104,7 +100,7 @@ test('engine GREEN failure persists one bounded correction subject for the exact
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           { environment: {} },
@@ -129,7 +125,7 @@ test('single-agent correction resume adopts one append-only patch head and engin
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -138,7 +134,7 @@ test('single-agent correction resume adopts one append-only patch head and engin
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
     sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -150,7 +146,7 @@ test('single-agent correction resume adopts one append-only patch head and engin
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     const initial = adoptCurrentTaskStrategyImplementation(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     )!;
@@ -159,7 +155,7 @@ test('single-agent correction resume adopts one append-only patch head and engin
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           { environment: {} },
@@ -180,11 +176,7 @@ test('single-agent correction resume adopts one append-only patch head and engin
       'patch-imported',
     );
     const projection = resolveCurrentTaskStrategyCorrection(
-      inspectSession(
-        productionChangeRoutingAdmissionReader,
-        repository,
-        session.sessionId,
-      ),
+      inspectSession(productionChangeContract, repository, session.sessionId),
     );
     assert.equal(projection.completedCorrectionRounds, 1);
     assert.equal(projection.failure, null);
@@ -201,7 +193,7 @@ test('single-agent correction resume adopts one append-only patch head and engin
       checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
         { environment: {} },
@@ -223,7 +215,7 @@ test('single-agent correction exhaustion cannot be bypassed by routine resume', 
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -232,7 +224,7 @@ test('single-agent correction exhaustion cannot be bypassed by routine resume', 
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
     sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -245,7 +237,7 @@ test('single-agent correction exhaustion cannot be bypassed by routine resume', 
     fs.writeFileSync(implementationPath, 'export const initial = true;\n');
     assert.ok(
       adoptCurrentTaskStrategyImplementation(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
       ),
@@ -255,7 +247,7 @@ test('single-agent correction exhaustion cannot be bypassed by routine resume', 
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           { environment: {} },
@@ -270,7 +262,7 @@ test('single-agent correction exhaustion cannot be bypassed by routine resume', 
       fs.writeFileSync(implementationPath, source);
       assert.ok(
         adoptCurrentTaskStrategyCorrection(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
         ),
@@ -280,7 +272,7 @@ test('single-agent correction exhaustion cannot be bypassed by routine resume', 
           checkSession(
             maintainerManifestOperations,
             productionTaskStrategyExecutionGate,
-            productionChangeRoutingAdmissionReader,
+            productionChangeContract,
             repository,
             session.sessionId,
             { environment: {} },
@@ -290,11 +282,7 @@ test('single-agent correction exhaustion cannot be bypassed by routine resume', 
     }
 
     const projection = resolveCurrentTaskStrategyCorrection(
-      inspectSession(
-        productionChangeRoutingAdmissionReader,
-        repository,
-        session.sessionId,
-      ),
+      inspectSession(productionChangeContract, repository, session.sessionId),
     );
     assert.equal(projection.completedCorrectionRounds, 2);
     assert.equal(projection.exhausted, true);

@@ -1,6 +1,6 @@
 import { taskMandateOperations } from './task-mandate-production.ts';
 import { reviewedGeneratedAssets } from './planning-provider-authoring-production.ts';
-import { productionChangeRoutingAdmissionReader } from './change-routing-observation-production.ts';
+import { productionChangeContract } from './change-routing-observation-production.ts';
 import {
   beginTaskStrategyRedRevision,
   continueTaskStrategyRedRevision,
@@ -12,7 +12,7 @@ import { resumeTaskStrategy as resume } from '../application/execute-task/task-s
 import { readProviderRetryAccountingEvidence } from '../runtime/storage-journal/provider-retry-accounting-reader.ts';
 
 const implementation = createTaskStrategyImplementationLifecycle(
-  productionChangeRoutingAdmissionReader,
+  productionChangeContract,
   roleResultAdmission,
   taskMandateOperations,
 );
@@ -24,7 +24,7 @@ export const beginTaskStrategyImplementation =
 export const resumeTaskStrategy = resume.bind(
   undefined,
   reviewedGeneratedAssets,
-  productionChangeRoutingAdmissionReader,
+  productionChangeContract,
   implementation,
   { beginTaskStrategyRedRevision, continueTaskStrategyRedRevision },
   readProviderRetryAccountingEvidence,
@@ -42,5 +42,5 @@ export const inspectTaskStrategyLifecycle =
   inspectTaskStrategyLifecycleWithRouting.bind(
     undefined,
     reviewedGeneratedAssets,
-    productionChangeRoutingAdmissionReader,
+    productionChangeContract,
   );

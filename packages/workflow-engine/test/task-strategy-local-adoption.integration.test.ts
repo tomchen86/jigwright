@@ -1,5 +1,5 @@
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const commitPlanningTransition =
@@ -41,7 +41,7 @@ test('routine resume adopts exact single-agent implementation bytes without prov
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -128,7 +128,7 @@ test('single-agent resume refuses frozen RED drift before minting a patch receip
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -192,7 +192,7 @@ test('single-agent local adoption replays every durable publication cut without 
     );
     try {
       const session = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -204,7 +204,7 @@ test('single-agent local adoption replays every durable publication cut without 
         "throw new Error('feature behavior is not implemented');\n",
       );
       sealTaskStrategyRed(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
         {
@@ -220,7 +220,7 @@ test('single-agent local adoption replays every durable publication cut without 
       assert.throws(
         () =>
           adoptCurrentTaskStrategyImplementation(
-            productionChangeRoutingAdmissionReader,
+            productionChangeContract,
             repository,
             session.sessionId,
             { testCrashAfter: phase },
@@ -233,7 +233,7 @@ test('single-agent local adoption replays every durable publication cut without 
       );
 
       const replayed = adoptCurrentTaskStrategyImplementation(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
       );
@@ -263,7 +263,7 @@ test('single-agent reservation replay never resurrects implementation bytes reve
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -275,7 +275,7 @@ test('single-agent reservation replay never resurrects implementation bytes reve
       "throw new Error('feature behavior is not implemented');\n",
     );
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -289,7 +289,7 @@ test('single-agent reservation replay never resurrects implementation bytes reve
     assert.throws(
       () =>
         adoptCurrentTaskStrategyImplementation(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -302,7 +302,7 @@ test('single-agent reservation replay never resurrects implementation bytes reve
 
     assert.equal(
       adoptCurrentTaskStrategyImplementation(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
       ),
@@ -329,7 +329,7 @@ test('routine strategy resume leaves ordinary tasks outside Mode A ceremony', ()
     writeReadyV3ExemptChange(repository, 'demo-change');
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',

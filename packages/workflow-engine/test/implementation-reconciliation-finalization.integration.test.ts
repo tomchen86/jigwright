@@ -1,7 +1,7 @@
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -65,7 +65,7 @@ test('all task-finalization paths require and replay exact implementation reconc
   const repository = createReconciliationFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       CHANGE_ID,
       '1.1',
@@ -144,7 +144,7 @@ test('projected single-pass finalize consumes the same immutable reconciliation 
   const repository = createReconciliationFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       CHANGE_ID,
       '1.1',
@@ -187,7 +187,7 @@ test('unaccounted ranges and post-record source drift fail closed', () => {
   const repository = createReconciliationFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       CHANGE_ID,
       '1.1',
@@ -225,7 +225,7 @@ test('unaccounted ranges and post-record source drift fail closed', () => {
     checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );

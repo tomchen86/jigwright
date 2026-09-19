@@ -1,4 +1,5 @@
 import type { TaskMandateProviderAdmission } from '../../modules/authority/task-mandate-access-contract.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
@@ -266,7 +267,7 @@ export type TaskStrategyImplementationStatus =
     }>;
 /** Binds implementation admission without observing a repository at construction. */
 export function createTaskStrategyImplementationLifecycle(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   roleAdmission: Pick<
     RoleAdmissionServices,
     'admitRoleResult' | 'authorizeGrantedOrdinaryRole'
@@ -277,7 +278,7 @@ export function createTaskStrategyImplementationLifecycle(
   >,
 ) {
   const context = createTaskStrategyImplementationContext(
-    routingAdmissionReader,
+    changeContract,
     runtime,
   );
 
@@ -292,7 +293,7 @@ export function createTaskStrategyImplementationLifecycle(
   } = context;
 
   const callerAdmission = createTaskStrategyCallerAdmission(
-    routingAdmissionReader,
+    changeContract,
     roleAdmission,
     runtime,
     context,
@@ -315,7 +316,7 @@ export function createTaskStrategyImplementationLifecycle(
   } = providerReservations;
 
   const providerResults = createTaskStrategyProviderResults(
-    routingAdmissionReader,
+    changeContract,
     roleAdmission,
     runtime,
     context,

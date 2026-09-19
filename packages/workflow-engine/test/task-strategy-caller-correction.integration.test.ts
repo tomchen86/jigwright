@@ -1,7 +1,7 @@
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const commitPlanningTransition =
@@ -61,7 +61,7 @@ for (const crashCut of [
     const signer = fixtureSigner(repository);
     try {
       const session = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -70,7 +70,7 @@ for (const crashCut of [
       fs.mkdirSync(path.dirname(testPath), { recursive: true });
       fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
       const red = sealTaskStrategyRed(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
         {
@@ -79,7 +79,7 @@ for (const crashCut of [
         },
       );
       const initialInspection = inspectSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
       );
@@ -151,7 +151,7 @@ for (const crashCut of [
           checkSession(
             maintainerManifestOperations,
             productionTaskStrategyExecutionGate,
-            productionChangeRoutingAdmissionReader,
+            productionChangeContract,
             repository,
             session.sessionId,
             { environment: {} },
@@ -159,11 +159,7 @@ for (const crashCut of [
         hasCode('CHECK_FAILED'),
       );
       const failure = readCurrentTaskStrategyGreenFailure(
-        inspectSession(
-          productionChangeRoutingAdmissionReader,
-          repository,
-          session.sessionId,
-        ),
+        inspectSession(productionChangeContract, repository, session.sessionId),
       );
       assert.notEqual(failure, null);
       if (failure === null) return;
@@ -287,11 +283,7 @@ for (const crashCut of [
       assert.equal(round.result.patchResult.sourceTree, failure.candidateTree);
 
       const projection = resolveCurrentTaskStrategyCorrection(
-        inspectSession(
-          productionChangeRoutingAdmissionReader,
-          repository,
-          session.sessionId,
-        ),
+        inspectSession(productionChangeContract, repository, session.sessionId),
       );
       assert.equal(projection.failure, null);
       assert.equal(projection.completedCorrectionRounds, 1);
@@ -303,7 +295,7 @@ for (const crashCut of [
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           { environment: {} },
@@ -329,7 +321,7 @@ for (const crashCut of [
           () =>
             resolveCurrentTaskStrategyCorrection(
               inspectSession(
-                productionChangeRoutingAdmissionReader,
+                productionChangeContract,
                 repository,
                 session.sessionId,
               ),
@@ -358,7 +350,7 @@ for (const crashCut of [
             () =>
               resolveCurrentTaskStrategyCorrection(
                 inspectSession(
-                  productionChangeRoutingAdmissionReader,
+                  productionChangeContract,
                   repository,
                   session.sessionId,
                 ),
@@ -624,11 +616,7 @@ function assertProjectionRejectsMissingAuthorityArtifact(
     assert.throws(
       () =>
         resolveCurrentTaskStrategyCorrection(
-          inspectSession(
-            productionChangeRoutingAdmissionReader,
-            repository,
-            sessionId,
-          ),
+          inspectSession(productionChangeContract, repository, sessionId),
         ),
       hasCode('TASK_STRATEGY_CORRECTION_STATE_STALE'),
     );
@@ -660,11 +648,7 @@ function assertProjectionRejectsTamperedAuthorityBinding(
     assert.throws(
       () =>
         resolveCurrentTaskStrategyCorrection(
-          inspectSession(
-            productionChangeRoutingAdmissionReader,
-            repository,
-            sessionId,
-          ),
+          inspectSession(productionChangeContract, repository, sessionId),
         ),
       hasCode('TASK_STRATEGY_CORRECTION_STATE_STALE'),
     );

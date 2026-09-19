@@ -5,7 +5,7 @@ import {
 import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { collaborationGrantCodec as productionArchiveGrantCodec } from '../src/runtime/grants/grant-services.ts';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -307,12 +307,7 @@ test('archive eligibility rejects dirty state, active sessions, and lock collisi
     );
 
     git(active, ['checkout', '-b', 'work/demo-change']);
-    startSession(
-      productionChangeRoutingAdmissionReader,
-      active,
-      'demo-change',
-      '1.1',
-    );
+    startSession(productionChangeContract, active, 'demo-change', '1.1');
     assert.throws(
       () =>
         withArchiveEligibility(

@@ -3,7 +3,7 @@ import { reviewedGeneratedAssets } from '../src/composition-root/planning-provid
 import { createProductionProtectedTaskApplyGrantPort as createProtectedApplyPort } from '../src/composition-root/protected-task-apply-grant-production.ts';
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { taskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { assertCurrentImplementationReconciliation } from '../src/composition-root/implementation-reconciliation-production.ts';
@@ -611,7 +611,7 @@ test('prepared protected apply reaches the injected document service after real 
       localEngineSelectionReaders,
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       taskDiffReview,
       managedDocuments,
       assertCurrentImplementationReconciliation,

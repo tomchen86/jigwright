@@ -1,6 +1,6 @@
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import { startSession } from '../src/application/execute-task/session.ts';
 import fs from 'node:fs';
@@ -38,7 +38,7 @@ test('zero callable implementers expose only caller-supplied collaboration recov
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -49,7 +49,7 @@ test('zero callable implementers expose only caller-supplied collaboration recov
       "throw new Error('feature behavior is not implemented');\n",
     );
     sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -89,7 +89,7 @@ test('zero-provider caller patch imports only through an exact consumed collabor
   const signer = collaborationSigner(policy.trustedSigners[0]!.identity);
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -100,7 +100,7 @@ test('zero-provider caller patch imports only through an exact consumed collabor
       "throw new Error('feature behavior is not implemented');\n",
     );
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -197,7 +197,7 @@ test('zero-provider caller patch imports only through an exact consumed collabor
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           { environment: {} },
@@ -210,7 +210,7 @@ test('zero-provider caller patch imports only through an exact consumed collabor
       checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
         { environment: {} },
@@ -239,7 +239,7 @@ test('zero-provider caller patch validates frozen RED bytes before reserving its
   const signer = collaborationSigner(policy.trustedSigners[0]!.identity);
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -250,7 +250,7 @@ test('zero-provider caller patch validates frozen RED bytes before reserving its
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, originalTest);
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -324,7 +324,7 @@ test('durable consumed caller grant resumes the exact patch after interruption',
   const signer = collaborationSigner(policy.trustedSigners[0]!.identity);
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -335,7 +335,7 @@ test('durable consumed caller grant resumes the exact patch after interruption',
       "throw new Error('feature behavior is not implemented');\n",
     );
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {

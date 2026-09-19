@@ -1,7 +1,7 @@
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import {
   createFixtureRepository,
@@ -25,7 +25,7 @@ test('current lifecycle rejects a non-managed schema directly', () => {
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -51,7 +51,7 @@ test('start rejects protected and dirty repositories without leaving runtime sta
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -69,7 +69,7 @@ test('start rejects protected and dirty repositories without leaving runtime sta
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -91,7 +91,7 @@ test('active session pins a clean baseline, enforces scope, and releases its loc
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -102,7 +102,7 @@ test('active session pins a clean baseline, enforces scope, and releases its loc
       checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
       ).passed,
@@ -112,7 +112,7 @@ test('active session pins a clean baseline, enforces scope, and releases its loc
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -124,7 +124,7 @@ test('active session pins a clean baseline, enforces scope, and releases its loc
     const allowedCheck = checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -136,7 +136,7 @@ test('active session pins a clean baseline, enforces scope, and releases its loc
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
         ),

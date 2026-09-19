@@ -1,4 +1,4 @@
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import { startSession } from '../src/application/execute-task/session.ts';
 import fs from 'node:fs';
@@ -50,7 +50,7 @@ test('cross-agent RED schedules one session-independent implementation reservati
   const { repository } = createCrossAgentFixture('assertion');
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -61,7 +61,7 @@ test('cross-agent RED schedules one session-independent implementation reservati
       "throw new Error('feature behavior is not implemented');\n",
     );
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -236,7 +236,7 @@ test('provider worker binds task implementation output to the exact sealed subje
     const { repository } = createCrossAgentFixture('assertion');
     try {
       const session = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -248,7 +248,7 @@ test('provider worker binds task implementation output to the exact sealed subje
         "throw new Error('feature behavior is not implemented');\n",
       );
       const red = sealTaskStrategyRed(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
         {
@@ -304,7 +304,7 @@ test('provider completion rejects a digest-consistent wrong task subject before 
   const { repository } = createCrossAgentFixture('assertion');
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -316,7 +316,7 @@ test('provider completion rejects a digest-consistent wrong task subject before 
       "throw new Error('feature behavior is not implemented');\n",
     );
     sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -420,7 +420,7 @@ test('routine status and resume drive one durable cross-agent TDD transaction to
   const { repository, counterPath } = createCrossAgentFixture('assertion');
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -604,7 +604,7 @@ test('routine strategy resume schedules a fresh same-provider implementation ses
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -674,7 +674,7 @@ test('cross-agent implementation uses the sole provider in a fresh session', () 
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -685,7 +685,7 @@ test('cross-agent implementation uses the sole provider in a fresh session', () 
       "throw new Error('feature behavior is not implemented');\n",
     );
     sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -732,7 +732,7 @@ test('provider worker rejects a task implementation whose sealed RED owner has d
   const { repository } = createCrossAgentFixture('assertion');
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -744,7 +744,7 @@ test('provider worker rejects a task implementation whose sealed RED owner has d
       "throw new Error('feature behavior is not implemented');\n",
     );
     sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -781,7 +781,7 @@ test('provider worker cannot terminally succeed after its task implementation ow
   const { repository } = createCrossAgentFixture('assertion');
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -793,7 +793,7 @@ test('provider worker cannot terminally succeed after its task implementation ow
       "throw new Error('feature behavior is not implemented');\n",
     );
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -870,7 +870,7 @@ test('task implementation reservation rejects independently redigested replay me
   const { repository } = createCrossAgentFixture('assertion');
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -881,7 +881,7 @@ test('task implementation reservation rejects independently redigested replay me
       "throw new Error('feature behavior is not implemented');\n",
     );
     sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {

@@ -1,4 +1,4 @@
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -43,7 +43,7 @@ test('review-diff lifecycle binds a fresh provider reviewer to the exact Workflo
   const { repository, counterPath } = createReviewFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -172,7 +172,7 @@ test('review-diff refuses an evaluator-only result without a fixed-runner observ
   const { repository } = createReviewFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -240,7 +240,7 @@ test('review-diff provider worker refuses a candidate that changed after reserva
   const { repository } = createReviewFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -293,7 +293,7 @@ test('finalize pauses before staging for a required review and resumes without r
   const { repository, counterPath } = createReviewFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -384,7 +384,7 @@ test('a corrected candidate receives a distinct immutable TaskDiffReview generat
   const { repository, counterPath } = createReviewFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -443,7 +443,7 @@ test('review-diff uses a fresh same-provider Reviewer session without a grant', 
   });
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',

@@ -1,5 +1,5 @@
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const commitPlanningTransition =
@@ -77,7 +77,7 @@ test('an active change does not hold investigation, human-resolution, plan, or a
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const active = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -126,7 +126,7 @@ test('every transition entrance remains fail-closed for the active change', () =
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const active = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -777,10 +777,10 @@ test('managed task start recovers its shared change lock crash windows', () => {
         `
           const { startSession } =
             await import(${JSON.stringify(SESSION_MODULE_URL)});
-          const { productionChangeRoutingAdmissionReader } =
+          const { productionChangeContract } =
             await import(${JSON.stringify(new URL('../src/composition-root/change-routing-observation-production.ts', import.meta.url).href)});
           startSession(
-            productionChangeRoutingAdmissionReader,
+            productionChangeContract,
             ${JSON.stringify(repository)},
             'demo-change',
             '1.1',
@@ -796,7 +796,7 @@ test('managed task start recovers its shared change lock crash windows', () => {
         assert.equal(fs.existsSync(lockPath), false);
       }
       const started = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -824,7 +824,7 @@ test('managed task start reclaims dead locks bound to terminal sessions', () => 
       writeReadyV3ExemptChange(repository);
       commitPlanningTransition(repository, 'demo-change');
       const started = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -876,7 +876,7 @@ test('managed task start reclaims dead locks bound to terminal sessions', () => 
       );
 
       const successor = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -899,7 +899,7 @@ test('managed session locks reject unversioned markers without releasing them', 
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const started = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -952,7 +952,7 @@ test('managed lock release claim fences a concurrent successor start', () => {
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const started = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -1001,7 +1001,7 @@ test('managed lock release claim fences a concurrent successor start', () => {
           const fs = (await import('node:fs')).default;
           const { startSession } =
             await import(${JSON.stringify(SESSION_MODULE_URL)});
-          const { productionChangeRoutingAdmissionReader } =
+          const { productionChangeContract } =
             await import(${JSON.stringify(new URL('../src/composition-root/change-routing-observation-production.ts', import.meta.url).href)});
           const { releaseOwnedLock } =
             await import(${JSON.stringify(SESSION_STORE_MODULE_URL)});
@@ -1014,7 +1014,7 @@ test('managed lock release claim fences a concurrent successor start', () => {
               interleaved = true;
               try {
                 startSession(
-                  productionChangeRoutingAdmissionReader,
+                  productionChangeContract,
                   ${JSON.stringify(repository)},
                   'demo-change',
                   '1.1',
@@ -1043,7 +1043,7 @@ test('managed lock release claim fences a concurrent successor start', () => {
     assert.equal(fs.existsSync(lockPath), false);
 
     const successor = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -1062,7 +1062,7 @@ test('managed lock release treats a winning reclaimer as already released', () =
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const started = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',

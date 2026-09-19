@@ -1,4 +1,5 @@
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Prepares and seals RED evidence for task strategy transactions.
  *
@@ -70,14 +71,14 @@ export function inspectTaskStrategyTransaction(
 }
 
 export function sealTaskStrategyRed(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
   options: SealTaskStrategyRedOptions = {},
 ): TaskStrategyTransaction {
   return runSessionOperation(cwd, requestedSessionId, () =>
     sealTaskStrategyRedUnlocked(
-      routingAdmissionReader,
+      changeContract,
       cwd,
       requestedSessionId,
       options,
@@ -86,16 +87,12 @@ export function sealTaskStrategyRed(
 }
 
 function sealTaskStrategyRedUnlocked(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
   options: SealTaskStrategyRedOptions,
 ): TaskStrategyTransaction {
-  const inspection = inspectSession(
-    routingAdmissionReader,
-    cwd,
-    requestedSessionId,
-  );
+  const inspection = inspectSession(changeContract, cwd, requestedSessionId);
   const task = executionTask(inspection);
   const taskContractDigest = sha256(canonicalJson(task));
   const actorResolution = resolveActorIdentity({
@@ -146,7 +143,7 @@ function sealTaskStrategyRedUnlocked(
   }
 
   const prepared = prepareTaskStrategyRed(
-    routingAdmissionReader,
+    changeContract,
     cwd,
     requestedSessionId,
     inspection,
@@ -166,16 +163,12 @@ function sealTaskStrategyRedUnlocked(
  * The caller owns the repository and session lifecycle locks.
  */
 export function prepareTaskStrategyRedSuccessorUnlocked(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
   options: PrepareTaskStrategyRedSuccessorOptions,
 ): PreparedTaskStrategyRed {
-  const inspection = inspectSession(
-    routingAdmissionReader,
-    cwd,
-    requestedSessionId,
-  );
+  const inspection = inspectSession(changeContract, cwd, requestedSessionId);
   const task = executionTask(inspection);
   const taskContractDigest = sha256(canonicalJson(task));
   if (inspection.session.state !== 'active') {
@@ -186,7 +179,7 @@ export function prepareTaskStrategyRedSuccessorUnlocked(
     );
   }
   const prepared = prepareTaskStrategyRed(
-    routingAdmissionReader,
+    changeContract,
     cwd,
     requestedSessionId,
     inspection,
@@ -209,7 +202,7 @@ export function prepareTaskStrategyRedSuccessorUnlocked(
 }
 
 function prepareTaskStrategyRed(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
   inspection: ReturnType<typeof inspectSession>,
@@ -290,14 +283,9 @@ function prepareTaskStrategyRed(
       },
     );
   }
-  const after = inspectSession(
-    routingAdmissionReader,
-    cwd,
-    requestedSessionId,
-    {
-      expectedSession: inspection.session,
-    },
-  );
+  const after = inspectSession(changeContract, cwd, requestedSessionId, {
+    expectedSession: inspection.session,
+  });
   const afterPreview = previewExactStaging(
     after.git.repositoryRoot,
     after.session.baseline.head,

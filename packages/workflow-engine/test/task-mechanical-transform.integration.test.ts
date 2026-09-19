@@ -1,7 +1,7 @@
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const commitPlanningTransition =
@@ -99,7 +99,7 @@ test('mechanical transformation closure mints evidence only for the exact determ
     const checked = checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       fixture.repository,
       fixture.sessionId,
       {
@@ -156,7 +156,7 @@ test('compatibility check-complete-finish consumes reviewed mechanical evidence'
     checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       fixture.repository,
       fixture.sessionId,
       { environment: {} },
@@ -256,7 +256,7 @@ test('mechanical transformation closure permits an exact reviewed historical ret
       checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         withDisposition.repository,
         withDisposition.sessionId,
         {
@@ -295,7 +295,7 @@ test('mechanical closure observes and dispositions retained terms outside mutati
       checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         fixture.repository,
         fixture.sessionId,
         {
@@ -334,7 +334,7 @@ test('mechanical closure scans and dispositions the full tracked tree outside ta
       checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         fixture.repository,
         fixture.sessionId,
         {
@@ -394,7 +394,7 @@ test('mechanical transformation evidence is candidate-bound without a wall-clock
       checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         fixture.repository,
         fixture.sessionId,
         {
@@ -433,7 +433,7 @@ test('mechanical transformation closure supports deterministic path-term renames
       checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         fixture.repository,
         fixture.sessionId,
         {
@@ -530,7 +530,7 @@ function createMechanicalFixture(options: MechanicalFixtureOptions): {
   });
   commitPlanningTransition(repository, 'demo-change');
   const session = startSession(
-    productionChangeRoutingAdmissionReader,
+    productionChangeContract,
     repository,
     'demo-change',
     '1.1',
@@ -555,7 +555,7 @@ function assertCheckFails(
       checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         fixture.repository,
         fixture.sessionId,
         {

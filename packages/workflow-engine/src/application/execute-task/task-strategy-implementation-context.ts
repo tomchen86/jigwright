@@ -1,4 +1,5 @@
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Builds implementation subjects, status, and collaboration authority from
  * current RED state.
@@ -46,7 +47,7 @@ import type {
   TaskStrategyImplementationStatus,
 } from './task-strategy-implementation-lifecycle.ts';
 export function createTaskStrategyImplementationContext(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   runtime: TaskStrategyImplementationRuntimeBindings,
 ) {
   const {
@@ -185,7 +186,7 @@ export function createTaskStrategyImplementationContext(
       );
     }
     const inspection = inspectSession(
-      routingAdmissionReader,
+      changeContract,
       cwd,
       context.session.sessionId,
       {
@@ -274,7 +275,7 @@ export function createTaskStrategyImplementationContext(
     transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>,
   ) {
     const inspection = inspectSession(
-      routingAdmissionReader,
+      changeContract,
       cwd,
       context.session.sessionId,
       {
@@ -308,7 +309,7 @@ export function createTaskStrategyImplementationContext(
   }> {
     const initialSubject = createSubject(transaction);
     const inspection = inspectSession(
-      routingAdmissionReader,
+      changeContract,
       cwd,
       context.session.sessionId,
       {

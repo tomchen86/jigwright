@@ -1,4 +1,5 @@
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Resumes deterministic mechanical transformations through recoverable file
  * publication.
@@ -132,7 +133,7 @@ export type ResumeTaskMechanicalTransformationOptions = Readonly<{
 /** Read-only projection status; it never creates evidence or runtime state. */
 export function inspectTaskMechanicalTransformLifecycle(
   reviewedAssets: ReviewedGeneratedAssetInventory,
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
 ): TaskMechanicalTransformLifecycleStatus | null {
@@ -144,21 +145,16 @@ export function inspectTaskMechanicalTransformLifecycle(
   const projectionApplied =
     finalizeTransaction !== null &&
     finalizeTransaction.phase !== 'projection-prepared';
-  const inspection = inspectSession(
-    routingAdmissionReader,
-    cwd,
-    requestedSessionId,
-    {
-      expectedSession: context.session,
-      ...(projectionApplied
-        ? {
-            projectedTaskIds: [...finalizeTransaction.completedTaskIds],
-            projectionSourceDigest: finalizeTransaction.projectionSourceDigest,
-            authorizedTransitionPaths: [...finalizeTransaction.transitionPaths],
-          }
-        : {}),
-    },
-  );
+  const inspection = inspectSession(changeContract, cwd, requestedSessionId, {
+    expectedSession: context.session,
+    ...(projectionApplied
+      ? {
+          projectedTaskIds: [...finalizeTransaction.completedTaskIds],
+          projectionSourceDigest: finalizeTransaction.projectionSourceDigest,
+          authorizedTransitionPaths: [...finalizeTransaction.transitionPaths],
+        }
+      : {}),
+  });
   return inspectPreparedMechanicalTransformLifecycle(
     reviewedAssets,
     inspection,
@@ -216,7 +212,7 @@ export function inspectPreparedMechanicalTransformLifecycle(
  */
 export function resumeTaskMechanicalTransformation(
   reviewedAssets: ReviewedGeneratedAssetInventory,
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
   options: ResumeTaskMechanicalTransformationOptions = {},
@@ -226,7 +222,7 @@ export function resumeTaskMechanicalTransformation(
     withSessionOperation(initial.runtime, requestedSessionId, () => {
       assertOwned();
       const inspection = inspectSession(
-        routingAdmissionReader,
+        changeContract,
         cwd,
         requestedSessionId,
       );
@@ -293,11 +289,7 @@ export function resumeTaskMechanicalTransformation(
       }
       options.testAfterProjectionPublish?.();
       assertOwned();
-      const current = inspectSession(
-        routingAdmissionReader,
-        cwd,
-        requestedSessionId,
-      );
+      const current = inspectSession(changeContract, cwd, requestedSessionId);
       if (!projectionIsCurrent(current, plan)) {
         throw workflowError(
           'TASK_MECHANICAL_TRANSFORMATION_RECOVERY_REQUIRED',

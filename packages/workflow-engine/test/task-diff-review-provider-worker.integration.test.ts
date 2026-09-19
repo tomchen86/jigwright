@@ -3,7 +3,7 @@ import { loadStableValidatedChangeContract } from '../src/composition-root/valid
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import {
   productionChangeRoutingInspector,
-  productionChangeRoutingAdmissionReader,
+  productionChangeContract,
 } from '../src/composition-root/change-routing-observation-production.ts';
 import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
 import { collaborationGrantCodec as productionArchiveGrantCodec } from '../src/runtime/grants/grant-services.ts';
@@ -360,7 +360,7 @@ test('documentation review opens exact remediation scope and requires a fresh fi
     );
     assert.doesNotThrow(() =>
       inspectSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         fixture.repository,
         fixture.sessionId,
       ),
@@ -372,7 +372,7 @@ test('documentation review opens exact remediation scope and requires a fresh fi
     assert.throws(
       () =>
         inspectSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
         ),
@@ -699,7 +699,7 @@ function createTaskDiffWorkerFixture(
   );
   commitPlanningTransition(repository, 'demo-change');
   const session = startSession(
-    productionChangeRoutingAdmissionReader,
+    productionChangeContract,
     repository,
     'demo-change',
     '1.1',

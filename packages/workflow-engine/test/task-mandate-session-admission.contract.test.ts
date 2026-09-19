@@ -1,5 +1,5 @@
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const commitPlanningTransition =
@@ -61,7 +61,7 @@ test('managed session activation binds the exact top-level mandate without confl
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, CHANGE_ID);
     const session = startMandatedSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       CHANGE_ID,
       '1.1',

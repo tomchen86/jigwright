@@ -1,7 +1,7 @@
 import { taskMandateOperations } from './task-mandate-production.ts';
 import { planningTransitionExecution as planningExecution } from './planning-execution-epoch-production.ts';
 import {
-  productionChangeRoutingAdmissionReader,
+  productionChangeContract,
   productionChangeRoutingInspector,
 } from './change-routing-observation-production.ts';
 import { ciPlanningReplay } from './ci-replay-production.ts';
@@ -33,7 +33,7 @@ export function openTask(
       planningExecution,
       planningReplay: ciPlanningReplay,
       taskMandate: taskMandateOperations,
-      routingAdmissionReader: productionChangeRoutingAdmissionReader,
+      changeContract: productionChangeContract,
       routingInspector: productionChangeRoutingInspector,
       managedDocuments,
       loadChangeContract,

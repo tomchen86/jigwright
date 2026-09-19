@@ -1,5 +1,5 @@
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { planningAssuranceDependencies } from '../src/composition-root/planning-assurance-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
@@ -697,7 +697,7 @@ test('plan-commit shares the change lock with active task sessions', () => {
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -727,7 +727,7 @@ test('plan-commit proceeds in an independent change worktree while another chang
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',

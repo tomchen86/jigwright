@@ -1,6 +1,6 @@
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import { startSession } from '../src/application/execute-task/session.ts';
 import path from 'node:path';
@@ -31,7 +31,7 @@ test('routine resume revises an in-scope sealed RED without a planning revision'
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -124,7 +124,7 @@ test('ordinary resume discovers every RED revision crash before current-ref publ
     );
     try {
       const session = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -133,7 +133,7 @@ test('ordinary resume discovers every RED revision crash before current-ref publ
       fs.mkdirSync(path.dirname(testPath), { recursive: true });
       fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
       const predecessor = sealTaskStrategyRed(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
         {
@@ -146,7 +146,7 @@ test('ordinary resume discovers every RED revision crash before current-ref publ
       fs.writeFileSync(implementationPath, 'export const feature = true;\n');
       assert.ok(
         adoptCurrentTaskStrategyImplementation(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
         ),
@@ -219,7 +219,7 @@ test('a rejected RED revision preflight cannot poison the next exact request', (
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -228,7 +228,7 @@ test('a rejected RED revision preflight cannot poison the next exact request', (
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
     const predecessor = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -279,7 +279,7 @@ test('RED revision removes only the exact imported implementation and never acce
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -288,7 +288,7 @@ test('RED revision removes only the exact imported implementation and never acce
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
     sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -301,7 +301,7 @@ test('RED revision removes only the exact imported implementation and never acce
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     assert.ok(
       adoptCurrentTaskStrategyImplementation(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
       ),
@@ -353,7 +353,7 @@ test('RED revision preserves out-of-scope bytes while refusing to reseal them', 
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -362,7 +362,7 @@ test('RED revision preserves out-of-scope bytes while refusing to reseal them', 
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
     sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -425,7 +425,7 @@ test('RED revision restores every authenticated correction head in reverse order
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -434,7 +434,7 @@ test('RED revision restores every authenticated correction head in reverse order
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
     const predecessor = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -447,7 +447,7 @@ test('RED revision restores every authenticated correction head in reverse order
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     assert.ok(
       adoptCurrentTaskStrategyImplementation(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
       ),
@@ -457,7 +457,7 @@ test('RED revision restores every authenticated correction head in reverse order
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           { environment: {} },
@@ -467,7 +467,7 @@ test('RED revision restores every authenticated correction head in reverse order
     fs.writeFileSync(implementationPath, 'export const corrected = true;\n');
     assert.ok(
       adoptCurrentTaskStrategyCorrection(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
       ),

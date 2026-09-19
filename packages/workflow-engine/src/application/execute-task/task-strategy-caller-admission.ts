@@ -1,4 +1,5 @@
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 /**
  * Admits caller-supplied implementations and reserves their correction
@@ -47,7 +48,7 @@ import type {
 } from './task-strategy-implementation-lifecycle.ts';
 import type { createTaskStrategyImplementationContext } from './task-strategy-implementation-context.ts';
 export function createTaskStrategyCallerAdmission(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   roleAdmission: Pick<
     RoleAdmissionServices,
     'authorizeGrantedOrdinaryRole' | 'admitRoleResult'
@@ -134,7 +135,7 @@ export function createTaskStrategyCallerAdmission(
     );
     if (reservation === null) {
       const validation = validateTaskStrategyCallerPatch(
-        routingAdmissionReader,
+        changeContract,
         context.git.repositoryRoot,
         context.session.sessionId,
         {
@@ -411,7 +412,7 @@ export function createTaskStrategyCallerAdmission(
       );
     }
     const imported = importTaskStrategyCallerPatchUnderLifecycleLock(
-      routingAdmissionReader,
+      changeContract,
       context.git.repositoryRoot,
       context.session.sessionId,
       {

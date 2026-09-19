@@ -1,7 +1,7 @@
 import { inspectSession } from '../src/application/finalize/verification.ts';
 import {
   productionChangeRoutingInspector,
-  productionChangeRoutingAdmissionReader,
+  productionChangeContract,
 } from '../src/composition-root/change-routing-observation-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const renderHandoff = renderHandoffWithContractReader.bind(
@@ -70,9 +70,12 @@ test('two declared disjoint changes own durable isolated writers and an undeclar
 
     let admissionReads = 0;
     const firstSession = startSession(
-      (root, changeId) => {
-        admissionReads += 1;
-        return productionChangeRoutingAdmissionReader(root, changeId);
+      {
+        ...productionChangeContract,
+        admissionReader: (root, changeId) => {
+          admissionReads += 1;
+          return productionChangeContract.admissionReader(root, changeId);
+        },
       },
       first.worktree,
       'demo-change',
@@ -89,9 +92,12 @@ test('two declared disjoint changes own durable isolated writers and an undeclar
       assert.throws(
         () =>
           inspectSession(
-            () => {
-              verificationReads += 1;
-              throw routingChanged;
+            {
+              ...productionChangeContract,
+              admissionReader: () => {
+                verificationReads += 1;
+                throw routingChanged;
+              },
             },
             first.worktree,
             firstSession.sessionId,
@@ -105,7 +111,7 @@ test('two declared disjoint changes own durable isolated writers and an undeclar
       'verification never caches a previous routing admission',
     );
     const secondSession = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       second.worktree,
       'second-change',
       '1.1',
@@ -136,7 +142,7 @@ test('two declared disjoint changes own durable isolated writers and an undeclar
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           third.worktree,
           'third-change',
           '1.1',
@@ -206,13 +212,13 @@ test('status inspects each concurrent active session in its own durable worktree
     fixtures.push(primary, concurrent);
 
     const primarySession = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       primary.worktree,
       'demo-change',
       '1.1',
     );
     const concurrentSession = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       concurrent.worktree,
       'second-change',
       '1.1',
@@ -353,7 +359,7 @@ test('a routed writer keeps its source workset through completion projection and
     );
     const worktree = fixture.worktree;
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       worktree,
       'demo-change',
       '1.1',
@@ -376,7 +382,7 @@ test('a routed writer keeps its source workset through completion projection and
     const finalized = finalizeTask(worktree, session.sessionId);
     assert.equal(finalized.session.finishReportId !== undefined, true);
     const committed = commitSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       worktree,
       session.sessionId,
       'Complete routed fixture task',
@@ -411,7 +417,7 @@ test('a second task writer is rejected when its declared write scope overlaps', 
     fixtures.push(first, second);
 
     startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       first.worktree,
       'demo-change',
       '1.1',
@@ -419,7 +425,7 @@ test('a second task writer is rejected when its declared write scope overlaps', 
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           second.worktree,
           'second-change',
           '1.1',
@@ -457,7 +463,7 @@ test('concurrent writers reject distinct paths in the same serialized policy cla
     fixtures.push(first, second);
 
     startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       first.worktree,
       'demo-change',
       '1.1',
@@ -465,7 +471,7 @@ test('concurrent writers reject distinct paths in the same serialized policy cla
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           second.worktree,
           'second-change',
           '1.1',
@@ -528,7 +534,7 @@ test('concurrent destructive checks require distinct disposable database leases 
     };
 
     startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       first.worktree,
       'demo-change',
       '1.1',
@@ -537,7 +543,7 @@ test('concurrent destructive checks require distinct disposable database leases 
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           second.worktree,
           'second-change',
           '1.1',
@@ -578,7 +584,7 @@ test('concurrent writers reject a shared guard-declared exclusive resource', () 
     fixtures.push(first, second);
 
     startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       first.worktree,
       'demo-change',
       '1.1',
@@ -586,7 +592,7 @@ test('concurrent writers reject a shared guard-declared exclusive resource', () 
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           second.worktree,
           'second-change',
           '1.1',

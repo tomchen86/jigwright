@@ -1,6 +1,6 @@
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const commitPlanningTransition =
@@ -108,7 +108,7 @@ test('mechanical resume never overwrites foreign target bytes introduced after p
       () =>
         resumeTaskMechanicalTransformation(
           reviewedGeneratedAssets,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -136,7 +136,7 @@ test('mechanical target replacement preserves a foreign inode introduced after f
       () =>
         resumeTaskMechanicalTransformation(
           reviewedGeneratedAssets,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -173,7 +173,7 @@ test('mechanical target creation never overwrites a foreign pathname claimed aft
       () =>
         resumeTaskMechanicalTransformation(
           reviewedGeneratedAssets,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -199,7 +199,7 @@ test('mechanical source removal preserves a foreign inode introduced after final
       () =>
         resumeTaskMechanicalTransformation(
           reviewedGeneratedAssets,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -230,7 +230,7 @@ test('ordinary resume recovers a target quarantined before no-replace publicatio
       () =>
         resumeTaskMechanicalTransformation(
           reviewedGeneratedAssets,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -258,7 +258,7 @@ test('ordinary resume recovers a source quarantined before exact removal', () =>
       () =>
         resumeTaskMechanicalTransformation(
           reviewedGeneratedAssets,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -286,7 +286,7 @@ test('ordinary resume recovers a published target hard link before temporary cle
       () =>
         resumeTaskMechanicalTransformation(
           reviewedGeneratedAssets,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -358,7 +358,7 @@ test('ordinary resume recovers an interrupted journal-bound mechanical projectio
       () =>
         resumeTaskMechanicalTransformation(
           reviewedGeneratedAssets,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -390,7 +390,7 @@ test('ordinary resume completes the journal when a crash leaves exact projected 
       () =>
         resumeTaskMechanicalTransformation(
           reviewedGeneratedAssets,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -423,7 +423,7 @@ test('status fails closed when a crashed projection path drifts from journal-bou
       () =>
         resumeTaskMechanicalTransformation(
           reviewedGeneratedAssets,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -454,7 +454,7 @@ test('mechanical recovery failure returns one literal resume command', () => {
       () =>
         resumeTaskMechanicalTransformation(
           reviewedGeneratedAssets,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -539,7 +539,7 @@ test('mechanical status inspection remains strictly read-only', () => {
     assert.equal(
       inspectTaskMechanicalTransformLifecycle(
         reviewedGeneratedAssets,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         fixture.repository,
         fixture.sessionId,
       )?.state,
@@ -668,7 +668,7 @@ function createMechanicalLifecycleFixture(
   });
   commitPlanningTransition(repository, 'demo-change');
   const session = startSession(
-    productionChangeRoutingAdmissionReader,
+    productionChangeContract,
     repository,
     'demo-change',
     '1.1',

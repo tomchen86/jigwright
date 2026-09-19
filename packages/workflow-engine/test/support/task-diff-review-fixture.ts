@@ -1,4 +1,4 @@
-import { productionChangeRoutingAdmissionReader } from '../../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../../src/composition-root/change-routing-observation-production.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -38,7 +38,7 @@ export function commitCurrentFixtureTask(
   const taskId = options.taskId ?? '1.1';
   const implementationPath = options.implementationPath ?? 'src/feature.ts';
   const session = startSession(
-    productionChangeRoutingAdmissionReader,
+    productionChangeContract,
     repository,
     changeId,
     taskId,
@@ -66,7 +66,7 @@ export function commitCurrentFixtureTask(
   );
   finalizeTask(repository, session.sessionId);
   return commitSession(
-    productionChangeRoutingAdmissionReader,
+    productionChangeContract,
     repository,
     session.sessionId,
     options.message ?? 'Complete demo execution',

@@ -2,7 +2,7 @@ import { maintainerManifestOperations } from '../src/composition-root/maintainer
 import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const commitPlanningTransition =
@@ -207,7 +207,7 @@ test(
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentChange(repository);
       const session = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -218,7 +218,7 @@ test(
           checkSession(
             maintainerManifestOperations,
             productionTaskStrategyExecutionGate,
-            productionChangeRoutingAdmissionReader,
+            productionChangeContract,
             repository,
             session.sessionId,
           ),
@@ -256,7 +256,7 @@ test(
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentChange(repository);
       const session = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -267,7 +267,7 @@ test(
           checkSession(
             maintainerManifestOperations,
             productionTaskStrategyExecutionGate,
-            productionChangeRoutingAdmissionReader,
+            productionChangeContract,
             repository,
             session.sessionId,
           ),
@@ -290,7 +290,7 @@ test('package runner rejects identities contradicting npm/workspace aliases', ()
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentChange(repository);
       const session = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -301,7 +301,7 @@ test('package runner rejects identities contradicting npm/workspace aliases', ()
           checkSession(
             maintainerManifestOperations,
             productionTaskStrategyExecutionGate,
-            productionChangeRoutingAdmissionReader,
+            productionChangeContract,
             repository,
             session.sessionId,
           ),

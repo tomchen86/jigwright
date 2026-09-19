@@ -2,7 +2,7 @@ import { maintainerManifestOperations } from '../src/composition-root/maintainer
 import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const commitPlanningTransition =
@@ -80,7 +80,7 @@ test('start requires combined OpenSpec readiness before creating runtime state',
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -109,7 +109,7 @@ test('start rejects repository mutation during its in-lock OpenSpec validation',
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -137,7 +137,7 @@ test('check rejects OpenSpec mutation of an already-dirty allowed path', () => {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -153,7 +153,7 @@ test('check rejects OpenSpec mutation of an already-dirty allowed path', () => {
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
         ),
@@ -259,7 +259,7 @@ test('check rejects every combined-contract drift class before executing checks'
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentChange(repository);
       const session = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -271,7 +271,7 @@ test('check rejects every combined-contract drift class before executing checks'
           checkSession(
             maintainerManifestOperations,
             productionTaskStrategyExecutionGate,
-            productionChangeRoutingAdmissionReader,
+            productionChangeContract,
             repository,
             session.sessionId,
           ),
@@ -297,7 +297,7 @@ test('check rejects a forged legacy artifact map with imported runtime drift', (
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -326,7 +326,7 @@ test('check rejects a forged legacy artifact map with imported runtime drift', (
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
         ),
@@ -359,7 +359,7 @@ test('check rejects the exact historical task 3.2 artifact map without upgrading
     git(repository, ['checkout', '-b', `work/${changeId}`]);
     prepareCurrentChange(repository, changeId);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       changeId,
       '3.2',
@@ -400,7 +400,7 @@ test('check rejects the exact historical task 3.2 artifact map without upgrading
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
         ),
@@ -445,7 +445,7 @@ test('an unmanaged schema cannot enter current lifecycle state', () => {
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -504,7 +504,7 @@ test('finish revalidates combined readiness before rerunning checks or staging',
       additionalPendingTask: true,
     });
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -513,7 +513,7 @@ test('finish revalidates combined readiness before rerunning checks or staging',
     checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -549,7 +549,7 @@ test('finish rolls back exact staging when readiness changes after staging', () 
       additionalPendingTask: true,
     });
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -558,7 +558,7 @@ test('finish rolls back exact staging when readiness changes after staging', () 
     checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );

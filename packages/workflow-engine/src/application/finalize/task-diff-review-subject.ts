@@ -1,4 +1,5 @@
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Reconstructs checked review candidates and their documentation
  * requirements.
@@ -46,7 +47,7 @@ import type { BeginTaskDiffReviewOptions } from './task-diff-review-contracts.ts
 import type { createTaskDiffReviewCommonModule } from './task-diff-review-common.ts';
 
 export function createTaskDiffReviewSubjectModule(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   runtime: TaskDiffReviewRuntimeBindings,
   common: ReturnType<typeof createTaskDiffReviewCommonModule>,
 ) {
@@ -110,17 +111,12 @@ export function createTaskDiffReviewSubjectModule(
     ) {
       throw reviewNotReady();
     }
-    const inspection = inspectSession(
-      routingAdmissionReader,
-      cwd,
-      requestedSessionId,
-      {
-        expectedSession: context.session,
-        projectedTaskIds: [...transaction.completedTaskIds],
-        projectionSourceDigest: transaction.projectionSourceDigest,
-        authorizedTransitionPaths: [...transaction.transitionPaths],
-      },
-    );
+    const inspection = inspectSession(changeContract, cwd, requestedSessionId, {
+      expectedSession: context.session,
+      projectedTaskIds: [...transaction.completedTaskIds],
+      projectionSourceDigest: transaction.projectionSourceDigest,
+      authorizedTransitionPaths: [...transaction.transitionPaths],
+    });
     const current = inspection.session.documentationRemediation;
     const reviewRecordDigests = [
       ...(current?.reviewRecordDigests ?? []),
@@ -182,7 +178,7 @@ export function createTaskDiffReviewSubjectModule(
     }
 
     const inspection = inspectSession(
-      routingAdmissionReader,
+      changeContract,
       cwd,
       context.session.sessionId,
       {
@@ -554,7 +550,7 @@ export function createTaskDiffReviewSubjectModule(
     }
     if (transaction !== null) {
       const inspection = inspectSession(
-        routingAdmissionReader,
+        changeContract,
         cwd,
         context.session.sessionId,
         {
@@ -711,7 +707,7 @@ export function createTaskDiffReviewSubjectModule(
     }
 
     const task = inspectSession(
-      routingAdmissionReader,
+      changeContract,
       cwd,
       context.session.sessionId,
       {

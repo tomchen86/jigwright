@@ -4,7 +4,7 @@ import { planningTransitionExecution as productionPlanningExecution } from '../s
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
 import {
   productionChangeRoutingInspector,
-  productionChangeRoutingAdmissionReader,
+  productionChangeContract,
 } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
@@ -105,7 +105,7 @@ test('document policy cannot invent an engine-owned completion projection', () =
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -117,7 +117,7 @@ test('document policy cannot invent an engine-owned completion projection', () =
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
         ),
@@ -216,7 +216,7 @@ test('completion and finish evidence classify the exact projection union', () =>
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -256,7 +256,7 @@ test('the compatible completion sequence cannot bypass documentation review', ()
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -266,7 +266,7 @@ test('the compatible completion sequence cannot bypass documentation review', ()
     checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );

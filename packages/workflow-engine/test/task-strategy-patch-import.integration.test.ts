@@ -1,6 +1,6 @@
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import { startSession } from '../src/application/execute-task/session.ts';
 import path from 'node:path';
@@ -34,7 +34,7 @@ test('cross-agent patch validation derives one bounded implementation tree witho
   const { repository } = createCrossAgentFixture('assertion');
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -46,7 +46,7 @@ test('cross-agent patch validation derives one bounded implementation tree witho
       "throw new Error('feature behavior is not implemented');\n",
     );
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -65,7 +65,7 @@ test('cross-agent patch validation derives one bounded implementation tree witho
     assert.throws(
       () =>
         validateTaskStrategyPatch(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -77,7 +77,7 @@ test('cross-agent patch validation derives one bounded implementation tree witho
       hasCode('TASK_STRATEGY_IMPLEMENTER_REQUIRED'),
     );
     const validation = validateTaskStrategyPatch(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -105,7 +105,7 @@ test('patch validation rejects frozen tests, path escape, and unsafe file modes 
   const { repository } = createCrossAgentFixture('assertion');
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -116,7 +116,7 @@ test('patch validation rejects frozen tests, path escape, and unsafe file modes 
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, originalTest);
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -133,7 +133,7 @@ test('patch validation rejects frozen tests, path escape, and unsafe file modes 
     assert.throws(
       () =>
         validateTaskStrategyPatch(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -155,7 +155,7 @@ test('patch validation rejects frozen tests, path escape, and unsafe file modes 
     assert.throws(
       () =>
         validateTaskStrategyPatch(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -177,7 +177,7 @@ test('patch validation rejects frozen tests, path escape, and unsafe file modes 
     assert.throws(
       () =>
         validateTaskStrategyPatch(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -200,7 +200,7 @@ test('single-agent patch validation permits the RED author without weakening pat
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -212,7 +212,7 @@ test('single-agent patch validation permits the RED author without weakening pat
       "throw new Error('feature behavior is not implemented');\n",
     );
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -229,7 +229,7 @@ test('single-agent patch validation permits the RED author without weakening pat
     fs.rmSync(implementationPath);
 
     const validation = validateTaskStrategyPatch(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -253,7 +253,7 @@ test('single-agent patch validation rejects an actor other than the sealed RED a
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -265,7 +265,7 @@ test('single-agent patch validation rejects an actor other than the sealed RED a
       "throw new Error('feature behavior is not implemented');\n",
     );
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -284,7 +284,7 @@ test('single-agent patch validation rejects an actor other than the sealed RED a
     assert.throws(
       () =>
         validateTaskStrategyPatch(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -307,7 +307,7 @@ test('patch import persists authority before mutation and exact replay reaches e
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -319,7 +319,7 @@ test('patch import persists authority before mutation and exact replay reaches e
       "throw new Error('feature behavior is not implemented');\n",
     );
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -339,7 +339,7 @@ test('patch import persists authority before mutation and exact replay reaches e
     assert.throws(
       () =>
         importTaskStrategyPatch(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -365,7 +365,7 @@ test('patch import persists authority before mutation and exact replay reaches e
     assert.throws(
       () =>
         importTaskStrategyPatch(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -395,7 +395,7 @@ test('patch import persists authority before mutation and exact replay reaches e
     );
 
     const imported = importTaskStrategyPatch(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -411,7 +411,7 @@ test('patch import persists authority before mutation and exact replay reaches e
     );
     assert.deepEqual(
       importTaskStrategyPatch(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
         {
@@ -426,7 +426,7 @@ test('patch import persists authority before mutation and exact replay reaches e
     const checked = checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -447,7 +447,7 @@ test('patch-applied crash reconciles the exact candidate and later drift stales 
   );
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -459,7 +459,7 @@ test('patch-applied crash reconciles the exact candidate and later drift stales 
       "throw new Error('feature behavior is not implemented');\n",
     );
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -478,7 +478,7 @@ test('patch-applied crash reconciles the exact candidate and later drift stales 
     assert.throws(
       () =>
         importTaskStrategyPatch(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -495,7 +495,7 @@ test('patch-applied crash reconciles the exact candidate and later drift stales 
       'export const feature = true;\n',
     );
     const recovered = importTaskStrategyPatch(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -512,7 +512,7 @@ test('patch-applied crash reconciles the exact candidate and later drift stales 
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           { environment: {} },
@@ -528,7 +528,7 @@ test('a durable prepared patch reservation rejects a different patch before eith
   const { repository } = createCrossAgentFixture('assertion');
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -540,7 +540,7 @@ test('a durable prepared patch reservation rejects a different patch before eith
       "throw new Error('feature behavior is not implemented');\n",
     );
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -563,7 +563,7 @@ test('a durable prepared patch reservation rejects a different patch before eith
     assert.throws(
       () =>
         importTaskStrategyPatch(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -578,7 +578,7 @@ test('a durable prepared patch reservation rejects a different patch before eith
     assert.throws(
       () =>
         importTaskStrategyPatch(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -599,7 +599,7 @@ test('patch replay rejects independently redigested reservation metadata', () =>
   const { repository } = createCrossAgentFixture('assertion');
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -611,7 +611,7 @@ test('patch replay rejects independently redigested reservation metadata', () =>
       "throw new Error('feature behavior is not implemented');\n",
     );
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -627,7 +627,7 @@ test('patch replay rejects independently redigested reservation metadata', () =>
     ]);
     fs.rmSync(implementationPath);
     const imported = importTaskStrategyPatch(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -659,7 +659,7 @@ test('patch replay rejects independently redigested reservation metadata', () =>
     assert.throws(
       () =>
         importTaskStrategyPatch(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {

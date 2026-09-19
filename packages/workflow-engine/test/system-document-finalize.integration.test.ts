@@ -10,7 +10,7 @@ import { localEngineSelectionReaders } from './support/local-engine-selection-ho
 import { getSession } from '../src/application/execute-task/session.ts';
 import { readFinalizeTransaction } from '../src/runtime/repository-transaction/finalize-transaction.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const commitPlanningTransition =
@@ -445,7 +445,7 @@ function prepare() {
   writeReadyV3ExemptChange(repository);
   commitPlanningTransition(repository, 'demo-change');
   const session = startSession(
-    productionChangeRoutingAdmissionReader,
+    productionChangeContract,
     repository,
     'demo-change',
     '1.1',
@@ -465,7 +465,7 @@ function finalizationWithDocuments(
     localEngineSelectionReaders,
     maintainerManifestOperations,
     productionTaskStrategyExecutionGate,
-    productionChangeRoutingAdmissionReader,
+    productionChangeContract,
     taskDiffReview,
     managedDocuments,
     assertCurrentImplementationReconciliation,
@@ -505,7 +505,7 @@ test('ordinary finalization uses the injected document receiver at the original 
         finalizeTaskUnlocked(
           reviewedGeneratedAssets,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           taskDiffReview,
           managedDocuments,
           assertCurrentImplementationReconciliation,

@@ -4,7 +4,7 @@ import { planningTransitionExecution as productionPlanningExecution } from '../s
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
 import {
   productionChangeRoutingInspector,
-  productionChangeRoutingAdmissionReader,
+  productionChangeContract,
 } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
@@ -190,7 +190,7 @@ test(
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentV3Change(repository, { additionalPendingTask: true });
       const session = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -199,7 +199,7 @@ test(
       checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
       );
@@ -242,7 +242,7 @@ test('completion evidence becomes stale after ignored content changes', () => {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -251,7 +251,7 @@ test('completion evidence becomes stale after ignored content changes', () => {
     checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -274,7 +274,7 @@ test('current report authorizes completion, exact staging, and commit', () => {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository, { additionalPendingTask: true });
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -289,7 +289,7 @@ test('current report authorizes completion, exact staging, and commit', () => {
     const checked = checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -320,7 +320,7 @@ test('current report authorizes completion, exact staging, and commit', () => {
     assert.equal(git(repository, ['diff', '--name-only']).trim(), '');
 
     const committed = commitSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'Complete demo task',
@@ -347,7 +347,7 @@ test('current report authorizes completion, exact staging, and commit', () => {
       [committed.commitHash],
     );
     const next = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.2',
@@ -376,7 +376,7 @@ test('a held session operation rejects competing completion transitions without 
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository, { additionalPendingTask: true });
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -385,7 +385,7 @@ test('a held session operation rejects competing completion transitions without 
     checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -401,7 +401,7 @@ test('a held session operation rejects competing completion transitions without 
           checkSession(
             maintainerManifestOperations,
             productionTaskStrategyExecutionGate,
-            productionChangeRoutingAdmissionReader,
+            productionChangeContract,
             repository,
             session.sessionId,
           ),
@@ -409,7 +409,7 @@ test('a held session operation rejects competing completion transitions without 
         () => finishSession(repository, session.sessionId),
         () =>
           commitSession(
-            productionChangeRoutingAdmissionReader,
+            productionChangeContract,
             repository,
             session.sessionId,
             'Competing commit',
@@ -438,7 +438,7 @@ test('finish preserves manual staging when current completion evidence exists', 
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository, { additionalPendingTask: true });
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -448,7 +448,7 @@ test('finish preserves manual staging when current completion evidence exists', 
     checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -483,7 +483,7 @@ test('managed commit refuses a moved branch and its ref CAS preserves the compet
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository, { additionalPendingTask: true });
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -492,7 +492,7 @@ test('managed commit refuses a moved branch and its ref CAS preserves the compet
     checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -517,7 +517,7 @@ test('managed commit refuses a moved branch and its ref CAS preserves the compet
     assert.throws(
       () =>
         commitSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           'Complete demo task',
@@ -586,7 +586,7 @@ test('projected single-pass finalize checks and stages one exact final tree', ()
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -649,7 +649,7 @@ test('projected single-pass finalize checks and stages one exact final tree', ()
     }
 
     commitSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'Complete once',
@@ -742,7 +742,7 @@ test('finalize adds terminal policy checks only when its projection closes the t
     prepareCurrentV3Change(repository);
 
     const first = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -758,14 +758,14 @@ test('finalize adds terminal policy checks only when its projection closes the t
     assert.deepEqual(firstTransaction?.requiredChecks, ['workflow-tests']);
     assert.equal(firstTransaction?.checkEscalation, null);
     commitSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       first.sessionId,
       'Complete first task',
     );
 
     const second = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.2',
@@ -902,7 +902,7 @@ test('compatible completion cannot bypass final review or terminal checks', () =
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -912,7 +912,7 @@ test('compatible completion cannot bypass final review or terminal checks', () =
     checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -935,7 +935,7 @@ test('projected single-pass commit rejects a mismatched frozen candidate tree', 
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -975,7 +975,7 @@ test('projected single-pass commit rejects a mismatched frozen candidate tree', 
     assert.throws(
       () =>
         commitSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           'Reject mismatch',
@@ -1038,7 +1038,7 @@ test('projected single-pass failure restores projections and leaves no evidence 
     const beforeTaskMode = fs.statSync(tasksPath).mode;
     const beforeHandoffMode = fs.statSync(handoffPath).mode;
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -1082,7 +1082,7 @@ test('projected single-pass rejects post-check worktree drift and rolls back sta
     );
     const beforeTasks = fs.readFileSync(tasksPath);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -1179,7 +1179,7 @@ test('completion rollback restores controlled projections and permits fresh evid
     const baselineTasks = fs.readFileSync(tasksPath, 'utf8');
     const baselineHandoff = fs.readFileSync(handoffPath, 'utf8');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -1188,7 +1188,7 @@ test('completion rollback restores controlled projections and permits fresh evid
     checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -1219,7 +1219,7 @@ test('completion rollback restores controlled projections and permits fresh evid
       checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
       ),
@@ -1235,7 +1235,7 @@ test('completion rollback rejects empty reasons and finished sessions', () => {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository, { additionalPendingTask: true });
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -1244,7 +1244,7 @@ test('completion rollback rejects empty reasons and finished sessions', () => {
     checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -1272,7 +1272,7 @@ test('completion rejects stale and tampered check reports', () => {
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentV3Change(repository);
       const session = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -1281,7 +1281,7 @@ test('completion rejects stale and tampered check reports', () => {
       const checked = checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
       );
@@ -1323,7 +1323,7 @@ test('completion rejects a content-addressed report without check evidence', () 
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -1332,7 +1332,7 @@ test('completion rejects a content-addressed report without check evidence', () 
     const checked = checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -1371,7 +1371,7 @@ test('commit rejects a worktree changed after finish', () => {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository, { additionalPendingTask: true });
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -1380,7 +1380,7 @@ test('commit rejects a worktree changed after finish', () => {
     checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -1391,7 +1391,7 @@ test('commit rejects a worktree changed after finish', () => {
     assert.throws(
       () =>
         commitSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           'Complete demo task',
@@ -1449,7 +1449,7 @@ test('completion reconciles the immediate committed predecessor from Git', () =>
     ]);
 
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.2',
@@ -1458,7 +1458,7 @@ test('completion reconciles the immediate committed predecessor from Git', () =>
     checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -1514,7 +1514,7 @@ test('predecessor reconciliation fails when its independent check fails', () => 
       'Change: demo-change\nTask: 1.1',
     ]);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.2',
@@ -1523,7 +1523,7 @@ test('predecessor reconciliation fails when its independent check fails', () => 
     checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -1554,7 +1554,7 @@ test('managed commit bypasses hooks and accepts explicit workflow identity', () 
     git(repository, ['config', '--unset', 'user.name']);
     git(repository, ['config', '--unset', 'user.email']);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -1563,7 +1563,7 @@ test('managed commit bypasses hooks and accepts explicit workflow identity', () 
     checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -1571,7 +1571,7 @@ test('managed commit bypasses hooks and accepts explicit workflow identity', () 
     finishSession(repository, session.sessionId);
 
     const committed = commitSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'Complete without hooks',

@@ -1,7 +1,7 @@
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const commitPlanningTransition =
@@ -51,7 +51,7 @@ test('TaskDiff review attributes the latest authenticated correction head instea
   const repository = createCorrectionFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -60,7 +60,7 @@ test('TaskDiff review attributes the latest authenticated correction head instea
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -109,7 +109,7 @@ test('TaskDiff review attributes the latest authenticated correction head instea
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           { environment: {} },
@@ -117,11 +117,7 @@ test('TaskDiff review attributes the latest authenticated correction head instea
       hasCode('CHECK_FAILED'),
     );
     const failure = readCurrentTaskStrategyGreenFailure(
-      inspectSession(
-        productionChangeRoutingAdmissionReader,
-        repository,
-        session.sessionId,
-      ),
+      inspectSession(productionChangeContract, repository, session.sessionId),
     );
     assert.notEqual(failure, null);
     if (failure === null) return;
@@ -166,7 +162,7 @@ test('TaskDiff review attributes the latest authenticated correction head instea
       checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
         { environment: {} },
@@ -174,7 +170,7 @@ test('TaskDiff review attributes the latest authenticated correction head instea
       true,
     );
     const checkedInspection = inspectSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );

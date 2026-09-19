@@ -1,4 +1,4 @@
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -59,7 +59,7 @@ test('caller-supplied TaskDiffReview consumes exact no-provider authority withou
     ).repository.origin;
     git(repository, ['remote', 'add', 'origin', repositoryOrigin]);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -349,7 +349,7 @@ test('direct-human TaskDiffReview pauses on exact evidence and resumes by verify
     ).repository.origin;
     git(repository, ['remote', 'add', 'origin', repositoryOrigin]);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -548,7 +548,7 @@ test('an orphaned common grant reservation is read-only visible and only its exa
     ).repository.origin;
     git(repository, ['remote', 'add', 'origin', repositoryOrigin]);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',

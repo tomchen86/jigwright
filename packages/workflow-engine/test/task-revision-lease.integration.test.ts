@@ -3,11 +3,12 @@ import { reviewedGeneratedAssets } from '../src/composition-root/planning-provid
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const resumeTask = resumeTaskWithContractReader.bind(
   undefined,
+  productionChangeContract,
   productionPlanningExecution,
   managedDocuments,
   productionChangeContractReader,
@@ -15,6 +16,7 @@ const resumeTask = resumeTaskWithContractReader.bind(
 );
 const resumeTaskWithoutApproval = resumeTaskWithContractReader.bind(
   undefined,
+  productionChangeContract,
   productionPlanningExecution,
   managedDocuments,
   productionChangeContractReader,
@@ -72,7 +74,7 @@ test('revise-task durably suspends execution and no-op resume restores the same 
   try {
     const implementationPath = path.join(repository, 'src/feature.ts');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -81,7 +83,7 @@ test('revise-task durably suspends execution and no-op resume restores the same 
     const checked = checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -89,7 +91,7 @@ test('revise-task durably suspends execution and no-op resume restores the same 
     const before = fs.readFileSync(implementationPath);
 
     const revising = reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'correct-plan',
@@ -114,7 +116,7 @@ test('revise-task durably suspends execution and no-op resume restores the same 
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
         ),
@@ -133,7 +135,7 @@ test('revise-task durably suspends execution and no-op resume restores the same 
       checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
       ).passed,
@@ -154,14 +156,14 @@ test('resume-task detects implementation drift and abort preserves every byte', 
   try {
     const implementationPath = path.join(repository, 'src/feature.ts');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
     );
     fs.writeFileSync(implementationPath, 'export const value = 1;\n');
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'correct-plan',
@@ -206,14 +208,14 @@ test('resume refuses unreviewed planning edits without consuming the revision le
       'openspec/changes/demo-change/proposal.md',
     );
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
     );
     fs.writeFileSync(implementationPath, 'export const value = 1;\n');
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'correct-plan',
@@ -253,7 +255,7 @@ test('propose reuses the exact revising task authority without touching implemen
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -262,7 +264,7 @@ test('propose reuses the exact revising task authority without touching implemen
     const implementation = 'export const value = 1;\n';
     fs.writeFileSync(implementationPath, implementation);
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'regenerate-reviewed-plan',
@@ -302,7 +304,7 @@ test('revision-bound propose rejects implementation drift before planning mutati
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -310,7 +312,7 @@ test('revision-bound propose rejects implementation drift before planning mutati
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.writeFileSync(implementationPath, 'export const value = 1;\n');
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'regenerate-reviewed-plan',
@@ -351,7 +353,7 @@ test('resume-task commits only a freshly reviewed plan and rebinds the same sess
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -362,7 +364,7 @@ test('resume-task commits only a freshly reviewed plan and rebinds the same sess
     const checked = checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -381,7 +383,7 @@ test('resume-task commits only a freshly reviewed plan and rebinds the same sess
       (error) => workflowCode(error) === 'ACTIVE_SESSION_CONFLICT',
     );
     const revising = reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'correct-plan',
@@ -400,7 +402,7 @@ test('resume-task commits only a freshly reviewed plan and rebinds the same sess
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
         ),
@@ -457,7 +459,7 @@ test('resume-task commits only a freshly reviewed plan and rebinds the same sess
     const rechecked = checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -483,7 +485,7 @@ test('resume-task recovers the exact plan commit after a ref-CAS crash', () => {
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -492,7 +494,7 @@ test('resume-task recovers the exact plan commit after a ref-CAS crash', () => {
     const implementation = 'export const value = 1;\n';
     fs.writeFileSync(implementationPath, implementation);
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'correct-plan',
@@ -540,7 +542,7 @@ test('resume-task applies one exact prepared plan commit after a pre-CAS crash',
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -549,7 +551,7 @@ test('resume-task applies one exact prepared plan commit after a pre-CAS crash',
     const implementation = 'export const value = 1;\n';
     fs.writeFileSync(implementationPath, implementation);
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'correct-plan',
@@ -604,7 +606,7 @@ test('resume-task rebinds the same session after a post-commit pre-session crash
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -613,7 +615,7 @@ test('resume-task rebinds the same session after a post-commit pre-session crash
     const implementation = 'export const value = 1;\n';
     fs.writeFileSync(implementationPath, implementation);
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'correct-plan',
@@ -661,7 +663,7 @@ test('a reviewed path narrowing resumes without external widening authority', ()
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -671,7 +673,7 @@ test('a reviewed path narrowing resumes without external widening authority', ()
       'export const value = 1;\n',
     );
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'narrow-task-scope',
@@ -717,7 +719,7 @@ test('weakening required checks needs one exact external widening approval', () 
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -727,7 +729,7 @@ test('weakening required checks needs one exact external widening approval', () 
       'export const value = 1;\n',
     );
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'weaken-required-checks',
@@ -739,6 +741,7 @@ test('weakening required checks needs one exact external widening approval', () 
     writeReadyV3ExemptChange(repository);
 
     const binding = prepareTaskRevisionApprovalBinding(
+      productionChangeContract,
       repository,
       session.sessionId,
       { now: () => new Date('2026-08-11T01:03:00.000Z') },
@@ -778,7 +781,7 @@ test('a revision cannot complete the task that owns its preserved implementation
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -788,7 +791,7 @@ test('a revision cannot complete the task that owns its preserved implementation
       'export const value = 1;\n',
     );
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'complete-revising-task',
@@ -828,7 +831,7 @@ test('a reviewed authority widening requires an external decision before the pla
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -838,7 +841,7 @@ test('a reviewed authority widening requires an external decision before the pla
       'export const value = 1;\n',
     );
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'widen-task-scope',
@@ -871,7 +874,7 @@ test('a widening approval cannot launder implementation bytes outside the origin
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -883,7 +886,7 @@ test('a widening approval cannot launder implementation bytes outside the origin
     assert.throws(
       () =>
         reviseTask(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           'retroactive-widening',
@@ -917,7 +920,7 @@ test('an unverified approval reference cannot authorize a reviewed widening', ()
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -927,7 +930,7 @@ test('an unverified approval reference cannot authorize a reviewed widening', ()
       'export const value = 1;\n',
     );
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'widen-task-scope',
@@ -1254,7 +1257,7 @@ test('resume-task persists exact staging intent before mutating the index', () =
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -1264,7 +1267,7 @@ test('resume-task persists exact staging intent before mutating the index', () =
       'export const value = 1;\n',
     );
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'prepare-plan-staging',
@@ -1316,7 +1319,7 @@ test('revise-task crash windows replay one exact durable lease', () => {
     const repository = revisionFixture();
     try {
       const session = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -1328,7 +1331,7 @@ test('revise-task crash windows replay one exact durable lease', () => {
       assert.throws(
         () =>
           reviseTask(
-            productionChangeRoutingAdmissionReader,
+            productionChangeContract,
             repository,
             session.sessionId,
             'correct-plan',
@@ -1349,7 +1352,7 @@ test('revise-task crash windows replay one exact durable lease', () => {
       );
 
       const recovered = reviseTask(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
         'correct-plan',
@@ -1368,7 +1371,7 @@ test('revision reader rejects a null required check digest record without rewrit
   const repository = revisionFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -1380,7 +1383,7 @@ test('revision reader rejects a null required check digest record without rewrit
     assert.throws(
       () =>
         reviseTask(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           'correct-plan',
@@ -1425,7 +1428,7 @@ test('revision reader rejects a null required check digest record without rewrit
     assert.throws(
       () =>
         reviseTask(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           'correct-plan',
@@ -1447,7 +1450,7 @@ test('revision reader rejects a missing planning assurance binding without rewri
   const repository = revisionFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -1459,7 +1462,7 @@ test('revision reader rejects a missing planning assurance binding without rewri
     assert.throws(
       () =>
         reviseTask(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           'correct-plan',
@@ -1527,7 +1530,7 @@ test('resume-task crash after session activation completes idempotently', () => 
   const repository = revisionFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -1537,7 +1540,7 @@ test('resume-task crash after session activation completes idempotently', () => 
       'export const value = 1;\n',
     );
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'correct-plan',
@@ -1574,13 +1577,13 @@ test('an expired revision lease stays fail closed but remains abortable', () => 
   const repository = revisionFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
     );
     reviseTask(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       'correct-plan',
@@ -1608,7 +1611,7 @@ test('revision commands and status expose the exact durable lease', () => {
   const repository = revisionFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -1725,7 +1728,7 @@ function approvedWideningFixture(startedAt = STARTED_AT) {
   writeReadyV3ExemptChange(repository);
   commitPlanningTransition(repository, 'demo-change');
   const session = startSession(
-    productionChangeRoutingAdmissionReader,
+    productionChangeContract,
     repository,
     'demo-change',
     '1.1',
@@ -1735,7 +1738,7 @@ function approvedWideningFixture(startedAt = STARTED_AT) {
     'export const value = 1;\n',
   );
   reviseTask(
-    productionChangeRoutingAdmissionReader,
+    productionChangeContract,
     repository,
     session.sessionId,
     'widen-task-scope',
@@ -1746,6 +1749,7 @@ function approvedWideningFixture(startedAt = STARTED_AT) {
   writeTaskAllowedPaths(repository, ['src/**', 'test/**']);
   writeReadyV3ExemptChange(repository);
   const binding = prepareTaskRevisionApprovalBinding(
+    productionChangeContract,
     repository,
     session.sessionId,
     { now: () => new Date(startedAt.getTime() + 3 * 60_000) },

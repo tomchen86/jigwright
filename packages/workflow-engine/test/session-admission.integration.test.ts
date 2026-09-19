@@ -1,4 +1,4 @@
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import {
   createFixtureRepository,
@@ -118,7 +118,7 @@ test('task-session preflight reuses exact admission without mutating Git, runtim
     assert.deepEqual(snapshotTaskPreflightState(repository), before);
 
     const started = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -158,7 +158,7 @@ test('task ingress pins the latest plan and rejects an older PlanReview after ad
     );
 
     const started = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -179,7 +179,7 @@ test('task ingress pins the latest plan and rejects an older PlanReview after ad
     );
 
     const advisory = preflightTaskSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -209,7 +209,7 @@ test('task ingress pins the latest plan and rejects an older PlanReview after ad
       assert.throws(
         () =>
           startSessionUnderLifecycleLock(
-            productionChangeRoutingAdmissionReader,
+            productionChangeContract,
             repository,
             'demo-change',
             '1.1',
@@ -230,7 +230,7 @@ test('task ingress pins the latest plan and rejects an older PlanReview after ad
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -299,7 +299,7 @@ test('task-session admission rejects a duplicate live registration for its curre
     assert.throws(
       () =>
         preflightTaskSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -311,7 +311,7 @@ test('task-session admission rejects a duplicate live registration for its curre
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -365,7 +365,7 @@ test('task-session admission leaves a prunable duplicate registration untouched 
     assert.throws(
       () =>
         preflightTaskSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -388,7 +388,7 @@ test('task-session admission leaves a prunable duplicate registration untouched 
     git(repository, ['worktree', 'prune', '--expire', 'now']);
     assert.equal(
       preflightTaskSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -414,7 +414,7 @@ test('task-session admission leaves an unsafe isolation lease and all unrelated 
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const prior = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -434,7 +434,7 @@ test('task-session admission leaves an unsafe isolation lease and all unrelated 
     assert.throws(
       () =>
         preflightTaskSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -445,7 +445,7 @@ test('task-session admission leaves an unsafe isolation lease and all unrelated 
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -483,7 +483,7 @@ test('task-session admission detects a poisoned later resource before any lease 
     fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
     prepareCurrentChange(repository);
     const inspected = preflightTaskSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -516,7 +516,7 @@ test('task-session admission detects a poisoned later resource before any lease 
     assert.throws(
       () =>
         preflightTaskSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -526,7 +526,7 @@ test('task-session admission detects a poisoned later resource before any lease 
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -572,7 +572,7 @@ test('task-session start rolls back exact earlier publications when a later leas
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -622,7 +622,7 @@ test('task-session start reclaims an exact terminal-owner lease and republishes 
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const prior = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -643,7 +643,7 @@ test('task-session start reclaims an exact terminal-owner lease and republishes 
 
     assert.equal(
       preflightTaskSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -652,7 +652,7 @@ test('task-session start reclaims an exact terminal-owner lease and republishes 
     );
     assert.equal(fs.readFileSync(leasePath, 'utf8'), priorLeaseBytes);
     const current = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -674,7 +674,7 @@ test('task-session start only reclaims a missing-owner lease after exact dead-pr
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const inspected = preflightTaskSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -704,7 +704,7 @@ test('task-session start only reclaims a missing-owner lease after exact dead-pr
     assert.throws(
       () =>
         preflightTaskSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -724,7 +724,7 @@ test('task-session start only reclaims a missing-owner lease after exact dead-pr
     fs.writeFileSync(leasePath, deadBytes);
     assert.equal(
       preflightTaskSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -734,7 +734,7 @@ test('task-session start only reclaims a missing-owner lease after exact dead-pr
     assert.equal(fs.readFileSync(leasePath, 'utf8'), deadBytes);
 
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -755,7 +755,7 @@ test('fixed session identity publication never overwrites or removes foreign byt
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const prior = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -777,7 +777,7 @@ test('fixed session identity publication never overwrites or removes foreign byt
       () =>
         withRepositoryLifecycleOperation(runtime, (assertRepositoryLock) =>
           startSessionUnderLifecycleLock(
-            productionChangeRoutingAdmissionReader,
+            productionChangeContract,
             repository,
             'demo-change',
             '1.1',
@@ -866,7 +866,7 @@ test('task-session start rejects replacement, in-place rewrite, and hardlink rac
       assert.throws(
         () =>
           startSession(
-            productionChangeRoutingAdmissionReader,
+            productionChangeContract,
             repository,
             'demo-change',
             '1.1',

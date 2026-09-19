@@ -1,7 +1,7 @@
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import {
   createFixtureRepository,
@@ -41,7 +41,7 @@ test('doctor counts a durable revising session as a write-capable session withou
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const started = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -49,7 +49,7 @@ test('doctor counts a durable revising session as a write-capable session withou
     assert.throws(
       () =>
         reviseTask(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           started.sessionId,
           'Inspect current planning.',
@@ -110,7 +110,7 @@ test('current single-writer sessions use a neutral routing identity and reject t
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const started = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -142,7 +142,7 @@ test('current session reader rejects persisted records missing the isolation key
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const started = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -208,7 +208,7 @@ test('current session reader rejects persisted records missing the planning assu
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const started = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -383,7 +383,7 @@ test('current session reader rejects persisted records missing required check di
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const started = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -458,7 +458,7 @@ test('v3 sessions and every task report pin the exact planning assurance', () =>
     };
 
     const started = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -477,7 +477,7 @@ test('v3 sessions and every task report pin the exact planning assurance', () =>
     satisfyCurrentTaskDiffReview(repository, started.sessionId);
     finalizeTask(repository, started.sessionId);
     commitSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       started.sessionId,
       'Bind planning assurance',
@@ -516,7 +516,7 @@ test('current session reader preserves R-007 assurance without fabricated standa
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const started = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -616,7 +616,7 @@ test('task transitions reject a session whose planning assurance is stale', () =
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const started = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -637,7 +637,7 @@ test('task transitions reject a session whose planning assurance is stale', () =
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           started.sessionId,
         ),
@@ -654,7 +654,7 @@ test('completion rejects a check report with mismatched planning assurance', () 
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const started = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -663,7 +663,7 @@ test('completion rejects a check report with mismatched planning assurance', () 
     const checked = checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       started.sessionId,
     );

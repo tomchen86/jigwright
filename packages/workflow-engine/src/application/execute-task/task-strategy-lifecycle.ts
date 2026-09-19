@@ -1,4 +1,5 @@
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
 /**
  * Inspects and resumes task strategies across mechanical and TDD execution
@@ -61,7 +62,6 @@ import {
   readTaskStrategyTransaction,
   type TaskStrategyTransaction,
 } from '../../runtime/storage-journal/task-strategy-store.ts';
-import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
 import { inspectSession } from '../finalize/verification.ts';
 
 type TddStrategy = 'cross-agent-tdd' | 'tdd-single-agent';
@@ -89,7 +89,7 @@ export type ResumeTaskStrategyOptions = Readonly<{
 /** Strictly read durable strategy state; never seal, reserve, dispatch, or import. */
 export function inspectTaskStrategyLifecycle(
   reviewedAssets: ReviewedGeneratedAssetInventory,
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
 ): TaskStrategyLifecycleStatus {
@@ -109,7 +109,7 @@ export function inspectTaskStrategyLifecycle(
     });
   }
 
-  const contract = loadStableValidatedChangeContract(
+  const contract = changeContract.loadStableValidatedChangeContract(
     discoverRepository(cwd),
     session.changeId,
   ).contract;
@@ -118,7 +118,7 @@ export function inspectTaskStrategyLifecycle(
     if (transaction !== null) throw lifecycleStale();
     const mechanical = inspectTaskMechanicalTransformLifecycle(
       reviewedAssets,
-      routingAdmissionReader,
+      changeContract,
       cwd,
       session.sessionId,
     );
@@ -151,11 +151,7 @@ export function inspectTaskStrategyLifecycle(
     });
   }
   assertTransactionContractCurrent(transaction, session, task);
-  const inspection = inspectSession(
-    routingAdmissionReader,
-    cwd,
-    session.sessionId,
-  );
+  const inspection = inspectSession(changeContract, cwd, session.sessionId);
   const correction = resolveCurrentTaskStrategyCorrection(inspection);
   const implementationAuthority =
     resolveCurrentTaskStrategyImplementationAuthority(inspection, correction);
@@ -174,7 +170,7 @@ export function inspectTaskStrategyLifecycle(
  */
 export function resumeTaskStrategy(
   reviewedAssets: ReviewedGeneratedAssetInventory,
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   implementation: Pick<
     TaskStrategyImplementationLifecycle,
     'beginTaskStrategyImplementation'
@@ -187,7 +183,7 @@ export function resumeTaskStrategy(
 ): TaskStrategyLifecycleStatus {
   let current = inspectTaskStrategyLifecycle(
     reviewedAssets,
-    routingAdmissionReader,
+    changeContract,
     cwd,
     requestedSessionId,
   );
@@ -213,13 +209,13 @@ export function resumeTaskStrategy(
     }
     resumeTaskMechanicalTransformation(
       reviewedAssets,
-      routingAdmissionReader,
+      changeContract,
       cwd,
       current.sessionId,
     );
     return inspectTaskStrategyLifecycle(
       reviewedAssets,
-      routingAdmissionReader,
+      changeContract,
       cwd,
       current.sessionId,
     );
@@ -239,7 +235,7 @@ export function resumeTaskStrategy(
     redRevision.beginTaskStrategyRedRevision(cwd, options.redRevisionRequest);
     return inspectTaskStrategyLifecycle(
       reviewedAssets,
-      routingAdmissionReader,
+      changeContract,
       cwd,
       current.sessionId,
     );
@@ -248,13 +244,13 @@ export function resumeTaskStrategy(
   redRevision.continueTaskStrategyRedRevision(cwd, current.sessionId);
   current = inspectTaskStrategyLifecycle(
     reviewedAssets,
-    routingAdmissionReader,
+    changeContract,
     cwd,
     current.sessionId,
   );
   if (current.state === 'red-authoring') {
     const transaction = sealTaskStrategyRed(
-      routingAdmissionReader,
+      changeContract,
       cwd,
       current.sessionId,
       {
@@ -266,7 +262,7 @@ export function resumeTaskStrategy(
     if (transaction.strategy === 'tdd-single-agent') {
       return inspectTaskStrategyLifecycle(
         reviewedAssets,
-        routingAdmissionReader,
+        changeContract,
         cwd,
         current.sessionId,
       );
@@ -275,7 +271,7 @@ export function resumeTaskStrategy(
 
   current = inspectTaskStrategyLifecycle(
     reviewedAssets,
-    routingAdmissionReader,
+    changeContract,
     cwd,
     current.sessionId,
   );
@@ -284,7 +280,7 @@ export function resumeTaskStrategy(
     current.state === 'implementation-required'
   ) {
     const adopted = adoptCurrentTaskStrategyImplementation(
-      routingAdmissionReader,
+      changeContract,
       cwd,
       current.sessionId,
     );
@@ -292,7 +288,7 @@ export function resumeTaskStrategy(
       ? current
       : inspectTaskStrategyLifecycle(
           reviewedAssets,
-          routingAdmissionReader,
+          changeContract,
           cwd,
           current.sessionId,
         );
@@ -302,7 +298,7 @@ export function resumeTaskStrategy(
     current.state === 'correction-required'
   ) {
     const adopted = adoptCurrentTaskStrategyCorrection(
-      routingAdmissionReader,
+      changeContract,
       cwd,
       current.sessionId,
     );
@@ -310,7 +306,7 @@ export function resumeTaskStrategy(
       ? current
       : inspectTaskStrategyLifecycle(
           reviewedAssets,
-          routingAdmissionReader,
+          changeContract,
           cwd,
           current.sessionId,
         );

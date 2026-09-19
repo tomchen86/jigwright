@@ -1,7 +1,7 @@
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import {
   productionChangeRoutingInspector,
-  productionChangeRoutingAdmissionReader,
+  productionChangeContract,
 } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
@@ -72,7 +72,7 @@ test('human-only TaskDiffReview resume signs only an exact durable pause and rec
     consumedCollaborationGrantReplayVerifierForTest(repository, signing.signer);
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',

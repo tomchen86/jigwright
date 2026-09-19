@@ -1,4 +1,6 @@
 import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
+import type { StableValidatedChangeContractLoader } from '../../modules/assurance/validated-change-contract.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 import type { ManagedDocumentOperations } from '../../modules/projection/managed-documents.ts';
 import type { ChangeContractReader } from '../../modules/planning-provider/change-contract.ts';
@@ -53,7 +55,6 @@ import {
   withSessionOperation,
   writeJsonAtomic,
 } from '../../runtime/session-workspace/session-store.ts';
-import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
 import { inspectSession } from '../finalize/verification.ts';
 import {
   type TaskRevisionApprovalReader,
@@ -197,7 +198,7 @@ export function withTaskRevisionPlanningOperation<T>(
 }
 
 export function reviseTask(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
   requestedReason: string,
@@ -218,7 +219,7 @@ export function reviseTask(
       const live = findLiveRevisionJournal(runtime, sessionId);
       if (live !== null) {
         return reconcileReviseTask(
-          routingAdmissionReader,
+          changeContract,
           cwd,
           runtime,
           current,
@@ -232,14 +233,9 @@ export function reviseTask(
         throw sessionNotActive(current);
       }
       assertRevisionSessionEligible(current);
-      const inspection = inspectSession(
-        routingAdmissionReader,
-        cwd,
-        sessionId,
-        {
-          expectedSession: current,
-        },
-      );
+      const inspection = inspectSession(changeContract, cwd, sessionId, {
+        expectedSession: current,
+      });
       assertRepositoryLock();
       assertOwnedLock(
         path.join(runtime.locks, `${current.changeId}.lock`),
@@ -322,6 +318,7 @@ export function reviseTask(
 }
 
 export function resumeTask(
+  changeContract: ChangeContractServices,
   planningExecution: PlanningTransitionExecutionServices,
   managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
   loadChangeContract: ChangeContractReader,
@@ -362,6 +359,7 @@ export function resumeTask(
       }
       if (journal.phase === 'resume-prepared') {
         return completePreparedResume(
+          changeContract,
           readTaskRevisionApproval,
           cwd,
           runtime,
@@ -373,6 +371,7 @@ export function resumeTask(
       }
       if (journal.phase === 'plan-committed') {
         return completeCommittedPlanningRevision(
+          changeContract,
           readTaskRevisionApproval,
           runtime,
           current,
@@ -383,6 +382,7 @@ export function resumeTask(
       }
       if (journal.phase === 'planning-staging-prepared') {
         return recoverPreparedPlanningStaging(
+          changeContract,
           readTaskRevisionApproval,
           planningExecution,
           managedDocuments,
@@ -397,6 +397,7 @@ export function resumeTask(
       }
       if (journal.phase === 'plan-commit-prepared') {
         return recoverPreparedPlanningRevision(
+          changeContract,
           readTaskRevisionApproval,
           managedDocuments,
           loadChangeContract,
@@ -441,6 +442,7 @@ export function resumeTask(
       );
       if (planningPaths.length > 0) {
         return commitPlanningRevision(
+          changeContract,
           readTaskRevisionApproval,
           planningExecution,
           managedDocuments,
@@ -453,7 +455,12 @@ export function resumeTask(
           assertRepositoryLock,
         );
       }
-      assertNoOpResumeContract(discovered.repositoryRoot, current, journal);
+      assertNoOpResumeContract(
+        changeContract,
+        discovered.repositoryRoot,
+        current,
+        journal,
+      );
       const active = activeSessionAfterNoOpRevision(current);
       const prepared = transitionJournal(runtime, journal, {
         ...journal,
@@ -513,6 +520,7 @@ export function inspectTaskRevisionStatus(
 }
 
 export function prepareTaskRevisionApprovalBinding(
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
   options: Pick<TaskRevisionOptions, 'now'> = {},
@@ -563,7 +571,7 @@ export function prepareTaskRevisionApprovalBinding(
           ExitCode.guard,
         );
       }
-      const candidate = loadStableValidatedChangeContract(
+      const candidate = changeContract.loadStableValidatedChangeContract(
         discovered,
         current.changeId,
       ).contract;
@@ -645,7 +653,7 @@ export function completeTaskRevisionAbort(
 }
 
 function reconcileReviseTask(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   runtime: ReturnType<typeof runtimePaths>,
   current: WorkflowSession,
@@ -684,14 +692,9 @@ function reconcileReviseTask(
       throw corruptRevisionState();
     }
     assertLeaseCurrent(journal, current, current.repositoryRoot);
-    const inspection = inspectSession(
-      routingAdmissionReader,
-      cwd,
-      current.sessionId,
-      {
-        expectedSession: current,
-      },
-    );
+    const inspection = inspectSession(changeContract, cwd, current.sessionId, {
+      expectedSession: current,
+    });
     if (
       digestImplementationSnapshot(
         snapshotImplementationPaths(
@@ -735,6 +738,7 @@ function reconcileReviseTask(
 }
 
 function completePreparedResume(
+  changeContract: ChangeContractServices,
   readTaskRevisionApproval: TaskRevisionApprovalReader,
   cwd: string,
   runtime: ReturnType<typeof runtimePaths>,
@@ -752,6 +756,7 @@ function completePreparedResume(
       throw corruptRevisionState();
     }
     active = activeSessionForPreparedResume(
+      changeContract,
       readTaskRevisionApproval,
       current,
       journal,
@@ -778,6 +783,7 @@ function completePreparedResume(
 }
 
 function activeSessionForPreparedResume(
+  changeContract: ChangeContractServices,
   readTaskRevisionApproval: TaskRevisionApprovalReader,
   current: WorkflowSession,
   journal: TaskRevisionJournal,
@@ -785,6 +791,7 @@ function activeSessionForPreparedResume(
 ): WorkflowSession {
   if (!journal.planCommitHash) {
     assertNoOpResumeState(
+      changeContract,
       current.repositoryRoot,
       loadWorkflowConfig(current.repositoryRoot).changeRoot,
       current,
@@ -814,10 +821,11 @@ function activeSessionForPreparedResume(
   ) {
     throw revisionDrift();
   }
-  const { contract, planningAssurance } = loadStableValidatedChangeContract(
-    discovered,
-    current.changeId,
-  );
+  const { contract, planningAssurance } =
+    changeContract.loadStableValidatedChangeContract(
+      discovered,
+      current.changeId,
+    );
   assertRevisionCandidateAuthorized(
     readTaskRevisionApproval,
     current.repositoryRoot,
@@ -837,6 +845,7 @@ function activeSessionForPreparedResume(
 }
 
 function commitPlanningRevision(
+  changeContract: ChangeContractServices,
   readTaskRevisionApproval: TaskRevisionApprovalReader,
   planningExecution: PlanningTransitionExecutionServices,
   managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
@@ -849,7 +858,7 @@ function commitPlanningRevision(
   assertRepositoryLock: () => void,
 ): TaskRevisionResult {
   const before = discoverRepository(current.repositoryRoot);
-  const candidate = loadStableValidatedChangeContract(
+  const candidate = changeContract.loadStableValidatedChangeContract(
     before,
     current.changeId,
   ).contract;
@@ -987,7 +996,7 @@ function commitPlanningRevision(
     throw revisionDrift();
   }
   const { contract: committed, planningAssurance } =
-    loadStableValidatedChangeContract(after, current.changeId);
+    changeContract.loadStableValidatedChangeContract(after, current.changeId);
   if (committed.contractDigest !== candidate.contractDigest) {
     throw workflowError(
       'REVISION_CONTRACT_CHANGED',
@@ -1026,6 +1035,7 @@ function commitPlanningRevision(
 }
 
 function completeCommittedPlanningRevision(
+  changeContract: ChangeContractServices,
   readTaskRevisionApproval: TaskRevisionApprovalReader,
   runtime: ReturnType<typeof runtimePaths>,
   current: WorkflowSession,
@@ -1064,10 +1074,11 @@ function completeCommittedPlanningRevision(
   ) {
     throw revisionDrift();
   }
-  const { contract, planningAssurance } = loadStableValidatedChangeContract(
-    discovered,
-    current.changeId,
-  );
+  const { contract, planningAssurance } =
+    changeContract.loadStableValidatedChangeContract(
+      discovered,
+      current.changeId,
+    );
   assertRevisionCandidateAuthorized(
     readTaskRevisionApproval,
     current.repositoryRoot,
@@ -1104,6 +1115,7 @@ function completeCommittedPlanningRevision(
 }
 
 function recoverPreparedPlanningRevision(
+  changeContract: ChangeContractServices,
   readTaskRevisionApproval: TaskRevisionApprovalReader,
   managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
   loadChangeContract: ChangeContractReader,
@@ -1221,6 +1233,7 @@ function recoverPreparedPlanningRevision(
     planCommittedAt: trustedNow(options.now).toISOString(),
   });
   return completeCommittedPlanningRevision(
+    changeContract,
     readTaskRevisionApproval,
     runtime,
     current,
@@ -1231,6 +1244,7 @@ function recoverPreparedPlanningRevision(
 }
 
 function recoverPreparedPlanningStaging(
+  changeContract: ChangeContractServices,
   readTaskRevisionApproval: TaskRevisionApprovalReader,
   planningExecution: PlanningTransitionExecutionServices,
   managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
@@ -1279,6 +1293,7 @@ function recoverPreparedPlanningStaging(
   );
   assertRepositoryLock();
   return commitPlanningRevision(
+    changeContract,
     readTaskRevisionApproval,
     planningExecution,
     managedDocuments,
@@ -1325,7 +1340,7 @@ type RevisionCandidateClassification =
 function classifyRevisionCandidate(
   session: WorkflowSession,
   journal: TaskRevisionJournal,
-  contract: ReturnType<typeof loadStableValidatedChangeContract>['contract'],
+  contract: ReturnType<StableValidatedChangeContractLoader>['contract'],
 ): RevisionCandidateClassification {
   const task = contract.tasks.find(
     (candidate) => candidate.id === session.taskId,
@@ -1409,7 +1424,7 @@ function assertRevisionCandidateAuthorized(
   cwd: string,
   session: WorkflowSession,
   journal: TaskRevisionJournal,
-  contract: ReturnType<typeof loadStableValidatedChangeContract>['contract'],
+  contract: ReturnType<StableValidatedChangeContractLoader>['contract'],
   options: TaskRevisionOptions,
   allowExpired: boolean,
 ): string | null {
@@ -1467,6 +1482,7 @@ function policyPathContains(container: string, candidate: string): boolean {
 }
 
 function assertNoOpResumeState(
+  changeContract: ChangeContractServices,
   repositoryRoot: string,
   changeRoot: string,
   session: WorkflowSession,
@@ -1486,7 +1502,7 @@ function assertNoOpResumeState(
       { details: { planningPaths } },
     );
   }
-  assertNoOpResumeContract(repositoryRoot, session, journal);
+  assertNoOpResumeContract(changeContract, repositoryRoot, session, journal);
 }
 
 function assertResumePathState(
@@ -1522,15 +1538,17 @@ function assertResumePathState(
 }
 
 function assertNoOpResumeContract(
+  changeContract: ChangeContractServices,
   repositoryRoot: string,
   session: WorkflowSession,
   journal: TaskRevisionJournal,
 ): void {
   const discovered = discoverRepository(repositoryRoot);
-  const { contract, planningAssurance } = loadStableValidatedChangeContract(
-    discovered,
-    session.changeId,
-  );
+  const { contract, planningAssurance } =
+    changeContract.loadStableValidatedChangeContract(
+      discovered,
+      session.changeId,
+    );
   const policy = contract.guard.tasks[session.taskId];
   if (
     !policy ||
@@ -1607,13 +1625,11 @@ function activeSessionAfterNoOpRevision(
 }
 
 function activeSessionAfterPlanningRevision(
-  planningAssurance: ReturnType<
-    typeof loadStableValidatedChangeContract
-  >['planningAssurance'],
+  planningAssurance: ReturnType<StableValidatedChangeContractLoader>['planningAssurance'],
   session: WorkflowSession,
   head: string,
   tree: string,
-  contract: ReturnType<typeof loadStableValidatedChangeContract>['contract'],
+  contract: ReturnType<StableValidatedChangeContractLoader>['contract'],
 ): WorkflowSession {
   const policy = contract.guard.tasks[session.taskId];
   if (!policy) throw corruptRevisionState();

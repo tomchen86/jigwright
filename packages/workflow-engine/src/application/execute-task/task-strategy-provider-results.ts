@@ -1,4 +1,5 @@
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 /**
@@ -47,7 +48,7 @@ import type {
 } from './task-strategy-implementation-lifecycle.ts';
 import type { createTaskStrategyImplementationContext } from './task-strategy-implementation-context.ts';
 export function createTaskStrategyProviderResults(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   roleAdmission: Pick<RoleAdmissionServices, 'admitRoleResult'>,
   runtime: TaskStrategyImplementationRuntimeBindings,
   context: ReturnType<typeof createTaskStrategyImplementationContext>,
@@ -277,7 +278,7 @@ export function createTaskStrategyProviderResults(
     );
     if (durablePatchRecord === null) {
       validateTaskStrategyProviderPatch(
-        routingAdmissionReader,
+        changeContract,
         cwd,
         context.session.sessionId,
         {
@@ -404,7 +405,7 @@ export function createTaskStrategyProviderResults(
       binding,
     );
     const imported = importTaskStrategyProviderPatchUnderLifecycleLock(
-      routingAdmissionReader,
+      changeContract,
       cwd,
       context.session.sessionId,
       {

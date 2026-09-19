@@ -1,4 +1,5 @@
 import type { SystemDocumentDispositionService } from './system-document-dispositions.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
 import type { LocalEngineSelectionReaders } from '../../modules/authority/local-engine-selection.ts';
 import {
@@ -981,7 +982,7 @@ function protectedTaskApplyAuthorizationInvalid(message: string) {
 }
 
 export function commitSession(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
   subject: string,
@@ -989,7 +990,7 @@ export function commitSession(
 ): CommitSessionResult {
   return runSessionOperation(cwd, requestedSessionId, () =>
     commitSessionUnlocked(
-      routingAdmissionReader,
+      changeContract,
       cwd,
       requestedSessionId,
       subject,
@@ -999,7 +1000,7 @@ export function commitSession(
 }
 
 function commitSessionUnlocked(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
   subject: string,
@@ -1048,16 +1049,11 @@ function commitSessionUnlocked(
     'transitionPaths',
     'COMPLETION_REPORT_STALE',
   );
-  const inspection = inspectSession(
-    routingAdmissionReader,
-    cwd,
-    requestedSessionId,
-    {
-      projectedTaskIds: completedTaskIds,
-      projectionSourceDigest,
-      authorizedTransitionPaths: transitionPaths,
-    },
-  );
+  const inspection = inspectSession(changeContract, cwd, requestedSessionId, {
+    projectedTaskIds: completedTaskIds,
+    projectionSourceDigest,
+    authorizedTransitionPaths: transitionPaths,
+  });
   const pathClassification = classifyProjectionPaths(
     inspection.changedPaths,
     [path.relative(inspection.git.repositoryRoot, inspection.tasksPath)],
@@ -1621,7 +1617,7 @@ export function createFinalizationService(
   localEngineSelection: LocalEngineSelectionReaders,
   manifestOperations: MaintainerManifestOperations,
   taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   taskDiffReview: Pick<
     TaskDiffReviewOperations,
     | 'assertTaskDiffReviewCompletionGateSatisfied'
@@ -1706,7 +1702,7 @@ export function createFinalizationService(
         : finalizeTaskUnlocked(
             reviewedAssets,
             taskStrategyExecutionGate,
-            routingAdmissionReader,
+            changeContract,
             taskDiffReview,
             managedDocuments,
             assertCurrentImplementationReconciliation,
@@ -1815,7 +1811,7 @@ export function createFinalizationService(
       finalized = finalizeTaskUnlocked(
         reviewedAssets,
         taskStrategyExecutionGate,
-        routingAdmissionReader,
+        changeContract,
         taskDiffReview,
         managedDocuments,
         assertCurrentImplementationReconciliation,
@@ -1846,7 +1842,7 @@ export function createFinalizationService(
       }
     }
     const committed = commitSessionUnlocked(
-      routingAdmissionReader,
+      changeContract,
       cwd,
       requestedSessionId,
       subject,
@@ -1884,7 +1880,7 @@ export function createFinalizationService(
       return finalizeTaskUnlocked(
         reviewedAssets,
         taskStrategyExecutionGate,
-        routingAdmissionReader,
+        changeContract,
         taskDiffReview,
         managedDocuments,
         assertCurrentImplementationReconciliation,
@@ -1918,18 +1914,14 @@ export function createFinalizationService(
     reconcileSessionChecksAfterLocalEngineAdoption(
       localEngineSelection,
       manifestOperations,
-      routingAdmissionReader,
+      changeContract,
       cwd,
       requestedSessionId,
       {
         environment,
       },
     );
-    const initial = inspectSession(
-      routingAdmissionReader,
-      cwd,
-      requestedSessionId,
-    );
+    const initial = inspectSession(changeContract, cwd, requestedSessionId);
     assertProtectedTaskApplyNotRequired(
       initial.git.repositoryRoot,
       initial.contract.config,
@@ -1973,7 +1965,7 @@ export function createFinalizationService(
       },
     );
     const reconciliation = reconcilePredecessor(
-      routingAdmissionReader,
+      changeContract,
       cwd,
       initial,
       environment,
@@ -2004,7 +1996,7 @@ export function createFinalizationService(
       );
       const transitionPaths = generatedDocuments.map(({ path }) => path).sort();
       const projected = inspectSession(
-        routingAdmissionReader,
+        changeContract,
         cwd,
         initial.session.sessionId,
         {
@@ -2121,7 +2113,7 @@ export function createFinalizationService(
       'COMPLETION_REPORT_STALE',
     );
     const unprojected = inspectSession(
-      routingAdmissionReader,
+      changeContract,
       cwd,
       requestedSessionId,
       {
@@ -2180,7 +2172,7 @@ export function createFinalizationService(
       unprojected.contract.config,
     );
     const verified = executeChecks(
-      routingAdmissionReader,
+      changeContract,
       cwd,
       unprojected,
       [...checkPolicy.requiredChecks],
@@ -2195,17 +2187,12 @@ export function createFinalizationService(
       verified.inspection.changedPaths,
     );
     try {
-      const finished = inspectSession(
-        routingAdmissionReader,
-        cwd,
-        session.sessionId,
-        {
-          expectedSession: session,
-          projectedTaskIds: completedTaskIds,
-          projectionSourceDigest,
-          authorizedTransitionPaths: transitionPaths,
-        },
-      );
+      const finished = inspectSession(changeContract, cwd, session.sessionId, {
+        expectedSession: session,
+        projectedTaskIds: completedTaskIds,
+        projectionSourceDigest,
+        authorizedTransitionPaths: transitionPaths,
+      });
       const report: WorkflowReport = {
         schemaVersion: 1,
         kind: 'finish',

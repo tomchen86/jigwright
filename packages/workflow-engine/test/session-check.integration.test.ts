@@ -1,7 +1,7 @@
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import {
   createFixtureRepository,
@@ -47,7 +47,7 @@ test('workflow validation and session authority ignore retained Spectra metadata
       prepareCurrentChange(repository);
       const contract = loadChangeContract(repository, 'demo-change');
       const session = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -55,7 +55,7 @@ test('workflow validation and session authority ignore retained Spectra metadata
       const checked = checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
       );
@@ -65,7 +65,7 @@ test('workflow validation and session authority ignore retained Spectra metadata
           checkSession(
             maintainerManifestOperations,
             productionTaskStrategyExecutionGate,
-            productionChangeRoutingAdmissionReader,
+            productionChangeContract,
             repository,
             session.sessionId,
           ),
@@ -190,7 +190,7 @@ test('check rejects workflow artifacts changed after session start', () => {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -206,7 +206,7 @@ test('check rejects workflow artifacts changed after session start', () => {
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
         ),
@@ -223,7 +223,7 @@ test('check rejects a session whose task policy was broadened', () => {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -242,7 +242,7 @@ test('check rejects a session whose task policy was broadened', () => {
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
         ),
@@ -283,7 +283,7 @@ test('check executes required argv literally from the repository root', () => {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -292,7 +292,7 @@ test('check executes required argv literally from the repository root', () => {
     const result = checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -343,7 +343,7 @@ test('check fails on the first non-zero check and does not run later checks', ()
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -354,7 +354,7 @@ test('check fails on the first non-zero check and does not run later checks', ()
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
         ),
@@ -402,7 +402,7 @@ test('destructive database preflight runs before any required check', () => {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -413,7 +413,7 @@ test('destructive database preflight runs before any required check', () => {
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -447,7 +447,7 @@ test('destructive check evidence includes only the redacted database identity', 
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -456,7 +456,7 @@ test('destructive check evidence includes only the redacted database identity', 
     const result = checkSession(
       maintainerManifestOperations,
       productionTaskStrategyExecutionGate,
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -508,7 +508,7 @@ test('check revalidates scope before running the next required check', () => {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -519,7 +519,7 @@ test('check revalidates scope before running the next required check', () => {
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
         ),
@@ -555,7 +555,7 @@ test('check rejects a lock removed by a passing required check', () => {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -566,7 +566,7 @@ test('check rejects a lock removed by a passing required check', () => {
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
         ),
@@ -593,7 +593,7 @@ test('check converts spawn errors without leaking environment values', () => {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -604,7 +604,7 @@ test('check converts spawn errors without leaking environment values', () => {
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -645,7 +645,7 @@ test('change validation rejects inherited object properties as check IDs', () =>
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',
@@ -677,7 +677,7 @@ test(
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentChange(repository);
       const session = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         'demo-change',
         '1.1',
@@ -686,7 +686,7 @@ test(
       const result = checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
         {
@@ -724,7 +724,7 @@ test('change validation rejects bare executable check runners', () => {
     assert.throws(
       () =>
         startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           'demo-change',
           '1.1',

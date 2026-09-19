@@ -2,7 +2,7 @@ import { planningTransitionExecution as productionPlanningExecution } from '../s
 import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';
 import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
 import { productionPlanningArchiveSourcePolicy } from '../src/composition-root/planning-archive-projection-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { collaborationGrantCodec as productionArchiveGrantCodec } from '../src/runtime/grants/grant-services.ts';
 import { reconcileArchivedWorkItems as productionArchivedWorkItemReconciler } from '../src/composition-root/work-registry-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
@@ -701,7 +701,7 @@ function completedFixture(
     );
   }
   const session = startSession(
-    productionChangeRoutingAdmissionReader,
+    productionChangeContract,
     repository,
     'demo-change',
     '1.1',
@@ -714,7 +714,7 @@ function completedFixture(
   satisfyCurrentTaskDiffReview(repository, session.sessionId);
   finalizeTask(repository, session.sessionId);
   const completed = commitSession(
-    productionChangeRoutingAdmissionReader,
+    productionChangeContract,
     repository,
     session.sessionId,
     'Complete demo task',

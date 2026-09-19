@@ -1,4 +1,5 @@
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 /**
  * Applies authenticated task diff review and assurance requirements to
@@ -55,7 +56,7 @@ type CollaborationGrantSelectionCoreBinding =
   TaskDiffReviewRuntimeData['CollaborationGrantSelectionCoreBinding'];
 
 export function createTaskDiffReviewCompletionModule(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   runtime: TaskDiffReviewRuntimeBindings,
   common: ReturnType<typeof createTaskDiffReviewCommonModule>,
   subject: ReturnType<typeof createTaskDiffReviewSubjectModule>,
@@ -168,25 +169,20 @@ export function createTaskDiffReviewCompletionModule(
     ) {
       return null;
     }
-    const inspection = inspectSession(
-      routingAdmissionReader,
-      cwd,
-      requestedSessionId,
-      {
-        expectedSession: context.session,
-        ...(options.projectedTaskIds === undefined
-          ? {}
-          : { projectedTaskIds: [...options.projectedTaskIds] }),
-        ...(options.projectionSourceDigest === undefined
-          ? {}
-          : { projectionSourceDigest: options.projectionSourceDigest }),
-        ...(options.authorizedTransitionPaths === undefined
-          ? {}
-          : {
-              authorizedTransitionPaths: [...options.authorizedTransitionPaths],
-            }),
-      },
-    );
+    const inspection = inspectSession(changeContract, cwd, requestedSessionId, {
+      expectedSession: context.session,
+      ...(options.projectedTaskIds === undefined
+        ? {}
+        : { projectedTaskIds: [...options.projectedTaskIds] }),
+      ...(options.projectionSourceDigest === undefined
+        ? {}
+        : { projectionSourceDigest: options.projectionSourceDigest }),
+      ...(options.authorizedTransitionPaths === undefined
+        ? {}
+        : {
+            authorizedTransitionPaths: [...options.authorizedTransitionPaths],
+          }),
+    });
     const requirement = taskDiffReviewRequirementIncludingDocumentation(
       resolveTaskDiffReviewContract(inspection).requirement,
       options.candidateTree === undefined

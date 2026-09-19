@@ -1,6 +1,6 @@
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import { startSession } from '../src/application/execute-task/session.ts';
 import fs from 'node:fs';
@@ -26,7 +26,7 @@ test('cross-agent TDD cannot enter finalize checks without an engine-sealed RED'
   const { repository, counterPath } = createCrossAgentFixture('assertion');
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -54,7 +54,7 @@ test('seal RED runs the pinned check, freezes exact test bytes, and replays one 
   const { repository, counterPath } = createCrossAgentFixture('assertion');
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -67,7 +67,7 @@ test('seal RED runs the pinned check, freezes exact test bytes, and replays one 
     );
 
     const sealed = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -91,7 +91,7 @@ test('seal RED runs the pinned check, freezes exact test bytes, and replays one 
 
     assert.deepEqual(
       sealTaskStrategyRed(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
         {
@@ -107,7 +107,7 @@ test('seal RED runs the pinned check, freezes exact test bytes, and replays one 
     assert.throws(
       () =>
         sealTaskStrategyRed(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -128,7 +128,7 @@ test('seal RED runs the pinned check, freezes exact test bytes, and replays one 
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -147,7 +147,7 @@ test('seal RED rejects an unrelated or structurally invalid failure category', (
   const { repository, counterPath } = createCrossAgentFixture('syntax');
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -159,7 +159,7 @@ test('seal RED rejects an unrelated or structurally invalid failure category', (
     assert.throws(
       () =>
         sealTaskStrategyRed(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -183,7 +183,7 @@ test('sealed RED state is canonical and digest-bound before any gate trusts it',
   const { repository } = createCrossAgentFixture('assertion');
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -194,7 +194,7 @@ test('sealed RED state is canonical and digest-bound before any gate trusts it',
       "throw new Error('feature behavior is not implemented');\n",
     );
     const transaction = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -227,7 +227,7 @@ test('cross-agent TDD rejects manual implementation bytes without an engine-impo
   const { repository, counterPath } = createCrossAgentFixture('assertion');
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -238,7 +238,7 @@ test('cross-agent TDD rejects manual implementation bytes without an engine-impo
       "throw new Error('feature behavior is not implemented');\n",
     );
     sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -257,7 +257,7 @@ test('cross-agent TDD rejects manual implementation bytes without an engine-impo
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           {
@@ -287,7 +287,7 @@ test('single-agent TDD keeps the RED gate and uses a fresh Reviewer session', ()
     git(repository, ['add', 'workflow/path-roles.json']);
     git(repository, ['commit', '-m', 'Configure fixture path roles']);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -298,7 +298,7 @@ test('single-agent TDD keeps the RED gate and uses a fresh Reviewer session', ()
       "throw new Error('feature behavior is not implemented');\n",
     );
     const transaction = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -317,7 +317,7 @@ test('single-agent TDD keeps the RED gate and uses a fresh Reviewer session', ()
     ]);
     fs.rmSync(path.join(repository, 'src/feature.ts'));
     importTaskStrategyPatch(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {

@@ -12,7 +12,7 @@ import { systemDocumentDispositions } from './system-document-disposition-produc
 import type { LocalEngineSelectionReaders } from '../modules/authority/local-engine-selection.ts';
 import { maintainerManifestOperations } from './maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from './task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from './change-routing-observation-production.ts';
+import { productionChangeContract } from './change-routing-observation-production.ts';
 import { taskDiffReview } from './task-diff-review-production.ts';
 import { managedDocuments } from './managed-documents-production.ts';
 /** Binds the mandatory reconciliation gate for every finalization path. */
@@ -26,7 +26,7 @@ export function createProductionFinalizationService(
     localEngineSelection,
     maintainerManifestOperations,
     productionTaskStrategyExecutionGate,
-    productionChangeRoutingAdmissionReader,
+    productionChangeContract,
     taskDiffReview,
     managedDocuments,
     assertCurrentImplementationReconciliation,

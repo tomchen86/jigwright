@@ -1,4 +1,4 @@
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -57,7 +57,7 @@ test('a corrected ordinary candidate recovers one exact common supersession afte
   });
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -379,7 +379,7 @@ test('an unchanged candidate reuses its review across fresh check evidence witho
   const { repository, counterPath } = createReviewFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -509,7 +509,7 @@ test('review-diff CLI resumes the durable happy path from ready through fixed-ru
   const { repository, counterPath } = createReviewFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',

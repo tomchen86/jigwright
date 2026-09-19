@@ -1,4 +1,4 @@
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
@@ -34,7 +34,7 @@ test('explicit colocated contract writers serialize while disjoint module implem
       );
       worktrees.push(first, second);
       const active = startSession(
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         first.worktree,
         'demo-change',
         '1.1',
@@ -43,7 +43,7 @@ test('explicit colocated contract writers serialize while disjoint module implem
         assert.throws(
           () =>
             startSession(
-              productionChangeRoutingAdmissionReader,
+              productionChangeContract,
               second.worktree,
               'second-change',
               '1.1',
@@ -53,7 +53,7 @@ test('explicit colocated contract writers serialize while disjoint module implem
         );
       } else {
         const concurrent = startSession(
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           second.worktree,
           'second-change',
           '1.1',

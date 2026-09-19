@@ -1,5 +1,5 @@
 import type { SessionInspection } from '../modules/lifecycle/session-inspection.ts';
-import { productionChangeRoutingAdmissionReader } from './change-routing-observation-production.ts';
+import { productionChangeContract } from './change-routing-observation-production.ts';
 /** Binds reconciliation to repository observation, session locking and immutable storage. */
 import { createImplementationReconciliationService } from '../application/reconciliation/implementation-reconciliation.ts';
 import { readCurrentImplementationReconciliationRequirement } from '../application/reconciliation/investigation-reconciliation.ts';
@@ -29,10 +29,7 @@ export const {
   assertCurrentImplementationReconciliation,
 } = createImplementationReconciliationService<SessionInspection>({
   listSessions,
-  inspect: inspectSession.bind(
-    undefined,
-    productionChangeRoutingAdmissionReader,
-  ),
+  inspect: inspectSession.bind(undefined, productionChangeContract),
   withSessionOperation: runSessionOperation,
   context(inspection) {
     const { session, git, contract } = inspection;

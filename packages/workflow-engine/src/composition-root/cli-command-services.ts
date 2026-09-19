@@ -15,7 +15,7 @@ import { archiveEligibilityReplayServices } from './ci-replay-production.ts';
 import { productionPlanningArchiveSourcePolicy } from './planning-archive-projection-production.ts';
 import { taskMandateOperations } from './task-mandate-production.ts';
 import {
-  productionChangeRoutingAdmissionReader,
+  productionChangeContract,
   productionChangeRoutingInspector,
 } from './change-routing-observation-production.ts';
 
@@ -57,6 +57,7 @@ import {
 } from '../application/revise/task-revision.ts';
 export const resumeTask = resumeTaskWithContractReader.bind(
   undefined,
+  productionChangeContract,
   productionPlanningExecution,
   managedDocuments,
   productionChangeContractReader,
@@ -213,10 +214,13 @@ export {
 } from './investigation-retry-production.ts';
 export { inspectInvestigationQuarantineState } from '../runtime/storage-journal/human-resolution-state.ts';
 export { runtimePaths } from '../runtime/session-workspace/session-store.ts';
-export {
-  prepareTaskRevisionApprovalBinding,
-  inspectTaskRevisionStatus,
-} from '../application/revise/task-revision.ts';
+export { inspectTaskRevisionStatus } from '../application/revise/task-revision.ts';
+import { prepareTaskRevisionApprovalBinding as prepareTaskRevisionApprovalBindingWithServices } from '../application/revise/task-revision.ts';
+export const prepareTaskRevisionApprovalBinding =
+  prepareTaskRevisionApprovalBindingWithServices.bind(
+    undefined,
+    productionChangeContract,
+  );
 export {
   resumeDirectHumanTaskDiffReview,
   inspectTaskDiffReviewSubject,
@@ -288,12 +292,12 @@ export type {
 
 export const reviseTask = reviseTaskWithRouting.bind(
   undefined,
-  productionChangeRoutingAdmissionReader,
+  productionChangeContract,
 );
 import { commitSession as commitSessionWithRouting } from '../application/finalize/lifecycle.ts';
 export const commitSession = commitSessionWithRouting.bind(
   undefined,
-  productionChangeRoutingAdmissionReader,
+  productionChangeContract,
 );
 import {
   preflightTaskSession as preflightTaskSessionWithRouting,
@@ -301,7 +305,7 @@ import {
 } from '../application/execute-task/session.ts';
 export const preflightTaskSession = preflightTaskSessionWithRouting.bind(
   undefined,
-  productionChangeRoutingAdmissionReader,
+  productionChangeContract,
 );
 
 export function createProductionSessionCheck(
@@ -313,7 +317,7 @@ export function createProductionSessionCheck(
     readers,
     maintainerManifestOperations,
     productionTaskStrategyExecutionGate,
-    productionChangeRoutingAdmissionReader,
+    productionChangeContract,
   );
 }
 export { inspectTaskStrategyLifecycle } from './task-strategy-production.ts';

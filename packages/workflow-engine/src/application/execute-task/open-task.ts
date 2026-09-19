@@ -3,6 +3,7 @@ import {
   type TaskMandateActiveBinding,
   type TaskMandateOptions,
 } from '../../modules/authority/task-mandate-access-contract.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 
 import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
 import type {
@@ -175,7 +176,7 @@ export type OpenTaskPorts = Readonly<{
     'assertActiveTaskMandateBindingUnderLifecycleLock'
   > &
     Pick<TaskMandatePreparationAuthorization, 'authorizeTaskMandateOperation'>;
-  routingAdmissionReader: ChangeRoutingAdmissionReader;
+  changeContract: ChangeContractServices;
   routingInspector: ChangeRoutingInspector;
   managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>;
   loadChangeContract: ChangeContractReader;
@@ -214,7 +215,7 @@ export function openTaskWithPorts(
   const initialRepository = discoverRepository(cwd);
   assertOpenTaskWorktreeRegistration(initialRepository);
   assertProductionChangeRoutingAdmission(
-    ports.routingAdmissionReader,
+    ports.changeContract,
     initialRepository.repositoryRoot,
     changeId,
   );
@@ -272,12 +273,12 @@ export function openTaskWithPorts(
     );
     return existingPlanResult(
       mandateTaskId === null
-        ? startSession(ports.routingAdmissionReader, cwd, changeId, taskId, {
+        ? startSession(ports.changeContract, cwd, changeId, taskId, {
             environment: options.environment,
           })
         : startMandatedSession(
             ports.taskMandate,
-            ports.routingAdmissionReader,
+            ports.changeContract,
             cwd,
             changeId,
             taskId,
@@ -424,7 +425,7 @@ export function openTaskWithPorts(
     }
 
     const session = ensureExactSession(
-      ports.routingAdmissionReader,
+      ports.changeContract,
       cwd,
       runtime,
       durable,
@@ -879,7 +880,7 @@ function recoverOpenTask(
   let session: WorkflowSession;
   if (durable.phase === 'plan-committed') {
     session = ensureExactSession(
-      ports.routingAdmissionReader,
+      ports.changeContract,
       cwd,
       runtime,
       durable,
@@ -1067,7 +1068,7 @@ function readPlainProjectionFile(
 }
 
 function ensureExactSession(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   runtime: ReturnType<typeof runtimePaths>,
   journal: OpenTaskJournal,
@@ -1086,7 +1087,7 @@ function ensureExactSession(
   const session =
     journal.mandateBinding === null
       ? startSessionUnderLifecycleLock(
-          routingAdmissionReader,
+          changeContract,
           cwd,
           journal.changeId,
           journal.taskId,
@@ -1095,7 +1096,7 @@ function ensureExactSession(
           environment,
         )
       : startMandatedSessionUnderLifecycleLock(
-          routingAdmissionReader,
+          changeContract,
           cwd,
           journal.changeId,
           journal.taskId,

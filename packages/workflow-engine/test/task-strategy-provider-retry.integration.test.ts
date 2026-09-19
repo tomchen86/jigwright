@@ -1,7 +1,7 @@
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const commitPlanningTransition =
@@ -65,7 +65,7 @@ test('routine resume replaces a failed implementation transport without changing
   const repository = createRetryFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -74,7 +74,7 @@ test('routine resume replaces a failed implementation transport without changing
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -268,7 +268,7 @@ test('correction provider transport retry keeps one correction round and binds t
   const repository = createRetryFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -277,7 +277,7 @@ test('correction provider transport retry keeps one correction round and binds t
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -317,7 +317,7 @@ test('correction provider transport retry keeps one correction round and binds t
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           { environment: {} },
@@ -325,11 +325,7 @@ test('correction provider transport retry keeps one correction round and binds t
       hasCode('CHECK_FAILED'),
     );
     const failure = readCurrentTaskStrategyGreenFailure(
-      inspectSession(
-        productionChangeRoutingAdmissionReader,
-        repository,
-        session.sessionId,
-      ),
+      inspectSession(productionChangeContract, repository, session.sessionId),
     );
     assert.notEqual(failure, null);
     if (failure === null) return;
@@ -396,11 +392,7 @@ test('correction provider transport retry keeps one correction round and binds t
     );
     assert.equal(
       resolveCurrentTaskStrategyCorrection(
-        inspectSession(
-          productionChangeRoutingAdmissionReader,
-          repository,
-          session.sessionId,
-        ),
+        inspectSession(productionChangeContract, repository, session.sessionId),
       ).completedCorrectionRounds,
       1,
     );
@@ -466,7 +458,7 @@ test('repeated transport failure reuses the provider within its fixed budget', (
     );
 
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       sessionId,
       {
@@ -624,7 +616,7 @@ function createRetryFixture(
 
 function openFailedImplementation(repository: string) {
   const session = startSession(
-    productionChangeRoutingAdmissionReader,
+    productionChangeContract,
     repository,
     'demo-change',
     '1.1',
@@ -632,15 +624,10 @@ function openFailedImplementation(repository: string) {
   const testPath = path.join(repository, 'test/feature.test.mjs');
   fs.mkdirSync(path.dirname(testPath), { recursive: true });
   fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-  sealTaskStrategyRed(
-    productionChangeRoutingAdmissionReader,
-    repository,
-    session.sessionId,
-    {
-      explicitActor: 'codex',
-      environment: {},
-    },
-  );
+  sealTaskStrategyRed(productionChangeContract, repository, session.sessionId, {
+    explicitActor: 'codex',
+    environment: {},
+  });
   const waiting = beginTaskStrategyImplementation(
     repository,
     session.sessionId,

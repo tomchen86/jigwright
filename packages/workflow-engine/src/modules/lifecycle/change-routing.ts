@@ -1,3 +1,4 @@
+import type { StableValidatedChangeContractLoader } from '../assurance/validated-change-contract.ts';
 import crypto from 'node:crypto';
 import {
   CHANGE_ROUTING_CONTINUATION_TRANSITION_ID,
@@ -1259,6 +1260,17 @@ export type ChangeRoutingAdmissionReader = (
   repositoryRoot: string,
   changeId: string,
 ) => ChangeRoutingAdmission;
+/**
+ * The change-contract capabilities an operation needs from composition:
+ * fresh routing admission, and the validated contract whose load proved the
+ * repository projection unchanged. Carried as one object so adding a
+ * capability does not cost every signature in the call chain.
+ */
+export type ChangeContractServices = Readonly<{
+  admissionReader: ChangeRoutingAdmissionReader;
+  loadStableValidatedChangeContract: StableValidatedChangeContractLoader;
+}>;
+
 export type ChangeRoutingInspector = (
   repositoryRoot: string,
   authorityPort?: ChangeRoutingAuthorityPort,

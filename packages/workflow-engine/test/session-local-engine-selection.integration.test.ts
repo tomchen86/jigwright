@@ -17,7 +17,7 @@ import {
 import { createProductionFinalizationService } from '../src/composition-root/finalization-production.ts';
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import {
   configureChecks,
   createFixtureRepository,
@@ -46,7 +46,7 @@ function sessionFixture() {
   git(repository, ['checkout', '-b', 'work/demo-change']);
   prepareCurrentChange(repository);
   const session = startSession(
-    productionChangeRoutingAdmissionReader,
+    productionChangeContract,
     repository,
     'demo-change',
     '1.1',
@@ -124,7 +124,7 @@ test('local adoption admission retains distinct absent, missing, malformed and m
         reconcileSessionChecksAfterLocalEngineAdoption(
           readers,
           maintainerManifestOperations,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           { environment },
@@ -144,7 +144,7 @@ test('local adoption admission retains distinct absent, missing, malformed and m
             },
           },
           maintainerManifestOperations,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           { environment: environmentWithoutResumeBinding() },
@@ -180,7 +180,7 @@ test('checkSession reobserves local selection after immutable report publication
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -230,7 +230,7 @@ test('checkSession reobserves local selection after immutable report publication
           readers,
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           { environment: environmentWithoutResumeBinding() },

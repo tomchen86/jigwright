@@ -1,4 +1,5 @@
 import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
 import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
@@ -74,7 +75,6 @@ import {
 import { recordTaskStrategyGreenFailure } from '../execute-task/task-strategy-correction.ts';
 import { ensureTaskMechanicalTransformationEvidence } from '../execute-task/task-mechanical-transform.ts';
 import { assertTaskProjectionSourceDigest } from '../../runtime/managed-documents/transaction/task-projection.ts';
-import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
 
 import {
   readFinalizeTransaction,
@@ -121,7 +121,7 @@ export function checkSession(
   localEngineSelection: LocalEngineSelectionReaders,
   manifestOperations: MaintainerManifestOperations,
   taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
   options: SessionCheckOptions = {},
@@ -139,7 +139,7 @@ export function checkSession(
       localEngineSelection,
       manifestOperations,
       taskStrategyExecutionGate,
-      routingAdmissionReader,
+      changeContract,
       cwd,
       sessionId,
       options,
@@ -152,7 +152,7 @@ function checkSessionUnlocked(
   localEngineSelection: LocalEngineSelectionReaders,
   manifestOperations: MaintainerManifestOperations,
   taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
   options: SessionCheckOptions,
@@ -160,17 +160,13 @@ function checkSessionUnlocked(
   const reconciled = reconcileSessionChecksAfterLocalEngineAdoption(
     localEngineSelection,
     manifestOperations,
-    routingAdmissionReader,
+    changeContract,
     cwd,
     requestedSessionId,
     options,
   );
   if (reconciled !== null) return reconciled;
-  const initial = inspectSession(
-    routingAdmissionReader,
-    cwd,
-    requestedSessionId,
-  );
+  const initial = inspectSession(changeContract, cwd, requestedSessionId);
   ensureTaskMechanicalTransformationEvidence(reviewedAssets, initial);
   taskStrategyExecutionGate(initial, options.environment ?? process.env);
   const trustedPolicy = tryLoadTrustedCheckPolicy(
@@ -187,7 +183,7 @@ function checkSessionUnlocked(
       )
     : undefined;
   const verified = executeChecks(
-    routingAdmissionReader,
+    changeContract,
     cwd,
     initial,
     initial.session.requiredChecks,
@@ -270,16 +266,12 @@ type VerifiedLocalAdoption = {
 export function reconcileSessionChecksAfterLocalEngineAdoption(
   localEngineSelection: LocalEngineSelectionReaders,
   manifestOperations: MaintainerManifestOperations,
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
   options: SessionCheckOptions = {},
 ): SessionCheck | null {
-  const initial = inspectSession(
-    routingAdmissionReader,
-    cwd,
-    requestedSessionId,
-  );
+  const initial = inspectSession(changeContract, cwd, requestedSessionId);
   const adoption = resolveVerifiedLocalAdoption(
     localEngineSelection,
     initial,
@@ -413,7 +405,7 @@ export function reconcileSessionChecksAfterLocalEngineAdoption(
     (checkId) => !invalidated.has(checkId),
   );
   const rerun = executeChecks(
-    routingAdmissionReader,
+    changeContract,
     cwd,
     initial,
     invalidatedCheckIds,
@@ -803,7 +795,7 @@ function isRecordValue(value: unknown): value is Record<string, unknown> {
 }
 
 export function inspectSession(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
   options: {
@@ -844,7 +836,7 @@ export function inspectSession(
   assertPinnedGit(discovered, session);
 
   if (session.isolation !== undefined) {
-    const routingAdmission = routingAdmissionReader(
+    const routingAdmission = changeContract.admissionReader(
       discovered.repositoryRoot,
       session.changeId,
     );
@@ -865,7 +857,10 @@ export function inspectSession(
   }
 
   const { git, contract, planningAssurance } =
-    loadStableValidatedChangeContract(discovered, session.changeId);
+    changeContract.loadStableValidatedChangeContract(
+      discovered,
+      session.changeId,
+    );
   if (
     JSON.stringify(session.planningAssurance ?? null) !==
     JSON.stringify(
@@ -995,7 +990,7 @@ export function inspectSession(
 }
 
 export function executeChecks(
-  routingAdmissionReader: ChangeRoutingAdmissionReader,
+  changeContract: ChangeContractServices,
   cwd: string,
   initial: SessionInspection,
   checkIds: string[],
@@ -1045,7 +1040,7 @@ export function executeChecks(
       evidenceMetadata[checkId],
     );
     inspection = inspectSession(
-      routingAdmissionReader,
+      changeContract,
       cwd,
       initial.session.sessionId,
       {

@@ -1,7 +1,7 @@
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
-import { productionChangeRoutingAdmissionReader } from '../src/composition-root/change-routing-observation-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const commitPlanningTransition =
@@ -38,7 +38,7 @@ test('single-agent correction reserves and authenticates one local round before 
   const repository = createLocalCorrectionFixture();
   try {
     const session = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       'demo-change',
       '1.1',
@@ -47,7 +47,7 @@ test('single-agent correction reserves and authenticates one local round before 
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
     const red = sealTaskStrategyRed(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
       {
@@ -59,7 +59,7 @@ test('single-agent correction reserves and authenticates one local round before 
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     const initial = adoptCurrentTaskStrategyImplementation(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     )!;
@@ -69,7 +69,7 @@ test('single-agent correction reserves and authenticates one local round before 
         checkSession(
           maintainerManifestOperations,
           productionTaskStrategyExecutionGate,
-          productionChangeRoutingAdmissionReader,
+          productionChangeContract,
           repository,
           session.sessionId,
           { environment: {} },
@@ -82,7 +82,7 @@ test('single-agent correction reserves and authenticates one local round before 
     assert.equal(resumed.state, 'patch-imported');
 
     const inspection = inspectSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       repository,
       session.sessionId,
     );
@@ -123,7 +123,7 @@ test('single-agent correction reserves and authenticates one local round before 
       checkSession(
         maintainerManifestOperations,
         productionTaskStrategyExecutionGate,
-        productionChangeRoutingAdmissionReader,
+        productionChangeContract,
         repository,
         session.sessionId,
         { environment: {} },
@@ -143,7 +143,7 @@ test('single-agent correction reserves and authenticates one local round before 
       () =>
         resolveCurrentTaskStrategyCorrection(
           inspectSession(
-            productionChangeRoutingAdmissionReader,
+            productionChangeContract,
             repository,
             session.sessionId,
           ),

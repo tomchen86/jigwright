@@ -1,7 +1,7 @@
 import { verifyPullRequest } from '../src/composition-root/ci-verification-production.ts';
 import {
   productionChangeRoutingInspector,
-  productionChangeRoutingAdmissionReader,
+  productionChangeContract,
 } from '../src/composition-root/change-routing-observation-production.ts';
 import {
   loadChangeContract as productionChangeContractReader,
@@ -313,7 +313,7 @@ test('update-base revalidates active writers after acquiring the lifecycle lock'
           {
             afterFinishedSessionPreflight() {
               interleavedSession = startSession(
-                productionChangeRoutingAdmissionReader,
+                productionChangeContract,
                 fixture!.worktree,
                 'demo-change',
                 '1.2',
@@ -353,7 +353,7 @@ test('update-base refuses an active writer before changing Git history', () => {
       'src/task/**',
     );
     const started = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       fixture.worktree,
       'demo-change',
       '1.1',
@@ -425,7 +425,7 @@ test('update-base rolls back when generated reconciliation needs a reviewed tran
     );
     const taskWorktree = fixture.worktree;
     const started = startSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       taskWorktree,
       'demo-change',
       '1.1',
@@ -448,7 +448,7 @@ test('update-base rolls back when generated reconciliation needs a reviewed tran
     );
     finalizeTask(taskWorktree, started.sessionId);
     const committed = commitSession(
-      productionChangeRoutingAdmissionReader,
+      productionChangeContract,
       taskWorktree,
       started.sessionId,
       'Complete concurrent fixture task',
