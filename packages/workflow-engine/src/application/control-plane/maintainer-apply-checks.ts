@@ -280,6 +280,10 @@ export function createMaintainerApplyChecks(
   }
 
   function assertApproveAndApplyPreconditions(
+    grantServices: Pick<
+      MaintainerGrantExecutionServices,
+      'loadStableValidatedChangeContract'
+    >,
     cwd: string,
     request: ApproveAndApplyMaintainerGrantV2Request,
     preflight: MaintainerGrantV2PreflightResult,
@@ -292,7 +296,6 @@ export function createMaintainerApplyChecks(
       ExitCode,
       validateMaintainerEvidenceWaivers,
       discoverRepository,
-      loadStableValidatedChangeContract,
       listConflictingActiveWorkflowSessionIds,
       maintainerGrantStorePaths,
       runGit,
@@ -328,7 +331,7 @@ export function createMaintainerApplyChecks(
         ExitCode.staleState,
       );
     }
-    const contract = loadStableValidatedChangeContract(
+    const contract = grantServices.loadStableValidatedChangeContract(
       repository,
       request.changeId,
     ).contract;

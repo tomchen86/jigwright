@@ -1,3 +1,4 @@
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 /** Coordinates exact V2 preflight, human issuance and authority admission. */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -558,7 +559,8 @@ export type MaintainerGrantExecutionServices = MaintainerGrantV2Operations &
   CandidateDependencyObservations &
   CandidateArtifactObservations &
   CandidateArtifactPublication &
-  RefGenerationRecords;
+  RefGenerationRecords &
+  Pick<ChangeContractServices, 'loadStableValidatedChangeContract'>;
 
 import type {
   CandidateArtifactObservations,

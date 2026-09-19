@@ -233,7 +233,6 @@ export function createMaintainerSessionInspection(
       validateReservedGrantAuthorityBinding,
       exactDate,
       assertExactAuditTag,
-      loadStableValidatedChangeContract,
       sameRecord,
       pinCheckRunner,
       sameStringArray,
@@ -301,7 +300,10 @@ export function createMaintainerSessionInspection(
       reservation.envelope.payload.grantId,
     );
     assertExactAuditTag(git.repositoryRoot, reservation.envelope, policy);
-    const stable = loadStableValidatedChangeContract(git, session.changeId);
+    const stable = grantServices.loadStableValidatedChangeContract(
+      git,
+      session.changeId,
+    );
     const allowedPaths = reservation.envelope.payload.allowedPaths;
     const expectedContractArtifacts = Object.fromEntries(
       Object.entries(stable.contract.artifactDigests).filter(

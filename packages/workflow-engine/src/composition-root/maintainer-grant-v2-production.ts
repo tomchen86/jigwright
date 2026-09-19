@@ -1,5 +1,6 @@
 /** Binds the V2 workflows to actual observations, signer and durable publication. */
 import crypto from 'node:crypto';
+import { loadStableValidatedChangeContract } from './validated-contract-context.ts';
 import { createMaintainerGrantV2Operations } from '../application/control-plane/maintainer-grant-v2.ts';
 import { authorityTagPublishCommand } from '../adapters/remote/github/authority-relay-command.ts';
 import { assertDisposableDatabaseForRepository } from '../adapters/consumer/repository/work-registry/database-policy.ts';
@@ -80,6 +81,7 @@ export function createMaintainerGrantV2Production(
   return {
     ...grantOperations,
     ...candidateDependencies,
+    loadStableValidatedChangeContract,
     readStoredImmutableCandidateBundle,
     assertStoredCandidateSupportingArtifacts,
     storeCandidateSupportingArtifacts,

@@ -100,7 +100,6 @@ import {
   withRepositoryLifecycleOperation,
 } from '../../runtime/session-workspace/session-store.ts';
 import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
-import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
 
 export type ApproveAndApplyMaintainerGrantV2Request = {
   changeId: string;
@@ -245,6 +244,7 @@ function approveAndApplyMaintainerGrantV2WithBinding(
     },
   );
   assertApproveAndApplyPreconditions(
+    grantServices,
     cwd,
     request,
     preflight,
@@ -784,7 +784,6 @@ export type MaintainerApplyChecksBindings = {
   completeMaintainerCheckJournal: typeof completeMaintainerCheckJournal;
   validateCommitSubject: typeof validateCommitSubject;
   validateMaintainerEvidenceWaivers: typeof validateMaintainerEvidenceWaivers;
-  loadStableValidatedChangeContract: typeof loadStableValidatedChangeContract;
   listConflictingActiveWorkflowSessionIds: typeof listConflictingActiveWorkflowSessionIds;
   resolveCommitIdentity: typeof resolveCommitIdentity;
 };
@@ -825,7 +824,6 @@ const {
   completeMaintainerCheckJournal,
   validateCommitSubject,
   validateMaintainerEvidenceWaivers,
-  loadStableValidatedChangeContract,
   listConflictingActiveWorkflowSessionIds,
   resolveCommitIdentity,
 }));

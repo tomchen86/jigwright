@@ -82,7 +82,6 @@ import {
   withRepositoryLifecycleOperation,
 } from '../../runtime/session-workspace/session-store.ts';
 import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
-import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
 
 export type AuthoritySessionOptions = {
   now?: Date;
@@ -279,10 +278,8 @@ export function startAuthoritySession(
           }
         }
         assertExactAuditTag(initial.repositoryRoot, envelope, policy);
-        const { git, contract } = loadStableValidatedChangeContract(
-          initial,
-          changeId,
-        );
+        const { git, contract } =
+          grantServices.loadStableValidatedChangeContract(initial, changeId);
         const expectedBranch = contract.config.branchTemplate.replace(
           '{changeId}',
           changeId,
@@ -902,7 +899,6 @@ export type MaintainerSessionInspectionBindings = {
   loadBasePolicy: typeof loadBasePolicy;
   validateReservedGrantAuthorityBinding: typeof validateReservedGrantAuthorityBinding;
   assertExactAuditTag: typeof assertExactAuditTag;
-  loadStableValidatedChangeContract: typeof loadStableValidatedChangeContract;
   sameRecord: typeof sameRecord;
   pinCheckRunner: typeof pinCheckRunner;
   sameStringArray: typeof sameStringArray;
@@ -947,7 +943,6 @@ const {
   loadBasePolicy,
   validateReservedGrantAuthorityBinding,
   assertExactAuditTag,
-  loadStableValidatedChangeContract,
   sameRecord,
   pinCheckRunner,
   sameStringArray,

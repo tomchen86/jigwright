@@ -863,7 +863,7 @@
     {
       "path": "src/application/control-plane/maintainer-apply-checks.ts",
       "mode": "100644",
-      "digest": "sha256:a4afdae810b6c177b55cf15b152c897918999e8918f9b892691dbed662e061de"
+      "digest": "sha256:2e1b2b76bb12f2948fa0c07c6068342d5753d56c476aa68c53e1ecde1ab1cdd5"
     },
     {
       "path": "src/application/control-plane/maintainer-apply-reissue.ts",
@@ -873,7 +873,7 @@
     {
       "path": "src/application/control-plane/maintainer-approve.ts",
       "mode": "100644",
-      "digest": "sha256:f744da9ee61b5c53c75ce0ebb6093564329460a94eb99397448f738bb2f4dbb5"
+      "digest": "sha256:4b371e47e371341031ff07efb061202cc44df63dc49fc37e4236eec2bbc4f205"
     },
     {
       "path": "src/application/control-plane/maintainer-attestation.ts",
@@ -888,7 +888,7 @@
     {
       "path": "src/application/control-plane/maintainer-grant-v2.ts",
       "mode": "100644",
-      "digest": "sha256:1f1fc9b59a6c644e1aa96b70db1a5d9210e8af147253775eea9aa8c41903cba1"
+      "digest": "sha256:724f025c00d1eb00f95dbacb2789d50464bcedfcabcc21d716da76b272e487d7"
     },
     {
       "path": "src/application/control-plane/maintainer-recovery-audit.ts",
@@ -918,12 +918,12 @@
     {
       "path": "src/application/control-plane/maintainer-session-inspection.ts",
       "mode": "100644",
-      "digest": "sha256:b8b5c64c28f1d6c2b6c60630533c4fcad89f0a631c1035872d978affd17afd2a"
+      "digest": "sha256:58187a15be9499e5299c5fa40baebe20a15d2303ec9c429ec5cf9e02738ac39c"
     },
     {
       "path": "src/application/control-plane/maintainer-session.ts",
       "mode": "100644",
-      "digest": "sha256:0b899c44390d59bfcfb8edf7ee7c9a4ee7888fcf6f1d1827bd6acec8f46b1724"
+      "digest": "sha256:a36c14baa3df99b1419a2fe94f226a207ded3cd25464b1039124d9936130d147"
     },
     {
       "path": "src/application/control-plane/publish-executor.ts",
@@ -1693,7 +1693,7 @@
     {
       "path": "src/composition-root/maintainer-grant-v2-production.ts",
       "mode": "100644",
-      "digest": "sha256:5171de3aff80c7727c9ef74f37fad18669f0586c7775b6a54ed0405bb5c27997"
+      "digest": "sha256:72ad514d4b7735bbb7113e907570e2824942d9bde0d0c15db745a1826765a530"
     },
     {
       "path": "src/composition-root/maintainer-manifest-production.ts",
