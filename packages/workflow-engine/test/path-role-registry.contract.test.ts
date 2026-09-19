@@ -10,6 +10,7 @@ import {
   compressionEligible,
   type PathRoleRegistry,
 } from '../src/modules/source/path-role-registry.ts';
+import { parseCapabilityProfile } from '../src/modules/authority/maintainer-manifest-contracts.ts';
 import { isWorkflowError } from './fixture.ts';
 
 function repositoryRoot(): string {
@@ -197,4 +198,29 @@ test('the repository registry classifies its own risky substrate', () => {
   );
   assert.equal(protectedDependency.role, 'control-plane');
   assert.equal(compressionEligible(protectedDependency), false);
+});
+
+/**
+ * The committed registrations are only rejected by their production loaders,
+ * not by any check group, so a relocation batch can leave a path list
+ * unsorted and stay green until a full gate runs. This moves that rejection
+ * to where it costs seconds. It adds no rule: both loaders already enforce
+ * sorted and unique path lists.
+ */
+test('committed path-roles and maintainer-profiles load through their production parsers', () => {
+  const root = repositoryRoot();
+  parsePathRoleRegistry(
+    JSON.parse(
+      fs.readFileSync(path.join(root, 'workflow/path-roles.json'), 'utf8'),
+    ),
+  );
+  const profiles = JSON.parse(
+    fs.readFileSync(
+      path.join(root, 'workflow/maintainer-profiles.json'),
+      'utf8',
+    ),
+  ) as { profiles: Record<string, unknown> };
+  const ids = Object.keys(profiles.profiles);
+  assert.ok(ids.length > 0, 'maintainer-profiles.json declares no profile');
+  for (const id of ids) parseCapabilityProfile(profiles.profiles[id]);
 });
