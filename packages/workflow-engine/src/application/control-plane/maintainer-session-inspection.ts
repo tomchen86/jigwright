@@ -1,4 +1,13 @@
 import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
+import type {
+  MaintainerSessionInspectionBindings,
+  MaintainerSessionInspectionBindingsTypes,
+} from './maintainer-session.ts';
+import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
+import type { WithAuthorityRefusalAudit } from '../../modules/authority/authority-audit-contract.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
 /**
  * Inspects authority sessions and runs checks within their approved scope.
  *
@@ -7,10 +16,7 @@ import type { MaintainerManifestOperations } from '../../modules/authority/maint
  *   grant.
  */
 // maintainer session inspection; repository effects remain bound by the public module.
-import type {
-  MaintainerSessionInspectionBindings,
-  MaintainerSessionInspectionBindingsTypes,
-} from './maintainer-session.ts';
+
 type AuthoritySessionOptions =
   MaintainerSessionInspectionBindingsTypes['AuthoritySessionOptions'];
 type CheckEvidence = MaintainerSessionInspectionBindingsTypes['CheckEvidence'];
@@ -451,7 +457,7 @@ export function createMaintainerSessionInspection(
 
     try {
       const raw = JSON.parse(
-        runGit(repositoryRoot, ['show', `${baseCommit}:workflow/checks.json`]),
+        readFileAtRevision(repositoryRoot, baseCommit, 'workflow/checks.json'),
       ) as { schemaVersion?: unknown; checks?: unknown };
       if (
         raw.schemaVersion !== 1 ||
@@ -497,9 +503,3 @@ export function createMaintainerSessionInspection(
     assertPreapprovalChecksCurrent,
   };
 }
-
-import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
-
-import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
-
-import type { WithAuthorityRefusalAudit } from '../../modules/authority/authority-audit-contract.ts';

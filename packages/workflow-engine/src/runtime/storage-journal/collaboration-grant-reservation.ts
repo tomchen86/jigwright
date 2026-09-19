@@ -73,6 +73,7 @@ import {
   resolveCommitOid,
   resolveTreeOid,
 } from '../repository-transaction/git-object-ids.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
 
 export function storeAvailableCollaborationGrant(
   gitCommonDirectory: string,
@@ -598,10 +599,11 @@ export function loadPolicyAtCommit(
   try {
     return parseMaintainerPolicy(
       JSON.parse(
-        runGit(repositoryRoot, [
-          'show',
-          `${commit}:workflow/maintainer-policy.json`,
-        ]),
+        readFileAtRevision(
+          repositoryRoot,
+          commit,
+          'workflow/maintainer-policy.json',
+        ),
       ),
     );
   } catch (error) {

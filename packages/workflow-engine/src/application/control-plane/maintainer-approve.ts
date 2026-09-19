@@ -7,18 +7,10 @@ import type {
 } from '../../modules/authority/maintainer-candidate-contracts.ts';
 import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
 import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
-/**
- * Coordinates human approval, application, and revocation of v2 Apply
- * Grants.
- *
- * Invariants:
- * - The published candidate summary must match its frozen digest.
- */
 import { createMaintainerApplyChecks } from './maintainer-apply-checks.ts';
 import { createMaintainerApplyAudit } from './maintainer-apply-audit.ts';
 import { createMaintainerApplyReissue } from './maintainer-apply-reissue.ts';
 import crypto from 'node:crypto';
-
 import {
   deriveAuthorityAuditRepositoryId,
   scanAuthorityAuditLedger,
@@ -80,7 +72,6 @@ import {
   type MaintainerGrantV2Envelope,
 } from '../../modules/authority/maintainer-grant-v2-codec.ts';
 import { type MaintainerGrantV2PreflightResult } from '../../modules/authority/maintainer-grant-v2.ts';
-
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
 import { startAuthoritySession } from './maintainer-session.ts';
@@ -100,6 +91,24 @@ import {
   withRepositoryLifecycleOperation,
 } from '../../runtime/session-workspace/session-store.ts';
 import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
+import {
+  type AuthorityAuditLedgerScope,
+  type Sha256Digest,
+  type AuthorityAuditServiceHooks,
+  type AuthorityRefusalAuditBinding,
+  type WithAuthorityRefusalAudit,
+} from '../../modules/authority/authority-audit-contract.ts';
+import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
+/**
+ * Coordinates human approval, application, and revocation of v2 Apply
+ * Grants.
+ *
+ * Invariants:
+ * - The published candidate summary must match its frozen digest.
+ */
 
 export type ApproveAndApplyMaintainerGrantV2Request = {
   changeId: string;
@@ -294,10 +303,11 @@ function approveAndApplyMaintainerGrantV2WithBinding(
   const repository = discoverRepository(cwd);
   const policy = parseMaintainerPolicy(
     JSON.parse(
-      runGit(repository.repositoryRoot, [
-        'show',
-        `${preflight.trustBaseCommit}:workflow/maintainer-policy.json`,
-      ]),
+      readFileAtRevision(
+        repository.repositoryRoot,
+        preflight.trustBaseCommit,
+        'workflow/maintainer-policy.json',
+      ),
     ),
   );
   const signer =
@@ -949,15 +959,3 @@ const { reissueAndApplyMaintainerGrantV2, verifyHistoricalApplyGrantTrust } =
     scanAuthorityAuditLedger,
   }));
 export { reissueAndApplyMaintainerGrantV2 };
-
-import {
-  type AuthorityAuditLedgerScope,
-  type Sha256Digest,
-  type AuthorityAuditServiceHooks,
-  type AuthorityRefusalAuditBinding,
-  type WithAuthorityRefusalAudit,
-} from '../../modules/authority/authority-audit-contract.ts';
-
-import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
-
-import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';

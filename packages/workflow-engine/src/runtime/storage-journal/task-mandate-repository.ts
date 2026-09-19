@@ -9,12 +9,15 @@ import { isWorkflowFailure } from '../../modules/authority/task-mandate-values.t
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type { TaskMandateRepositoryServices } from '../../modules/authority/task-mandate-services.ts';
 import { resolveBlobOid } from '../repository-transaction/git-object-ids.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
+
 function loadPolicyAt(repositoryRoot: string, commit: string) {
   try {
-    const content = runGit(repositoryRoot, [
-      'show',
-      `${commit}:workflow/maintainer-policy.json`,
-    ]);
+    const content = readFileAtRevision(
+      repositoryRoot,
+      commit,
+      'workflow/maintainer-policy.json',
+    );
     return {
       policy: parseMaintainerPolicy(JSON.parse(content)),
       policyBlob: resolveBlobOid(

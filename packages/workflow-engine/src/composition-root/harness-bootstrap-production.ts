@@ -1,5 +1,4 @@
 import { recordAuthorityRefusal } from '../runtime/storage-journal/authority-refusal-audit.ts';
-/** Assemble recovery capabilities around the independently trusted built-in engine identity. */
 import { controlPlaneRecoveryGrantPersistence } from '../runtime/storage-journal/control-plane-recovery-grant.ts';
 import { createHarnessBootstrapAudit } from '../application/control-plane/harness-bootstrap-audit.ts';
 import { createHarnessBootstrapRecoveryProduction } from '../application/control-plane/harness-bootstrap-production.ts';
@@ -10,10 +9,7 @@ import {
 import type { HarnessBootstrapRuntimeOverrides } from '../application/control-plane/harness-bootstrap-contracts.ts';
 import { deriveAuthorityAuditRepositoryId } from '../runtime/storage-journal/authority-audit-ledger.ts';
 import { recordAuthorityAuditEvent } from '../runtime/storage-journal/authority-audit-service.ts';
-import {
-  discoverRepository,
-  runGit,
-} from '../runtime/repository-transaction/git.ts';
+import { discoverRepository } from '../runtime/repository-transaction/git.ts';
 import { type BootstrapInterventionCliDependencies } from '../modules/authority/intervention-bootstrap-contract.ts';
 import { parseMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
 import {
@@ -44,6 +40,9 @@ import {
 } from '../application/control-plane/intervention-control-bootstrap.ts';
 import { readControlPlaneSupervisorState } from '../application/control-plane/intervention-control-updater.ts';
 import type { HarnessBootstrapParentBindings } from '../application/control-plane/harness-bootstrap-parent-state.ts';
+import { readFileAtRevision } from '../runtime/repository-transaction/git-command.ts';
+
+/** Assemble recovery capabilities around the independently trusted built-in engine identity. */
 
 export function createHarnessBootstrapProduction(
   BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST: HarnessBootstrapParentBindings['BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST'],
@@ -67,10 +66,11 @@ export function createHarnessBootstrapProduction(
         const repository = discoverRepository(cwd);
         const policy = parseMaintainerPolicy(
           JSON.parse(
-            runGit(repository.repositoryRoot, [
-              'show',
-              `${repository.head}:workflow/maintainer-policy.json`,
-            ]),
+            readFileAtRevision(
+              repository.repositoryRoot,
+              repository.head,
+              'workflow/maintainer-policy.json',
+            ),
           ),
         );
         resolvedSigner = createInteractiveSshSigner(

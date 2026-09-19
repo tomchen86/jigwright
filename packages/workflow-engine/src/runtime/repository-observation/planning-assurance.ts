@@ -11,6 +11,7 @@ import type { PlanningAssuranceObservations } from '../../modules/assurance/plan
 import type { PlanReviewTargetSnapshot } from '../../modules/assurance/plan-review-target-snapshot-record.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import { readPlanReviewCoverageTarget } from './plan-review-coverage.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
 
 export const planningAssuranceObservations: PlanningAssuranceObservations =
   Object.freeze({
@@ -52,7 +53,7 @@ function readRepositoryCitation(
       'PlanReview cites a path absent from its investigation baseline.',
     );
   }
-  const content = runGit(repositoryRoot, ['show', `${tree}:${repositoryPath}`]);
+  const content = readFileAtRevision(repositoryRoot, tree, `${repositoryPath}`);
 
   return { blobOid: match[1]!, content };
 }
@@ -189,10 +190,11 @@ export function loadMaintainerPolicyAtCommit(
   let value: unknown;
   try {
     value = JSON.parse(
-      runGit(repositoryRoot, [
-        'show',
-        `${commit}:workflow/maintainer-policy.json`,
-      ]),
+      readFileAtRevision(
+        repositoryRoot,
+        commit,
+        'workflow/maintainer-policy.json',
+      ),
     );
   } catch (error) {
     throw planningNotReady(

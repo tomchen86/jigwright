@@ -53,6 +53,7 @@ import {
   resolveCommitOid,
   resolveTreeOid,
 } from '../repository-transaction/git-object-ids.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
 
 /**
  * Prepares and issues signed collaboration Grants and direct human review
@@ -343,10 +344,11 @@ function loadPolicyAtCommit(
   try {
     return parseMaintainerPolicy(
       JSON.parse(
-        runGit(repositoryRoot, [
-          'show',
-          `${commit}:workflow/maintainer-policy.json`,
-        ]),
+        readFileAtRevision(
+          repositoryRoot,
+          commit,
+          'workflow/maintainer-policy.json',
+        ),
       ),
     );
   } catch (error) {

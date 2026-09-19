@@ -1,19 +1,6 @@
 import { withAuthorityRefusalAudit } from '../../composition-root/authority-refusal-production.ts';
 import { taskMandateOperations } from '../../composition-root/task-mandate-production.ts';
-
-type TaskMandateDependencies = Pick<
-  typeof taskMandateOperations,
-  'inspectActiveTaskMandateBinding' | 'withActiveTaskMandateBinding'
->;
-/**
- * Issues, inspects, and revokes execution budget grants for current
- * execution jobs.
- *
- * Invariants:
- * - Budget requests must match the current job, epoch, and Task Mandate.
- */
 import crypto from 'node:crypto';
-
 import { deriveAuthorityAuditRepositoryId } from '../../runtime/storage-journal/authority-audit-ledger.ts';
 import { authorityRefusalDigest } from '../../modules/authority/authority-refusal-audit.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
@@ -37,10 +24,7 @@ import {
 } from '../../runtime/storage-journal/execution-budget-grants.ts';
 import { inspectExecutionJob } from '../../runtime/provider-execution/execution-runtime.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  discoverRepository,
-  runGit,
-} from '../../runtime/repository-transaction/git.ts';
+import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import {
   createInteractiveSshSigner,
@@ -51,6 +35,24 @@ import {
   withRepositoryLifecycleOperation,
 } from '../../runtime/session-workspace/session-store.ts';
 import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
+import {
+  type AuthorityAuditRecordedEvent,
+  type AuthorityAuditServiceHooks,
+  type AuthorityRefusalAuditBinding,
+} from '../../modules/authority/authority-audit-contract.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
+type TaskMandateDependencies = Pick<
+  typeof taskMandateOperations,
+  'inspectActiveTaskMandateBinding' | 'withActiveTaskMandateBinding'
+>;
+/**
+ * Issues, inspects, and revokes execution budget grants for current
+ * execution jobs.
+ *
+ * Invariants:
+ * - Budget requests must match the current job, epoch, and Task Mandate.
+ */
 
 export type IssueExecutionBudgetGrantOptions = {
   grantId?: string;
@@ -79,10 +81,11 @@ export function issueExecutionBudgetGrantWithMandate(
   const repository = discoverRepository(cwd);
   const policy = parseMaintainerPolicy(
     JSON.parse(
-      runGit(repository.repositoryRoot, [
-        'show',
-        `${repository.head}:workflow/maintainer-policy.json`,
-      ]),
+      readFileAtRevision(
+        repository.repositoryRoot,
+        repository.head,
+        'workflow/maintainer-policy.json',
+      ),
     ),
   );
   const signer =
@@ -249,10 +252,11 @@ export function revokeIssuedExecutionBudgetGrant(
   );
   const policy = parseMaintainerPolicy(
     JSON.parse(
-      runGit(repository.repositoryRoot, [
-        'show',
-        `${repository.head}:workflow/maintainer-policy.json`,
-      ]),
+      readFileAtRevision(
+        repository.repositoryRoot,
+        repository.head,
+        'workflow/maintainer-policy.json',
+      ),
     ),
   );
   const revoker =
@@ -402,12 +406,6 @@ function executionBudgetCliRefusalBinding(input: {
     refusalIdentity: input.refusalIdentity,
   };
 }
-
-import {
-  type AuthorityAuditRecordedEvent,
-  type AuthorityAuditServiceHooks,
-  type AuthorityRefusalAuditBinding,
-} from '../../modules/authority/authority-audit-contract.ts';
 
 export const issueExecutionBudgetGrant =
   issueExecutionBudgetGrantWithMandate.bind(undefined, taskMandateOperations);

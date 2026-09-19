@@ -20,7 +20,6 @@ import {
   discoverRepository,
   fingerprintRepositoryProjection,
   listChangedPaths,
-  runGit,
   type GitState,
 } from '../../runtime/repository-transaction/git.ts';
 import {
@@ -42,6 +41,7 @@ import {
 import { assertPreparedProtectedTaskApplyAuthorization } from '../task-apply-authorization/protected-task-apply-authorization.ts';
 import type { ValidatedChangeContract } from '../../modules/assurance/validated-change-contract.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
 
 /**
  * Inspects task sessions, executes checks, and reconciles evidence after
@@ -164,10 +164,11 @@ export function inspectSession(
   );
   const tasksPath = path.join(contract.changeDirectory, 'tasks.md');
   const relativeTasksPath = relative(git.repositoryRoot, tasksPath);
-  const baselineTasks = runGit(git.repositoryRoot, [
-    'show',
-    `${session.baseline.head}:${relativeTasksPath}`,
-  ]);
+  const baselineTasks = readFileAtRevision(
+    git.repositoryRoot,
+    session.baseline.head,
+    `${relativeTasksPath}`,
+  );
   const currentTasks = fs.readFileSync(tasksPath, 'utf8');
   assertTaskProjection(
     baselineTasks,

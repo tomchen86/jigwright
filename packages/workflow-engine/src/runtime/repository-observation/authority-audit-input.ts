@@ -2,7 +2,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { runGit } from '../repository-transaction/git.ts';
 import { canonicalAuditDestructionGrantEnvelope } from '../storage-journal/authority-audit-destruction-records.ts';
 import type {
   AuthorityAuditInputErrors,
@@ -10,12 +9,14 @@ import type {
   AuditDestructionGrantEnvelope,
   AuthorityAuditRepositoryObservations,
 } from '../../modules/authority/authority-audit-contract.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
+
 const MAX_AUDIT_INPUT_PATH_BYTES = 4_096;
 const MAX_AUDIT_INPUT_FILE_BYTES = 32_768;
 
 export const readAuthorityAuditPolicyAtHead: AuthorityAuditRepositoryObservations['readPolicyAtHead'] =
   (repositoryRoot, head) =>
-    runGit(repositoryRoot, ['show', `${head}:workflow/maintainer-policy.json`]);
+    readFileAtRevision(repositoryRoot, head, 'workflow/maintainer-policy.json');
 
 export function createAuthorityAuditInputReader(
   errors: AuthorityAuditInputErrors,

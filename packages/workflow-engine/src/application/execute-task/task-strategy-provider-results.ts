@@ -1,15 +1,6 @@
-import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
-/**
- * Admits implementation provider results and reconciles correction round
- * evidence.
- *
- * Invariants:
- * - Correction reservations must match the current GREEN failure and patch
- *   head.
- */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   type ImportedTaskStrategyPatch,
@@ -28,6 +19,22 @@ import type {
   TaskStrategyImplementationRuntimeBindings,
   TaskStrategyImplementationRuntimeData,
 } from './task-strategy-implementation-lifecycle.ts';
+import type {
+  BeginTaskStrategyImplementationOptions,
+  TaskStrategyImplementationStatus,
+} from './task-strategy-implementation-lifecycle.ts';
+import type { createTaskStrategyImplementationContext } from './task-strategy-implementation-context.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
+/**
+ * Admits implementation provider results and reconciles correction round
+ * evidence.
+ *
+ * Invariants:
+ * - Correction reservations must match the current GREEN failure and patch
+ *   head.
+ */
+
 type TaskStrategyImplementationReservation =
   TaskStrategyImplementationRuntimeData['TaskStrategyImplementationReservation'];
 type TaskStrategyGreenFailureRecord =
@@ -42,11 +49,7 @@ type TaskStrategyCorrectionResultAuthority =
   TaskStrategyImplementationRuntimeData['TaskStrategyCorrectionResultAuthority'];
 type CollaborationGrantUseProjection =
   TaskStrategyImplementationRuntimeData['CollaborationGrantUseProjection'];
-import type {
-  BeginTaskStrategyImplementationOptions,
-  TaskStrategyImplementationStatus,
-} from './task-strategy-implementation-lifecycle.ts';
-import type { createTaskStrategyImplementationContext } from './task-strategy-implementation-context.ts';
+
 export function createTaskStrategyProviderResults(
   changeContract: ChangeContractServices,
   roleAdmission: Pick<RoleAdmissionServices, 'admitRoleResult'>,
@@ -500,10 +503,11 @@ export function createTaskStrategyProviderResults(
       );
       const maintainerPolicy = parseMaintainerPolicy(
         JSON.parse(
-          runGit(input.context.git.repositoryRoot, [
-            'show',
-            `${expectedBinding.baselineCommit}:workflow/maintainer-policy.json`,
-          ]),
+          readFileAtRevision(
+            input.context.git.repositoryRoot,
+            expectedBinding.baselineCommit,
+            'workflow/maintainer-policy.json',
+          ),
         ),
       );
       const verifier = resolveAuthoritativeCollaborationGrantVerifier(

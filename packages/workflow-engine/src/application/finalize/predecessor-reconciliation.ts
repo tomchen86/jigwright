@@ -1,13 +1,4 @@
-import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
-/**
- * Reconciles one immediately preceding incomplete task from pinned commit
- * and check evidence.
- *
- * Invariants:
- * - Reconciliation permits only the single immediate predecessor and
- *   requires unchanged task and check definitions.
- */
 import type { CheckEvidence } from '../../foundation/check-evidence/check-evidence.ts';
 import type { TaskPolicy } from '../../modules/planning-provider/planning-artifact-types.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -16,11 +7,20 @@ import {
   commitFacts,
   hasExactTrailers,
 } from '../../runtime/repository-transaction/git-transitions.ts';
-import { runGit } from '../../runtime/repository-transaction/git.ts';
 import { matchesAllowedPath } from '../../foundation/repository-path/repository-path.ts';
 import { executeChecks } from './verification.ts';
 import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
+/**
+ * Reconciles one immediately preceding incomplete task from pinned commit
+ * and check evidence.
+ *
+ * Invariants:
+ * - Reconciliation permits only the single immediate predecessor and
+ *   requires unchanged task and check definitions.
+ */
 
 export type ReconciledTask = {
   taskId: string;
@@ -132,10 +132,11 @@ function baselineJson(
 ): Record<string, unknown> {
   try {
     const value: unknown = JSON.parse(
-      runGit(inspection.git.repositoryRoot, [
-        'show',
-        `${inspection.session.baseline.head}:${relativePath}`,
-      ]),
+      readFileAtRevision(
+        inspection.git.repositoryRoot,
+        inspection.session.baseline.head,
+        `${relativePath}`,
+      ),
     );
     if (isRecord(value)) {
       return value;

@@ -1,13 +1,21 @@
 /** Observes exact candidate policy, runner identity and current dependency facts. */
 import crypto from 'node:crypto';
-import { discoverRepository, runGit } from '../repository-transaction/git.ts';
-import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import { discoverRepository } from '../repository-transaction/git.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import type { CheckDefinition } from '../../modules/source/check-command.ts';
 import type {
   CandidateDependencySnapshotReader,
   CandidateDependencyObservationBindings,
 } from '../../modules/authority/maintainer-candidate-dependencies.ts';
+import {
+  assertCandidateDependencyTrustBase,
+  assertCandidateDependencyPolicyBinding,
+  candidateExternalStateDigests,
+  parseCandidateCheckDefinitions,
+  throwCandidateCheckDefinitionReadError,
+} from '../../modules/authority/maintainer-candidate-dependencies.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
+
 const DIGEST = /^[0-9a-f]{64}$/;
 export function createCandidateDependencyObservations({
   pinCheckRunner,
@@ -18,10 +26,11 @@ export function createCandidateDependencyObservations({
     function currentCandidateDependencySnapshot(input) {
       const repository = discoverRepository(input.cwd);
       assertCandidateDependencyTrustBase(repository.head, input.baseCommit);
-      const policyContent = runGit(repository.repositoryRoot, [
-        'show',
-        `${input.baseCommit}:workflow/maintainer-policy.json`,
-      ]);
+      const policyContent = readFileAtRevision(
+        repository.repositoryRoot,
+        input.baseCommit,
+        'workflow/maintainer-policy.json',
+      );
       const policy = parseMaintainerPolicy(JSON.parse(policyContent));
       const policyDigest = digest(policyContent);
       assertCandidateDependencyPolicyBinding(policy, policyDigest, input);
@@ -71,18 +80,10 @@ function loadCandidateCheckDefinitions(
 ): Record<string, CheckDefinition> {
   try {
     return parseCandidateCheckDefinitions(
-      runGit(repositoryRoot, ['show', `${baseCommit}:workflow/checks.json`]),
+      readFileAtRevision(repositoryRoot, baseCommit, 'workflow/checks.json'),
       requiredChecks,
     );
   } catch (error) {
     throwCandidateCheckDefinitionReadError(error);
   }
 }
-
-import {
-  assertCandidateDependencyTrustBase,
-  assertCandidateDependencyPolicyBinding,
-  candidateExternalStateDigests,
-  parseCandidateCheckDefinitions,
-  throwCandidateCheckDefinitionReadError,
-} from '../../modules/authority/maintainer-candidate-dependencies.ts';

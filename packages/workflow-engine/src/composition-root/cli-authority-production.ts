@@ -1,17 +1,6 @@
 import { withAuthorityRefusalAudit } from './authority-refusal-production.ts';
 import { taskMandateOperations } from './task-mandate-production.ts';
-/**
- * Assembles production authority dependencies and grant replay verifiers
- * for the CLI.
- *
- * Invariants:
- * - External review reconciliation requires the exact durably consumed
- *   Grant.
- */
-import {
-  discoverRepository,
-  runGit,
-} from '../runtime/repository-transaction/git.ts';
+import { discoverRepository } from '../runtime/repository-transaction/git.ts';
 import {
   assertInteractiveSignerContext,
   createInteractiveSshSigner,
@@ -37,6 +26,20 @@ import {
 import { productionRoleContextSharingGrantLifecyclePort } from './role-context-sharing-grant-lifecycle-production.ts';
 import { readCollaborationGrantInspection } from '../runtime/storage-journal/collaboration-grant-records.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
+import {
+  type AuthorityAuditEventType,
+  type AuthorityAuditResult,
+} from '../modules/authority/authority-audit-contract.ts';
+import { readFileAtRevision } from '../runtime/repository-transaction/git-command.ts';
+
+/**
+ * Assembles production authority dependencies and grant replay verifiers
+ * for the CLI.
+ *
+ * Invariants:
+ * - External review reconciliation requires the exact durably consumed
+ *   Grant.
+ */
 
 export function interventionControlDependencies(cwd: string) {
   return {
@@ -51,10 +54,11 @@ export function interventionControlDependencies(cwd: string) {
         const repository = discoverRepository(cwd);
         const policy = parseMaintainerPolicy(
           JSON.parse(
-            runGit(repository.repositoryRoot, [
-              'show',
-              `${repository.head}:workflow/maintainer-policy.json`,
-            ]),
+            readFileAtRevision(
+              repository.repositoryRoot,
+              repository.head,
+              'workflow/maintainer-policy.json',
+            ),
           ),
         );
         const verifier = createInteractiveSshSigner(
@@ -83,10 +87,11 @@ export function controlPlaneUpdaterDependencies(
     if (resolvedApprovalSigner === null) {
       const policy = parseMaintainerPolicy(
         JSON.parse(
-          runGit(repository.repositoryRoot, [
-            'show',
-            `${repository.head}:workflow/maintainer-policy.json`,
-          ]),
+          readFileAtRevision(
+            repository.repositoryRoot,
+            repository.head,
+            'workflow/maintainer-policy.json',
+          ),
         ),
       );
       resolvedApprovalSigner = createInteractiveSshSigner(
@@ -213,10 +218,11 @@ export function currentCollaborationGrantSelection(
   const repository = discoverRepository(cwd);
   const policy = parseMaintainerPolicy(
     JSON.parse(
-      runGit(repository.repositoryRoot, [
-        'show',
-        `${repository.head}:workflow/maintainer-policy.json`,
-      ]),
+      readFileAtRevision(
+        repository.repositoryRoot,
+        repository.head,
+        'workflow/maintainer-policy.json',
+      ),
     ),
   );
   return Object.freeze({
@@ -232,10 +238,11 @@ export function currentRoleContextSharingGrantSelection(
   const repository = discoverRepository(cwd);
   const policy = parseMaintainerPolicy(
     JSON.parse(
-      runGit(repository.repositoryRoot, [
-        'show',
-        `${repository.head}:workflow/maintainer-policy.json`,
-      ]),
+      readFileAtRevision(
+        repository.repositoryRoot,
+        repository.head,
+        'workflow/maintainer-policy.json',
+      ),
     ),
   );
   return Object.freeze({
@@ -248,10 +255,11 @@ export function currentRoleContextSharingGrantSelection(
 function maintainerPolicyAtCommit(repositoryRoot: string, commit: string) {
   return parseMaintainerPolicy(
     JSON.parse(
-      runGit(repositoryRoot, [
-        'show',
-        `${commit}:workflow/maintainer-policy.json`,
-      ]),
+      readFileAtRevision(
+        repositoryRoot,
+        commit,
+        'workflow/maintainer-policy.json',
+      ),
     ),
   );
 }
@@ -285,10 +293,11 @@ export function taskDiffCollaborationGrantSelection(
   }
   const currentPolicy = parseMaintainerPolicy(
     JSON.parse(
-      runGit(repository.repositoryRoot, [
-        'show',
-        `${repository.head}:workflow/maintainer-policy.json`,
-      ]),
+      readFileAtRevision(
+        repository.repositoryRoot,
+        repository.head,
+        'workflow/maintainer-policy.json',
+      ),
     ),
   );
   return Object.freeze({
@@ -322,10 +331,5 @@ export function taskDiffConsumedCollaborationGrantReplayVerifier(
   );
   return createConsumedCollaborationGrantReplayVerifier(historicalPolicy);
 }
-
-import {
-  type AuthorityAuditEventType,
-  type AuthorityAuditResult,
-} from '../modules/authority/authority-audit-contract.ts';
 
 const { inspectActiveTaskMandateBinding } = taskMandateOperations;

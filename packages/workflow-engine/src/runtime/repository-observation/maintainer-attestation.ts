@@ -29,6 +29,7 @@ import {
   resolveProtectedBaseRef,
   runGit,
 } from '../repository-transaction/git.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
 
 const MAINTAINER_POLICY_PATH = 'workflow/maintainer-policy.json';
 export function loadHeadPolicy(repositoryRoot: string): MaintainerPolicy {
@@ -203,10 +204,11 @@ export function readPolicyContent(
   repositoryRoot: string,
   baseCommit: string,
 ): string {
-  return runGit(repositoryRoot, [
-    'show',
-    `${baseCommit}:${MAINTAINER_POLICY_PATH}`,
-  ]);
+  return readFileAtRevision(
+    repositoryRoot,
+    baseCommit,
+    `${MAINTAINER_POLICY_PATH}`,
+  );
 }
 export function readPolicyBlob(
   repositoryRoot: string,

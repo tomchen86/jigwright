@@ -3,12 +3,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { runGit, listChangedPaths } from '../repository-transaction/git.ts';
 import type { MaintainerManifestObservations } from '../../modules/authority/maintainer-manifest.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
+
 export const maintainerManifestObservations: MaintainerManifestObservations = {
   readProfilesAtTrustBase(repositoryRoot, trustBaseCommit) {
-    return runGit(repositoryRoot, [
-      'show',
-      `${trustBaseCommit}:workflow/maintainer-profiles.json`,
-    ]);
+    return readFileAtRevision(
+      repositoryRoot,
+      trustBaseCommit,
+      'workflow/maintainer-profiles.json',
+    );
   },
   listChangedPaths,
   readTrustBaseTreeEntry(repositoryRoot, trustBaseCommit, filePath) {

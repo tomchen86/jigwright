@@ -19,6 +19,13 @@ export function runGit(cwd, args, allowFailure = false) {
  * remain distinguishable from empty files, and the literal tree lookup prevents
  * pathspec expansion before the blob is read.
  */
+/**
+ * Content of `filePath` at `revision`. Unlike readFileAtCommit this requires
+ * the path to exist and lets Git's own failure surface.
+ */
+export function readFileAtRevision(repositoryRoot, revision, filePath) {
+    return runGit(repositoryRoot, ['show', `${revision}:${filePath}`]);
+}
 export function readFileAtCommit(repositoryRoot, commit, filePath) {
     const listing = runGit(repositoryRoot, [
         'ls-tree',

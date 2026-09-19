@@ -23,7 +23,6 @@ import {
   workflowError,
   ExitCode,
 } from '../../foundation/errors/errors.ts';
-import { runGit } from '../repository-transaction/git.ts';
 import { normalizeExactRepositoryPath } from '../../foundation/repository-path/repository-path.ts';
 import {
   type ProviderInvocationRequest,
@@ -35,6 +34,7 @@ import type {
   ProviderAvailabilityPilotObservation,
   ProviderAvailabilityPilotRecord,
 } from './provider-availability-pilot.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
 
 const SHA256 = /^[0-9a-f]{64}$/u;
 
@@ -274,17 +274,19 @@ export function assertProviderAvailabilityPilotRecord(
   ) {
     throw pilotInvalid();
   }
-  const policyContent = runGit(repositoryRoot, [
-    'show',
-    `${value.baseCommit}:workflow/ai-adapter-policy.json`,
-  ]);
+  const policyContent = readFileAtRevision(
+    repositoryRoot,
+    value.baseCommit,
+    'workflow/ai-adapter-policy.json',
+  );
   const loadedPolicy = parseAiAdapterPolicyDocument(policyContent);
   const baseTree = resolveTreeOid(repositoryRoot, value.baseCommit);
   const config = JSON.parse(
-    runGit(repositoryRoot, [
-      'show',
-      `${value.baseCommit}:workflow/config.json`,
-    ]),
+    readFileAtRevision(
+      repositoryRoot,
+      value.baseCommit,
+      'workflow/config.json',
+    ),
   ) as unknown;
   if (
     loadedPolicy.digest !== value.policyDigest ||

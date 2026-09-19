@@ -9,7 +9,6 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-
 import {
   canonicalJson,
   compareCanonicalStrings,
@@ -31,6 +30,7 @@ import {
   normalizeExactRepositoryPath,
   normalizePolicyPath,
 } from '../../../../foundation/repository-path/repository-path.ts';
+import { readFileAtRevision } from '../../../../runtime/repository-transaction/git-command.ts';
 
 const MANIFEST_PATH = 'workflow/protected-capabilities.json';
 const LOADER_PATH =
@@ -214,7 +214,7 @@ export function loadProtectedCapabilitiesFromTrustBase(
   let parsed: unknown;
   try {
     parsed = JSON.parse(
-      runGit(repositoryRoot, ['show', `${trustBaseCommit}:${MANIFEST_PATH}`]),
+      readFileAtRevision(repositoryRoot, trustBaseCommit, `${MANIFEST_PATH}`),
     ) as unknown;
   } catch {
     throw protectedManifestInvalid(

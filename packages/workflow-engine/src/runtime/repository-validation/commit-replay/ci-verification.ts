@@ -12,7 +12,10 @@ import {
   commitFacts,
   commitChangedPaths,
 } from '../../repository-transaction/git-transitions.ts';
-import { readFileAtCommit } from '../../repository-transaction/git-command.ts';
+import {
+  readFileAtCommit,
+  readFileAtRevision,
+} from '../../repository-transaction/git-command.ts';
 import {
   assertCiCommit,
   findMergeBase,
@@ -83,10 +86,11 @@ export const ciRepositoryObservations: CiRepositoryObservations = {
     ).trim();
   },
   readHistoricalPolicyContent(repositoryRoot, commit) {
-    return runGit(repositoryRoot, [
-      'show',
-      `${commit}:${MAINTAINER_POLICY_PATH}`,
-    ]);
+    return readFileAtRevision(
+      repositoryRoot,
+      commit,
+      `${MAINTAINER_POLICY_PATH}`,
+    );
   },
   latestPlanCommit(repositoryRoot, head, artifactPath) {
     return runGit(repositoryRoot, [

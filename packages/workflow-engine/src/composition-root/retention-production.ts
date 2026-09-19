@@ -18,12 +18,10 @@ import {
   inspectDurableRetentionCatalog,
   pinDurableEvidence,
 } from '../runtime/storage-journal/execution-governance-evidence-store.ts';
-import {
-  discoverRepository,
-  runGit,
-} from '../runtime/repository-transaction/git.ts';
+import { discoverRepository } from '../runtime/repository-transaction/git.ts';
 import { parseMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
 import { createInteractiveSshSigner } from '../adapters/signing/ssh/maintainer-signer.ts';
+import { readFileAtRevision } from '../runtime/repository-transaction/git-command.ts';
 
 export const inspectProviderRetentionMetrics = inspectProviderMetrics.bind(
   undefined,
@@ -62,10 +60,11 @@ export const pinWorkflowEvidence = pinEvidence.bind(undefined, {
     const repository = discoverRepository(cwd);
     const policy = parseMaintainerPolicy(
       JSON.parse(
-        runGit(repository.repositoryRoot, [
-          'show',
-          `${repository.head}:workflow/maintainer-policy.json`,
-        ]),
+        readFileAtRevision(
+          repository.repositoryRoot,
+          repository.head,
+          'workflow/maintainer-policy.json',
+        ),
       ),
     );
     return { repositoryRoot: repository.repositoryRoot, policy };

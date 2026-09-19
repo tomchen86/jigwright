@@ -9,18 +9,8 @@ import type {
   VerifiedRoleContextSharingTerminalReceiptV1,
   RoleContextSharingTerminalUseIdentityV1,
 } from '../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
-/**
- * Publishes and verifies portable receipts for terminal role context
- * sharing uses.
- *
- * Invariants:
- * - Verified receipt identities must correspond exactly to the supplied
- *   terminal uses.
- */
 import crypto from 'node:crypto';
-
 import { canonicalRoleContextSharingGrantEnvelopeV1 } from '../runtime/grants/optional-grants-package.ts';
-
 import { authorityTagPublishCommand } from '../adapters/remote/github/authority-relay-command.ts';
 import {
   assertInteractiveSignerContext,
@@ -47,6 +37,16 @@ import {
   readRoleContextSharingRecord,
 } from '../runtime/storage-journal/role-context-sharing-store.ts';
 import { resolveBlobOid } from '../runtime/repository-transaction/git-object-ids.ts';
+import { readFileAtRevision } from '../runtime/repository-transaction/git-command.ts';
+
+/**
+ * Publishes and verifies portable receipts for terminal role context
+ * sharing uses.
+ *
+ * Invariants:
+ * - Verified receipt identities must correspond exactly to the supplied
+ *   terminal uses.
+ */
 
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -557,10 +557,11 @@ function loadHistoricalPolicy(
   baselineCommit: string,
 ): Readonly<{ policy: MaintainerPolicy; policyBlob: string }> {
   if (!OBJECT_ID.test(baselineCommit)) throw receiptInvalid();
-  const raw = runGit(repositoryRoot, [
-    'show',
-    `${baselineCommit}:workflow/maintainer-policy.json`,
-  ]);
+  const raw = readFileAtRevision(
+    repositoryRoot,
+    baselineCommit,
+    'workflow/maintainer-policy.json',
+  );
   const policy = parseMaintainerPolicy(JSON.parse(raw));
   const policyBlob = resolveBlobOid(
     repositoryRoot,

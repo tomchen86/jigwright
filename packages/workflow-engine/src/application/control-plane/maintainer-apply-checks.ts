@@ -1,4 +1,11 @@
 import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
+import type {
+  MaintainerApplyChecksBindings,
+  MaintainerApplyChecksBindingsTypes,
+} from './maintainer-approve.ts';
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
 /**
  * Prepares candidate checks and verifies maintainer apply preconditions.
  *
@@ -7,10 +14,7 @@ import type { MaintainerManifestOperations } from '../../modules/authority/maint
  *   preflight.
  */
 // maintainer apply checks; repository effects remain bound by the public module.
-import type {
-  MaintainerApplyChecksBindings,
-  MaintainerApplyChecksBindingsTypes,
-} from './maintainer-approve.ts';
+
 type MaintainerGrantV2PreflightResult =
   MaintainerApplyChecksBindingsTypes['MaintainerGrantV2PreflightResult'];
 type PrepareMaintainerGrantV2ChecksOptions =
@@ -118,10 +122,11 @@ export function createMaintainerApplyChecks(
     );
     const basePolicy = parseMaintainerPolicy(
       JSON.parse(
-        runGit(initial.repositoryRoot, [
-          'show',
-          `${preflight.trustBaseCommit}:workflow/maintainer-policy.json`,
-        ]),
+        readFileAtRevision(
+          initial.repositoryRoot,
+          preflight.trustBaseCommit,
+          'workflow/maintainer-policy.json',
+        ),
       ),
     );
     const profile = manifestOperations.loadCapabilityProfileFromTrustBase(
@@ -502,7 +507,7 @@ export function createMaintainerApplyChecks(
 
     try {
       const raw = JSON.parse(
-        runGit(repositoryRoot, ['show', `${baseCommit}:workflow/checks.json`]),
+        readFileAtRevision(repositoryRoot, baseCommit, 'workflow/checks.json'),
       ) as { schemaVersion?: unknown; checks?: unknown };
       if (
         raw.schemaVersion !== 1 ||
@@ -548,5 +553,3 @@ export function createMaintainerApplyChecks(
     loadBaseCheckDefinitions,
   };
 }
-
-import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';

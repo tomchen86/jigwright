@@ -10,6 +10,7 @@ import {
   type TaskRevisionApprovalRepository,
 } from '../../modules/authority/task-revision-approval-contracts.ts';
 import { resolveBlobOid } from '../repository-transaction/git-object-ids.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
 
 export const taskRevisionApprovalRepository: TaskRevisionApprovalRepository = {
   inspect: discoverRepository,
@@ -29,10 +30,11 @@ function loadPolicyAtCommit(
     return {
       policy: parseMaintainerPolicy(
         JSON.parse(
-          runGit(repositoryRoot, [
-            'show',
-            `${commit}:workflow/maintainer-policy.json`,
-          ]),
+          readFileAtRevision(
+            repositoryRoot,
+            commit,
+            'workflow/maintainer-policy.json',
+          ),
         ),
       ),
       policyBlob: resolveBlobOid(

@@ -1,23 +1,26 @@
 /** Live external-effect policy, source and private audit-directory observations. */
 import fs from 'node:fs';
-
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
   isWorkflowFailure,
   assertExternalAuditRootPath,
 } from '../../modules/authority/external-effect-grant.ts';
-
 import { runGit } from '../repository-transaction/git.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-
 import { type ExternalEffectRepositoryServices } from '../../modules/authority/external-effect-grant-services.ts';
+import { discoverRepository } from '../repository-transaction/git.ts';
+import { type PublishRepositoryServices } from '../../modules/authority/publish-grant.ts';
+import { resolveBlobOid } from '../repository-transaction/git-object-ids.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
+
 const loadPolicyAt: ExternalEffectRepositoryServices['loadPolicyAt'] =
   function loadPolicyAt(repositoryRoot, commit) {
     try {
-      const content = runGit(repositoryRoot, [
-        'show',
-        `${commit}:workflow/maintainer-policy.json`,
-      ]);
+      const content = readFileAtRevision(
+        repositoryRoot,
+        commit,
+        'workflow/maintainer-policy.json',
+      );
       return {
         policy: parseMaintainerPolicy(JSON.parse(content)),
         policyBlob: resolveBlobOid(
@@ -66,10 +69,6 @@ export const externalEffectRepository: Omit<
     runGit(repositoryRoot, ['rev-parse', '--verify', sourceOid]).trim(),
 };
 
-import { discoverRepository } from '../repository-transaction/git.ts';
-
-import { type PublishRepositoryServices } from '../../modules/authority/publish-grant.ts';
-import { resolveBlobOid } from '../repository-transaction/git-object-ids.ts';
 export const publishRepository: PublishRepositoryServices = {
   discoverRepository,
   resolveSourceOid: externalEffectRepository.resolveSourceOid,

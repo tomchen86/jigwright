@@ -1,19 +1,9 @@
 import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
-/**
- * Starts and tracks authority sessions bound to reserved grants and
- * candidates.
- *
- * Invariants:
- * - A reserved grant must match the repository, change, and starting
- *   commit.
- */
 import { createMaintainerSessionInspection } from './maintainer-session-inspection.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-
 import { deriveAuthorityAuditRepositoryId } from '../../runtime/storage-journal/authority-audit-ledger.ts';
-
 import { authorityRefusalDigest } from '../../modules/authority/authority-refusal-audit.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
@@ -21,7 +11,6 @@ import {
   runCheck,
 } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import type { CheckEvidence } from '../../foundation/check-evidence/check-evidence.ts';
-import type { PinnedCheckRunner } from '../../modules/source/check-command.ts';
 import type { CheckDefinition } from '../../modules/source/check-command.ts';
 import {
   assertDisposableDatabaseForRepository,
@@ -48,13 +37,11 @@ import {
 } from '../../runtime/repository-transaction/git-transitions.ts';
 import { acceptApplyPrestate } from '../../modules/authority/maintainer-candidate-ref-ledger.ts';
 import { assertCandidateV2ChecksFresh } from '../../modules/authority/maintainer-candidate-contracts.ts';
-
 import {
   canonicalMaintainerGrantV2Envelope,
   maintainerChecksEnvironmentDigest,
   type MaintainerGrantV2Envelope,
 } from '../../modules/authority/maintainer-grant-v2-codec.ts';
-
 import {
   parseMaintainerPolicy,
   type MaintainerPolicy,
@@ -81,7 +68,28 @@ import {
   runtimePaths,
   withRepositoryLifecycleOperation,
 } from '../../runtime/session-workspace/session-store.ts';
-import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
+import {
+  type AuthorityAuditServiceHooks,
+  type AuthorityRefusalAuditBinding,
+  type WithAuthorityRefusalAudit,
+} from '../../modules/authority/authority-audit-contract.ts';
+import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
+import type {
+  AuthorityPinnedCheck,
+  AuthoritySession,
+} from '../../modules/authority/authority-session-contract.ts';
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
+import { resolveBlobOid } from '../../runtime/repository-transaction/git-object-ids.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
+/**
+ * Starts and tracks authority sessions bound to reserved grants and
+ * candidates.
+ *
+ * Invariants:
+ * - A reserved grant must match the repository, change, and starting
+ *   commit.
+ */
 
 export type AuthoritySessionOptions = {
   now?: Date;
@@ -746,10 +754,11 @@ function isSemanticAuthorityInvalidation(error: unknown): boolean {
 
 function loadBasePolicy(repositoryRoot: string, baseCommit: string) {
   try {
-    const policyContent = runGit(repositoryRoot, [
-      'show',
-      `${baseCommit}:workflow/maintainer-policy.json`,
-    ]);
+    const policyContent = readFileAtRevision(
+      repositoryRoot,
+      baseCommit,
+      'workflow/maintainer-policy.json',
+    );
     const policy = parseMaintainerPolicy(JSON.parse(policyContent));
     const policyBlob = resolveBlobOid(
       repositoryRoot,
@@ -955,22 +964,7 @@ const {
 }));
 export { checkAuthoritySession };
 
-import {
-  type AuthorityAuditServiceHooks,
-  type AuthorityRefusalAuditBinding,
-  type WithAuthorityRefusalAudit,
-} from '../../modules/authority/authority-audit-contract.ts';
-
-import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
-
-import type {
-  AuthorityPinnedCheck,
-  AuthoritySession,
-} from '../../modules/authority/authority-session-contract.ts';
 export type {
   AuthorityPinnedCheck,
   AuthoritySession,
 } from '../../modules/authority/authority-session-contract.ts';
-
-import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
-import { resolveBlobOid } from '../../runtime/repository-transaction/git-object-ids.ts';

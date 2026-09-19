@@ -9,7 +9,6 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-
 import {
   COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1,
   COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
@@ -20,7 +19,6 @@ import {
   ROLE_CONTEXT_SHARING_GRANT_READER_CONTRACT_VERSION_V1,
   ROLE_CONTEXT_SHARING_GRANT_SIGNATURE_NAMESPACE_V1,
 } from '@jigwright/core/role-context-sharing-grant-codec';
-
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { verifySshSignatureWithPublicKey } from '../adapters/signing/ssh/maintainer-signer.ts';
@@ -46,8 +44,6 @@ import {
   type MaintainerPolicy,
 } from '../modules/authority/maintainer-policy.ts';
 import { ROLE_CONTEXT_SHARING_POLICY_DIGEST } from '../modules/authority/role-context-sharing-grant.ts';
-
-import { runGit } from '../runtime/repository-transaction/git.ts';
 import { verifyExactConsumedCollaborationGrantCrashReplay } from '../runtime/storage-journal/collaboration-grant-consumption.ts';
 import { verifyConsumedRoleContextSharingReplay } from '../runtime/grants/grant-services.ts';
 import { readVerifiedRoleContextSharingTerminalReceipt } from './role-context-sharing-terminal-receipt-production.ts';
@@ -60,6 +56,7 @@ import type {
   ConsumedRoleResultReplayPort,
 } from '../modules/provider-orchestration/role-admission-contracts.ts';
 import { resolveBlobOid } from '../runtime/repository-transaction/git-object-ids.ts';
+import { readFileAtRevision } from '../runtime/repository-transaction/git-command.ts';
 
 const COLLABORATION_EFFECT = 'role-independence-degradation-only' as const;
 const REQUIRED_PACKAGE_EXPORTS = Object.freeze({
@@ -306,10 +303,11 @@ export const productionConsumedRoleResultReplayPort: ConsumedRoleResultReplayPor
       try {
         policy = parseMaintainerPolicy(
           JSON.parse(
-            runGit(input.repositoryRoot, [
-              'show',
-              `${input.expectedBinding.baselineCommit}:workflow/maintainer-policy.json`,
-            ]),
+            readFileAtRevision(
+              input.repositoryRoot,
+              input.expectedBinding.baselineCommit,
+              'workflow/maintainer-policy.json',
+            ),
           ),
         );
       } catch {
@@ -361,10 +359,11 @@ export const productionConsumedPlanReviewReplayPort: ConsumedRoleReplayPort =
       try {
         policy = parseMaintainerPolicy(
           JSON.parse(
-            runGit(input.repositoryRoot, [
-              'show',
-              `${input.evidence.expectedBinding.baselineCommit}:workflow/maintainer-policy.json`,
-            ]),
+            readFileAtRevision(
+              input.repositoryRoot,
+              input.evidence.expectedBinding.baselineCommit,
+              'workflow/maintainer-policy.json',
+            ),
           ),
         );
         policyBlob = resolveBlobOid(

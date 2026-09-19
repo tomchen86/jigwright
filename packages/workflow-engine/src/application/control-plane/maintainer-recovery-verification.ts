@@ -12,6 +12,8 @@ import type {
   MaintainerRecoveryVerificationBindingsTypes,
 } from './maintainer-recovery.ts';
 import { resolveBlobOid } from '../../runtime/repository-transaction/git-object-ids.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
 type AuthoritySession =
   MaintainerRecoveryVerificationBindingsTypes['AuthoritySession'];
 type AuthorityCommitJournal =
@@ -115,10 +117,11 @@ export function createMaintainerRecoveryVerification(
       isPostApprovalAdmissionFailure,
     } = boundServices;
 
-    const policyContent = runGit(repositoryRoot, [
-      'show',
-      `${session.baseCommit}:workflow/maintainer-policy.json`,
-    ]);
+    const policyContent = readFileAtRevision(
+      repositoryRoot,
+      session.baseCommit,
+      'workflow/maintainer-policy.json',
+    );
     const policy = parseMaintainerPolicy(JSON.parse(policyContent));
     const policyBlob = resolveBlobOid(
       repositoryRoot,

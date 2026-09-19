@@ -12,7 +12,6 @@ import {
   ROLE_CONTEXT_SHARING_GRANT_SIGNATURE_NAMESPACE_V1,
   type RoleContextSharingGrantEnvelopeV1,
 } from '@jigwright/core/role-context-sharing-grant-codec';
-
 import {
   createRoleContextSharingRequirementEligibilityPort,
   deriveRoleContextSharingPlanReviewExpectedBinding,
@@ -32,13 +31,11 @@ import {
   parseMaintainerPolicy,
   type MaintainerPolicy,
 } from '../modules/authority/maintainer-policy.ts';
-import {
-  discoverRepository,
-  runGit,
-} from '../runtime/repository-transaction/git.ts';
+import { discoverRepository } from '../runtime/repository-transaction/git.ts';
 import { storeAvailableRoleContextSharingGrant } from '../runtime/storage-journal/role-context-sharing-store.ts';
 import { createCurrentAuthoritativeRoleContextSharingGrantVerifier } from './grant-verifier-composition.ts';
 import { resolveBlobOid } from '../runtime/repository-transaction/git-object-ids.ts';
+import { readFileAtRevision } from '../runtime/repository-transaction/git-command.ts';
 
 export type RoleContextSharingGrantCandidate = Readonly<{
   requirementNodeId: string;
@@ -74,10 +71,11 @@ export function approveAndStoreRoleContextSharingGrant(
   }
   const policy = parseMaintainerPolicy(
     JSON.parse(
-      runGit(repository.repositoryRoot, [
-        'show',
-        `${requirement.baseline.head}:workflow/maintainer-policy.json`,
-      ]),
+      readFileAtRevision(
+        repository.repositoryRoot,
+        requirement.baseline.head,
+        'workflow/maintainer-policy.json',
+      ),
     ),
   );
   const policyBlob = resolveBlobOid(

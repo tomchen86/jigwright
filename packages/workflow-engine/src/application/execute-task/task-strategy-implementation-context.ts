@@ -1,13 +1,4 @@
-import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
-/**
- * Builds implementation subjects, status, and collaboration authority from
- * current RED state.
- *
- * Invariants:
- * - Recorded RED authors must retain provider, session, and principal
- *   identities.
- */
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import { inspectSession } from '../session-inspection/session-inspection.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
@@ -36,17 +27,29 @@ import type {
   TaskStrategyImplementationRuntimeBindings,
   TaskStrategyImplementationRuntimeData,
 } from './task-strategy-implementation-lifecycle.ts';
+import type {
+  TaskStrategyRedAuthor,
+  TaskStrategyImplementationStatus,
+} from './task-strategy-implementation-lifecycle.ts';
+import { resolveBlobOid } from '../../runtime/repository-transaction/git-object-ids.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
+/**
+ * Builds implementation subjects, status, and collaboration authority from
+ * current RED state.
+ *
+ * Invariants:
+ * - Recorded RED authors must retain provider, session, and principal
+ *   identities.
+ */
+
 type TaskStrategyImplementationReservation =
   TaskStrategyImplementationRuntimeData['TaskStrategyImplementationReservation'];
 type TaskStrategyImplementationProviderAttempt =
   TaskStrategyImplementationRuntimeData['TaskStrategyImplementationProviderAttempt'];
 type TaskStrategyGreenFailureRecord =
   TaskStrategyImplementationRuntimeData['TaskStrategyGreenFailureRecord'];
-import type {
-  TaskStrategyRedAuthor,
-  TaskStrategyImplementationStatus,
-} from './task-strategy-implementation-lifecycle.ts';
-import { resolveBlobOid } from '../../runtime/repository-transaction/git-object-ids.ts';
+
 export function createTaskStrategyImplementationContext(
   changeContract: ChangeContractServices,
   runtime: TaskStrategyImplementationRuntimeBindings,
@@ -503,10 +506,11 @@ export function createTaskStrategyImplementationContext(
   ): CollaborationGrantExpectedBinding {
     const policy = parseMaintainerPolicy(
       JSON.parse(
-        runGit(repositoryRoot, [
-          'show',
-          `${request.baselineCommit}:workflow/maintainer-policy.json`,
-        ]),
+        readFileAtRevision(
+          repositoryRoot,
+          request.baselineCommit,
+          'workflow/maintainer-policy.json',
+        ),
       ),
     );
     return {
@@ -555,10 +559,11 @@ export function createTaskStrategyImplementationContext(
   function baselineAdapterPolicy(repositoryRoot: string, commit: string) {
     try {
       return parseAiAdapterPolicyDocument(
-        runGit(repositoryRoot, [
-          'show',
-          `${commit}:workflow/ai-adapter-policy.json`,
-        ]),
+        readFileAtRevision(
+          repositoryRoot,
+          commit,
+          'workflow/ai-adapter-policy.json',
+        ),
       );
     } catch (error) {
       throw workflowError(

@@ -1,5 +1,11 @@
 import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
 import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
+import type {
+  MaintainerRecoveryAuditBindings,
+  MaintainerRecoveryAuditBindingsTypes,
+} from './maintainer-recovery.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
 /**
  * Reconstructs portable application and transaction audit receipts during
  * recovery.
@@ -9,10 +15,7 @@ import type { AuthorityApplicationReceiptOperations } from '../../modules/author
  *   and time.
  */
 // maintainer recovery audit; repository effects remain bound by the public module.
-import type {
-  MaintainerRecoveryAuditBindings,
-  MaintainerRecoveryAuditBindingsTypes,
-} from './maintainer-recovery.ts';
+
 type AuthoritySession =
   MaintainerRecoveryAuditBindingsTypes['AuthoritySession'];
 type AuthorityCommitJournal =
@@ -103,10 +106,11 @@ export function createMaintainerRecoveryAudit(
         'Portable authority receipt inputs differ from the exact candidate transaction.',
       );
     }
-    const policyContent = runGit(session.repositoryRoot, [
-      'show',
-      `${session.baseCommit}:workflow/maintainer-policy.json`,
-    ]);
+    const policyContent = readFileAtRevision(
+      session.repositoryRoot,
+      session.baseCommit,
+      'workflow/maintainer-policy.json',
+    );
     const policy = parseMaintainerPolicy(JSON.parse(policyContent));
     const grantTagRef = `${policy.auditTagPrefix}${session.grantId}`;
     const receipt = createAuthorityApplicationReceiptPayload({

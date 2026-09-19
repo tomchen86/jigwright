@@ -5,6 +5,7 @@ import { parseMaintainerPolicy, } from "../../modules/authority/maintainer-polic
 import { runGit } from "../repository-transaction/git.js";
 import { readInvestigationSession } from "../storage-journal/investigation-session-records.js";
 import { resolveBlobOid, resolveCommitOid, } from "../repository-transaction/git-object-ids.js";
+import { readFileAtRevision } from "../repository-transaction/git-command.js";
 /** Reads historical Grant policy, exact annotated tags and successor sessions. */
 export const readHumanResolutionAuditTag = (repositoryRoot, policy, observedRef) => {
     const resolutionPrefix = `${policy.auditTagPrefix}resolution-`;
@@ -67,10 +68,7 @@ export const loadMaintainerPolicyForResolution = (repositoryRoot, trustBaseCommi
 };
 function loadBasePolicy(repositoryRoot, baseCommit) {
     try {
-        return parseMaintainerPolicy(JSON.parse(runGit(repositoryRoot, [
-            'show',
-            `${baseCommit}:workflow/maintainer-policy.json`,
-        ])));
+        return parseMaintainerPolicy(JSON.parse(readFileAtRevision(repositoryRoot, baseCommit, 'workflow/maintainer-policy.json')));
     }
     catch (error) {
         if (error && typeof error === 'object' && 'code' in error) {

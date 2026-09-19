@@ -1,4 +1,18 @@
 import { taskMandateOperations } from './task-mandate-production.ts';
+import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
+import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
+import { inspectProtectedTaskApplyLifecycleState } from '../application/finalize/lifecycle.ts';
+import type { ProtectedTaskApplyFinalizer } from './finalization-production.ts';
+import {
+  type ProtectedTaskApplyFinalizationParametersV1,
+  type ProtectedTaskApplyGrantPort,
+  type ProtectedTaskApplyObservationV1,
+} from '../modules/authority/protected-task-apply-grant.ts';
+import { grantSha256 } from '../modules/authority/grant-primitives.ts';
+import { parseMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
+import { discoverRepository } from '../runtime/repository-transaction/git.ts';
+import { readFileAtRevision } from '../runtime/repository-transaction/git-command.ts';
+
 /**
  * Connects protected-task Grant observation and finalization to production
  * lifecycle operations.
@@ -7,22 +21,6 @@ import { taskMandateOperations } from './task-mandate-production.ts';
  * - Finalization asserts lifecycle ownership and checks the active mandate
  *   unless the task is already completed.
  */
-import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
-import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
-import { inspectProtectedTaskApplyLifecycleState } from '../application/finalize/lifecycle.ts';
-import type { ProtectedTaskApplyFinalizer } from './finalization-production.ts';
-
-import {
-  type ProtectedTaskApplyFinalizationParametersV1,
-  type ProtectedTaskApplyGrantPort,
-  type ProtectedTaskApplyObservationV1,
-} from '../modules/authority/protected-task-apply-grant.ts';
-import { grantSha256 } from '../modules/authority/grant-primitives.ts';
-import { parseMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
-import {
-  discoverRepository,
-  runGit,
-} from '../runtime/repository-transaction/git.ts';
 
 export function observeCurrentProtectedTaskApply(
   cwd: string,
@@ -130,10 +128,11 @@ function repositoryIdAtBaseline(
   let value: unknown;
   try {
     value = JSON.parse(
-      runGit(repositoryRoot, [
-        'show',
-        `${baselineHead}:workflow/maintainer-policy.json`,
-      ]),
+      readFileAtRevision(
+        repositoryRoot,
+        baselineHead,
+        'workflow/maintainer-policy.json',
+      ),
     );
   } catch {
     throw workflowError(

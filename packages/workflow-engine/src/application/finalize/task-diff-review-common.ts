@@ -16,19 +16,18 @@ import {
   type ConsumedCollaborationGrantReplayVerifier,
   assertConsumedCollaborationGrantReplayVerifier,
 } from '../../modules/authority/grant-verifier-port.ts';
-
 import {
   type AdmittedRoleResult,
   type ConsumedRoleResultReplayPort,
 } from '../../modules/provider-orchestration/role-admission-contracts.ts';
 import { type CollaborationGrantExpectedBinding } from '../../modules/authority/collaboration-grant-codec.ts';
-
 import crypto from 'node:crypto';
 import type {
   TaskDiffReviewRuntimeBindings,
   TaskDiffReviewRuntimeData,
 } from './task-diff-review-lifecycle.ts';
 import type { TaskDiffReviewConsumedReplayValidation } from './task-diff-review-contracts.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
 
 type RepositoryLifecycleOperationOptions =
   TaskDiffReviewRuntimeData['RepositoryLifecycleOperationOptions'];
@@ -203,10 +202,11 @@ export function createTaskDiffReviewCommonModule(
   function baselineAdapterPolicy(repositoryRoot: string, commit: string) {
     try {
       return parseAiAdapterPolicyDocument(
-        runGit(repositoryRoot, [
-          'show',
-          `${commit}:workflow/ai-adapter-policy.json`,
-        ]),
+        readFileAtRevision(
+          repositoryRoot,
+          commit,
+          'workflow/ai-adapter-policy.json',
+        ),
       );
     } catch (error) {
       throw workflowError(
@@ -231,7 +231,7 @@ export function createTaskDiffReviewCommonModule(
     let value: unknown;
     try {
       value = JSON.parse(
-        runGit(repositoryRoot, ['show', `${commit}:${relativePath}`]),
+        readFileAtRevision(repositoryRoot, commit, `${relativePath}`),
       );
     } catch (error) {
       throw workflowError(

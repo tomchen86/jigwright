@@ -1,12 +1,4 @@
 import type { ControlPlanePromotionBootstrapObservations } from '../../composition-root/cli-command-services.ts';
-/**
- * Parses and dispatches authority, maintainer, mandate, and external-effect
- * commands.
- *
- * Invariants:
- * - Task Mandate requests must be readable JSON manifests accepted by the
- *   contract parser.
- */
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -21,7 +13,6 @@ import {
   reconcileExternalEffectGrant,
   executePublishGrant,
   discoverRepository,
-  runGit,
   assertMaintainerGrantId,
   parseMaintainerEvidenceWaivers,
   maintainerGrantStorePaths,
@@ -59,14 +50,12 @@ import type {
   ReissueAndApplyMaintainerGrantV2Request,
   CandidateExternalEffect,
 } from '../../composition-root/cli-command-services.ts';
-
 import { dispatchAuthorityAuditCommand } from './authority-audit-cli.ts';
 import {
   isCollaborationGrantCommand,
   dispatchCollaborationGrantCommand,
 } from './collaboration-grant-cli.ts';
 import { dispatchRoleContextSharingGrantCommand } from './role-context-sharing-grant-cli.ts';
-
 import {
   WorkflowError,
   workflowError,
@@ -77,9 +66,7 @@ import {
   inspectIssuedExecutionBudgetGrant,
   revokeIssuedExecutionBudgetGrant,
 } from './execution-grant-cli.ts';
-
 import { productionConsumedRoleResultReplayPort } from '../../composition-root/grant-verifier-composition.ts';
-
 import {
   bootstrapInterventionStateRoot,
   dispatchBootstrapInterventionCommand,
@@ -89,9 +76,7 @@ import {
   dispatchProductionControlPlaneUpdaterCommand,
   controlPlaneTaskMandateBindingFromTaskMandate,
 } from './intervention-control-updater-cli.ts';
-
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
-
 import {
   usage,
   requireArgumentCount,
@@ -104,6 +89,17 @@ import {
   taskDiffCollaborationGrantSelection,
 } from '../../composition-root/cli-authority-production.ts';
 import { parseTaskDiffReviewCliInput } from './task-review-cli-input.ts';
+import type { MaintainerAuthorityOperations } from '../../composition-root/maintainer-authority-production.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
+/**
+ * Parses and dispatches authority, maintainer, mandate, and external-effect
+ * commands.
+ *
+ * Invariants:
+ * - Task Mandate requests must be readable JSON manifests accepted by the
+ *   contract parser.
+ */
 
 function maintainerTaskDiffReviewUsage(): WorkflowError {
   return usage(
@@ -705,8 +701,6 @@ function dispatchExternalEffectCommand(
   }
 }
 
-import type { MaintainerAuthorityOperations } from '../../composition-root/maintainer-authority-production.ts';
-
 export function createAuthorityCommands(
   maintainerAuthority: Pick<
     MaintainerAuthorityOperations,
@@ -1001,10 +995,11 @@ export function createAuthorityCommands(
         const context = loadInvestigationRuntimeContext(cwd);
         const policy = parseMaintainerPolicy(
           JSON.parse(
-            runGit(context.git.repositoryRoot, [
-              'show',
-              `${context.git.head}:workflow/maintainer-policy.json`,
-            ]),
+            readFileAtRevision(
+              context.git.repositoryRoot,
+              context.git.head,
+              'workflow/maintainer-policy.json',
+            ),
           ),
         );
         return {

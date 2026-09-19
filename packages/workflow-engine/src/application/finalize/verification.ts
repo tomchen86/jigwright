@@ -2,25 +2,11 @@ import type { MaintainerManifestOperations } from '../../modules/authority/maint
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
 import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
-import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
-/**
- * Inspects task sessions, executes checks, and reconciles evidence after
- * engine adoption.
- *
- * Invariants:
- * - Adoption reconciliation rejects a session changed since its trusted
- *   checkpoint.
- */
 import crypto from 'node:crypto';
-import fs from 'node:fs';
 import path from 'node:path';
-
 import type { LocalEngineSelectionReaders } from '../../modules/authority/local-engine-selection.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { digestArtifacts } from '../../runtime/repository-observation/contract-artifact-observation.ts';
 import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
-import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
-import { type TaskPolicy } from '../../modules/planning-provider/planning-artifact-types.ts';
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
 import {
   pinCheckRunner,
@@ -33,26 +19,18 @@ import {
   createCheckEnvironmentForRepository,
 } from '../../adapters/consumer/repository/work-registry/database-policy.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { completionDocumentPaths } from '../../runtime/managed-documents/validation/managed-documents.ts';
 import {
   readLocalEngineBinding,
   readPersistedWipBundle,
 } from '../control-plane/intervention-control-bootstrap.ts';
 import { readPersistedEngineAdoption } from '../../runtime/storage-journal/intervention-control-persistence.ts';
-
 import { type CheckDependency } from '../../modules/authority/maintainer-manifest-contracts.ts';
 import {
   discoverRepository,
-  fingerprintRepositoryProjection,
   fingerprintWorkingState,
-  listChangedPaths,
   runGit,
-  type GitState,
 } from '../../runtime/repository-transaction/git.ts';
-import {
-  assertSessionId,
-  matchesAllowedPath,
-} from '../../foundation/repository-path/repository-path.ts';
+import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import {
   readImmutableReport,
   writeImmutableReport,
@@ -63,26 +41,26 @@ import {
   assertReportChecks,
 } from '../../runtime/storage-journal/report-validation.ts';
 import {
-  assertOwnedLock,
-  assertTaskSessionIsolationLeasesOwned,
   readSessionFile,
   runtimePaths,
   type WorkflowSession,
   withSessionOperation,
   writeJsonAtomic,
 } from '../../runtime/session-workspace/session-store.ts';
-
 import { ensureTaskMechanicalTransformationEvidence } from './task-mechanical-transform.ts';
-import { assertTaskProjectionSourceDigest } from '../../runtime/managed-documents/transaction/task-projection.ts';
-
-import {
-  readFinalizeTransaction,
-  type ProtectedTaskApplyAuthorizationBinding,
-} from '../../runtime/storage-journal/finalize-transaction.ts';
-import { assertPreparedProtectedTaskApplyAuthorization } from '../task-apply-authorization/protected-task-apply-authorization.ts';
-
-import type { ValidatedChangeContract } from '../../modules/assurance/validated-change-contract.ts';
+import { type ProtectedTaskApplyAuthorizationBinding } from '../../runtime/storage-journal/finalize-transaction.ts';
 import { inspectSession } from '../session-inspection/session-inspection.ts';
+import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
+/**
+ * Inspects task sessions, executes checks, and reconciles evidence after
+ * engine adoption.
+ *
+ * Invariants:
+ * - Adoption reconciliation rejects a session changed since its trusted
+ *   checkpoint.
+ */
 
 export type SessionCheck = {
   sessionId: string;
@@ -637,10 +615,11 @@ function loadTrustedCheckPolicy(
   let value: unknown;
   try {
     value = JSON.parse(
-      runGit(repositoryRoot, [
-        'show',
-        `${trustBaseCommit}:workflow/maintainer-profiles.json`,
-      ]),
+      readFileAtRevision(
+        repositoryRoot,
+        trustBaseCommit,
+        'workflow/maintainer-profiles.json',
+      ),
     );
   } catch {
     throw checkDependenciesInvalid(
@@ -941,5 +920,4 @@ export function writeSessionReport(
   );
 }
 
-import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 export type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';

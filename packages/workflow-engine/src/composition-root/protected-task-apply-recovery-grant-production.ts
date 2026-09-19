@@ -33,10 +33,7 @@ import {
 import { grantSha256 } from '../modules/authority/grant-primitives.ts';
 import { parseMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
 import { loadWorkflowConfig } from '../runtime/workflow-configuration/workflow-configuration.ts';
-import {
-  discoverRepository,
-  runGit,
-} from '../runtime/repository-transaction/git.ts';
+import { discoverRepository } from '../runtime/repository-transaction/git.ts';
 import {
   readFinalizeTransaction,
   type FinalizeTransaction,
@@ -50,6 +47,7 @@ import {
   type PreparedGrantRecord,
 } from '../modules/authority/grant-records.ts';
 import { runtimePaths } from '../runtime/session-workspace/session-store.ts';
+import { readFileAtRevision } from '../runtime/repository-transaction/git-command.ts';
 
 export function createProductionProtectedTaskApplyRecoveryGrantPort(
   cwd: string,
@@ -496,10 +494,11 @@ function repositoryIdAtBaseline(
   let value: unknown;
   try {
     value = JSON.parse(
-      runGit(repositoryRoot, [
-        'show',
-        `${baselineHead}:workflow/maintainer-policy.json`,
-      ]),
+      readFileAtRevision(
+        repositoryRoot,
+        baselineHead,
+        'workflow/maintainer-policy.json',
+      ),
     );
   } catch {
     throw recoveryStateChanged(

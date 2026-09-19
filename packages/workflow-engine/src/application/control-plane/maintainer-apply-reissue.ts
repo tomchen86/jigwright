@@ -1,6 +1,15 @@
 import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
 import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
 import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
+import type {
+  MaintainerApplyReissueBindings,
+  MaintainerApplyReissueBindingsTypes,
+} from './maintainer-approve.ts';
+import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
+import type { WithAuthorityRefusalAudit } from '../../modules/authority/authority-audit-contract.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
 /**
  * Reissues and applies retained candidates from expired or invalidated v2
  * grants.
@@ -9,10 +18,7 @@ import type { MaintainerManifestOperations } from '../../modules/authority/maint
  * - Reissue requires an expired or invalidated prior grant.
  */
 // maintainer apply reissue; repository effects remain bound by the public module.
-import type {
-  MaintainerApplyReissueBindings,
-  MaintainerApplyReissueBindingsTypes,
-} from './maintainer-approve.ts';
+
 type ReissueAndApplyMaintainerGrantV2Request =
   MaintainerApplyReissueBindingsTypes['ReissueAndApplyMaintainerGrantV2Request'];
 type ReissueAndApplyMaintainerGrantV2Options =
@@ -304,10 +310,11 @@ export function createMaintainerApplyReissue(
 
     const basePolicy = parseMaintainerPolicy(
       JSON.parse(
-        runGit(repository.repositoryRoot, [
-          'show',
-          `${envelope.payload.baseCommit}:workflow/maintainer-policy.json`,
-        ]),
+        readFileAtRevision(
+          repository.repositoryRoot,
+          envelope.payload.baseCommit,
+          'workflow/maintainer-policy.json',
+        ),
       ),
     );
     const currentPolicy = parseMaintainerPolicy(
@@ -365,9 +372,3 @@ export function createMaintainerApplyReissue(
   }
   return { reissueAndApplyMaintainerGrantV2, verifyHistoricalApplyGrantTrust };
 }
-
-import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
-
-import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
-
-import type { WithAuthorityRefusalAudit } from '../../modules/authority/authority-audit-contract.ts';

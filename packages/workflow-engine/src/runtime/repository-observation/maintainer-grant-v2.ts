@@ -11,6 +11,10 @@ import {
 import { digest } from '../../modules/authority/maintainer-grant-v2-codec.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type { MaintainerGrantV2Services } from '../../modules/authority/maintainer-grant-v2.ts';
+import { maintainerChecksEnvironmentDigest } from '../../modules/authority/maintainer-grant-v2-codec.ts';
+import { resolveBlobOid } from '../repository-transaction/git-object-ids.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
+
 export const loadV2TrustContext: MaintainerGrantV2Services['loadV2TrustContext'] =
   function loadV2TrustContext(cwd, expectedBase) {
     const repository = discoverRepository(cwd);
@@ -24,10 +28,11 @@ export const loadV2TrustContext: MaintainerGrantV2Services['loadV2TrustContext']
     let policyContent: string;
     let policy: MaintainerPolicy;
     try {
-      policyContent = runGit(repository.repositoryRoot, [
-        'show',
-        `${repository.head}:workflow/maintainer-policy.json`,
-      ]);
+      policyContent = readFileAtRevision(
+        repository.repositoryRoot,
+        repository.head,
+        'workflow/maintainer-policy.json',
+      );
       policy = parseMaintainerPolicy(JSON.parse(policyContent));
     } catch (error) {
       if (error && typeof error === 'object' && 'code' in error) {
@@ -100,14 +105,13 @@ export const readTargetRef: MaintainerGrantV2Services['readTargetRef'] =
   };
 export const readPolicyContent: MaintainerGrantV2Services['readPolicyContent'] =
   function readPolicyContent(repositoryRoot, baseCommit) {
-    return runGit(repositoryRoot, [
-      'show',
-      `${baseCommit}:workflow/maintainer-policy.json`,
-    ]);
+    return readFileAtRevision(
+      repositoryRoot,
+      baseCommit,
+      'workflow/maintainer-policy.json',
+    );
   };
 
-import { maintainerChecksEnvironmentDigest } from '../../modules/authority/maintainer-grant-v2-codec.ts';
-import { resolveBlobOid } from '../repository-transaction/git-object-ids.ts';
 /** Resolves database identity only when the original check evidence requires it. */
 export function createMaintainerChecksEnvironmentDigest(
   databaseIdentity: (

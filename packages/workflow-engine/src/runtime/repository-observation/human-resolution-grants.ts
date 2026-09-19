@@ -19,6 +19,7 @@ import {
   resolveBlobOid,
   resolveCommitOid,
 } from '../repository-transaction/git-object-ids.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
 
 /** Reads historical Grant policy, exact annotated tags and successor sessions. */
 
@@ -128,10 +129,11 @@ function loadBasePolicy(
   try {
     return parseMaintainerPolicy(
       JSON.parse(
-        runGit(repositoryRoot, [
-          'show',
-          `${baseCommit}:workflow/maintainer-policy.json`,
-        ]),
+        readFileAtRevision(
+          repositoryRoot,
+          baseCommit,
+          'workflow/maintainer-policy.json',
+        ),
       ),
     );
   } catch (error) {

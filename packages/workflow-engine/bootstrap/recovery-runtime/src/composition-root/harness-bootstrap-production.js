@@ -1,12 +1,11 @@
 import { recordAuthorityRefusal } from "../runtime/storage-journal/authority-refusal-audit.js";
-/** Assemble recovery capabilities around the independently trusted built-in engine identity. */
 import { controlPlaneRecoveryGrantPersistence } from "../runtime/storage-journal/control-plane-recovery-grant.js";
 import { createHarnessBootstrapAudit } from "../application/control-plane/harness-bootstrap-audit.js";
 import { createHarnessBootstrapRecoveryProduction } from "../application/control-plane/harness-bootstrap-production.js";
 import { createHarnessBootstrapRecoveryCommands, } from "../application/control-plane/harness-bootstrap-recovery-commands.js";
 import { deriveAuthorityAuditRepositoryId } from "../runtime/storage-journal/authority-audit-ledger.js";
 import { recordAuthorityAuditEvent } from "../runtime/storage-journal/authority-audit-service.js";
-import { discoverRepository, runGit, } from "../runtime/repository-transaction/git.js";
+import { discoverRepository } from "../runtime/repository-transaction/git.js";
 import { parseMaintainerPolicy } from "../modules/authority/maintainer-policy.js";
 import { createInteractiveSshSigner, verifySshSignatureWithPublicKey, } from "../adapters/signing/ssh/maintainer-signer.js";
 import { importRecoveryAuthorityDescriptor, readRecoveryAuthorityDescriptor, } from "../runtime/recovery/recovery-authority-store.js";
@@ -18,6 +17,8 @@ import { createHarnessBootstrapParentState } from "../application/control-plane/
 import { observeParentSessions, observeParentBindingPath, } from "../runtime/repository-observation/harness-bootstrap-parent-state.js";
 import { readLocalEngineBinding, persistTrustedBootstrapSessionSnapshot, } from "../application/control-plane/intervention-control-bootstrap.js";
 import { readControlPlaneSupervisorState } from "../application/control-plane/intervention-control-updater.js";
+import { readFileAtRevision } from "../runtime/repository-transaction/git-command.js";
+/** Assemble recovery capabilities around the independently trusted built-in engine identity. */
 export function createHarnessBootstrapProduction(BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST) {
     const { resolveHarnessBootstrapParentState } = createHarnessBootstrapParentState({
         BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST,
@@ -32,10 +33,7 @@ export function createHarnessBootstrapProduction(BUILT_IN_ENGINE_CLOSURE_MANIFES
         const resolveSigner = () => {
             if (resolvedSigner === undefined) {
                 const repository = discoverRepository(cwd);
-                const policy = parseMaintainerPolicy(JSON.parse(runGit(repository.repositoryRoot, [
-                    'show',
-                    `${repository.head}:workflow/maintainer-policy.json`,
-                ])));
+                const policy = parseMaintainerPolicy(JSON.parse(readFileAtRevision(repository.repositoryRoot, repository.head, 'workflow/maintainer-policy.json')));
                 resolvedSigner = createInteractiveSshSigner(repository.repositoryRoot, policy);
             }
             return resolvedSigner;

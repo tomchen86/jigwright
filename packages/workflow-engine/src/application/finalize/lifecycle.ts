@@ -6,27 +6,16 @@ import {
   createDocumentationClosureRecord,
   parseDocumentationReviewCapture,
   parseDocumentationClosureFromCommitMessage,
-  type DocumentationReviewCapture,
 } from '../../modules/assurance/documentation-closure.ts';
 import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
 import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
-import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 import type { ManagedDocumentOperations } from '../../modules/projection/managed-documents.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
-/**
- * Coordinates task finalization, completion, finish, and commit.
- *
- * Invariants:
- * - Protected apply recovery authorization must bind the exact requested
- *   transition.
- */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { assertCommitObject } from '../../runtime/repository-validation/commit-replay/commit-object-validation.ts';
-
 import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
 import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
 import {
@@ -111,7 +100,6 @@ import {
 } from '../../runtime/storage-journal/report-validation.ts';
 import {
   runtimePaths,
-  writeJsonAtomic,
   type WorkflowSession,
 } from '../../runtime/session-workspace/session-store.ts';
 import { getSession } from '../../runtime/repository-observation/workflow-session-context.ts';
@@ -149,6 +137,15 @@ import {
 import { grantSha256 } from '../../modules/authority/grant-primitives.ts';
 import { assertPreparedProtectedTaskApplyAuthorization } from '../task-apply-authorization/protected-task-apply-authorization.ts';
 import { parsePathRoleRegistry } from '../../modules/source/path-role-registry.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
+/**
+ * Coordinates task finalization, completion, finish, and commit.
+ *
+ * Invariants:
+ * - Protected apply recovery authorization must bind the exact requested
+ *   transition.
+ */
 
 export type CompleteTaskResult = {
   session: WorkflowSession;
@@ -601,7 +598,7 @@ function resolveTaskAuthorizationRequirementAtBaseline(
   let baselineConfig: unknown;
   try {
     baselineConfig = JSON.parse(
-      runGit(repositoryRoot, ['show', `${baselineHead}:workflow/config.json`]),
+      readFileAtRevision(repositoryRoot, baselineHead, 'workflow/config.json'),
     );
   } catch {
     throw baselineTaskAuthorizationInvalid(
@@ -621,10 +618,11 @@ function resolveTaskAuthorizationRequirementAtBaseline(
   try {
     const registry = parsePathRoleRegistry(
       JSON.parse(
-        runGit(repositoryRoot, [
-          'show',
-          `${baselineHead}:${baselinePolicy.pathRoleRegistry}`,
-        ]),
+        readFileAtRevision(
+          repositoryRoot,
+          baselineHead,
+          `${baselinePolicy.pathRoleRegistry}`,
+        ),
       ),
     );
     return resolveTaskAuthorizationRequirementForPolicy(

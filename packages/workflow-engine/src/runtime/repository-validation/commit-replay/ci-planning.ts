@@ -5,7 +5,10 @@ import path from 'node:path';
 import { canonicalRoleContextSharingGrantEnvelopeV1 } from '../../grants/optional-grants-package.ts';
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import { assertCollaborationGrantId } from '../../../modules/authority/collaboration-grant-codec.ts';
-import { readFileAtCommit } from '../../repository-transaction/git-command.ts';
+import {
+  readFileAtCommit,
+  readFileAtRevision,
+} from '../../repository-transaction/git-command.ts';
 import { isRecord } from '../../../foundation/canonical-json/contract-values.ts';
 import type { AmendPlanManagedTrailers } from '@jigwright/core/managed-transition-trailers';
 import { loadWorkflowConfig } from '../../workflow-configuration/workflow-configuration.ts';
@@ -42,9 +45,9 @@ import type { PlanningTreeReplay } from '../../../modules/assurance/commit-repla
 import { assertCompletePlanningTree } from '../../../modules/assurance/commit-replay/ci-planning.ts';
 import { assertChangeId } from '../../../modules/assurance/commit-replay/ci-planning.ts';
 import { ciPlanningError } from '../../../modules/assurance/commit-replay/ci-planning.ts';
-
 import type { CiPlanningReplayServices } from './services.ts';
 import type { CiPlanningReplayOperations } from '../../../modules/assurance/commit-replay/ci-planning.ts';
+
 export function createCiPlanningReplay(
   services: CiPlanningReplayServices,
 ): CiPlanningReplayOperations {
@@ -797,7 +800,7 @@ export function createCiPlanningReplay(
     filePath: string,
   ): string {
     try {
-      return runGit(repositoryRoot, ['show', `${commit}:${filePath}`]);
+      return readFileAtRevision(repositoryRoot, commit, `${filePath}`);
     } catch (error) {
       throw ciPlanningError(
         'CI_PLANNING_TREE_INVALID',
