@@ -28,8 +28,7 @@ import {
   type MaintainerPolicy,
 } from '../../modules/authority/maintainer-policy.ts';
 import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
-import { collaborationGrantStorePaths } from '../storage-journal/collaboration-grant-private-files.ts';
-import { storeAvailableCollaborationGrant } from '../storage-journal/collaboration-grant-reservation.ts';
+import type { CollaborationGrantEnvelope } from '../../modules/authority/collaboration-grant-codec.ts';
 import {
   canonicalCollaborationGrantPayload,
   canonicalCollaborationGrantEnvelope,
@@ -64,9 +63,24 @@ import {
   type DirectHumanReviewAttestationRequest,
 } from '../../modules/authority/collaboration-grant-codec.ts';
 
-export function createCollaborationGrantIssuance(
-  createSigner: MaintainerSignerFactory,
-) {
+export function createCollaborationGrantIssuance(services: {
+  createSigner: MaintainerSignerFactory;
+  /** Local collaboration-grant state directories this issuance checks. */
+  collaborationGrantStorePaths(gitCommonDirectory: string): {
+    available: string;
+    reserved: string;
+    terminal: string;
+  };
+  storeAvailableCollaborationGrant(
+    gitCommonDirectory: string,
+    envelope: CollaborationGrantEnvelope,
+  ): string;
+}) {
+  const {
+    createSigner,
+    collaborationGrantStorePaths,
+    storeAvailableCollaborationGrant,
+  } = services;
   function issueCollaborationGrant(
     cwd: string,
     request: CollaborationGrantRequest,

@@ -1548,7 +1548,7 @@
     {
       "path": "src/composition-root/collaboration-grant-issuance-production.ts",
       "mode": "100644",
-      "digest": "sha256:aea860aa8365465480caa6a9381ccadb842b1b0987c53b42f15f2dd059b208bb"
+      "digest": "sha256:de59a135969750ea7de3d88632d3786a659163681d75f92f034124f5a1c113f6"
     },
     {
       "path": "src/composition-root/collaboration-grant-production.ts",
@@ -3833,7 +3833,7 @@
     {
       "path": "src/runtime/grants/collaboration-grant-issuance.ts",
       "mode": "100644",
-      "digest": "sha256:6c2b5436a3e70d5dad876f1ff1ba534ac4d4c9615a7ee744a24b038a50a8f245"
+      "digest": "sha256:50af9a469c5130529b9c78b23374081f35154f537219f1b9a70e85f52fe9a231"
     },
     {
       "path": "src/runtime/grants/grant-services.ts",
@@ -3848,7 +3848,7 @@
     {
       "path": "src/runtime/grants/maintainer-grant-v2-publication.ts",
       "mode": "100644",
-      "digest": "sha256:c458b6c0982c8a760260dc70d5dc95171e6b95cf58c8b71755d546ea72015b2b"
+      "digest": "sha256:aaceaa34c354ef7a0a3fecc585c9d9dc7715e2ee2cd1ee774e504a8303523804"
     },
     {
       "path": "src/runtime/grants/optional-grants-package.ts",

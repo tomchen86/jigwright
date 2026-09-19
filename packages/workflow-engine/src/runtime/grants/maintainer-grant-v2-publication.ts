@@ -6,18 +6,28 @@ import {
 } from '../repository-transaction/git.ts';
 import { createMaintainerAuditTag } from '../repository-transaction/maintainer-audit-tag.ts';
 import { withRepositoryLifecycleOperation } from '../session-workspace/session-store.ts';
-import {
-  maintainerGrantStorePaths,
-  storeCanonicalAvailableMaintainerGrantUnderLifecycleLock,
-  terminallyFailSignedMaintainerGrantV2UnderLifecycleLock,
-} from '../storage-journal/maintainer-store.ts';
+import type { MaintainerGrantV2Envelope } from '../../modules/authority/maintainer-grant-v2-codec.ts';
 import type { MaintainerGrantV2Services } from '../../modules/authority/maintainer-grant-v2.ts';
 export type SignedGrantPublicationRuntime = {
   withRepositoryLifecycleOperation: typeof withRepositoryLifecycleOperation;
-  maintainerGrantStorePaths: typeof maintainerGrantStorePaths;
+  /** Only the lifecycle-lock root is read here. */
+  maintainerGrantStorePaths(gitCommonDirectory: string): {
+    runtime: Parameters<typeof withRepositoryLifecycleOperation>[0];
+  };
   createMaintainerAuditTag: typeof createMaintainerAuditTag;
-  storeCanonicalAvailableMaintainerGrantUnderLifecycleLock: typeof storeCanonicalAvailableMaintainerGrantUnderLifecycleLock;
-  terminallyFailSignedMaintainerGrantV2UnderLifecycleLock: typeof terminallyFailSignedMaintainerGrantV2UnderLifecycleLock;
+  storeCanonicalAvailableMaintainerGrantUnderLifecycleLock(
+    gitCommonDirectory: string,
+    requestedGrantId: string,
+    canonicalEnvelope: string,
+    assertOwned: () => void,
+  ): void;
+  terminallyFailSignedMaintainerGrantV2UnderLifecycleLock(
+    gitCommonDirectory: string,
+    envelope: MaintainerGrantV2Envelope,
+    reason: string,
+    now: Date,
+    assertOwned: () => void,
+  ): void;
   isPostApprovalAdmissionFailure: typeof isPostApprovalAdmissionFailure;
   enterActivePostApprovalTerminalCleanup: typeof enterActivePostApprovalTerminalCleanup;
   exactPublishedAuditTagObject: typeof exactPublishedAuditTagObject;

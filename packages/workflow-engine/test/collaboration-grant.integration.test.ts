@@ -221,12 +221,16 @@ test('collaboration signer binding is lazy and preserves exact policy, ordering 
       '-m',
       'Change current policy after the baseline',
     ]);
-    const operations = createCollaborationGrantIssuance((root, policy) => {
-      events.push('factory');
-      assert.equal(root, fs.realpathSync(repository));
-      assert.deepEqual(policy, historicalPolicy);
-      if (failure === 'factory') throw sentinel;
-      return signer;
+    const operations = createCollaborationGrantIssuance({
+      createSigner: (root, policy) => {
+        events.push('factory');
+        assert.equal(root, fs.realpathSync(repository));
+        assert.deepEqual(policy, historicalPolicy);
+        if (failure === 'factory') throw sentinel;
+        return signer;
+      },
+      collaborationGrantStorePaths,
+      storeAvailableCollaborationGrant,
     });
     assert.deepEqual(events, []);
     assert.throws(
