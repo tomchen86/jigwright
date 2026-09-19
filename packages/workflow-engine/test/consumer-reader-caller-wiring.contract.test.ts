@@ -69,7 +69,12 @@ test('managed validation and open-task preserve their distinct live observation 
   assert.equal(calls(consumers[3]!, 'ports.loadChangeContract'), 1);
   assert.equal(calls(consumers[3]!, 'loadChangeContract'), 3);
   assert.equal(calls(consumers[4]!, 'readers.loadCommittedChangeContract'), 1);
-  assert.equal(calls(consumers[4]!, 'loadStableValidatedChangeContract'), 1);
+  // 01ecb73 moved this onto the injected ChangeContractServices object, which
+  // is the shape the injection-cost criterion asks for.
+  assert.equal(
+    calls(consumers[4]!, 'changeContract.loadStableValidatedChangeContract'),
+    1,
+  );
 });
 
 // Exercise the live branch independently from managed-document composition.

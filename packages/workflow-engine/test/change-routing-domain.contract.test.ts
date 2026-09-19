@@ -170,7 +170,13 @@ test('routing domain and required Grant observer type closures cannot reach repo
       );
       if (specifier!.startsWith('.'))
         pending.push(path.resolve(path.dirname(file), specifier!));
-      else if (specifier!.startsWith('@jigwright/core'))
+      // @jigwright/grants is a pure contracts package like @jigwright/core:
+      // it imports only core, its own siblings and node:crypto. Walk into it
+      // so its closure is verified too, rather than excepting it.
+      else if (
+        specifier!.startsWith('@jigwright/core') ||
+        specifier!.startsWith('@jigwright/grants')
+      )
         pending.push(require.resolve(specifier!));
       else
         assert.ok(
