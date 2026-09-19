@@ -10,7 +10,7 @@ import { pathToFileURL } from 'node:url';
 import {
   AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
   loadAiAdapterPolicy,
-} from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+} from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
 import type { InvestigationPlanReviewCoverageRequirementV3 } from '../src/modules/investigation/manifest/investigation-requirement-types.ts';

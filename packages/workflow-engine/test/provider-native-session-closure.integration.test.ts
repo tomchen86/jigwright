@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { parseAiAdapterPolicyDocument } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import { parseAiAdapterPolicyDocument } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';

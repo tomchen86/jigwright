@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { extractProviderRepairFailure } from '../src/runtime/provider-execution/provider-execution-governance.ts';
+import { extractProviderRepairFailure } from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import { createProviderRunnerForTesting } from '../src/runtime/provider-execution/provider-runner.ts';
 import { sourceRepositoryRoot } from './fixture.ts';
 import {

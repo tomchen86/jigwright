@@ -67,11 +67,11 @@ import {
 import {
   AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
   loadAiAdapterPolicy,
-} from '../../runtime/provider-execution/ai-adapter-policy.ts';
+} from '../../runtime/provider-policy/ai-adapter-policy.ts';
 import {
   loadProviderExecutionRepairContext,
   preflightProviderRepairRetry,
-} from '../../runtime/provider-execution/provider-execution-governance.ts';
+} from '../../runtime/storage-journal/provider-execution-governance.ts';
 import { replaceTextAtomic } from '../../runtime/repository-transaction/atomic-text.ts';
 import {
   discoverRepository,

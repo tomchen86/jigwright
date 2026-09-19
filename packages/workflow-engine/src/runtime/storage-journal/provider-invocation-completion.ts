@@ -59,7 +59,7 @@ import {
   withCurrentProviderPromptContext,
   type ProviderRepairFailureInput,
   persistProviderRepairEvidence,
-} from '../provider-execution/provider-execution-governance.ts';
+} from './provider-execution-governance.ts';
 import type {
   ProviderInvocationRecord,
   ProviderInvocationFailure,

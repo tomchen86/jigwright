@@ -10,7 +10,7 @@ import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { type EvidenceRetentionRecord } from '../../modules/authority/execution-governance-retention.ts';
 import { readDurableEvidence } from '../storage-journal/execution-governance-evidence-store.ts';
-import { providerRuntimeEvidenceId } from './provider-execution-governance.ts';
+import { providerRuntimeEvidenceId } from '../storage-journal/provider-execution-governance.ts';
 import {
   WorkflowError,
   workflowError,

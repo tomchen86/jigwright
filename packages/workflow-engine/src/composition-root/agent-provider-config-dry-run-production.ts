@@ -29,7 +29,7 @@ import {
   type AgentProviderConfigDryRunInput,
   type AgentProviderConfigDryRunReport,
 } from '../runtime/provider-execution/agent-provider-config-dry-run.ts';
-import { loadAiAdapterPolicy } from '../runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../runtime/provider-policy/ai-adapter-policy.ts';
 import {
   AgentProviderConfigFileError,
   assertAgentProviderConfigFileCurrent,

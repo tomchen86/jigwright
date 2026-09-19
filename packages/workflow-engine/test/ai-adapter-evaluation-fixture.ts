@@ -1,5 +1,5 @@
 /** Diagnostic policy, external host provider configuration, and CLI fixtures. */
-import { DEFAULT_AI_ADAPTER_RETRY_ACCOUNTING } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import { DEFAULT_AI_ADAPTER_RETRY_ACCOUNTING } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';

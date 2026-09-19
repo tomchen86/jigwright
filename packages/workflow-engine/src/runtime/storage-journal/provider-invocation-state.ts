@@ -65,7 +65,7 @@ import {
   readProviderRepairAuthorityBinding,
   assertProviderPromptContextCurrent,
   assertProviderRepairAuthorityCurrent,
-} from '../provider-execution/provider-execution-governance.ts';
+} from './provider-execution-governance.ts';
 import {
   resumePreparedProviderInvocationSupersession,
   prepareProviderInvocationSupersession,
@@ -75,7 +75,7 @@ import {
   type ProviderInvocationSupersessionCrashPhase,
   readProviderInvocationEvidenceRecord,
   recoverProviderInvocationSupersessionTransaction,
-} from '../provider-execution/provider-invocation-supersession.ts';
+} from './provider-invocation-supersession.ts';
 import type { ProviderInvocationManifest } from './provider-invocation-manifest-validation.ts';
 import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';

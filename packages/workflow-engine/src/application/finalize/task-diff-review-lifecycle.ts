@@ -20,7 +20,7 @@ import type {
  */
 // Public review entrypoints and production dependencies. Internal modules retain
 // the existing transaction ordering through a single immutable set of bindings.
-import { parseAiAdapterPolicyDocument } from '../../runtime/provider-execution/ai-adapter-policy.ts';
+import { parseAiAdapterPolicyDocument } from '../../runtime/provider-policy/ai-adapter-policy.ts';
 import {
   consumeCollaborationGrantUnderLifecycleLock,
   failCollaborationReservationUnderLifecycleLock,

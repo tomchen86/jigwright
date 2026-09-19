@@ -8,7 +8,7 @@ import { inspectDurableRetentionCatalog } from '../src/runtime/storage-journal/e
 import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { startPropose } from '../src/composition-root/propose-production.ts';
-import { prepareProviderPromptContextForInvocation } from '../src/runtime/provider-execution/provider-execution-governance.ts';
+import { prepareProviderPromptContextForInvocation } from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import {
   readProviderInvocation,
   readProviderInvocationManifest,

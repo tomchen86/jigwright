@@ -11,7 +11,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { performance } from 'node:perf_hooks';
 
-import { loadAiAdapterPolicy } from './ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   assertReadOnlyProbe,

@@ -30,7 +30,7 @@ import {
   prepareProviderInvocationAcceptanceBinding,
   completeProviderInvocationFromRunner,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import { readProviderRepairEvidence } from '../src/runtime/provider-execution/provider-execution-governance.ts';
+import { readProviderRepairEvidence } from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import { executionJobStatePath } from '../src/runtime/storage-journal/execution-store.ts';
 import { dispatchPreparedTaskStrategyProvider } from '../bootstrap/workflow-engine-host.ts';
 import { beginTaskStrategyRedRevision } from '../src/composition-root/task-strategy-red-revision-production.ts';

@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { AgentRuntimeProbeEvidenceV1 } from '@jigwright/core/agent-runtime-port';
-import { loadAiAdapterPolicy } from './ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { loadWorkflowConfig } from '../repository-observation/workflow-configuration.ts';
 import { createEvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';

@@ -88,7 +88,7 @@ test('invocation DTO owners contain only type declarations and no legacy runtime
     ],
     [
       'ProviderInvocationSupersessionCrashPhase',
-      'runtime/provider-execution/provider-invocation-supersession.ts',
+      'runtime/storage-journal/provider-invocation-supersession.ts',
     ],
   ] as const;
   for (const entry of [

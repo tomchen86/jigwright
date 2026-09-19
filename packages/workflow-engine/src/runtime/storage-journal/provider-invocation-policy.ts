@@ -11,7 +11,7 @@ import {
   type LoadedAiAdapterPolicy,
   parseAiAdapterPolicyDocument,
   type AiAdapterRetryAccounting,
-} from '../provider-execution/ai-adapter-policy.ts';
+} from '../provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   privatePathExists,
@@ -23,7 +23,7 @@ import {
   createProviderExecutionBudgetAuthority,
   validateProviderExecutionBudgetAuthority,
   assertDurableProviderExecutionBudgetAuthority as assertStoredProviderExecutionBudgetAuthority,
-} from '../provider-execution/provider-execution-policy-authority.ts';
+} from './provider-execution-policy-authority.ts';
 import type { ProviderExecutionBudgetAuthority } from '../../modules/provider-orchestration/provider-execution-budget-authority.ts';
 import { type ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';

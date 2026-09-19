@@ -8,7 +8,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { type LoadedAiAdapterPolicy } from '../provider-execution/ai-adapter-policy.ts';
+import { type LoadedAiAdapterPolicy } from '../provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
@@ -17,7 +17,7 @@ import {
   privatePathExists,
   readPrivateCanonicalJson,
 } from './investigation-private-files.ts';
-import { type ProviderExecutionGrantAuthorityInput } from '../provider-execution/provider-execution-policy-authority.ts';
+import { type ProviderExecutionGrantAuthorityInput } from './provider-execution-policy-authority.ts';
 import { type ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import {

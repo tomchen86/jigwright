@@ -14,7 +14,7 @@ import {
   type AiAdapterProviderReservation,
   loadAiAdapterPolicy,
   parseAiAdapterPolicyDocument,
-} from './ai-adapter-policy.ts';
+} from '../provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import {

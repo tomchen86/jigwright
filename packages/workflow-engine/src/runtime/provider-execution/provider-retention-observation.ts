@@ -25,7 +25,7 @@ import {
   type ProviderPromptContextRetentionBinding,
   providerRuntimeEvidenceId,
   inspectProviderPromptContextRetentionBinding,
-} from './provider-execution-governance.ts';
+} from '../storage-journal/provider-execution-governance.ts';
 import { WorkflowError } from '../../foundation/errors/errors.ts';
 import {
   readProviderInvocationLifecycleProjection,

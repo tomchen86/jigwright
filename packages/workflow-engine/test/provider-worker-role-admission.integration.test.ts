@@ -46,7 +46,7 @@ import {
   readProviderInvocation,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import type { PlanReviewManifest } from '../src/modules/assurance/provider-review-manifests.ts';
-import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { createCurrentAgentRuntimeAssignmentV1 } from '../src/composition-root/change-role-assignment-production.ts';
 import {
   runProviderWorker,

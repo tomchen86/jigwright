@@ -19,7 +19,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { loadAiAdapterPolicy } from '../../runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../../runtime/provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { requireExecutionJobMandateBinding } from '../../modules/provider-orchestration/execution-core.ts';
 import {

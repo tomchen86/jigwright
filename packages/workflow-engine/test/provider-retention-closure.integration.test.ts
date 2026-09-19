@@ -7,7 +7,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { pathToFileURL } from 'node:url';
 
-import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { listExecutionJobStates } from '../src/runtime/storage-journal/execution-store.ts';
 import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
@@ -18,7 +18,7 @@ import {
   type ProviderInvocationRequest,
   type ProviderProcessOutcome,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import { inspectProviderPromptContextRetentionBinding } from '../src/runtime/provider-execution/provider-execution-governance.ts';
+import { inspectProviderPromptContextRetentionBinding } from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import {
   claimProviderInvocation,
   completeProviderInvocation,

@@ -22,7 +22,7 @@ import {
   isProviderId,
   listBuiltInProviders,
 } from '../modules/provider-orchestration/provider-registry.ts';
-import { loadAiAdapterPolicy } from '../runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../runtime/provider-policy/ai-adapter-policy.ts';
 import { readCurrentCentralRoleProviderDefault } from '../runtime/repository-transaction/central-role-provider-default-store.ts';
 
 export type CentralRoleProviderDefaultSimulationReport = Readonly<{

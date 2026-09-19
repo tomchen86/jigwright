@@ -12,14 +12,14 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import {
   inspectDurableRetentionCatalog,
   storeDurableEvidence,
-} from '../storage-journal/execution-governance-evidence-store.ts';
+} from './execution-governance-evidence-store.ts';
 import {
   inspectDurableEpochContextStore,
   initializeDurableEpochContextStore,
   rolloverDurableEpochContextStore,
   assembleCurrentPromptFromStore,
   withCurrentDurableEpochContextStore,
-} from '../storage-journal/execution-governance-epoch-store.ts';
+} from './execution-governance-epoch-store.ts';
 import { type ContextManifest } from '../../modules/authority/execution-governance-context.ts';
 import {
   buildContextManifest,
@@ -40,7 +40,7 @@ import {
   providerContextStale,
   digestCanonical,
   isDigest,
-} from './provider-governance-values.ts';
+} from '../provider-execution/provider-governance-values.ts';
 
 export type {
   ProviderPromptContextBinding,

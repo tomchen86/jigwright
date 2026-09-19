@@ -8,7 +8,7 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   DEFAULT_AI_ADAPTER_RETRY_ACCOUNTING,
   parseAiAdapterPolicyDocument,
-} from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+} from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
   createProviderInvocationRequest,
@@ -23,7 +23,7 @@ import {
 import {
   ensureProviderPromptContext,
   providerPromptContextStoreRoot,
-} from '../src/runtime/provider-execution/provider-execution-governance.ts';
+} from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import {
   type ProviderExecutableIdentity,
   type ProviderRunInput,

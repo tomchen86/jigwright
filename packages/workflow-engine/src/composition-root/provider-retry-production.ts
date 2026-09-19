@@ -10,7 +10,7 @@ import {
   readProviderInvocationRequest,
 } from '../runtime/storage-journal/provider-invocation-store.ts';
 import { readInvestigationSession } from '../runtime/storage-journal/investigation-session-records.ts';
-import { loadAiAdapterPolicy } from '../runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../runtime/provider-policy/ai-adapter-policy.ts';
 import { executeProviderReadOnlyProbe } from '../runtime/provider-execution/provider-probe-executor.ts';
 import { retryInvestigationProvider } from './investigation-retry-production.ts';
 import {

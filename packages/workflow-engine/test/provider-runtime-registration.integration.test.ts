@@ -7,7 +7,7 @@ import { listExecutionJobStates } from '../src/runtime/storage-journal/execution
 import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { startPropose } from '../src/composition-root/propose-production.ts';
-import { inspectProviderPromptContextRetentionBinding } from '../src/runtime/provider-execution/provider-execution-governance.ts';
+import { inspectProviderPromptContextRetentionBinding } from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import { providerRuntimeEvidenceId } from '../src/runtime/provider-execution/provider-retention.ts';
 import { inspectProviderRetentionMetrics } from '../src/composition-root/retention-production.ts';
 import {

@@ -50,7 +50,7 @@ import crypto from 'node:crypto';
 import {
   AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
   loadAiAdapterPolicy,
-} from '../../../runtime/provider-execution/ai-adapter-policy.ts';
+} from '../../../runtime/provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import {
   compareAndSwapEvidenceRefsDocument,
@@ -68,7 +68,7 @@ import {
 import {
   loadProviderExecutionRepairContext,
   preflightProviderRepairRetry,
-} from '../../../runtime/provider-execution/provider-execution-governance.ts';
+} from '../../../runtime/storage-journal/provider-execution-governance.ts';
 import { runGit } from '../../../runtime/repository-transaction/git.ts';
 import { copyGrantDate } from '../../../modules/authority/grant-primitives.ts';
 

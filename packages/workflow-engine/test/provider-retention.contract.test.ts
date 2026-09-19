@@ -58,7 +58,7 @@ import {
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import type { PlanReviewManifest } from '../src/modules/assurance/provider-review-manifests.ts';
 import type { BlindSurveyManifest } from '../src/modules/investigation/manifest/blind-survey-manifest.ts';
-import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
 import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
 import {

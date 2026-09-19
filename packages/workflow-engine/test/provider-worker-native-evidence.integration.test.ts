@@ -14,7 +14,7 @@ import {
   readProviderInvocationRequest,
   readProviderInvocation,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import assert from 'node:assert/strict';
 import {
   type ProviderWorkerRuntimePort,

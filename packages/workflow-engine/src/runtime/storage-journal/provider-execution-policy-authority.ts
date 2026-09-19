@@ -7,7 +7,7 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { inspectExecutionBudgetGrantAuthorization } from '../storage-journal/execution-budget-grants.ts';
+import { inspectExecutionBudgetGrantAuthorization } from './execution-budget-grants.ts';
 import { canonicalExecutionBudgetGrantRequest } from '../../modules/authority/execution-governance-grant-contracts.ts';
 import {
   invalidProviderExecutionBudgetAuthority,

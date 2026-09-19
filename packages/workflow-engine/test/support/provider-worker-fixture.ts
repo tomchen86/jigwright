@@ -68,7 +68,7 @@ import {
   createProviderInvocation,
 } from '../../src/runtime/storage-journal/provider-invocation-store.ts';
 import type { PlanReviewManifest } from '../../src/modules/assurance/provider-review-manifests.ts';
-import { loadAiAdapterPolicy } from '../../src/runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { type InvestigationManifestV3 } from '../../src/modules/investigation/manifest/investigation-manifest-types.ts';
 import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import { PROVIDER_RUNNER_RESIDUALS } from '../../src/runtime/provider-execution/provider-runner.ts';

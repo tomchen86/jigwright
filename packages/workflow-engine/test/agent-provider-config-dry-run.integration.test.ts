@@ -24,7 +24,7 @@ import {
   assertAgentProviderConfigFileCurrent,
   loadAgentProviderConfigFile,
 } from '../src/runtime/provider-execution/agent-provider-config-file.ts';
-import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import { createFixtureRepository, sourceRepositoryRoot } from './fixture.ts';
 

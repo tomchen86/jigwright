@@ -17,7 +17,7 @@ import {
   readPrivateCanonicalJson,
   createPrivateCanonicalJson,
   assertPrivateInvestigationDirectory,
-} from '../storage-journal/investigation-private-files.ts';
+} from './investigation-private-files.ts';
 import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
 import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
@@ -47,12 +47,12 @@ import {
 import {
   currentEvidenceSnapshot,
   assertSnapshotStableCurrent,
-} from './provider-supersession-evidence.ts';
+} from '../provider-execution/provider-supersession-evidence.ts';
 import {
   isTimestamp,
   deepFreeze,
   isRecord,
-} from './provider-supersession-values.ts';
+} from '../provider-execution/provider-supersession-values.ts';
 
 const MAX_SUPERSESSION_TRANSACTIONS = 4_096;
 

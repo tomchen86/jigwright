@@ -37,7 +37,7 @@ import {
   privatePathExists,
   createPrivateCanonicalJson,
   readPrivateCanonicalJson,
-} from '../storage-journal/investigation-private-files.ts';
+} from './investigation-private-files.ts';
 import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import type { ProviderRepairAuthorityBinding } from '../../modules/provider-orchestration/agent-runtime-port.ts';
@@ -55,7 +55,7 @@ import {
   digestCanonical,
   digestText,
   isDigest,
-} from './provider-governance-values.ts';
+} from '../provider-execution/provider-governance-values.ts';
 
 const MAX_REPAIR_VALUE_BYTES = 262_144;
 

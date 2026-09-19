@@ -48,7 +48,7 @@ export {
 import crypto from 'node:crypto';
 import path from 'node:path';
 
-import { DEFAULT_AI_ADAPTER_RETRY_ACCOUNTING } from '../provider-execution/ai-adapter-policy.ts';
+import { DEFAULT_AI_ADAPTER_RETRY_ACCOUNTING } from '../provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   parseObservedCheckFailure,

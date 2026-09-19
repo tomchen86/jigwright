@@ -18,7 +18,7 @@ import {
   ensureProviderPromptContext,
   prepareProviderPromptContextForInvocation,
   providerPromptContextStoreRoot,
-} from '../src/runtime/provider-execution/provider-execution-governance.ts';
+} from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import { createProviderRunnerForTesting } from '../src/runtime/provider-execution/provider-runner.ts';
 import {
   createRunnerFixture,

@@ -19,11 +19,11 @@ import {
   AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
   DEFAULT_AI_ADAPTER_RETRY_ACCOUNTING,
   loadAiAdapterPolicy,
-} from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+} from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { projectProviderInvocationExecution } from '../src/modules/provider-orchestration/execution-core.ts';
 import { readExecutionJobState } from '../src/runtime/storage-journal/execution-store.ts';
-import { preflightProviderRepairRetry } from '../src/runtime/provider-execution/provider-execution-governance.ts';
+import { preflightProviderRepairRetry } from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import {
@@ -109,7 +109,7 @@ test('provider policy and retry readers contain no V1 cleanup parsers', () => {
     .join('\n');
   const adapterPolicy = fs.readFileSync(
     new URL(
-      '../src/runtime/provider-execution/ai-adapter-policy.ts',
+      '../src/runtime/provider-policy/ai-adapter-policy.ts',
       import.meta.url,
     ),
     'utf8',

@@ -115,7 +115,7 @@ import {
   isProposeExemptionInvestigationId,
   readProposeExemptionSession,
 } from '../../runtime/storage-journal/propose-exemption-store.ts';
-import { extractProviderRepairFailure } from '../../runtime/provider-execution/provider-execution-governance.ts';
+import { extractProviderRepairFailure } from '../../runtime/storage-journal/provider-execution-governance.ts';
 import {
   processProviderFailureRetry,
   pumpProviderRetrySchedules,

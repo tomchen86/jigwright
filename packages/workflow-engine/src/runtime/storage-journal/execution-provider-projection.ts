@@ -32,7 +32,7 @@ export { providerRetryPolicyFromAccounting } from '../../modules/provider-orches
 import {
   type ProviderRepairLineage,
   readProviderRepairLineage,
-} from '../provider-execution/provider-repair-governance.ts';
+} from './provider-repair-governance.ts';
 import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import {
   type DurableExecutionJobState,

@@ -8,7 +8,7 @@ import {
   previewExecutionJobRetry,
   requestExecutionJobRetry,
 } from '../src/composition-root/execution-retry-production.ts';
-import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { projectProviderInvocationExecution } from '../src/modules/provider-orchestration/execution-core.ts';
 import { readExecutionJobState } from '../src/runtime/storage-journal/execution-store.ts';

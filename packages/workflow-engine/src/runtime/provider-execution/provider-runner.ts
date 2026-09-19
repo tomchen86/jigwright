@@ -10,7 +10,7 @@ import path from 'node:path';
 import { preflightProviderSnapshot } from './provider-runner-preflight.ts';
 
 import { spawnSync } from 'node:child_process';
-import { AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT } from './ai-adapter-policy.ts';
+import { AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT } from '../provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { loadWorkflowConfig } from '../repository-observation/workflow-configuration.ts';
 import { createProviderExecutionEnvironment } from '../process-environment/execution-environment.ts';
@@ -40,7 +40,7 @@ import {
   assembleProviderPromptManifest,
   readProviderRepairPrompt,
   assertProviderPromptContextCurrent,
-} from './provider-execution-governance.ts';
+} from '../storage-journal/provider-execution-governance.ts';
 import {
   type BuiltInProviderAdapterCatalog,
   type ProviderExecutableIdentity,

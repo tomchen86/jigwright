@@ -42,7 +42,7 @@ import { type ProviderRunnerReport } from '../src/modules/provider-orchestration
 import {
   providerPromptContextStoreRoot,
   ensureProviderPromptContext,
-} from '../src/runtime/provider-execution/provider-execution-governance.ts';
+} from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { buildContextManifest } from '../src/modules/authority/execution-governance-context.ts';
 import {

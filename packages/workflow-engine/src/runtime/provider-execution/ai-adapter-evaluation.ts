@@ -13,7 +13,7 @@ import {
   loadAiAdapterPolicy,
   REQUIRED_AI_ADAPTER_CONTROLS,
   type AiAdapterLimits,
-} from './ai-adapter-policy.ts';
+} from '../provider-policy/ai-adapter-policy.ts';
 import {
   listBuiltInProviders,
   type CapabilityProfile,

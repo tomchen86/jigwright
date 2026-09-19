@@ -35,11 +35,11 @@ import {
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR,
 } from '../../modules/provider-orchestration/task-strategy-implementation-output.ts';
-import { parseAiAdapterPolicyDocument } from '../provider-execution/ai-adapter-policy.ts';
+import { parseAiAdapterPolicyDocument } from '../provider-policy/ai-adapter-policy.ts';
 import {
   assertDurableProviderExecutionBudgetAuthority,
   validateProviderExecutionBudgetAuthority,
-} from '../provider-execution/provider-execution-policy-authority.ts';
+} from './provider-execution-policy-authority.ts';
 import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import {
   assertChangeId,

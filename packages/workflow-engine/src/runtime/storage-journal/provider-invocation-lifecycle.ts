@@ -13,7 +13,7 @@ import {
   PROPOSE_POLICY_DIGEST,
   recreateProviderInvocationRequest,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
-import { inspectProviderInvocationSupersessionRelations } from '../provider-execution/provider-invocation-supersession-schema.ts';
+import { inspectProviderInvocationSupersessionRelations } from './provider-invocation-supersession-schema.ts';
 import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import {
   assertChangeId,

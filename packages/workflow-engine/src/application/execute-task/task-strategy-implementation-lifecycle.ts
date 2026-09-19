@@ -16,7 +16,7 @@ import type { ProviderRetryAccountingReader } from '../../modules/provider-orche
 import {
   AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
   parseAiAdapterPolicyDocument,
-} from '../../runtime/provider-execution/ai-adapter-policy.ts';
+} from '../../runtime/provider-policy/ai-adapter-policy.ts';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 

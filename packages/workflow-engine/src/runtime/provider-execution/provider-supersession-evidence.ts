@@ -24,7 +24,7 @@ import {
   type ProviderInvocationEvidenceSnapshot,
   providerInvocationSupersessionUnsafe,
   createProviderInvocationEvidenceSnapshot,
-} from './provider-invocation-supersession-schema.ts';
+} from '../storage-journal/provider-invocation-supersession-schema.ts';
 import {
   digestText,
   isRecord,

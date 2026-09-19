@@ -26,7 +26,7 @@ import {
 import {
   loadAiAdapterPolicy,
   type LoadedAiAdapterPolicy,
-} from './ai-adapter-policy.ts';
+} from '../provider-policy/ai-adapter-policy.ts';
 
 export type AgentProviderConfigDryRunInput = Readonly<{
   platform: NodeJS.Platform;
