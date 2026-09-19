@@ -3,8 +3,8 @@ import {
   runGit,
   isPostApprovalAdmissionFailure,
   enterActivePostApprovalTerminalCleanup,
-} from './git.ts';
-import { createMaintainerAuditTag } from './maintainer-audit-tag.ts';
+} from '../repository-transaction/git.ts';
+import { createMaintainerAuditTag } from '../repository-transaction/maintainer-audit-tag.ts';
 import { withRepositoryLifecycleOperation } from '../session-workspace/session-store.ts';
 import {
   maintainerGrantStorePaths,

@@ -8,7 +8,7 @@ import { taskDiffReview } from '../src/composition-root/task-diff-review-product
 import { assertCurrentImplementationReconciliation } from '../src/composition-root/implementation-reconciliation-production.ts';
 import { localEngineSelectionReaders } from './support/local-engine-selection-host.ts';
 import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
-import { readFinalizeTransaction } from '../src/runtime/repository-transaction/finalize-transaction.ts';
+import { readFinalizeTransaction } from '../src/runtime/storage-journal/finalize-transaction.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';

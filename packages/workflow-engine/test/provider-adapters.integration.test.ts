@@ -18,7 +18,7 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   createProviderExecutionEnvironment,
   createTrustedExecutionEnvironment,
-} from '../src/runtime/provider-execution/execution-environment.ts';
+} from '../src/runtime/process-environment/execution-environment.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   BLIND_SURVEY_OUTPUT_SCHEMA,

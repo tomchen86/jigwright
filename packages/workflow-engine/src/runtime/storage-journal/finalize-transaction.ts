@@ -20,7 +20,7 @@ import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   assertPlainDirectory,
   ensurePlainDirectory,
-} from './filesystem-safety.ts';
+} from '../repository-transaction/filesystem-safety.ts';
 import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import { writeJsonAtomic } from '../session-workspace/session-store.ts';
 import type { FinalizeCheckEscalation } from '../../modules/assurance/finalize-check-policy.ts';

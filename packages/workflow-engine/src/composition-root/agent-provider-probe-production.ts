@@ -43,7 +43,7 @@ import {
 } from '../runtime/provider-execution/agent-provider-config-file.ts';
 import { loadAiAdapterPolicy } from '../runtime/provider-execution/ai-adapter-policy.ts';
 import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
-import { createProviderExecutionEnvironment } from '../runtime/provider-execution/execution-environment.ts';
+import { createProviderExecutionEnvironment } from '../runtime/process-environment/execution-environment.ts';
 import {
   projectBuiltInProviderDefinitionIdentity,
   projectBuiltInProviderResolutionEvidence,

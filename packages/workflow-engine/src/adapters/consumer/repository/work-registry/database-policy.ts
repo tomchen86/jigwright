@@ -10,7 +10,7 @@ import {
   ExitCode,
   workflowError,
 } from '../../../../foundation/errors/errors.ts';
-import { createTrustedExecutionEnvironment } from '../../../../runtime/provider-execution/execution-environment.ts';
+import { createTrustedExecutionEnvironment } from '../../../../runtime/process-environment/execution-environment.ts';
 import { resolveGitExecutable } from '../../../../runtime/repository-transaction/git.ts';
 import { loadRepositoryConsumerConfiguration } from '../../../../runtime/repository-observation/repository-consumer.ts';
 

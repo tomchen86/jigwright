@@ -53,7 +53,7 @@ import {
 import {
   createFinalizeTransaction,
   readFinalizeTransaction,
-} from '../src/runtime/repository-transaction/finalize-transaction.ts';
+} from '../src/runtime/storage-journal/finalize-transaction.ts';
 import { resolveFinalizeCheckPolicy } from '../src/modules/assurance/finalize-check-policy.ts';
 import {
   runtimePaths,

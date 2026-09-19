@@ -20,7 +20,7 @@ import {
   parseFinalizeTransaction,
   readFinalizeTransaction,
   type FinalizeTransaction,
-} from '../../runtime/repository-transaction/finalize-transaction.ts';
+} from '../../runtime/storage-journal/finalize-transaction.ts';
 import { writeJsonAtomic } from '../../runtime/session-workspace/session-store.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;

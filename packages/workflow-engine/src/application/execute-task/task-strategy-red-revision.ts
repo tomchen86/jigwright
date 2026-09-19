@@ -13,7 +13,7 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import { pinCheckRunner } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import { writeEvidenceNode } from '../../runtime/storage-journal/evidence-object-store.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { readFinalizeTransaction } from '../../runtime/repository-transaction/finalize-transaction.ts';
+import { readFinalizeTransaction } from '../../runtime/storage-journal/finalize-transaction.ts';
 import type { ImplementationReconciliationGate } from '../reconciliation/implementation-reconciliation.ts';
 import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 import { loadActiveSessionContext } from '../../runtime/repository-observation/workflow-session-context.ts';

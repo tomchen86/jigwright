@@ -32,7 +32,7 @@ import {
   runtimePaths,
   withRepositoryLifecycleOperationAsync,
 } from '../src/runtime/session-workspace/session-store.ts';
-import { readFinalizeTransaction } from '../src/runtime/repository-transaction/finalize-transaction.ts';
+import { readFinalizeTransaction } from '../src/runtime/storage-journal/finalize-transaction.ts';
 import { beginTaskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
 import { assertPreparedProtectedTaskApplyAuthorization } from '../src/application/finalize/protected-task-apply-authorization.ts';
 import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-store.ts';

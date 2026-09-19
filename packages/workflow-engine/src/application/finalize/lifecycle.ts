@@ -25,7 +25,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { assertCommitObject } from '../../runtime/repository-transaction/commit-object-validation.ts';
+import { assertCommitObject } from '../../runtime/repository-validation/commit-replay/commit-object-validation.ts';
 
 import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
 import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
@@ -33,7 +33,7 @@ import {
   finalizeCommittedSession,
   resumePendingCommit,
   type CommitSessionResult,
-} from '../../runtime/repository-transaction/commit-recovery.ts';
+} from '../../runtime/recovery/commit-recovery.ts';
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
 import {
   ExitCode,
@@ -83,7 +83,7 @@ import {
   readFinalizeTransaction,
   type FinalizeTransaction,
   type ProtectedTaskApplyAuthorizationBinding,
-} from '../../runtime/repository-transaction/finalize-transaction.ts';
+} from '../../runtime/storage-journal/finalize-transaction.ts';
 import {
   finalizeTaskUnlocked,
   PROJECTED_SINGLE_PASS_ASSURANCE,
@@ -163,7 +163,7 @@ export type FinishSessionResult = {
   tree: string;
 };
 
-export type { CommitSessionResult } from '../../runtime/repository-transaction/commit-recovery.ts';
+export type { CommitSessionResult } from '../../runtime/recovery/commit-recovery.ts';
 export type { FinalizeTaskResult } from './projected-finalization.ts';
 
 export type FinalizeSessionResult = Omit<FinalizeTaskResult, 'session'> & {

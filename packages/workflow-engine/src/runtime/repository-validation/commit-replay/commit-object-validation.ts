@@ -1,4 +1,4 @@
-import type { DocumentationClosureRecord } from '../../modules/assurance/documentation-closure.ts';
+import type { DocumentationClosureRecord } from '../../../modules/assurance/documentation-closure.ts';
 /**
  * Verifies the created task commit against its authorized finish
  * projection.
@@ -7,13 +7,13 @@ import type { DocumentationClosureRecord } from '../../modules/assurance/documen
  * - Parent, tree, exact managed message and changed paths must all match
  *   the expected commit facts.
  */
-import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import {
   commitChangedPaths,
   commitFacts,
   managedCommitMessage,
-} from './git-transitions.ts';
-import type { WorkflowSession } from '../session-workspace/session-store.ts';
+} from '../../repository-transaction/git-transitions.ts';
+import type { WorkflowSession } from '../../session-workspace/session-store.ts';
 
 export function assertCommitObject(
   repositoryRoot: string,

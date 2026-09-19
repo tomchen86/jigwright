@@ -43,7 +43,7 @@ import { dispatchAgentGuidanceCommand } from './agent-guidance-cli.ts';
 import { inspectProjectionStatus } from '../../composition-root/projection-status-production.ts';
 import { dispatchCentralRoleProviderDefaultCommand } from './central-role-provider-default-cli.ts';
 
-import { inspectChangeAssurance } from '../../runtime/repository-transaction/assurance-inspection.ts';
+import { inspectChangeAssurance } from '../../runtime/repository-observation/assurance-inspection.ts';
 import { loadWorkflowConfig } from '../../runtime/repository-observation/workflow-configuration.ts';
 import {
   checkOpenSpecPlanningAssets,

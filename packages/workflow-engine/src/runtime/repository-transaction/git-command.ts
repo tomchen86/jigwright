@@ -9,7 +9,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { createTrustedExecutionEnvironment } from '../provider-execution/execution-environment.ts';
+import { createTrustedExecutionEnvironment } from '../process-environment/execution-environment.ts';
 import {
   activePostApprovalGitTimeout,
   isProcessTimeout,

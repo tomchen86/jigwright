@@ -10,7 +10,7 @@ import { normalizeArchivePaths } from '../../../modules/assurance/commit-replay/
 import { loadChecksConfig } from '../../repository-observation/workflow-configuration.ts';
 import { loadWorkflowConfig } from '../../repository-observation/workflow-configuration.ts';
 import type { ChangeContract } from '../../../modules/planning-provider/change-contract.ts';
-import { createTrustedExecutionEnvironment } from '../../provider-execution/execution-environment.ts';
+import { createTrustedExecutionEnvironment } from '../../process-environment/execution-environment.ts';
 import { archiveCommitMessage } from '../../repository-transaction/git-transitions.ts';
 import { commitChangedPaths } from '../../repository-transaction/git-transitions.ts';
 import { commitFacts } from '../../repository-transaction/git-transitions.ts';

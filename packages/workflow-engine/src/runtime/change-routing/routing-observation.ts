@@ -38,7 +38,7 @@ import {
   prettyJson,
 } from '../../modules/lifecycle/change-routing.ts';
 import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
-import { loadWorkflowConfig } from './workflow-configuration.ts';
+import { loadWorkflowConfig } from '../repository-observation/workflow-configuration.ts';
 import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
 import { canonicalJson } from '@jigwright/core/canonical-json';
 import { discoverRepository } from '../repository-transaction/git.ts';

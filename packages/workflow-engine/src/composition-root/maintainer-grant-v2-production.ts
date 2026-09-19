@@ -26,7 +26,7 @@ import {
   createSignedMaintainerGrantPublisher,
   exactPublishedAuditTagObject,
   deleteExpectedAuditTag,
-} from '../runtime/repository-transaction/maintainer-grant-v2-publication.ts';
+} from '../runtime/grants/maintainer-grant-v2-publication.ts';
 import { createMaintainerAuditTag } from '../runtime/repository-transaction/maintainer-audit-tag.ts';
 import { withRepositoryLifecycleOperation } from '../runtime/session-workspace/session-store.ts';
 import {

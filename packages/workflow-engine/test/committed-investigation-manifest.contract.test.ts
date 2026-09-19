@@ -11,7 +11,7 @@ import {
   loadChangeContract,
   loadCommittedChangeContract,
 } from '../src/composition-root/consumer-contract-production.ts';
-import { readCommittedInvestigationManifestV3 } from '../src/runtime/repository-transaction/committed-investigation-manifest.ts';
+import { readCommittedInvestigationManifestV3 } from '../src/runtime/repository-validation/commit-replay/committed-investigation-manifest.ts';
 import {
   createFixtureRepository,
   fixtureCurrentSchemaName,

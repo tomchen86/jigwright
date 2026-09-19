@@ -1,6 +1,6 @@
 import { renderHandoffFromTrackedFacts as renderTrackedWithRouting } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { productionChangeRoutingInspector } from '../src/composition-root/change-routing-observation-production.ts';
-import { observeChangeRoutingContinuationState } from '../src/runtime/repository-observation/change-routing.ts';
+import { observeChangeRoutingContinuationState } from '../src/runtime/change-routing/routing-observation.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const projectHandoffForTaskProjection =
   projectHandoffForTaskProjectionWithContractReader.bind(

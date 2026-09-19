@@ -7,7 +7,7 @@
  */
 
 import { assertKnownBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
-import { createProviderExecutionEnvironment } from './execution-environment.ts';
+import { createProviderExecutionEnvironment } from '../process-environment/execution-environment.ts';
 import type { ProviderDefinitionSnapshot } from '@jigwright/core/provider-definition-snapshot';
 import type {
   ProviderRunnerHost,

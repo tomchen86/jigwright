@@ -54,7 +54,7 @@ import { planningProviderBindingPath } from '../../modules/source/planning-paths
 import { readBoundInvestigationManifestPublicationRef } from '../managed-documents/transaction/investigation-publication.ts';
 import { investigationManifestPublicationNamespace } from '../../modules/investigation/manifest/investigation-publication-contracts.ts';
 import { loadRepositoryConsumerConfiguration } from './repository-consumer.ts';
-import { readCommittedInvestigationManifestV3 } from '../repository-transaction/committed-investigation-manifest.ts';
+import { readCommittedInvestigationManifestV3 } from '../repository-validation/commit-replay/committed-investigation-manifest.ts';
 import { discoverRepository } from '../repository-transaction/git.ts';
 import { assertPolicyPathInsideRepository } from '../session-workspace/paths.ts';
 import { workflowContractArtifactPaths } from './workflow-contract-artifacts.ts';

@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
-import { createTrustedExecutionEnvironment } from '../src/runtime/provider-execution/execution-environment.ts';
+import { createTrustedExecutionEnvironment } from '../src/runtime/process-environment/execution-environment.ts';
 import { generateBuiltInEngineClosure } from './generate-built-in-engine-closure.ts';
 import {
   resolveWorkspaceSourceClosure,

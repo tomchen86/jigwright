@@ -65,7 +65,7 @@ import {
 } from '../modules/provider-orchestration/agent-runtime-host-execution-binding.ts';
 import type { ProviderRunnerReport } from '../modules/provider-orchestration/provider-contracts.ts';
 import { isProviderId } from '../modules/provider-orchestration/provider-registry.ts';
-import { createProviderExecutionEnvironment } from '../runtime/provider-execution/execution-environment.ts';
+import { createProviderExecutionEnvironment } from '../runtime/process-environment/execution-environment.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../modules/provider-orchestration/provider-runtime-evidence.ts';
 import {
   captureGovernedProviderProjection,

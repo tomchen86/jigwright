@@ -48,7 +48,7 @@ import {
 } from '../../runtime/storage-journal/evidence-object-store.ts';
 import { createEvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';
 
-import { readFinalizeTransaction } from '../../runtime/repository-transaction/finalize-transaction.ts';
+import { readFinalizeTransaction } from '../../runtime/storage-journal/finalize-transaction.ts';
 import {
   findCurrentExecutionTaskCommits,
   listStagedPaths,

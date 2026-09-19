@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { inspectChangeAssurance } from '../src/runtime/repository-transaction/assurance-inspection.ts';
+import { inspectChangeAssurance } from '../src/runtime/repository-observation/assurance-inspection.ts';
 import { deriveInvestigationGroupFacts } from '../src/modules/investigation/domain/investigation-groups.ts';
 import { scanInvestigationTreeFacts } from '../src/composition-root/investigation-production.ts';
 import {

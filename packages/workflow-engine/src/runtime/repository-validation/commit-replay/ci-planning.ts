@@ -15,7 +15,7 @@ import { readManagedSchemaName } from '../../repository-observation/change-metad
 import type { ChangeContract } from '../../../modules/planning-provider/change-contract.ts';
 import type { ManagedSchemaName } from '../../../modules/planning-provider/change-contract.ts';
 import type { ParsedTask } from '../../../modules/planning-provider/planning-artifact-types.ts';
-import { createTrustedExecutionEnvironment } from '../../provider-execution/execution-environment.ts';
+import { createTrustedExecutionEnvironment } from '../../process-environment/execution-environment.ts';
 import { isEngineProjectionPathForTransition } from '../../../modules/projection/engine-projection-registry.ts';
 import { commitChangedPaths } from '../../repository-transaction/git-transitions.ts';
 import { commitFacts } from '../../repository-transaction/git-transitions.ts';

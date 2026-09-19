@@ -18,7 +18,7 @@ import type {
   TransformationTerm,
 } from '../../modules/planning-provider/planning-artifact-types.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { readFinalizeTransaction } from '../../runtime/repository-transaction/finalize-transaction.ts';
+import { readFinalizeTransaction } from '../../runtime/storage-journal/finalize-transaction.ts';
 import { listStagedPaths } from '../../runtime/repository-transaction/git-transitions.ts';
 import { listChangedPaths } from '../../runtime/repository-transaction/git.ts';
 import {

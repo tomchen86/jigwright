@@ -1,4 +1,4 @@
-import { observeChangeRoutingContinuationState } from '../runtime/repository-observation/change-routing.ts';
+import { observeChangeRoutingContinuationState } from '../runtime/change-routing/routing-observation.ts';
 import { investigationFailureObservations } from './investigation-failure-production.ts';
 /**
  * Composes production Grant coordinators and routes lifecycle continuation

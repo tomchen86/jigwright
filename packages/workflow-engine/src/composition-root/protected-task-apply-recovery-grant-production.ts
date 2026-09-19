@@ -40,7 +40,7 @@ import {
 import {
   readFinalizeTransaction,
   type FinalizeTransaction,
-} from '../runtime/repository-transaction/finalize-transaction.ts';
+} from '../runtime/storage-journal/finalize-transaction.ts';
 import {
   grantStorePaths,
   createFileGrantRecordStore,

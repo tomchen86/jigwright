@@ -8,12 +8,12 @@
  */
 export { applyManagedChangeRoutingReview } from './change-routing-transaction-production.ts';
 
-import { applyChangeRoutingReview as applyChangeRoutingReviewKernel } from '../runtime/repository-transaction/change-routing.ts';
+import { applyChangeRoutingReview as applyChangeRoutingReviewKernel } from '../runtime/change-routing/routing-review-apply.ts';
 import {
   assertChangeRoutingAdmission as assertChangeRoutingAdmissionKernel,
   inspectChangeRouting as inspectChangeRoutingKernel,
   prepareChangeRoutingReview as prepareChangeRoutingReviewKernel,
-} from '../runtime/repository-observation/change-routing.ts';
+} from '../runtime/change-routing/routing-observation.ts';
 import { productionChangeRoutingAuthorityPort } from './validated-contract-context.ts';
 import { productionChangeRoutingContinuationGrantPort } from './change-routing-grant-production.ts';
 import { parseRepositoryConsumerConfiguration } from '../modules/repository-consumer/repository-consumer-policy.ts';

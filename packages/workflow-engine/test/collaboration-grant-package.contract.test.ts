@@ -1,4 +1,4 @@
-import { observeChangeRoutingContinuationState } from '../src/runtime/repository-observation/change-routing.ts';
+import { observeChangeRoutingContinuationState } from '../src/runtime/change-routing/routing-observation.ts';
 import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
 import crypto from 'node:crypto';

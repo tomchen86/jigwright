@@ -37,7 +37,7 @@ import type { GitState } from '../src/modules/repository-consumer/repository-git
 import {
   createSignedMaintainerGrantPublisher,
   type SignedGrantPublicationRuntime,
-} from '../src/runtime/repository-transaction/maintainer-grant-v2-publication.ts';
+} from '../src/runtime/grants/maintainer-grant-v2-publication.ts';
 import { readRequiredRefGenerationLedger } from '../src/runtime/repository-observation/maintainer-grant-v2.ts';
 import { defaultSessionRuntimeLayoutPort } from '@jigwright/core/session-runtime-layout-port';
 

@@ -52,7 +52,7 @@ import {
   type PlanningArchiveProjectionContext,
   type PlanningArchiveProjectionPort,
 } from '../../modules/planning-provider/planning-archive-projection-port.ts';
-import { createTrustedExecutionEnvironment } from '../../runtime/provider-execution/execution-environment.ts';
+import { createTrustedExecutionEnvironment } from '../../runtime/process-environment/execution-environment.ts';
 import {
   discoverRepository,
   fingerprintRepositoryWorktree,

@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:de2c9e30a05c6fb4fd7e414341159fa51038c6df5635a4276f973711387a0ce9"
+      "digest": "sha256:e9137fd58d507497a9b08c47beefd792c70c92523dd7e57b7c080f41f3ac2cd2"
     },
     {
       "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js",
@@ -118,7 +118,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/adapters/signing/ssh/maintainer-signer.js",
       "mode": "100644",
-      "digest": "sha256:db263b19f1b5de1dd9914097015fb1a1371f8cf82811ed147654f045ede5df21"
+      "digest": "sha256:eba48a4531962ad125454df01c36549a2b24b21a2cb2647861c7d4bad01e263d"
     },
     {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/control-plane-updater-approval.js",
@@ -686,7 +686,7 @@
       "digest": "sha256:657953b6c9bb35ceca862e6cbaca747d45f7288fc24631b3682f786b874f34bf"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/runtime/provider-execution/execution-environment.js",
+      "path": "bootstrap/recovery-runtime/src/runtime/process-environment/execution-environment.js",
       "mode": "100644",
       "digest": "sha256:8c609c5dd3442addcf8dcd387e126f3ed6bbb2c018bd7972ab79471eeb4b82ac"
     },
@@ -753,7 +753,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/git-command.js",
       "mode": "100644",
-      "digest": "sha256:de4e32499c8674d5b967c00baea4207e861d10a9d85fe5495e558edc39fbb582"
+      "digest": "sha256:435b9884a72388a9ecd7ea4f64f21efda882f3c480577070bad75a1310b7bc85"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/git-projection-files.js",

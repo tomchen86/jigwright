@@ -1,5 +1,5 @@
-import { materializeInvestigationEvidenceView } from '../repository-observation/investigation-replay.ts';
-import type { ImmutableGitTreeInvestigationObservation } from '../../modules/investigation/manifest/investigation-observation.ts';
+import { materializeInvestigationEvidenceView } from '../../repository-observation/investigation-replay.ts';
+import type { ImmutableGitTreeInvestigationObservation } from '../../../modules/investigation/manifest/investigation-observation.ts';
 /**
  * Reads and replays an investigation manifest from an exact immutable
  * commit tree.
@@ -12,13 +12,13 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { TextDecoder } from 'node:util';
 
-import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { normalizeExactRepositoryPath } from '../../foundation/repository-path/repository-path.ts';
-import { validateForAuthority } from '../../modules/investigation/manifest/investigation-manifest.ts';
-import { type InvestigationManifestV3 } from '../../modules/investigation/manifest/investigation-manifest-types.ts';
-import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
-import { runGitBuffer } from './git.ts';
+import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
+import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
+import { normalizeExactRepositoryPath } from '../../../foundation/repository-path/repository-path.ts';
+import { validateForAuthority } from '../../../modules/investigation/manifest/investigation-manifest.ts';
+import { type InvestigationManifestV3 } from '../../../modules/investigation/manifest/investigation-manifest-types.ts';
+import { assertChangeId } from '../../../foundation/repository-path/repository-path.ts';
+import { runGitBuffer } from '../../repository-transaction/git.ts';
 
 const TREE_ENTRY = /^(100644) blob ([0-9a-f]{40}|[0-9a-f]{64})\t([^\0]+)\0$/u;
 const MAX_MANIFEST_BYTES = 16 * 1024 * 1024;

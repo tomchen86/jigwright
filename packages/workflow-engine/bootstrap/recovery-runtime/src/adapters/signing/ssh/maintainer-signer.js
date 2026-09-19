@@ -10,7 +10,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createTrustedExecutionEnvironment } from "../../../runtime/provider-execution/execution-environment.js";
+import { createTrustedExecutionEnvironment } from "../../../runtime/process-environment/execution-environment.js";
 import { ExitCode, workflowError } from "../../../foundation/errors/errors.js";
 import { normalizePostApprovalSubprocessError, postApprovalSubprocessBudget, runGit, } from "../../../runtime/repository-transaction/git.js";
 export function assertInteractiveSignerContext(context) {

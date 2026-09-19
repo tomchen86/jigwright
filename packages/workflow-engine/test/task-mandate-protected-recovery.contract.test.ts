@@ -38,7 +38,7 @@ import {
 } from '../src/composition-root/change-role-assignment-grant-production.ts';
 import { changeRoleAssignmentGrantTransitionDefinitions } from '../src/modules/provider-orchestration/change-role-assignment-grant.ts';
 import { withRepositoryLifecycleOperation } from '../src/runtime/session-workspace/session-store.ts';
-import { readFinalizeTransaction } from '../src/runtime/repository-transaction/finalize-transaction.ts';
+import { readFinalizeTransaction } from '../src/runtime/storage-journal/finalize-transaction.ts';
 import { readFinalizeCancellation } from '../src/application/finalize/finalize-cancellation.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-store.ts';

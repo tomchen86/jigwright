@@ -33,7 +33,7 @@ import {
   assertExactOpenSpecAssetFiles,
   type OpenSpecFormatterMetadata,
 } from './openspec-planning-asset-contract.ts';
-import { createTrustedExecutionEnvironment } from '../../../../runtime/provider-execution/execution-environment.ts';
+import { createTrustedExecutionEnvironment } from '../../../../runtime/process-environment/execution-environment.ts';
 import { ensurePlainDirectory } from '../../../../runtime/repository-transaction/filesystem-safety.ts';
 import { resolveOpenSpecInstallation } from './openspec-executor.ts';
 import type { CheckRunnerResolver } from '../../../../modules/source/check-command.ts';

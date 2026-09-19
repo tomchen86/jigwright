@@ -6,7 +6,7 @@ import type {
 import {
   assertChangeRoutingAdmission,
   inspectChangeRouting,
-} from '../runtime/repository-observation/change-routing.ts';
+} from '../runtime/change-routing/routing-observation.ts';
 import {
   loadStableValidatedChangeContract,
   productionChangeRoutingAuthorityPort,

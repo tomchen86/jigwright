@@ -78,7 +78,7 @@ import { assertTaskProjectionSourceDigest } from '../../runtime/managed-document
 import {
   readFinalizeTransaction,
   type ProtectedTaskApplyAuthorizationBinding,
-} from '../../runtime/repository-transaction/finalize-transaction.ts';
+} from '../../runtime/storage-journal/finalize-transaction.ts';
 import { assertPreparedProtectedTaskApplyAuthorization } from './protected-task-apply-authorization.ts';
 
 import type { ValidatedChangeContract } from '../../modules/assurance/validated-change-contract.ts';

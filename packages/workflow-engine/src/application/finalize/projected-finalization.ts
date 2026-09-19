@@ -33,7 +33,7 @@ import {
   type FinalizeTransaction,
   type FinalizeTransactionPhase,
   type ProtectedTaskApplyAuthorizationBinding,
-} from '../../runtime/repository-transaction/finalize-transaction.ts';
+} from '../../runtime/storage-journal/finalize-transaction.ts';
 import {
   resolveExplicitFinalizeChecks,
   resolveFinalizeCheckPolicy,

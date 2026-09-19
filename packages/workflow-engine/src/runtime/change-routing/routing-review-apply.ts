@@ -13,7 +13,7 @@ import {
   routingWorksetDigest,
   prettyJson,
 } from '../../modules/lifecycle/change-routing.ts';
-import { discoverRepository } from './git.ts';
+import { discoverRepository } from '../repository-transaction/git.ts';
 import { loadWorkflowConfig } from '../repository-observation/workflow-configuration.ts';
 import {
   runtimePaths,
@@ -25,10 +25,10 @@ import {
   observeChanges,
   authorizeContinuation,
   requiredRoutingAuthorityFacts,
-} from '../repository-observation/change-routing.ts';
+} from './routing-observation.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import { canonicalJson } from '@jigwright/core/canonical-json';
-import { replaceTextAtomic } from './atomic-text.ts';
+import { replaceTextAtomic } from '../repository-transaction/atomic-text.ts';
 
 export function applyChangeRoutingReview(
   repositoryRoot: string,

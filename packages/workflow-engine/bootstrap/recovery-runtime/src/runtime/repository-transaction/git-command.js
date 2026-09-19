@@ -9,7 +9,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
-import { createTrustedExecutionEnvironment } from "../provider-execution/execution-environment.js";
+import { createTrustedExecutionEnvironment } from "../process-environment/execution-environment.js";
 import { activePostApprovalGitTimeout, isProcessTimeout, postApprovalAdmissionTimeout, } from "./post-approval-budget.js";
 export function runGit(cwd, args, allowFailure = false) {
     return executeGit(cwd, args, allowFailure, {});

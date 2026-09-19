@@ -13,7 +13,7 @@ import { spawnSync } from 'node:child_process';
 import { AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT } from './ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { loadWorkflowConfig } from '../repository-observation/workflow-configuration.ts';
-import { createProviderExecutionEnvironment } from './execution-environment.ts';
+import { createProviderExecutionEnvironment } from '../process-environment/execution-environment.ts';
 import { executionJobStatePath } from '../storage-journal/execution-store.ts';
 import {
   discoverRepository,

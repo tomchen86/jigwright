@@ -8,7 +8,7 @@ import { finalizeTask } from './support/local-engine-selection-host.ts';
 import {
   readFinalizeTransaction,
   removeFinalizeTransaction,
-} from '../src/runtime/repository-transaction/finalize-transaction.ts';
+} from '../src/runtime/storage-journal/finalize-transaction.ts';
 import { restoreFinalizeTransactionProjection } from '../src/application/finalize/projected-finalization.ts';
 import {
   readProviderInvocation,

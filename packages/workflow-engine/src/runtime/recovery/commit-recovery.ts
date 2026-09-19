@@ -9,10 +9,13 @@ import { parseDocumentationClosureFromCommitMessage } from '../../modules/assura
  */
 import path from 'node:path';
 
-import { assertCommitObject } from './commit-object-validation.ts';
+import { assertCommitObject } from '../repository-validation/commit-replay/commit-object-validation.ts';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { commitFacts, updateManagedRef } from './git-transitions.ts';
+import {
+  commitFacts,
+  updateManagedRef,
+} from '../repository-transaction/git-transitions.ts';
 import { type readWorkflowSessionContext } from '../repository-observation/workflow-session-context.ts';
 import { readImmutableReport } from '../storage-journal/report-store.ts';
 import {
