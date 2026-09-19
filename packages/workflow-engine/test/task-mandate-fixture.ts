@@ -16,7 +16,7 @@ import {
 import {
   computeProtectedCapabilityEntryDigestsFromWorktree,
   REQUIRED_PROTECTED_CAPABILITIES,
-} from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+} from '../src/runtime/repository-validation/protected-capabilities.ts';
 import {
   createFixtureRepository,
   git,
@@ -129,7 +129,7 @@ export function enableConditionalTaskAuthorization(
     'utf8',
   );
   const loaderPath =
-    'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+    'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts';
   const manifestPath = 'workflow/protected-capabilities.json';
   const loaderTarget = path.join(repository, loaderPath);
   fs.mkdirSync(path.dirname(loaderTarget), { recursive: true });

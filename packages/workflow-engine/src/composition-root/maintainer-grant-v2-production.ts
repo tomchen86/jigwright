@@ -4,7 +4,7 @@ import { loadStableValidatedChangeContract } from './validated-contract-context.
 import { createMaintainerGrantV2Operations } from '../application/control-plane/maintainer-grant-v2.ts';
 import { authorityTagPublishCommand } from '../adapters/remote/github/authority-relay-command.ts';
 import { assertDisposableDatabaseForRepository } from '../adapters/consumer/repository/work-registry/database-policy.ts';
-import { classifyProtectedCapabilityPaths } from '../adapters/consumer/repository/work-registry/protected-capabilities.ts';
+import { classifyProtectedCapabilityPaths } from '../runtime/repository-validation/protected-capabilities.ts';
 import { createInteractiveSshSigner } from '../adapters/signing/ssh/maintainer-signer.ts';
 import {
   discoverRepository,

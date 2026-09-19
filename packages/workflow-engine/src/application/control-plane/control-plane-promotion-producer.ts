@@ -67,7 +67,7 @@ import {
 } from './intervention-control-updater.ts';
 import { readInterventionEngineArtifact } from './intervention-maintenance.ts';
 import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
-import { loadProtectedCapabilitiesFromTrustBase } from '../../adapters/consumer/repository/work-registry/protected-capabilities.ts';
+import { loadProtectedCapabilitiesFromTrustBase } from '../../runtime/repository-validation/protected-capabilities.ts';
 
 const MAX_EXECUTABLE_BYTES = 16 * 1024 * 1024;
 const MAX_PROCESS_OUTPUT_BYTES = 1024 * 1024;

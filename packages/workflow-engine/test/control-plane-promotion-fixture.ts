@@ -48,7 +48,7 @@ import {
 import { type CapabilityProfile } from '../src/modules/authority/maintainer-manifest-contracts.ts';
 import type { TrustedMaintainerSigner } from '../src/modules/authority/maintainer-policy.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
-import { loadProtectedCapabilitiesFromTrustBase } from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+import { loadProtectedCapabilitiesFromTrustBase } from '../src/runtime/repository-validation/protected-capabilities.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 
 const SOURCE_ENGINE_ROOT = path.resolve(import.meta.dirname, '..');
@@ -64,7 +64,7 @@ import {
   sealFixtureWorkflowHost,
 } from './support/bootstrap-runtime-fixture.ts';
 const FIXTURE_PROTECTED_CAPABILITY_LOADER_PATH =
-  'src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+  'src/runtime/repository-validation/protected-capabilities.ts';
 
 export interface ControlPlaneFixtureSigning {
   trustedSigners: TrustedMaintainerSigner[];
@@ -703,14 +703,14 @@ function createSealedEnginePackage(builtInEntrypointBytes?: string): string {
         digest: controlPlaneFixtureDigest(packageBytes),
       },
       {
-        path: FIXTURE_PROTECTED_CAPABILITY_LOADER_PATH,
-        mode: '100644',
-        digest: controlPlaneFixtureDigest(protectedLoaderBytes),
-      },
-      {
         path: 'src/entrypoints/cli/workflow-cli.ts',
         mode: '100644',
         digest: controlPlaneFixtureDigest(entrypointBytes),
+      },
+      {
+        path: FIXTURE_PROTECTED_CAPABILITY_LOADER_PATH,
+        mode: '100644',
+        digest: controlPlaneFixtureDigest(protectedLoaderBytes),
       },
     ],
   };
@@ -783,7 +783,7 @@ function createFixtureProtectedManifest(repository: string) {
           : []),
         ...(capability === 'policy.classify'
           ? [
-              'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts',
+              'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts',
             ]
           : []),
         ...(capability === 'control-plane.update'

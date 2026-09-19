@@ -426,11 +426,6 @@
       "digest": "sha256:c082e3b4f862b5ce366d185681f394218ffec6e30f56d5d5096ed753abf49dea"
     },
     {
-      "path": "src/adapters/consumer/repository/work-registry/protected-capabilities.ts",
-      "mode": "100644",
-      "digest": "sha256:e6980f2b1290c5a357358fcc8008457605a95b5e8d51f0419d49b0baf6f20643"
-    },
-    {
       "path": "src/adapters/consumer/repository/work-registry/runner-resolution.ts",
       "mode": "100644",
       "digest": "sha256:9c0af152984e4bff645292b613038dd30e5dd1b322f0556fef1cb790cab0c839"
@@ -678,7 +673,7 @@
     {
       "path": "src/application/control-plane/control-plane-promotion-producer.ts",
       "mode": "100644",
-      "digest": "sha256:2aea825d2153cbde20aa9a0d49652f84ebbd9d8f51347b89cdf7c20b162b692e"
+      "digest": "sha256:fd915ad4e5b1ea99b53494dfa6388398572a9fe3d4adc6809e537fba50e9896f"
     },
     {
       "path": "src/application/control-plane/control-plane-updater-approval.ts",
@@ -1483,7 +1478,7 @@
     {
       "path": "src/composition-root/authority-remap.ts",
       "mode": "100644",
-      "digest": "sha256:a3438d2223e7222d7bb713765479bec6c8aec2e4d9522b0d0e416e87bfc0b971"
+      "digest": "sha256:857b398e6711c107401d3b23d0524f4c87f46f1923b535465c4e1a2479b22f9c"
     },
     {
       "path": "src/composition-root/boundary-cli-production.ts",
@@ -1643,7 +1638,7 @@
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
       "mode": "100644",
-      "digest": "sha256:76f54c1ef90501986f9489593ace1ce70f37eb20b1b06aa11c6c0a9f33b91fee"
+      "digest": "sha256:a7dac2f7796fda2950b2d061f7630c89024b62424ffafb15ff1d3d8ce8cfc840"
     },
     {
       "path": "src/composition-root/handoff-production.ts",
@@ -1713,7 +1708,7 @@
     {
       "path": "src/composition-root/maintainer-grant-v2-production.ts",
       "mode": "100644",
-      "digest": "sha256:3a7bb03cc3a8e1720c65988b5ef23a5719860cba72878d75d3ad6a97ac32c6d0"
+      "digest": "sha256:56d0a122fc4e405bc2d5a058697e00a0fb29a5030b24b2d6bc7f6e6689e53b49"
     },
     {
       "path": "src/composition-root/maintainer-manifest-production.ts",
@@ -4559,6 +4554,11 @@
       "path": "src/runtime/repository-validation/commit-replay/task-execution-evidence.ts",
       "mode": "100644",
       "digest": "sha256:c841f98eeff7b2e5deb07e4df55e82511dff96a59e2e8ed829abad531150909a"
+    },
+    {
+      "path": "src/runtime/repository-validation/protected-capabilities.ts",
+      "mode": "100644",
+      "digest": "sha256:59468364f3a2dca30c805b0c1f32343a519f6d6873d36e35bd4a5bf495b7dfae"
     },
     {
       "path": "src/runtime/session-workspace/planning-lock.ts",

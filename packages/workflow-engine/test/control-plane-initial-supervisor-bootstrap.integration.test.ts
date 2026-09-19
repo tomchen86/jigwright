@@ -22,7 +22,7 @@ import {
   BOOTSTRAP_RUNTIME_NAMES,
   sealFixtureWorkflowHost,
 } from './support/bootstrap-runtime-fixture.ts';
-import { loadProtectedCapabilitiesFromTrustBase } from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+import { loadProtectedCapabilitiesFromTrustBase } from '../src/runtime/repository-validation/protected-capabilities.ts';
 import { spawnSync } from 'node:child_process';
 import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';
 import {
@@ -71,7 +71,7 @@ const FIXTURE_ROLE_CONTEXT_SHARING_SOURCE =
   'packages/grants/src/role-context-sharing-degradation.ts';
 
 const FIXTURE_PROTECTED_CAPABILITY_LOADER_PATH =
-  'src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+  'src/runtime/repository-validation/protected-capabilities.ts';
 
 test('anti-lockout bootstrap accepts and binds an optional sealed Grant verifier composition', () => {
   const engineRoot = createSealedEnginePackage();
@@ -1187,14 +1187,14 @@ function createSealedEnginePackage(): string {
         digest: digest(packageBytes),
       },
       {
-        path: FIXTURE_PROTECTED_CAPABILITY_LOADER_PATH,
-        mode: '100644',
-        digest: digest(protectedLoaderBytes),
-      },
-      {
         path: 'src/entrypoints/cli/workflow-cli.ts',
         mode: '100644',
         digest: digest(entrypointBytes),
+      },
+      {
+        path: FIXTURE_PROTECTED_CAPABILITY_LOADER_PATH,
+        mode: '100644',
+        digest: digest(protectedLoaderBytes),
       },
     ],
   };
@@ -1340,7 +1340,7 @@ function createFixtureProtectedManifest(
             : []),
           ...(capability === 'policy.classify'
             ? [
-                'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts',
+                'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts',
               ]
             : []),
           ...(capability === 'control-plane.update'

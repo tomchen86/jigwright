@@ -50,7 +50,7 @@ import { readVerifiedRoleContextSharingTerminalReceipt } from './role-context-sh
 import {
   loadProtectedCapabilitiesFromWorktree,
   type CollaborationGrantVerifierCompositionV1,
-} from '../adapters/consumer/repository/work-registry/protected-capabilities.ts';
+} from '../runtime/repository-validation/protected-capabilities.ts';
 import type {
   ConsumedRoleReplayPort,
   ConsumedRoleResultReplayPort,

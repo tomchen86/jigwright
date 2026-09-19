@@ -1284,13 +1284,13 @@ test('authority remap fails closed when a move hits a code-owned projection endp
         endpoint === 'source'
           ? 'docs/CURRENT_AND_NEXT_STEPS.md'
           : endpoint === 'protected-loader'
-            ? 'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts'
+            ? 'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts'
             : 'docs/source-handoff.md';
       const to =
         endpoint === 'source'
           ? 'docs/relocated-handoff.md'
           : endpoint === 'protected-loader'
-            ? 'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities-relocated.ts'
+            ? 'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities-relocated.ts'
             : 'docs/CURRENT_AND_NEXT_STEPS.md';
       write(repository, from, 'generated handoff\n');
       commitAll(repository, `Add ${endpoint} projection endpoint`);

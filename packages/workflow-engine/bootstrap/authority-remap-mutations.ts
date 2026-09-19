@@ -11,8 +11,8 @@ import type {
 } from '../src/modules/authority/authority-remap-contract.ts';
 import { classifyFileRole } from '../src/modules/authority/maintainer-manifest-contracts.ts';
 import { loadCapabilityProfileFromTrustBase } from '../src/composition-root/maintainer-manifest-production.ts';
-import { parseProtectedCapabilitiesManifestSource } from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
-import type { ProtectedCapabilitiesManifestSource } from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+import { parseProtectedCapabilitiesManifestSource } from '../src/runtime/repository-validation/protected-capabilities.ts';
+import type { ProtectedCapabilitiesManifestSource } from '../src/runtime/repository-validation/protected-capabilities.ts';
 import { runGitBuffer } from '../src/runtime/repository-transaction/git.ts';
 import {
   normalizeExactRepositoryPath,

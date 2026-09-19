@@ -42,7 +42,7 @@
       "packages/workflow-engine/src/adapters/command-line/authority-audit-input.ts",
       "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts",
-      "packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts",
+      "packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts",
       "packages/workflow-engine/src/adapters/consumer/repository/work-registry/runner-resolution.ts",
       "packages/workflow-engine/src/adapters/planning/investigation/human-resolution-grant-management.ts",
       "packages/workflow-engine/src/adapters/planning/investigation/human-resolution-lifecycle.ts",

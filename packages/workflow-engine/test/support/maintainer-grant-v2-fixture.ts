@@ -32,7 +32,7 @@ import {
 import {
   computeProtectedCapabilityEntryDigests,
   REQUIRED_PROTECTED_CAPABILITIES,
-} from '../../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+} from '../../src/runtime/repository-validation/protected-capabilities.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../../src/application/propose/planning-transition.ts';
 
 import { type MaintainerSignerProvider } from '../../src/adapters/signing/ssh/maintainer-signer.ts';
@@ -316,7 +316,7 @@ function installV2TrustBase(repository: string): void {
   fs.mkdirSync(
     path.join(
       repository,
-      'packages/workflow-engine/src/adapters/consumer/repository/work-registry',
+      'packages/workflow-engine/src/runtime/repository-validation',
     ),
     { recursive: true },
   );
@@ -337,7 +337,7 @@ function installV2TrustBase(repository: string): void {
   fs.writeFileSync(
     path.join(
       repository,
-      'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts',
+      'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts',
     ),
     'export const PROTECTED_CAPABILITY_LOADER = true;\n',
   );
@@ -376,7 +376,7 @@ function installV2TrustBase(repository: string): void {
     'packages/workflow-engine/src/modules/authority/execution-governance.ts',
   ];
   const dependencies = [
-    'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts',
+    'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts',
     'workflow/protected-capabilities.json',
   ];
   const closure = computeProtectedCapabilityEntryDigests(

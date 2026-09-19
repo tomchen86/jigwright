@@ -17,12 +17,12 @@ import {
   parseProtectedCapabilitiesManifestSource,
   projectCollaborationGrantVerifierCompositionFromWorktree,
   type Sha256Digest,
-} from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+} from '../src/runtime/repository-validation/protected-capabilities.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
 const MANIFEST_PATH = 'workflow/protected-capabilities.json';
 const LOADER_PATH =
-  'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+  'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts';
 const GENERATOR_PATH =
   'packages/workflow-engine/bootstrap/generate-protected-capabilities.ts';
 const SOURCE_REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../../..');

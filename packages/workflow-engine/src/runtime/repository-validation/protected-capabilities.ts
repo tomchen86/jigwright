@@ -12,32 +12,26 @@ import path from 'node:path';
 import {
   canonicalJson,
   compareCanonicalStrings,
-} from '../../../../foundation/canonical-json/canonical-json.ts';
+} from '../../foundation/canonical-json/canonical-json.ts';
 import {
   isRecord,
   isStringArray,
-} from '../../../../foundation/canonical-json/contract-values.ts';
-import {
-  ExitCode,
-  workflowError,
-} from '../../../../foundation/errors/errors.ts';
-import {
-  runGit,
-  runGitBuffer,
-} from '../../../../runtime/repository-transaction/git.ts';
+} from '../../foundation/canonical-json/contract-values.ts';
+import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import { runGit, runGitBuffer } from '../repository-transaction/git.ts';
 import {
   matchesAllowedPath,
   normalizeExactRepositoryPath,
   normalizePolicyPath,
-} from '../../../../foundation/repository-path/repository-path.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import {
   readBlobBytes,
   readFileAtRevision,
-} from '../../../../runtime/repository-transaction/git-command.ts';
+} from '../repository-transaction/git-command.ts';
 
 const MANIFEST_PATH = 'workflow/protected-capabilities.json';
 const LOADER_PATH =
-  'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+  'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts';
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const REGULAR_GIT_MODES = new Set(['100644', '100755']);

@@ -69,7 +69,7 @@ import {
   type MaintainerPolicy,
 } from '../modules/authority/maintainer-policy.ts';
 import { engineProjectionDefinitions } from '../modules/projection/engine-projection-registry.ts';
-import { parseProtectedCapabilitiesManifestSource } from '../adapters/consumer/repository/work-registry/protected-capabilities.ts';
+import { parseProtectedCapabilitiesManifestSource } from '../runtime/repository-validation/protected-capabilities.ts';
 
 const OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const MAX_RENAME_PAIRS = 10_000;
@@ -81,7 +81,7 @@ const BUILT_IN_CLOSURE_PATH =
   'packages/workflow-engine/bootstrap/built-in-engine-closure.json';
 const PROTECTED_CAPABILITIES_PATH = 'workflow/protected-capabilities.json';
 const PROTECTED_CAPABILITIES_LOADER_PATH =
-  'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+  'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts';
 const ENGINE_PROJECTION_REGISTRY_PATH =
   'packages/workflow-engine/src/modules/projection/engine-projection-registry.ts';
 const BOOTSTRAP_ROOT = 'packages/workflow-engine/bootstrap';

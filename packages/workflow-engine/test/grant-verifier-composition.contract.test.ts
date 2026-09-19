@@ -11,7 +11,7 @@ import {
   createAuthoritativeCollaborationGrantVerifier,
   createCurrentAuthoritativeRoleContextSharingGrantVerifier,
 } from '../src/composition-root/grant-verifier-composition.ts';
-import { loadProtectedCapabilitiesFromWorktree } from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+import { loadProtectedCapabilitiesFromWorktree } from '../src/runtime/repository-validation/protected-capabilities.ts';
 import { isWorkflowError, sourceRepositoryRoot } from './fixture.ts';
 import { createSshSignedFixture } from './support/ssh-signed-fixture.ts';
 

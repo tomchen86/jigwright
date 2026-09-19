@@ -20,7 +20,7 @@ import {
   parseProtectedCapabilitiesManifestSource,
   projectCollaborationGrantVerifierCompositionFromWorktree,
   type ProtectedCapabilitiesManifestSource,
-} from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+} from '../src/runtime/repository-validation/protected-capabilities.ts';
 import { replaceTextAtomic } from '../src/runtime/repository-transaction/atomic-text.ts';
 
 const MANIFEST_PATH = 'workflow/protected-capabilities.json';

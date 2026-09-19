@@ -33,7 +33,7 @@ import {
 import {
   REQUIRED_PROTECTED_CAPABILITIES as TYPED_REQUIRED_PROTECTED_CAPABILITIES,
   type ProtectedCapabilitiesManifest as TypedProtectedCapabilitiesManifest,
-} from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+} from '../src/runtime/repository-validation/protected-capabilities.ts';
 import {
   setupFinalizedControlPlanePromotionFixture,
   setupInitialControlPlaneBootstrapFixture,

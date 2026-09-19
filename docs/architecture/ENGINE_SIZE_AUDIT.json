@@ -464,7 +464,7 @@
       }
     },
     {
-      "file": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts",
+      "file": "packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts",
       "lines": 1118,
       "exports": 17,
       "functionsOver80": 2,
