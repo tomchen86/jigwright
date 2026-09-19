@@ -153,6 +153,10 @@ function fixture(
     assertMechanicalEvidence() {
       calls.push('mechanical');
     },
+    recordGreenFailure() {
+      calls.push('record-green-failure');
+      return null;
+    },
   });
   return { calls, gate };
 }
@@ -173,7 +177,7 @@ test('missing and stale RED evidence reject before preview or correction observa
         return record;
       },
     });
-    assert.throws(() => gate(inspection, {}), {
+    assert.throws(() => gate.assertExecutionAdmitted(inspection, {}), {
       code:
         record === null
           ? 'TASK_STRATEGY_RED_REQUIRED'
@@ -186,7 +190,11 @@ test('missing and stale RED evidence reject before preview or correction observa
 test('RED path mismatch prevents frozen Git reads and correction observation', () => {
   const { calls, gate } = fixture();
   assert.throws(
-    () => gate({ ...inspection, changedPaths: ['test/other.test.ts'] }, {}),
+    () =>
+      gate.assertExecutionAdmitted(
+        { ...inspection, changedPaths: ['test/other.test.ts'] },
+        {},
+      ),
     { code: 'TASK_STRATEGY_RED_STALE' },
   );
   assert.deepEqual(calls, ['open', 'transaction', 'preview']);
@@ -195,7 +203,7 @@ test('RED path mismatch prevents frozen Git reads and correction observation', (
 test('missing imported head rejects after fresh frozen and correction observations', () => {
   const { calls, gate } = fixture();
   for (let i = 0; i < 2; i++)
-    assert.throws(() => gate(inspection, {}), {
+    assert.throws(() => gate.assertExecutionAdmitted(inspection, {}), {
       code: 'TASK_STRATEGY_PATCH_REQUIRED',
     });
   assert.deepEqual(calls, [
@@ -233,7 +241,7 @@ test('patch observation failure propagates exactly and cannot trigger authority 
     correction,
   );
   assert.throws(
-    () => gate(inspection, {}),
+    () => gate.assertExecutionAdmitted(inspection, {}),
     (error) => error === failure,
   );
   assert.deepEqual(calls, [
@@ -257,7 +265,7 @@ test('missing patch records still observe authority before final patch validatio
     completedCorrectionRounds: 0,
   } as TaskStrategyGateCorrectionEvidence;
   const { calls, gate } = fixture({}, correction);
-  assert.throws(() => gate(inspection, {}), {
+  assert.throws(() => gate.assertExecutionAdmitted(inspection, {}), {
     code: 'TASK_STRATEGY_PATCH_STALE',
   });
   assert.deepEqual(calls, [
@@ -284,7 +292,7 @@ test('RED identity mismatches reject before repository preview without adding a 
     const { calls, gate } = fixture({
       readTransaction: () => ({ ...transaction, ...change }),
     });
-    assert.throws(() => gate(inspection, {}), {
+    assert.throws(() => gate.assertExecutionAdmitted(inspection, {}), {
       code: 'TASK_STRATEGY_RED_STALE',
     });
     assert.deepEqual(calls, ['open']);

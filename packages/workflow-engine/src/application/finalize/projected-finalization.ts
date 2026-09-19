@@ -160,6 +160,7 @@ export function finalizeTaskUnlocked(
     assertProtectedApplyRequestMatches(existing, options);
     try {
       return continueFinalizeTransaction(
+        taskStrategyExecutionGate,
         changeContract,
         taskDiffReview,
         cwd,
@@ -197,9 +198,10 @@ export function finalizeTaskUnlocked(
   }
   assertCurrentImplementationReconciliation(initial);
   ensureTaskMechanicalTransformationEvidence(reviewedAssets, initial);
-  taskStrategyExecutionGate(initial, environment);
+  taskStrategyExecutionGate.assertExecutionAdmitted(initial, environment);
 
   const reconciliation = reconcilePredecessor(
+    taskStrategyExecutionGate,
     changeContract,
     cwd,
     initial,
@@ -297,6 +299,7 @@ export function finalizeTaskUnlocked(
     );
     maybeInterrupt(options, 'projection-prepared');
     return continueFinalizeTransaction(
+      taskStrategyExecutionGate,
       changeContract,
       taskDiffReview,
       cwd,
@@ -315,6 +318,7 @@ export function finalizeTaskUnlocked(
 }
 
 function continueFinalizeTransaction(
+  taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
   changeContract: ChangeContractServices,
   taskDiffReview: Pick<
     TaskDiffReviewOperations,
@@ -355,6 +359,7 @@ function continueFinalizeTransaction(
       );
       maybeInterrupt(options, 'checks-running');
       const verified = executeChecks(
+        taskStrategyExecutionGate,
         changeContract,
         cwd,
         state.inspection,

@@ -1,4 +1,7 @@
-/** Observes and checks task strategy evidence in its required admission order. */
+/**
+ * Finalize's task-strategy evidence port: admission checks in their required
+ * order, plus the GREEN failure ledger entry recorded when a check fails.
+ */
 import {
   assertTaskStrategyRedTransactionCurrent,
   classifyCurrentRedPaths,
@@ -23,10 +26,11 @@ export function createTaskStrategyExecutionGate<
   observeRepository(inspection: Inspection): TaskStrategyGateObservations;
   resolveCorrection(inspection: Inspection): TaskStrategyGateCorrectionEvidence;
   assertMechanicalEvidence(inspection: Inspection): void;
+  recordGreenFailure: TaskStrategyExecutionGate<Inspection>['recordGreenFailure'];
 }): TaskStrategyExecutionGate<Inspection> {
-  return function assertTaskStrategyExecutionGate(
-    inspection,
-    _environment,
+  function assertExecutionAdmitted(
+    inspection: Inspection,
+    _environment: NodeJS.ProcessEnv,
   ): void {
     const task =
       inspection.contract.execution?.tasks[inspection.session.taskId];
@@ -107,5 +111,9 @@ export function createTaskStrategyExecutionGate<
       evidence,
       authority,
     );
+  }
+  return {
+    assertExecutionAdmitted,
+    recordGreenFailure: services.recordGreenFailure,
   };
 }

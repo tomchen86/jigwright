@@ -1914,6 +1914,7 @@ export function createFinalizationService(
     reconcileSessionChecksAfterLocalEngineAdoption(
       localEngineSelection,
       manifestOperations,
+      taskStrategyExecutionGate,
       changeContract,
       cwd,
       requestedSessionId,
@@ -1965,6 +1966,7 @@ export function createFinalizationService(
       },
     );
     const reconciliation = reconcilePredecessor(
+      taskStrategyExecutionGate,
       changeContract,
       cwd,
       initial,
@@ -2172,6 +2174,7 @@ export function createFinalizationService(
       unprojected.contract.config,
     );
     const verified = executeChecks(
+      taskStrategyExecutionGate,
       changeContract,
       cwd,
       unprojected,

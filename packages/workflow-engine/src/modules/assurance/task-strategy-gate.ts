@@ -20,6 +20,10 @@ import type {
   TaskStrategyCallerImplementationBinding,
 } from './task-strategy-evidence.ts';
 import type { TaskStrategyGreenFailureRecord } from '../provider-orchestration/task-strategy-correction-record.ts';
+import type {
+  CheckEvidence,
+  ObservedCheckFailure,
+} from '../../foundation/check-evidence/check-evidence.ts';
 export type TaskStrategyGateTask =
   CrossAgentTddExecution | TddSingleAgentExecution;
 export type TaskStrategyGateIdentity = {
@@ -367,10 +371,21 @@ export type TaskStrategyGateInspection = TaskStrategyGateIdentity & {
   contract: Pick<ValidatedChangeContract, 'execution'>;
   changedPaths: readonly string[];
 };
-export type TaskStrategyExecutionGate<Inspection> = (
-  inspection: Inspection,
-  environment: NodeJS.ProcessEnv,
-) => void;
+/**
+ * Finalize's port into task-strategy evidence: admission before required
+ * checks run, and the GREEN failure ledger entry written when one fails.
+ */
+export type TaskStrategyExecutionGate<Inspection> = Readonly<{
+  assertExecutionAdmitted(
+    inspection: Inspection,
+    environment: NodeJS.ProcessEnv,
+  ): void;
+  recordGreenFailure(
+    inspection: Inspection,
+    passedChecks: readonly CheckEvidence[],
+    failingCheck: ObservedCheckFailure,
+  ): TaskStrategyGreenFailureRecord | null;
+}>;
 export type TaskStrategyGateCorrectionEvidence = {
   transaction: TaskStrategyTransaction;
   head: {

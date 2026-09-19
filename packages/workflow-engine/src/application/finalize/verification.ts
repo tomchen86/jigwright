@@ -72,7 +72,6 @@ import {
   writeJsonAtomic,
 } from '../../runtime/session-workspace/session-store.ts';
 
-import { recordTaskStrategyGreenFailure } from '../execute-task/task-strategy-correction.ts';
 import { ensureTaskMechanicalTransformationEvidence } from './task-mechanical-transform.ts';
 import { assertTaskProjectionSourceDigest } from '../../runtime/managed-documents/transaction/task-projection.ts';
 
@@ -160,6 +159,7 @@ function checkSessionUnlocked(
   const reconciled = reconcileSessionChecksAfterLocalEngineAdoption(
     localEngineSelection,
     manifestOperations,
+    taskStrategyExecutionGate,
     changeContract,
     cwd,
     requestedSessionId,
@@ -168,7 +168,10 @@ function checkSessionUnlocked(
   if (reconciled !== null) return reconciled;
   const initial = inspectSession(changeContract, cwd, requestedSessionId);
   ensureTaskMechanicalTransformationEvidence(reviewedAssets, initial);
-  taskStrategyExecutionGate(initial, options.environment ?? process.env);
+  taskStrategyExecutionGate.assertExecutionAdmitted(
+    initial,
+    options.environment ?? process.env,
+  );
   const trustedPolicy = tryLoadTrustedCheckPolicy(
     manifestOperations,
     initial.git.repositoryRoot,
@@ -183,6 +186,7 @@ function checkSessionUnlocked(
       )
     : undefined;
   const verified = executeChecks(
+    taskStrategyExecutionGate,
     changeContract,
     cwd,
     initial,
@@ -266,6 +270,7 @@ type VerifiedLocalAdoption = {
 export function reconcileSessionChecksAfterLocalEngineAdoption(
   localEngineSelection: LocalEngineSelectionReaders,
   manifestOperations: MaintainerManifestOperations,
+  taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
   changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
@@ -405,6 +410,7 @@ export function reconcileSessionChecksAfterLocalEngineAdoption(
     (checkId) => !invalidated.has(checkId),
   );
   const rerun = executeChecks(
+    taskStrategyExecutionGate,
     changeContract,
     cwd,
     initial,
@@ -990,6 +996,7 @@ export function inspectSession(
 }
 
 export function executeChecks(
+  taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
   changeContract: ChangeContractServices,
   cwd: string,
   initial: SessionInspection,
@@ -1068,7 +1075,7 @@ export function executeChecks(
       );
     }
     if (outcome.outcome === 'failed') {
-      recordTaskStrategyGreenFailure(inspection, checks, outcome);
+      taskStrategyExecutionGate.recordGreenFailure(inspection, checks, outcome);
       throw workflowError(
         'CHECK_FAILED',
         `Required check ${checkId} exited non-zero.`,

@@ -122,6 +122,7 @@ test('local adoption admission retains distinct absent, missing, malformed and m
         reconcileSessionChecksAfterLocalEngineAdoption(
           readers,
           maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
           productionChangeContract,
           repository,
           session.sessionId,
@@ -142,6 +143,7 @@ test('local adoption admission retains distinct absent, missing, malformed and m
             },
           },
           maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
           productionChangeContract,
           repository,
           session.sessionId,

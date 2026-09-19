@@ -1,7 +1,10 @@
 import type { SessionInspection } from '../modules/lifecycle/session-inspection.ts';
 import { createTaskStrategyExecutionGate } from '../application/finalize/task-strategy-gate.ts';
 import { createTaskStrategyGateObservations } from '../runtime/repository-observation/task-strategy-gate.ts';
-import { resolveCurrentTaskStrategyCorrection } from '../application/execute-task/task-strategy-correction.ts';
+import {
+  recordTaskStrategyGreenFailure,
+  resolveCurrentTaskStrategyCorrection,
+} from '../application/execute-task/task-strategy-correction.ts';
 import { assertTaskMechanicalTransformationEvidence } from '../application/finalize/task-mechanical-transform.ts';
 export const productionTaskStrategyExecutionGate =
   createTaskStrategyExecutionGate<SessionInspection>({
@@ -13,5 +16,6 @@ export const productionTaskStrategyExecutionGate =
         inspection.session.sessionId,
       ),
     resolveCorrection: resolveCurrentTaskStrategyCorrection,
+    recordGreenFailure: recordTaskStrategyGreenFailure,
     assertMechanicalEvidence: assertTaskMechanicalTransformationEvidence,
   });

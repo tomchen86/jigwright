@@ -1033,17 +1033,17 @@
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:ad2d9100bef757c60484d39ae87f64ac1d3886f6d4bc506edea078bfc155d1ac"
+      "digest": "sha256:374b32f6c5285c50319e7278b6e6eb21a392b5469875fb7bed2ad8e997dbdcd5"
     },
     {
       "path": "src/application/finalize/predecessor-reconciliation.ts",
       "mode": "100644",
-      "digest": "sha256:1741663c6b133920d43932237d7fdccc92fe73019c2e1268f2a9e324a3bb9b12"
+      "digest": "sha256:4b9298492522fcc8200c8f5a34fb720efb6c873423be438db7e36e2e266e5108"
     },
     {
       "path": "src/application/finalize/projected-finalization.ts",
       "mode": "100644",
-      "digest": "sha256:add4f37bf6fc70baf6104a90ac5dd43ad97fd648e7d2b25126c5f448a924145a"
+      "digest": "sha256:af0725cf820eeccd423cc3f9984f23ee0afda4c000c5c1323b27c8e88e7822e0"
     },
     {
       "path": "src/application/finalize/protected-task-apply-authorization.ts",
@@ -1138,12 +1138,12 @@
     {
       "path": "src/application/finalize/task-strategy-gate.ts",
       "mode": "100644",
-      "digest": "sha256:073e734aef466d51bde0b164ad26145c4d7c23cb913cb70bcb38a58a7cbb4c11"
+      "digest": "sha256:d42fe67811c0310baf248a1752acdffc531f80db14b74607e036982614a10735"
     },
     {
       "path": "src/application/finalize/verification.ts",
       "mode": "100644",
-      "digest": "sha256:200a881fc27c7b425d7e19863d57c19ca3ee988f4975cad3e04132531f99b18e"
+      "digest": "sha256:712631c8361799c5ddd3aa03f63e03d03f3a963cfe88c0885c37aa50983182be"
     },
     {
       "path": "src/application/governance-intake/governance-findings.ts",
@@ -1908,7 +1908,7 @@
     {
       "path": "src/composition-root/task-strategy-gate-production.ts",
       "mode": "100644",
-      "digest": "sha256:93a4782cbe892908a1d2770aff66e63a2ce39abc48c76b449ead65b29dacf036"
+      "digest": "sha256:18ae278fc731174b18fdd269c0cac44cae606dff915ade5f0564727973fa5be3"
     },
     {
       "path": "src/composition-root/task-strategy-production.ts",
@@ -2423,7 +2423,7 @@
     {
       "path": "src/modules/assurance/task-strategy-gate.ts",
       "mode": "100644",
-      "digest": "sha256:5ee4d6d94e54588404b36767cf79cb52ebbd3dbbad1c8753ec3071b0fa8fd6d9"
+      "digest": "sha256:7b2e641c605ebc1384ba6bae93fe44688f7c098e4145f4f4718eceaf30fd66f1"
     },
     {
       "path": "src/modules/assurance/validated-change-contract.ts",

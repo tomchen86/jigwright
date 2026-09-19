@@ -19,6 +19,7 @@ import {
 import { runGit } from '../../runtime/repository-transaction/git.ts';
 import { matchesAllowedPath } from '../../foundation/repository-path/repository-path.ts';
 import { executeChecks } from './verification.ts';
+import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 
 export type ReconciledTask = {
@@ -29,6 +30,7 @@ export type ReconciledTask = {
 };
 
 export function reconcilePredecessor(
+  taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
   changeContract: ChangeContractServices,
   cwd: string,
   inspection: SessionInspection,
@@ -81,6 +83,7 @@ export function reconcilePredecessor(
   }
 
   const verified = executeChecks(
+    taskStrategyExecutionGate,
     changeContract,
     cwd,
     inspection,
