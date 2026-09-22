@@ -6,6 +6,7 @@ import {
   resolveCurrentTaskStrategyCorrection,
 } from '../application/execute-task/task-strategy-correction.ts';
 import { assertTaskMechanicalTransformationEvidence } from '../application/finalize/task-mechanical-transform.ts';
+import { pinCheckRunner } from '../adapters/consumer/repository/work-registry/check-runner.ts';
 export const productionTaskStrategyExecutionGate =
   createTaskStrategyExecutionGate<SessionInspection>({
     observeRepository: (inspection) =>
@@ -16,6 +17,9 @@ export const productionTaskStrategyExecutionGate =
         inspection.session.sessionId,
       ),
     resolveCorrection: resolveCurrentTaskStrategyCorrection,
-    recordGreenFailure: recordTaskStrategyGreenFailure,
+    recordGreenFailure: recordTaskStrategyGreenFailure.bind(
+      undefined,
+      pinCheckRunner,
+    ),
     assertMechanicalEvidence: assertTaskMechanicalTransformationEvidence,
   });

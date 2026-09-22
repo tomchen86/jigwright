@@ -14,9 +14,13 @@ import assert from 'node:assert/strict';
 import { checkSession } from './support/local-engine-selection-host.ts';
 import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
 import {
+  recordTaskStrategyGreenFailure,
   readCurrentTaskStrategyGreenFailure,
   resolveCurrentTaskStrategyCorrection,
 } from '../src/application/execute-task/task-strategy-correction.ts';
+import { pinCheckRunner } from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
+import type { CheckRunnerPin } from '../src/modules/source/check-command.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { runtimeRoot } from './fixture.ts';
 import {
   createCrossAgentFixture,
@@ -109,6 +113,195 @@ test('engine GREEN failure persists one bounded correction subject for the exact
         'TASK_STRATEGY_CORRECTION_REQUIRED',
         `pnpm workflow resume ${session.sessionId} --json`,
       ),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('GREEN failure recorder reobserves runner identity before any ledger write', () => {
+  const { repository } = createCrossAgentFixture(
+    'assertion',
+    'tdd-single-agent',
+    { codex: true, claude: true },
+    false,
+    true,
+  );
+  try {
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
+    const testPath = path.join(repository, 'test/feature.test.mjs');
+    fs.mkdirSync(path.dirname(testPath), { recursive: true });
+    fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
+    const red = sealTaskStrategyRed(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      { explicitActor: 'codex', environment: {} },
+    );
+    const implementationPath = path.join(repository, 'src/feature.ts');
+    fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
+    fs.writeFileSync(implementationPath, 'export const feature = true;\n');
+    const imported = adoptCurrentTaskStrategyImplementation(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    )!;
+    let callbacks = 0;
+    let persisted:
+      ReturnType<typeof recordTaskStrategyGreenFailure> | undefined;
+
+    assert.throws(
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          {
+            ...productionTaskStrategyExecutionGate,
+            recordGreenFailure(inspection, passedChecks, failingCheck) {
+              callbacks++;
+              assert.equal(failingCheck.checkId, 'green-fail');
+              assert.equal(failingCheck.outcome, 'failed');
+              assert.equal(failingCheck.exitCode, 1);
+              assert.deepEqual(passedChecks, []);
+              const paths = investigationRuntimePaths(
+                inspection.git.gitCommonDirectory,
+                inspection.contract.config.runtimeDirectory,
+              );
+              const failureRoots = [paths.refs, paths.locks].map((root) =>
+                path.join(root, 'task-strategy-green-failures'),
+              );
+              const snapshotFailureState = () =>
+                failureRoots.map((root) =>
+                  fs.existsSync(root) ? snapshotTree(root) : null,
+                );
+              assert.equal(
+                readCurrentTaskStrategyGreenFailure(inspection),
+                null,
+              );
+              const before = snapshotFailureState();
+              const observations: string[] = [];
+              const observeCurrentRunner: CheckRunnerPin = (
+                root,
+                checkId,
+                definition,
+              ) => {
+                assert.equal(
+                  fs.realpathSync(root),
+                  fs.realpathSync(repository),
+                );
+                assert.equal(
+                  definition,
+                  inspection.contract.checks.checks[checkId],
+                );
+                observations.push(checkId);
+                return pinCheckRunner(root, checkId, definition);
+              };
+
+              assert.throws(
+                () =>
+                  recordTaskStrategyGreenFailure(
+                    (root, checkId, definition) => {
+                      const runner = observeCurrentRunner(
+                        root,
+                        checkId,
+                        definition,
+                      );
+                      if (checkId !== failingCheck.checkId) return runner;
+                      assert.equal(runner.digest, failingCheck.runnerDigest);
+                      return {
+                        ...runner,
+                        digest:
+                          (runner.digest[0] === '0' ? '1' : '0') +
+                          runner.digest.slice(1),
+                      };
+                    },
+                    inspection,
+                    passedChecks,
+                    failingCheck,
+                  ),
+                hasCode('TASK_STRATEGY_CORRECTION_STATE_STALE'),
+              );
+              assert.deepEqual(observations, ['green-fail', 'red']);
+              assert.equal(
+                readCurrentTaskStrategyGreenFailure(inspection),
+                null,
+              );
+              assert.deepEqual(snapshotFailureState(), before);
+
+              observations.length = 0;
+              const pinFailure = new Error(
+                'runner identity cannot be observed',
+              );
+              assert.throws(
+                () =>
+                  recordTaskStrategyGreenFailure(
+                    (root, checkId, definition) => {
+                      const runner = observeCurrentRunner(
+                        root,
+                        checkId,
+                        definition,
+                      );
+                      if (checkId === 'red') throw pinFailure;
+                      return runner;
+                    },
+                    inspection,
+                    passedChecks,
+                    failingCheck,
+                  ),
+                (error) => error === pinFailure,
+              );
+              assert.deepEqual(observations, ['green-fail', 'red']);
+              assert.equal(
+                readCurrentTaskStrategyGreenFailure(inspection),
+                null,
+              );
+              assert.deepEqual(snapshotFailureState(), before);
+
+              observations.length = 0;
+              persisted = recordTaskStrategyGreenFailure(
+                observeCurrentRunner,
+                inspection,
+                passedChecks,
+                failingCheck,
+              );
+              assert.deepEqual(observations, ['green-fail', 'red']);
+              assert.ok(persisted);
+              assert.equal(
+                persisted.currentRedTransactionDigest,
+                red.recordDigest,
+              );
+              assert.deepEqual(persisted.currentPatchHead, {
+                bindingDigest: imported.binding.bindingDigest,
+                recordDigest: imported.record.recordDigest,
+                patchDigest: imported.record.patchDigest,
+                receiptDigest: imported.receipt.receiptDigest,
+              });
+              assert.equal(
+                persisted.candidateTree,
+                imported.record.candidateTree,
+              );
+              assert.deepEqual(persisted.failingCheck, failingCheck);
+              return persisted;
+            },
+          },
+          productionChangeContract,
+          repository,
+          session.sessionId,
+          { environment: {} },
+        ),
+      hasCode('CHECK_FAILED'),
+    );
+    assert.equal(callbacks, 1);
+    assert.ok(persisted);
+    assert.deepEqual(
+      readCurrentTaskStrategyGreenFailure(
+        inspectSession(productionChangeContract, repository, session.sessionId),
+      ),
+      persisted,
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

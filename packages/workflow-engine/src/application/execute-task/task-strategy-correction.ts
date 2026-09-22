@@ -19,7 +19,7 @@ import type {
   TddSingleAgentExecution,
 } from '../../modules/planning-provider/planning-artifact-types.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { pinCheckRunner } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
+import type { CheckRunnerPin } from '../../modules/source/check-command.ts';
 import { investigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';
 import {
   DEFAULT_TASK_STRATEGY_CORRECTION_POLICY,
@@ -79,6 +79,7 @@ export type CurrentTaskStrategyImplementationAuthority = Readonly<{
  * never enter this semantic correction ledger.
  */
 export function recordTaskStrategyGreenFailure(
+  pinCheckRunner: CheckRunnerPin,
   inspection: SessionInspection,
   passedChecks: readonly CheckEvidence[],
   failingCheck: ObservedCheckFailure,

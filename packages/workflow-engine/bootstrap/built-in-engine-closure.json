@@ -978,7 +978,7 @@
     {
       "path": "src/application/execute-task/task-strategy-correction.ts",
       "mode": "100644",
-      "digest": "sha256:3cb1c87ece17daf41fed338f004f2b08c545af27fef0240c5e35c1591b40f821"
+      "digest": "sha256:eb240fcaf9a30c01ddc6414e0a96df1529e952f5f2f1d01b3956e83ba450f0f3"
     },
     {
       "path": "src/application/execute-task/task-strategy-execution.ts",
@@ -1923,7 +1923,7 @@
     {
       "path": "src/composition-root/task-strategy-gate-production.ts",
       "mode": "100644",
-      "digest": "sha256:18ae278fc731174b18fdd269c0cac44cae606dff915ade5f0564727973fa5be3"
+      "digest": "sha256:6feea371f40f719c0d6bbde9540f35d4b2f2c6d2b1a4794171e966338ee30df1"
     },
     {
       "path": "src/composition-root/task-strategy-production.ts",
