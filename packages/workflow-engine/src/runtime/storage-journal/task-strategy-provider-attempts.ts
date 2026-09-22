@@ -98,26 +98,10 @@ export function readCurrentTaskStrategyImplementationProviderAttempt(
   }
 }
 
-export function taskStrategyImplementationReservationForAttempt(
-  attempt: TaskStrategyImplementationProviderAttempt,
-): TaskStrategyImplementationReservation {
-  return deepFreeze({
-    ...attempt.root,
-    assignment: attempt.assignment,
-    request: attempt.request,
-    authorizationNodeId: attempt.authorizationNodeId,
-    reservationNodeId: attempt.reservationNodeId,
-    createdAt: attempt.createdAt,
-  });
-}
-
-export function taskStrategyImplementationProviderAttemptReservationDigest(
-  attempt: TaskStrategyImplementationProviderAttempt,
-): string {
-  return attempt.retryReservation === null
-    ? attempt.root.recordDigest
-    : sha256(canonicalJson(attempt.retryReservation));
-}
+export {
+  taskStrategyImplementationReservationForAttempt,
+  taskStrategyImplementationProviderAttemptReservationDigest,
+} from '../../modules/assurance/task-strategy-implementation-attempt.ts';
 
 function rootProviderAttempt(
   root: TaskStrategyImplementationReservation,

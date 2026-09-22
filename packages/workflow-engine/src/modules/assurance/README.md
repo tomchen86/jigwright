@@ -8,11 +8,11 @@ Keep the presence and currentness of review evidence separate from the reviewer'
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:f39db46a95764338b3f21e70f45b94816823049e22784e0d70e19f83cabe7d56 -->
+<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:5049bf3f5e0873972b27f2d2b4c893cf8cb7ab5b3da67c63c33a533d1813d53e -->
 
 <!-- prettier-ignore-start -->
 
-66 files changed in this module since confirmation.
+70 files changed in this module since confirmation.
 
 ## Commands
 
@@ -45,6 +45,7 @@ Keep the presence and currentness of review evidence separate from the reviewer'
 | TaskDiffReviewSeverity | critical, high, medium, low, informational | [task-diff-review-artifact-record.ts](task-diff-review-artifact-record.ts) |
 | TaskDiffReviewContinuationDecision | accepted, rebutted, superseded, withdrawn, waived | [task-diff-review-artifact-record.ts](task-diff-review-artifact-record.ts) |
 | TaskDiffReviewDisposition | accepted, rebutted, withdrawn | [task-diff-review-artifact-record.ts](task-diff-review-artifact-record.ts) |
+| TaskStrategyPatchCrashPhase | reservation-persisted, record-persisted, patch-applied, receipt-persisted | [task-strategy-patch-contract.ts](task-strategy-patch-contract.ts) |
 
 ## Contracts
 
@@ -103,6 +104,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [planning-generation.ts](planning-generation.ts) | Creates canonical planning generations from targets, investigation evidence, and policies. | 1 | History unavailable |
 | [pre-merge-assurance.ts](pre-merge-assurance.ts) | Builds and validates pre-merge coverage, planning proofs, and integration review. | 1 | History unavailable |
 | [pre-merge-verification.ts](pre-merge-verification.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [provider-invocation-manifest.ts](provider-invocation-manifest.ts) | The complete set of provider invocation manifest variants. | 0 | History unavailable |
 | [provider-output-contract.ts](provider-output-contract.ts) | Code-owned semantic schemas and validators for provider execution and durable results. | 0 | History unavailable |
 | [provider-review-manifests.ts](provider-review-manifests.ts) | Canonical provider review manifests DTOs; field and wire semantics are unchanged. | 0 | History unavailable |
 | [required-checks.ts](required-checks.ts) | Resolves required check definitions through the existing versioned registry contract. | 0 | History unavailable |
@@ -119,10 +121,13 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [task-diff-review-submission.ts](task-diff-review-submission.ts) | Defines task diff provider submissions, canonical findings, and evidence validation. | 1 | Header changed since confirmation |
 | [task-diff-review.ts](task-diff-review.ts) | Derives task diff review subjects, candidate scopes, and documentation requirements. | 1 | History unavailable |
 | [task-execution-evidence.ts](task-execution-evidence.ts) | Pure admission rules and facts for task execution generation evidence. | 0 | History unavailable |
+| [task-strategy-correction-round-record.ts](task-strategy-correction-round-record.ts) | Canonical correction lineage facts; observation and durable validation stay with their producers. | 0 | History unavailable |
 | [task-strategy-evidence.ts](task-strategy-evidence.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [task-strategy-gate.ts](task-strategy-gate.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [task-strategy-implementation-attempt.ts](task-strategy-implementation-attempt.ts) | Interpret an exact effective attempt without reading its durable lineage. | 0 | History unavailable |
 | [task-strategy-implementation-record.ts](task-strategy-implementation-record.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [task-strategy-implementation-values.ts](task-strategy-implementation-values.ts) | Defines canonical task implementation value checks, digests, and store errors. | 2 | History unavailable |
+| [task-strategy-patch-contract.ts](task-strategy-patch-contract.ts) | Patch transaction inputs and results shared by their real producer and application callers. | 0 | History unavailable |
 | [validated-change-contract.ts](validated-change-contract.ts) | Admitted change facts shared by planning, execution and report validation. | 0 | History unavailable |
 
 <!-- prettier-ignore-end -->

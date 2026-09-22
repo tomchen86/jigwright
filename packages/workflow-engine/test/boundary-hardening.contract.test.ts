@@ -24,6 +24,7 @@ import {
 import {
   runtimePaths,
   withRepositoryLifecycleOperation,
+  withSessionOperation,
 } from '../src/runtime/session-workspace/session-store.ts';
 import {
   createFixtureRepository,
@@ -194,6 +195,62 @@ test('tracked report and session schemas constrain the exact R-007 assurance tup
     }
   }
 });
+
+for (const breakRepositoryLock of [false, true]) {
+  test(`nested session operation cleanup preserves release precedence (repository release fails: ${breakRepositoryLock})`, () => {
+    const root = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'nested-lock-cleanup-')),
+    );
+    const runtime = runtimePaths(root, 'workflow-engine');
+    const operationError = new Error('operation failed before both cleanups');
+    try {
+      assert.throws(
+        () =>
+          withRepositoryLifecycleOperation(runtime, () =>
+            withSessionOperation(runtime, SESSION_ID, () => {
+              fs.unlinkSync(
+                path.join(runtime.operations, `${SESSION_ID}.lock`),
+              );
+              if (breakRepositoryLock) {
+                fs.unlinkSync(
+                  path.join(runtime.operations, 'repository-lifecycle.lock'),
+                );
+              }
+              throw operationError;
+            }),
+          ),
+        (error) => {
+          if (!breakRepositoryLock)
+            return isWorkflowError(error, 'SESSION_LOCK_INVALID');
+          assert.ok(error instanceof AggregateError);
+          assert.equal(error.errors.length, 2);
+          assert.ok(isWorkflowError(error.errors[0], 'SESSION_LOCK_INVALID'));
+          assert.ok(
+            isWorkflowError(
+              error.errors[1],
+              'REPOSITORY_LIFECYCLE_LOCK_INVALID',
+            ),
+          );
+          assert.strictEqual(error.cause, error.errors[1]);
+          assert.equal(error.errors.includes(operationError), false);
+          return true;
+        },
+      );
+      assert.equal(
+        fs.existsSync(path.join(runtime.operations, `${SESSION_ID}.lock`)),
+        false,
+      );
+      assert.equal(
+        fs.existsSync(
+          path.join(runtime.operations, 'repository-lifecycle.lock'),
+        ),
+        false,
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+}
 
 test('repository lifecycle cleanup preserves operation and release failures', () => {
   const root = fs.realpathSync(

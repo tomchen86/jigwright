@@ -60,12 +60,8 @@ import {
   MAX_INTENT_FACT_BYTES,
 } from './provider-invocation-common.ts';
 
-export type ProviderInvocationManifest =
-  | BlindSurveyManifest
-  | PlanReviewManifest
-  | TaskDiffReviewManifest
-  | TaskDiffReviewContinuationManifest
-  | TaskStrategyImplementationManifest;
+import type { ProviderInvocationManifest } from '../../modules/assurance/provider-invocation-manifest.ts';
+export type { ProviderInvocationManifest } from '../../modules/assurance/provider-invocation-manifest.ts';
 
 export function blindSurveyManifestDigest(
   manifest: BlindSurveyManifest,

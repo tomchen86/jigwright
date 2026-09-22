@@ -1,3 +1,7 @@
+import {
+  taskStrategyImplementationReservationForAttempt,
+  taskStrategyImplementationProviderAttemptReservationDigest,
+} from '../../modules/assurance/task-strategy-implementation-attempt.ts';
 /**
  * Records GREEN failures and resolves the current implementation correction
  * authority.
@@ -52,8 +56,6 @@ import {
   readTaskStrategyImplementationReservation,
   readTaskStrategyImplementationResultBinding,
   readTaskStrategyImplementationProviderAttempt,
-  taskStrategyImplementationReservationForAttempt,
-  taskStrategyImplementationProviderAttemptReservationDigest,
 } from '../../runtime/storage-journal/task-strategy-provider-store.ts';
 import { readTaskStrategyTransaction } from '../../runtime/storage-journal/task-strategy-store.ts';
 import type { TaskStrategyTransaction } from '../../runtime/storage-journal/task-strategy-store.ts';
@@ -62,11 +64,11 @@ import type { SessionInspection } from '../../modules/lifecycle/session-inspecti
 export type {
   CurrentTaskStrategyPatchHead,
   TaskStrategyCorrectionProjection,
-} from '../../runtime/storage-journal/task-strategy-patch-store.ts';
+} from '../../modules/assurance/task-strategy-correction-round-record.ts';
 import type {
   CurrentTaskStrategyPatchHead,
   TaskStrategyCorrectionProjection,
-} from '../../runtime/storage-journal/task-strategy-patch-store.ts';
+} from '../../modules/assurance/task-strategy-correction-round-record.ts';
 
 export type CurrentTaskStrategyImplementationAuthority = Readonly<{
   subject: TaskStrategyImplementationSubject;

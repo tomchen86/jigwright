@@ -1,196 +1,23 @@
+import type { TaskStrategyImplementationOperations } from './task-strategy-implementation-operations.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
+/** Start, inspect and verify TaskStrategy implementations through explicit observations and effects. */
 import type { TaskMandateProviderAdmission } from '../../modules/authority/task-mandate-access-contract.ts';
-import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
-
-import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
-/**
- * Starts and inspects implementation runs and verifies their current
- * provider ownership.
- *
- * Invariants:
- * - Provider ownership must match the current implementation reservation
- *   and manifest.
- */
 import type { ProviderRetryAccountingReader } from '../../modules/provider-orchestration/provider-retry-accounting.ts';
-
-import {
-  AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
-  parseAiAdapterPolicyDocument,
-} from '../../runtime/provider-policy/ai-adapter-policy.ts';
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-
-import { type CollaborationGrantRequest } from '../../modules/authority/collaboration-grant-codec.ts';
-
-import { consumeCollaborationGrantUnderLifecycleLock } from '../../runtime/storage-journal/collaboration-grant-consumption.ts';
-import { inspectCollaborationGrantsUnderLifecycleLock } from '../../runtime/storage-journal/collaboration-grant-records.ts';
-import {
-  readReservedCollaborationGrantUnderLifecycleLock,
-  reserveCollaborationGrantUnderLifecycleLock,
-} from '../../runtime/storage-journal/collaboration-grant-reservation.ts';
-import { type CollaborationGrantUseProjection } from '../../modules/authority/collaboration-grant-records.ts';
-
-import { createEvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';
-
-import {
-  readEvidenceNode,
-  writeEvidenceNode,
-} from '../../runtime/storage-journal/evidence-object-store.ts';
-
-import { previewExactStaging } from '../../runtime/repository-transaction/git-transitions.ts';
-
-import { runGit } from '../../runtime/repository-transaction/git.ts';
-
-import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
-import { loadActiveSessionContext } from '../../runtime/repository-observation/workflow-session-context.ts';
-
-import {
-  createProviderInvocation,
-  createProviderRetryReservation,
-  providerInvocationExists,
-  providerInvocationManifestDigest,
-  readProviderInvocation,
-  readProviderInvocationManifest,
-  readProviderInvocationRequest,
-  storeProviderExecutionPolicySnapshot,
-} from '../../runtime/storage-journal/provider-invocation-store.ts';
-
-import type { ProviderRetryDecisionBinding } from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
-
-import { type ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
-
-import {
-  type GrantedRoleAssignment,
-  type ProviderRoleAssignment,
-} from '../../modules/provider-orchestration/role-assignment.ts';
-
-import {
-  withRepositoryLifecycleOperation,
-  withSessionOperation,
-} from '../../runtime/session-workspace/session-store.ts';
-
-import type { TaskStrategyImplementationSubject } from '../../modules/provider-orchestration/task-strategy-implementation-manifest.ts';
-
-import {
-  DEFAULT_TASK_STRATEGY_CORRECTION_POLICY,
-  readTaskStrategyGreenFailureRecord,
-} from '../../runtime/storage-journal/task-strategy-correction-store.ts';
-
-import type { TaskStrategyGreenFailureRecord } from '../../modules/provider-orchestration/task-strategy-correction-record.ts';
-
-import {
-  listTaskStrategyCorrectionRounds,
-  publishTaskStrategyCorrectionRoundImport,
-  publishTaskStrategyCorrectionRoundResult,
-  readTaskStrategyCorrectionRound,
-  reserveTaskStrategyCorrectionRound,
-  type TaskStrategyCorrectionReservationAuthority,
-  type TaskStrategyCorrectionResultAuthority,
-} from '../../runtime/storage-journal/task-strategy-correction-round-store.ts';
-
-import {
-  assertTaskStrategyCallerImplementationAuthorityCurrent,
-  assertTaskStrategyCallerImplementationReservationAuthorityCurrent,
-  assertTaskStrategyImplementationProviderAuthorityCurrent,
-  createTaskStrategyCallerImplementationBinding,
-  createTaskStrategyCallerImplementationReservation,
-  createTaskStrategyImplementationResultBinding,
-  createTaskStrategyImplementationReservation,
-  readCurrentTaskStrategyImplementationProviderAttempt,
-  readTaskStrategyImplementationProviderAttempt,
-  readTaskStrategyCallerImplementationBinding,
-  readTaskStrategyCallerImplementationReservation,
-  readTaskStrategyImplementationResultBinding,
-  readTaskStrategyImplementationReservation,
-  taskStrategyImplementationReservationForAttempt,
-  taskStrategyImplementationProviderAttemptReservationDigest,
-  type TaskStrategyCallerImplementationBinding,
-  type TaskStrategyImplementationResultBinding,
-} from '../../runtime/storage-journal/task-strategy-provider-store.ts';
-
+import type { CollaborationGrantRequest } from '../../modules/authority/collaboration-grant-codec.ts';
+import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import type {
-  TaskStrategyCallerImplementationReservation,
-  TaskStrategyImplementationReservation,
-  TaskStrategyImplementationProviderAttempt,
-} from '../../modules/assurance/task-strategy-implementation-record.ts';
-
-import {
-  readTaskStrategyPatchCurrentBinding,
-  readTaskStrategyPatchRecord,
-} from '../../runtime/storage-journal/task-strategy-patch-store.ts';
-
-import { readTaskStrategyTransaction } from '../../runtime/storage-journal/task-strategy-store.ts';
-
+  GrantedRoleAssignment,
+  ProviderRoleAssignment,
+} from '../../modules/provider-orchestration/role-assignment.ts';
+import type { TaskStrategyImplementationSubject } from '../../modules/provider-orchestration/task-strategy-implementation-manifest.ts';
+import type { TaskStrategyImplementationReservation } from '../../modules/assurance/task-strategy-implementation-record.ts';
+import { taskStrategyImplementationReservationForAttempt } from '../../modules/assurance/task-strategy-implementation-attempt.ts';
 import { createTaskStrategyImplementationContext } from './task-strategy-implementation-context.ts';
-
 import { createTaskStrategyCallerAdmission } from './task-strategy-caller-admission.ts';
-
 import { createTaskStrategyProviderReservations } from './task-strategy-provider-reservations.ts';
-
 import { createTaskStrategyProviderResults } from './task-strategy-provider-results.ts';
-
-// Production observations stay anchored at the existing lifecycle boundary.
-const runtime = {
-  loadInvestigationRuntimeContext,
-  taskStrategyImplementationReservationForAttempt,
-  readProviderInvocation,
-  readTaskStrategyImplementationResultBinding,
-  readTaskStrategyPatchCurrentBinding,
-  assertTaskStrategyImplementationProviderAuthorityCurrent,
-  loadActiveSessionContext,
-  readTaskStrategyTransaction,
-  previewExactStaging,
-  listTaskStrategyCorrectionRounds,
-  readTaskStrategyCallerImplementationBinding,
-  readTaskStrategyPatchRecord,
-  readTaskStrategyGreenFailureRecord,
-  runGit,
-  parseAiAdapterPolicyDocument,
-  readTaskStrategyCallerImplementationReservation,
-  inspectCollaborationGrantsUnderLifecycleLock,
-  reserveCollaborationGrantUnderLifecycleLock,
-  readReservedCollaborationGrantUnderLifecycleLock,
-  createEvidenceNode,
-  writeEvidenceNode,
-  createTaskStrategyCallerImplementationReservation,
-  assertTaskStrategyCallerImplementationReservationAuthorityCurrent,
-  consumeCollaborationGrantUnderLifecycleLock,
-  createTaskStrategyCallerImplementationBinding,
-  assertTaskStrategyCallerImplementationAuthorityCurrent,
-  reserveTaskStrategyCorrectionRound,
-  DEFAULT_TASK_STRATEGY_CORRECTION_POLICY,
-  publishTaskStrategyCorrectionRoundResult,
-  publishTaskStrategyCorrectionRoundImport,
-  providerInvocationManifestDigest,
-  storeProviderExecutionPolicySnapshot,
-  createTaskStrategyImplementationReservation,
-  readEvidenceNode,
-  AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
-  createProviderRetryReservation,
-  readCurrentTaskStrategyImplementationProviderAttempt,
-  providerInvocationExists,
-  readProviderInvocationRequest,
-  readProviderInvocationManifest,
-  createProviderInvocation,
-  readTaskStrategyCorrectionRound,
-  taskStrategyImplementationProviderAttemptReservationDigest,
-  createTaskStrategyImplementationResultBinding,
-};
-
-export type TaskStrategyImplementationRuntimeBindings = typeof runtime;
-
-export type TaskStrategyImplementationRuntimeData = {
-  TaskStrategyImplementationReservation: TaskStrategyImplementationReservation;
-  TaskStrategyImplementationProviderAttempt: TaskStrategyImplementationProviderAttempt;
-  TaskStrategyGreenFailureRecord: TaskStrategyGreenFailureRecord;
-  TaskStrategyCallerImplementationReservation: TaskStrategyCallerImplementationReservation;
-  TaskStrategyCorrectionReservationAuthority: TaskStrategyCorrectionReservationAuthority;
-  TaskStrategyCallerImplementationBinding: TaskStrategyCallerImplementationBinding;
-  TaskStrategyCorrectionResultAuthority: TaskStrategyCorrectionResultAuthority;
-  ProviderRetryDecisionBinding: ProviderRetryDecisionBinding;
-  TaskStrategyImplementationResultBinding: TaskStrategyImplementationResultBinding;
-  CollaborationGrantUseProjection: CollaborationGrantUseProjection;
-};
 
 export type BeginTaskStrategyImplementationOptions = Readonly<{
   retryProviderFailure?: boolean;
@@ -257,7 +84,7 @@ export type TaskStrategyImplementationStatus =
       assignment: ProviderRoleAssignment;
       ownerInvestigationId: string;
       invocationId: string;
-      failure: ReturnType<typeof readProviderInvocation>['failure'];
+      failure: ProviderInvocationRecord['failure'];
     }>
   | Readonly<{
       state: 'caller-supplied-awaiting-import' | 'patch-imported';
@@ -270,7 +97,7 @@ export type TaskStrategyImplementationStatus =
     }>;
 /** Binds implementation admission without observing a repository at construction. */
 export function createTaskStrategyImplementationLifecycle(
-  changeContract: ChangeContractServices,
+  operations: TaskStrategyImplementationOperations,
   roleAdmission: Pick<
     RoleAdmissionServices,
     'admitRoleResult' | 'authorizeGrantedOrdinaryRole'
@@ -280,10 +107,7 @@ export function createTaskStrategyImplementationLifecycle(
     'authorizeTaskMandateProviderReservationUnderLifecycleLock'
   >,
 ) {
-  const context = createTaskStrategyImplementationContext(
-    changeContract,
-    runtime,
-  );
+  const context = createTaskStrategyImplementationContext(operations);
 
   const {
     implementationResultStale,
@@ -296,9 +120,8 @@ export function createTaskStrategyImplementationLifecycle(
   } = context;
 
   const callerAdmission = createTaskStrategyCallerAdmission(
-    changeContract,
     roleAdmission,
-    runtime,
+    operations,
     context,
   );
 
@@ -306,7 +129,7 @@ export function createTaskStrategyImplementationLifecycle(
 
   const providerReservations = createTaskStrategyProviderReservations(
     roleAdmission,
-    runtime,
+    operations,
     context,
     callerAdmission,
     taskMandate,
@@ -319,9 +142,8 @@ export function createTaskStrategyImplementationLifecycle(
   } = providerReservations;
 
   const providerResults = createTaskStrategyProviderResults(
-    changeContract,
     roleAdmission,
-    runtime,
+    operations,
     context,
   );
 
@@ -337,18 +159,18 @@ export function createTaskStrategyImplementationLifecycle(
     requestedSessionId: string,
     options: BeginTaskStrategyImplementationOptions = {},
   ): TaskStrategyImplementationStatus {
-    const initial = loadActiveSessionContext(cwd, requestedSessionId);
-    return withRepositoryLifecycleOperation(initial.runtime, (assertOwned) =>
-      withSessionOperation(initial.runtime, requestedSessionId, () => {
+    const initial = operations.session.loadActive(cwd, requestedSessionId);
+    return operations.locks.repository(initial.runtime, (assertOwned) =>
+      operations.locks.session(initial.runtime, requestedSessionId, () => {
         assertOwned();
-        const context = loadActiveSessionContext(cwd, requestedSessionId);
-        const runtime = loadInvestigationRuntimeContext(cwd).runtime;
+        const context = operations.session.loadActive(cwd, requestedSessionId);
+        const runtime = operations.observeJournal(cwd);
         const transaction = requireCurrentRedTransaction(cwd, context);
         // Older sealed RED records embedded the exact evidence node before the
         // content-addressed object store became a scheduling dependency. Only
         // this mutating transition may publish those same verified bytes;
         // inspection and owner-currentness checks remain strictly read-only.
-        writeEvidenceNode(runtime, transaction.red.evidenceNode);
+        runtime.evidence.write(transaction.red.evidenceNode);
         const task = implementationTask(cwd, context, transaction);
         const current = resolveCurrentImplementationSubject(
           cwd,
@@ -363,8 +185,7 @@ export function createTaskStrategyImplementationLifecycle(
             subject,
           });
         }
-        const existing = readTaskStrategyImplementationReservation(
-          runtime,
+        const existing = runtime.implementation.readReservation(
           context.session.sessionId,
           subject.subjectDigest,
         );
@@ -389,15 +210,11 @@ export function createTaskStrategyImplementationLifecycle(
           created,
           current.greenFailureRecord,
         );
-        let attempt = readCurrentTaskStrategyImplementationProviderAttempt(
-          runtime,
-          created,
-        );
+        let attempt = runtime.implementation.readCurrentAttempt(created);
         if (
           options.retryProviderFailure === true &&
-          providerInvocationExists(runtime, attempt.request.invocationId) &&
-          readProviderInvocation(runtime, attempt.request.invocationId)
-            .state === 'failed'
+          runtime.provider.exists(attempt.request.invocationId) &&
+          runtime.provider.read(attempt.request.invocationId).state === 'failed'
         ) {
           const retry = reserveProviderRetryAttempt(
             context,
@@ -440,8 +257,8 @@ export function createTaskStrategyImplementationLifecycle(
     cwd: string,
     requestedSessionId: string,
   ): TaskStrategyImplementationStatus {
-    const context = loadActiveSessionContext(cwd, requestedSessionId);
-    const runtime = loadInvestigationRuntimeContext(cwd).runtime;
+    const context = operations.session.loadActive(cwd, requestedSessionId);
+    const runtime = operations.observeJournal(cwd);
     const transaction = requireCurrentRedTransaction(cwd, context);
     const subject = resolveCurrentImplementationSubject(
       cwd,
@@ -455,33 +272,28 @@ export function createTaskStrategyImplementationLifecycle(
         subject,
       });
     }
-    const reservation = readTaskStrategyImplementationReservation(
-      runtime,
+    const reservation = runtime.implementation.readReservation(
       context.session.sessionId,
       subject.subjectDigest,
     );
     if (reservation === null) {
-      const callerReservation = readTaskStrategyCallerImplementationReservation(
-        runtime,
+      const callerReservation = runtime.implementation.readCallerReservation(
         context.session.sessionId,
         subject.subjectDigest,
       );
-      const callerBinding = readTaskStrategyCallerImplementationBinding(
-        runtime,
+      const callerBinding = runtime.implementation.readCallerResult(
         context.session.sessionId,
         subject.subjectDigest,
       );
       if (callerReservation !== null || callerBinding !== null) {
         if (callerReservation === null) throw implementationResultStale();
-        assertTaskStrategyCallerImplementationReservationAuthorityCurrent(
-          runtime,
+        runtime.implementation.assertCallerReservationCurrent(
           transaction,
           subject,
           callerReservation,
         );
         if (callerBinding !== null) {
-          assertTaskStrategyCallerImplementationAuthorityCurrent(
-            runtime,
+          runtime.implementation.assertCallerCurrent(
             transaction,
             subject,
             callerReservation,
@@ -502,11 +314,8 @@ export function createTaskStrategyImplementationLifecycle(
       });
     }
     assertReservationCurrent(context, transaction, subject, reservation);
-    const attempt = readCurrentTaskStrategyImplementationProviderAttempt(
-      runtime,
-      reservation,
-    );
-    if (!providerInvocationExists(runtime, attempt.request.invocationId)) {
+    const attempt = runtime.implementation.readCurrentAttempt(reservation);
+    if (!runtime.provider.exists(attempt.request.invocationId)) {
       return Object.freeze({
         state: 'reservation-persisted' as const,
         sessionId: context.session.sessionId,
@@ -520,28 +329,24 @@ export function createTaskStrategyImplementationLifecycle(
     cwd: string,
     requestedInvocationId: string,
   ): TaskStrategyImplementationReservation {
-    const runtime = loadInvestigationRuntimeContext(cwd).runtime;
-    const invocation = readProviderInvocation(runtime, requestedInvocationId);
-    const manifest = readProviderInvocationManifest(
-      runtime,
-      requestedInvocationId,
-    );
-    const request = readProviderInvocationRequest(
-      runtime,
-      requestedInvocationId,
-    );
+    const runtime = operations.observeJournal(cwd);
+    const invocation = runtime.provider.read(requestedInvocationId);
+    const manifest = runtime.provider.readManifest(requestedInvocationId);
+    const request = runtime.provider.readRequest(requestedInvocationId);
     if (manifest.kind !== 'task-strategy-implementation-manifest') {
       throw requestConflict();
     }
-    const context = loadActiveSessionContext(cwd, manifest.subject.sessionId);
+    const context = operations.session.loadActive(
+      cwd,
+      manifest.subject.sessionId,
+    );
     const transaction = requireCurrentRedTransaction(cwd, context);
     const subject = resolveCurrentImplementationSubject(
       cwd,
       context,
       transaction,
     ).subject;
-    const reservation = readTaskStrategyImplementationReservation(
-      runtime,
+    const reservation = runtime.implementation.readReservation(
       manifest.subject.sessionId,
       subject.subjectDigest,
     );
@@ -557,15 +362,11 @@ export function createTaskStrategyImplementationLifecycle(
     ) {
       throw requestConflict();
     }
-    const attempt = readTaskStrategyImplementationProviderAttempt(
-      runtime,
+    const attempt = runtime.implementation.readAttempt(
       reservation,
       invocation.invocationId,
     );
-    const current = readCurrentTaskStrategyImplementationProviderAttempt(
-      runtime,
-      reservation,
-    );
+    const current = runtime.implementation.readCurrentAttempt(reservation);
     if (
       canonicalJson(request) !== canonicalJson(attempt.request) ||
       current.request.invocationId !== attempt.request.invocationId

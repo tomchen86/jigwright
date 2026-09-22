@@ -86,65 +86,24 @@ import type { SessionInspection } from '../../modules/lifecycle/session-inspecti
 const MAX_PATCH_BYTES = 8 * 1024 * 1024;
 const MAX_PATCH_PATHS = 1024;
 
-type TaskStrategyPatchCrashPhase =
-  | 'reservation-persisted'
-  | 'record-persisted'
-  | 'patch-applied'
-  | 'receipt-persisted';
-
-export type TaskStrategyPatchValidation = Readonly<{
-  schemaVersion: 1;
-  kind: 'task-strategy-patch-validation.v1';
-  sessionId: string;
-  strategy: 'cross-agent-tdd' | 'tdd-single-agent';
-  sourceTree: string;
-  candidateTree: string;
-  patchDigest: string;
-  changedPaths: readonly string[];
-  changes: readonly TaskStrategyPatchChange[];
-  implementer: TaskStrategyPatchImplementer;
-}>;
-
-export type ImportedTaskStrategyPatch = Readonly<{
-  record: TaskStrategyPatchRecord;
-  reservation: TaskStrategyPatchReservation;
-  receipt: TaskStrategyPatchImportReceipt;
-  binding: TaskStrategyPatchCurrentBinding;
-}>;
+import type {
+  TaskStrategyPatchCrashPhase,
+  TaskStrategyPatchValidation,
+  ImportedTaskStrategyPatch,
+  ProviderTaskStrategyPatchValidationInput,
+  ProviderTaskStrategyPatchImportInput,
+  CallerTaskStrategyPatchValidationInput,
+  CallerTaskStrategyPatchImportInput,
+} from '../../modules/assurance/task-strategy-patch-contract.ts';
+export type {
+  TaskStrategyPatchValidation,
+  ImportedTaskStrategyPatch,
+} from '../../modules/assurance/task-strategy-patch-contract.ts';
 
 type CallerTaskStrategyPatchInput = Readonly<{
   patch: string | Buffer;
   explicitActor?: string;
   environment?: NodeJS.ProcessEnv;
-}>;
-
-type ProviderTaskStrategyPatchValidationInput = Readonly<{
-  patch: string | Buffer;
-  implementationReservationDigest: string;
-  implementationSubjectDigest: string;
-}>;
-
-type ProviderTaskStrategyPatchImportInput = Readonly<{
-  patch: string | Buffer;
-  implementationResultBindingDigest: string;
-  implementationSubjectDigest: string;
-  testCrashAfter?: TaskStrategyPatchCrashPhase;
-}>;
-
-type CallerTaskStrategyPatchValidationInput = Readonly<{
-  patch: string | Buffer;
-  callerImplementer: Extract<
-    TaskStrategyPatchImplementer,
-    { providerId: null }
-  >;
-  implementationSubjectDigest: string;
-}>;
-
-type CallerTaskStrategyPatchImportInput = Readonly<{
-  patch: string | Buffer;
-  callerImplementationBindingDigest: string;
-  implementationSubjectDigest: string;
-  testCrashAfter?: TaskStrategyPatchCrashPhase;
 }>;
 
 type SealedLocalPatchAuthority = Readonly<{

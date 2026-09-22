@@ -1,4 +1,8 @@
-import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
+import type { TaskStrategyImplementationOperations } from './task-strategy-implementation-operations.ts';
+import type { TaskStrategyImplementationSession } from './task-strategy-implementation-operations.ts';
+import type { TaskStrategyImplementationJournal } from './task-strategy-implementation-operations.ts';
+import type { TaskStrategyTransaction } from '../../modules/assurance/task-strategy-evidence.ts';
+import { createEvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';
 import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 import {
   assertTaskStrategyImplementationOutput,
@@ -8,27 +12,19 @@ import {
 import type { TaskStrategyImplementationSubject } from '../../modules/provider-orchestration/task-strategy-implementation-manifest.ts';
 import { type RoleParticipant } from '../../modules/provider-orchestration/role-assignment.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
-import {
-  validateTaskStrategyCallerPatch,
-  importTaskStrategyCallerPatchUnderLifecycleLock,
-  type ImportedTaskStrategyPatch,
-} from './task-strategy-patch.ts';
+import type { ImportedTaskStrategyPatch } from '../../modules/assurance/task-strategy-patch-contract.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   bindingFromPayload,
   type CollaborationGrantRequest,
 } from '../../modules/authority/collaboration-grant-codec.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import type {
-  TaskStrategyImplementationRuntimeBindings,
-  TaskStrategyImplementationRuntimeData,
-} from './task-strategy-implementation-lifecycle.ts';
+
 import type {
   BeginTaskStrategyImplementationOptions,
   TaskStrategyImplementationStatus,
 } from './task-strategy-implementation-lifecycle.ts';
 import type { createTaskStrategyImplementationContext } from './task-strategy-implementation-context.ts';
-import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
 
 /**
  * Admits caller-supplied implementations and reserves their correction
@@ -39,51 +35,25 @@ import { readFileAtRevision } from '../../runtime/repository-transaction/git-com
  *   source tree.
  */
 
-type TaskStrategyGreenFailureRecord =
-  TaskStrategyImplementationRuntimeData['TaskStrategyGreenFailureRecord'];
-type TaskStrategyCallerImplementationReservation =
-  TaskStrategyImplementationRuntimeData['TaskStrategyCallerImplementationReservation'];
-type TaskStrategyCorrectionReservationAuthority =
-  TaskStrategyImplementationRuntimeData['TaskStrategyCorrectionReservationAuthority'];
-type TaskStrategyCallerImplementationBinding =
-  TaskStrategyImplementationRuntimeData['TaskStrategyCallerImplementationBinding'];
-type TaskStrategyCorrectionResultAuthority =
-  TaskStrategyImplementationRuntimeData['TaskStrategyCorrectionResultAuthority'];
+import type { TaskStrategyGreenFailureRecord } from '../../modules/provider-orchestration/task-strategy-correction-record.ts';
+import type { TaskStrategyCallerImplementationReservation } from '../../modules/assurance/task-strategy-implementation-record.ts';
+import type { TaskStrategyCorrectionReservationAuthority } from '../../modules/assurance/task-strategy-correction-round-record.ts';
+import type { TaskStrategyCallerImplementationBinding } from '../../modules/assurance/task-strategy-evidence.ts';
+import type { TaskStrategyCorrectionResultAuthority } from '../../modules/assurance/task-strategy-correction-round-record.ts';
 
 export function createTaskStrategyCallerAdmission(
-  changeContract: ChangeContractServices,
   roleAdmission: Pick<
     RoleAdmissionServices,
     'authorizeGrantedOrdinaryRole' | 'admitRoleResult'
   >,
-  runtime: TaskStrategyImplementationRuntimeBindings,
+  operations: Pick<
+    TaskStrategyImplementationOperations,
+    'baseline' | 'collaboration' | 'patches' | 'correctionPolicy' | 'clock'
+  >,
   context: ReturnType<typeof createTaskStrategyImplementationContext>,
 ) {
   const { authorizeGrantedOrdinaryRole, admitRoleResult } = roleAdmission;
 
-  const {
-    loadActiveSessionContext,
-    loadInvestigationRuntimeContext,
-    readTaskStrategyTransaction,
-    readTaskStrategyCallerImplementationReservation,
-    inspectCollaborationGrantsUnderLifecycleLock,
-    reserveCollaborationGrantUnderLifecycleLock,
-    readReservedCollaborationGrantUnderLifecycleLock,
-    createEvidenceNode,
-    writeEvidenceNode,
-    createTaskStrategyCallerImplementationReservation,
-    assertTaskStrategyCallerImplementationReservationAuthorityCurrent,
-    readTaskStrategyCallerImplementationBinding,
-    runGit,
-    consumeCollaborationGrantUnderLifecycleLock,
-    createTaskStrategyCallerImplementationBinding,
-    assertTaskStrategyCallerImplementationAuthorityCurrent,
-    reserveTaskStrategyCorrectionRound,
-    DEFAULT_TASK_STRATEGY_CORRECTION_POLICY,
-    publishTaskStrategyCorrectionRoundResult,
-    publishTaskStrategyCorrectionRoundImport,
-    readTaskStrategyPatchCurrentBinding,
-  } = runtime;
   const {
     sha256Bytes,
     implementationResultStale,
@@ -93,9 +63,9 @@ export function createTaskStrategyCallerAdmission(
     sha256,
   } = context;
   function importCallerSuppliedImplementation(
-    context: ReturnType<typeof loadActiveSessionContext>,
-    runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-    transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>,
+    context: TaskStrategyImplementationSession,
+    runtime: TaskStrategyImplementationJournal,
+    transaction: TaskStrategyTransaction,
     subject: TaskStrategyImplementationSubject,
     greenFailureRecord: TaskStrategyGreenFailureRecord | null,
     author: RoleParticipant,
@@ -131,14 +101,12 @@ export function createTaskStrategyCallerAdmission(
       degradedForm: 'caller-supplied' as const,
       grantId: collaborationGrant.grantId,
     });
-    let reservation = readTaskStrategyCallerImplementationReservation(
-      runtime,
+    let reservation = runtime.implementation.readCallerReservation(
       context.session.sessionId,
       subject.subjectDigest,
     );
     if (reservation === null) {
-      const validation = validateTaskStrategyCallerPatch(
-        changeContract,
+      const validation = operations.patches.validateCaller(
         context.git.repositoryRoot,
         context.session.sessionId,
         {
@@ -167,7 +135,7 @@ export function createTaskStrategyCallerAdmission(
     );
     const transitionDigest = collaborationTransitionDigest(expectedBinding);
     if (reservation === null) {
-      const inspection = inspectCollaborationGrantsUnderLifecycleLock(
+      const inspection = operations.collaboration.inspect(
         context.git.gitCommonDirectory,
         collaborationGrant.grantId,
         assertOwned,
@@ -175,7 +143,7 @@ export function createTaskStrategyCallerAdmission(
       if (inspection === undefined) throw implementationResultStale();
       const grantReservation =
         inspection.state === 'available'
-          ? reserveCollaborationGrantUnderLifecycleLock(
+          ? operations.collaboration.reserve(
               context.git.repositoryRoot,
               collaborationGrant.grantId,
               {
@@ -191,7 +159,7 @@ export function createTaskStrategyCallerAdmission(
               assertOwned,
             )
           : inspection.state === 'reserved'
-            ? readReservedCollaborationGrantUnderLifecycleLock(
+            ? operations.collaboration.readReserved(
                 context.git.gitCommonDirectory,
                 collaborationGrant.grantId,
                 assertOwned,
@@ -256,8 +224,8 @@ export function createTaskStrategyCallerAdmission(
         },
         runtimeMetadata: {},
       });
-      writeEvidenceNode(runtime, submissionNode);
-      reservation = createTaskStrategyCallerImplementationReservation(runtime, {
+      runtime.evidence.write(submissionNode);
+      reservation = runtime.implementation.reserveCaller({
         sessionId: context.session.sessionId,
         subjectDigest: subject.subjectDigest,
         grantId: grantReservation.grantId,
@@ -269,8 +237,7 @@ export function createTaskStrategyCallerAdmission(
         createdAt: grantReservation.reservedAt,
       });
     }
-    assertTaskStrategyCallerImplementationReservationAuthorityCurrent(
-      runtime,
+    runtime.implementation.assertCallerReservationCurrent(
       transaction,
       subject,
       reservation,
@@ -292,15 +259,14 @@ export function createTaskStrategyCallerAdmission(
       reservation,
     );
 
-    let binding = readTaskStrategyCallerImplementationBinding(
-      runtime,
+    let binding = runtime.implementation.readCallerResult(
       context.session.sessionId,
       subject.subjectDigest,
     );
     if (binding === null) {
       const maintainerPolicy = parseMaintainerPolicy(
         JSON.parse(
-          readFileAtRevision(
+          operations.baseline.readDocument(
             context.git.repositoryRoot,
             expectedBinding.baselineCommit,
             'workflow/maintainer-policy.json',
@@ -310,8 +276,8 @@ export function createTaskStrategyCallerAdmission(
       const verifier = resolveAuthoritativeCollaborationGrantVerifier(
         collaborationGrant.verifier,
       );
-      const now = collaborationGrant.now ?? new Date();
-      const consumed = consumeCollaborationGrantUnderLifecycleLock(
+      const now = collaborationGrant.now ?? operations.clock.now();
+      const consumed = operations.collaboration.consume(
         context.git.gitCommonDirectory,
         reservation.grantId,
         {
@@ -381,8 +347,8 @@ export function createTaskStrategyCallerAdmission(
         },
         runtimeMetadata: {},
       });
-      writeEvidenceNode(runtime, resultNode);
-      binding = createTaskStrategyCallerImplementationBinding(runtime, {
+      runtime.evidence.write(resultNode);
+      binding = runtime.implementation.publishCallerResult({
         sessionId: reservation.sessionId,
         subjectDigest: reservation.subjectDigest,
         transitionDigest: reservation.transitionDigest,
@@ -403,8 +369,7 @@ export function createTaskStrategyCallerAdmission(
         }
       }
     }
-    assertTaskStrategyCallerImplementationAuthorityCurrent(
-      runtime,
+    runtime.implementation.assertCallerCurrent(
       transaction,
       subject,
       reservation,
@@ -415,8 +380,7 @@ export function createTaskStrategyCallerAdmission(
         'Simulated task implementation interruption after caller result persistence.',
       );
     }
-    const imported = importTaskStrategyCallerPatchUnderLifecycleLock(
-      changeContract,
+    const imported = operations.patches.importCaller(
       context.git.repositoryRoot,
       context.session.sessionId,
       {
@@ -448,8 +412,8 @@ export function createTaskStrategyCallerAdmission(
   }
 
   function ensureCallerCorrectionRoundReservation(
-    runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-    transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>,
+    runtime: TaskStrategyImplementationJournal,
+    transaction: TaskStrategyTransaction,
     subject: TaskStrategyImplementationSubject,
     greenFailureRecord: TaskStrategyGreenFailureRecord | null,
     reservation: TaskStrategyCallerImplementationReservation,
@@ -472,10 +436,10 @@ export function createTaskStrategyCallerAdmission(
     ) {
       throw implementationResultStale();
     }
-    reserveTaskStrategyCorrectionRound(runtime, {
+    runtime.correction.reserve({
       sessionId: reservation.sessionId,
       round: correction.round,
-      policy: DEFAULT_TASK_STRATEGY_CORRECTION_POLICY,
+      policy: operations.correctionPolicy,
       predecessorFailure: greenFailureRecord,
       correctionSubjectDigest: subject.subjectDigest,
       redSourceTree: transaction.red.candidateTree,
@@ -523,8 +487,8 @@ export function createTaskStrategyCallerAdmission(
   }
 
   function publishCallerCorrectionRoundArtifacts(
-    runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-    transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>,
+    runtime: TaskStrategyImplementationJournal,
+    transaction: TaskStrategyTransaction,
     subject: TaskStrategyImplementationSubject,
     reservation: TaskStrategyCallerImplementationReservation,
     binding: TaskStrategyCallerImplementationBinding,
@@ -533,7 +497,7 @@ export function createTaskStrategyCallerAdmission(
     const correction = subject.correction;
     if (correction === undefined) return;
     const authority = callerCorrectionResultAuthority(reservation, binding);
-    publishTaskStrategyCorrectionRoundResult(runtime, {
+    runtime.correction.publishResult({
       sessionId: reservation.sessionId,
       currentRedTransactionDigest: transaction.recordDigest,
       round: correction.round,
@@ -547,7 +511,7 @@ export function createTaskStrategyCallerAdmission(
       },
       createdAt: binding.createdAt,
     });
-    publishTaskStrategyCorrectionRoundImport(runtime, {
+    runtime.correction.publishImport({
       sessionId: reservation.sessionId,
       currentRedTransactionDigest: transaction.recordDigest,
       round: correction.round,
@@ -570,13 +534,12 @@ export function createTaskStrategyCallerAdmission(
   }
 
   function renderCallerImplementationStatus(
-    runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
+    runtime: TaskStrategyImplementationJournal,
     subject: TaskStrategyImplementationSubject,
     reservation: TaskStrategyCallerImplementationReservation,
     binding: TaskStrategyCallerImplementationBinding | null,
   ): TaskStrategyImplementationStatus {
-    const patchBinding = readTaskStrategyPatchCurrentBinding(
-      runtime,
+    const patchBinding = runtime.patch.readCurrentBinding(
       reservation.sessionId,
       subject.sourceTree,
     );
@@ -599,7 +562,7 @@ export function createTaskStrategyCallerAdmission(
   }
 
   function callerImplementationGrantRequest(
-    context: ReturnType<typeof loadActiveSessionContext>,
+    context: TaskStrategyImplementationSession,
     subject: TaskStrategyImplementationSubject,
     callerId: string,
     assurance: 'self-declared' | 'runtime-hint' | 'adapter-assigned',

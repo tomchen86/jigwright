@@ -1,3 +1,9 @@
+import type { TaskStrategyImplementationOperations } from './task-strategy-implementation-operations.ts';
+import type { TaskStrategyImplementationSession } from './task-strategy-implementation-operations.ts';
+import type { TaskStrategyImplementationJournal } from './task-strategy-implementation-operations.ts';
+import type { TaskStrategyTransaction } from '../../modules/assurance/task-strategy-evidence.ts';
+import { createEvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';
+import { taskStrategyImplementationReservationForAttempt } from '../../modules/assurance/task-strategy-implementation-attempt.ts';
 import type { TaskMandateProviderAdmission } from '../../modules/authority/task-mandate-access-contract.ts';
 import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 
@@ -34,25 +40,22 @@ import {
 import { bindingFromPayload } from '../../modules/authority/collaboration-grant-codec.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import type {
-  TaskStrategyImplementationRuntimeBindings,
-  TaskStrategyImplementationRuntimeData,
   BeginTaskStrategyImplementationOptions,
   TaskStrategyImplementationStatus,
 } from './task-strategy-implementation-lifecycle.ts';
-type TaskStrategyGreenFailureRecord =
-  TaskStrategyImplementationRuntimeData['TaskStrategyGreenFailureRecord'];
-type TaskStrategyImplementationReservation =
-  TaskStrategyImplementationRuntimeData['TaskStrategyImplementationReservation'];
-type TaskStrategyImplementationProviderAttempt =
-  TaskStrategyImplementationRuntimeData['TaskStrategyImplementationProviderAttempt'];
-type ProviderRetryDecisionBinding =
-  TaskStrategyImplementationRuntimeData['ProviderRetryDecisionBinding'];
+import type { TaskStrategyGreenFailureRecord } from '../../modules/provider-orchestration/task-strategy-correction-record.ts';
+import type { TaskStrategyImplementationReservation } from '../../modules/assurance/task-strategy-implementation-record.ts';
+import type { TaskStrategyImplementationProviderAttempt } from '../../modules/assurance/task-strategy-implementation-record.ts';
+import type { ProviderRetryDecisionBinding } from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
 
 import type { createTaskStrategyImplementationContext } from './task-strategy-implementation-context.ts';
 import type { createTaskStrategyCallerAdmission } from './task-strategy-caller-admission.ts';
 export function createTaskStrategyProviderReservations(
   roleAdmission: Pick<RoleAdmissionServices, 'authorizeGrantedOrdinaryRole'>,
-  runtime: TaskStrategyImplementationRuntimeBindings,
+  operations: Pick<
+    TaskStrategyImplementationOperations,
+    'collaboration' | 'dataPolicy' | 'clock'
+  >,
   context: ReturnType<typeof createTaskStrategyImplementationContext>,
   callerAdmission: ReturnType<typeof createTaskStrategyCallerAdmission>,
   taskMandate: Pick<
@@ -64,29 +67,6 @@ export function createTaskStrategyProviderReservations(
     taskMandate;
   const { authorizeGrantedOrdinaryRole } = roleAdmission;
 
-  const {
-    loadActiveSessionContext,
-    loadInvestigationRuntimeContext,
-    readTaskStrategyTransaction,
-    reserveCollaborationGrantUnderLifecycleLock,
-    createEvidenceNode,
-    writeEvidenceNode,
-    providerInvocationManifestDigest,
-    storeProviderExecutionPolicySnapshot,
-    createTaskStrategyImplementationReservation,
-    readProviderInvocation,
-    readEvidenceNode,
-    AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
-    createProviderRetryReservation,
-    readCurrentTaskStrategyImplementationProviderAttempt,
-    inspectCollaborationGrantsUnderLifecycleLock,
-    readReservedCollaborationGrantUnderLifecycleLock,
-    taskStrategyImplementationReservationForAttempt,
-    providerInvocationExists,
-    readProviderInvocationRequest,
-    readProviderInvocationManifest,
-    createProviderInvocation,
-  } = runtime;
   const {
     implementationTask,
     baselineAdapterPolicy,
@@ -103,9 +83,9 @@ export function createTaskStrategyProviderReservations(
   } = context;
   const { importCallerSuppliedImplementation } = callerAdmission;
   function createImplementationReservation(
-    context: ReturnType<typeof loadActiveSessionContext>,
-    runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-    transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>,
+    context: TaskStrategyImplementationSession,
+    runtime: TaskStrategyImplementationJournal,
+    transaction: TaskStrategyTransaction,
     subject: TaskStrategyImplementationSubject,
     greenFailureRecord: TaskStrategyGreenFailureRecord | null,
     task: ReturnType<typeof implementationTask>,
@@ -182,7 +162,7 @@ export function createTaskStrategyProviderReservations(
         context.git.repositoryRoot,
         grantRequest,
       );
-      const reservation = reserveCollaborationGrantUnderLifecycleLock(
+      const reservation = operations.collaboration.reserve(
         context.git.repositoryRoot,
         collaborationGrant.grantId,
         {
@@ -261,7 +241,7 @@ export function createTaskStrategyProviderReservations(
       },
       runtimeMetadata: {},
     });
-    writeEvidenceNode(runtime, authorization);
+    runtime.evidence.write(authorization);
     const manifest = createTaskStrategyImplementationManifest({
       repositoryId: context.config.repositoryName,
       baseCommit: context.session.baseline.head,
@@ -282,7 +262,7 @@ export function createTaskStrategyProviderReservations(
       baseCommit: context.session.baseline.head,
       baseTree: context.session.baseline.tree,
       targetDigest: subject.subjectDigest,
-      inputManifestDigest: providerInvocationManifestDigest(manifest),
+      inputManifestDigest: sha256(canonicalJson(manifest)),
       authorizationNodeId: authorization.nodeId,
       writeAllowedPaths: [],
       outputSchema: TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
@@ -323,9 +303,9 @@ export function createTaskStrategyProviderReservations(
       },
       runtimeMetadata: {},
     });
-    storeProviderExecutionPolicySnapshot(runtime, request, policy);
-    writeEvidenceNode(runtime, requestReservation);
-    return createTaskStrategyImplementationReservation(runtime, {
+    runtime.provider.storePolicy(request, policy);
+    runtime.evidence.write(requestReservation);
+    return runtime.implementation.reserve({
       ownerInvestigationId,
       sessionId: context.session.sessionId,
       changeId: context.session.changeId,
@@ -347,8 +327,8 @@ export function createTaskStrategyProviderReservations(
   }
 
   function reserveProviderRetryAttempt(
-    context: ReturnType<typeof loadActiveSessionContext>,
-    runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
+    context: TaskStrategyImplementationSession,
+    runtime: TaskStrategyImplementationJournal,
     root: TaskStrategyImplementationReservation,
     failedAttempt: TaskStrategyImplementationProviderAttempt,
     options: BeginTaskStrategyImplementationOptions,
@@ -357,10 +337,7 @@ export function createTaskStrategyProviderReservations(
   ):
     | TaskStrategyImplementationProviderAttempt
     | TaskStrategyImplementationStatus {
-    const failed = readProviderInvocation(
-      runtime,
-      failedAttempt.request.invocationId,
-    );
+    const failed = runtime.provider.read(failedAttempt.request.invocationId);
     if (
       failed.state !== 'failed' ||
       failed.failure === null ||
@@ -389,8 +366,7 @@ export function createTaskStrategyProviderReservations(
       context.session.baseline.head,
     );
     let assignment = failedAttempt.assignment;
-    let authorizationNode = readEvidenceNode(
-      runtime,
+    let authorizationNode = runtime.evidence.read(
       failedAttempt.authorizationNodeId,
     );
     let replacementRequest = createProviderRetryRequest({
@@ -402,7 +378,7 @@ export function createTaskStrategyProviderReservations(
     });
     let authorization = authorizeAutomaticProviderRetry(
       readProviderRetryAccountingEvidence(
-        runtime,
+        runtime.paths,
         failed,
         failedAttempt.request,
       ),
@@ -411,8 +387,8 @@ export function createTaskStrategyProviderReservations(
         failedRequest: failedAttempt.request,
         replacementRequest,
         replacementExecutionPolicy: policy,
-        dataAuthorizationPolicyPort: AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
-        now: new Date().toISOString(),
+        dataAuthorizationPolicyPort: operations.dataPolicy,
+        now: operations.clock.now().toISOString(),
       },
     );
     let strategyChanges: string[] = [];
@@ -450,7 +426,7 @@ export function createTaskStrategyProviderReservations(
       });
       authorization = authorizeAutomaticProviderRetry(
         readProviderRetryAccountingEvidence(
-          runtime,
+          runtime.paths,
           failed,
           failedAttempt.request,
         ),
@@ -459,9 +435,8 @@ export function createTaskStrategyProviderReservations(
           failedRequest: failedAttempt.request,
           replacementRequest,
           replacementExecutionPolicy: policy,
-          dataAuthorizationPolicyPort:
-            AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
-          now: new Date().toISOString(),
+          dataAuthorizationPolicyPort: operations.dataPolicy,
+          now: operations.clock.now().toISOString(),
         },
       );
     } else if (options.collaborationGrant !== undefined) {
@@ -526,7 +501,7 @@ export function createTaskStrategyProviderReservations(
       authorizationNode,
       retryDecision,
     );
-    const persisted = createProviderRetryReservation(runtime, {
+    const persisted = runtime.provider.reserveRetry({
       investigationId: root.ownerInvestigationId,
       changeId: root.changeId,
       attempt: nextAttempt,
@@ -561,7 +536,7 @@ export function createTaskStrategyProviderReservations(
         'Simulated task implementation interruption after provider retry reservation persistence.',
       );
     }
-    return readCurrentTaskStrategyImplementationProviderAttempt(runtime, root);
+    return runtime.implementation.readCurrentAttempt(root);
   }
 
   function createProviderRetryRequest(input: {
@@ -596,7 +571,7 @@ export function createTaskStrategyProviderReservations(
   }
 
   function createProviderRetryAuthorization(
-    runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
+    runtime: TaskStrategyImplementationJournal,
     root: TaskStrategyImplementationReservation,
     assignment: ProviderRoleAssignment,
   ) {
@@ -637,22 +612,19 @@ export function createTaskStrategyProviderReservations(
       },
       runtimeMetadata: {},
     });
-    writeEvidenceNode(runtime, authorization);
+    runtime.evidence.write(authorization);
     return authorization;
   }
 
   function createProviderRetryRequestReservation(
-    runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
+    runtime: TaskStrategyImplementationJournal,
     root: TaskStrategyImplementationReservation,
     failedAttempt: TaskStrategyImplementationProviderAttempt,
     request: ReturnType<typeof createProviderInvocationRequest>,
     authorization: ReturnType<typeof createEvidenceNode>,
     retryDecision: ProviderRetryDecisionBinding,
   ) {
-    const failed = readProviderInvocation(
-      runtime,
-      failedAttempt.request.invocationId,
-    );
+    const failed = runtime.provider.read(failedAttempt.request.invocationId);
     if (failed.failure === null) throw implementationResultStale();
     const reservation = createEvidenceNode({
       type: 'task-strategy-implementation-request-reservation',
@@ -689,12 +661,12 @@ export function createTaskStrategyProviderReservations(
       },
       runtimeMetadata: {},
     });
-    writeEvidenceNode(runtime, reservation);
+    runtime.evidence.write(reservation);
     return reservation;
   }
 
   function authorizeTaskStrategyRetryStrategyChange(input: {
-    context: ReturnType<typeof loadActiveSessionContext>;
+    context: TaskStrategyImplementationSession;
     root: TaskStrategyImplementationReservation;
     failedAttempt: TaskStrategyImplementationProviderAttempt;
     retrySeed: string;
@@ -783,7 +755,7 @@ export function createTaskStrategyProviderReservations(
       grantRequest,
     );
     const transitionDigest = collaborationTransitionDigest(expected);
-    const inspection = inspectCollaborationGrantsUnderLifecycleLock(
+    const inspection = operations.collaboration.inspect(
       input.context.git.gitCommonDirectory,
       input.collaborationGrant.grantId,
       input.assertOwned,
@@ -791,7 +763,7 @@ export function createTaskStrategyProviderReservations(
     if (inspection === undefined) throw implementationResultStale();
     const grantReservation =
       inspection.state === 'available'
-        ? reserveCollaborationGrantUnderLifecycleLock(
+        ? operations.collaboration.reserve(
             input.context.git.repositoryRoot,
             input.collaborationGrant.grantId,
             {
@@ -807,7 +779,7 @@ export function createTaskStrategyProviderReservations(
             input.assertOwned,
           )
         : inspection.state === 'reserved'
-          ? readReservedCollaborationGrantUnderLifecycleLock(
+          ? operations.collaboration.readReserved(
               input.context.git.gitCommonDirectory,
               input.collaborationGrant.grantId,
               input.assertOwned,
@@ -841,8 +813,8 @@ export function createTaskStrategyProviderReservations(
   }
 
   function ensureProviderInvocation(
-    context: ReturnType<typeof loadActiveSessionContext>,
-    runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
+    context: TaskStrategyImplementationSession,
+    runtime: TaskStrategyImplementationJournal,
     attempt: TaskStrategyImplementationProviderAttempt,
     assertOwned: () => void,
   ): void {
@@ -852,7 +824,7 @@ export function createTaskStrategyProviderReservations(
       context.git.repositoryRoot,
       context.session.baseline.head,
     );
-    storeProviderExecutionPolicySnapshot(runtime, reservation.request, policy);
+    runtime.provider.storePolicy(reservation.request, policy);
     if (reservation.mandateBinding !== null) {
       authorizeTaskMandateProviderReservationUnderLifecycleLock(
         context.git.repositoryRoot,
@@ -875,17 +847,14 @@ export function createTaskStrategyProviderReservations(
         assertOwned,
       );
     }
-    if (providerInvocationExists(runtime, reservation.request.invocationId)) {
-      const invocation = readProviderInvocation(
-        runtime,
+    if (runtime.provider.exists(reservation.request.invocationId)) {
+      const invocation = runtime.provider.read(
         reservation.request.invocationId,
       );
-      const request = readProviderInvocationRequest(
-        runtime,
+      const request = runtime.provider.readRequest(
         reservation.request.invocationId,
       );
-      const manifest = readProviderInvocationManifest(
-        runtime,
+      const manifest = runtime.provider.readManifest(
         reservation.request.invocationId,
       );
       if (
@@ -902,7 +871,7 @@ export function createTaskStrategyProviderReservations(
       }
       return;
     }
-    createProviderInvocation(runtime, {
+    runtime.provider.create({
       investigationId: reservation.ownerInvestigationId,
       changeId: reservation.changeId,
       ...(reservation.mandateBinding === null
