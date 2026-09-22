@@ -48,19 +48,14 @@ export type SealTaskStrategyRedOptions = Readonly<{
   environment?: NodeJS.ProcessEnv;
 }>;
 
-export type PreparedTaskStrategyRed = Readonly<{
-  transactionInput: Omit<
-    TaskStrategyTransaction,
-    'schemaVersion' | 'kind' | 'recordDigest'
-  >;
-  evidenceNode: ReturnType<typeof createEvidenceNode>;
-}>;
-
-export type PrepareTaskStrategyRedSuccessorOptions = Readonly<{
-  author: TaskStrategyTransaction['author'];
-  predecessorCandidateTree: string;
-  environment?: NodeJS.ProcessEnv;
-}>;
+import type {
+  PreparedTaskStrategyRed,
+  PrepareTaskStrategyRedSuccessorOptions,
+} from '../../modules/assurance/task-strategy-evidence.ts';
+export type {
+  PreparedTaskStrategyRed,
+  PrepareTaskStrategyRedSuccessorOptions,
+} from '../../modules/assurance/task-strategy-evidence.ts';
 
 export function inspectTaskStrategyTransaction(
   cwd: string,

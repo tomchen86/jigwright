@@ -692,3 +692,99 @@ test('completion rejects a check report with mismatched planning assurance', () 
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
+
+import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import {
+  readSessionFile,
+  writeJsonAtomic,
+} from '../src/runtime/session-workspace/session-store.ts';
+
+test('task transitions accept reordered planning assurance while rejecting changed planning generation and digest', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
+    const started = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
+    const sessionPath = path.join(
+      runtimeRoot(repository),
+      'sessions',
+      `${started.sessionId}.json`,
+    );
+    const original = readSessionFile(sessionPath);
+    assert.ok(original.planningAssurance);
+    const canonical = JSON.parse(canonicalJson(original)) as typeof original;
+    assert.ok(canonical.planningAssurance);
+    assert.notEqual(
+      JSON.stringify(canonical.planningAssurance),
+      JSON.stringify(original.planningAssurance),
+    );
+    assert.deepEqual(canonical.planningAssurance, original.planningAssurance);
+    writeJsonAtomic(sessionPath, canonical);
+    assert.deepEqual(
+      inspectSession(productionChangeContract, repository, started.sessionId)
+        .session.planningAssurance,
+      original.planningAssurance,
+    );
+    // Explicitly reverse the nested baseline order as well as the outer order.
+    const reordered = {
+      ...canonical,
+      planningAssurance: {
+        ...canonical.planningAssurance,
+        investigationBaseline: {
+          tree: canonical.planningAssurance.investigationBaseline.tree,
+          head: canonical.planningAssurance.investigationBaseline.head,
+        },
+      },
+    };
+    assert.notEqual(
+      JSON.stringify(reordered.planningAssurance.investigationBaseline),
+      JSON.stringify(original.planningAssurance.investigationBaseline),
+    );
+    assert.equal(
+      canonicalJson(reordered.planningAssurance),
+      canonicalJson(original.planningAssurance),
+    );
+    writeJsonAtomic(sessionPath, reordered);
+    assert.deepEqual(
+      inspectSession(productionChangeContract, repository, started.sessionId)
+        .session.planningAssurance,
+      original.planningAssurance,
+    );
+    for (const field of ['planningGenerationId', 'planTargetDigest'] as const) {
+      const changed = {
+        ...reordered,
+        planningAssurance: {
+          ...reordered.planningAssurance,
+          [field]: 'f'.repeat(64),
+        },
+      };
+      assert.notEqual(
+        changed.planningAssurance[field],
+        original.planningAssurance[field],
+      );
+      writeJsonAtomic(sessionPath, changed);
+      // It remains a valid stored binding; the live authority comparison rejects it.
+      assert.equal(
+        readSessionFile(sessionPath).planningAssurance?.[field],
+        changed.planningAssurance[field],
+      );
+      assert.throws(
+        () =>
+          inspectSession(
+            productionChangeContract,
+            repository,
+            started.sessionId,
+          ),
+        (error) => isWorkflowError(error, 'SESSION_PLANNING_ASSURANCE_STALE'),
+      );
+    }
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});

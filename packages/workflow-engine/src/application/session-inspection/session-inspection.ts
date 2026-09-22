@@ -120,8 +120,8 @@ export function inspectSession(
       session.changeId,
     );
   if (
-    JSON.stringify(session.planningAssurance ?? null) !==
-    JSON.stringify(
+    canonicalJson(session.planningAssurance ?? null) !==
+    canonicalJson(
       planningAssurance.createTaskBinding(contract, contract.planningAssurance),
     )
   ) {

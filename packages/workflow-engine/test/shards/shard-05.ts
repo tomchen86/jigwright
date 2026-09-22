@@ -101,3 +101,6 @@ import '../task-strategy-implementation-lifecycle.test.ts';
 import '../task-strategy-implementation-record.contract.test.ts';
 import '../task-strategy-lifecycle-boundary.test.ts';
 import '../task-strategy-lifecycle.test.ts';
+import '../task-strategy-red-revision-boundary.test.ts';
+import '../task-strategy-red-revision-contract.test.ts';
+import '../task-strategy-red-revision.test.ts';

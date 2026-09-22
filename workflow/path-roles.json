@@ -607,6 +607,7 @@
       "packages/workflow-engine/src/modules/assurance/task-strategy-implementation-record.ts",
       "packages/workflow-engine/src/modules/assurance/task-strategy-implementation-values.ts",
       "packages/workflow-engine/src/modules/assurance/task-strategy-patch-contract.ts",
+      "packages/workflow-engine/src/modules/assurance/task-strategy-transaction.ts",
       "packages/workflow-engine/src/modules/authority/intervention-control-adoption.ts",
       "packages/workflow-engine/src/modules/authority/intervention-control-promotion-grant.ts",
       "packages/workflow-engine/src/modules/authority/intervention-control-promotion-material.ts",
@@ -783,6 +784,8 @@
       "packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-asset-command-surface.ts",
       "packages/workflow-engine/src/application/governance-intake/governance-findings.ts",
       "packages/workflow-engine/src/application/propose/propose-blind-survey-admission.ts",
+      "packages/workflow-engine/src/modules/assurance/task-strategy-red-revision-contract.ts",
+      "packages/workflow-engine/src/modules/assurance/task-strategy-red-revision-values.ts",
       "packages/workflow-engine/src/modules/authority/immutable-git-candidate-codec.ts",
       "packages/workflow-engine/src/modules/authority/role-independence-continuation-contracts.ts",
       "packages/workflow-engine/src/modules/governance-intake/governance-findings.ts",
@@ -814,9 +817,7 @@
       "packages/workflow-engine/src/runtime/storage-journal/task-strategy-correction-round-authority.ts",
       "packages/workflow-engine/src/runtime/storage-journal/task-strategy-correction-round-contract.ts",
       "packages/workflow-engine/src/runtime/storage-journal/task-strategy-correction-round-values.ts",
-      "packages/workflow-engine/src/runtime/storage-journal/task-strategy-current-ref.ts",
-      "packages/workflow-engine/src/runtime/storage-journal/task-strategy-red-revision-contract.ts",
-      "packages/workflow-engine/src/runtime/storage-journal/task-strategy-red-revision-values.ts"
+      "packages/workflow-engine/src/runtime/storage-journal/task-strategy-current-ref.ts"
     ]
   }
 }

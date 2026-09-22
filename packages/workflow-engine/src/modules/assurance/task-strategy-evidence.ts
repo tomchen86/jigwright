@@ -172,3 +172,14 @@ export type TaskStrategyRedRevisionRequest = Readonly<{
   expectedTransactionDigest: string;
   reason: string;
 }>;
+
+export type PreparedTaskStrategyRed = Readonly<{
+  transactionInput: TaskStrategyTransactionInput;
+  evidenceNode: EvidenceNode;
+}>;
+
+export type PrepareTaskStrategyRedSuccessorOptions = Readonly<{
+  author: TaskStrategyTransaction['author'];
+  predecessorCandidateTree: string;
+  environment?: NodeJS.ProcessEnv;
+}>;

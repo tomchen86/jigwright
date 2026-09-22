@@ -1,61 +1,25 @@
-/**
- * Opens and continues durable revisions of sealed RED task evidence.
- *
- * Invariants:
- * - Only one distinct RED revision may be active for a task session.
- */
-import type { TaskStrategyCorrectionReader } from './task-strategy-correction.ts';
-import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
-import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
+/** Opens and continues durable revisions of sealed RED evidence through explicit operations. */
 import crypto from 'node:crypto';
-import path from 'node:path';
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { pinCheckRunner } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
-import { writeEvidenceNode } from '../../runtime/storage-journal/evidence-object-store.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { readFinalizeTransaction } from '../../runtime/storage-journal/finalize-transaction.ts';
 import type { ImplementationReconciliationGate } from '../reconciliation/implementation-reconciliation.ts';
-import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
-import { loadActiveSessionContext } from '../../runtime/repository-observation/workflow-session-context.ts';
-import { restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock } from './task-strategy-patch.ts';
+import type { WorkflowSession } from '../../modules/lifecycle/workflow-session-contract.ts';
+import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
+import type { TaskStrategyTransaction } from '../../modules/assurance/task-strategy-evidence.ts';
+import { createTaskStrategyCurrentRef } from '../../modules/assurance/task-strategy-current-ref.ts';
+import { prepareTaskStrategyTransaction } from '../../modules/assurance/task-strategy-transaction.ts';
 import {
-  readTaskStrategyPatchCurrentBinding,
-  readTaskStrategyPatchRecord,
-} from '../../runtime/storage-journal/task-strategy-patch-store.ts';
-import {
-  createTaskStrategyCurrentRef,
-  createTaskStrategyRedRevisionJournal,
-  compareAndSwapTaskStrategyCurrentRef,
-  persistTaskStrategyRedRevisionRequest,
-  readActiveTaskStrategyRedRevision,
-  readTaskStrategyCurrentRef,
-  readTaskStrategyRedRevisionJournal,
   taskStrategyRedRevisionId,
   taskStrategyRedRevisionRequestDigest,
   taskStrategyRedRevisionSnapshotDigest,
-  updateTaskStrategyRedRevisionJournal,
   type TaskStrategyRedRevisionJournal,
   type TaskStrategyRedRevisionJournalState,
   type TaskStrategyRedRevisionRequest,
-} from '../../runtime/storage-journal/task-strategy-red-revision-store.ts';
-import { prepareTaskStrategyRedSuccessorUnlocked } from './task-strategy-execution.ts';
-import {
-  persistTaskStrategyTransaction,
-  prepareTaskStrategyTransaction,
-  readTaskStrategyTransaction,
-  readTaskStrategyTransactionByDigest,
-  type TaskStrategyTransaction,
-} from '../../runtime/storage-journal/task-strategy-store.ts';
-import {
-  readSessionFile,
-  withRepositoryLifecycleOperation,
-  withSessionOperation,
-  writeJsonAtomic,
-  type WorkflowSession,
-} from '../../runtime/session-workspace/session-store.ts';
-import { inspectSession } from '../session-inspection/session-inspection.ts';
-import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
+} from '../../modules/assurance/task-strategy-red-revision-contract.ts';
+import type {
+  TaskStrategyRedRevisionOperations,
+  TaskStrategyRedRevisionJournalOperations,
+} from './task-strategy-red-revision-operations.ts';
 
 export type TaskStrategyRedRevisionResult = Readonly<{
   sessionId: string;
@@ -73,348 +37,320 @@ export type BeginTaskStrategyRedRevisionOptions = Readonly<{
   testAfterRestorationRecorded?: () => void;
 }>;
 
-function reconcileRevisionOpening(
-  changeContract: ChangeContractServices,
-  correction: TaskStrategyCorrectionReader,
-  cwd: string,
-  context: ReturnType<typeof loadInvestigationRuntimeContext>,
-  initial: TaskStrategyRedRevisionJournal,
-  assertOwned: () => void,
-  options: BeginTaskStrategyRedRevisionOptions = {},
-): TaskStrategyRedRevisionJournal {
-  let journal = initial;
-  const predecessor = readTaskStrategyTransactionByDigest(
-    context.runtime,
-    journal.sessionId,
-    journal.predecessor.transactionDigest,
-  );
-  if (predecessor === null) throw revisionStateCorrupt();
-  assertJournalBindingMatchesPredecessor(journal, predecessor);
-  const inspection = inspectSession(changeContract, cwd, journal.sessionId);
-  assertPredecessorMatchesInspection(predecessor, inspection);
-  assertRevisionMayProceed(cwd, predecessor, inspection.session);
-  assertJournalDurableRelations(context, journal, inspection.session);
-  if (journal.phase === 'prepared') {
-    const restored =
-      restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock(
-        changeContract,
-        correction,
+/** The reconciliation gate remains mandatory for a recorded session report. */
+export function createTaskStrategyRedRevisionService(
+  operations: TaskStrategyRedRevisionOperations,
+  assertCurrentImplementationReconciliation: ImplementationReconciliationGate<SessionInspection>,
+) {
+  function reconcileRevisionOpening(
+    cwd: string,
+    context: TaskStrategyRedRevisionJournalOperations,
+    initial: TaskStrategyRedRevisionJournal,
+    assertOwned: () => void,
+    options: BeginTaskStrategyRedRevisionOptions = {},
+  ): TaskStrategyRedRevisionJournal {
+    let journal = initial;
+    const predecessor = context.transaction.readByDigest(
+      journal.sessionId,
+      journal.predecessor.transactionDigest,
+    );
+    if (predecessor === null) throw revisionStateCorrupt();
+    assertJournalBindingMatchesPredecessor(journal, predecessor);
+    const inspection = operations.session.inspect(cwd, journal.sessionId);
+    assertPredecessorMatchesInspection(predecessor, inspection);
+    assertRevisionMayProceed(cwd, predecessor, inspection.session);
+    assertJournalDurableRelations(context, journal, inspection.session);
+    if (journal.phase === 'prepared') {
+      const restored = operations.restoreImplementationToRed(
         cwd,
         journal.sessionId,
         predecessor,
         assertOwned,
       );
+      if (
+        (restored?.recordDigest ?? null) !==
+          journal.restoration.patchRecordDigest ||
+        (restored?.patchDigest ?? null) !== journal.restoration.patchDigest ||
+        (restored?.candidateTree ?? null) !==
+          journal.restoration.implementationCandidateTree
+      ) {
+        throw revisionStateCorrupt();
+      }
+      options.testAfterWorktreeRestore?.();
+      journal = advanceJournal(context, journal, {
+        phase: 'implementation-restored',
+      });
+      options.testAfterRestorationRecorded?.();
+    }
+    if (journal.phase === 'implementation-restored') {
+      context.currentRef.compareAndSwap({
+        sessionId: journal.sessionId,
+        expectedRefDigest: journal.predecessor.currentRefDigest,
+        next: journal.authoringRef,
+      });
+      journal = advanceJournal(context, journal, {
+        phase: 'current-authoring',
+      });
+    }
+    if (journal.phase === 'current-authoring') {
+      clearSessionEvidence(context, journal);
+      journal = advanceJournal(context, journal, {
+        phase: 'session-evidence-cleared',
+      });
+    }
+    return journal;
+  }
+
+  function clearSessionEvidence(
+    context: TaskStrategyRedRevisionJournalOperations,
+    journal: TaskStrategyRedRevisionJournal,
+  ): WorkflowSession {
+    const current = context.session.read(journal.sessionId);
     if (
-      (restored?.recordDigest ?? null) !==
-        journal.restoration.patchRecordDigest ||
-      (restored?.patchDigest ?? null) !== journal.restoration.patchDigest ||
-      (restored?.candidateTree ?? null) !==
-        journal.restoration.implementationCandidateTree
+      canonicalJson(current) === canonicalJson(journal.sessionTransition.after)
+    ) {
+      return current as WorkflowSession;
+    }
+    if (
+      canonicalJson(current) !== canonicalJson(journal.sessionTransition.before)
+    ) {
+      throw workflowError(
+        'SESSION_CHANGED_DURING_TRANSITION',
+        'The task session changed during RED revision.',
+        ExitCode.staleState,
+      );
+    }
+    const next = journal.sessionTransition.after as WorkflowSession;
+    context.session.write(journal.sessionId, next);
+    const persisted = context.session.read(journal.sessionId);
+    if (canonicalJson(persisted) !== canonicalJson(next)) {
+      throw revisionStateCorrupt();
+    }
+    return persisted;
+  }
+
+  function assertPredecessorMatchesInspection(
+    predecessor: TaskStrategyTransaction,
+    inspection: SessionInspection,
+  ): void {
+    const task =
+      inspection.contract.execution?.tasks[inspection.session.taskId];
+    if (
+      (task?.strategy !== 'cross-agent-tdd' &&
+        task?.strategy !== 'tdd-single-agent') ||
+      predecessor.sessionId !== inspection.session.sessionId ||
+      predecessor.changeId !== inspection.session.changeId ||
+      predecessor.taskId !== inspection.session.taskId ||
+      canonicalJson(predecessor.baseline) !==
+        canonicalJson(inspection.session.baseline) ||
+      predecessor.strategy !== task.strategy ||
+      predecessor.taskContractDigest !== sha256(canonicalJson(task))
+    ) {
+      throw workflowError(
+        'TASK_STRATEGY_RED_REVISION_PLAN_REQUIRED',
+        'The reviewed task contract or execution baseline changed; use a reviewed planning revision.',
+        ExitCode.staleState,
+      );
+    }
+    const definition = inspection.contract.checks.checks[task.redCheck];
+    if (definition === undefined || definition.destructiveDatabase) {
+      throw workflowError(
+        'TASK_STRATEGY_RED_REVISION_PLAN_REQUIRED',
+        'The pinned RED check is missing or no longer safe; use a reviewed planning revision.',
+        ExitCode.staleState,
+      );
+    }
+    const runner = operations.pinCheckRunner(
+      inspection.git.repositoryRoot,
+      task.redCheck,
+      definition,
+    );
+    if (
+      predecessor.red.checkId !== task.redCheck ||
+      predecessor.red.runner !== runner.runner ||
+      predecessor.red.runnerDigest !== runner.digest
+    ) {
+      throw workflowError(
+        'TASK_STRATEGY_RED_REVISION_PLAN_REQUIRED',
+        'The pinned RED runner changed; use a reviewed planning revision.',
+        ExitCode.staleState,
+      );
+    }
+  }
+
+  function assertJournalBindingMatchesPredecessor(
+    journal: TaskStrategyRedRevisionJournal,
+    predecessor: TaskStrategyTransaction,
+  ): void {
+    if (
+      predecessor.recordDigest !== journal.predecessor.transactionDigest ||
+      predecessor.red.candidateTree !== journal.predecessor.candidateTree ||
+      predecessor.changeId !== journal.binding.changeId ||
+      predecessor.taskId !== journal.binding.taskId ||
+      canonicalJson(predecessor.baseline) !==
+        canonicalJson(journal.binding.baseline) ||
+      predecessor.strategy !== journal.binding.strategy ||
+      predecessor.taskContractDigest !== journal.binding.taskContractDigest ||
+      predecessor.red.checkId !== journal.binding.checkId ||
+      predecessor.red.runner !== journal.binding.runner ||
+      predecessor.red.runnerDigest !== journal.binding.runnerDigest ||
+      canonicalJson(predecessor.author) !==
+        canonicalJson(journal.binding.author)
     ) {
       throw revisionStateCorrupt();
     }
-    options.testAfterWorktreeRestore?.();
-    journal = advanceJournal(context.runtime, journal, {
-      phase: 'implementation-restored',
-    });
-    options.testAfterRestorationRecorded?.();
-  }
-  if (journal.phase === 'implementation-restored') {
-    compareAndSwapTaskStrategyCurrentRef(context.runtime, {
-      sessionId: journal.sessionId,
-      expectedRefDigest: journal.predecessor.currentRefDigest,
-      next: journal.authoringRef,
-    });
-    journal = advanceJournal(context.runtime, journal, {
-      phase: 'current-authoring',
-    });
-  }
-  if (journal.phase === 'current-authoring') {
-    clearSessionEvidence(context, journal);
-    journal = advanceJournal(context.runtime, journal, {
-      phase: 'session-evidence-cleared',
-    });
-  }
-  return journal;
-}
-
-function clearSessionEvidence(
-  context: ReturnType<typeof loadInvestigationRuntimeContext>,
-  journal: TaskStrategyRedRevisionJournal,
-): WorkflowSession {
-  const filePath = path.join(
-    context.lifecycleRuntime.sessions,
-    `${journal.sessionId}.json`,
-  );
-  const current = readSessionFile(filePath);
-  if (
-    canonicalJson(current) === canonicalJson(journal.sessionTransition.after)
-  ) {
-    return current as WorkflowSession;
-  }
-  if (
-    canonicalJson(current) !== canonicalJson(journal.sessionTransition.before)
-  ) {
-    throw workflowError(
-      'SESSION_CHANGED_DURING_TRANSITION',
-      'The task session changed during RED revision.',
-      ExitCode.staleState,
-    );
-  }
-  const next = journal.sessionTransition.after as WorkflowSession;
-  writeJsonAtomic(filePath, next);
-  const persisted = readSessionFile(filePath);
-  if (canonicalJson(persisted) !== canonicalJson(next)) {
-    throw revisionStateCorrupt();
-  }
-  return persisted;
-}
-
-function assertPredecessorMatchesInspection(
-  predecessor: TaskStrategyTransaction,
-  inspection: SessionInspection,
-): void {
-  const task = inspection.contract.execution?.tasks[inspection.session.taskId];
-  if (
-    (task?.strategy !== 'cross-agent-tdd' &&
-      task?.strategy !== 'tdd-single-agent') ||
-    predecessor.sessionId !== inspection.session.sessionId ||
-    predecessor.changeId !== inspection.session.changeId ||
-    predecessor.taskId !== inspection.session.taskId ||
-    canonicalJson(predecessor.baseline) !==
-      canonicalJson(inspection.session.baseline) ||
-    predecessor.strategy !== task.strategy ||
-    predecessor.taskContractDigest !== sha256(canonicalJson(task))
-  ) {
-    throw workflowError(
-      'TASK_STRATEGY_RED_REVISION_PLAN_REQUIRED',
-      'The reviewed task contract or execution baseline changed; use a reviewed planning revision.',
-      ExitCode.staleState,
-    );
-  }
-  const definition = inspection.contract.checks.checks[task.redCheck];
-  if (definition === undefined || definition.destructiveDatabase) {
-    throw workflowError(
-      'TASK_STRATEGY_RED_REVISION_PLAN_REQUIRED',
-      'The pinned RED check is missing or no longer safe; use a reviewed planning revision.',
-      ExitCode.staleState,
-    );
-  }
-  const runner = pinCheckRunner(
-    inspection.git.repositoryRoot,
-    task.redCheck,
-    definition,
-  );
-  if (
-    predecessor.red.checkId !== task.redCheck ||
-    predecessor.red.runner !== runner.runner ||
-    predecessor.red.runnerDigest !== runner.digest
-  ) {
-    throw workflowError(
-      'TASK_STRATEGY_RED_REVISION_PLAN_REQUIRED',
-      'The pinned RED runner changed; use a reviewed planning revision.',
-      ExitCode.staleState,
-    );
-  }
-}
-
-function assertJournalBindingMatchesPredecessor(
-  journal: TaskStrategyRedRevisionJournal,
-  predecessor: TaskStrategyTransaction,
-): void {
-  if (
-    predecessor.recordDigest !== journal.predecessor.transactionDigest ||
-    predecessor.red.candidateTree !== journal.predecessor.candidateTree ||
-    predecessor.changeId !== journal.binding.changeId ||
-    predecessor.taskId !== journal.binding.taskId ||
-    canonicalJson(predecessor.baseline) !==
-      canonicalJson(journal.binding.baseline) ||
-    predecessor.strategy !== journal.binding.strategy ||
-    predecessor.taskContractDigest !== journal.binding.taskContractDigest ||
-    predecessor.red.checkId !== journal.binding.checkId ||
-    predecessor.red.runner !== journal.binding.runner ||
-    predecessor.red.runnerDigest !== journal.binding.runnerDigest ||
-    canonicalJson(predecessor.author) !== canonicalJson(journal.binding.author)
-  ) {
-    throw revisionStateCorrupt();
-  }
-}
-
-function assertJournalDurableRelations(
-  context: ReturnType<typeof loadInvestigationRuntimeContext>,
-  journal: TaskStrategyRedRevisionJournal,
-  session: WorkflowSession,
-): void {
-  if (journal.phase === 'completed') return;
-  const before =
-    canonicalJson(session) === canonicalJson(journal.sessionTransition.before);
-  const after =
-    canonicalJson(session) === canonicalJson(journal.sessionTransition.after);
-  const sessionValid =
-    journal.phase === 'prepared' || journal.phase === 'implementation-restored'
-      ? before
-      : journal.phase === 'current-authoring'
-        ? before || after
-        : after;
-  if (!sessionValid) {
-    throw workflowError(
-      'SESSION_CHANGED_DURING_TRANSITION',
-      'The task session changed during RED revision.',
-      ExitCode.staleState,
-    );
   }
 
-  const current = readTaskStrategyCurrentRef(
-    context.runtime,
-    journal.sessionId,
-  );
-  const predecessorCurrent =
-    current?.refDigest === journal.predecessor.currentRefDigest &&
-    current.state === 'red-sealed' &&
-    current.transactionDigest === journal.predecessor.transactionDigest;
-  const authoringCurrent =
-    current?.refDigest === journal.authoringRef.refDigest &&
-    current.state === 'red-authoring';
-  const successorCurrent =
-    journal.successorRef !== null &&
-    current?.refDigest === journal.successorRef.refDigest &&
-    current.state === 'red-sealed';
-  const refValid =
-    journal.phase === 'prepared'
-      ? predecessorCurrent
-      : journal.phase === 'implementation-restored'
-        ? predecessorCurrent || authoringCurrent
-        : journal.phase === 'successor-persisted'
-          ? authoringCurrent || successorCurrent
-          : journal.phase === 'current-sealed'
-            ? successorCurrent
-            : authoringCurrent;
-  if (!refValid) throw revisionStateCorrupt();
-}
+  function assertJournalDurableRelations(
+    context: TaskStrategyRedRevisionJournalOperations,
+    journal: TaskStrategyRedRevisionJournal,
+    session: WorkflowSession,
+  ): void {
+    if (journal.phase === 'completed') return;
+    const before =
+      canonicalJson(session) ===
+      canonicalJson(journal.sessionTransition.before);
+    const after =
+      canonicalJson(session) === canonicalJson(journal.sessionTransition.after);
+    const sessionValid =
+      journal.phase === 'prepared' ||
+      journal.phase === 'implementation-restored'
+        ? before
+        : journal.phase === 'current-authoring'
+          ? before || after
+          : after;
+    if (!sessionValid) {
+      throw workflowError(
+        'SESSION_CHANGED_DURING_TRANSITION',
+        'The task session changed during RED revision.',
+        ExitCode.staleState,
+      );
+    }
 
-function assertRevisionMayProceed(
-  cwd: string,
-  predecessor: TaskStrategyTransaction,
-  session: WorkflowSession,
-): void {
-  const context = loadInvestigationRuntimeContext(cwd);
-  if (
-    session.state !== 'active' ||
-    session.revisionLeaseId !== undefined ||
-    session.completionReportId !== undefined ||
-    session.finishReportId !== undefined ||
-    session.commitReportId !== undefined
-  ) {
-    throw workflowError(
-      'TASK_STRATEGY_RED_REVISION_NOT_APPLICABLE',
-      'RED revision cannot begin during planning revision, completion, staging, commit, or a terminal session.',
-      ExitCode.staleState,
-    );
+    const current = context.currentRef.read(journal.sessionId);
+    const predecessorCurrent =
+      current?.refDigest === journal.predecessor.currentRefDigest &&
+      current.state === 'red-sealed' &&
+      current.transactionDigest === journal.predecessor.transactionDigest;
+    const authoringCurrent =
+      current?.refDigest === journal.authoringRef.refDigest &&
+      current.state === 'red-authoring';
+    const successorCurrent =
+      journal.successorRef !== null &&
+      current?.refDigest === journal.successorRef.refDigest &&
+      current.state === 'red-sealed';
+    const refValid =
+      journal.phase === 'prepared'
+        ? predecessorCurrent
+        : journal.phase === 'implementation-restored'
+          ? predecessorCurrent || authoringCurrent
+          : journal.phase === 'successor-persisted'
+            ? authoringCurrent || successorCurrent
+            : journal.phase === 'current-sealed'
+              ? successorCurrent
+              : authoringCurrent;
+    if (!refValid) throw revisionStateCorrupt();
   }
-  const finalize = readFinalizeTransaction(
-    context.lifecycleRuntime.root,
-    predecessor.sessionId,
-  );
-  if (finalize !== null) {
-    throw workflowError(
-      'TASK_STRATEGY_RED_REVISION_FINALIZE_RECOVERY_REQUIRED',
-      'An active finalize transaction must be recovered or cancelled before RED revision.',
-      ExitCode.staleState,
-      {
-        recovery: `pnpm workflow finalize-recover ${predecessor.sessionId} --json`,
+
+  function assertRevisionMayProceed(
+    cwd: string,
+    predecessor: TaskStrategyTransaction,
+    session: WorkflowSession,
+  ): void {
+    const context = operations.observeJournal(cwd);
+    if (
+      session.state !== 'active' ||
+      session.revisionLeaseId !== undefined ||
+      session.completionReportId !== undefined ||
+      session.finishReportId !== undefined ||
+      session.commitReportId !== undefined
+    ) {
+      throw workflowError(
+        'TASK_STRATEGY_RED_REVISION_NOT_APPLICABLE',
+        'RED revision cannot begin during planning revision, completion, staging, commit, or a terminal session.',
+        ExitCode.staleState,
+      );
+    }
+    const finalize = context.hasFinalizeTransaction(predecessor.sessionId);
+    if (finalize) {
+      throw workflowError(
+        'TASK_STRATEGY_RED_REVISION_FINALIZE_RECOVERY_REQUIRED',
+        'An active finalize transaction must be recovered or cancelled before RED revision.',
+        ExitCode.staleState,
+        {
+          recovery: `pnpm workflow finalize-recover ${predecessor.sessionId} --json`,
+        },
+      );
+    }
+  }
+
+  function sha256(value: string): string {
+    return crypto.createHash('sha256').update(value).digest('hex');
+  }
+
+  function advanceJournal(
+    paths: TaskStrategyRedRevisionJournalOperations,
+    current: TaskStrategyRedRevisionJournal,
+    patch: Partial<TaskStrategyRedRevisionJournalState> &
+      Pick<TaskStrategyRedRevisionJournalState, 'phase'>,
+  ): TaskStrategyRedRevisionJournal {
+    const {
+      schemaVersion: _schemaVersion,
+      kind: _kind,
+      journalDigest: _journalDigest,
+      previousJournalDigest: _previousJournalDigest,
+      ...state
+    } = current;
+    return paths.revision.update({
+      sessionId: current.sessionId,
+      revisionId: current.revisionId,
+      expectedJournalDigest: current.journalDigest,
+      next: {
+        ...state,
+        ...patch,
+        updatedAt: operations.clock.now().toISOString(),
       },
+    });
+  }
+
+  function requireSuccessor(
+    journal: TaskStrategyRedRevisionJournal,
+  ): TaskStrategyTransaction {
+    if (journal.successorTransaction === null) throw revisionStateCorrupt();
+    return journal.successorTransaction;
+  }
+
+  function revisionResult(
+    journal: TaskStrategyRedRevisionJournal,
+  ): TaskStrategyRedRevisionResult {
+    return Object.freeze({
+      sessionId: journal.sessionId,
+      revisionId: journal.revisionId,
+      phase: journal.phase,
+      transaction: journal.successorTransaction,
+    });
+  }
+
+  function revisionStateCorrupt() {
+    return workflowError(
+      'TASK_STRATEGY_RED_REVISION_STATE_CORRUPT',
+      'Task strategy RED revision state is malformed or disagrees with its durable lineage.',
+      ExitCode.staleState,
     );
   }
-}
 
-function sha256(value: string): string {
-  return crypto.createHash('sha256').update(value).digest('hex');
-}
-
-function advanceJournal(
-  paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-  current: TaskStrategyRedRevisionJournal,
-  patch: Partial<TaskStrategyRedRevisionJournalState> &
-    Pick<TaskStrategyRedRevisionJournalState, 'phase'>,
-): TaskStrategyRedRevisionJournal {
-  const {
-    schemaVersion: _schemaVersion,
-    kind: _kind,
-    journalDigest: _journalDigest,
-    previousJournalDigest: _previousJournalDigest,
-    ...state
-  } = current;
-  return updateTaskStrategyRedRevisionJournal(paths, {
-    sessionId: current.sessionId,
-    revisionId: current.revisionId,
-    expectedJournalDigest: current.journalDigest,
-    next: {
-      ...state,
-      ...patch,
-      updatedAt: new Date().toISOString(),
-    },
-  });
-}
-
-function requireRevisionJournal(
-  paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-  sessionId: string,
-  revisionId: string,
-): TaskStrategyRedRevisionJournal {
-  const journal = readTaskStrategyRedRevisionJournal(
-    paths,
-    sessionId,
-    revisionId,
-  );
-  if (journal === null) throw revisionStateCorrupt();
-  return journal;
-}
-
-function requireSuccessor(
-  journal: TaskStrategyRedRevisionJournal,
-): TaskStrategyTransaction {
-  if (journal.successorTransaction === null) throw revisionStateCorrupt();
-  return journal.successorTransaction;
-}
-
-function revisionResult(
-  journal: TaskStrategyRedRevisionJournal,
-): TaskStrategyRedRevisionResult {
-  return Object.freeze({
-    sessionId: journal.sessionId,
-    revisionId: journal.revisionId,
-    phase: journal.phase,
-    transaction: journal.successorTransaction,
-  });
-}
-
-function revisionStateCorrupt() {
-  return workflowError(
-    'TASK_STRATEGY_RED_REVISION_STATE_CORRUPT',
-    'Task strategy RED revision state is malformed or disagrees with its durable lineage.',
-    ExitCode.staleState,
-  );
-}
-
-/** Required reconciliation capability is bound once at the production boundary. */
-export function createTaskStrategyRedRevisionService(
-  changeContract: ChangeContractServices,
-  assertCurrentImplementationReconciliation: ImplementationReconciliationGate<SessionInspection>,
-  correction: TaskStrategyCorrectionReader,
-) {
   function beginTaskStrategyRedRevision(
     cwd: string,
     request: TaskStrategyRedRevisionRequest,
     options: BeginTaskStrategyRedRevisionOptions = {},
   ): TaskStrategyRedRevisionResult {
-    const initial = loadActiveSessionContext(cwd, request.sessionId);
-    return withRepositoryLifecycleOperation(initial.runtime, (assertOwned) =>
-      withSessionOperation(initial.runtime, request.sessionId, () => {
+    const initial = operations.session.loadActive(cwd, request.sessionId);
+    return operations.locks.repository(initial.runtime, (assertOwned) =>
+      operations.locks.session(initial.runtime, request.sessionId, () => {
         assertOwned();
-        const context = loadInvestigationRuntimeContext(cwd);
+        const context = operations.observeJournal(cwd);
         const requestedRevisionId = taskStrategyRedRevisionId(request);
-        const exactJournal = readTaskStrategyRedRevisionJournal(
-          context.runtime,
+        const exactJournal = context.revision.read(
           request.sessionId,
           requestedRevisionId,
         );
@@ -424,8 +360,6 @@ export function createTaskStrategyRedRevisionService(
           }
           return revisionResult(
             reconcileRevisionOpening(
-              changeContract,
-              correction,
               cwd,
               context,
               exactJournal,
@@ -434,10 +368,7 @@ export function createTaskStrategyRedRevisionService(
             ),
           );
         }
-        const active = readActiveTaskStrategyRedRevision(
-          context.runtime,
-          request.sessionId,
-        );
+        const active = context.revision.readActive(request.sessionId);
         if (
           active !== null &&
           taskStrategyRedRevisionId(active.request) !== requestedRevisionId
@@ -455,24 +386,16 @@ export function createTaskStrategyRedRevisionService(
           requestedRevisionId,
           taskStrategyRedRevisionRequestDigest(request),
         );
-        const persistedRequest = persistTaskStrategyRedRevisionRequest(
-          context.runtime,
-          request,
-        );
+        const persistedRequest = context.revision.persistRequest(request);
         if (
           persistedRequest.revisionId !== requestedRevisionId ||
           persistedRequest.requestDigest !== preparedJournal.requestDigest
         ) {
           throw revisionStateCorrupt();
         }
-        const journal = createTaskStrategyRedRevisionJournal(
-          context.runtime,
-          preparedJournal,
-        );
+        const journal = context.revision.create(preparedJournal);
         options.testAfterJournalPersist?.();
         const opened = reconcileRevisionOpening(
-          changeContract,
-          correction,
           cwd,
           context,
           journal,
@@ -488,26 +411,19 @@ export function createTaskStrategyRedRevisionService(
   function continueTaskStrategyRedRevision(
     cwd: string,
     requestedSessionId: string,
-    environment: NodeJS.ProcessEnv = process.env,
+    environment: NodeJS.ProcessEnv = operations.environment(),
   ): TaskStrategyRedRevisionResult | null {
-    const initial = loadActiveSessionContext(cwd, requestedSessionId);
-    return withRepositoryLifecycleOperation(initial.runtime, (assertOwned) =>
-      withSessionOperation(initial.runtime, requestedSessionId, () => {
+    const initial = operations.session.loadActive(cwd, requestedSessionId);
+    return operations.locks.repository(initial.runtime, (assertOwned) =>
+      operations.locks.session(initial.runtime, requestedSessionId, () => {
         assertOwned();
-        const context = loadInvestigationRuntimeContext(cwd);
-        const active = readActiveTaskStrategyRedRevision(
-          context.runtime,
-          requestedSessionId,
-        );
+        const context = operations.observeJournal(cwd);
+        const active = context.revision.readActive(requestedSessionId);
         if (active === null) return null;
-        const snapshot = persistTaskStrategyRedRevisionRequest(
-          context.runtime,
-          active.request,
-        );
+        const snapshot = context.revision.persistRequest(active.request);
         let journal =
           active.journal ??
-          createTaskStrategyRedRevisionJournal(
-            context.runtime,
+          context.revision.create(
             prepareRevisionJournalStateUnlocked(
               cwd,
               context,
@@ -516,17 +432,9 @@ export function createTaskStrategyRedRevisionService(
               snapshot.requestDigest,
             ),
           );
-        journal = reconcileRevisionOpening(
-          changeContract,
-          correction,
-          cwd,
-          context,
-          journal,
-          assertOwned,
-        );
+        journal = reconcileRevisionOpening(cwd, context, journal, assertOwned);
         if (journal.phase === 'session-evidence-cleared') {
-          const prepared = prepareTaskStrategyRedSuccessorUnlocked(
-            changeContract,
+          const prepared = operations.prepareSuccessor(
             cwd,
             requestedSessionId,
             {
@@ -559,7 +467,7 @@ export function createTaskStrategyRedRevisionService(
             taskContractDigest: journal.binding.taskContractDigest,
             updatedAt: successor.createdAt,
           });
-          journal = advanceJournal(context.runtime, journal, {
+          journal = advanceJournal(context, journal, {
             phase: 'reseal-prepared',
             successorTransaction: successor,
             successorRef,
@@ -567,26 +475,26 @@ export function createTaskStrategyRedRevisionService(
         }
         if (journal.phase === 'reseal-prepared') {
           const successor = requireSuccessor(journal);
-          writeEvidenceNode(context.runtime, successor.red.evidenceNode);
-          persistTaskStrategyTransaction(context.runtime, successor);
-          journal = advanceJournal(context.runtime, journal, {
+          context.evidence.write(successor.red.evidenceNode);
+          context.transaction.persist(successor);
+          journal = advanceJournal(context, journal, {
             phase: 'successor-persisted',
           });
         }
         if (journal.phase === 'successor-persisted') {
           const successorRef = journal.successorRef;
           if (successorRef === null) throw revisionStateCorrupt();
-          compareAndSwapTaskStrategyCurrentRef(context.runtime, {
+          context.currentRef.compareAndSwap({
             sessionId: journal.sessionId,
             expectedRefDigest: journal.authoringRef.refDigest,
             next: successorRef,
           });
-          journal = advanceJournal(context.runtime, journal, {
+          journal = advanceJournal(context, journal, {
             phase: 'current-sealed',
           });
         }
         if (journal.phase === 'current-sealed') {
-          journal = advanceJournal(context.runtime, journal, {
+          journal = advanceJournal(context, journal, {
             phase: 'completed',
           });
         }
@@ -598,19 +506,13 @@ export function createTaskStrategyRedRevisionService(
 
   function prepareRevisionJournalStateUnlocked(
     cwd: string,
-    context: ReturnType<typeof loadInvestigationRuntimeContext>,
+    context: TaskStrategyRedRevisionJournalOperations,
     request: TaskStrategyRedRevisionRequest,
     revisionId: string,
     requestDigest: string,
   ): TaskStrategyRedRevisionJournalState {
-    const observedRef = readTaskStrategyCurrentRef(
-      context.runtime,
-      request.sessionId,
-    );
-    const predecessor = readTaskStrategyTransaction(
-      context.runtime,
-      request.sessionId,
-    );
+    const observedRef = context.currentRef.read(request.sessionId);
+    const predecessor = context.transaction.readTransaction(request.sessionId);
     if (
       predecessor === null ||
       predecessor.recordDigest !== request.expectedTransactionDigest ||
@@ -624,19 +526,17 @@ export function createTaskStrategyRedRevisionService(
         ExitCode.staleState,
       );
     }
-    const inspection = inspectSession(changeContract, cwd, request.sessionId);
+    const inspection = operations.session.inspect(cwd, request.sessionId);
     assertPredecessorMatchesInspection(predecessor, inspection);
     assertRevisionMayProceed(cwd, predecessor, inspection.session);
-    const patchBinding = readTaskStrategyPatchCurrentBinding(
-      context.runtime,
+    const patchBinding = context.patch.readCurrentBinding(
       request.sessionId,
       predecessor.red.candidateTree,
     );
     const patchRecord =
       patchBinding === null
         ? null
-        : readTaskStrategyPatchRecord(
-            context.runtime,
+        : context.patch.readRecord(
             request.sessionId,
             patchBinding.patchDigest,
             predecessor.red.candidateTree,
@@ -644,7 +544,7 @@ export function createTaskStrategyRedRevisionService(
     if (patchBinding !== null && patchRecord === null) {
       throw revisionStateCorrupt();
     }
-    const createdAt = new Date().toISOString();
+    const createdAt = operations.clock.now().toISOString();
     const authoringRef = createTaskStrategyCurrentRef({
       sessionId: request.sessionId,
       state: 'red-authoring',

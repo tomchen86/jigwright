@@ -988,7 +988,7 @@
     {
       "path": "src/application/execute-task/task-strategy-execution.ts",
       "mode": "100644",
-      "digest": "sha256:e8a6cc3e5290bbe181721485ee6162f7ea253386ed24ab12440f023227c59926"
+      "digest": "sha256:6ca0a7532d38b682618e0b86133632b4236f206721b71729eab7ecb7aee8bfef"
     },
     {
       "path": "src/application/execute-task/task-strategy-implementation-context.ts",
@@ -1031,9 +1031,14 @@
       "digest": "sha256:7903a4d93b3fdc0d2c6b185fff5cb1ae9e5d0e8a344010d72f5474299fe89ace"
     },
     {
+      "path": "src/application/execute-task/task-strategy-red-revision-operations.ts",
+      "mode": "100644",
+      "digest": "sha256:97c92f398900e39581f84e693b3e3acb817fd860cb9c5f6c79a6e380374f62cd"
+    },
+    {
       "path": "src/application/execute-task/task-strategy-red-revision.ts",
       "mode": "100644",
-      "digest": "sha256:e906b74ede1d1c8c4d6bf19049b39a179778d747df1232d9a03908625bf62d59"
+      "digest": "sha256:9696e0cd25c10d852adc06c5d2f5b4d71c72426203360431622b8ba32bd31da5"
     },
     {
       "path": "src/application/execute-task/update-base.ts",
@@ -1418,7 +1423,7 @@
     {
       "path": "src/application/session-inspection/session-inspection.ts",
       "mode": "100644",
-      "digest": "sha256:7458543c935f6c53cb2d6ae6da8fe6a3fd1b2aac59a76ab7e8836194fbc90ee5"
+      "digest": "sha256:2d7baca1d67ab65cf53d1c755c897ba97424de6d02500a46d9ed40d87ee081c7"
     },
     {
       "path": "src/application/task-apply-authorization/protected-task-apply-authorization.ts",
@@ -2023,7 +2028,7 @@
     {
       "path": "src/composition-root/task-strategy-red-revision-production.ts",
       "mode": "100644",
-      "digest": "sha256:8dccaa47b45ea3a4020338e0936a7a84939bca5df41ca00d697b5c5b2f986736"
+      "digest": "sha256:2a58932fdb029836d506fe5796467a885a4acf551bd1f1570902427578d617b3"
     },
     {
       "path": "src/composition-root/validated-contract-context.ts",
@@ -2541,9 +2546,14 @@
       "digest": "sha256:407903c6dbbc75d6f3b5e668d4bb6fb52292f95bcfca8727c6a9b16247a8fa8c"
     },
     {
+      "path": "src/modules/assurance/task-strategy-current-ref.ts",
+      "mode": "100644",
+      "digest": "sha256:b941e604bce1617b8bccba03ae335efd817fc3af2fb291a8a57da9c47101da16"
+    },
+    {
       "path": "src/modules/assurance/task-strategy-evidence.ts",
       "mode": "100644",
-      "digest": "sha256:c666d75ba6ca9195e324dc36b65c88fc092534ce882d38150778ecfa79d7a945"
+      "digest": "sha256:f25d7f487aac4da64b2910acceeb7ced1bf379b11b807ff1acac5c5a9ef63b23"
     },
     {
       "path": "src/modules/assurance/task-strategy-gate.ts",
@@ -2569,6 +2579,21 @@
       "path": "src/modules/assurance/task-strategy-patch-contract.ts",
       "mode": "100644",
       "digest": "sha256:1cbbac3d6d6a6f3813cdec57c9150024f8e9536542e53a0eb9167e1132ed752d"
+    },
+    {
+      "path": "src/modules/assurance/task-strategy-red-revision-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:8d0df3b6984b5db08063436c8f9c18b94093269b3e37b65d9629ed003f0c298a"
+    },
+    {
+      "path": "src/modules/assurance/task-strategy-red-revision-values.ts",
+      "mode": "100644",
+      "digest": "sha256:34f711cba7634b3470e265d1db778d787066b45c8f232f08400e56b61e548353"
+    },
+    {
+      "path": "src/modules/assurance/task-strategy-transaction.ts",
+      "mode": "100644",
+      "digest": "sha256:443f1add7d47657a6e10aad2e364c6081680dc940d41838b2354f45a51936f07"
     },
     {
       "path": "src/modules/assurance/validated-change-contract.ts",
@@ -5583,7 +5608,7 @@
     {
       "path": "src/runtime/storage-journal/task-strategy-current-ref.ts",
       "mode": "100644",
-      "digest": "sha256:ed70f6941365d47c7d6e66d96f566fe8f5b69d1a1e1e31c000e82904a17adf3e"
+      "digest": "sha256:757ea93794f405c26b64c98f93a5bc410b7a770a2627bf2c9b5548641f100170"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-patch-store.ts",
@@ -5606,19 +5631,9 @@
       "digest": "sha256:47cc6881353fa34e2bf6f81fafc69dbea7a730e6d6b60f89153202a39bbe8721"
     },
     {
-      "path": "src/runtime/storage-journal/task-strategy-red-revision-contract.ts",
-      "mode": "100644",
-      "digest": "sha256:6d565bc7ade926a92d7237a99c6fcd03bd9663a89432ab4a703cd47c07ba45c4"
-    },
-    {
       "path": "src/runtime/storage-journal/task-strategy-red-revision-store.ts",
       "mode": "100644",
-      "digest": "sha256:66aef6058ce601612bf80808f91c73266d234dc10835904ce4c058fd121e6c62"
-    },
-    {
-      "path": "src/runtime/storage-journal/task-strategy-red-revision-values.ts",
-      "mode": "100644",
-      "digest": "sha256:34f711cba7634b3470e265d1db778d787066b45c8f232f08400e56b61e548353"
+      "digest": "sha256:ea5fa40693e3309e4ace2be0d2f45979c71c7ec5eba8797e020030ec20260345"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-store.ts",
@@ -5628,7 +5643,7 @@
     {
       "path": "src/runtime/storage-journal/task-strategy-transactions.ts",
       "mode": "100644",
-      "digest": "sha256:ef6dcc2ef1e9fa39d382adeacfc6ade21f92e4b7f1658163727a40447927a78b"
+      "digest": "sha256:c7485b866931dd2be240848aade0e3abe2e3a474b7724721a0a4a6bb0d1f8789"
     },
     {
       "path": "src/runtime/work-registry/origin-observation.ts",

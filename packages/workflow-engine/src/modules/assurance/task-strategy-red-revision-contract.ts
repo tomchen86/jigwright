@@ -5,10 +5,8 @@
  * - Canonical bodies retain exact field order, digest binding, and nullable phase payloads.
  * - Successor, restoration, and session-evidence transitions remain bound to the original request.
  */
-import {
-  type TaskStrategyTransaction,
-  parseTaskStrategyTransaction,
-} from './task-strategy-transactions.ts';
+import type { TaskStrategyTransaction } from './task-strategy-evidence.ts';
+import { parseTaskStrategyTransaction } from './task-strategy-transaction.ts';
 import {
   type TaskStrategyRedRevisionPhase,
   revisionRequestInvalid,
@@ -35,10 +33,10 @@ import {
 } from './task-strategy-current-ref.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import type { WorkflowError } from '../../foundation/errors/errors.ts';
-import { isProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
+import { isProviderId } from '../provider-orchestration/provider-registry.ts';
 
-import type { TaskStrategyRedRevisionRequest } from '../../modules/assurance/task-strategy-evidence.ts';
-export type { TaskStrategyRedRevisionRequest } from '../../modules/assurance/task-strategy-evidence.ts';
+import type { TaskStrategyRedRevisionRequest } from './task-strategy-evidence.ts';
+export type { TaskStrategyRedRevisionRequest } from './task-strategy-evidence.ts';
 export type TaskStrategyRedRevisionRequestSnapshot = Readonly<{
   revisionId: string;
   requestDigest: string;

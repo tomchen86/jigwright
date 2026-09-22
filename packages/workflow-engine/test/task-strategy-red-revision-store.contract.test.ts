@@ -991,3 +991,146 @@ function hasCode(code: string): (error: unknown) => boolean {
     'code' in error &&
     error.code === code;
 }
+
+import {
+  prepareTaskStrategyTransaction as canonicalPrepare,
+  parseTaskStrategyTransaction as canonicalParse,
+  isSameReviewedTaskStrategyLineage as canonicalLineage,
+} from '../src/modules/assurance/task-strategy-transaction.ts';
+import {
+  createTaskStrategyCurrentRef as canonicalRef,
+  parseTaskStrategyCurrentRef as canonicalParseRef,
+} from '../src/modules/assurance/task-strategy-current-ref.ts';
+import {
+  parseTaskStrategyTransaction,
+  isSameReviewedTaskStrategyLineage,
+} from '../src/runtime/storage-journal/task-strategy-store.ts';
+import { parseTaskStrategyCurrentRef } from '../src/runtime/storage-journal/task-strategy-current-ref.ts';
+
+test('durable transaction and ref exports retain the exact canonical function implementations', () => {
+  assert.equal(prepareTaskStrategyTransaction, canonicalPrepare);
+  assert.equal(parseTaskStrategyTransaction, canonicalParse);
+  assert.equal(isSameReviewedTaskStrategyLineage, canonicalLineage);
+  assert.equal(createTaskStrategyCurrentRef, canonicalRef);
+  assert.equal(parseTaskStrategyCurrentRef, canonicalParseRef);
+});
+
+test('current-ref target admission precedes exact replay and stale observed-digest comparison', () => {
+  const fixture = createStoreFixture();
+  try {
+    const predecessor = createTaskStrategyTransaction(
+      fixture.paths,
+      transactionInput('1'),
+    );
+    const initial = requireTaskStrategyCurrentRef(
+      fixture.paths,
+      predecessor.sessionId,
+    );
+    const request = parseTaskStrategyRedRevisionRequest({
+      schemaVersion: 1,
+      kind: 'task-strategy-red-revision-request',
+      sessionId: predecessor.sessionId,
+      expectedTransactionDigest: predecessor.recordDigest,
+      reason: 'Target priority',
+    });
+    const authoring = createTaskStrategyCurrentRef({
+      ...initial,
+      state: 'red-authoring',
+      transactionDigest: null,
+      predecessorTransactionDigest: predecessor.recordDigest,
+      revisionId: taskStrategyRedRevisionId(request),
+    });
+    compareAndSwapTaskStrategyCurrentRef(fixture.paths, {
+      sessionId: predecessor.sessionId,
+      expectedRefDigest: initial.refDigest,
+      next: authoring,
+    });
+    const unavailable = createTaskStrategyCurrentRef({
+      ...authoring,
+      predecessorTransactionDigest: 'f'.repeat(64),
+    });
+    assert.throws(
+      () =>
+        compareAndSwapTaskStrategyCurrentRef(fixture.paths, {
+          sessionId: predecessor.sessionId,
+          expectedRefDigest: 'e'.repeat(64),
+          next: unavailable,
+        }),
+      hasCode('TASK_STRATEGY_RED_REVISION_STATE_CORRUPT'),
+    );
+    const target = path.join(
+      fixture.paths.refs,
+      'task-strategy-transactions',
+      predecessor.sessionId,
+      `${predecessor.recordDigest}.json`,
+    );
+    fs.unlinkSync(target);
+    assert.throws(
+      () =>
+        compareAndSwapTaskStrategyCurrentRef(fixture.paths, {
+          sessionId: predecessor.sessionId,
+          expectedRefDigest: initial.refDigest,
+          next: authoring,
+        }),
+      hasCode('TASK_STRATEGY_RED_REVISION_STATE_CORRUPT'),
+    );
+  } finally {
+    fixture.dispose();
+  }
+});
+
+test('journal exact-state replay precedes stale CAS while changed state still rejects it', () => {
+  const fixture = createStoreFixture();
+  try {
+    const predecessor = createTaskStrategyTransaction(
+      fixture.paths,
+      transactionInput('1'),
+    );
+    const request = parseTaskStrategyRedRevisionRequest({
+      schemaVersion: 1,
+      kind: 'task-strategy-red-revision-request',
+      sessionId: predecessor.sessionId,
+      expectedTransactionDigest: predecessor.recordDigest,
+      reason: 'Journal replay priority',
+    });
+    const current = createPreparedRevisionJournal(
+      fixture,
+      predecessor,
+      request,
+    );
+    const restored = updateTaskStrategyRedRevisionJournal(fixture.paths, {
+      sessionId: current.sessionId,
+      revisionId: current.revisionId,
+      expectedJournalDigest: current.journalDigest,
+      next: {
+        ...withoutJournalEnvelope(current),
+        phase: 'implementation-restored',
+        updatedAt: '2026-08-13T00:00:02.000Z',
+      },
+    });
+    assert.deepEqual(
+      updateTaskStrategyRedRevisionJournal(fixture.paths, {
+        sessionId: current.sessionId,
+        revisionId: current.revisionId,
+        expectedJournalDigest: current.journalDigest,
+        next: withoutJournalEnvelope(restored),
+      }),
+      restored,
+    );
+    assert.throws(
+      () =>
+        updateTaskStrategyRedRevisionJournal(fixture.paths, {
+          sessionId: current.sessionId,
+          revisionId: current.revisionId,
+          expectedJournalDigest: current.journalDigest,
+          next: {
+            ...withoutJournalEnvelope(restored),
+            updatedAt: '2026-08-13T00:00:03.000Z',
+          },
+        }),
+      hasCode('TASK_STRATEGY_RED_REVISION_JOURNAL_CAS_MISMATCH'),
+    );
+  } finally {
+    fixture.dispose();
+  }
+});

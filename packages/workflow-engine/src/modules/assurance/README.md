@@ -8,11 +8,11 @@ Keep the presence and currentness of review evidence separate from the reviewer'
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:5049bf3f5e0873972b27f2d2b4c893cf8cb7ab5b3da67c63c33a533d1813d53e -->
+<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:a30fbf1b72b84cc764c2b77548d5b35250473281fdd37519a6b4248aff66dc27 -->
 
 <!-- prettier-ignore-start -->
 
-70 files changed in this module since confirmation.
+74 files changed in this module since confirmation.
 
 ## Commands
 
@@ -122,12 +122,16 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [task-diff-review.ts](task-diff-review.ts) | Derives task diff review subjects, candidate scopes, and documentation requirements. | 1 | History unavailable |
 | [task-execution-evidence.ts](task-execution-evidence.ts) | Pure admission rules and facts for task execution generation evidence. | 0 | History unavailable |
 | [task-strategy-correction-round-record.ts](task-strategy-correction-round-record.ts) | Canonical correction lineage facts; observation and durable validation stay with their producers. | 0 | History unavailable |
+| [task-strategy-current-ref.ts](task-strategy-current-ref.ts) | Owns canonical current RED reference identity and its authoring/sealed variants. | 0 | History unavailable |
 | [task-strategy-evidence.ts](task-strategy-evidence.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [task-strategy-gate.ts](task-strategy-gate.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [task-strategy-implementation-attempt.ts](task-strategy-implementation-attempt.ts) | Interpret an exact effective attempt without reading its durable lineage. | 0 | History unavailable |
 | [task-strategy-implementation-record.ts](task-strategy-implementation-record.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [task-strategy-implementation-values.ts](task-strategy-implementation-values.ts) | Defines canonical task implementation value checks, digests, and store errors. | 2 | History unavailable |
 | [task-strategy-patch-contract.ts](task-strategy-patch-contract.ts) | Patch transaction inputs and results shared by their real producer and application callers. | 0 | History unavailable |
+| [task-strategy-red-revision-contract.ts](task-strategy-red-revision-contract.ts) | Validates revision requests and digest-bound RED recovery journal states. | 2 | History unavailable |
+| [task-strategy-red-revision-values.ts](task-strategy-red-revision-values.ts) | Defines RED revision phases, exact identity checks, and stable failure codes. | 2 | History unavailable |
+| [task-strategy-transaction.ts](task-strategy-transaction.ts) | Validates immutable RED evidence and prepares its canonical transaction identity. | 0 | History unavailable |
 | [validated-change-contract.ts](validated-change-contract.ts) | Admitted change facts shared by planning, execution and report validation. | 0 | History unavailable |
 
 <!-- prettier-ignore-end -->

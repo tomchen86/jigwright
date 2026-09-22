@@ -12,9 +12,9 @@
   },
   "sourceTelemetryRunId": "run-20260912023916307-f369e0a2-e7a4-441a-bca1-57c8300410a4",
   "sourceTelemetryDigest": "sha256:9b45f37d8baf330b4fbd88d81456c97b50767229cf3cb6646d9dcdc1fdb4661d",
-  "physicalFileCount": 544,
-  "executionUnitCount": 541,
-  "inventoryDigest": "sha256:4719fc7cbd201a230dd0f43731189f2d63be45447f5d4a1d32d23bab00290d5a",
+  "physicalFileCount": 547,
+  "executionUnitCount": 544,
+  "inventoryDigest": "sha256:73dff5b9f3a0eb45e9544f5ae4b18fb529aa1387e5d35b7028e186ea8f3d93d4",
   "shards": [
     {
       "shardNumber": 1,
@@ -2846,6 +2846,30 @@
             "packages/workflow-engine/test/task-strategy-lifecycle.test.ts"
           ],
           "legacyOrdinal": 541,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-red-revision-boundary.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-red-revision-boundary.test.ts"
+          ],
+          "legacyOrdinal": 542,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-red-revision-contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-red-revision-contract.test.ts"
+          ],
+          "legacyOrdinal": 543,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-red-revision.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-red-revision.test.ts"
+          ],
+          "legacyOrdinal": 544,
           "estimatedDurationMs": 0
         }
       ]
