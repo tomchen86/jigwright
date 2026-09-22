@@ -9,7 +9,7 @@
 import type {
   AgentRuntimeProcessActivity,
   AgentRuntimeProcessProgressProjection,
-} from '../../modules/provider-orchestration/agent-runtime-port.ts';
+} from './agent-runtime-port.ts';
 
 export type AgentRuntimeProgressTracker = Readonly<{
   record(event: AgentRuntimeProcessActivity): void;

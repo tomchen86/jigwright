@@ -171,6 +171,24 @@ export type AgentRuntimeProcessTermination =
   | 'spawn-error'
   | 'protocol-error';
 
+/** Process monitoring handles retain their live observation and cleanup semantics. */
+export type ProviderInvocationCancellationWatcher = Readonly<{
+  signal: AbortSignal;
+  hasExactCancellation(): boolean;
+  stop(): void;
+}>;
+
+export type ProviderInvocationActivityHeartbeatInput = Readonly<{
+  invocationId: string;
+  leaseGeneration: number;
+  workerId: string;
+  progress: () => AgentRuntimeProcessProgressProjection;
+}>;
+
+export type ProviderInvocationActivityHeartbeat = Readonly<{
+  stop: () => void;
+}>;
+
 /** Process-level liveness/activity only; protocol semantics remain adapter-owned. */
 export type AgentRuntimeProcessActivity = Readonly<{
   type: 'spawned' | 'stdout' | 'stderr' | AgentRuntimeProcessTermination;

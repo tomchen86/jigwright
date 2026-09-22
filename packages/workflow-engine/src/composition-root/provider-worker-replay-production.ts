@@ -13,7 +13,7 @@ import {
 } from '../runtime/storage-journal/provider-invocation-completion.ts';
 import { readProviderInvocation } from '../runtime/storage-journal/provider-invocation-state.ts';
 import { productionConsumedRoleResultReplayPort } from './grant-verifier-composition.ts';
-import type { loadInvestigationRuntimeContext } from './lifecycle-context.ts';
+import type { ProviderWorkerRepositoryContext } from '../application/provider-worker/provider-worker-execution.ts';
 import { runProviderWorkerTerminalFollowups } from './provider-worker-terminal-production.ts';
 import {
   assertTaskDiffReviewProviderOwnerCurrent,
@@ -23,7 +23,7 @@ import {
 export function admitProviderWorkerReplay(
   taskMandate: ProviderWorkerReplayTaskMandate,
   cwd: string,
-  context: ReturnType<typeof loadInvestigationRuntimeContext>,
+  context: ProviderWorkerRepositoryContext,
   requestedInvocationId: string,
   options: ProviderWorkerTerminalOptions,
 ) {

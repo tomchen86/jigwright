@@ -1356,6 +1356,11 @@
       "digest": "sha256:459a32ef4cc6e8cbf418c263d49832a8b61ada56cb57086948a7fe6b7f747c47"
     },
     {
+      "path": "src/application/provider-worker/provider-worker-execution.ts",
+      "mode": "100644",
+      "digest": "sha256:b5fa5f054c16b1f2a08e0ada7d43f0c6b65768cef6a86dc66ec01b0e78ee81e3"
+    },
+    {
       "path": "src/application/provider-worker/provider-worker-replay.ts",
       "mode": "100644",
       "digest": "sha256:3837023a7ddd23d0d225a7d521cfb65b4be3106b4ae8eeec814ee505af1c0812"
@@ -1463,7 +1468,7 @@
     {
       "path": "src/composition-root/agent-runtime-production.ts",
       "mode": "100644",
-      "digest": "sha256:34b4a03855ddf7ce9662ddc5576872e3eef7aae2c473fc8c001b3685184370e2"
+      "digest": "sha256:d6745761c6597b00f0ab09e893d3b05aee2ba96339a0b4fd57891239a54d7336"
     },
     {
       "path": "src/composition-root/agent-runtime-v1-production.ts",
@@ -1863,7 +1868,7 @@
     {
       "path": "src/composition-root/provider-worker-claim-production.ts",
       "mode": "100644",
-      "digest": "sha256:8cfa3f897bc2541747b1356b2fe49228270c2d44a3cadfb1fdeaca39cdfba2b1"
+      "digest": "sha256:0e53c6679412aab8adc8436d3d1db13a6f3bf9b51d4b2fe55cf1286712189a8a"
     },
     {
       "path": "src/composition-root/provider-worker-dispatch-production.ts",
@@ -1873,12 +1878,17 @@
     {
       "path": "src/composition-root/provider-worker-failure-production.ts",
       "mode": "100644",
-      "digest": "sha256:68292474a3156b67096880da5501a7398e25b672d44828eba90f6be1ee1ccb3d"
+      "digest": "sha256:41f4ca4b255441a894a70606f96d2ad4fd561dfd6c35d5d66bf6c91b5d01a6ec"
+    },
+    {
+      "path": "src/composition-root/provider-worker-production.ts",
+      "mode": "100644",
+      "digest": "sha256:40a05093164b1934f7de5b2ce1138c23703dd37a395d2aee89490f9fb3450d3d"
     },
     {
       "path": "src/composition-root/provider-worker-replay-production.ts",
       "mode": "100644",
-      "digest": "sha256:2ba891584df830b4907ffe0a075df774e8d90afa856033d00f7968f91806ad67"
+      "digest": "sha256:980cad4873f67d3573ae459c0b3770c4d69103d9202aaa00d221cff712d6c8f5"
     },
     {
       "path": "src/composition-root/provider-worker-terminal-production.ts",
@@ -2168,7 +2178,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:287add3fe6a52ae7c4bd6b7a6dfc684e0ff6b2900a1adb0bd8ddf141376d384e"
+      "digest": "sha256:104d1e00c13e715018aa54874607e4af877d364a4781929cf3d89203150e9e93"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -2419,6 +2429,11 @@
       "path": "src/modules/assurance/pre-merge-verification.ts",
       "mode": "100644",
       "digest": "sha256:f330d8be4658978fc8bfeefba3040e18d53a82f94767c10e35f99310e6c46914"
+    },
+    {
+      "path": "src/modules/assurance/provider-output-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:0710e03c21507bcdcfb0db9a08de51e55ffcb94851601b9661ce7de2936d7403"
     },
     {
       "path": "src/modules/assurance/provider-review-manifests.ts",
@@ -3513,7 +3528,12 @@
     {
       "path": "src/modules/provider-orchestration/agent-runtime-port.ts",
       "mode": "100644",
-      "digest": "sha256:6d54c1ddec755077336e392aa62b9648f3ec79cf7937dc3193bedad8f3bc5050"
+      "digest": "sha256:2e91b20f2539effa6783c3b65816bbc4a57c828a2ef2f42aadf43be608199e02"
+    },
+    {
+      "path": "src/modules/provider-orchestration/agent-runtime-progress-tracker.ts",
+      "mode": "100644",
+      "digest": "sha256:969b20e17aa2791dab7553bc7f1934346c4a361f5799a6c10297db19d94e52b0"
     },
     {
       "path": "src/modules/provider-orchestration/agent-runtime-protocol.ts",
@@ -3613,7 +3633,7 @@
     {
       "path": "src/modules/provider-orchestration/provider-invocation-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:8d0e126032e417c082da9d555dab20710946dbae8a51905a68accff655953e0b"
+      "digest": "sha256:d00953db2e4af182dd9f36d8c5f874f1d6267415f55d4538944704e98611b231"
     },
     {
       "path": "src/modules/provider-orchestration/provider-invocation-record.ts",
@@ -4101,11 +4121,6 @@
       "digest": "sha256:d3797feeeba6ba2fc2fa64a1ba2dfba03129a037ea6054bc1dd859185c756bdf"
     },
     {
-      "path": "src/runtime/provider-execution/agent-runtime-progress-tracker.ts",
-      "mode": "100644",
-      "digest": "sha256:c1d5d8424d5fa8a4463153a69dcff8ea2a838885391929bcd643aed2bbc52ee8"
-    },
-    {
       "path": "src/runtime/provider-execution/ai-adapter-evaluation.ts",
       "mode": "100644",
       "digest": "sha256:0256e0aea200a617cdf724de92b1890b02ecda4cd72f69df86ed0823103e292a"
@@ -4214,6 +4229,11 @@
       "path": "src/runtime/provider-execution/provider-runner.ts",
       "mode": "100644",
       "digest": "sha256:44248158284058f6a26a1e32e5f23d0a4e0d381dde7b0b17ec587ed5e23e62af"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-worker-cancellation.ts",
+      "mode": "100644",
+      "digest": "sha256:43b7b2ad0cb36fcdb425f070974bc32ff778b9145f26ce9f447ee64eceabf228"
     },
     {
       "path": "src/runtime/provider-execution/provider-worker-launcher.ts",
@@ -5228,7 +5248,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-activity.ts",
       "mode": "100644",
-      "digest": "sha256:16be6f8cb8af0f587d5d53322472c9ced153e7dfa6a3da28c31548a1016d29a9"
+      "digest": "sha256:7440e5667226d4734b8c6cfad181c7fa1d3c0bb0714af881c1138609e4324cc4"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-artifacts.ts",
@@ -5243,7 +5263,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-completion.ts",
       "mode": "100644",
-      "digest": "sha256:e3631403e620d6321a2cdbce400a39988da2b948d8368bf2fbedd8aae1506294"
+      "digest": "sha256:7cf7af5c1aabd9a94f10e9a937bd0b435a68d9579d607f4709ac17f926ff5535"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-lifecycle.ts",
@@ -5258,7 +5278,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-output-validation.ts",
       "mode": "100644",
-      "digest": "sha256:de8c97e2d934664d9d984477eee462431c71e5ade1c71d8528601cc945b6f00a"
+      "digest": "sha256:d27ab4acfe408ef30490547701bf5740fe309c5b1b5a4b2131187952b0ee8515"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-policy.ts",

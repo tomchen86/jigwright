@@ -10,7 +10,11 @@
  */
 import path from 'node:path';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import type { AgentRuntimeProcessProgressProjection } from '../../modules/provider-orchestration/agent-runtime-port.ts';
+import type {
+  AgentRuntimeProcessProgressProjection,
+  ProviderInvocationActivityHeartbeatInput,
+  ProviderInvocationActivityHeartbeat,
+} from '../../modules/provider-orchestration/agent-runtime-port.ts';
 import { assertAgentRuntimeProcessProgress } from '../../modules/provider-orchestration/provider-runtime-evidence.ts';
 import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { providerInvocationDirectory } from './provider-invocation-common.ts';
@@ -200,14 +204,9 @@ export function inspectProviderInvocationActivity(
  */
 export function startProviderInvocationActivityHeartbeat(
   paths: InvestigationRuntimePaths,
-  input: Readonly<{
-    invocationId: string;
-    leaseGeneration: number;
-    workerId: string;
-    progress: () => AgentRuntimeProcessProgressProjection;
-  }>,
+  input: ProviderInvocationActivityHeartbeatInput,
   intervalMs: number = PROVIDER_ACTIVITY_HEARTBEAT_MS,
-): Readonly<{ stop: () => void }> {
+): ProviderInvocationActivityHeartbeat {
   const publish = (): void => {
     publishProviderInvocationActivity(paths, {
       invocationId: input.invocationId,

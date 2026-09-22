@@ -8,11 +8,11 @@ Keep the presence and currentness of review evidence separate from the reviewer'
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:1aae4ec273ef729fc5bf445a0a40d6a57c39add9939d688f2ff6cb2dd3d696db -->
+<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:735f8419c3f0634200c50aaf3396de904728d9260be59d6b720bd2e3db5e4b79 -->
 
 <!-- prettier-ignore-start -->
 
-63 files changed in this module since confirmation.
+64 files changed in this module since confirmation.
 
 ## Commands
 
@@ -103,6 +103,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [planning-generation.ts](planning-generation.ts) | Creates canonical planning generations from targets, investigation evidence, and policies. | 1 | History unavailable |
 | [pre-merge-assurance.ts](pre-merge-assurance.ts) | Builds and validates pre-merge coverage, planning proofs, and integration review. | 1 | History unavailable |
 | [pre-merge-verification.ts](pre-merge-verification.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [provider-output-contract.ts](provider-output-contract.ts) | Code-owned semantic schemas and validators for provider execution and durable results. | 0 | History unavailable |
 | [provider-review-manifests.ts](provider-review-manifests.ts) | Canonical provider review manifests DTOs; field and wire semantics are unchanged. | 0 | History unavailable |
 | [required-checks.ts](required-checks.ts) | Resolves required check definitions through the existing versioned registry contract. | 0 | History unavailable |
 | [review-challenge.ts](review-challenge.ts) | Enforces review challenge closure authority and identifies targets requiring another review. | 1 | History unavailable |

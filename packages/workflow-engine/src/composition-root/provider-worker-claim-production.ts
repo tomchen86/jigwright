@@ -12,7 +12,7 @@ import {
 } from '../runtime/storage-journal/provider-invocation-workers.ts';
 import { readProposeExemptionSession } from '../runtime/storage-journal/propose-exemption-store.ts';
 import { productionConsumedRoleResultReplayPort } from './grant-verifier-composition.ts';
-import type { loadInvestigationRuntimeContext } from './lifecycle-context.ts';
+import type { ProviderWorkerRepositoryContext } from '../application/provider-worker/provider-worker-execution.ts';
 import { resolveCurrentProviderWorkerAssignment } from './provider-worker-assignment-production.ts';
 import {
   assertTaskDiffReviewProviderOwnerCurrent,
@@ -23,7 +23,7 @@ import { assertTaskStrategyImplementationProviderOwnerCurrent } from './task-str
 export function claimProviderWorker(
   taskMandate: ProviderWorkerClaimTaskMandate,
   cwd: string,
-  context: ReturnType<typeof loadInvestigationRuntimeContext>,
+  context: ProviderWorkerRepositoryContext,
   observation: ProviderWorkerClaimObservation,
   options: ProviderWorkerClaimOptions,
 ) {

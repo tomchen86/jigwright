@@ -13,6 +13,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import ts from 'typescript';
 
 import { createProviderWrapperSessionProtocolParser } from '@jigwright/agent-runtime';
 import {
@@ -124,22 +125,391 @@ test('provider-native session foundation has one explicit production composition
     'runtime/storage-journal/provider-invocation-completion.ts',
     'runtime/storage-journal/provider-runtime-authority.ts',
   ]);
-  const workerSource = fs.readFileSync(
-    path.join(sourceRoot, 'entrypoints/worker/provider-worker.ts'),
-    'utf8',
+  const source = (file: string) =>
+    fs.readFileSync(path.join(sourceRoot, file), 'utf8');
+  const applicationPath =
+    'application/provider-worker/provider-worker-execution.ts';
+  const productionPath = 'composition-root/provider-worker-production.ts';
+  const applicationSource = source(applicationPath);
+  const productionSource = source(productionPath);
+  const ast = (file: string, text: string) =>
+    ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  const compact = (node: ts.Node, tree: ts.SourceFile) =>
+    node.getText(tree).replace(/\s/g, '');
+  function descendants<T extends ts.Node>(
+    node: ts.Node,
+    predicate: (candidate: ts.Node) => candidate is T,
+  ): T[] {
+    const found: T[] = [];
+    const visit = (candidate: ts.Node) => {
+      if (predicate(candidate)) found.push(candidate);
+      candidate.forEachChild(visit);
+    };
+    visit(node);
+    return found;
+  }
+  function namedFunction(tree: ts.SourceFile, name: string) {
+    const declaration = tree.statements.find(
+      (node): node is ts.FunctionDeclaration =>
+        ts.isFunctionDeclaration(node) && node.name?.text === name,
+    );
+    assert.ok(declaration?.body);
+    return declaration;
+  }
+  function variable(block: ts.SourceFile | ts.Block, name: string) {
+    const declarations = block.statements
+      .filter(ts.isVariableStatement)
+      .flatMap((statement) => [...statement.declarationList.declarations]);
+    const declaration = declarations.find(
+      (node) => ts.isIdentifier(node.name) && node.name.text === name,
+    );
+    assert.ok(declaration?.initializer);
+    return declaration;
+  }
+  function importBinding(
+    tree: ts.SourceFile,
+    local: string,
+    imported: string,
+    owner: string,
+  ) {
+    const entries = tree.statements
+      .filter(ts.isImportDeclaration)
+      .filter(
+        (node) =>
+          ts.isStringLiteral(node.moduleSpecifier) &&
+          node.moduleSpecifier.text === owner,
+      )
+      .flatMap((node) => {
+        const bindings = node.importClause?.namedBindings;
+        return bindings && ts.isNamedImports(bindings)
+          ? [...bindings.elements]
+          : [];
+      });
+    assert.equal(
+      entries.filter(
+        (node) =>
+          node.name.text === local &&
+          (node.propertyName?.text ?? node.name.text) === imported,
+      ).length,
+      1,
+    );
+  }
+  function assertNativeWiring(executionText: string, bindingText: string) {
+    const executionAst = ast(applicationPath, executionText);
+    const bindingAst = ast(productionPath, bindingText);
+    const entryAst = ast(
+      'worker.ts',
+      source('entrypoints/worker/provider-worker.ts'),
+    );
+    const entry = entryAst.statements.filter(ts.isExportDeclaration);
+    assert.equal(entry.length, 1);
+    assert.equal(
+      entry[0]!.moduleSpecifier?.getText(entryAst),
+      "'../../composition-root/provider-worker-production.ts'",
+    );
+    const exports = entry[0]!.exportClause;
+    assert.ok(exports && ts.isNamedExports(exports));
+    assert.deepEqual(
+      exports.elements
+        .filter((node) => !node.isTypeOnly)
+        .map((node) => [node.name.text, node.propertyName?.text]),
+      [
+        ['runProviderWorkerWithMandate', undefined],
+        ['runProviderWorkerAsyncWithMandate', undefined],
+        ['runProviderWorker', undefined],
+        ['runProviderWorkerAsync', undefined],
+      ],
+    );
+    function bound(name: string) {
+      const declaration = variable(bindingAst, name);
+      assert.ok(
+        ts.isVariableStatement(declaration.parent.parent) &&
+          declaration.parent.parent.modifiers?.some(
+            (node) => node.kind === ts.SyntaxKind.ExportKeyword,
+          ),
+      );
+      const call = declaration.initializer!;
+      assert.ok(
+        ts.isCallExpression(call) &&
+          ts.isPropertyAccessExpression(call.expression),
+      );
+      assert.equal(call.expression.name.text, 'bind');
+      assert.equal(call.arguments.length, 2);
+      assert.equal(call.arguments[0]?.getText(bindingAst), 'undefined');
+      return {
+        target: call.expression.expression.getText(bindingAst),
+        dependency: call.arguments[1]!.getText(bindingAst),
+      };
+    }
+    const sync = bound('runProviderWorkerWithMandate');
+    const async = bound('runProviderWorkerAsyncWithMandate');
+    assert.equal(sync.dependency, async.dependency);
+    importBinding(
+      bindingAst,
+      sync.target,
+      'runProviderWorkerWithMandate',
+      '../application/provider-worker/provider-worker-execution.ts',
+    );
+    importBinding(
+      bindingAst,
+      async.target,
+      'runProviderWorkerAsyncWithMandate',
+      '../application/provider-worker/provider-worker-execution.ts',
+    );
+    assert.deepEqual(bound('runProviderWorker'), {
+      target: 'runProviderWorkerWithMandate',
+      dependency: 'taskMandateOperations',
+    });
+    assert.deepEqual(bound('runProviderWorkerAsync'), {
+      target: 'runProviderWorkerAsyncWithMandate',
+      dependency: 'taskMandateOperations',
+    });
+    importBinding(
+      bindingAst,
+      'taskMandateOperations',
+      'taskMandateOperations',
+      './task-mandate-production.ts',
+    );
+    const effects = variable(bindingAst, sync.dependency).initializer!;
+    assert.ok(ts.isObjectLiteralExpression(effects));
+    const runtime = effects.properties.find(
+      (property) =>
+        property.name?.getText(bindingAst) === 'productionAgentRuntime',
+    );
+    assert.ok(runtime && ts.isShorthandPropertyAssignment(runtime));
+    importBinding(
+      bindingAst,
+      runtime.name.text,
+      'productionAgentRuntime',
+      './agent-runtime-production.ts',
+    );
+    const resolution = effects.properties.find(
+      (property) => property.name?.getText(bindingAst) === 'resolveAssignment',
+    );
+    assert.ok(
+      resolution && ts.isMethodDeclaration(resolution) && resolution.body,
+    );
+    assert.equal(resolution.body.statements.length, 1);
+    const returned = resolution.body.statements[0]!;
+    assert.ok(
+      ts.isReturnStatement(returned) &&
+        returned.expression &&
+        ts.isCallExpression(returned.expression),
+    );
+    assert.equal(
+      returned.expression.expression.getText(bindingAst),
+      'resolveCurrentProviderWorkerAssignment',
+    );
+    importBinding(
+      bindingAst,
+      'resolveCurrentProviderWorkerAssignment',
+      'resolveCurrentProviderWorkerAssignment',
+      './provider-worker-assignment-production.ts',
+    );
+
+    const execution = namedFunction(
+      executionAst,
+      'runProviderWorkerWithExecution',
+    ).body!;
+    const injected = execution.statements
+      .filter(ts.isVariableStatement)
+      .flatMap((statement) => [...statement.declarationList.declarations])
+      .find(
+        (declaration) =>
+          declaration.initializer?.getText(executionAst) === 'effects',
+      );
+    assert.ok(injected && ts.isObjectBindingPattern(injected.name));
+    for (const name of ['productionAgentRuntime', 'resolveAssignment']) {
+      const binding: ts.BindingElement[] = injected.name.elements.filter(
+        (element) => element.name.getText(executionAst) === name,
+      );
+      assert.equal(binding.length, 1);
+      assert.equal(binding[0]!.propertyName, undefined);
+    }
+    const selected = variable(execution, 'agentRuntime').initializer!;
+    assert.equal(
+      compact(selected, executionAst),
+      'resolveAgentRuntime(options,productionAgentRuntime)',
+    );
+    const selector = namedFunction(executionAst, 'resolveAgentRuntime');
+    assert.equal(
+      selector.parameters.at(-1)!.name.getText(executionAst),
+      'productionAgentRuntime',
+    );
+    const fallback = selector.body!.statements.at(-1)!;
+    assert.ok(ts.isReturnStatement(fallback));
+    assert.equal(
+      fallback.expression?.getText(executionAst),
+      'productionAgentRuntime',
+    );
+    const mainTry = execution.statements.find(ts.isTryStatement);
+    assert.ok(mainTry);
+    const assignment = variable(mainTry.tryBlock, 'assignment');
+    assert.equal(
+      compact(assignment.initializer!, executionAst),
+      'resolveAssignment(context,initial,request,options)',
+    );
+    const input = variable(mainTry.tryBlock, 'runtimeInput');
+    const inputObject = input.initializer!;
+    assert.ok(ts.isObjectLiteralExpression(inputObject));
+    function conditionalFields(
+      spread: ts.ObjectLiteralElementLike | undefined,
+      condition: string,
+    ) {
+      assert.ok(spread && ts.isSpreadAssignment(spread));
+      assert.ok(ts.isParenthesizedExpression(spread.expression));
+      const branch = spread.expression.expression;
+      assert.ok(ts.isConditionalExpression(branch));
+      assert.equal(compact(branch.condition, executionAst), condition);
+      assert.ok(ts.isObjectLiteralExpression(branch.whenTrue));
+      assert.equal(branch.whenTrue.properties.length, 0);
+      assert.ok(ts.isObjectLiteralExpression(branch.whenFalse));
+      return branch.whenFalse.properties;
+    }
+    const assignmentFields = conditionalFields(
+      inputObject.properties.at(-1),
+      'assignment===null',
+    );
+    assert.equal(assignmentFields.length, 2);
+    const binding = assignmentFields[0]!;
+    assert.ok(ts.isPropertyAssignment(binding));
+    assert.equal(binding.name.getText(executionAst), 'assignmentBinding');
+    assert.equal(
+      binding.initializer.getText(executionAst),
+      'assignment.binding',
+    );
+    const turnFields = conditionalFields(
+      assignmentFields[1],
+      'assignment.nativeSessionTurn===null',
+    );
+    assert.equal(turnFields.length, 1);
+    const turn = turnFields[0]!;
+    assert.ok(ts.isPropertyAssignment(turn));
+    assert.equal(turn.name.getText(executionAst), 'nativeSessionTurn');
+    assert.equal(
+      turn.initializer.getText(executionAst),
+      'assignment.nativeSessionTurn',
+    );
+    assert.ok(assignment.end < input.pos);
+    const report = variable(mainTry.tryBlock, 'report');
+    assert.equal(
+      compact(report.initializer!, executionAst),
+      'execute(agentRuntime,runtimeInput,runtimeOptions)',
+    );
+    assert.ok(input.end < report.pos);
+    for (const [wrapper, method] of [
+      ['runProviderWorkerWithMandate', 'runSingleShot'],
+      ['runProviderWorkerAsyncWithMandate', 'runSingleShotAsync'],
+    ]) {
+      const body = namedFunction(executionAst, wrapper!).body!;
+      const result = variable(body, 'result').initializer!;
+      const call = ts.isAwaitExpression(result) ? result.expression : result;
+      assert.ok(ts.isCallExpression(call));
+      assert.equal(
+        call.expression.getText(executionAst),
+        'runProviderWorkerWithExecution',
+      );
+      assert.equal(call.arguments[0]?.getText(executionAst), 'effects');
+      const execute = call.arguments[5];
+      assert.ok(execute && ts.isArrowFunction(execute));
+      assert.deepEqual(
+        execute.parameters.map((parameter) =>
+          parameter.name.getText(executionAst),
+        ),
+        ['agentRuntime', 'input', 'runtimeOptions'],
+      );
+      let expression: ts.Node = execute.body;
+      if (ts.isBlock(expression)) {
+        assert.equal(expression.statements.length, 1);
+        const returned = expression.statements[0]!;
+        assert.ok(ts.isReturnStatement(returned) && returned.expression);
+        expression = returned.expression;
+      }
+      const runtimeCalls = descendants(expression, ts.isCallExpression).filter(
+        (node) =>
+          ts.isPropertyAccessExpression(node.expression) &&
+          node.expression.name.text === method,
+      );
+      assert.equal(runtimeCalls.length, 1);
+      const runtimeCall = runtimeCalls[0]!;
+      assert.ok(ts.isPropertyAccessExpression(runtimeCall.expression));
+      assert.equal(
+        runtimeCall.expression.expression.getText(executionAst),
+        'agentRuntime',
+      );
+      assert.equal(runtimeCall.arguments[0]?.getText(executionAst), 'input');
+      if (method === 'runSingleShot')
+        assert.equal(
+          runtimeCall.arguments[1]?.getText(executionAst),
+          'runtimeOptions',
+        );
+      else {
+        const options = runtimeCall.arguments[1];
+        assert.ok(options && ts.isObjectLiteralExpression(options));
+        assert.equal(
+          options.properties[0]?.getText(executionAst),
+          '...runtimeOptions',
+        );
+      }
+    }
+  }
+  assertNativeWiring(applicationSource, productionSource);
+  assert.throws(
+    () =>
+      assertNativeWiring(
+        applicationSource,
+        productionSource.replace(
+          '  productionAgentRuntime,',
+          '  productionAgentRuntime: fakeRuntime,',
+        ) + '\nconst unusedRuntime = { productionAgentRuntime };',
+      ),
+    assert.AssertionError,
   );
-  const runtimeSource = fs.readFileSync(
-    path.join(sourceRoot, 'composition-root/agent-runtime-production.ts'),
-    'utf8',
+  assert.throws(
+    () =>
+      assertNativeWiring(
+        applicationSource.replace(
+          'nativeSessionTurn: assignment.nativeSessionTurn',
+          'unusedTurn: assignment.nativeSessionTurn',
+        ) +
+          '\nconst unusedInput = { nativeSessionTurn: assignment.nativeSessionTurn };',
+        productionSource,
+      ),
+    assert.AssertionError,
   );
-  assert.match(
-    workerSource,
-    /nativeSessionTurn:\s*assignment\.nativeSessionTurn/u,
+  assert.throws(
+    () =>
+      assertNativeWiring(
+        applicationSource.replace(
+          'execute(agentRuntime, runtimeInput, runtimeOptions)',
+          'execute(agentRuntime, runtimeInputBase, runtimeOptions)',
+        ),
+        productionSource,
+      ),
+    assert.AssertionError,
   );
+  for (const [field, value] of [
+    ['nativeSessionTurn', 'assignment.nativeSessionTurn'],
+    ['assignmentBinding', 'assignment.binding'],
+  ] as const) {
+    assert.throws(
+      () =>
+        assertNativeWiring(
+          applicationSource.replace(
+            `${field}: ${value}`,
+            `unusedInput: { ${field}: ${value} }`,
+          ),
+          productionSource,
+        ),
+      assert.AssertionError,
+    );
+  }
+  const runtimeSource = source('composition-root/agent-runtime-production.ts');
   assert.match(
     runtimeSource,
     /runHostWrapperProviderThroughAgentRuntimeV1\(input, options\)/u,
   );
+  assert.match(runtimeSource, /input\.nativeSessionTurn === undefined/u);
 });
 
 function hostConfiguration(

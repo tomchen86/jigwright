@@ -3,9 +3,8 @@ import {
   recordProviderWorkerFailure as recordFailure,
   type ProviderWorkerFailureObservation,
 } from '../application/provider-worker/provider-failure-recording.ts';
-import type { ProviderWorkerLeaseClaim } from '../modules/provider-orchestration/provider-invocation-lifecycle.ts';
+import type { ProviderWorkerFailureTarget } from '../application/provider-worker/provider-worker-execution.ts';
 import type { ProviderInvocationRecord } from '../modules/provider-orchestration/provider-invocation-record.ts';
-import type { InvestigationRuntimePaths } from '../runtime/paths/runtime-paths.ts';
 import { extractProviderRepairFailure } from '../runtime/storage-journal/provider-repair-governance.ts';
 import {
   failProviderInvocation,
@@ -19,12 +18,7 @@ export function recordProviderWorkerFailure(
     invocationId,
     claim,
     usesWorkerFence,
-  }: Readonly<{
-    runtime: InvestigationRuntimePaths;
-    invocationId: string;
-    claim: ProviderWorkerLeaseClaim;
-    usesWorkerFence: () => boolean;
-  }>,
+  }: ProviderWorkerFailureTarget,
 ): ProviderInvocationRecord {
   return recordFailure(observation, claim, {
     extractRepairFailure: extractProviderRepairFailure,

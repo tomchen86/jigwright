@@ -30,7 +30,6 @@ import {
 import {
   type ProviderProcessOutcome,
   evaluateProviderProcess,
-  type ProviderRunnerReport,
   type ProviderInvocationRequest,
   type ProviderProcessResult,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
@@ -64,6 +63,7 @@ import type {
   ProviderInvocationFailureInput,
 } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import type {
+  ProviderInvocationCompletionInput,
   ProviderCompletionRecovery,
   ProviderCompletionCandidate,
 } from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
@@ -221,17 +221,7 @@ export function completeProviderInvocation(
 export function completeProviderInvocationFromRunner(
   paths: InvestigationRuntimePaths,
   requestedInvocationId: string,
-  input: {
-    expectedRevision: number;
-    leaseGeneration: number;
-    leaseToken: string;
-    report: ProviderRunnerReport;
-    acceptanceBinding: ProviderInvocationAcceptanceBinding;
-    runtimeProgress?: AgentRuntimeProcessProgressProjection;
-    now?: string;
-    simulateCrashAfterExecutionAcceptance?: boolean;
-    simulateCrashAfterProviderStateWriteBeforeContinuationAuthority?: boolean;
-  },
+  input: ProviderInvocationCompletionInput,
 ): ProviderInvocationRecord {
   return withProviderWorkerLifecycle(paths, (assertOwned) =>
     completeProviderInvocationFromRunnerUnderLifecycleLock(
@@ -246,7 +236,7 @@ export function completeProviderInvocationFromRunner(
 export function completeProviderInvocationFromRunnerForWorkerClaim(
   paths: InvestigationRuntimePaths,
   requestedInvocationId: string,
-  input: Parameters<typeof completeProviderInvocationFromRunner>[2] &
+  input: ProviderInvocationCompletionInput &
     Readonly<{ workerFenceToken: string }>,
 ): ProviderInvocationRecord {
   const invocationId = assertInvocationId(requestedInvocationId);
@@ -271,17 +261,7 @@ export function completeProviderInvocationFromRunnerForWorkerClaim(
 export function completeProviderInvocationFromRunnerUnderLifecycleLock(
   paths: InvestigationRuntimePaths,
   requestedInvocationId: string,
-  input: {
-    expectedRevision: number;
-    leaseGeneration: number;
-    leaseToken: string;
-    report: ProviderRunnerReport;
-    acceptanceBinding: ProviderInvocationAcceptanceBinding;
-    runtimeProgress?: AgentRuntimeProcessProgressProjection;
-    now?: string;
-    simulateCrashAfterExecutionAcceptance?: boolean;
-    simulateCrashAfterProviderStateWriteBeforeContinuationAuthority?: boolean;
-  },
+  input: ProviderInvocationCompletionInput,
   assertOwned: () => void,
 ): ProviderInvocationRecord {
   const invocationId = assertInvocationId(requestedInvocationId);

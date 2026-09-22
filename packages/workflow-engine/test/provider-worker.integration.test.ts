@@ -23,7 +23,7 @@ import {
   type ProviderWorkerOptions,
 } from '../src/entrypoints/worker/provider-worker.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { createAgentRuntimeProgressTracker } from '../src/runtime/provider-execution/agent-runtime-progress-tracker.ts';
+import { createAgentRuntimeProgressTracker } from '../src/modules/provider-orchestration/agent-runtime-progress-tracker.ts';
 import {
   inspectProviderInvocationActivity,
   startProviderInvocationActivityHeartbeat,

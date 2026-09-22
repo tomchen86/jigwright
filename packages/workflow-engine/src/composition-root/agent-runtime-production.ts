@@ -32,7 +32,7 @@ const builtInAgentRuntime: ProviderWorkerRuntimePort = {
 export const productionAgentRuntime = Object.freeze(builtInAgentRuntime);
 
 export { createAgentRuntimeHostExecutionBindingV1 } from '../modules/provider-orchestration/agent-runtime-host-execution-binding.ts';
-export { createAgentRuntimeProgressTracker } from '../runtime/provider-execution/agent-runtime-progress-tracker.ts';
+export { createAgentRuntimeProgressTracker } from '../modules/provider-orchestration/agent-runtime-progress-tracker.ts';
 export {
   providerAcceptanceGovernedRuntimeInputs,
   providerInvocationDurableGovernedRuntimeInputs,

@@ -1,7 +1,14 @@
 /** Canonical provider invocation lifecycle DTOs; field and wire semantics are unchanged. */
-import type { AgentRuntimeCompletionReceipt } from './agent-runtime-port.ts';
+import type {
+  AgentRuntimeCompletionReceipt,
+  ProviderInvocationAcceptanceBinding,
+  AgentRuntimeProcessProgressProjection,
+} from './agent-runtime-port.ts';
 import type { ProviderInvocationRecord } from './provider-invocation-record.ts';
-import type { ProviderProcessResult } from './provider-contracts.ts';
+import type {
+  ProviderProcessResult,
+  ProviderRunnerReport,
+} from './provider-contracts.ts';
 
 export type ProviderCompletionCandidate = Readonly<{
   schemaVersion: 1;
@@ -45,3 +52,16 @@ export type ProviderResidualsGeneration = Readonly<{
   generation: 'current';
   missing: readonly [];
 }>;
+
+/** Input shared by ordinary, claim-fenced and held-lock completion. */
+export type ProviderInvocationCompletionInput = {
+  expectedRevision: number;
+  leaseGeneration: number;
+  leaseToken: string;
+  report: ProviderRunnerReport;
+  acceptanceBinding: ProviderInvocationAcceptanceBinding;
+  runtimeProgress?: AgentRuntimeProcessProgressProjection;
+  now?: string;
+  simulateCrashAfterExecutionAcceptance?: boolean;
+  simulateCrashAfterProviderStateWriteBeforeContinuationAuthority?: boolean;
+};

@@ -12,11 +12,11 @@ Keep installed provider profiles on the host so repositories select roles withou
 
 Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessment and planned action, then submit the template with `jigwright job retry-request <job-id> --input retry.json --json`. The timeout may stay unchanged. See [retry behavior and single-use budget exceptions](../../../../../docs/features/PROVIDER_RETRY.md).
 
-<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:68aac1bd18f8d07b322fdca9ad2a5c9ee6a33e399455e2a5fe13720d1906a41d -->
+<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:9541bf85f55627de605abeac5a58913a8cf4a371aff3eb5ddcbfc05227aa1aaf -->
 
 <!-- prettier-ignore-start -->
 
-51 files changed in this module since confirmation.
+52 files changed in this module since confirmation.
 
 ## Commands
 
@@ -75,6 +75,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [agent-runtime-durable-authority.ts](agent-runtime-durable-authority.ts) | Validates durable assignment and native session references for AgentRuntime execution. | 1 | History unavailable |
 | [agent-runtime-host-execution-binding.ts](agent-runtime-host-execution-binding.ts) | Binds host execution phases to executable, probe, and native session evidence. | 1 | History unavailable |
 | [agent-runtime-port.ts](agent-runtime-port.ts) | Declares governed provider-worker inputs, asynchronous controls and terminal evidence. | 1 | History unavailable |
+| [agent-runtime-progress-tracker.ts](agent-runtime-progress-tracker.ts) | Tracks provider process state, stream byte counts and elapsed activity times. | 1 | History unavailable |
 | [agent-runtime-protocol.ts](agent-runtime-protocol.ts) | Validates public provider protocol receipts against engine invocation and native-session bindings. | 1 | Header changed since confirmation |
 | [blind-survey-output.ts](blind-survey-output.ts) | Defines and validates the provider output schema for an invocation-bound blind survey. | 1 | History unavailable |
 | [central-role-provider-default.ts](central-role-provider-default.ts) | Defines central provider and session partitions, selection rules, and pinned defaults. | 1 | History unavailable |
