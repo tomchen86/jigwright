@@ -10,7 +10,18 @@ import type {
   ReadOnlyProbeRequest,
 } from './execution-record-types.ts';
 import type { ProviderProcessResult } from './provider-contracts.ts';
-import type { AgentRuntimeCompletionReceipt } from './agent-runtime-port.ts';
+import type {
+  AgentRuntimeCompletionReceipt,
+  AgentRuntimeHostExecutionBindingV1,
+  AgentRuntimeProcessProgressProjection,
+  ProviderInvocationAcceptanceBinding,
+  ProviderRuntimeProtocolReceipt,
+} from './agent-runtime-port.ts';
+import type {
+  RepairKind,
+  StructuredValidationError,
+} from '../authority/execution-governance-repair.ts';
+import type { JsonValue } from '../authority/execution-governance-values.ts';
 import type { ProviderId, CapabilityPurpose } from './provider-registry.ts';
 
 export type ProviderInvocationFailure = {
@@ -20,6 +31,28 @@ export type ProviderInvocationFailure = {
   executionKind?: ExecutionFailureKind;
   retryAfterMs?: number;
   probe?: Readonly<ReadOnlyProbeRequest>;
+};
+
+export type ProviderRepairFailureInput = Readonly<{
+  repairKind: RepairKind;
+  previousOutput: JsonValue;
+  validationErrors: StructuredValidationError[];
+  targetSchema: JsonValue;
+}>;
+
+export type ProviderInvocationFailureInput = {
+  expectedRevision: number;
+  leaseGeneration: number;
+  leaseToken: string;
+  failure: ProviderInvocationFailure;
+  runtimeEvidence?: Readonly<{
+    acceptanceBinding: ProviderInvocationAcceptanceBinding;
+    progress: AgentRuntimeProcessProgressProjection;
+    protocolReceipt?: ProviderRuntimeProtocolReceipt;
+    hostExecutionBinding?: AgentRuntimeHostExecutionBindingV1;
+  }>;
+  repair?: ProviderRepairFailureInput;
+  now?: string;
 };
 
 export type ProviderInvocationLease = {

@@ -1341,6 +1341,11 @@
       "digest": "sha256:18531670d7d03c51c2d601b201c1d65deef95b557e2c7692737c66ad4b82cc47"
     },
     {
+      "path": "src/application/provider-worker/provider-failure-recording.ts",
+      "mode": "100644",
+      "digest": "sha256:5e1fb2762bc559f491e49ce9e27a49dbea0a915d0cd1018b425bab94464f2fc9"
+    },
+    {
       "path": "src/application/reconciliation/implementation-reconciliation.ts",
       "mode": "100644",
       "digest": "sha256:52569476d00b6d5d26eb300011a2fe6842c49abf90a4de9dd4ed26dccbd54b48"
@@ -1846,6 +1851,11 @@
       "digest": "sha256:4db8606b8abe1861f1f11959f6f357e5afa7e01ec8cdc96ae1bea00516d9411a"
     },
     {
+      "path": "src/composition-root/provider-worker-failure-production.ts",
+      "mode": "100644",
+      "digest": "sha256:68292474a3156b67096880da5501a7398e25b672d44828eba90f6be1ee1ccb3d"
+    },
+    {
       "path": "src/composition-root/public/central-grant.ts",
       "mode": "100644",
       "digest": "sha256:5691c58e0c29bb1164cb406066acf0d1c78d17f1aa90f2ba865b4d7cc71de585"
@@ -2128,7 +2138,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:7d4927531c87e7b37d24eb402f46169baf64a253d5d4233a1ea45c4745cfd2f4"
+      "digest": "sha256:b70b3a7b90c425627a616024931ea73c309e33a1546060dc28ac24bb40f13355"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -3566,6 +3576,11 @@
       "digest": "sha256:92fff861201de5c5824fe9840cdeb478f2b3cd7852b005d69f3c44d5f03abf66"
     },
     {
+      "path": "src/modules/provider-orchestration/provider-invocation-failure.ts",
+      "mode": "100644",
+      "digest": "sha256:d6484d76ada6e7bec86c77a306d6bae702751ca5be4987736b37c73378556379"
+    },
+    {
       "path": "src/modules/provider-orchestration/provider-invocation-lifecycle.ts",
       "mode": "100644",
       "digest": "sha256:c02cef7559cddc59b9551a1837bf7b64719e3b4e43d448c0db006c0cfc3c6c4d"
@@ -3573,7 +3588,7 @@
     {
       "path": "src/modules/provider-orchestration/provider-invocation-record.ts",
       "mode": "100644",
-      "digest": "sha256:3e98f6a9ba0496852b94b94f28f74928c9103857c3ec119dba417b90040ee70f"
+      "digest": "sha256:41e78da4b1924a67f3615fbb2f066220f914793765c39ab38e838af5d1151133"
     },
     {
       "path": "src/modules/provider-orchestration/provider-invocation-reservations.ts",
@@ -5193,7 +5208,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-completion.ts",
       "mode": "100644",
-      "digest": "sha256:10b582f323567406f59becded418ae9c117365b79016909719b553e02789fb2f"
+      "digest": "sha256:e3631403e620d6321a2cdbce400a39988da2b948d8368bf2fbedd8aae1506294"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-lifecycle.ts",
@@ -5288,7 +5303,7 @@
     {
       "path": "src/runtime/storage-journal/provider-repair-governance.ts",
       "mode": "100644",
-      "digest": "sha256:2db3e534d7c49e323038bd6ed44bb2b7acd3ad7168e538df0884a1f87bd54b41"
+      "digest": "sha256:a3d5f6b2216b53563c60c7ecd7f43ed22f678b42c963e36f35f0e9f4e38a893b"
     },
     {
       "path": "src/runtime/storage-journal/provider-retention-catalog.ts",

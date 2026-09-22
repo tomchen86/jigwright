@@ -12,11 +12,11 @@ Keep installed provider profiles on the host so repositories select roles withou
 
 Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessment and planned action, then submit the template with `jigwright job retry-request <job-id> --input retry.json --json`. The timeout may stay unchanged. See [retry behavior and single-use budget exceptions](../../../../../docs/features/PROVIDER_RETRY.md).
 
-<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:7b49d849e8dae0c6e60fb1a4c24bd69f8c524537dfefe83632f7b19ea4bf3d92 -->
+<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:ebd7df30abc4d51bb94045364148b4e523bb276faca29b3738845d179ea23939 -->
 
 <!-- prettier-ignore-start -->
 
-49 files changed in this module since confirmation.
+50 files changed in this module since confirmation.
 
 ## Commands
 
@@ -93,6 +93,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [provider-dispatch.ts](provider-dispatch.ts) | Contracts for observing dispatch admission and launching one exact worker. | 0 | History unavailable |
 | [provider-execution-budget-authority.ts](provider-execution-budget-authority.ts) | Binds a provider timeout exception to its exact request and canonical receipt. | 2 | History unavailable |
 | [provider-execution-policy-snapshot.ts](provider-execution-policy-snapshot.ts) | Canonical provider execution policy snapshot DTOs; field and wire semantics are unchanged. | 0 | History unavailable |
+| [provider-invocation-failure.ts](provider-invocation-failure.ts) | Classifies caught provider errors into durable failure and retry evidence. | 0 | History unavailable |
 | [provider-invocation-lifecycle.ts](provider-invocation-lifecycle.ts) | Canonical provider invocation lifecycle DTOs; field and wire semantics are unchanged. | 0 | History unavailable |
 | [provider-invocation-record.ts](provider-invocation-record.ts) | Defines invocation identity, lease, and failure facts consumed by execution policy. | 1 | History unavailable |
 | [provider-invocation-reservations.ts](provider-invocation-reservations.ts) | Canonical provider invocation reservations DTOs; field and wire semantics are unchanged. | 0 | History unavailable |

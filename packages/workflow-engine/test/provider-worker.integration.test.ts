@@ -184,6 +184,13 @@ test('provider worker records launch and admission failure durably', () => {
       undefined,
       'the optional projection must not rewrite synchronous legacy records',
     );
+    assert.deepEqual(readProviderInvocation(runtime, invocationId).failure, {
+      kind: 'retryable',
+      code: 'PROVIDER_UNAVAILABLE',
+      message:
+        'Provider invocation failed durably (PROVIDER_UNAVAILABLE): The selected provider is unavailable.',
+      executionKind: 'provider-capacity',
+    });
 
     const replayed = runProviderWorker(repository, invocationId, {
       runner() {
@@ -452,6 +459,13 @@ test('async provider worker records a rejected launch and partial progress recei
       lastProviderActivityElapsedMs: null,
     });
     const durable = readProviderInvocation(runtime, invocationId);
+    assert.deepEqual(durable.failure, {
+      kind: 'retryable',
+      code: 'PROVIDER_UNAVAILABLE',
+      message:
+        'Provider invocation failed durably (PROVIDER_UNAVAILABLE): The selected provider is unavailable.',
+      executionKind: 'provider-capacity',
+    });
     assert.deepEqual(failed.completionReceipt, durable.runtimeReceipt);
     assert.equal(durable.runtimeReceipt?.terminalState, 'failed');
     const replayed = await runProviderWorkerAsync(repository, invocationId, {

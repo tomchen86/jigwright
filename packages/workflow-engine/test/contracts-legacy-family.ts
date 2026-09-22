@@ -71,6 +71,8 @@ import './check-registry-port.contract.test.ts';
 import './check-execution.test.ts';
 import './provider-dispatch.test.ts';
 import './provider-worker-launcher.test.ts';
+import './provider-invocation-failure.test.ts';
+import './provider-failure-recording.test.ts';
 import './document-refresh-policy.test.ts';
 import './architecture-graph.contract.test.ts';
 import './path-role-registry.contract.test.ts';

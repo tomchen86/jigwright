@@ -57,12 +57,11 @@ import {
 } from '../session-workspace/provider-runtime-authority-paths.ts';
 import {
   withCurrentProviderPromptContext,
-  type ProviderRepairFailureInput,
   persistProviderRepairEvidence,
 } from './provider-execution-governance.ts';
 import type {
   ProviderInvocationRecord,
-  ProviderInvocationFailure,
+  ProviderInvocationFailureInput,
 } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import type {
   ProviderCompletionRecovery,
@@ -884,20 +883,7 @@ function readProviderCompletionCandidate(
 export function failProviderInvocation(
   paths: InvestigationRuntimePaths,
   requestedInvocationId: string,
-  input: {
-    expectedRevision: number;
-    leaseGeneration: number;
-    leaseToken: string;
-    failure: ProviderInvocationFailure;
-    runtimeEvidence?: Readonly<{
-      acceptanceBinding: ProviderInvocationAcceptanceBinding;
-      progress: AgentRuntimeProcessProgressProjection;
-      protocolReceipt?: ProviderRuntimeProtocolReceipt;
-      hostExecutionBinding?: AgentRuntimeHostExecutionBindingV1;
-    }>;
-    repair?: ProviderRepairFailureInput;
-    now?: string;
-  },
+  input: ProviderInvocationFailureInput,
 ): ProviderInvocationRecord {
   return withProviderWorkerLifecycle(paths, (assertOwned) =>
     failProviderInvocationUnderLifecycleLock(
@@ -932,20 +918,7 @@ export function failProviderInvocationForWorkerClaim(
 export function failProviderInvocationUnderLifecycleLock(
   paths: InvestigationRuntimePaths,
   requestedInvocationId: string,
-  input: {
-    expectedRevision: number;
-    leaseGeneration: number;
-    leaseToken: string;
-    failure: ProviderInvocationFailure;
-    runtimeEvidence?: Readonly<{
-      acceptanceBinding: ProviderInvocationAcceptanceBinding;
-      progress: AgentRuntimeProcessProgressProjection;
-      protocolReceipt?: ProviderRuntimeProtocolReceipt;
-      hostExecutionBinding?: AgentRuntimeHostExecutionBindingV1;
-    }>;
-    repair?: ProviderRepairFailureInput;
-    now?: string;
-  },
+  input: ProviderInvocationFailureInput,
   assertOwned: () => void,
 ): ProviderInvocationRecord {
   const invocationId = assertInvocationId(requestedInvocationId);

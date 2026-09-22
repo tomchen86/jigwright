@@ -17,7 +17,6 @@ import {
 } from '../../modules/provider-orchestration/execution-core.ts';
 import {
   type RepairKind,
-  type StructuredValidationError,
   buildRepairContext,
   type RepairBudget,
   consumeRepairBudget,
@@ -44,6 +43,7 @@ import type { ProviderRepairAuthorityBinding } from '../../modules/provider-orch
 import type {
   ProviderInvocationRecord,
   ProviderInvocationFailure,
+  ProviderRepairFailureInput,
 } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   providerRepairUnsafe,
@@ -57,18 +57,13 @@ import {
   isDigest,
 } from './provider-governance-values.ts';
 
+export type { ProviderRepairFailureInput } from '../../modules/provider-orchestration/provider-invocation-record.ts';
+
 const MAX_REPAIR_VALUE_BYTES = 262_144;
 
 const MAX_REPAIR_ERRORS = 64;
 
 const MAX_REPAIR_ERROR_MESSAGE_BYTES = 4_096;
-
-export type ProviderRepairFailureInput = Readonly<{
-  repairKind: RepairKind;
-  previousOutput: JsonValue;
-  validationErrors: StructuredValidationError[];
-  targetSchema: JsonValue;
-}>;
 
 export type ProviderRepairEvidence = Readonly<{
   schemaVersion: 1;

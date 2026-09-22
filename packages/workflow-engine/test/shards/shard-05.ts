@@ -78,6 +78,8 @@ import '../investigation-propose-flow.integration.test.ts';
 import '../lifecycle-domain-boundary.contract.test.ts';
 import '../projection-domain-boundary.contract.test.ts';
 import '../provider-dispatch.test.ts';
+import '../provider-failure-recording.test.ts';
+import '../provider-invocation-failure.test.ts';
 import '../provider-native-session-closure.integration.test.ts';
 import '../provider-worker-launcher.test.ts';
 import '../runtime-context-boundary.contract.test.ts';
