@@ -1,3 +1,4 @@
+import { productionTaskStrategyCorrection } from '../src/composition-root/task-strategy-correction-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
@@ -221,6 +222,7 @@ test('single-agent local adoption replays every durable publication cut without 
         () =>
           adoptCurrentTaskStrategyImplementation(
             productionChangeContract,
+            productionTaskStrategyCorrection,
             repository,
             session.sessionId,
             { testCrashAfter: phase },
@@ -234,6 +236,7 @@ test('single-agent local adoption replays every durable publication cut without 
 
       const replayed = adoptCurrentTaskStrategyImplementation(
         productionChangeContract,
+        productionTaskStrategyCorrection,
         repository,
         session.sessionId,
       );
@@ -290,6 +293,7 @@ test('single-agent reservation replay never resurrects implementation bytes reve
       () =>
         adoptCurrentTaskStrategyImplementation(
           productionChangeContract,
+          productionTaskStrategyCorrection,
           repository,
           session.sessionId,
           {
@@ -303,6 +307,7 @@ test('single-agent reservation replay never resurrects implementation bytes reve
     assert.equal(
       adoptCurrentTaskStrategyImplementation(
         productionChangeContract,
+        productionTaskStrategyCorrection,
         repository,
         session.sessionId,
       ),

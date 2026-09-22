@@ -25,6 +25,8 @@ import './finalize-authenticated-gate-recovery.integration.test.ts';
 import './task-strategy-red-revision-store.contract.test.ts';
 import './task-strategy-correction-store.contract.test.ts';
 import './task-strategy-correction-round-store.contract.test.ts';
+import './task-strategy-correction.test.ts';
+import './task-strategy-correction-boundary.test.ts';
 import './task-strategy-local-correction-round.integration.test.ts';
 import './task-strategy-caller-correction.integration.test.ts';
 import './task-strategy-store.contract.test.ts';

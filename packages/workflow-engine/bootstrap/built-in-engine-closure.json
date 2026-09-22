@@ -976,9 +976,14 @@
       "digest": "sha256:0b96e08a75e5f474dea5ca494d9fb6d495afbe6f48b32e948630a464a33f657f"
     },
     {
+      "path": "src/application/execute-task/task-strategy-correction-operations.ts",
+      "mode": "100644",
+      "digest": "sha256:7dd4269c115ea5fb7a003e6d7ce0dda9f3a404e6d29ee70fc36639caf8988290"
+    },
+    {
       "path": "src/application/execute-task/task-strategy-correction.ts",
       "mode": "100644",
-      "digest": "sha256:3fffaf9bc107b84d6f6ffa0c9cc7a60df20e4695b8d35fd19d93af2442e69f71"
+      "digest": "sha256:01f37fd88110455d0ed0cd8d170183d37c2f26dd7aef29acd9f4379bd5ffeeb0"
     },
     {
       "path": "src/application/execute-task/task-strategy-execution.ts",
@@ -1013,7 +1018,7 @@
     {
       "path": "src/application/execute-task/task-strategy-patch.ts",
       "mode": "100644",
-      "digest": "sha256:8abb14b4aa61906dc9f8d1a93f7d07837326b582e0923cc0381d9f49a2543cfa"
+      "digest": "sha256:578c0f13e9d9dcd59e3f301da07b83700593f1f308228231f1fc7a24736ec59c"
     },
     {
       "path": "src/application/execute-task/task-strategy-provider-reservations.ts",
@@ -1028,7 +1033,7 @@
     {
       "path": "src/application/execute-task/task-strategy-red-revision.ts",
       "mode": "100644",
-      "digest": "sha256:94315b900507cdaa6dc0fad810f60c60d199967972d9c5b3d478858df210620d"
+      "digest": "sha256:e906b74ede1d1c8c4d6bf19049b39a179778d747df1232d9a03908625bf62d59"
     },
     {
       "path": "src/application/execute-task/update-base.ts",
@@ -1983,7 +1988,7 @@
     {
       "path": "src/composition-root/task-diff-review-production.ts",
       "mode": "100644",
-      "digest": "sha256:b6b7e8081da77e9e76d268fe1f6594467f5369447c21edc13eccac6056f6b5c3"
+      "digest": "sha256:74d9bc3fed3d61cfd063179699d8e29708ec0da57978ee4fd87fa47224ddc94e"
     },
     {
       "path": "src/composition-root/task-mandate-production.ts",
@@ -2001,19 +2006,24 @@
       "digest": "sha256:01369c9eba9336a35bd8c3bdda19eed16e09d40f5d9cdf623da533d1d3f19a04"
     },
     {
+      "path": "src/composition-root/task-strategy-correction-production.ts",
+      "mode": "100644",
+      "digest": "sha256:3b74bc4ae1d12a83403e7b8811cdbdb7b4c99ac89beac01a3c4900c8992ecbeb"
+    },
+    {
       "path": "src/composition-root/task-strategy-gate-production.ts",
       "mode": "100644",
-      "digest": "sha256:6feea371f40f719c0d6bbde9540f35d4b2f2c6d2b1a4794171e966338ee30df1"
+      "digest": "sha256:38e721903e0f76713c03f1b3816c4d230625030812716c0169667f9ea525081d"
     },
     {
       "path": "src/composition-root/task-strategy-production.ts",
       "mode": "100644",
-      "digest": "sha256:d184ed9eaf03fe204ceee49ae5e86893faca206bfdd0f7080fbd65ef27fb5abc"
+      "digest": "sha256:ceb5bc0c0dbd696fc1b50ac003d5e9a647301ca33aa34e73f52a0664faa8f06b"
     },
     {
       "path": "src/composition-root/task-strategy-red-revision-production.ts",
       "mode": "100644",
-      "digest": "sha256:113053d65a70a9af7fd8b437af06802db9113d74c866fc46f6cd56478e585835"
+      "digest": "sha256:8dccaa47b45ea3a4020338e0936a7a84939bca5df41ca00d697b5c5b2f986736"
     },
     {
       "path": "src/composition-root/validated-contract-context.ts",

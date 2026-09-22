@@ -1,11 +1,12 @@
-import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
-import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Opens and continues durable revisions of sealed RED task evidence.
  *
  * Invariants:
  * - Only one distinct RED revision may be active for a task session.
  */
+import type { TaskStrategyCorrectionReader } from './task-strategy-correction.ts';
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import crypto from 'node:crypto';
 import path from 'node:path';
 
@@ -74,6 +75,7 @@ export type BeginTaskStrategyRedRevisionOptions = Readonly<{
 
 function reconcileRevisionOpening(
   changeContract: ChangeContractServices,
+  correction: TaskStrategyCorrectionReader,
   cwd: string,
   context: ReturnType<typeof loadInvestigationRuntimeContext>,
   initial: TaskStrategyRedRevisionJournal,
@@ -96,6 +98,7 @@ function reconcileRevisionOpening(
     const restored =
       restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock(
         changeContract,
+        correction,
         cwd,
         journal.sessionId,
         predecessor,
@@ -397,6 +400,7 @@ function revisionStateCorrupt() {
 export function createTaskStrategyRedRevisionService(
   changeContract: ChangeContractServices,
   assertCurrentImplementationReconciliation: ImplementationReconciliationGate<SessionInspection>,
+  correction: TaskStrategyCorrectionReader,
 ) {
   function beginTaskStrategyRedRevision(
     cwd: string,
@@ -421,6 +425,7 @@ export function createTaskStrategyRedRevisionService(
           return revisionResult(
             reconcileRevisionOpening(
               changeContract,
+              correction,
               cwd,
               context,
               exactJournal,
@@ -467,6 +472,7 @@ export function createTaskStrategyRedRevisionService(
         options.testAfterJournalPersist?.();
         const opened = reconcileRevisionOpening(
           changeContract,
+          correction,
           cwd,
           context,
           journal,
@@ -512,6 +518,7 @@ export function createTaskStrategyRedRevisionService(
           );
         journal = reconcileRevisionOpening(
           changeContract,
+          correction,
           cwd,
           context,
           journal,

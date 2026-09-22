@@ -1,5 +1,3 @@
-import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
-import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Validates, imports, and adopts implementation patches against sealed RED
  * evidence.
@@ -8,6 +6,8 @@ import type { ChangeContractServices } from '../../modules/lifecycle/change-rout
  * - Patch validation requires the exact current engine-sealed RED
  *   transaction.
  */
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -41,8 +41,7 @@ import {
 } from '../../runtime/storage-journal/task-strategy-store.ts';
 import {
   createCurrentTaskStrategyCorrectionSubject,
-  resolveCurrentTaskStrategyCorrection,
-  resolveCurrentTaskStrategyImplementationAuthority,
+  type TaskStrategyCorrectionReader,
 } from './task-strategy-correction.ts';
 import { readTaskStrategyGreenFailureRecord } from '../../runtime/storage-journal/task-strategy-correction-store.ts';
 import {
@@ -114,12 +113,14 @@ type SealedLocalPatchAuthority = Readonly<{
 
 export function validateTaskStrategyPatch(
   changeContract: ChangeContractServices,
+  correction: TaskStrategyCorrectionReader,
   cwd: string,
   requestedSessionId: string,
   input: CallerTaskStrategyPatchInput,
 ): TaskStrategyPatchValidation {
   return validateTaskStrategyPatchWithAuthority(
     changeContract,
+    correction,
     cwd,
     requestedSessionId,
     input,
@@ -128,12 +129,14 @@ export function validateTaskStrategyPatch(
 
 export function validateTaskStrategyProviderPatch(
   changeContract: ChangeContractServices,
+  correction: TaskStrategyCorrectionReader,
   cwd: string,
   requestedSessionId: string,
   input: ProviderTaskStrategyPatchValidationInput,
 ): TaskStrategyPatchValidation {
   return validateTaskStrategyPatchWithAuthority(
     changeContract,
+    correction,
     cwd,
     requestedSessionId,
     input,
@@ -142,12 +145,14 @@ export function validateTaskStrategyProviderPatch(
 
 export function validateTaskStrategyCallerPatch(
   changeContract: ChangeContractServices,
+  correction: TaskStrategyCorrectionReader,
   cwd: string,
   requestedSessionId: string,
   input: CallerTaskStrategyPatchValidationInput,
 ): TaskStrategyPatchValidation {
   return validateTaskStrategyPatchWithAuthority(
     changeContract,
+    correction,
     cwd,
     requestedSessionId,
     input,
@@ -156,6 +161,7 @@ export function validateTaskStrategyCallerPatch(
 
 function validateTaskStrategyPatchWithAuthority(
   changeContract: ChangeContractServices,
+  correction: TaskStrategyCorrectionReader,
   cwd: string,
   requestedSessionId: string,
   input:
@@ -193,6 +199,7 @@ function validateTaskStrategyPatchWithAuthority(
     );
   }
   const authority = resolvePatchImplementer(
+    correction,
     inspection,
     transaction,
     input,
@@ -315,6 +322,7 @@ function validateTaskStrategyPatchWithAuthority(
 
 export function importTaskStrategyPatch(
   changeContract: ChangeContractServices,
+  correction: TaskStrategyCorrectionReader,
   cwd: string,
   requestedSessionId: string,
   input: Readonly<{
@@ -327,6 +335,7 @@ export function importTaskStrategyPatch(
   return runSessionOperation(cwd, requestedSessionId, () =>
     importTaskStrategyPatchUnlocked(
       changeContract,
+      correction,
       cwd,
       requestedSessionId,
       input,
@@ -341,6 +350,7 @@ export function importTaskStrategyPatch(
  */
 export function adoptCurrentTaskStrategyImplementation(
   changeContract: ChangeContractServices,
+  correction: TaskStrategyCorrectionReader,
   cwd: string,
   requestedSessionId: string,
   options: Readonly<{ testCrashAfter?: TaskStrategyPatchCrashPhase }> = {},
@@ -392,6 +402,7 @@ export function adoptCurrentTaskStrategyImplementation(
       ]);
       const imported = importTaskStrategyPatchUnlocked(
         changeContract,
+        correction,
         cwd,
         requestedSessionId,
         {
@@ -419,6 +430,7 @@ export function adoptCurrentTaskStrategyImplementation(
  */
 export function adoptCurrentTaskStrategyCorrection(
   changeContract: ChangeContractServices,
+  correction: TaskStrategyCorrectionReader,
   cwd: string,
   requestedSessionId: string,
   options: Readonly<{ testCrashAfter?: TaskStrategyPatchCrashPhase }> = {},
@@ -437,7 +449,8 @@ export function adoptCurrentTaskStrategyCorrection(
         inspection.contract.config.runtimeDirectory,
       );
       const task = executionTask(inspection);
-      const projection = resolveCurrentTaskStrategyCorrection(inspection);
+      const projection =
+        correction.resolveCurrentTaskStrategyCorrection(inspection);
       const transaction = projection.transaction;
       const failure = projection.failure;
       if (
@@ -500,6 +513,7 @@ export function adoptCurrentTaskStrategyCorrection(
       });
       const imported = importTaskStrategyPatchUnlocked(
         changeContract,
+        correction,
         cwd,
         requestedSessionId,
         {
@@ -567,6 +581,7 @@ export function adoptCurrentTaskStrategyCorrection(
  */
 export function restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock(
   changeContract: ChangeContractServices,
+  correction: TaskStrategyCorrectionReader,
   cwd: string,
   requestedSessionId: string,
   transaction: TaskStrategyTransaction,
@@ -584,7 +599,8 @@ export function restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock(
       inspection.session.baseline.head,
       [...inspection.changedPaths],
     ).tree;
-  const projection = resolveCurrentTaskStrategyCorrection(inspection);
+  const projection =
+    correction.resolveCurrentTaskStrategyCorrection(inspection);
   if (projection.transaction.recordDigest !== transaction.recordDigest) {
     throw patchStale();
   }
@@ -679,6 +695,7 @@ export function restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock(
 
 export function importTaskStrategyProviderPatch(
   changeContract: ChangeContractServices,
+  correction: TaskStrategyCorrectionReader,
   cwd: string,
   requestedSessionId: string,
   input: ProviderTaskStrategyPatchImportInput,
@@ -686,6 +703,7 @@ export function importTaskStrategyProviderPatch(
   return runSessionOperation(cwd, requestedSessionId, () =>
     importTaskStrategyPatchUnlocked(
       changeContract,
+      correction,
       cwd,
       requestedSessionId,
       input,
@@ -695,6 +713,7 @@ export function importTaskStrategyProviderPatch(
 
 export function importTaskStrategyProviderPatchUnderLifecycleLock(
   changeContract: ChangeContractServices,
+  correction: TaskStrategyCorrectionReader,
   cwd: string,
   requestedSessionId: string,
   input: ProviderTaskStrategyPatchImportInput,
@@ -703,6 +722,7 @@ export function importTaskStrategyProviderPatchUnderLifecycleLock(
   assertOwned();
   const imported = importTaskStrategyPatchUnlocked(
     changeContract,
+    correction,
     cwd,
     requestedSessionId,
     input,
@@ -713,6 +733,7 @@ export function importTaskStrategyProviderPatchUnderLifecycleLock(
 
 export function importTaskStrategyCallerPatchUnderLifecycleLock(
   changeContract: ChangeContractServices,
+  correction: TaskStrategyCorrectionReader,
   cwd: string,
   requestedSessionId: string,
   input: CallerTaskStrategyPatchImportInput,
@@ -721,6 +742,7 @@ export function importTaskStrategyCallerPatchUnderLifecycleLock(
   assertOwned();
   const imported = importTaskStrategyPatchUnlocked(
     changeContract,
+    correction,
     cwd,
     requestedSessionId,
     input,
@@ -731,6 +753,7 @@ export function importTaskStrategyCallerPatchUnderLifecycleLock(
 
 function importTaskStrategyPatchUnlocked(
   changeContract: ChangeContractServices,
+  correction: TaskStrategyCorrectionReader,
   cwd: string,
   requestedSessionId: string,
   input: Readonly<{
@@ -757,6 +780,7 @@ function importTaskStrategyPatchUnlocked(
     inspection.session.sessionId,
   );
   const implementer = resolvePatchImplementer(
+    correction,
     inspection,
     transaction,
     input,
@@ -785,6 +809,7 @@ function importTaskStrategyPatchUnlocked(
   if (record === null) {
     const validation = validateTaskStrategyPatchWithAuthority(
       changeContract,
+      correction,
       cwd,
       requestedSessionId,
       input,
@@ -950,6 +975,7 @@ function applyPatchToWorktree(
 }
 
 function resolvePatchImplementer(
+  correction: TaskStrategyCorrectionReader,
   inspection: SessionInspection,
   transaction: ReturnType<typeof readTaskStrategyTransaction>,
   input:
@@ -992,6 +1018,7 @@ function resolvePatchImplementer(
   );
   if ('callerImplementer' in input) {
     const subject = resolveCallerImplementationSubject(
+      correction,
       inspection,
       transaction,
       input.implementationSubjectDigest,
@@ -1024,6 +1051,7 @@ function resolvePatchImplementer(
       reservation.recordDigest !== input.implementationReservationDigest ||
       reservation.subject.transactionDigest !== transaction.recordDigest ||
       !implementationSubjectSourceCurrent(
+        correction,
         inspection,
         transaction,
         reservation.subject,
@@ -1079,6 +1107,7 @@ function resolvePatchImplementer(
       binding.bindingDigest !== input.implementationResultBindingDigest ||
       reservation.subject.transactionDigest !== transaction.recordDigest ||
       !implementationSubjectSourceCurrent(
+        correction,
         inspection,
         transaction,
         reservation.subject,
@@ -1129,6 +1158,7 @@ function resolvePatchImplementer(
       binding.subjectDigest !== reservation.subjectDigest ||
       reservation.subjectDigest !== input.implementationSubjectDigest ||
       resolveCallerImplementationSubject(
+        correction,
         inspection,
         transaction,
         input.implementationSubjectDigest,
@@ -1180,14 +1210,16 @@ function resolvePatchImplementer(
 }
 
 function resolveCallerImplementationSubject(
+  correction: TaskStrategyCorrectionReader,
   inspection: SessionInspection,
   transaction: TaskStrategyTransaction,
   expectedSubjectDigest: string,
 ) {
-  const authority = resolveCurrentTaskStrategyImplementationAuthority(
-    inspection,
-    resolveCurrentTaskStrategyCorrection(inspection),
-  );
+  const authority =
+    correction.resolveCurrentTaskStrategyImplementationAuthority(
+      inspection,
+      correction.resolveCurrentTaskStrategyCorrection(inspection),
+    );
   if (
     authority.subject.transactionDigest !== transaction.recordDigest ||
     authority.subject.subjectDigest !== expectedSubjectDigest
@@ -1198,6 +1230,7 @@ function resolveCallerImplementationSubject(
 }
 
 function implementationSubjectSourceCurrent(
+  correction: TaskStrategyCorrectionReader,
   inspection: SessionInspection,
   transaction: TaskStrategyTransaction,
   subject: NonNullable<
@@ -1211,7 +1244,8 @@ function implementationSubjectSourceCurrent(
     inspection.git.gitCommonDirectory,
     inspection.contract.config.runtimeDirectory,
   );
-  const projection = resolveCurrentTaskStrategyCorrection(inspection);
+  const projection =
+    correction.resolveCurrentTaskStrategyCorrection(inspection);
   const expectedRound = subject.correction.round;
   const failure =
     projection.failure !== null &&

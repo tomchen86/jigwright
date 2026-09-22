@@ -1,5 +1,5 @@
 import { taskMandateOperations } from './task-mandate-production.ts';
-import { resolveCurrentTaskStrategyCorrection } from '../application/execute-task/task-strategy-correction.ts';
+import { resolveCurrentTaskStrategyCorrection } from './task-strategy-correction-production.ts';
 import { productionChangeContract } from './change-routing-observation-production.ts';
 import { roleResultAdmission } from './role-admission-production.ts';
 import { createTaskDiffReviewLifecycle } from '../application/finalize/task-diff-review-lifecycle.ts';

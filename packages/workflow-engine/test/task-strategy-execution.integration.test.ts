@@ -1,3 +1,4 @@
+import { productionTaskStrategyCorrection } from '../src/composition-root/task-strategy-correction-production.ts';
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
 import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
@@ -318,6 +319,7 @@ test('single-agent TDD keeps the RED gate and uses a fresh Reviewer session', ()
     fs.rmSync(path.join(repository, 'src/feature.ts'));
     importTaskStrategyPatch(
       productionChangeContract,
+      productionTaskStrategyCorrection,
       repository,
       session.sessionId,
       {

@@ -1,3 +1,4 @@
+import { productionTaskStrategyCorrection } from '../src/composition-root/task-strategy-correction-production.ts';
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
@@ -18,7 +19,7 @@ import test from 'node:test';
 
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
-import { resolveCurrentTaskStrategyCorrection } from '../src/application/execute-task/task-strategy-correction.ts';
+import { resolveCurrentTaskStrategyCorrection } from '../src/composition-root/task-strategy-correction-production.ts';
 import { listTaskStrategyCorrectionRounds } from '../src/runtime/storage-journal/task-strategy-correction-round-store.ts';
 import { adoptCurrentTaskStrategyImplementation } from '../src/application/execute-task/task-strategy-patch.ts';
 import { sealTaskStrategyRed } from '../src/application/execute-task/task-strategy-execution.ts';
@@ -60,6 +61,7 @@ test('single-agent correction reserves and authenticates one local round before 
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     const initial = adoptCurrentTaskStrategyImplementation(
       productionChangeContract,
+      productionTaskStrategyCorrection,
       repository,
       session.sessionId,
     )!;

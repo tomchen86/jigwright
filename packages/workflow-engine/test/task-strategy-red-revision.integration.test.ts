@@ -1,3 +1,4 @@
+import { productionTaskStrategyCorrection } from '../src/composition-root/task-strategy-correction-production.ts';
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
 import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
@@ -147,6 +148,7 @@ test('ordinary resume discovers every RED revision crash before current-ref publ
       assert.ok(
         adoptCurrentTaskStrategyImplementation(
           productionChangeContract,
+          productionTaskStrategyCorrection,
           repository,
           session.sessionId,
         ),
@@ -302,6 +304,7 @@ test('RED revision removes only the exact imported implementation and never acce
     assert.ok(
       adoptCurrentTaskStrategyImplementation(
         productionChangeContract,
+        productionTaskStrategyCorrection,
         repository,
         session.sessionId,
       ),
@@ -448,6 +451,7 @@ test('RED revision restores every authenticated correction head in reverse order
     assert.ok(
       adoptCurrentTaskStrategyImplementation(
         productionChangeContract,
+        productionTaskStrategyCorrection,
         repository,
         session.sessionId,
       ),
@@ -468,6 +472,7 @@ test('RED revision restores every authenticated correction head in reverse order
     assert.ok(
       adoptCurrentTaskStrategyCorrection(
         productionChangeContract,
+        productionTaskStrategyCorrection,
         repository,
         session.sessionId,
       ),

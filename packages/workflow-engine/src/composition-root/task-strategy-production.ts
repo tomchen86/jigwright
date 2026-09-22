@@ -1,3 +1,4 @@
+/** Binds task-strategy retry observations at the production boundary. */
 import type {
   TaskStrategyImplementationOperations,
   TaskStrategyImplementationJournal,
@@ -9,9 +10,10 @@ import {
 import { observeInvestigationRuntimeContext } from '../runtime/repository-observation/investigation-runtime-context.ts';
 import { inspectSession } from '../application/session-inspection/session-inspection.ts';
 import {
+  productionTaskStrategyCorrection,
   resolveCurrentTaskStrategyCorrection,
   resolveCurrentTaskStrategyImplementationAuthority,
-} from '../application/execute-task/task-strategy-correction.ts';
+} from './task-strategy-correction-production.ts';
 import {
   adoptCurrentTaskStrategyImplementation,
   adoptCurrentTaskStrategyCorrection,
@@ -85,7 +87,6 @@ import {
   beginTaskStrategyRedRevision,
   continueTaskStrategyRedRevision,
 } from './task-strategy-red-revision-production.ts';
-/** Binds task-strategy retry observations at the production boundary. */
 import { createTaskStrategyImplementationLifecycle } from '../application/execute-task/task-strategy-implementation-lifecycle.ts';
 import { roleResultAdmission } from './role-admission-production.ts';
 import { createTaskStrategyLifecycle } from '../application/execute-task/task-strategy-lifecycle.ts';
@@ -228,18 +229,22 @@ const implementationOperations: TaskStrategyImplementationOperations = {
     validateProvider: validateTaskStrategyProviderPatch.bind(
       undefined,
       productionChangeContract,
+      productionTaskStrategyCorrection,
     ),
     validateCaller: validateTaskStrategyCallerPatch.bind(
       undefined,
       productionChangeContract,
+      productionTaskStrategyCorrection,
     ),
     importProvider: importTaskStrategyProviderPatchUnderLifecycleLock.bind(
       undefined,
       productionChangeContract,
+      productionTaskStrategyCorrection,
     ),
     importCaller: importTaskStrategyCallerPatchUnderLifecycleLock.bind(
       undefined,
       productionChangeContract,
+      productionTaskStrategyCorrection,
     ),
   },
   dataPolicy: AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
@@ -290,10 +295,12 @@ const lifecycle = createTaskStrategyLifecycle({
     implementation: adoptCurrentTaskStrategyImplementation.bind(
       undefined,
       productionChangeContract,
+      productionTaskStrategyCorrection,
     ),
     correction: adoptCurrentTaskStrategyCorrection.bind(
       undefined,
       productionChangeContract,
+      productionTaskStrategyCorrection,
     ),
   },
   implementation,

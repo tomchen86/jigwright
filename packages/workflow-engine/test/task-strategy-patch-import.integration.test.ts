@@ -1,3 +1,4 @@
+import { productionTaskStrategyCorrection } from '../src/composition-root/task-strategy-correction-production.ts';
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
 import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
@@ -66,6 +67,7 @@ test('cross-agent patch validation derives one bounded implementation tree witho
       () =>
         validateTaskStrategyPatch(
           productionChangeContract,
+          productionTaskStrategyCorrection,
           repository,
           session.sessionId,
           {
@@ -78,6 +80,7 @@ test('cross-agent patch validation derives one bounded implementation tree witho
     );
     const validation = validateTaskStrategyPatch(
       productionChangeContract,
+      productionTaskStrategyCorrection,
       repository,
       session.sessionId,
       {
@@ -134,6 +137,7 @@ test('patch validation rejects frozen tests, path escape, and unsafe file modes 
       () =>
         validateTaskStrategyPatch(
           productionChangeContract,
+          productionTaskStrategyCorrection,
           repository,
           session.sessionId,
           {
@@ -156,6 +160,7 @@ test('patch validation rejects frozen tests, path escape, and unsafe file modes 
       () =>
         validateTaskStrategyPatch(
           productionChangeContract,
+          productionTaskStrategyCorrection,
           repository,
           session.sessionId,
           {
@@ -178,6 +183,7 @@ test('patch validation rejects frozen tests, path escape, and unsafe file modes 
       () =>
         validateTaskStrategyPatch(
           productionChangeContract,
+          productionTaskStrategyCorrection,
           repository,
           session.sessionId,
           {
@@ -230,6 +236,7 @@ test('single-agent patch validation permits the RED author without weakening pat
 
     const validation = validateTaskStrategyPatch(
       productionChangeContract,
+      productionTaskStrategyCorrection,
       repository,
       session.sessionId,
       {
@@ -285,6 +292,7 @@ test('single-agent patch validation rejects an actor other than the sealed RED a
       () =>
         validateTaskStrategyPatch(
           productionChangeContract,
+          productionTaskStrategyCorrection,
           repository,
           session.sessionId,
           {
@@ -340,6 +348,7 @@ test('patch import persists authority before mutation and exact replay reaches e
       () =>
         importTaskStrategyPatch(
           productionChangeContract,
+          productionTaskStrategyCorrection,
           repository,
           session.sessionId,
           {
@@ -366,6 +375,7 @@ test('patch import persists authority before mutation and exact replay reaches e
       () =>
         importTaskStrategyPatch(
           productionChangeContract,
+          productionTaskStrategyCorrection,
           repository,
           session.sessionId,
           {
@@ -396,6 +406,7 @@ test('patch import persists authority before mutation and exact replay reaches e
 
     const imported = importTaskStrategyPatch(
       productionChangeContract,
+      productionTaskStrategyCorrection,
       repository,
       session.sessionId,
       {
@@ -412,6 +423,7 @@ test('patch import persists authority before mutation and exact replay reaches e
     assert.deepEqual(
       importTaskStrategyPatch(
         productionChangeContract,
+        productionTaskStrategyCorrection,
         repository,
         session.sessionId,
         {
@@ -479,6 +491,7 @@ test('patch-applied crash reconciles the exact candidate and later drift stales 
       () =>
         importTaskStrategyPatch(
           productionChangeContract,
+          productionTaskStrategyCorrection,
           repository,
           session.sessionId,
           {
@@ -496,6 +509,7 @@ test('patch-applied crash reconciles the exact candidate and later drift stales 
     );
     const recovered = importTaskStrategyPatch(
       productionChangeContract,
+      productionTaskStrategyCorrection,
       repository,
       session.sessionId,
       {
@@ -564,6 +578,7 @@ test('a durable prepared patch reservation rejects a different patch before eith
       () =>
         importTaskStrategyPatch(
           productionChangeContract,
+          productionTaskStrategyCorrection,
           repository,
           session.sessionId,
           {
@@ -579,6 +594,7 @@ test('a durable prepared patch reservation rejects a different patch before eith
       () =>
         importTaskStrategyPatch(
           productionChangeContract,
+          productionTaskStrategyCorrection,
           repository,
           session.sessionId,
           {
@@ -628,6 +644,7 @@ test('patch replay rejects independently redigested reservation metadata', () =>
     fs.rmSync(implementationPath);
     const imported = importTaskStrategyPatch(
       productionChangeContract,
+      productionTaskStrategyCorrection,
       repository,
       session.sessionId,
       {
@@ -660,6 +677,7 @@ test('patch replay rejects independently redigested reservation metadata', () =>
       () =>
         importTaskStrategyPatch(
           productionChangeContract,
+          productionTaskStrategyCorrection,
           repository,
           session.sessionId,
           {

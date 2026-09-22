@@ -4,7 +4,7 @@ import { createTaskStrategyGateObservations } from '../runtime/repository-observ
 import {
   recordTaskStrategyGreenFailure,
   resolveCurrentTaskStrategyCorrection,
-} from '../application/execute-task/task-strategy-correction.ts';
+} from './task-strategy-correction-production.ts';
 import { assertTaskMechanicalTransformationEvidence } from '../application/finalize/task-mechanical-transform.ts';
 import { pinCheckRunner } from '../adapters/consumer/repository/work-registry/check-runner.ts';
 export const productionTaskStrategyExecutionGate =

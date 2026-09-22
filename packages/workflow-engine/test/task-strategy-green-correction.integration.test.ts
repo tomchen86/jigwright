@@ -1,3 +1,4 @@
+import { productionTaskStrategyCorrection } from '../src/composition-root/task-strategy-correction-production.ts';
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
 import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
@@ -17,7 +18,7 @@ import {
   recordTaskStrategyGreenFailure,
   readCurrentTaskStrategyGreenFailure,
   resolveCurrentTaskStrategyCorrection,
-} from '../src/application/execute-task/task-strategy-correction.ts';
+} from '../src/composition-root/task-strategy-correction-production.ts';
 import { pinCheckRunner } from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
 import type { CheckRunnerPin } from '../src/modules/source/check-command.ts';
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
@@ -62,6 +63,7 @@ test('engine GREEN failure persists one bounded correction subject for the exact
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     const imported = adoptCurrentTaskStrategyImplementation(
       productionChangeContract,
+      productionTaskStrategyCorrection,
       repository,
       session.sessionId,
     )!;
@@ -148,6 +150,7 @@ test('GREEN failure recorder reobserves runner identity before any ledger write'
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     const imported = adoptCurrentTaskStrategyImplementation(
       productionChangeContract,
+      productionTaskStrategyCorrection,
       repository,
       session.sessionId,
     )!;
@@ -340,6 +343,7 @@ test('single-agent correction resume adopts one append-only patch head and engin
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     const initial = adoptCurrentTaskStrategyImplementation(
       productionChangeContract,
+      productionTaskStrategyCorrection,
       repository,
       session.sessionId,
     )!;
@@ -431,6 +435,7 @@ test('single-agent correction exhaustion cannot be bypassed by routine resume', 
     assert.ok(
       adoptCurrentTaskStrategyImplementation(
         productionChangeContract,
+        productionTaskStrategyCorrection,
         repository,
         session.sessionId,
       ),
@@ -456,6 +461,7 @@ test('single-agent correction exhaustion cannot be bypassed by routine resume', 
       assert.ok(
         adoptCurrentTaskStrategyCorrection(
           productionChangeContract,
+          productionTaskStrategyCorrection,
           repository,
           session.sessionId,
         ),

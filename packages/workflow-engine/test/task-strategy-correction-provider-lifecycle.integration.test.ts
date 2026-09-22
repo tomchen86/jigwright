@@ -29,7 +29,7 @@ import { startSession } from '../src/application/execute-task/session.ts';
 import {
   readCurrentTaskStrategyGreenFailure,
   resolveCurrentTaskStrategyCorrection,
-} from '../src/application/execute-task/task-strategy-correction.ts';
+} from '../src/composition-root/task-strategy-correction-production.ts';
 import { readTaskStrategyCorrectionRound } from '../src/runtime/storage-journal/task-strategy-correction-round-store.ts';
 import {
   assertTaskStrategyImplementationProviderOwnerCurrent,
