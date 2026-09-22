@@ -19,11 +19,11 @@ import type {
   TaskStrategyImplementationResultBinding,
   TaskStrategyCallerImplementationReservation,
   TaskStrategyCallerImplementationBinding,
-} from './task-strategy-provider-record-contract.ts';
+} from '../../modules/assurance/task-strategy-implementation-record.ts';
 import {
   implementationResultStale,
   sha256,
-} from './task-strategy-provider-store-values.ts';
+} from '../../modules/assurance/task-strategy-implementation-values.ts';
 import type { TaskStrategyTransaction } from './task-strategy-store.ts';
 import type { RecordedRoleParticipant } from '../../modules/provider-orchestration/role-assignment.ts';
 

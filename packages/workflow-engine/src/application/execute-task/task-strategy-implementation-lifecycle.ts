@@ -105,11 +105,14 @@ import {
   taskStrategyImplementationReservationForAttempt,
   taskStrategyImplementationProviderAttemptReservationDigest,
   type TaskStrategyCallerImplementationBinding,
-  type TaskStrategyCallerImplementationReservation,
   type TaskStrategyImplementationResultBinding,
-  type TaskStrategyImplementationReservation,
-  type TaskStrategyImplementationProviderAttempt,
 } from '../../runtime/storage-journal/task-strategy-provider-store.ts';
+
+import type {
+  TaskStrategyCallerImplementationReservation,
+  TaskStrategyImplementationReservation,
+  TaskStrategyImplementationProviderAttempt,
+} from '../../modules/assurance/task-strategy-implementation-record.ts';
 
 import {
   readTaskStrategyPatchCurrentBinding,

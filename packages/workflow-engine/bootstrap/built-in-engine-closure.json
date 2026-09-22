@@ -993,7 +993,7 @@
     {
       "path": "src/application/execute-task/task-strategy-implementation-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:0e6963822491d303e16963c70422da19abadaeceef0937be9babe2666a7c6e0b"
+      "digest": "sha256:744e63912b644b30f232f34f9684a4e0b99633981373b29253c7048656f41a35"
     },
     {
       "path": "src/application/execute-task/task-strategy-lifecycle.ts",
@@ -2519,6 +2519,16 @@
       "path": "src/modules/assurance/task-strategy-gate.ts",
       "mode": "100644",
       "digest": "sha256:7b2e641c605ebc1384ba6bae93fe44688f7c098e4145f4f4718eceaf30fd66f1"
+    },
+    {
+      "path": "src/modules/assurance/task-strategy-implementation-record.ts",
+      "mode": "100644",
+      "digest": "sha256:dd98896e19e9b30cfb50c7ca0d7d8a25c00167f6ab67efb89c9cb7a4390c4f97"
+    },
+    {
+      "path": "src/modules/assurance/task-strategy-implementation-values.ts",
+      "mode": "100644",
+      "digest": "sha256:296599e0d56221d5fe65a109079b07b2fdb3a1341fa1573b4b8c144ed98befa6"
     },
     {
       "path": "src/modules/assurance/validated-change-contract.ts",
@@ -5543,27 +5553,17 @@
     {
       "path": "src/runtime/storage-journal/task-strategy-provider-attempts.ts",
       "mode": "100644",
-      "digest": "sha256:bcf0afae27cb1064a3c06f4dd62eca95fd1f4083adbce8b4e6e53bc398ccaf6d"
+      "digest": "sha256:23ada9d21284b0dd48dcbd49c608cbf1a836256de21466e71ec9eba6268639b3"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-provider-authority.ts",
       "mode": "100644",
-      "digest": "sha256:4d27ae52738e5b86b2ad47bcde9f06b620ff91e6406d51dc1b6345b95eb9a639"
-    },
-    {
-      "path": "src/runtime/storage-journal/task-strategy-provider-record-contract.ts",
-      "mode": "100644",
-      "digest": "sha256:196c2dcf840070a907d8542ede4202172b5ac5914259e9e0309196d6d4c2c931"
-    },
-    {
-      "path": "src/runtime/storage-journal/task-strategy-provider-store-values.ts",
-      "mode": "100644",
-      "digest": "sha256:296599e0d56221d5fe65a109079b07b2fdb3a1341fa1573b4b8c144ed98befa6"
+      "digest": "sha256:e66778ce584cec7b1387fb3f817fecc10eeb46e9753a22e7012dd08b66b174fa"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-provider-store.ts",
       "mode": "100644",
-      "digest": "sha256:13a1fc95caaff2003a7727587991e1c4ea4af6e23bfb8cb5757814b808a54b8f"
+      "digest": "sha256:47cc6881353fa34e2bf6f81fafc69dbea7a730e6d6b60f89153202a39bbe8721"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-red-revision-contract.ts",

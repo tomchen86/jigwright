@@ -1,11 +1,11 @@
 import type {
   TaskStrategyImplementationResultBinding,
   TaskStrategyCallerImplementationBinding,
-} from '../../modules/assurance/task-strategy-evidence.ts';
+} from './task-strategy-evidence.ts';
 export type {
   TaskStrategyImplementationResultBinding,
   TaskStrategyCallerImplementationBinding,
-} from '../../modules/assurance/task-strategy-evidence.ts';
+} from './task-strategy-evidence.ts';
 /**
  * Validates immutable provider and caller implementation reservation and result records.
  *
@@ -21,29 +21,29 @@ import {
   assertTaskStrategyImplementationManifest,
   assertTaskStrategyImplementationOutput,
   TASK_STRATEGY_IMPLEMENTATION_POLICY_DIGEST,
-} from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
+} from '../provider-orchestration/task-strategy-provider-contract.ts';
 import type {
   TaskStrategyImplementationSubject,
   TaskStrategyImplementationManifest,
-} from '../../modules/provider-orchestration/task-strategy-implementation-manifest.ts';
-import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
+} from '../provider-orchestration/task-strategy-implementation-manifest.ts';
+import type { TaskMandateBinding } from '../authority/task-mandate-contract.ts';
 import type {
   RecordedRoleParticipant,
   ProviderRoleAssignment,
   GrantedRoleAssignment,
-} from '../../modules/provider-orchestration/role-assignment.ts';
-import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+} from '../provider-orchestration/role-assignment.ts';
+import type { AdmittedRoleResult } from '../provider-orchestration/role-admission-contracts.ts';
 
 import {
   type ProviderInvocationRequest,
   isProviderRoleAssignment,
   recreateProviderInvocationRequest,
-} from '../../modules/provider-orchestration/provider-contracts.ts';
+} from '../provider-orchestration/provider-contracts.ts';
 import type {
   ProviderRetryDecisionBinding,
   ProviderRetryReservationV2,
   ProviderRetryReservationV3,
-} from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
+} from '../provider-orchestration/provider-invocation-reservations.ts';
 import path from 'node:path';
 import {
   isRecord,
@@ -57,8 +57,8 @@ import {
   withoutDigest,
   isGrantId,
   GIT_OBJECT_ID,
-} from './task-strategy-provider-store-values.ts';
-import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../../modules/authority/collaboration-grant-codec.ts';
+} from './task-strategy-implementation-values.ts';
+import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../authority/collaboration-grant-codec.ts';
 import {
   assertSessionId,
   assertInvestigationId,

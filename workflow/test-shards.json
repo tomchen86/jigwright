@@ -12,9 +12,9 @@
   },
   "sourceTelemetryRunId": "run-20260912023916307-f369e0a2-e7a4-441a-bca1-57c8300410a4",
   "sourceTelemetryDigest": "sha256:9b45f37d8baf330b4fbd88d81456c97b50767229cf3cb6646d9dcdc1fdb4661d",
-  "physicalFileCount": 537,
-  "executionUnitCount": 534,
-  "inventoryDigest": "sha256:d0c22fbd359adf8bd5041ac4dbdc6ec6a31b808ff1f142521afe6069e883e94b",
+  "physicalFileCount": 538,
+  "executionUnitCount": 535,
+  "inventoryDigest": "sha256:1d940a80eeea334ccb4d14dfe832dbc9052563707258d2fd96b57beb4b199fe4",
   "shards": [
     {
       "shardNumber": 1,
@@ -2790,6 +2790,14 @@
             "packages/workflow-engine/test/task-revision-approval-boundary.test.ts"
           ],
           "legacyOrdinal": 534,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-implementation-record.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-implementation-record.contract.test.ts"
+          ],
+          "legacyOrdinal": 535,
           "estimatedDurationMs": 0
         }
       ]

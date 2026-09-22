@@ -22,12 +22,12 @@ import type {
 import type {
   TaskStrategyImplementationReservation,
   TaskStrategyImplementationProviderAttempt,
-} from './task-strategy-provider-record-contract.ts';
+} from '../../modules/assurance/task-strategy-implementation-record.ts';
 import {
   stateCorrupt,
   deepFreeze,
   sha256,
-} from './task-strategy-provider-store-values.ts';
+} from '../../modules/assurance/task-strategy-implementation-values.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   resolveTaskStrategyImplementationInvocationOwner,

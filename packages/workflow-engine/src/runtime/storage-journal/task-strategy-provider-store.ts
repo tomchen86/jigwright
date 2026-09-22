@@ -17,12 +17,12 @@ import {
   parseTaskStrategyCallerImplementationBinding,
   type TaskStrategyCallerImplementationReservation,
   parseTaskStrategyCallerImplementationReservation,
-} from './task-strategy-provider-record-contract.ts';
+} from '../../modules/assurance/task-strategy-implementation-record.ts';
 import {
   sha256,
   assertDigest,
   stateCorrupt,
-} from './task-strategy-provider-store-values.ts';
+} from '../../modules/assurance/task-strategy-implementation-values.ts';
 import path from 'node:path';
 import {
   createPrivateCanonicalJson,
@@ -36,7 +36,7 @@ export {
   type TaskStrategyImplementationResultBinding,
   type TaskStrategyCallerImplementationBinding,
   type TaskStrategyCallerImplementationReservation,
-} from './task-strategy-provider-record-contract.ts';
+} from '../../modules/assurance/task-strategy-implementation-record.ts';
 export {
   assertTaskStrategyImplementationProviderAuthorityCurrent,
   assertTaskStrategyCallerImplementationReservationAuthorityCurrent,

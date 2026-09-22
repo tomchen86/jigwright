@@ -28,6 +28,7 @@ import './task-strategy-correction-round-store.contract.test.ts';
 import './task-strategy-local-correction-round.integration.test.ts';
 import './task-strategy-caller-correction.integration.test.ts';
 import './task-strategy-store.contract.test.ts';
+import './task-strategy-implementation-record.contract.test.ts';
 import './task-diff-review.contract.test.ts';
 import './task-diff-review-artifact.contract.test.ts';
 import './task-diff-review-external-input.contract.test.ts';

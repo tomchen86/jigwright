@@ -8,11 +8,11 @@ Keep the presence and currentness of review evidence separate from the reviewer'
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:735f8419c3f0634200c50aaf3396de904728d9260be59d6b720bd2e3db5e4b79 -->
+<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:f39db46a95764338b3f21e70f45b94816823049e22784e0d70e19f83cabe7d56 -->
 
 <!-- prettier-ignore-start -->
 
-64 files changed in this module since confirmation.
+66 files changed in this module since confirmation.
 
 ## Commands
 
@@ -121,6 +121,8 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [task-execution-evidence.ts](task-execution-evidence.ts) | Pure admission rules and facts for task execution generation evidence. | 0 | History unavailable |
 | [task-strategy-evidence.ts](task-strategy-evidence.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [task-strategy-gate.ts](task-strategy-gate.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [task-strategy-implementation-record.ts](task-strategy-implementation-record.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [task-strategy-implementation-values.ts](task-strategy-implementation-values.ts) | Defines canonical task implementation value checks, digests, and store errors. | 2 | History unavailable |
 | [validated-change-contract.ts](validated-change-contract.ts) | Admitted change facts shared by planning, execution and report validation. | 0 | History unavailable |
 
 <!-- prettier-ignore-end -->

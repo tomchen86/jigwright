@@ -165,6 +165,8 @@ test('strategy rules and canonical failure parsers have a pure transitive value/
   const src = fileURLToPath(new URL('../src/', import.meta.url));
   for (const relative of [
     'modules/assurance/task-strategy-gate.ts',
+    'modules/assurance/task-strategy-implementation-record.ts',
+    'modules/assurance/task-strategy-implementation-values.ts',
     'modules/provider-orchestration/task-strategy-provider-contract.ts',
   ])
     assertPureDependencyClosure(path.join(src, relative));
