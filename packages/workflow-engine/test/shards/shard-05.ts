@@ -85,6 +85,7 @@ import '../provider-terminal-followups.test.ts';
 import '../provider-worker-claim.test.ts';
 import '../provider-worker-launcher.test.ts';
 import '../provider-worker-maintenance.integration.test.ts';
+import '../provider-worker-replay.test.ts';
 import '../runtime-context-boundary.contract.test.ts';
 import '../system-document-composition-boundary.contract.test.ts';
 import '../task-mandate-boundary.test.ts';

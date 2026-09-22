@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { parseAiAdapterPolicyDocument } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
@@ -641,187 +642,278 @@ describe('production host-wrapper artifacts remain an exact provider lifecycle c
     }
   });
 
-  test('repairs the exact completion crash window before continuation replay', async () => {
-    const fixture = await createLeasedNativeFixture();
-    const {
-      invocationId,
-      changeId,
-      runtime,
-      invocationDirectory,
-      claim,
-      acceptanceBinding,
-      assignment,
-      nativeClaim,
-      nativeCompletion,
-      report,
-      cleanup,
-    } = { ...fixture, ...nativeArtifactAssertions(fixture) };
-    try {
-      const protocolReceipt = report.wrapperProtocolReceipt;
-      if (
-        protocolReceipt?.kind !== 'provider-wrapper-session-protocol-receipt'
-      ) {
-        assert.fail('host-wrapper report omitted its session protocol receipt');
-      }
-      assert.throws(
-        () =>
-          completeProviderInvocationFromRunner(runtime, invocationId, {
-            expectedRevision: claim.record.revision,
-            leaseGeneration: claim.record.leaseGeneration,
-            leaseToken: claim.leaseToken,
-            report,
-            acceptanceBinding,
-            runtimeProgress: {
-              schemaVersion: 1,
-              kind: 'agent-runtime-process-progress',
-              processState: 'exited',
-              eventCount: 1,
-              stdoutBytes: protocolReceipt.aggregateBytes,
-              stderrBytes: 0,
-              lastProcessActivityElapsedMs: report.elapsedMs,
-              lastProviderActivityElapsedMs: report.elapsedMs,
-            },
-            now: '2026-08-31T00:00:02.000Z',
-            simulateCrashAfterProviderStateWriteBeforeContinuationAuthority: true,
-          }),
-        (error: unknown) =>
-          error instanceof WorkflowError &&
-          error.code === 'PROVIDER_CONTINUATION_AUTHORITY_SIMULATED_CRASH',
-      );
-      const statePath = path.join(invocationDirectory, 'state.json');
-      const publishedNativeClaim =
-        nativeClaim as unknown as ProviderNativeSessionClaimV1;
-      const publishedNativeCompletion =
-        nativeCompletion as unknown as ProviderNativeSessionCompletionV1;
-      assert.ok(publishedNativeClaim);
-      assert.ok(publishedNativeCompletion);
-      const nativePaths = providerNativeSessionStorePathsV1(runtime);
-      const continuationAuthorityPath =
-        providerNativeSessionContinuationAuthorityObjectPathV1(
-          nativePaths,
-          publishedNativeCompletion.completionDigest,
-        );
-      assert.equal(fs.existsSync(continuationAuthorityPath), false);
-      assert.equal(
-        readProviderNativeSessionChainV1(
+  for (const recoveryRoute of ['journal', 'worker'] as const) {
+    test(
+      recoveryRoute === 'journal'
+        ? 'repairs the exact completion crash window before continuation replay'
+        : 'public worker repairs the exact completion crash window before continuation replay',
+      async () => {
+        const fixture = await createLeasedNativeFixture();
+        const {
+          invocationId,
+          changeId,
           runtime,
-          assignment.record.changeId,
-          assignment.record.planningGeneration,
-          assignment.record.recordDigest,
-          assignment.slot.sessionSlotId,
-          (candidate) => candidate,
-          (candidate) => candidate,
-          (candidate) => candidate,
-          (candidate) => candidate,
-          (candidate) => candidate,
-          (candidate) => candidate,
-          (candidate) => candidate,
-        ).state,
-        'continuation-pending',
-      );
-      const refusedResume = {
-        changeId: assignment.record.changeId,
-        planningGeneration: assignment.record.planningGeneration,
-        assignmentRecordDigest: assignment.record.recordDigest,
-        sessionSlotId: assignment.slot.sessionSlotId,
-        predecessorCompletionDigest: publishedNativeCompletion.completionDigest,
-        invocationId: 'invocation-host-wrapper-lifecycle-refused-resume',
-        requestDigest: 'c'.repeat(64),
-        attemptId: 'attempt-host-wrapper-lifecycle-refused-resume',
-      };
-      const stateBeforeRefusedResume = fs.readFileSync(statePath);
-      assert.throws(
-        () =>
-          claimProviderNativeSessionTurnV1(
+          invocationDirectory,
+          claim,
+          acceptanceBinding,
+          assignment,
+          nativeClaim,
+          nativeCompletion,
+          report,
+          cleanup,
+        } = { ...fixture, ...nativeArtifactAssertions(fixture) };
+        try {
+          const protocolReceipt = report.wrapperProtocolReceipt;
+          if (
+            protocolReceipt?.kind !==
+            'provider-wrapper-session-protocol-receipt'
+          ) {
+            assert.fail(
+              'host-wrapper report omitted its session protocol receipt',
+            );
+          }
+          assert.throws(
+            () =>
+              completeProviderInvocationFromRunner(runtime, invocationId, {
+                expectedRevision: claim.record.revision,
+                leaseGeneration: claim.record.leaseGeneration,
+                leaseToken: claim.leaseToken,
+                report,
+                acceptanceBinding,
+                runtimeProgress: {
+                  schemaVersion: 1,
+                  kind: 'agent-runtime-process-progress',
+                  processState: 'exited',
+                  eventCount: 1,
+                  stdoutBytes: protocolReceipt.aggregateBytes,
+                  stderrBytes: 0,
+                  lastProcessActivityElapsedMs: report.elapsedMs,
+                  lastProviderActivityElapsedMs: report.elapsedMs,
+                },
+                now: '2026-08-31T00:00:02.000Z',
+                simulateCrashAfterProviderStateWriteBeforeContinuationAuthority: true,
+              }),
+            (error: unknown) =>
+              error instanceof WorkflowError &&
+              error.code === 'PROVIDER_CONTINUATION_AUTHORITY_SIMULATED_CRASH',
+          );
+          const statePath = path.join(invocationDirectory, 'state.json');
+          const publishedNativeClaim =
+            nativeClaim as unknown as ProviderNativeSessionClaimV1;
+          const publishedNativeCompletion =
+            nativeCompletion as unknown as ProviderNativeSessionCompletionV1;
+          assert.ok(publishedNativeClaim);
+          assert.ok(publishedNativeCompletion);
+          const nativePaths = providerNativeSessionStorePathsV1(runtime);
+          const continuationAuthorityPath =
+            providerNativeSessionContinuationAuthorityObjectPathV1(
+              nativePaths,
+              publishedNativeCompletion.completionDigest,
+            );
+          assert.equal(fs.existsSync(continuationAuthorityPath), false);
+          assert.equal(
+            readProviderNativeSessionChainV1(
+              runtime,
+              assignment.record.changeId,
+              assignment.record.planningGeneration,
+              assignment.record.recordDigest,
+              assignment.slot.sessionSlotId,
+              (candidate) => candidate,
+              (candidate) => candidate,
+              (candidate) => candidate,
+              (candidate) => candidate,
+              (candidate) => candidate,
+              (candidate) => candidate,
+              (candidate) => candidate,
+            ).state,
+            'continuation-pending',
+          );
+          const refusedResume = {
+            changeId: assignment.record.changeId,
+            planningGeneration: assignment.record.planningGeneration,
+            assignmentRecordDigest: assignment.record.recordDigest,
+            sessionSlotId: assignment.slot.sessionSlotId,
+            predecessorCompletionDigest:
+              publishedNativeCompletion.completionDigest,
+            invocationId: 'invocation-host-wrapper-lifecycle-refused-resume',
+            requestDigest: 'c'.repeat(64),
+            attemptId: 'attempt-host-wrapper-lifecycle-refused-resume',
+          };
+          const stateBeforeRefusedResume = fs.readFileSync(statePath);
+          assert.throws(
+            () =>
+              claimProviderNativeSessionTurnV1(
+                runtime,
+                refusedResume,
+                (candidate) => candidate,
+                (candidate) => candidate,
+                (candidate) => candidate,
+                (candidate) => candidate,
+                (candidate) => candidate,
+                (candidate) => candidate,
+                (candidate) => candidate,
+              ),
+            (error: unknown) =>
+              error instanceof WorkflowError &&
+              error.code ===
+                'PROVIDER_NATIVE_SESSION_CONTINUATION_NOT_AUTHORIZED',
+          );
+          assert.deepEqual(
+            fs.readFileSync(statePath),
+            stateBeforeRefusedResume,
+          );
+          assert.throws(
+            () => readProviderInvocation(runtime, invocationId),
+            (error: unknown) =>
+              error instanceof WorkflowError &&
+              error.code === 'PROVIDER_INVOCATION_STORE_UNSAFE',
+          );
+          assert.throws(
+            () =>
+              readProviderInvocationLifecycleProjection(runtime, invocationId),
+            (error: unknown) =>
+              error instanceof WorkflowError &&
+              error.code === 'HUMAN_RESOLUTION_PROVIDER_STATE_UNSAFE',
+          );
+          if (recoveryRoute === 'journal') {
+            const recovered = recoverProviderInvocationCompletion(
+              runtime,
+              invocationId,
+              { expectedRevision: claim.record.revision },
+            );
+            assert.equal(recovered.repaired, true);
+            assert.equal(recovered.record.state, 'succeeded');
+          } else {
+            // Repair through the public worker before any direct journal repair.
+            const acceptedBefore = readExecutionJobState(
+              runtime,
+              acceptanceBinding.executionJobId,
+            );
+            assert.ok(acceptedBefore?.job.acceptedAttemptId);
+            const authorityPaths = [
+              providerNativeSessionClaimObjectPathV1(
+                nativePaths,
+                publishedNativeClaim.claimDigest,
+              ),
+              providerNativeSessionCompletionObjectPathV1(
+                nativePaths,
+                publishedNativeCompletion.completionDigest,
+              ),
+              providerExecutionAdmissionAuthorityPath(
+                runtime,
+                acceptanceBinding,
+              ),
+            ];
+            const authorityBefore = authorityPaths.map((file) =>
+              fs.readFileSync(file),
+            );
+            const fencePath = path.join(
+              runtime.locks,
+              `${invocationId}.worker-active`,
+            );
+            assert.equal(fs.existsSync(fencePath), false);
+            let launches = 0;
+            const result = runProviderWorker(fixture.repository, invocationId, {
+              runner() {
+                launches++;
+                throw new Error('native recovery must not execute a provider');
+              },
+            });
+            assert.equal(result.state, 'succeeded', JSON.stringify(result));
+            assert.equal(result.launched, false);
+            assert.equal(launches, 0);
+            const durable = readProviderInvocation(runtime, invocationId);
+            const pending = JSON.parse(
+              stateBeforeRefusedResume.toString('utf8'),
+            ) as typeof durable;
+            assert.deepEqual(durable, pending);
+            assert.deepEqual(durable.runtimeReceipt, pending.runtimeReceipt);
+            assert.ok(durable.runtimeReceipt);
+            assert.equal(durable.leaseGeneration, claim.record.leaseGeneration);
+            assert.equal(result.revision, durable.revision);
+            assert.deepEqual(
+              fs.readFileSync(statePath),
+              stateBeforeRefusedResume,
+            );
+            assert.deepEqual(
+              readExecutionJobState(runtime, acceptanceBinding.executionJobId),
+              acceptedBefore,
+            );
+            assert.equal(fs.existsSync(continuationAuthorityPath), true);
+            assert.equal(fs.existsSync(fencePath), false);
+            assert.deepEqual(
+              authorityPaths.map((file) => fs.readFileSync(file)),
+              authorityBefore,
+            );
+            const idempotent = recoverProviderInvocationCompletion(
+              runtime,
+              invocationId,
+              {
+                expectedRevision: claim.record.revision,
+              },
+            );
+            assert.equal(idempotent.repaired, false);
+            assert.deepEqual(idempotent.record, durable);
+            assert.notEqual(idempotent.candidateDigest, null);
+          }
+          const firstContinuationBytes = fs.readFileSync(
+            continuationAuthorityPath,
+            'utf8',
+          );
+          const publishInput = {
+            changeId: assignment.record.changeId,
+            planningGeneration: assignment.record.planningGeneration,
+            assignmentRecordDigest: assignment.record.recordDigest,
+            sessionSlotId: assignment.slot.sessionSlotId,
+            completionDigest: publishedNativeCompletion.completionDigest,
+          };
+          const firstReplay =
+            publishProviderNativeSessionContinuationAuthorityV1(
+              runtime,
+              publishInput,
+            );
+          const secondReplay =
+            publishProviderNativeSessionContinuationAuthorityV1(
+              runtime,
+              publishInput,
+            );
+          assert.deepEqual(secondReplay, firstReplay);
+          assert.equal(
+            fs.readFileSync(continuationAuthorityPath, 'utf8'),
+            firstContinuationBytes,
+          );
+          const terminalState = JSON.parse(
+            fs.readFileSync(statePath, 'utf8'),
+          ) as Record<string, unknown>;
+          const currentExecution = readExecutionJobState(
             runtime,
-            refusedResume,
-            (candidate) => candidate,
-            (candidate) => candidate,
-            (candidate) => candidate,
-            (candidate) => candidate,
-            (candidate) => candidate,
-            (candidate) => candidate,
-            (candidate) => candidate,
-          ),
-        (error: unknown) =>
-          error instanceof WorkflowError &&
-          error.code === 'PROVIDER_NATIVE_SESSION_CONTINUATION_NOT_AUTHORIZED',
-      );
-      assert.deepEqual(fs.readFileSync(statePath), stateBeforeRefusedResume);
-      assert.throws(
-        () => readProviderInvocation(runtime, invocationId),
-        (error: unknown) =>
-          error instanceof WorkflowError &&
-          error.code === 'PROVIDER_INVOCATION_STORE_UNSAFE',
-      );
-      assert.throws(
-        () => readProviderInvocationLifecycleProjection(runtime, invocationId),
-        (error: unknown) =>
-          error instanceof WorkflowError &&
-          error.code === 'HUMAN_RESOLUTION_PROVIDER_STATE_UNSAFE',
-      );
-      const recovered = recoverProviderInvocationCompletion(
-        runtime,
-        invocationId,
-        { expectedRevision: claim.record.revision },
-      );
-      assert.equal(recovered.repaired, true);
-      assert.equal(recovered.record.state, 'succeeded');
-      const firstContinuationBytes = fs.readFileSync(
-        continuationAuthorityPath,
-        'utf8',
-      );
-      const publishInput = {
-        changeId: assignment.record.changeId,
-        planningGeneration: assignment.record.planningGeneration,
-        assignmentRecordDigest: assignment.record.recordDigest,
-        sessionSlotId: assignment.slot.sessionSlotId,
-        completionDigest: publishedNativeCompletion.completionDigest,
-      };
-      const firstReplay = publishProviderNativeSessionContinuationAuthorityV1(
-        runtime,
-        publishInput,
-      );
-      const secondReplay = publishProviderNativeSessionContinuationAuthorityV1(
-        runtime,
-        publishInput,
-      );
-      assert.deepEqual(secondReplay, firstReplay);
-      assert.equal(
-        fs.readFileSync(continuationAuthorityPath, 'utf8'),
-        firstContinuationBytes,
-      );
-      const terminalState = JSON.parse(
-        fs.readFileSync(statePath, 'utf8'),
-      ) as Record<string, unknown>;
-      const currentExecution = readExecutionJobState(
-        runtime,
-        acceptanceBinding.executionJobId,
-      );
-      assert.ok(currentExecution);
-      assert.notEqual(
-        sha256(canonicalJson(currentExecution)),
-        acceptanceBinding.executionStateDigest,
-        'terminal acceptance mutates the live Job after immutable admission',
-      );
-      const admissionAuthorityPath = providerExecutionAdmissionAuthorityPath(
-        runtime,
-        acceptanceBinding,
-      );
-      const admissionAuthorityBytes = fs.readFileSync(
-        admissionAuthorityPath,
-        'utf8',
-      );
-      assert.equal(
-        readProviderInvocationLifecycleProjection(runtime, invocationId).state,
-        'succeeded',
-        'terminal host-wrapper output is bound to its exact profile, executable, session action, and receipt',
-      );
-      const terminalStateBytes = fs.readFileSync(statePath, 'utf8');
-    } finally {
-      cleanup();
-    }
-  });
+            acceptanceBinding.executionJobId,
+          );
+          assert.ok(currentExecution);
+          assert.notEqual(
+            sha256(canonicalJson(currentExecution)),
+            acceptanceBinding.executionStateDigest,
+            'terminal acceptance mutates the live Job after immutable admission',
+          );
+          const admissionAuthorityPath =
+            providerExecutionAdmissionAuthorityPath(runtime, acceptanceBinding);
+          const admissionAuthorityBytes = fs.readFileSync(
+            admissionAuthorityPath,
+            'utf8',
+          );
+          assert.equal(
+            readProviderInvocationLifecycleProjection(runtime, invocationId)
+              .state,
+            'succeeded',
+            'terminal host-wrapper output is bound to its exact profile, executable, session action, and receipt',
+          );
+          const terminalStateBytes = fs.readFileSync(statePath, 'utf8');
+        } finally {
+          cleanup();
+        }
+      },
+    );
+  }
 
   test('rejects poisoned terminal authority and receipt artifacts without rewriting them', async () => {
     const fixture = await createRecoveredNativeFixture();

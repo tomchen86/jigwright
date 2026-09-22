@@ -76,6 +76,7 @@ import './provider-failure-recording.test.ts';
 import './provider-terminal-followups.test.ts';
 import './provider-worker-maintenance.integration.test.ts';
 import './provider-worker-claim.test.ts';
+import './provider-worker-replay.test.ts';
 import './document-refresh-policy.test.ts';
 import './architecture-graph.contract.test.ts';
 import './path-role-registry.contract.test.ts';

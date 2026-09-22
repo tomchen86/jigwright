@@ -1356,6 +1356,11 @@
       "digest": "sha256:459a32ef4cc6e8cbf418c263d49832a8b61ada56cb57086948a7fe6b7f747c47"
     },
     {
+      "path": "src/application/provider-worker/provider-worker-replay.ts",
+      "mode": "100644",
+      "digest": "sha256:3837023a7ddd23d0d225a7d521cfb65b4be3106b4ae8eeec814ee505af1c0812"
+    },
+    {
       "path": "src/application/reconciliation/implementation-reconciliation.ts",
       "mode": "100644",
       "digest": "sha256:52569476d00b6d5d26eb300011a2fe6842c49abf90a4de9dd4ed26dccbd54b48"
@@ -1871,6 +1876,11 @@
       "digest": "sha256:68292474a3156b67096880da5501a7398e25b672d44828eba90f6be1ee1ccb3d"
     },
     {
+      "path": "src/composition-root/provider-worker-replay-production.ts",
+      "mode": "100644",
+      "digest": "sha256:2ba891584df830b4907ffe0a075df774e8d90afa856033d00f7968f91806ad67"
+    },
+    {
       "path": "src/composition-root/provider-worker-terminal-production.ts",
       "mode": "100644",
       "digest": "sha256:da5b7b1db1393bf69b7211db72ff7d29538a1e83cb8c0c75139d385568a11bd7"
@@ -2158,7 +2168,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:09f48609f4d7e5643cdae74e7fadf979c2355efdd0b422be8880f01f9153fc3b"
+      "digest": "sha256:287add3fe6a52ae7c4bd6b7a6dfc684e0ff6b2900a1adb0bd8ddf141376d384e"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",

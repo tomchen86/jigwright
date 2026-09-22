@@ -36,6 +36,7 @@ import {
   readProviderInvocationRequest,
   readProviderInvocationManifest,
   claimProviderInvocationForWorker,
+  providerCompletionCandidateExists,
   prepareProviderInvocationAcceptanceBinding,
   completeProviderInvocationFromRunner,
   releaseProviderInvocationWorkerFence,
@@ -204,6 +205,85 @@ test('provider worker records launch and admission failure durably', () => {
     assert.equal(replayed.launched, false);
     assert.equal(launches, 1);
   } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('provider worker replays a live leased invocation without a candidate or fence changes', () => {
+  const repository = createFixtureRepository();
+  const changeId = 'worker-live-leased-replay';
+  let releaseOwnedFence: (() => void) | undefined;
+  try {
+    git(repository, ['checkout', '-b', `work/${changeId}`]);
+    const started = startPropose(repository, changeId, intent(), {
+      explicitActor: 'codex',
+      environment: {},
+    });
+    const invocationId = started.investigation!.providerInvocationId;
+    const runtime = investigationRuntimePaths(
+      discoverRepository(repository).gitCommonDirectory,
+      'workflow-engine',
+    );
+    const request = readProviderInvocationRequest(runtime, invocationId);
+    const claim = claimProviderInvocationForWorker(runtime, invocationId, {
+      workerId: 'worker-live-leased-owner',
+      leaseDurationMs: request.limits.timeoutMs,
+    });
+    const fencePath = path.join(runtime.locks, `${invocationId}.worker-active`);
+    releaseOwnedFence = () => {
+      releaseProviderInvocationWorkerFence(
+        runtime,
+        invocationId,
+        claim.workerFenceToken,
+      );
+      assert.equal(fs.existsSync(fencePath), false);
+    };
+    assert.equal(
+      providerCompletionCandidateExists(runtime, invocationId),
+      false,
+    );
+    const before = readProviderInvocation(runtime, invocationId);
+    assert.equal(before.state, 'leased');
+    const statePath = path.join(
+      runtime.invocations,
+      invocationId,
+      'state.json',
+    );
+    const stateBytes = fs.readFileSync(statePath);
+    const fenceBytes = fs.readFileSync(fencePath);
+    assert.equal(
+      (JSON.parse(fenceBytes.toString('utf8')) as { ownerToken: string })
+        .ownerToken,
+      claim.workerFenceToken,
+    );
+    let launches = 0;
+    let maintenanceCalls = 0;
+    const replay = runProviderWorker(repository, invocationId, {
+      runner() {
+        launches++;
+        throw new Error('leased replay must not execute a provider');
+      },
+      retentionMaintenance() {
+        maintenanceCalls++;
+        throw new Error('leased replay must not run terminal maintenance');
+      },
+    });
+    assert.deepEqual(replay, {
+      schemaVersion: 1,
+      kind: 'provider-worker-result',
+      invocationId,
+      state: 'leased',
+      revision: before.revision,
+      launched: false,
+      failure: before.failure,
+    });
+    assert.equal(launches, 0);
+    assert.equal(maintenanceCalls, 0);
+    assert.deepEqual(readProviderInvocation(runtime, invocationId), before);
+    assert.deepEqual(fs.readFileSync(statePath), stateBytes);
+    assert.deepEqual(fs.readFileSync(fencePath), fenceBytes);
+  } finally {
+    releaseOwnedFence?.();
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
