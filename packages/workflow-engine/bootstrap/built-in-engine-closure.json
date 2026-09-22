@@ -2103,7 +2103,7 @@
     {
       "path": "src/entrypoints/cli/workflow-cli.ts",
       "mode": "100644",
-      "digest": "sha256:79374b29cfed9f62bf3db2bd5d42e5a6c9aa6a9faac3362da0b6def677c9db47"
+      "digest": "sha256:492fb4c02c45b0b50fd170ae86b32396b95f66a67754d7bf7f9abc40ed2c8c70"
     },
     {
       "path": "src/entrypoints/worker/provider-worker.ts",

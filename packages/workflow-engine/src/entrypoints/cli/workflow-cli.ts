@@ -9,13 +9,8 @@ import { dispatchArchivePullRequest as dispatchArchivePullRequestWithDependencie
 import { createTaskLifecycleCommands } from './task-lifecycle-cli.ts';
 import { createFailGrantCli } from './fail-grant-cli.ts';
 import { createSystemDocumentFailGrantCli } from './system-document-fail-grant-cli.ts';
-import { productionChangeRoutingInspector } from '../../composition-root/change-routing-observation-production.ts';
-import { loadChangeContract as productionChangeContractReader } from '../../composition-root/consumer-contract-production.ts';
-const validateHandoff = validateHandoffWithContractReader.bind(
-  undefined,
-  productionChangeRoutingInspector,
-  productionChangeContractReader,
-);
+import { handoffDocuments } from '../../composition-root/handoff-production.ts';
+const { validateHandoff } = handoffDocuments;
 /**
  * Dispatches workflow commands and renders synchronous or asynchronous CLI
  * results.
@@ -69,7 +64,6 @@ import {
   discoverRepository,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
-import { validateHandoff as validateHandoffWithContractReader } from '../../adapters/consumer/repository/handoff/handoff.ts';
 import { runRepositoryHook } from '../../composition-root/repository-hooks-production.ts';
 
 import { dispatchGovernanceIntakeCommand } from './governance-intake-cli.ts';
