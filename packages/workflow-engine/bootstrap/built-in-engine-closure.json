@@ -1346,6 +1346,11 @@
       "digest": "sha256:5e1fb2762bc559f491e49ce9e27a49dbea0a915d0cd1018b425bab94464f2fc9"
     },
     {
+      "path": "src/application/provider-worker/provider-terminal-followups.ts",
+      "mode": "100644",
+      "digest": "sha256:317564334867e8f896cd050b72d6b91fe3839322b8b692898bb57d35c4387698"
+    },
+    {
       "path": "src/application/reconciliation/implementation-reconciliation.ts",
       "mode": "100644",
       "digest": "sha256:52569476d00b6d5d26eb300011a2fe6842c49abf90a4de9dd4ed26dccbd54b48"
@@ -1856,6 +1861,11 @@
       "digest": "sha256:68292474a3156b67096880da5501a7398e25b672d44828eba90f6be1ee1ccb3d"
     },
     {
+      "path": "src/composition-root/provider-worker-terminal-production.ts",
+      "mode": "100644",
+      "digest": "sha256:da5b7b1db1393bf69b7211db72ff7d29538a1e83cb8c0c75139d385568a11bd7"
+    },
+    {
       "path": "src/composition-root/public/central-grant.ts",
       "mode": "100644",
       "digest": "sha256:5691c58e0c29bb1164cb406066acf0d1c78d17f1aa90f2ba865b4d7cc71de585"
@@ -2138,7 +2148,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:b70b3a7b90c425627a616024931ea73c309e33a1546060dc28ac24bb40f13355"
+      "digest": "sha256:6b281cc73971786e741bcc717116875c907d876759a08a214f7e333ab6b86c28"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -3644,6 +3654,11 @@
       "path": "src/modules/provider-orchestration/provider-runtime-evidence.ts",
       "mode": "100644",
       "digest": "sha256:059082a8370e7c4ce62cd3f227ecd232dd9a026fee4e09d70c892392b4ebe676"
+    },
+    {
+      "path": "src/modules/provider-orchestration/provider-worker-maintenance.ts",
+      "mode": "100644",
+      "digest": "sha256:2cfcc36aaf9d512f71d3cb7c38c6d80cfa0e40a52b0e7b1d1069c2aa79ceb698"
     },
     {
       "path": "src/modules/provider-orchestration/role-admission-contracts.ts",
@@ -5348,7 +5363,7 @@
     {
       "path": "src/runtime/storage-journal/provider-worker-maintenance.ts",
       "mode": "100644",
-      "digest": "sha256:442d85a07e5678f85b67bc4d4cb031b8019cdf9afc6b81ff1d364c883927e781"
+      "digest": "sha256:200cad5968e24f06aed245118c66b2d01085dfee8a66aafad610f279c9de8250"
     },
     {
       "path": "src/runtime/storage-journal/report-store.ts",

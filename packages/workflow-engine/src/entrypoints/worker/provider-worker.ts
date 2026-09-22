@@ -43,12 +43,8 @@ import { readInvestigationSession } from '../../runtime/storage-journal/investig
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
 
 import { resolveCurrentProviderWorkerAssignment } from '../../composition-root/provider-worker-assignment-production.ts';
-import { dispatchProviderWorker } from '../../composition-root/provider-worker-dispatch-production.ts';
 import type { ProviderWorkerAssignmentOptions } from '../../composition-root/provider-worker-assignment-production.ts';
-import {
-  productionConsumedPlanReviewReplayPort,
-  productionConsumedRoleResultReplayPort,
-} from '../../composition-root/grant-verifier-composition.ts';
+import { productionConsumedRoleResultReplayPort } from '../../composition-root/grant-verifier-composition.ts';
 import {
   PLAN_REVIEW_OUTPUT_SCHEMA,
   PLAN_REVIEW_OUTPUT_VALIDATOR,
@@ -101,24 +97,16 @@ import {
   isProposeExemptionInvestigationId,
   readProposeExemptionSession,
 } from '../../runtime/storage-journal/propose-exemption-store.ts';
-import { recordProviderWorkerFailure } from '../../composition-root/provider-worker-failure-production.ts';
 import {
-  processProviderFailureRetry,
-  pumpProviderRetrySchedules,
-  type ProviderRetrySchedulePumpOptions,
-} from '../../composition-root/provider-retry-production.ts';
-import { runEvidenceRetentionMaintenance } from '../../composition-root/retention-production.ts';
+  runProviderWorkerTerminalFollowups as runTerminalFollowups,
+  isRoleAssignmentGrantRequired,
+  type ProviderWorkerTerminalOptions,
+} from '../../composition-root/provider-worker-terminal-production.ts';
+import { recordProviderWorkerFailure } from '../../composition-root/provider-worker-failure-production.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
 import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
-import { recordProviderWorkerMaintenanceWarning } from '../../runtime/storage-journal/provider-worker-maintenance.ts';
-import { observeInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 
 const PROVIDER_CANCELLATION_POLL_INTERVAL_MS = 25;
-
-export {
-  listProviderWorkerMaintenanceWarnings,
-  type ProviderWorkerMaintenanceWarning,
-} from '../../runtime/storage-journal/provider-worker-maintenance.ts';
 
 export type ProviderWorkerResult = {
   schemaVersion: 1;
@@ -135,24 +123,11 @@ export type AsyncProviderWorkerResult = ProviderWorkerResult &
     completionReceipt: AgentRuntimeCompletionReceipt | null;
   }>;
 
-export type ProviderWorkerOptions = ProviderWorkerAssignmentOptions & {
-  workerId?: string;
-  signal?: AbortSignal;
-  agentRuntime?: ProviderWorkerRuntimePort;
-  /** @deprecated Use the complete `agentRuntime` port injection seam. */
-  runner?: ProviderWorkerRuntimePort['runSingleShot'];
-  automaticRetry?: {
-    enabled?: boolean;
-    now?: string;
-    dispatcher?: (cwd: string, invocationId: string) => unknown;
+export type ProviderWorkerOptions = ProviderWorkerAssignmentOptions &
+  ProviderWorkerTerminalOptions & {
+    workerId?: string;
+    signal?: AbortSignal;
   };
-  schedulePump?: Omit<ProviderRetrySchedulePumpOptions, 'limit'> & {
-    enabled?: boolean;
-    limit?: number;
-  };
-  retentionNow?: string;
-  retentionMaintenance?: typeof runEvidenceRetentionMaintenance;
-};
 
 /**
  * Claim and execute one exact durable provider invocation. Replays never
@@ -914,101 +889,8 @@ function isPromiseLike<T>(value: T | Promise<T>): value is Promise<T> {
   );
 }
 
-function runTerminalFollowups(
-  cwd: string,
-  terminal: ProviderInvocationRecord,
-  options: ProviderWorkerOptions,
-): void {
-  const retryEnabled =
-    terminal.state === 'failed' &&
-    (options.automaticRetry?.enabled ??
-      (options.agentRuntime === undefined && options.runner === undefined));
-  if (retryEnabled) {
-    try {
-      processProviderFailureRetry(cwd, terminal.invocationId, {
-        ...(options.automaticRetry?.now === undefined
-          ? {}
-          : { now: options.automaticRetry.now }),
-        dispatcher:
-          options.automaticRetry?.dispatcher ?? dispatchProviderWorker,
-        consumedRoleResultReplay: productionConsumedPlanReviewReplayPort,
-      });
-    } catch (error) {
-      if (isRoleAssignmentGrantRequired(error)) throw error;
-      recordTerminalWarning(cwd, terminal, 'automatic-retry', error);
-    }
-  }
-  const pumpEnabled =
-    options.schedulePump?.enabled ??
-    (options.agentRuntime === undefined && options.runner === undefined);
-  if (pumpEnabled) {
-    try {
-      pumpProviderRetrySchedules(cwd, {
-        limit: options.schedulePump?.limit ?? 10,
-        ...(options.schedulePump?.now === undefined
-          ? {}
-          : { now: options.schedulePump.now }),
-        dispatcher: options.schedulePump?.dispatcher ?? dispatchProviderWorker,
-        ...(options.schedulePump?.probeExecutor === undefined
-          ? {}
-          : { probeExecutor: options.schedulePump.probeExecutor }),
-        ...(options.schedulePump?.faultInjector === undefined
-          ? {}
-          : { faultInjector: options.schedulePump.faultInjector }),
-      });
-    } catch (error) {
-      if (isRoleAssignmentGrantRequired(error)) throw error;
-      recordTerminalWarning(cwd, terminal, 'retry-schedule-pump', error);
-    }
-  }
-  try {
-    const maintain =
-      options.retentionMaintenance ?? runEvidenceRetentionMaintenance;
-    maintain(cwd, {
-      limit: 10,
-      ...(options.retentionNow === undefined
-        ? {}
-        : { now: options.retentionNow }),
-    });
-  } catch (error) {
-    recordTerminalWarning(cwd, terminal, 'retention-maintenance', error);
-  }
-}
-
-function isRoleAssignmentGrantRequired(error: unknown): boolean {
-  return (
-    error instanceof WorkflowError &&
-    error.code === 'AGENT_RUNTIME_GRANT_REQUIRED'
-  );
-}
-
 function isTerminalInvocation(record: ProviderInvocationRecord): boolean {
   return record.state === 'succeeded' || record.state === 'failed';
-}
-
-function recordTerminalWarning(
-  cwd: string,
-  terminal: ProviderInvocationRecord,
-  operation:
-    'automatic-retry' | 'retry-schedule-pump' | 'retention-maintenance',
-  error: unknown,
-): void {
-  try {
-    recordProviderWorkerMaintenanceWarning(
-      observeInvestigationRuntimeContext(cwd).runtime,
-      terminal,
-      operation,
-      error,
-    );
-  } catch (warningError) {
-    process.emitWarning(
-      `Provider worker ${operation} failed after durable ${terminal.state}; its warning journal also failed (${warningError instanceof WorkflowError ? warningError.code : 'PROVIDER_WORKER_MAINTENANCE_WARNING_UNSAFE'}).`,
-      {
-        code: 'PROVIDER_WORKER_MAINTENANCE_WARNING_UNSAFE',
-        type: 'ProviderWorkerMaintenanceWarning',
-      },
-    );
-  }
 }
 
 function renderWorkerResult(

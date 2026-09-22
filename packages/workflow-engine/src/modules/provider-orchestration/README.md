@@ -12,11 +12,11 @@ Keep installed provider profiles on the host so repositories select roles withou
 
 Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessment and planned action, then submit the template with `jigwright job retry-request <job-id> --input retry.json --json`. The timeout may stay unchanged. See [retry behavior and single-use budget exceptions](../../../../../docs/features/PROVIDER_RETRY.md).
 
-<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:ebd7df30abc4d51bb94045364148b4e523bb276faca29b3738845d179ea23939 -->
+<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:68aac1bd18f8d07b322fdca9ad2a5c9ee6a33e399455e2a5fe13720d1906a41d -->
 
 <!-- prettier-ignore-start -->
 
-50 files changed in this module since confirmation.
+51 files changed in this module since confirmation.
 
 ## Commands
 
@@ -107,6 +107,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [provider-retry-schedule.ts](provider-retry-schedule.ts) | Define and validate durable retry schedule and receipt records with exact bounded values. | 2 | History unavailable |
 | [provider-retry-service-port.ts](provider-retry-service-port.ts) | Feature capabilities for failure routing, lifecycle publication and durable retry pumping. | 0 | History unavailable |
 | [provider-runtime-evidence.ts](provider-runtime-evidence.ts) | Validates provider process results, runtime receipts, and execution observation bindings. | 1 | History unavailable |
+| [provider-worker-maintenance.ts](provider-worker-maintenance.ts) | Durable warning facts for maintenance after a provider terminal outcome. | 0 | History unavailable |
 | [role-admission-contracts.ts](role-admission-contracts.ts) | Role-result admission records and the evidence required by admission rules. | 0 | History unavailable |
 | [role-assignment.ts](role-assignment.ts) | Role assignment values and deterministic independence/candidate selection policy. | 0 | History unavailable |
 | [role-independence.ts](role-independence.ts) | Canonical role independence data; parsing and effects stay with their existing implementation. | 0 | History unavailable |

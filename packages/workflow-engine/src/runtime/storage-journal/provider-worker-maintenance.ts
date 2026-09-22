@@ -24,21 +24,35 @@ import {
 import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 
+import type { ProviderWorkerMaintenanceWarning } from '../../modules/provider-orchestration/provider-worker-maintenance.ts';
+export type { ProviderWorkerMaintenanceWarning } from '../../modules/provider-orchestration/provider-worker-maintenance.ts';
+
 const WARNING_FILE = /^[0-9a-f]{64}\.json$/;
 
-export type ProviderWorkerMaintenanceWarning = Readonly<{
-  schemaVersion: 1;
-  kind: 'provider-worker-maintenance-warning';
-  warningId: string;
-  operation:
-    'automatic-retry' | 'retry-schedule-pump' | 'retention-maintenance';
-  invocationId: string;
-  terminalRevision: number;
-  terminalState: 'succeeded' | 'failed';
-  errorCode: string;
-  message: string;
-  occurredAt: string;
-}>;
+export function recordProviderWorkerTerminalWarning(
+  observeRuntime: (cwd: string) => InvestigationRuntimePaths,
+  cwd: string,
+  terminal: ProviderInvocationRecord,
+  operation: ProviderWorkerMaintenanceWarning['operation'],
+  error: unknown,
+): void {
+  try {
+    recordProviderWorkerMaintenanceWarning(
+      observeRuntime(cwd),
+      terminal,
+      operation,
+      error,
+    );
+  } catch (warningError) {
+    process.emitWarning(
+      `Provider worker ${operation} failed after durable ${terminal.state}; its warning journal also failed (${warningError instanceof WorkflowError ? warningError.code : 'PROVIDER_WORKER_MAINTENANCE_WARNING_UNSAFE'}).`,
+      {
+        code: 'PROVIDER_WORKER_MAINTENANCE_WARNING_UNSAFE',
+        type: 'ProviderWorkerMaintenanceWarning',
+      },
+    );
+  }
+}
 
 export function recordProviderWorkerMaintenanceWarning(
   runtime: InvestigationRuntimePaths,

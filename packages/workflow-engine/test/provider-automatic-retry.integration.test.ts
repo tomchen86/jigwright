@@ -24,10 +24,8 @@ import {
   readProviderAutomaticRetrySchedule,
   type ProviderAutomaticRetrySchedule,
 } from '../src/composition-root/provider-retry-production.ts';
-import {
-  listProviderWorkerMaintenanceWarnings,
-  runProviderWorker,
-} from '../src/entrypoints/worker/provider-worker.ts';
+import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
+import { listProviderWorkerMaintenanceWarnings } from '../src/runtime/storage-journal/provider-worker-maintenance.ts';
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
 import {
   builtInProviderDefinitionSnapshotForTest,
@@ -181,6 +179,7 @@ test('replacement role-assignment Fail-Grant reaches the caller and resumes the 
   try {
     const now = '2030-08-29T02:00:00.000Z';
     let gatedInvocationId: string | null = null;
+    let retentionCalls = 0;
     assert.throws(
       () =>
         runProviderWorker(fixture.repository, fixture.invocationId, {
@@ -206,6 +205,10 @@ test('replacement role-assignment Fail-Grant reaches the caller and resumes the 
             },
           },
           schedulePump: { enabled: false },
+          retentionMaintenance() {
+            retentionCalls++;
+            assert.fail('retry Grant must skip retention');
+          },
         }),
       (error: unknown) =>
         error instanceof Error &&
@@ -213,6 +216,16 @@ test('replacement role-assignment Fail-Grant reaches the caller and resumes the 
         error.code === 'AGENT_RUNTIME_GRANT_REQUIRED',
     );
 
+    assert.equal(retentionCalls, 0);
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          fixture.runtime.locks,
+          `${fixture.invocationId}.worker-active`,
+        ),
+      ),
+      false,
+    );
     const schedule = requiredSchedule(fixture.repository, fixture.invocationId);
     assert.equal(gatedInvocationId, schedule.replacementInvocationId);
     assert.equal(schedule.state, 'scheduled');
@@ -258,6 +271,97 @@ test('replacement role-assignment Fail-Grant reaches the caller and resumes the 
         schedule.scheduleId,
       )[0]?.state,
       'dispatch-issued',
+    );
+  } finally {
+    fixture.dispose();
+  }
+});
+
+test('terminal schedule pump Grant skips retention and releases the original worker fence', () => {
+  const fixture = startWorkerFixture('worker-pump-role-grant');
+  try {
+    const grant = workflowError(
+      'AGENT_RUNTIME_GRANT_REQUIRED',
+      'The due replacement requires its exact role Grant.',
+      ExitCode.verification,
+    );
+    const fencePath = path.join(
+      fixture.runtime.locks,
+      `${fixture.invocationId}.worker-active`,
+    );
+    const dispatched: string[] = [];
+    let fenceDuringPump: boolean | undefined;
+    let retentionCalls = 0;
+    assert.throws(
+      () =>
+        runProviderWorker(fixture.repository, fixture.invocationId, {
+          runner() {
+            throw workflowError(
+              'PROVIDER_RATE_LIMIT',
+              'Retry after one second.',
+              ExitCode.verification,
+              { details: { retryAfterMs: 1_000 } },
+            );
+          },
+          automaticRetry: {
+            enabled: true,
+            get now() {
+              return readProviderInvocation(
+                fixture.runtime,
+                fixture.invocationId,
+              ).updatedAt;
+            },
+            dispatcher() {
+              assert.fail('retry must leave future work for the pump');
+            },
+          },
+          schedulePump: {
+            enabled: true,
+            limit: 1,
+            get now() {
+              return requiredSchedule(fixture.repository, fixture.invocationId)
+                .notBefore;
+            },
+            dispatcher(_cwd, invocationId) {
+              dispatched.push(invocationId);
+              fenceDuringPump = fs.existsSync(fencePath);
+              throw grant;
+            },
+          },
+          retentionMaintenance() {
+            retentionCalls++;
+            assert.fail('pump Grant must skip retention');
+          },
+        }),
+      (error) => error === grant,
+    );
+    const schedule = requiredSchedule(fixture.repository, fixture.invocationId);
+    assert.deepEqual(dispatched, [schedule.replacementInvocationId]);
+    assert.equal(fenceDuringPump, true);
+    assert.equal(retentionCalls, 0);
+    assert.equal(fs.existsSync(fencePath), false);
+    const terminal = readProviderInvocation(
+      fixture.runtime,
+      fixture.invocationId,
+    );
+    assert.equal(terminal.state, 'failed');
+    assert.equal(terminal.failure?.code, 'PROVIDER_RATE_LIMIT');
+    assert.equal(
+      readProviderInvocation(fixture.runtime, schedule.replacementInvocationId)
+        .state,
+      'prepared',
+    );
+    assert.equal(schedule.state, 'scheduled');
+    assert.equal(
+      listProviderRetryScheduleReceipts(
+        fixture.repository,
+        schedule.scheduleId,
+      )[0]?.state,
+      'started',
+    );
+    assert.deepEqual(
+      listProviderWorkerMaintenanceWarnings(fixture.runtime),
+      [],
     );
   } finally {
     fixture.dispose();
