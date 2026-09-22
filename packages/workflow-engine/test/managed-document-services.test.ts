@@ -27,8 +27,10 @@ function operations(
   return {
     projectHandoff: forbidden,
     projectHandoffForTaskProjection: forbidden,
+    renderHandoff: forbidden,
     renderHandoffForChange: forbidden,
     validateHandoff: forbidden,
+    validateHandoffForChange: forbidden,
     ...overrides,
   };
 }

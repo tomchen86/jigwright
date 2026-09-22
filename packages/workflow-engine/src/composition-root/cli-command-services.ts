@@ -15,15 +15,15 @@ import { productionTaskStrategyExecutionGate } from './task-strategy-gate-produc
 import { archiveEligibilityReplayServices } from './ci-replay-production.ts';
 import { productionPlanningArchiveSourcePolicy } from './planning-archive-projection-production.ts';
 import { taskMandateOperations } from './task-mandate-production.ts';
-import {
-  productionChangeContract,
-  productionChangeRoutingInspector,
-} from './change-routing-observation-production.ts';
+import { productionChangeContract } from './change-routing-observation-production.ts';
 
 import { collaborationGrantCodec as productionArchiveGrantCodec } from '../runtime/grants/grant-services.ts';
 import { reconcileArchivedWorkItems as productionArchivedWorkItemReconciler } from './work-registry-production.ts';
 import { managedDocuments } from './managed-documents-production.ts';
-import { renderHandoffFromTrackedFacts as productionTrackedHandoffRenderer } from './handoff-production.ts';
+import {
+  handoffDocuments,
+  renderHandoffFromTrackedFacts as productionTrackedHandoffRenderer,
+} from './handoff-production.ts';
 import { commitArchiveTransition as commitArchiveTransitionWithHandoff } from '../application/archive/archive-transition.ts';
 export const commitArchiveTransition = commitArchiveTransitionWithHandoff.bind(
   undefined,
@@ -77,14 +77,14 @@ export const resolveOpenTaskId = resolveOpenTaskIdWithContractReader.bind(
 export const contextualizeOpenTaskError =
   contextualizeOpenTaskErrorWithContractReader.bind(
     undefined,
-    productionChangeRoutingInspector,
+    handoffDocuments,
     productionChangeContractReader,
   );
 
 export const findOpenTaskLifecycleStatus =
   findOpenTaskLifecycleStatusWithContractReader.bind(
     undefined,
-    productionChangeRoutingInspector,
+    handoffDocuments,
     productionChangeContractReader,
   );
 import { updateTaskSessionBase as updateTaskSessionBaseWithContractReader } from '../application/execute-task/update-base.ts';
@@ -93,9 +93,8 @@ export const updateTaskSessionBase =
     undefined,
     productionChangeContract,
     verifyPullRequest,
-    productionChangeRoutingInspector,
+    handoffDocuments,
     {
-      loadChangeContract: productionChangeContractReader,
       loadCommittedChangeContract: productionCommittedChangeContractReader,
     },
   );

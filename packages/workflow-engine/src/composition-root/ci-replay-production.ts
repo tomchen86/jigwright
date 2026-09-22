@@ -10,12 +10,7 @@ import { createCiHistoricalReplay } from '../runtime/repository-validation/commi
 import { createCiSequenceReplay } from '../runtime/repository-validation/commit-replay/ci-sequence.ts';
 import { openSpecPlanningPathPolicy } from '../adapters/planning/openspec/documents/planning-path-policy.ts';
 import { readSystemSpecDeltaInputs } from '../adapters/planning/openspec/documents/system-spec-deltas.ts';
-import { validateHandoffForChange as validateHandoff } from '../adapters/consumer/repository/handoff/handoff.ts';
-import { productionChangeRoutingInspector } from './change-routing-observation-production.ts';
-import {
-  loadChangeContract,
-  loadCommittedChangeContract,
-} from './consumer-contract-production.ts';
+import { loadCommittedChangeContract } from './consumer-contract-production.ts';
 import { productionPlanningAssurance } from './planning-assurance-production.ts';
 import { productionConsumedPlanReviewReplayPort } from './grant-verifier-composition.ts';
 import { parsePlanReviewArtifact } from './plan-review-artifact-production.ts';
@@ -31,7 +26,10 @@ import {
   resolveHistoricalOpenSpecProviderBinding,
 } from './planning-provider-production.ts';
 import { createRepositorySpecificationPolicy } from '../modules/lifecycle/repository-specification-policy.ts';
-import { renderHandoffFromTrackedFacts } from './handoff-production.ts';
+import {
+  handoffDocuments,
+  renderHandoffFromTrackedFacts,
+} from './handoff-production.ts';
 import { reconcileArchivedWorkItems } from './work-registry-production.ts';
 import { createOpenSpecPlanningArchiveProjectionPort } from './planning-archive-projection-production.ts';
 import {
@@ -41,11 +39,7 @@ import {
 
 export const ciPlanningReplay = createCiPlanningReplay({
   planningPaths: openSpecPlanningPathPolicy,
-  validateHandoffForChange: validateHandoff.bind(
-    undefined,
-    productionChangeRoutingInspector,
-    loadChangeContract,
-  ),
+  validateHandoffForChange: handoffDocuments.validateHandoffForChange,
   productionPlanningAssurance,
   productionConsumedPlanReviewReplayPort,
   parsePlanReviewArtifact,

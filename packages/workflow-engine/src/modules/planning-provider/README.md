@@ -8,7 +8,7 @@ Keep planning-provider contracts neutral and adapt only their error presentation
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.planning-provider-readme v=1 digest=sha256:f108d0c1e26a2ab7aa8782ad906af33d8e8d2289f532d57767c7dad2a83a1fec -->
+<!-- jigwright:region id=documents.planning-provider-readme v=1 digest=sha256:4ce7a03daa1cc6b045f2693a377a67e61b021702b41b6ce81264ea720b9d9231 -->
 
 <!-- prettier-ignore-start -->
 
@@ -41,7 +41,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
 | [change-contract-errors.ts](change-contract-errors.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [change-contract.ts](change-contract.ts) | Parsed change artifact facts, before provider readiness and planning-assurance admission. | 0 | History unavailable |
+| [change-contract.ts](change-contract.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [change-metadata-policy.ts](change-metadata-policy.ts) | Parse canonical schema metadata text under the supplied consumer policy. | 0 | History unavailable |
 | [guard-policy.ts](guard-policy.ts) | Validate guard values after repository path admission. | 0 | History unavailable |
 | [planning-archive-projection-port.ts](planning-archive-projection-port.ts) | No leading responsibility comment. | 0 | History unavailable |

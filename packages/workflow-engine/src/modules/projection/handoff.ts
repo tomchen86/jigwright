@@ -14,6 +14,11 @@ export type HandoffDocumentOperations = Readonly<{
     changeId: string,
     tasks: string,
   ): string;
+  /** Render and write the currently selected handoff document. */
+  renderHandoff(repositoryRoot: string): string;
+  /** Render and write the handoff for this explicit change. */
   renderHandoffForChange(repositoryRoot: string, changeId: string): string;
+  /** Validate current bytes without writing the document. */
   validateHandoff(repositoryRoot: string, context?: HandoffReadContext): void;
+  validateHandoffForChange(repositoryRoot: string, changeId: string): void;
 }>;

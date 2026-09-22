@@ -1,19 +1,13 @@
 import { verifyPullRequest } from '../src/composition-root/ci-verification-production.ts';
-import {
-  productionChangeRoutingInspector,
-  productionChangeContract,
-} from '../src/composition-root/change-routing-observation-production.ts';
-import {
-  loadChangeContract as productionChangeContractReader,
-  loadCommittedChangeContract as productionCommittedChangeContractReader,
-} from '../src/composition-root/consumer-contract-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { handoffDocuments } from '../src/composition-root/handoff-production.ts';
+import { loadCommittedChangeContract as productionCommittedChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const updateTaskSessionBase = updateTaskSessionBaseWithContractReader.bind(
   undefined,
   productionChangeContract,
   verifyPullRequest,
-  productionChangeRoutingInspector,
+  handoffDocuments,
   {
-    loadChangeContract: productionChangeContractReader,
     loadCommittedChangeContract: productionCommittedChangeContractReader,
   },
 );
@@ -274,6 +268,92 @@ test('update-base rolls back when the selected local ref changes before receipt 
       git(repository, ['rev-parse', 'main']).trim(),
       movedOntoCommit,
     );
+  } finally {
+    if (fixture !== undefined) {
+      removeConcurrentTaskWorktree(repository, fixture);
+    }
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('update-base observes handoff render then validate and rolls back a validation failure', () => {
+  const repository = createFixtureRepository();
+  let fixture: { parent: string; worktree: string } | undefined;
+  try {
+    const prepared = prepareFinishedNonFinalTaskForBaseUpdate(repository);
+    fixture = prepared.fixture;
+    const worktree = fixture.worktree;
+    fs.writeFileSync(
+      path.join(repository, 'src/base-update.ts'),
+      'export const baseUpdate = true;\n',
+    );
+    git(repository, ['add', 'src/base-update.ts']);
+    git(repository, ['commit', '-m', 'Advance fixture base']);
+    const before = snapshotTaskPreflightState(worktree);
+    const handoffPath = path.join(worktree, 'docs/CURRENT_AND_NEXT_STEPS.md');
+    const handoffBefore = fs.readFileSync(handoffPath, 'utf8');
+    const refreshRoot = path.join(
+      runtimeRoot(worktree),
+      'base-refreshes',
+      'demo-change',
+    );
+    assert.equal(fs.existsSync(refreshRoot), false);
+    const observations: string[] = [];
+    const failure = new Error('handoff validation failed after replay');
+
+    assert.throws(
+      () =>
+        updateTaskSessionBaseWithContractReader(
+          productionChangeContract,
+          () => {
+            assert.fail(
+              'PR assurance must not run after handoff validation fails',
+            );
+          },
+          {
+            renderHandoff(root) {
+              assert.equal(root, worktree);
+              assert.notEqual(
+                git(root, ['rev-parse', 'HEAD']).trim(),
+                before.head,
+              );
+              observations.push('render');
+              return handoffDocuments.renderHandoff(root);
+            },
+            validateHandoff(root) {
+              assert.equal(root, worktree);
+              observations.push('validate');
+              throw failure;
+            },
+          },
+          {
+            loadCommittedChangeContract:
+              productionCommittedChangeContractReader,
+          },
+          worktree,
+          'demo-change',
+          'main',
+        ),
+      (error) => error === failure,
+    );
+    assert.deepEqual(observations, ['render', 'validate']);
+    const after = snapshotTaskPreflightState(worktree);
+    assert.deepEqual(
+      {
+        head: after.head,
+        tree: after.tree,
+        status: after.status,
+        runtime: after.runtime,
+      },
+      {
+        head: before.head,
+        tree: before.tree,
+        status: before.status,
+        runtime: before.runtime,
+      },
+    );
+    assert.equal(fs.readFileSync(handoffPath, 'utf8'), handoffBefore);
+    assert.equal(fs.existsSync(refreshRoot), false);
   } finally {
     if (fixture !== undefined) {
       removeConcurrentTaskWorktree(repository, fixture);

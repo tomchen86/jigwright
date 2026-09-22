@@ -18,7 +18,17 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import { validateCiPlanningCommit } from '../src/composition-root/ci-replay-production.ts';
 import { commitFacts } from '../src/runtime/repository-transaction/git-transitions.ts';
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import { readOpenTaskJournal } from '../src/application/execute-task/open-task.ts';
+import {
+  contextualizeOpenTaskError,
+  findOpenTaskLifecycleStatus,
+  readOpenTaskJournal,
+} from '../src/application/execute-task/open-task.ts';
+import type { HandoffDocumentOperations } from '../src/modules/projection/handoff.ts';
+import {
+  ExitCode,
+  WorkflowError,
+  workflowError,
+} from '../src/foundation/errors/errors.ts';
 import { readPlanningTransitionReport } from '../src/runtime/storage-journal/planning-report.ts';
 import { preparePlanningDraftWorkspace } from '../src/composition-root/planning-workspace-production.ts';
 import { abortSession } from '../src/composition-root/task-session-production.ts';
@@ -794,6 +804,115 @@ test('status exposes the exact durable open-task phase and retry authority', () 
     fixture.dispose();
   }
 });
+
+for (const handoff of [true, false]) {
+  test(`open-task status and error context observe the handoff service only for a prepared projection: ${handoff}`, () => {
+    const fixture = prepareOpenTaskFixture(`atomic-open-handoff-${handoff}`, {
+      handoff,
+    });
+    try {
+      assert.throws(
+        () =>
+          openTask(
+            fixture.repository,
+            fixture.changeId,
+            '1.1',
+            fixture.mandate.taskId,
+            {
+              mandate: { signer: fixture.mandate.signer },
+              testCrashAfter: 'plan-committed',
+            },
+          ),
+        /Simulated open-task interruption/u,
+      );
+      const journal = readOpenTaskJournal(
+        fixture.repository,
+        fixture.changeId,
+        '1.1',
+      );
+      assert.ok(journal);
+      assert.equal(
+        journal.changedPaths.includes('docs/CURRENT_AND_NEXT_STEPS.md'),
+        handoff,
+      );
+      const journalBytes = fs.readFileSync(
+        openTaskJournalPath(fixture),
+        'utf8',
+      );
+      const observations: Array<{ root: string; changeId: string }> = [];
+      const failure = workflowError(
+        'HANDOFF_VALIDATION_FAILED',
+        'The current handoff cannot be validated.',
+        ExitCode.verification,
+      );
+      const documents: Pick<
+        HandoffDocumentOperations,
+        'validateHandoffForChange'
+      > = {
+        validateHandoffForChange(root, changeId) {
+          observations.push({ root, changeId });
+          throw failure;
+        },
+      };
+      const expectedObservation = {
+        root: fs.realpathSync(fixture.repository),
+        changeId: fixture.changeId,
+      };
+      assert.deepEqual(observations, []);
+      const status = findOpenTaskLifecycleStatus(
+        documents,
+        productionChangeContractReader,
+        fixture.repository,
+        journal.transactionId,
+      );
+      assert.equal(status?.state, handoff ? 'recovery-required' : 'opening');
+      assert.equal(status?.lastDurablePhase, 'plan-committed');
+      assert.equal(status?.errorCode, handoff ? failure.code : null);
+      assert.equal(status?.retrySafe, !handoff);
+      assert.deepEqual(observations, handoff ? [expectedObservation] : []);
+
+      const original = workflowError(
+        'OPEN_TASK_RETRY_FAILURE',
+        'Preserve this original failure.',
+        ExitCode.staleState,
+        { details: { original: true } },
+      );
+      const contextualized = contextualizeOpenTaskError(
+        documents,
+        productionChangeContractReader,
+        fixture.repository,
+        fixture.changeId,
+        '1.1',
+        original,
+      );
+      assert.ok(contextualized instanceof WorkflowError);
+      assert.equal(contextualized.code, original.code);
+      assert.equal(contextualized.message, original.message);
+      assert.equal(contextualized.exitCode, original.exitCode);
+      assert.equal(contextualized.details?.original, true);
+      assert.equal(
+        contextualized.details?.transactionId,
+        journal.transactionId,
+      );
+      assert.equal(contextualized.details?.phase, 'plan-committed');
+      assert.equal(contextualized.details?.sessionId, journal.sessionId);
+      assert.deepEqual(
+        observations,
+        handoff ? [expectedObservation, expectedObservation] : [],
+      );
+      assert.equal(
+        fs.readFileSync(openTaskJournalPath(fixture), 'utf8'),
+        journalBytes,
+      );
+      assert.equal(
+        git(fixture.repository, ['rev-parse', 'HEAD']).trim(),
+        journal.planningCommit,
+      );
+    } finally {
+      fixture.dispose();
+    }
+  });
+}
 
 test('status classifies a durable phase ahead of its exact session as recovery-required', () => {
   const fixture = prepareOpenTaskFixture('atomic-open-status-diverged');

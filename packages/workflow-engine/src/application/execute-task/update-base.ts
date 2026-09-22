@@ -1,5 +1,5 @@
 import type { PullRequestVerifier } from '../assurance/pull-request-verification.ts';
-import type { ChangeRoutingInspector } from '../../modules/lifecycle/change-routing.ts';
+import type { HandoffDocumentOperations } from '../../modules/projection/handoff.ts';
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { ChangeContractReaders } from '../../modules/planning-provider/change-contract.ts';
 /**
@@ -17,10 +17,6 @@ import {
   loadWorkflowConfig,
   repositoryHandoffPath,
 } from '../../runtime/workflow-configuration/workflow-configuration.ts';
-import {
-  renderHandoff,
-  validateHandoff,
-} from '../../adapters/consumer/repository/handoff/handoff.ts';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { replaceTextAtomic } from '../../runtime/repository-transaction/atomic-text.ts';
@@ -106,8 +102,11 @@ export function updateTaskSessionBase(
     'loadStableValidatedChangeContract'
   >,
   verifyPullRequest: PullRequestVerifier['verifyPullRequest'],
-  routingInspector: ChangeRoutingInspector,
-  readers: ChangeContractReaders,
+  handoffDocuments: Pick<
+    HandoffDocumentOperations,
+    'renderHandoff' | 'validateHandoff'
+  >,
+  readers: Pick<ChangeContractReaders, 'loadCommittedChangeContract'>,
   cwd: string,
   requestedChangeId: string,
   requestedOntoRef: string,
@@ -149,7 +148,7 @@ export function updateTaskSessionBase(
       return updateFinishedTaskBaseLocked(
         changeContract,
         verifyPullRequest,
-        routingInspector,
+        handoffDocuments,
         readers,
         cwd,
         lockedAnchor,
@@ -229,8 +228,11 @@ function updateFinishedTaskBaseLocked(
     'loadStableValidatedChangeContract'
   >,
   verifyPullRequest: PullRequestVerifier['verifyPullRequest'],
-  routingInspector: ChangeRoutingInspector,
-  readers: ChangeContractReaders,
+  handoffDocuments: Pick<
+    HandoffDocumentOperations,
+    'renderHandoff' | 'validateHandoff'
+  >,
+  readers: Pick<ChangeContractReaders, 'loadCommittedChangeContract'>,
   cwd: string,
   session: WorkflowSession,
   ontoRef: string,
@@ -362,7 +364,7 @@ function updateFinishedTaskBaseLocked(
     // Regeneration is semantic and idempotent. A changed projection requires
     // its own reviewed managed transition; update-base never text-merges or
     // silently amends a generated document.
-    renderHandoff(routingInspector, readers.loadChangeContract, cwd);
+    handoffDocuments.renderHandoff(cwd);
     const afterProjection = discoverRepository(cwd);
     if (afterProjection.statusEntries.length !== 0) {
       throw workflowError(
@@ -378,7 +380,7 @@ function updateFinishedTaskBaseLocked(
         },
       );
     }
-    validateHandoff(routingInspector, readers.loadChangeContract, cwd);
+    handoffDocuments.validateHandoff(cwd);
     const assurance = verifyPullRequest(
       cwd,
       ontoCommit,

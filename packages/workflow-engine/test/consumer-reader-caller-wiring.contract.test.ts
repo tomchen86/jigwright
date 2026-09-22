@@ -59,6 +59,13 @@ test('consumer readers are supplied by callers, without a low-level production i
         false,
         relative,
       );
+      if (relative.startsWith('application/')) {
+        assert.equal(
+          reference.specifier?.endsWith('/handoff/handoff.ts'),
+          false,
+          relative,
+        );
+      }
     }
   }
 });

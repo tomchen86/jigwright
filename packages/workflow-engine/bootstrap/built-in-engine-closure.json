@@ -953,7 +953,7 @@
     {
       "path": "src/application/execute-task/open-task.ts",
       "mode": "100644",
-      "digest": "sha256:2ee3bc37d41318197d9d3fa789a86eb8cda4d4fe2411cc2e08ad774870746c8a"
+      "digest": "sha256:1dd7ff23546e68f453f4bab6a28d46fbaa8538671861155e4b7293a16df24c62"
     },
     {
       "path": "src/application/execute-task/session-abort.ts",
@@ -1023,7 +1023,7 @@
     {
       "path": "src/application/execute-task/update-base.ts",
       "mode": "100644",
-      "digest": "sha256:21af601d1cdcaefb3dab924f8b03bfd7a7269283af89f37bf701223091c87c19"
+      "digest": "sha256:518ad0e2144ae3925536b145e3f19f54368619687a2d9b5068d46e95dfdd41a5"
     },
     {
       "path": "src/application/finalize/commit-recovery.ts",
@@ -1543,7 +1543,7 @@
     {
       "path": "src/composition-root/ci-replay-production.ts",
       "mode": "100644",
-      "digest": "sha256:3ac9eb51ba3a3ef861b16294e9d89d3853aea1991938c935ddaf9799ac01a983"
+      "digest": "sha256:8eff99293d7568d2288452668ff5e5b21ca48b5bdbd46741d885adbdade95495"
     },
     {
       "path": "src/composition-root/ci-verification-production.ts",
@@ -1558,7 +1558,7 @@
     {
       "path": "src/composition-root/cli-command-services.ts",
       "mode": "100644",
-      "digest": "sha256:646c03bcc139382bc107556004f42a613c0c632361ccd516497864078f2c02c1"
+      "digest": "sha256:8804a50ff8d97cbd2b3bb8f0e6f5bfabfa6b85d056a1e080233c09279459caf2"
     },
     {
       "path": "src/composition-root/collaboration-grant-issuance-production.ts",
@@ -1643,7 +1643,7 @@
     {
       "path": "src/composition-root/handoff-production.ts",
       "mode": "100644",
-      "digest": "sha256:c662e66b228e5761af00cefdd1e0cee1b0234bfaa90e3f6944e669810450654b"
+      "digest": "sha256:9b15a9498383863b5225bd8e666534dcc3fa5d87fa9d730e9c52090a06d70282"
     },
     {
       "path": "src/composition-root/harness-bootstrap-production.ts",
@@ -1723,12 +1723,12 @@
     {
       "path": "src/composition-root/managed-documents-production.ts",
       "mode": "100644",
-      "digest": "sha256:1b08c055e2fdeefb01fdcf44d9892cf0c2796d143a28248b17132b79f1f8b905"
+      "digest": "sha256:5a76bb1c63e7302f4e74bc0b686fb6ca7e71ab2dddfc0ae0c80bac757a193a00"
     },
     {
       "path": "src/composition-root/open-task-production.ts",
       "mode": "100644",
-      "digest": "sha256:f70aa74174fa1a567c263067ce22fbafea105b6f3e2dc0b5919342bf95f001c5"
+      "digest": "sha256:a0b49847cfeb36232da6c481c0d31b2275b291f1726a226675b09b340493eb60"
     },
     {
       "path": "src/composition-root/openspec-adapter-production.ts",
@@ -3403,7 +3403,7 @@
     {
       "path": "src/modules/projection/handoff.ts",
       "mode": "100644",
-      "digest": "sha256:e976001e427802f5f106030f6ed2c16d4d8b191016f5c3f05b6f9f82316ac021"
+      "digest": "sha256:f27631a18208a8289302b9601d59ea013a435015273d5761ef48b954472bb081"
     },
     {
       "path": "src/modules/projection/managed-documents.ts",

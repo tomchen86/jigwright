@@ -6,10 +6,7 @@ import {
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 
 import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
-import type {
-  ChangeRoutingInspector,
-  ChangeRoutingAdmissionReader,
-} from '../../modules/lifecycle/change-routing.ts';
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 import {
   type ManagedDocumentOperations,
   type GeneratedDocumentMutation,
@@ -51,7 +48,7 @@ import {
   readFileAtCommit,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
-import { validateHandoffForChange } from '../../adapters/consumer/repository/handoff/handoff.ts';
+import type { HandoffDocumentOperations } from '../../modules/projection/handoff.ts';
 import { parseManagedTrailers } from '@jigwright/core/managed-transition-trailers';
 import { rollbackGeneratedDocuments } from '../../runtime/managed-documents/validation/managed-documents.ts';
 
@@ -177,7 +174,7 @@ export type OpenTaskPorts = Readonly<{
   > &
     Pick<TaskMandatePreparationAuthorization, 'authorizeTaskMandateOperation'>;
   changeContract: ChangeContractServices;
-  routingInspector: ChangeRoutingInspector;
+  handoffDocuments: Pick<HandoffDocumentOperations, 'validateHandoffForChange'>;
   managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>;
   loadChangeContract: ChangeContractReader;
   planningWorkspace: Pick<
@@ -413,12 +410,7 @@ export function openTaskWithPorts(
       );
     }
     assertTransitionMatchesJournal(transition, prepared);
-    assertCommittedPlanningState(
-      ports.routingInspector,
-      ports.loadChangeContract,
-      cwd,
-      prepared,
-    );
+    assertCommittedPlanningState(ports.handoffDocuments, cwd, prepared);
     let durable = advanceJournalPhase(runtime, prepared, 'plan-committed');
     if (options.testCrashAfter === 'plan-committed') {
       throw simulatedInterruption('plan-committed');
@@ -577,7 +569,7 @@ function existingPlanResult(
 }
 
 export function findOpenTaskLifecycleStatus(
-  routingInspector: ChangeRoutingInspector,
+  handoffDocuments: Pick<HandoffDocumentOperations, 'validateHandoffForChange'>,
   loadChangeContract: ChangeContractReader,
   cwd: string,
   identifier: string,
@@ -597,7 +589,7 @@ export function findOpenTaskLifecycleStatus(
     );
   }
   return inspectOpenTaskJournalStatus(
-    routingInspector,
+    handoffDocuments,
     loadChangeContract,
     cwd,
     matches[0]!,
@@ -605,7 +597,7 @@ export function findOpenTaskLifecycleStatus(
 }
 
 export function contextualizeOpenTaskError(
-  routingInspector: ChangeRoutingInspector,
+  handoffDocuments: Pick<HandoffDocumentOperations, 'validateHandoffForChange'>,
   loadChangeContract: ChangeContractReader,
   cwd: string,
   changeId: string,
@@ -624,7 +616,7 @@ export function contextualizeOpenTaskError(
     const journal = readOpenTaskJournal(cwd, changeId, taskId);
     if (journal === null) return error;
     const status = inspectOpenTaskJournalStatus(
-      routingInspector,
+      handoffDocuments,
       loadChangeContract,
       cwd,
       journal,
@@ -695,7 +687,7 @@ function listOpenTaskJournals(cwd: string): OpenTaskJournal[] {
 }
 
 function inspectOpenTaskJournalStatus(
-  routingInspector: ChangeRoutingInspector,
+  handoffDocuments: Pick<HandoffDocumentOperations, 'validateHandoffForChange'>,
   loadChangeContract: ChangeContractReader,
   cwd: string,
   journal: OpenTaskJournal,
@@ -734,12 +726,7 @@ function inspectOpenTaskJournalStatus(
           );
         }
       } else if (repository.head === journal.planningCommit) {
-        assertCommittedPlanningState(
-          routingInspector,
-          loadChangeContract,
-          cwd,
-          journal,
-        );
+        assertCommittedPlanningState(handoffDocuments, cwd, journal);
         if (sessionExists) readAndAssertExactSession(cwd, runtime, journal);
       } else {
         throw workflowError(
@@ -754,12 +741,7 @@ function inspectOpenTaskJournalStatus(
           'Durable open-task phase is ahead of its observable planning commit.',
         );
       }
-      assertCommittedPlanningState(
-        routingInspector,
-        loadChangeContract,
-        cwd,
-        journal,
-      );
+      assertCommittedPlanningState(handoffDocuments, cwd, journal);
       if (journal.phase === 'plan-committed') {
         if (sessionExists) readAndAssertExactSession(cwd, runtime, journal);
       } else {
@@ -840,7 +822,7 @@ function recoverOpenTask(
         assertRepositoryLock,
         () =>
           recoverPreparedPlanningCommit(
-            ports.routingInspector,
+            ports.handoffDocuments,
             ports.managedDocuments,
             ports.loadChangeContract,
             cwd,
@@ -856,12 +838,7 @@ function recoverOpenTask(
         ExitCode.staleState,
       );
     }
-    assertCommittedPlanningState(
-      ports.routingInspector,
-      ports.loadChangeContract,
-      cwd,
-      durable,
-    );
+    assertCommittedPlanningState(ports.handoffDocuments, cwd, durable);
     durable = advanceJournalPhase(runtime, durable, 'plan-committed');
   } else {
     if (current.head !== durable.planningCommit) {
@@ -869,12 +846,7 @@ function recoverOpenTask(
         'Durable open-task phase is ahead of its observable planning commit.',
       );
     }
-    assertCommittedPlanningState(
-      ports.routingInspector,
-      ports.loadChangeContract,
-      cwd,
-      durable,
-    );
+    assertCommittedPlanningState(ports.handoffDocuments, cwd, durable);
   }
 
   let session: WorkflowSession;
@@ -896,7 +868,7 @@ function recoverOpenTask(
 }
 
 function recoverPreparedPlanningCommit(
-  routingInspector: ChangeRoutingInspector,
+  handoffDocuments: Pick<HandoffDocumentOperations, 'validateHandoffForChange'>,
   managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
   loadChangeContract: ChangeContractReader,
   cwd: string,
@@ -916,7 +888,7 @@ function recoverPreparedPlanningCommit(
     );
   }
   const projectionMutations = restorePreparedPlanningProjection(
-    routingInspector,
+    handoffDocuments,
     managedDocuments,
     loadChangeContract,
     repository.repositoryRoot,
@@ -960,16 +932,11 @@ function recoverPreparedPlanningCommit(
     );
     throw error;
   }
-  assertCommittedPlanningState(
-    routingInspector,
-    loadChangeContract,
-    cwd,
-    journal,
-  );
+  assertCommittedPlanningState(handoffDocuments, cwd, journal);
 }
 
 function restorePreparedPlanningProjection(
-  routingInspector: ChangeRoutingInspector,
+  handoffDocuments: Pick<HandoffDocumentOperations, 'validateHandoffForChange'>,
   managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
   loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
@@ -1021,8 +988,7 @@ function restorePreparedPlanningProjection(
       }
     }
     validatePreparedPlanningProjection(
-      routingInspector,
-      loadChangeContract,
+      handoffDocuments,
       repositoryRoot,
       journal,
     );
@@ -1309,8 +1275,7 @@ function assertPreparedPlanningAuthority(
 }
 
 function assertCommittedPlanningState(
-  routingInspector: ChangeRoutingInspector,
-  loadChangeContract: ChangeContractReader,
+  handoffDocuments: Pick<HandoffDocumentOperations, 'validateHandoffForChange'>,
   cwd: string,
   journal: OpenTaskJournal,
 ): void {
@@ -1330,8 +1295,7 @@ function assertCommittedPlanningState(
     );
   }
   validatePreparedPlanningProjection(
-    routingInspector,
-    loadChangeContract,
+    handoffDocuments,
     repository.repositoryRoot,
     journal,
   );
@@ -1344,20 +1308,14 @@ function planningProjectionPaths(journal: OpenTaskJournal): string[] {
 }
 
 function validatePreparedPlanningProjection(
-  routingInspector: ChangeRoutingInspector,
-  loadChangeContract: ChangeContractReader,
+  handoffDocuments: Pick<HandoffDocumentOperations, 'validateHandoffForChange'>,
   repositoryRoot: string,
   journal: OpenTaskJournal,
 ): void {
   if (
     planningProjectionPaths(journal).includes('docs/CURRENT_AND_NEXT_STEPS.md')
   ) {
-    validateHandoffForChange(
-      routingInspector,
-      loadChangeContract,
-      repositoryRoot,
-      journal.changeId,
-    );
+    handoffDocuments.validateHandoffForChange(repositoryRoot, journal.changeId);
   }
 }
 
