@@ -37,6 +37,7 @@ import { parsePathRoleRegistry } from '../modules/source/path-role-registry.ts';
 import type {
   AgentRuntimeAssignmentBindingV1,
   AgentRuntimeNativeSessionTurnControllerV1,
+  CurrentAgentRuntimeAssignmentV1,
 } from '../modules/provider-orchestration/agent-runtime-port.ts';
 import { projectAgentRuntimeAssignmentBindingV1 } from '../modules/provider-orchestration/agent-runtime-durable-authority.ts';
 import type { ProviderInvocationRequest } from '../modules/provider-orchestration/provider-contracts.ts';
@@ -99,12 +100,6 @@ export type CurrentAgentRuntimeAssignmentInputV1 = Readonly<{
   request: ProviderInvocationRequest;
   configFilePath: string;
   platform: NodeJS.Platform;
-}>;
-
-export type CurrentAgentRuntimeAssignmentV1 = Readonly<{
-  record: ChangeRoleAssignmentRecordV1;
-  binding: AgentRuntimeAssignmentBindingV1;
-  nativeSessionTurn: AgentRuntimeNativeSessionTurnControllerV1 | null;
 }>;
 
 type CurrentManifestFacts = Readonly<{

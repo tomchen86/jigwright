@@ -1,3 +1,4 @@
+import { createProviderWorkerDispatcherForTesting } from '../src/composition-root/provider-worker-dispatch-production.ts';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -18,7 +19,6 @@ import { startPropose } from '../src/composition-root/propose-production.ts';
 import {
   runProviderWorker,
   runProviderWorkerAsync,
-  createProviderWorkerDispatcherForTesting,
 } from '../src/entrypoints/worker/provider-worker.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { createAgentRuntimeProgressTracker } from '../src/runtime/provider-execution/agent-runtime-progress-tracker.ts';

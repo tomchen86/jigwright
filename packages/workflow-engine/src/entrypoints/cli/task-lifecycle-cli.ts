@@ -64,7 +64,8 @@ import {
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
 
 import { productionRoleTopologyResolutionPort } from '../../composition-root/role-topology-resolution-production.ts';
-import { dispatchProviderWorker } from '../worker/provider-worker.ts';
+import { dispatchProviderWorker } from '../../composition-root/provider-worker-dispatch-production.ts';
+import type { ProviderWorkerDispatcher } from '../../composition-root/provider-worker-dispatch-production.ts';
 
 import {
   usage,
@@ -161,7 +162,7 @@ function announceFinalizeCheckEscalation(
 export function dispatchPreparedTaskStrategyProvider(
   cwd: string,
   result: Pick<TaskStrategyLifecycleStatus, 'state' | 'invocationId'>,
-  dispatcher: typeof dispatchProviderWorker = dispatchProviderWorker,
+  dispatcher: ProviderWorkerDispatcher = dispatchProviderWorker,
 ) {
   if (result.state !== 'waiting-for-provider' || result.invocationId === null) {
     return null;

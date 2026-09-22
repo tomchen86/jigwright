@@ -6,6 +6,7 @@
  * - The current completion receipt is version 4 and carries the full
  *   invocation acceptance binding.
  */
+import type { ChangeRoleAssignmentRecordV1 } from './change-role-assignment-record.ts';
 import type { ContextManifest } from '../authority/execution-governance-context.ts';
 import type {
   ProviderInvocationRequest,
@@ -269,3 +270,10 @@ export interface ProviderWorkerRuntimePort {
 }
 
 export type { ProviderRunnerReport } from './provider-contracts.ts';
+
+/** Complete current assignment result, including the existing native turn controller. */
+export type CurrentAgentRuntimeAssignmentV1 = Readonly<{
+  record: ChangeRoleAssignmentRecordV1;
+  binding: AgentRuntimeAssignmentBindingV1;
+  nativeSessionTurn: AgentRuntimeNativeSessionTurnControllerV1 | null;
+}>;

@@ -69,6 +69,8 @@ import './workflow-bootstrap-host.contract.test.ts';
 import './check-registry-package-boundaries.contract.test.ts';
 import './check-registry-port.contract.test.ts';
 import './check-execution.test.ts';
+import './provider-dispatch.test.ts';
+import './provider-worker-launcher.test.ts';
 import './document-refresh-policy.test.ts';
 import './architecture-graph.contract.test.ts';
 import './path-role-registry.contract.test.ts';

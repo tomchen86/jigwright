@@ -1,3 +1,4 @@
+import { createProviderWorkerDispatcherForTesting } from '../src/composition-root/provider-worker-dispatch-production.ts';
 import { planningAssuranceDependencies } from '../src/composition-root/planning-assurance-production.ts';
 import { readCurrentPlanningRoleOverridePolicy } from '../src/runtime/repository-transaction/planning-role-provider-policy-reader.ts';
 import test from 'node:test';
@@ -48,10 +49,7 @@ import {
 import type { PlanReviewManifest } from '../src/modules/assurance/provider-review-manifests.ts';
 import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { createCurrentAgentRuntimeAssignmentV1 } from '../src/composition-root/change-role-assignment-production.ts';
-import {
-  runProviderWorker,
-  createProviderWorkerDispatcherForTesting,
-} from '../src/entrypoints/worker/provider-worker.ts';
+import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import {
   createProductionChangeRoleAssignmentGrantPort,
   observeCurrentChangeRoleAssignmentGrantForInvocation,

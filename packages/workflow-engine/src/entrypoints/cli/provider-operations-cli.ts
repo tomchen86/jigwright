@@ -16,7 +16,7 @@ import type * as ExecutionReplacement from '../../application/control-plane/exec
 import type * as ExecutionJobRetry from '../../application/control-plane/execution-job-retry.ts';
 import type { ProviderRetryScheduleOperations } from '../../modules/provider-orchestration/provider-retry-service-port.ts';
 import type { providerOperationsServices } from '../../composition-root/provider-operations-cli-production.ts';
-import type { dispatchProviderWorker } from '../worker/provider-worker.ts';
+import type { ProviderWorkerDispatcher } from '../../composition-root/provider-worker-dispatch-production.ts';
 type BoundOperation<T> = T extends (
   dependencies: never,
   ...args: infer Args
@@ -49,7 +49,7 @@ export type ProviderOperationsServices = Pick<
       typeof ExecutionJobRetry.requestExecutionJobRetry
     >;
     consumedPlanReviewReplay: typeof providerOperationsServices.consumedPlanReviewReplay;
-    providerDispatcher: typeof dispatchProviderWorker;
+    providerDispatcher: ProviderWorkerDispatcher;
   }>;
 
 function executionJobUsage(): WorkflowError {

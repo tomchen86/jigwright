@@ -85,10 +85,8 @@ import { systemSpecPaths } from '../../modules/source/system-documents.ts';
 import { diagnoseOpenSpec } from '../../adapters/planning/openspec/documents/openspec-doctor.ts';
 import { startPropose } from '../../composition-root/propose-production.ts';
 import { productionRoleTopologyResolutionPort } from '../../composition-root/role-topology-resolution-production.ts';
-import {
-  runProviderWorkerAsync,
-  dispatchProviderWorker,
-} from '../worker/provider-worker.ts';
+import { runProviderWorkerAsync } from '../worker/provider-worker.ts';
+import { dispatchProviderWorker } from '../../composition-root/provider-worker-dispatch-production.ts';
 
 import { runRegisteredCheck } from '../../composition-root/check-execution-production.ts';
 import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';

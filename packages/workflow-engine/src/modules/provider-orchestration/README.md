@@ -12,11 +12,11 @@ Keep installed provider profiles on the host so repositories select roles withou
 
 Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessment and planned action, then submit the template with `jigwright job retry-request <job-id> --input retry.json --json`. The timeout may stay unchanged. See [retry behavior and single-use budget exceptions](../../../../../docs/features/PROVIDER_RETRY.md).
 
-<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:b35fe466607cd5cba4e86f296dbcde2c381bba0c7816925b472d3ad91de2c9d6 -->
+<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:7b49d849e8dae0c6e60fb1a4c24bd69f8c524537dfefe83632f7b19ea4bf3d92 -->
 
 <!-- prettier-ignore-start -->
 
-48 files changed in this module since confirmation.
+49 files changed in this module since confirmation.
 
 ## Commands
 
@@ -90,6 +90,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [execution-values.ts](execution-values.ts) | Validates execution value shapes and canonical record encodings. | 1 | Header changed since confirmation |
 | [planning-role-provider-policy.ts](planning-role-provider-policy.ts) | Decodes role policy bytes and projects the exact change-bound override identity. | 2 | History unavailable |
 | [provider-contracts.ts](provider-contracts.ts) | Constructs provider requests and validates bound process outputs and failure results. | 1 | History unavailable |
+| [provider-dispatch.ts](provider-dispatch.ts) | Contracts for observing dispatch admission and launching one exact worker. | 0 | History unavailable |
 | [provider-execution-budget-authority.ts](provider-execution-budget-authority.ts) | Binds a provider timeout exception to its exact request and canonical receipt. | 2 | History unavailable |
 | [provider-execution-policy-snapshot.ts](provider-execution-policy-snapshot.ts) | Canonical provider execution policy snapshot DTOs; field and wire semantics are unchanged. | 0 | History unavailable |
 | [provider-invocation-lifecycle.ts](provider-invocation-lifecycle.ts) | Canonical provider invocation lifecycle DTOs; field and wire semantics are unchanged. | 0 | History unavailable |

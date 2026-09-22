@@ -1336,6 +1336,11 @@
       "digest": "sha256:017b375e90c1b063794fa7ed06e58b1393c891d84948404cc81b558600be6549"
     },
     {
+      "path": "src/application/provider-worker/provider-dispatch.ts",
+      "mode": "100644",
+      "digest": "sha256:18531670d7d03c51c2d601b201c1d65deef95b557e2c7692737c66ad4b82cc47"
+    },
+    {
       "path": "src/application/reconciliation/implementation-reconciliation.ts",
       "mode": "100644",
       "digest": "sha256:52569476d00b6d5d26eb300011a2fe6842c49abf90a4de9dd4ed26dccbd54b48"
@@ -1503,7 +1508,7 @@
     {
       "path": "src/composition-root/change-role-assignment-production.ts",
       "mode": "100644",
-      "digest": "sha256:a748f8d323acf28e566a3ea66126e523b01f3f5f2411e44ba15adf8eca396ef5"
+      "digest": "sha256:e7e73e509c27edc3bf9f8ea52ce6556f45b2385143c148ae0c0a0f132dc85abc"
     },
     {
       "path": "src/composition-root/change-role-assignment-simulation-production.ts",
@@ -1831,6 +1836,16 @@
       "digest": "sha256:f315be1a3c7d9a5521486c6665ae83723d52e2572caee50fe2df6d55821bda90"
     },
     {
+      "path": "src/composition-root/provider-worker-assignment-production.ts",
+      "mode": "100644",
+      "digest": "sha256:dd81049d136444afca183715d6a22aa0e7bd188663eeda9754085fd029f158cc"
+    },
+    {
+      "path": "src/composition-root/provider-worker-dispatch-production.ts",
+      "mode": "100644",
+      "digest": "sha256:4db8606b8abe1861f1f11959f6f357e5afa7e01ec8cdc96ae1bea00516d9411a"
+    },
+    {
       "path": "src/composition-root/public/central-grant.ts",
       "mode": "100644",
       "digest": "sha256:5691c58e0c29bb1164cb406066acf0d1c78d17f1aa90f2ba865b4d7cc71de585"
@@ -2083,7 +2098,7 @@
     {
       "path": "src/entrypoints/cli/provider-operations-cli.ts",
       "mode": "100644",
-      "digest": "sha256:e969e669bcc9751f28b9a7648a3b3f22f22e68644f675b6fd5eb47c33bb7c20f"
+      "digest": "sha256:2d3df7c2c96f56faa8349263cb26f2fc1d4a8bbe122c0d478ed16dd9ed35fad2"
     },
     {
       "path": "src/entrypoints/cli/role-context-sharing-grant-cli.ts",
@@ -2098,7 +2113,7 @@
     {
       "path": "src/entrypoints/cli/task-lifecycle-cli.ts",
       "mode": "100644",
-      "digest": "sha256:017a3448cdc955b4515781381a437f1e7423a44fabaaae8c3d4d013bc4ff4d29"
+      "digest": "sha256:4794375a7b36b725ef86cbbc1b12338a5ce8c1d2f0a3c86dba76c80ce98be378"
     },
     {
       "path": "src/entrypoints/cli/task-review-cli-input.ts",
@@ -2108,12 +2123,12 @@
     {
       "path": "src/entrypoints/cli/workflow-cli.ts",
       "mode": "100644",
-      "digest": "sha256:492fb4c02c45b0b50fd170ae86b32396b95f66a67754d7bf7f9abc40ed2c8c70"
+      "digest": "sha256:8a1872f1f4f1805cbad11a9019a97df94bc8e967695836316f2bf93ee08a7a3b"
     },
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:d0f9fbba86aee425cd1ef26f080a6d1875e7292effe2ac49c74ca64cba85d635"
+      "digest": "sha256:7d4927531c87e7b37d24eb402f46169baf64a253d5d4233a1ea45c4745cfd2f4"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -3458,7 +3473,7 @@
     {
       "path": "src/modules/provider-orchestration/agent-runtime-port.ts",
       "mode": "100644",
-      "digest": "sha256:0cfc50eb1efbc5970c08430f9d774cc8e5aa1b645079425fb939b22911abf8c3"
+      "digest": "sha256:6d54c1ddec755077336e392aa62b9648f3ec79cf7937dc3193bedad8f3bc5050"
     },
     {
       "path": "src/modules/provider-orchestration/agent-runtime-protocol.ts",
@@ -3534,6 +3549,11 @@
       "path": "src/modules/provider-orchestration/provider-contracts.ts",
       "mode": "100644",
       "digest": "sha256:6e8b2604f54965b833be46e32fa181555d6f2610e5dc160a1a2985d6e5ad8915"
+    },
+    {
+      "path": "src/modules/provider-orchestration/provider-dispatch.ts",
+      "mode": "100644",
+      "digest": "sha256:dc5b89afdcaf937571d5d888adcc7689e5ff4425f328b5b180228f38ce897c27"
     },
     {
       "path": "src/modules/provider-orchestration/provider-execution-budget-authority.ts",
@@ -4144,6 +4164,11 @@
       "path": "src/runtime/provider-execution/provider-runner.ts",
       "mode": "100644",
       "digest": "sha256:44248158284058f6a26a1e32e5f23d0a4e0d381dde7b0b17ec587ed5e23e62af"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-worker-launcher.ts",
+      "mode": "100644",
+      "digest": "sha256:0f1a9a3ba9d421699130199acc1fb62f3921341c227b754cfb169ca1318ef635"
     },
     {
       "path": "src/runtime/provider-execution/retention-control.ts",

@@ -14,7 +14,6 @@ type TaskMandateDependencies = Pick<
  * - An AgentRuntime turn may emit at most one terminal failure receipt.
  */
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { startProviderInvocationActivityHeartbeat } from '../../runtime/storage-journal/provider-invocation-activity.ts';
@@ -50,10 +49,9 @@ import {
 import { readInvestigationSession } from '../../runtime/storage-journal/investigation-session-records.ts';
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
 
-import {
-  createCurrentAgentRuntimeAssignmentV1,
-  type CurrentAgentRuntimeAssignmentV1,
-} from '../../composition-root/change-role-assignment-production.ts';
+import { resolveCurrentProviderWorkerAssignment } from '../../composition-root/provider-worker-assignment-production.ts';
+import { dispatchProviderWorker } from '../../composition-root/provider-worker-dispatch-production.ts';
+import type { ProviderWorkerAssignmentOptions } from '../../composition-root/provider-worker-assignment-production.ts';
 import {
   productionConsumedPlanReviewReplayPort,
   productionConsumedRoleResultReplayPort,
@@ -149,14 +147,10 @@ export type AsyncProviderWorkerResult = ProviderWorkerResult &
     completionReceipt: AgentRuntimeCompletionReceipt | null;
   }>;
 
-export type ProviderWorkerOptions = {
+export type ProviderWorkerOptions = ProviderWorkerAssignmentOptions & {
   workerId?: string;
-  platform?: NodeJS.Platform;
-  environment?: NodeJS.ProcessEnv;
   signal?: AbortSignal;
   agentRuntime?: ProviderWorkerRuntimePort;
-  /** Explicit host-owned config path; production may supply the same path by env. */
-  agentProviderConfigPath?: string;
   /** @deprecated Use the complete `agentRuntime` port injection seam. */
   runner?: ProviderWorkerRuntimePort['runSingleShot'];
   automaticRetry?: {
@@ -171,45 +165,6 @@ export type ProviderWorkerOptions = {
   retentionNow?: string;
   retentionMaintenance?: typeof runEvidenceRetentionMaintenance;
 };
-
-export type ProviderDispatchResult = {
-  schemaVersion: 1;
-  kind: 'provider-worker-dispatch';
-  invocationId: string;
-  pid: number;
-};
-
-type ProviderDispatcherHost = {
-  spawn(
-    executable: string,
-    args: string[],
-    options: {
-      cwd: string;
-      detached: true;
-      stdio: 'ignore';
-      env: NodeJS.ProcessEnv;
-    },
-  ): { pid?: number; unref(): void };
-};
-
-/** Production detached dispatch of the hidden lifecycle-owned worker command. */
-export function dispatchProviderWorker(
-  cwd: string,
-  invocationId: string,
-): ProviderDispatchResult {
-  return createProviderWorkerDispatcher(realDispatcherHost())(
-    cwd,
-    invocationId,
-  );
-}
-
-/** The only dispatch injection seam; registered tests never launch a model. */
-export function createProviderWorkerDispatcherForTesting(
-  host: ProviderDispatcherHost,
-  preflightOptions: ProviderWorkerOptions = {},
-): (cwd: string, invocationId: string) => ProviderDispatchResult {
-  return createProviderWorkerDispatcher(host, preflightOptions);
-}
 
 /**
  * Claim and execute one exact durable provider invocation. Replays never
@@ -444,7 +399,16 @@ function runProviderWorkerWithExecution(
   // Grant admission precedes the provider lease. A missing role-assignment
   // activation must leave this exact invocation prepared so Human Gate can
   // authorize it and the same worker command can be retried.
-  resolveCurrentAssignment(context, initial.changeId, request, options);
+  resolveCurrentProviderWorkerAssignment(
+    {
+      repositoryRoot: context.git.repositoryRoot,
+      runtime: context.runtime,
+      grantRuntimeRoot: context.lifecycleRuntime.root,
+      changeId: initial.changeId,
+      request,
+    },
+    options,
+  );
   const claimInput = {
     workerId:
       options.workerId ??
@@ -713,10 +677,14 @@ function runProviderWorkerWithExecution(
   let preparedAcceptanceBinding: ProviderInvocationAcceptanceBinding | null =
     null;
   try {
-    const assignment = resolveCurrentAssignment(
-      context,
-      initial.changeId,
-      request,
+    const assignment = resolveCurrentProviderWorkerAssignment(
+      {
+        repositoryRoot: context.git.repositoryRoot,
+        runtime: context.runtime,
+        grantRuntimeRoot: context.lifecycleRuntime.root,
+        changeId: initial.changeId,
+        request,
+      },
       options,
     );
     preparedHostAssignmentBinding =
@@ -881,96 +849,6 @@ function createProviderInvocationCancellationWatcher(
   });
 }
 
-function createProviderWorkerDispatcher(
-  host: ProviderDispatcherHost,
-  preflightOptions: ProviderWorkerOptions = {},
-) {
-  return (
-    cwd: string,
-    requestedInvocationId: string,
-  ): ProviderDispatchResult => {
-    const context = loadInvestigationRuntimeContext(cwd);
-    const record = readProviderInvocation(
-      context.runtime,
-      requestedInvocationId,
-    );
-    if (record.state !== 'prepared') {
-      throw workflowError(
-        'PROVIDER_INVOCATION_DISPATCH_CONFLICT',
-        'Only the exact prepared provider invocation can be dispatched.',
-        ExitCode.conflict,
-      );
-    }
-    preflightProviderWorkerAssignment(
-      cwd,
-      requestedInvocationId,
-      preflightOptions,
-    );
-    const child = host.spawn(
-      process.execPath,
-      [
-        '--experimental-strip-types',
-        path.join(
-          import.meta.dirname,
-          '../../../bootstrap/workflow-engine-host.ts',
-        ),
-        'provider-worker',
-        record.invocationId,
-        '--json',
-      ],
-      {
-        cwd: context.git.repositoryRoot,
-        detached: true,
-        stdio: 'ignore',
-        env: process.env,
-      },
-    );
-    if (!Number.isSafeInteger(child.pid) || child.pid! < 1) {
-      throw workflowError(
-        'PROVIDER_WORKER_DISPATCH_FAILED',
-        'The lifecycle-owned provider worker could not be dispatched.',
-        ExitCode.verification,
-      );
-    }
-    child.unref();
-    return {
-      schemaVersion: 1,
-      kind: 'provider-worker-dispatch',
-      invocationId: record.invocationId,
-      pid: child.pid!,
-    };
-  };
-}
-
-export function preflightProviderWorkerAssignment(
-  cwd: string,
-  requestedInvocationId: string,
-  options: ProviderWorkerOptions = {},
-): CurrentAgentRuntimeAssignmentV1 | null {
-  const context = loadInvestigationRuntimeContext(cwd);
-  const record = readProviderInvocation(context.runtime, requestedInvocationId);
-  if (record.state !== 'prepared') {
-    throw workflowError(
-      'PROVIDER_INVOCATION_DISPATCH_CONFLICT',
-      'Only the exact prepared provider invocation can enter AgentRuntime Grant preflight.',
-      ExitCode.conflict,
-    );
-  }
-  const request = readProviderInvocationRequest(
-    context.runtime,
-    requestedInvocationId,
-  );
-  return resolveCurrentAssignment(context, record.changeId, request, options);
-}
-
-function realDispatcherHost(): ProviderDispatcherHost {
-  return {
-    spawn(executable, args, options) {
-      return spawn(executable, args, options);
-    },
-  };
-}
-
 function semanticContract(
   request: ReturnType<typeof readProviderInvocationRequest>,
 ) {
@@ -1127,31 +1005,6 @@ function providerRetryAfterMs(error: unknown): number | null {
     (value as number) <= 86_400_000
     ? (value as number)
     : null;
-}
-
-function resolveCurrentAssignment(
-  context: ReturnType<typeof loadInvestigationRuntimeContext>,
-  changeId: string,
-  request: ReturnType<typeof readProviderInvocationRequest>,
-  options: ProviderWorkerOptions,
-): CurrentAgentRuntimeAssignmentV1 | null {
-  const environment = options.environment ?? process.env;
-  const configFilePath =
-    options.agentProviderConfigPath ??
-    environment.JIGWRIGHT_AGENT_PROVIDER_CONFIG;
-  if (configFilePath === undefined) return null;
-  // Blind survey creates the Manifest; it cannot consume current Manifest
-  // authority. Every post-Manifest provider purpose uses the durable path.
-  if (request.purpose === 'survey') return null;
-  return createCurrentAgentRuntimeAssignmentV1({
-    repositoryRoot: context.git.repositoryRoot,
-    runtime: context.runtime,
-    grantRuntimeRoot: context.lifecycleRuntime.root,
-    changeId,
-    request,
-    configFilePath,
-    platform: options.platform ?? process.platform,
-  });
 }
 
 function resolveAgentRuntime(
