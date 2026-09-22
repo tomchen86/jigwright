@@ -97,3 +97,5 @@ import '../task-revision-approval-boundary.test.ts';
 import '../task-strategy-implementation-boundary.test.ts';
 import '../task-strategy-implementation-lifecycle.test.ts';
 import '../task-strategy-implementation-record.contract.test.ts';
+import '../task-strategy-lifecycle-boundary.test.ts';
+import '../task-strategy-lifecycle.test.ts';

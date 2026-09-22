@@ -37,14 +37,8 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import type { WorkflowError } from '../../foundation/errors/errors.ts';
 import { isProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 
-export type TaskStrategyRedRevisionRequest = Readonly<{
-  schemaVersion: 1;
-  kind: 'task-strategy-red-revision-request';
-  sessionId: string;
-  expectedTransactionDigest: string;
-  reason: string;
-}>;
-
+import type { TaskStrategyRedRevisionRequest } from '../../modules/assurance/task-strategy-evidence.ts';
+export type { TaskStrategyRedRevisionRequest } from '../../modules/assurance/task-strategy-evidence.ts';
 export type TaskStrategyRedRevisionRequestSnapshot = Readonly<{
   revisionId: string;
   requestDigest: string;

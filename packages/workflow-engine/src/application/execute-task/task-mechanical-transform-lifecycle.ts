@@ -53,14 +53,11 @@ const RETAINED_CLASSES = new Set([
 ]);
 const DIGEST = /^[0-9a-f]{64}$/;
 
-export type TaskMechanicalTransformLifecycleState =
-  'transformation-required' | 'transformation-produced';
-
-export type TaskMechanicalTransformLifecycleStatus = Readonly<{
-  state: TaskMechanicalTransformLifecycleState;
-  projectionDigest: string;
-}>;
-
+import type { TaskMechanicalTransformLifecycleStatus } from '../../modules/lifecycle/managed-workflow-state-contract.ts';
+export type {
+  TaskMechanicalTransformLifecycleState,
+  TaskMechanicalTransformLifecycleStatus,
+} from '../../modules/lifecycle/managed-workflow-state-contract.ts';
 type MechanicalProjectionOperation = Readonly<{
   sourcePath: string;
   targetPath: string;

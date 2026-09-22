@@ -164,3 +164,11 @@ export type TaskStrategyCallerImplementationBinding = Readonly<{
   output: TaskStrategyImplementationOutput;
   createdAt: string;
 }>;
+
+export type TaskStrategyRedRevisionRequest = Readonly<{
+  schemaVersion: 1;
+  kind: 'task-strategy-red-revision-request';
+  sessionId: string;
+  expectedTransactionDigest: string;
+  reason: string;
+}>;

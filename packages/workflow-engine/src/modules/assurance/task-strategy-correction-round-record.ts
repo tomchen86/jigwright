@@ -1,4 +1,5 @@
 /** Canonical correction lineage facts; observation and durable validation stay with their producers. */
+import type { TaskStrategyImplementationSubject } from '../provider-orchestration/task-strategy-implementation-manifest.ts';
 import type {
   TaskStrategyPatchHead,
   TaskStrategyCorrectionPolicy,
@@ -229,4 +230,9 @@ export type TaskStrategyCorrectionProjection = Readonly<{
   completedCorrectionRounds: number;
   exhausted: boolean;
   correctionState: TaskStrategyCorrectionState | null;
+}>;
+
+export type CurrentTaskStrategyImplementationAuthority = Readonly<{
+  subject: TaskStrategyImplementationSubject;
+  greenFailureRecord: TaskStrategyGreenFailureRecord | null;
 }>;

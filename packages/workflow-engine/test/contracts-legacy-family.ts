@@ -31,6 +31,8 @@ import './task-strategy-store.contract.test.ts';
 import './task-strategy-implementation-record.contract.test.ts';
 import './task-strategy-implementation-lifecycle.test.ts';
 import './task-strategy-implementation-boundary.test.ts';
+import './task-strategy-lifecycle.test.ts';
+import './task-strategy-lifecycle-boundary.test.ts';
 import './task-diff-review.contract.test.ts';
 import './task-diff-review-artifact.contract.test.ts';
 import './task-diff-review-external-input.contract.test.ts';

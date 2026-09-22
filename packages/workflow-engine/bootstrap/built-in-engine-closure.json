@@ -968,7 +968,7 @@
     {
       "path": "src/application/execute-task/task-mechanical-transform-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:c26d9ed8bfccfcc254d4f4f85c058c21956f8c917b3c47cc4bbbee22eb720b02"
+      "digest": "sha256:e0af82238d6d0328409e1572fd5c36cd8dd1b3538c551662d62c3d78f4bdb327"
     },
     {
       "path": "src/application/execute-task/task-strategy-caller-admission.ts",
@@ -978,7 +978,7 @@
     {
       "path": "src/application/execute-task/task-strategy-correction.ts",
       "mode": "100644",
-      "digest": "sha256:ca252466a87214e399c1bb1fd5a8076d52dec7f9af76ef24232e3c7883dd1c46"
+      "digest": "sha256:3fffaf9bc107b84d6f6ffa0c9cc7a60df20e4695b8d35fd19d93af2442e69f71"
     },
     {
       "path": "src/application/execute-task/task-strategy-execution.ts",
@@ -1001,9 +1001,14 @@
       "digest": "sha256:dc975ce559000270a3ba2eba32c2a88a67f9c3f6a4f445b3d61ef1b2a7556a3b"
     },
     {
+      "path": "src/application/execute-task/task-strategy-lifecycle-operations.ts",
+      "mode": "100644",
+      "digest": "sha256:c345060508d555a936a06cc8b18c3c61d14a1e06eb07122bad7b7842d2523532"
+    },
+    {
       "path": "src/application/execute-task/task-strategy-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:a25c8fade12c18b9313c98755d8756c5bd34e2e3b9b15c8f3a91dc2429b12562"
+      "digest": "sha256:6cca179b6ccbae7de4f767f9275719c057e8b9f83bd3880e109a20de017b432e"
     },
     {
       "path": "src/application/execute-task/task-strategy-patch.ts",
@@ -2003,7 +2008,7 @@
     {
       "path": "src/composition-root/task-strategy-production.ts",
       "mode": "100644",
-      "digest": "sha256:bb38836d3124728cf3fa7d1c27270df14b8e98fa8b11ba8c0e20d0cf7429a75b"
+      "digest": "sha256:d184ed9eaf03fe204ceee49ae5e86893faca206bfdd0f7080fbd65ef27fb5abc"
     },
     {
       "path": "src/composition-root/task-strategy-red-revision-production.ts",
@@ -2523,12 +2528,12 @@
     {
       "path": "src/modules/assurance/task-strategy-correction-round-record.ts",
       "mode": "100644",
-      "digest": "sha256:fb8f3bb09a2c11da13070ba2e9634dc87acdbdb2c871cc99be7439687bbf6ca8"
+      "digest": "sha256:407903c6dbbc75d6f3b5e668d4bb6fb52292f95bcfca8727c6a9b16247a8fa8c"
     },
     {
       "path": "src/modules/assurance/task-strategy-evidence.ts",
       "mode": "100644",
-      "digest": "sha256:6f37706d567b30bb7a84c56e72861a5a432f7e052b2d6d428804d353cc71f0f7"
+      "digest": "sha256:c666d75ba6ca9195e324dc36b65c88fc092534ce882d38150778ecfa79d7a945"
     },
     {
       "path": "src/modules/assurance/task-strategy-gate.ts",
@@ -3393,7 +3398,7 @@
     {
       "path": "src/modules/lifecycle/managed-workflow-state-contract.ts",
       "mode": "100644",
-      "digest": "sha256:1fb8fa79d6a932baff5311f1efbde95255e8961287b5142f3a197b49ab9eb9d6"
+      "digest": "sha256:9b65eb2baf0e1d2374e0b83ec38eecdeb88394dd63f65a787212605b014e1db9"
     },
     {
       "path": "src/modules/lifecycle/planning-amendment-decision.ts",
@@ -5593,7 +5598,7 @@
     {
       "path": "src/runtime/storage-journal/task-strategy-red-revision-contract.ts",
       "mode": "100644",
-      "digest": "sha256:0cf4c261d708f7bb1b82e9800b472e52422d9969850b82b186da1bfefc392bfa"
+      "digest": "sha256:6d565bc7ade926a92d7237a99c6fcd03bd9663a89432ab4a703cd47c07ba45c4"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-red-revision-store.ts",

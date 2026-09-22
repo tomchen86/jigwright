@@ -70,11 +70,8 @@ import type {
   TaskStrategyCorrectionProjection,
 } from '../../modules/assurance/task-strategy-correction-round-record.ts';
 
-export type CurrentTaskStrategyImplementationAuthority = Readonly<{
-  subject: TaskStrategyImplementationSubject;
-  greenFailureRecord: TaskStrategyGreenFailureRecord | null;
-}>;
-
+import type { CurrentTaskStrategyImplementationAuthority } from '../../modules/assurance/task-strategy-correction-round-record.ts';
+export type { CurrentTaskStrategyImplementationAuthority } from '../../modules/assurance/task-strategy-correction-round-record.ts';
 /**
  * Persist only an engine-observed ordinary GREEN failure. Checks that throw,
  * mutate the worktree, lose runner identity, or belong to a non-TDD strategy

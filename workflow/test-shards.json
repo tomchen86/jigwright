@@ -12,9 +12,9 @@
   },
   "sourceTelemetryRunId": "run-20260912023916307-f369e0a2-e7a4-441a-bca1-57c8300410a4",
   "sourceTelemetryDigest": "sha256:9b45f37d8baf330b4fbd88d81456c97b50767229cf3cb6646d9dcdc1fdb4661d",
-  "physicalFileCount": 540,
-  "executionUnitCount": 537,
-  "inventoryDigest": "sha256:d0ef33e866794facb40461b7d5750d430b205b8641a7398534c2de546188f426",
+  "physicalFileCount": 542,
+  "executionUnitCount": 539,
+  "inventoryDigest": "sha256:003b588d5cb1b53b5aa6cb762c3b708a60968bdf7a13d0d1bd534c376c3d95a6",
   "shards": [
     {
       "shardNumber": 1,
@@ -2814,6 +2814,22 @@
             "packages/workflow-engine/test/task-strategy-implementation-record.contract.test.ts"
           ],
           "legacyOrdinal": 537,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-lifecycle-boundary.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-lifecycle-boundary.test.ts"
+          ],
+          "legacyOrdinal": 538,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-lifecycle.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-lifecycle.test.ts"
+          ],
+          "legacyOrdinal": 539,
           "estimatedDurationMs": 0
         }
       ]

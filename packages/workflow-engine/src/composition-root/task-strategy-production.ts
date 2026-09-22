@@ -2,11 +2,19 @@ import type {
   TaskStrategyImplementationOperations,
   TaskStrategyImplementationJournal,
 } from '../application/execute-task/task-strategy-implementation-operations.ts';
-import { loadActiveSessionContext } from '../runtime/repository-observation/workflow-session-context.ts';
+import {
+  getSession,
+  loadActiveSessionContext,
+} from '../runtime/repository-observation/workflow-session-context.ts';
 import { observeInvestigationRuntimeContext } from '../runtime/repository-observation/investigation-runtime-context.ts';
 import { inspectSession } from '../application/session-inspection/session-inspection.ts';
-import { resolveCurrentTaskStrategyCorrection } from '../application/execute-task/task-strategy-correction.ts';
 import {
+  resolveCurrentTaskStrategyCorrection,
+  resolveCurrentTaskStrategyImplementationAuthority,
+} from '../application/execute-task/task-strategy-correction.ts';
+import {
+  adoptCurrentTaskStrategyImplementation,
+  adoptCurrentTaskStrategyCorrection,
   validateTaskStrategyProviderPatch,
   validateTaskStrategyCallerPatch,
   importTaskStrategyProviderPatchUnderLifecycleLock,
@@ -80,7 +88,13 @@ import {
 /** Binds task-strategy retry observations at the production boundary. */
 import { createTaskStrategyImplementationLifecycle } from '../application/execute-task/task-strategy-implementation-lifecycle.ts';
 import { roleResultAdmission } from './role-admission-production.ts';
-import { resumeTaskStrategy as resume } from '../application/execute-task/task-strategy-lifecycle.ts';
+import { createTaskStrategyLifecycle } from '../application/execute-task/task-strategy-lifecycle.ts';
+import { discoverRepository } from '../runtime/repository-transaction/git.ts';
+import {
+  inspectTaskMechanicalTransformLifecycle,
+  resumeTaskMechanicalTransformation,
+} from '../application/execute-task/task-mechanical-transform-lifecycle.ts';
+import { sealTaskStrategyRed } from '../application/execute-task/task-strategy-execution.ts';
 import { readProviderRetryAccountingEvidence } from '../runtime/storage-journal/provider-retry-accounting-reader.ts';
 
 /** Each call observes paths afresh; binding the journal performs no record reads. */
@@ -243,14 +257,49 @@ export const beginTaskStrategyImplementation =
     undefined,
     readProviderRetryAccountingEvidence,
   );
-export const resumeTaskStrategy = resume.bind(
-  undefined,
-  reviewedGeneratedAssets,
-  productionChangeContract,
+const lifecycle = createTaskStrategyLifecycle({
+  session: {
+    read: getSession,
+    discoverRepository,
+    loadStableContract:
+      productionChangeContract.loadStableValidatedChangeContract,
+    inspect: inspectSession.bind(undefined, productionChangeContract),
+    resolveCorrection: resolveCurrentTaskStrategyCorrection,
+    resolveImplementationAuthority:
+      resolveCurrentTaskStrategyImplementationAuthority,
+  },
+  observeJournal: observeImplementationJournal,
+  mechanical: {
+    inspect: inspectTaskMechanicalTransformLifecycle.bind(
+      undefined,
+      reviewedGeneratedAssets,
+      productionChangeContract,
+    ),
+    resume: resumeTaskMechanicalTransformation.bind(
+      undefined,
+      reviewedGeneratedAssets,
+      productionChangeContract,
+    ),
+  },
+  red: {
+    seal: sealTaskStrategyRed.bind(undefined, productionChangeContract),
+    beginRevision: beginTaskStrategyRedRevision,
+    continueRevision: continueTaskStrategyRedRevision,
+  },
+  adopt: {
+    implementation: adoptCurrentTaskStrategyImplementation.bind(
+      undefined,
+      productionChangeContract,
+    ),
+    correction: adoptCurrentTaskStrategyCorrection.bind(
+      undefined,
+      productionChangeContract,
+    ),
+  },
   implementation,
-  { beginTaskStrategyRedRevision, continueTaskStrategyRedRevision },
   readProviderRetryAccountingEvidence,
-);
+});
+export const { inspectTaskStrategyLifecycle, resumeTaskStrategy } = lifecycle;
 export const {
   inspectTaskStrategyImplementation,
   assertTaskStrategyImplementationProviderOwnerCurrent,
@@ -258,11 +307,3 @@ export const {
 
 export type * from '../application/execute-task/task-strategy-implementation-lifecycle.ts';
 export type * from '../application/execute-task/task-strategy-lifecycle.ts';
-
-import { inspectTaskStrategyLifecycle as inspectTaskStrategyLifecycleWithRouting } from '../application/execute-task/task-strategy-lifecycle.ts';
-export const inspectTaskStrategyLifecycle =
-  inspectTaskStrategyLifecycleWithRouting.bind(
-    undefined,
-    reviewedGeneratedAssets,
-    productionChangeContract,
-  );

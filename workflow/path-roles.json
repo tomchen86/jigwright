@@ -552,6 +552,7 @@
       "packages/workflow-engine/src/application/execute-task/task-strategy-implementation-context.ts",
       "packages/workflow-engine/src/application/execute-task/task-strategy-implementation-lifecycle.ts",
       "packages/workflow-engine/src/application/execute-task/task-strategy-implementation-operations.ts",
+      "packages/workflow-engine/src/application/execute-task/task-strategy-lifecycle-operations.ts",
       "packages/workflow-engine/src/application/execute-task/task-strategy-lifecycle.ts",
       "packages/workflow-engine/src/application/execute-task/task-strategy-patch.ts",
       "packages/workflow-engine/src/application/execute-task/task-strategy-provider-reservations.ts",

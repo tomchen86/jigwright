@@ -8,7 +8,7 @@ Keep repository routing in one controlled source and derive the visible inventor
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:999fae6ca3395e0ccfc0c2fb444dcfb426aa8c79aca48565aef2b1e647fe11be -->
+<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:bd7bbf43cab743a4d70920741a81b612f7f39ec51b3d7cef6bd4e2797679b300 -->
 
 <!-- prettier-ignore-start -->
 
@@ -47,6 +47,7 @@ Keep repository routing in one controlled source and derive the visible inventor
 | ChangeRoutingRuntimeState | revising, recovery-required, null | [change-routing.ts](change-routing.ts) |
 | ManagedTaskStrategyState | not-required, session-terminal, transformation-required, transformation-produced, red-authoring, implementation-required, ready, reservation-persisted, collaboration-grant-required, waiting-for-provider, provider-succeeded-awaiting-import, provider-failed, correction-required, correction-exhausted, caller-supplied-awaiting-import, patch-imported | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
 | ManagedTaskDiffReviewState | not-required, ready, collaboration-grant-required, external-grant-resume-required, direct-human-attestation-required, external-reconciliation-required, satisfied, challenge-response-required, challenge-closure-required, changes-required, waiting-for-provider, provider-succeeded-awaiting-reconciliation, provider-failed | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
+| TaskMechanicalTransformLifecycleState | transformation-required, transformation-produced | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
 
 ## Contracts
 
