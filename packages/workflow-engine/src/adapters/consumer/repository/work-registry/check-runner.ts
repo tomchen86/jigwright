@@ -2,6 +2,7 @@ import {
   sha256,
   OBSERVED_CHECK_FAILURE_EXCERPT_BYTES,
   type CheckEvidence,
+  type CheckEvidenceMetadata,
   type ObservedCheckOutcome,
 } from '../../../../foundation/check-evidence/check-evidence.ts';
 
@@ -26,11 +27,43 @@ import { normalizeChangedPath } from '../../../../foundation/repository-path/rep
 import { resolveCheckRunner } from './runner-resolution.ts';
 import type { ResolvedCheckRunner } from '../../../../modules/source/check-command.ts';
 
-export type CheckEvidenceMetadata = {
-  completedAt: () => Date;
-  externalSnapshotDigest?: string;
-  maxAgeMs?: number;
-};
+import type { CheckExecutionFactory } from '../../../../modules/assurance/check-execution-port.ts';
+import { requirePassedCheck } from '../../../../modules/assurance/check-execution.ts';
+import {
+  assertDisposableDatabaseForRepository,
+  createCheckEnvironmentForRepository,
+} from './database-policy.ts';
+
+export const createCheckExecution: CheckExecutionFactory = (
+  repositoryRoot,
+  environment,
+) => ({
+  preflightDatabase() {
+    return assertDisposableDatabaseForRepository(repositoryRoot, environment)
+      .identity;
+  },
+  pin({ checkId, definition }, databaseIdentity) {
+    const runner = pinCheckRunner(repositoryRoot, checkId, definition);
+    return {
+      runner,
+      execute(metadata) {
+        return runObservedCheck(
+          repositoryRoot,
+          checkId,
+          definition,
+          runner,
+          createCheckEnvironmentForRepository(
+            repositoryRoot,
+            environment,
+            definition.destructiveDatabase,
+          ),
+          databaseIdentity,
+          metadata,
+        );
+      },
+    };
+  },
+});
 
 export type ExpectedRedCheckResult = Readonly<{
   checkId: string;
@@ -79,21 +112,7 @@ export function runCheck(
     databaseIdentity,
     evidenceMetadata,
   );
-  if (outcome.outcome === 'failed') {
-    throw workflowError(
-      'CHECK_FAILED',
-      `Required check ${checkId} exited non-zero.`,
-      ExitCode.verification,
-      {
-        details: {
-          checkId,
-          exitCode: outcome.exitCode,
-          signal: null,
-        },
-      },
-    );
-  }
-  return outcome;
+  return requirePassedCheck(checkId, outcome);
 }
 
 /**

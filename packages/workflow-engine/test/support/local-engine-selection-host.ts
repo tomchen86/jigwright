@@ -5,7 +5,11 @@ import {
 } from '../../bootstrap/control-plane-trust.ts';
 import { reviewedGeneratedAssets } from '../../src/composition-root/planning-provider-authoring-production.ts';
 import type { LocalEngineSelectionReaders } from '../../src/modules/authority/local-engine-selection.ts';
-import { checkSession as checkSessionWithLocalEngineSelection } from '../../src/application/finalize/verification.ts';
+import {
+  createSessionCheckService,
+  type SessionCheckOptions,
+} from '../../src/application/finalize/verification.ts';
+import { createProductionCheckExecution } from '../../src/composition-root/check-execution-production.ts';
 import { createProductionFinalizationService } from '../../src/composition-root/finalization-production.ts';
 
 export const localEngineSelectionReaders: LocalEngineSelectionReaders =
@@ -14,11 +18,24 @@ export const localEngineSelectionReaders: LocalEngineSelectionReaders =
     resolveLocalEngineSelection,
   });
 
-export const checkSession = checkSessionWithLocalEngineSelection.bind(
-  undefined,
-  reviewedGeneratedAssets,
-  localEngineSelectionReaders,
-);
+type CheckDependencies = Parameters<typeof createSessionCheckService>[0];
+export function checkSession(
+  manifestOperations: CheckDependencies['manifestOperations'],
+  taskStrategyExecutionGate: CheckDependencies['taskStrategyExecutionGate'],
+  changeContract: CheckDependencies['changeContract'],
+  cwd: string,
+  requestedSessionId: string,
+  options: SessionCheckOptions = {},
+) {
+  return createSessionCheckService({
+    reviewedAssets: reviewedGeneratedAssets,
+    localEngineSelection: localEngineSelectionReaders,
+    manifestOperations,
+    taskStrategyExecutionGate,
+    changeContract,
+    createExecution: createProductionCheckExecution,
+  }).checkSession(cwd, requestedSessionId, options);
+}
 
 export const {
   rollbackCompletion,

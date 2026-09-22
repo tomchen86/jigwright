@@ -1,7 +1,7 @@
+import { createProductionSessionCheckService } from './session-check-production.ts';
 import { createInteractiveSshSigner } from '../adapters/signing/ssh/maintainer-signer.ts';
 import { createArchiveProjectionDependencies } from './planning-archive-projection-production.ts';
 import { loadStableValidatedChangeContract } from './validated-contract-context.ts';
-import { reviewedGeneratedAssets } from './planning-provider-authoring-production.ts';
 import { readAndValidateTaskRevisionApproval } from './task-revision-approval-production.ts';
 export type { ControlPlanePromotionBootstrapObservations } from '../modules/authority/intervention-bootstrap-contract.ts';
 import {
@@ -9,9 +9,7 @@ import {
   verifyPullRequest,
 } from './ci-verification-production.ts';
 
-import { maintainerManifestOperations } from './maintainer-manifest-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from './planning-execution-epoch-production.ts';
-import { productionTaskStrategyExecutionGate } from './task-strategy-gate-production.ts';
 import { archiveEligibilityReplayServices } from './ci-replay-production.ts';
 import { productionPlanningArchiveSourcePolicy } from './planning-archive-projection-production.ts';
 import { taskMandateOperations } from './task-mandate-production.ts';
@@ -300,10 +298,7 @@ export const commitSession = commitSessionWithRouting.bind(
   undefined,
   productionChangeContract,
 );
-import {
-  preflightTaskSession as preflightTaskSessionWithRouting,
-  checkSession as checkSessionWithRouting,
-} from '../application/execute-task/session.ts';
+import { preflightTaskSession as preflightTaskSessionWithRouting } from '../application/execute-task/session.ts';
 export const preflightTaskSession = preflightTaskSessionWithRouting.bind(
   undefined,
   productionChangeContract,
@@ -312,14 +307,7 @@ export const preflightTaskSession = preflightTaskSessionWithRouting.bind(
 export function createProductionSessionCheck(
   readers: LocalEngineSelectionReaders,
 ) {
-  return checkSessionWithRouting.bind(
-    undefined,
-    reviewedGeneratedAssets,
-    readers,
-    maintainerManifestOperations,
-    productionTaskStrategyExecutionGate,
-    productionChangeContract,
-  );
+  return createProductionSessionCheckService(readers).checkSession;
 }
 export { inspectTaskStrategyLifecycle } from './task-strategy-production.ts';
 

@@ -4,7 +4,12 @@ import type { CheckEvidence } from '../../foundation/check-evidence/check-eviden
 import type {
   CheckExecutionPort,
   CheckPostValidation,
+  CheckRepositoryValidation,
 } from '../../modules/assurance/check-execution-port.ts';
+import {
+  prepareCheckBatch,
+  requirePassedCheck,
+} from '../../modules/assurance/check-execution.ts';
 import { resolveRequiredCiChecks } from '../../modules/assurance/required-checks.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
@@ -14,26 +19,16 @@ export function runRequiredChecks(
   checkIds: string[],
   registry: CheckRegistryPortV1,
   execution: CheckExecutionPort,
+  validation: CheckRepositoryValidation,
   postValidation: CheckPostValidation,
 ): CheckEvidence[] {
   const required = resolveRequiredCiChecks(repositoryRoot, checkIds, registry);
-  const databaseIdentity = required.some(
-    ({ definition }) => definition.destructiveDatabase,
-  )
-    ? execution.preflightDatabase()
-    : undefined;
-  const pinned = required.map((check) => ({
-    checkId: check.checkId,
-    execute: execution.pin(
-      check,
-      check.definition.destructiveDatabase ? databaseIdentity : undefined,
-    ),
-  }));
-  const initial = execution.observe(head);
+  const pinned = prepareCheckBatch(required, execution);
+  const initial = validation.observe(head);
   const evidence: CheckEvidence[] = [];
-  for (const { checkId, execute } of pinned) {
-    evidence.push(execute());
-    const current = execution.observe(head);
+  for (const { checkId, execution: check } of pinned) {
+    evidence.push(requirePassedCheck(checkId, check.execute()));
+    const current = validation.observe(head);
     if (
       current.head !== head ||
       current.statusEntryCount > 0 ||
@@ -47,7 +42,7 @@ export function runRequiredChecks(
       );
     }
   }
-  execution.validate(postValidation, head);
+  validation.validate(postValidation, head);
   return evidence;
 }
 
@@ -64,6 +59,7 @@ export function runRegisteredCheck(
   checkId: string,
   registry: CheckRegistryPortV1,
   execution: CheckExecutionPort,
+  validation: CheckRepositoryValidation,
 ): RegisteredCheckResult {
   if (repository.statusEntryCount > 0) {
     throw workflowError(
@@ -104,6 +100,7 @@ export function runRegisteredCheck(
     [checkId],
     registry,
     execution,
+    validation,
     'live-current-ref',
   );
   return { head: repository.head, check: evidence[0]! };

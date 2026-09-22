@@ -75,7 +75,7 @@ import {
 
 import { ensureTaskMechanicalTransformationEvidence } from './task-mechanical-transform.ts';
 import {
-  executeChecks,
+  type SessionCheckService,
   persistSession,
   writeSessionReport,
 } from './verification.ts';
@@ -144,6 +144,7 @@ export function finalizeTaskUnlocked(
     SystemDocumentDispositionService,
     'assertSystemDocumentDispositions'
   >,
+  sessionChecks: Pick<SessionCheckService, 'executeChecks'>,
   cwd: string,
   requestedSessionId: string,
   environment: NodeJS.ProcessEnv,
@@ -160,7 +161,7 @@ export function finalizeTaskUnlocked(
     assertProtectedApplyRequestMatches(existing, options);
     try {
       return continueFinalizeTransaction(
-        taskStrategyExecutionGate,
+        sessionChecks,
         changeContract,
         taskDiffReview,
         cwd,
@@ -201,8 +202,7 @@ export function finalizeTaskUnlocked(
   taskStrategyExecutionGate.assertExecutionAdmitted(initial, environment);
 
   const reconciliation = reconcilePredecessor(
-    taskStrategyExecutionGate,
-    changeContract,
+    sessionChecks,
     cwd,
     initial,
     environment,
@@ -299,7 +299,7 @@ export function finalizeTaskUnlocked(
     );
     maybeInterrupt(options, 'projection-prepared');
     return continueFinalizeTransaction(
-      taskStrategyExecutionGate,
+      sessionChecks,
       changeContract,
       taskDiffReview,
       cwd,
@@ -318,7 +318,7 @@ export function finalizeTaskUnlocked(
 }
 
 function continueFinalizeTransaction(
-  taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
+  sessionChecks: Pick<SessionCheckService, 'executeChecks'>,
   changeContract: ChangeContractServices,
   taskDiffReview: Pick<
     TaskDiffReviewOperations,
@@ -358,19 +358,16 @@ function continueFinalizeTransaction(
         { ...transaction, phase: 'checks-running' },
       );
       maybeInterrupt(options, 'checks-running');
-      const verified = executeChecks(
-        taskStrategyExecutionGate,
-        changeContract,
+      const verified = sessionChecks.executeChecks({
         cwd,
-        state.inspection,
-        transactionRequiredChecks(transaction, session),
+        initial: state.inspection,
+        checkIds: transactionRequiredChecks(transaction, session),
         environment,
-        [...transaction.completedTaskIds],
-        transaction.projectionSourceDigest,
-        [...transaction.transitionPaths],
-        {},
-        transaction.protectedApply,
-      );
+        projectedTaskIds: [...transaction.completedTaskIds],
+        projectionSourceDigest: transaction.projectionSourceDigest,
+        authorizedTransitionPaths: [...transaction.transitionPaths],
+        protectedApplyAuthorization: transaction.protectedApply,
+      });
       maybeInterrupt(options, 'checks-executed');
       if (
         verified.inspection.fingerprint !== transaction.candidateFingerprint ||

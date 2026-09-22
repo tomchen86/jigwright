@@ -6,7 +6,7 @@ import type {
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
-export type ResolvedRequiredCiCheck = Readonly<{
+export type ResolvedRequiredCheck = Readonly<{
   checkId: string;
   definition: CheckDefinitionV1;
 }>;
@@ -15,7 +15,7 @@ export function resolveRequiredCiChecks(
   repositoryRoot: string,
   checkIds: readonly string[],
   checkRegistryPort: CheckRegistryPortV1,
-): ResolvedRequiredCiCheck[] {
+): ResolvedRequiredCheck[] {
   if (
     !isRecord(checkRegistryPort) ||
     checkRegistryPort.contractVersion !== 'jigwright.check-registry-port.v1' ||

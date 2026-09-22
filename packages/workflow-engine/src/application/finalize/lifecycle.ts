@@ -1,13 +1,11 @@
 import type { SystemDocumentDispositionService } from './system-document-dispositions.ts';
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
-import type { LocalEngineSelectionReaders } from '../../modules/authority/local-engine-selection.ts';
 import {
   createDocumentationClosureRecord,
   parseDocumentationReviewCapture,
   parseDocumentationClosureFromCommitMessage,
 } from '../../modules/assurance/documentation-closure.ts';
-import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
 import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
 import type { ManagedDocumentOperations } from '../../modules/projection/managed-documents.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
@@ -104,9 +102,8 @@ import {
 } from '../../runtime/session-workspace/session-store.ts';
 import { getSession } from '../../runtime/repository-observation/workflow-session-context.ts';
 import {
-  executeChecks,
+  type SessionCheckService,
   persistSession,
-  reconcileSessionChecksAfterLocalEngineAdoption,
   writeSessionReport,
 } from './verification.ts';
 import { inspectSession } from '../session-inspection/session-inspection.ts';
@@ -1612,8 +1609,10 @@ export function findTaskCommits(
 /** Required reconciliation capability is bound once at the production boundary. */
 export function createFinalizationService(
   reviewedAssets: ReviewedGeneratedAssetInventory,
-  localEngineSelection: LocalEngineSelectionReaders,
-  manifestOperations: MaintainerManifestOperations,
+  sessionChecks: Pick<
+    SessionCheckService,
+    'executeChecks' | 'reconcileSessionChecksAfterLocalEngineAdoption'
+  >,
   taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
   changeContract: ChangeContractServices,
   taskDiffReview: Pick<
@@ -1705,6 +1704,7 @@ export function createFinalizationService(
             managedDocuments,
             assertCurrentImplementationReconciliation,
             systemDocumentDispositions,
+            sessionChecks,
             cwd,
             requestedSessionId,
             environment,
@@ -1814,6 +1814,7 @@ export function createFinalizationService(
         managedDocuments,
         assertCurrentImplementationReconciliation,
         systemDocumentDispositions,
+        sessionChecks,
         cwd,
         requestedSessionId,
         environment,
@@ -1883,6 +1884,7 @@ export function createFinalizationService(
         managedDocuments,
         assertCurrentImplementationReconciliation,
         systemDocumentDispositions,
+        sessionChecks,
         cwd,
         requestedSessionId,
         environment,
@@ -1909,11 +1911,7 @@ export function createFinalizationService(
     options: TaskDiffReviewReplayOptions,
   ): CompleteTaskResult {
     assertCurrentTaskMayUseOrdinaryFinalize(cwd, requestedSessionId);
-    reconcileSessionChecksAfterLocalEngineAdoption(
-      localEngineSelection,
-      manifestOperations,
-      taskStrategyExecutionGate,
-      changeContract,
+    sessionChecks.reconcileSessionChecksAfterLocalEngineAdoption(
       cwd,
       requestedSessionId,
       {
@@ -1964,8 +1962,7 @@ export function createFinalizationService(
       },
     );
     const reconciliation = reconcilePredecessor(
-      taskStrategyExecutionGate,
-      changeContract,
+      sessionChecks,
       cwd,
       initial,
       environment,
@@ -2171,17 +2168,15 @@ export function createFinalizationService(
       session.requiredChecks,
       unprojected.contract.config,
     );
-    const verified = executeChecks(
-      taskStrategyExecutionGate,
-      changeContract,
+    const verified = sessionChecks.executeChecks({
       cwd,
-      unprojected,
-      [...checkPolicy.requiredChecks],
+      initial: unprojected,
+      checkIds: [...checkPolicy.requiredChecks],
       environment,
-      completedTaskIds,
+      projectedTaskIds: completedTaskIds,
       projectionSourceDigest,
-      transitionPaths,
-    );
+      authorizedTransitionPaths: transitionPaths,
+    });
     const staged = stageExactPaths(
       verified.inspection.git.repositoryRoot,
       session.baseline.head,

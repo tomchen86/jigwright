@@ -17,15 +17,20 @@ type WithoutDocuments<T extends unknown[]> = T extends [
   infer C,
   infer D,
   infer E,
+  infer F,
   unknown,
   ...infer Rest,
 ]
-  ? [A, B, C, D, E, ...Rest]
+  ? [A, B, C, D, E, F, ...Rest]
   : never;
 function documentsRemainRequired(
+  factoryArguments: Parameters<typeof createFinalizationService>,
+  projectedArguments: ProjectedParameters,
   factoryPrefix: WithoutLast<Parameters<typeof createFinalizationService>>,
   projectedWithoutDocuments: WithoutDocuments<ProjectedParameters>,
 ) {
+  createFinalizationService(...factoryArguments);
+  finalizeTaskUnlocked(...projectedArguments);
   // @ts-expect-error Finalization requires its document capability, without a production fallback.
   createFinalizationService(...factoryPrefix);
   // @ts-expect-error Projected finalization requires the same document capability.

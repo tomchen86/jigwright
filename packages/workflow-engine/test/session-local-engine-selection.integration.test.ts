@@ -1,20 +1,14 @@
 import assert from 'node:assert/strict';
-import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
 import type { LocalEngineSelectionReaders } from '../src/modules/authority/local-engine-selection.ts';
-import {
-  checkSession,
-  reconcileSessionChecksAfterLocalEngineAdoption,
-} from '../src/application/finalize/verification.ts';
+import { createProductionSessionCheckService } from '../src/composition-root/session-check-production.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
 import { createProductionFinalizationService } from '../src/composition-root/finalization-production.ts';
-import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
-import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
 import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import {
   configureChecks,
@@ -119,11 +113,9 @@ test('local adoption admission retains distinct absent, missing, malformed and m
       if (raw !== undefined)
         environment.WORKFLOW_LOCAL_ENGINE_RESUME_BINDING = raw;
       const reconcile = () =>
-        reconcileSessionChecksAfterLocalEngineAdoption(
+        createProductionSessionCheckService(
           readers,
-          maintainerManifestOperations,
-          productionTaskStrategyExecutionGate,
-          productionChangeContract,
+        ).reconcileSessionChecksAfterLocalEngineAdoption(
           repository,
           session.sessionId,
           { environment },
@@ -135,16 +127,12 @@ test('local adoption admission retains distinct absent, missing, malformed and m
     const failure = new Error('selection observation failed');
     assert.throws(
       () =>
-        reconcileSessionChecksAfterLocalEngineAdoption(
-          {
-            ...localEngineSelectionReaders,
-            resolveLocalEngineSelection() {
-              throw failure;
-            },
+        createProductionSessionCheckService({
+          ...localEngineSelectionReaders,
+          resolveLocalEngineSelection() {
+            throw failure;
           },
-          maintainerManifestOperations,
-          productionTaskStrategyExecutionGate,
-          productionChangeContract,
+        }).reconcileSessionChecksAfterLocalEngineAdoption(
           repository,
           session.sessionId,
           { environment: environmentWithoutResumeBinding() },
@@ -225,12 +213,7 @@ test('checkSession reobserves local selection after immutable report publication
     };
     assert.throws(
       () =>
-        checkSession(
-          reviewedGeneratedAssets,
-          readers,
-          maintainerManifestOperations,
-          productionTaskStrategyExecutionGate,
-          productionChangeContract,
+        createProductionSessionCheckService(readers).checkSession(
           repository,
           session.sessionId,
           { environment: environmentWithoutResumeBinding() },

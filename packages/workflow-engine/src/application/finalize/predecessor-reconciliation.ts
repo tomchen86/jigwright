@@ -1,4 +1,3 @@
-import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { CheckEvidence } from '../../foundation/check-evidence/check-evidence.ts';
 import type { TaskPolicy } from '../../modules/planning-provider/planning-artifact-types.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -8,8 +7,7 @@ import {
   hasExactTrailers,
 } from '../../runtime/repository-transaction/git-transitions.ts';
 import { matchesAllowedPath } from '../../foundation/repository-path/repository-path.ts';
-import { executeChecks } from './verification.ts';
-import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
+import type { SessionCheckService } from './verification.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
 
@@ -30,8 +28,7 @@ export type ReconciledTask = {
 };
 
 export function reconcilePredecessor(
-  taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
-  changeContract: ChangeContractServices,
+  sessionChecks: Pick<SessionCheckService, 'executeChecks'>,
   cwd: string,
   inspection: SessionInspection,
   environment: NodeJS.ProcessEnv,
@@ -82,14 +79,12 @@ export function reconcilePredecessor(
     throw predecessorInvalid();
   }
 
-  const verified = executeChecks(
-    taskStrategyExecutionGate,
-    changeContract,
+  const verified = sessionChecks.executeChecks({
     cwd,
-    inspection,
-    policy.requiredChecks,
+    initial: inspection,
+    checkIds: policy.requiredChecks,
     environment,
-  );
+  });
   return [
     {
       taskId: predecessor.id,

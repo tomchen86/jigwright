@@ -8,16 +8,15 @@ import type { LocalEngineSelectionReaders } from '../../modules/authority/local-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
+import type {
+  CheckEvidence,
+  CheckEvidenceMetadata,
+} from '../../foundation/check-evidence/check-evidence.ts';
+import type { CheckExecutionFactory } from '../../modules/assurance/check-execution-port.ts';
 import {
-  pinCheckRunner,
-  runObservedCheck,
-  type CheckEvidenceMetadata,
-} from '../../adapters/consumer/repository/work-registry/check-runner.ts';
-import type { CheckEvidence } from '../../foundation/check-evidence/check-evidence.ts';
-import {
-  assertDisposableDatabaseForRepository,
-  createCheckEnvironmentForRepository,
-} from '../../adapters/consumer/repository/work-registry/database-policy.ts';
+  prepareCheckBatch,
+  requirePassedCheck,
+} from '../../modules/assurance/check-execution.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   readLocalEngineBinding,
@@ -94,12 +93,29 @@ type TrustedCheckPolicy = {
   externalStateFreshness: Record<string, { maxAgeMs: number }>;
 };
 
-export function checkSession(
-  reviewedAssets: ReviewedGeneratedAssetInventory,
-  localEngineSelection: LocalEngineSelectionReaders,
-  manifestOperations: MaintainerManifestOperations,
-  taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
-  changeContract: ChangeContractServices,
+type SessionCheckDependencies = Readonly<{
+  reviewedAssets: ReviewedGeneratedAssetInventory;
+  localEngineSelection: LocalEngineSelectionReaders;
+  manifestOperations: MaintainerManifestOperations;
+  taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>;
+  changeContract: ChangeContractServices;
+  createExecution: CheckExecutionFactory;
+}>;
+
+/** Binds capabilities without observing repository, environment, or clock state. */
+export function createSessionCheckService(services: SessionCheckDependencies) {
+  return Object.freeze({
+    checkSession: checkSession.bind(undefined, services),
+    reconcileSessionChecksAfterLocalEngineAdoption:
+      reconcileSessionChecksAfterLocalEngineAdoption.bind(undefined, services),
+    executeChecks: executeChecks.bind(undefined, services),
+  });
+}
+
+export type SessionCheckService = ReturnType<typeof createSessionCheckService>;
+
+function checkSession(
+  services: SessionCheckDependencies,
   cwd: string,
   requestedSessionId: string,
   options: SessionCheckOptions = {},
@@ -112,34 +128,25 @@ export function checkSession(
   );
   const sessionId = assertSessionId(requestedSessionId);
   return withSessionOperation(runtime, sessionId, () =>
-    checkSessionUnlocked(
-      reviewedAssets,
-      localEngineSelection,
-      manifestOperations,
-      taskStrategyExecutionGate,
-      changeContract,
-      cwd,
-      sessionId,
-      options,
-    ),
+    checkSessionUnlocked(services, cwd, sessionId, options),
   );
 }
 
 function checkSessionUnlocked(
-  reviewedAssets: ReviewedGeneratedAssetInventory,
-  localEngineSelection: LocalEngineSelectionReaders,
-  manifestOperations: MaintainerManifestOperations,
-  taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
-  changeContract: ChangeContractServices,
+  services: SessionCheckDependencies,
   cwd: string,
   requestedSessionId: string,
   options: SessionCheckOptions,
 ): SessionCheck {
-  const reconciled = reconcileSessionChecksAfterLocalEngineAdoption(
+  const {
+    reviewedAssets,
     localEngineSelection,
     manifestOperations,
     taskStrategyExecutionGate,
     changeContract,
+  } = services;
+  const reconciled = reconcileSessionChecksAfterLocalEngineAdoption(
+    services,
     cwd,
     requestedSessionId,
     options,
@@ -164,18 +171,13 @@ function checkSessionUnlocked(
         options,
       )
     : undefined;
-  const verified = executeChecks(
-    taskStrategyExecutionGate,
-    changeContract,
+  const verified = executeChecks(services, {
     cwd,
     initial,
-    initial.session.requiredChecks,
-    options.environment ?? process.env,
-    [],
-    undefined,
-    [],
+    checkIds: initial.session.requiredChecks,
+    environment: options.environment ?? process.env,
     evidenceMetadata,
-  );
+  });
   const report: WorkflowReport = {
     schemaVersion: 1,
     kind: 'check',
@@ -246,15 +248,13 @@ type VerifiedLocalAdoption = {
  * from the adoption journal, so a crash after publication but before the
  * session CAS replays to the same content-addressed report ID.
  */
-export function reconcileSessionChecksAfterLocalEngineAdoption(
-  localEngineSelection: LocalEngineSelectionReaders,
-  manifestOperations: MaintainerManifestOperations,
-  taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
-  changeContract: ChangeContractServices,
+function reconcileSessionChecksAfterLocalEngineAdoption(
+  services: SessionCheckDependencies,
   cwd: string,
   requestedSessionId: string,
   options: SessionCheckOptions = {},
 ): SessionCheck | null {
+  const { localEngineSelection, manifestOperations, changeContract } = services;
   const initial = inspectSession(changeContract, cwd, requestedSessionId);
   const adoption = resolveVerifiedLocalAdoption(
     localEngineSelection,
@@ -356,16 +356,16 @@ export function reconcileSessionChecksAfterLocalEngineAdoption(
       ExitCode.staleState,
     );
   }
+  const identityExecution = services.createExecution(
+    initial.git.repositoryRoot,
+    options.environment ?? process.env,
+  );
   const externalStateInvalidated = new Set<string>();
   const invalidatedCheckIds = initial.session.requiredChecks.filter(
     (checkId) => {
       const dependencies = checkDependencies[checkId]!;
       const definition = initial.contract.checks.checks[checkId];
-      const runner = pinCheckRunner(
-        initial.git.repositoryRoot,
-        checkId,
-        definition,
-      );
+      const runner = identityExecution.pin({ checkId, definition }).runner;
       const evidence = previousById.get(checkId)!;
       const externalInvalid = dependencies.includes('external-state')
         ? !isReusableExternalStateEvidence(
@@ -388,17 +388,12 @@ export function reconcileSessionChecksAfterLocalEngineAdoption(
   const reusedCheckIds = initial.session.requiredChecks.filter(
     (checkId) => !invalidated.has(checkId),
   );
-  const rerun = executeChecks(
-    taskStrategyExecutionGate,
-    changeContract,
+  const rerun = executeChecks(services, {
     cwd,
     initial,
-    invalidatedCheckIds,
-    options.environment ?? process.env,
-    [],
-    undefined,
-    [],
-    createSessionEvidenceMetadata(
+    checkIds: invalidatedCheckIds,
+    environment: options.environment ?? process.env,
+    evidenceMetadata: createSessionEvidenceMetadata(
       invalidatedCheckIds,
       trustedPolicy,
       options.now
@@ -410,7 +405,7 @@ export function reconcileSessionChecksAfterLocalEngineAdoption(
             now: () => new Date(adoption.committedAt),
           },
     ),
-  );
+  });
   const rerunById = new Map(
     rerun.checks.map((evidence) => [evidence.checkId, evidence]),
   );
@@ -780,36 +775,41 @@ function isRecordValue(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export function executeChecks(
-  taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
-  changeContract: ChangeContractServices,
-  cwd: string,
-  initial: SessionInspection,
-  checkIds: string[],
-  environment: NodeJS.ProcessEnv,
-  projectedTaskIds: string[] = [],
-  projectionSourceDigest?: string,
-  authorizedTransitionPaths: string[] = [],
-  evidenceMetadata: Readonly<Record<string, CheckEvidenceMetadata>> = {},
-  protectedApplyAuthorization?: ProtectedTaskApplyAuthorizationBinding,
+type SessionCheckRun = {
+  cwd: string;
+  initial: SessionInspection;
+  checkIds: string[];
+  environment: NodeJS.ProcessEnv;
+  projectedTaskIds?: string[];
+  projectionSourceDigest?: string;
+  authorizedTransitionPaths?: string[];
+  evidenceMetadata?: Readonly<Record<string, CheckEvidenceMetadata>>;
+  protectedApplyAuthorization?: ProtectedTaskApplyAuthorizationBinding;
+};
+
+function executeChecks(
+  services: SessionCheckDependencies,
+  {
+    cwd,
+    initial,
+    checkIds,
+    environment,
+    projectedTaskIds = [],
+    projectionSourceDigest,
+    authorizedTransitionPaths = [],
+    evidenceMetadata = {},
+    protectedApplyAuthorization,
+  }: SessionCheckRun,
 ): { checks: CheckEvidence[]; inspection: SessionInspection } {
+  const { taskStrategyExecutionGate, changeContract } = services;
   const requiredChecks = checkIds.map((checkId) => ({
     checkId,
     definition: initial.contract.checks.checks[checkId],
   }));
-  const databaseEvidence = requiredChecks.some(
-    ({ definition }) => definition.destructiveDatabase,
-  )
-    ? assertDisposableDatabaseForRepository(
-        initial.git.repositoryRoot,
-        environment,
-      )
-    : undefined;
-  const pinnedChecks = requiredChecks.map(({ checkId, definition }) => ({
-    checkId,
-    definition,
-    runner: pinCheckRunner(initial.git.repositoryRoot, checkId, definition),
-  }));
+  const pinnedChecks = prepareCheckBatch(
+    requiredChecks,
+    services.createExecution(initial.git.repositoryRoot, environment),
+  );
   const fingerprint = fingerprintWorkingState(
     initial.git.repositoryRoot,
     initial.session.baseline.head,
@@ -817,20 +817,8 @@ export function executeChecks(
   );
   const checks: CheckEvidence[] = [];
   let inspection = initial;
-  for (const { checkId, definition, runner } of pinnedChecks) {
-    const outcome = runObservedCheck(
-      initial.git.repositoryRoot,
-      checkId,
-      definition,
-      runner,
-      createCheckEnvironmentForRepository(
-        initial.git.repositoryRoot,
-        environment,
-        definition.destructiveDatabase,
-      ),
-      definition.destructiveDatabase ? databaseEvidence?.identity : undefined,
-      evidenceMetadata[checkId],
-    );
+  for (const { checkId, execution } of pinnedChecks) {
+    const outcome = execution.execute(evidenceMetadata[checkId]);
     inspection = inspectSession(
       changeContract,
       cwd,
@@ -861,16 +849,8 @@ export function executeChecks(
     }
     if (outcome.outcome === 'failed') {
       taskStrategyExecutionGate.recordGreenFailure(inspection, checks, outcome);
-      throw workflowError(
-        'CHECK_FAILED',
-        `Required check ${checkId} exited non-zero.`,
-        ExitCode.verification,
-        {
-          details: { checkId, exitCode: outcome.exitCode, signal: null },
-        },
-      );
     }
-    checks.push(outcome);
+    checks.push(requirePassedCheck(checkId, outcome));
   }
   return { checks, inspection };
 }

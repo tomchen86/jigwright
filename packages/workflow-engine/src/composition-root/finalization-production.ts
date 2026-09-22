@@ -10,7 +10,7 @@ import {
 } from './lifecycle-context.ts';
 import { systemDocumentDispositions } from './system-document-disposition-production.ts';
 import type { LocalEngineSelectionReaders } from '../modules/authority/local-engine-selection.ts';
-import { maintainerManifestOperations } from './maintainer-manifest-production.ts';
+import { createProductionSessionCheckService } from './session-check-production.ts';
 import { productionTaskStrategyExecutionGate } from './task-strategy-gate-production.ts';
 import { productionChangeContract } from './change-routing-observation-production.ts';
 import { taskDiffReview } from './task-diff-review-production.ts';
@@ -23,8 +23,7 @@ export function createProductionFinalizationService(
 ) {
   const finalization = createFinalizationService(
     reviewedGeneratedAssets,
-    localEngineSelection,
-    maintainerManifestOperations,
+    createProductionSessionCheckService(localEngineSelection),
     productionTaskStrategyExecutionGate,
     productionChangeContract,
     taskDiffReview,

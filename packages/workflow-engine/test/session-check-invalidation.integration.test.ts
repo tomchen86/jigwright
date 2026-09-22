@@ -787,3 +787,168 @@ function digest(value: string | Buffer): `sha256:${string}` {
 function bareDigest(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
+
+import { createSessionCheckService } from '../src/application/finalize/verification.ts';
+import type { CheckExecutionFactory } from '../src/modules/assurance/check-execution-port.ts';
+import { pinCheckRunner } from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
+import { localEngineSelectionReaders } from './support/local-engine-selection-host.ts';
+import { enableDisposableDatabasePolicy } from './support/session-lifecycle-fixture.ts';
+
+for (const runnerChanged of [false, true]) {
+  test(`adoption identity pins do not preflight reused destructive checks; changed runner=${runnerChanged}`, () => {
+    const repository = fs.realpathSync(createFixtureRepository());
+    try {
+      enableDisposableDatabasePolicy(repository);
+      configureChecks(
+        repository,
+        {
+          'engine-check': {
+            command: ['node', 'scripts/pass.mjs'],
+            destructiveDatabase: false,
+          },
+          'source-check': {
+            command: ['node', 'scripts/pass.mjs'],
+            destructiveDatabase: true,
+          },
+        },
+        ['engine-check', 'source-check'],
+      );
+      installTrustedCheckDependencies(repository);
+      git(repository, ['checkout', '-b', 'work/demo-change']);
+      prepareCurrentChange(repository);
+      const session = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
+      fs.writeFileSync(
+        path.join(repository, 'src/feature.ts'),
+        'export const feature = true;\n',
+      );
+      const events: string[] = [];
+      let generation = 0;
+      let adopting = false;
+      const completionTime = new Date(NOW.getTime() + 30_000);
+      const clock = () => {
+        events.push('clock');
+        return completionTime;
+      };
+      const createExecution: CheckExecutionFactory = (root) => {
+        assert.equal(root, repository);
+        const current = ++generation;
+        events.push(`factory:${current}`);
+        return {
+          preflightDatabase() {
+            events.push(`database:${current}`);
+            assert.notEqual(
+              current,
+              2,
+              'identity-only adoption must never preflight',
+            );
+            return 'postgresql://fixture:5432/workflow_test';
+          },
+          pin({ checkId, definition }, databaseIdentity) {
+            events.push(`pin:${current}:${checkId}`);
+            assert.equal(
+              databaseIdentity,
+              current === 2 || !definition.destructiveDatabase
+                ? undefined
+                : 'postgresql://fixture:5432/workflow_test',
+            );
+            const observed = pinCheckRunner(root, checkId, definition);
+            const runner =
+              adopting && runnerChanged && checkId === 'source-check'
+                ? { ...observed, digest: bareDigest('changed runner') }
+                : observed;
+            return {
+              runner,
+              execute(metadata) {
+                events.push(`run:${current}:${checkId}`);
+                assert.notEqual(
+                  current,
+                  2,
+                  'identity-only handle must never execute',
+                );
+                assert.ok(metadata);
+                assert.equal(metadata.completedAt, clock);
+                return {
+                  checkId,
+                  outcome: 'passed',
+                  exitCode: 0,
+                  runner: runner.runner,
+                  runnerDigest: runner.digest,
+                  destructiveDatabase: definition.destructiveDatabase,
+                  ...(databaseIdentity ? { databaseIdentity } : {}),
+                  completedAt: metadata.completedAt().toISOString(),
+                };
+              },
+            };
+          },
+        };
+      };
+      const service = createSessionCheckService({
+        reviewedAssets: reviewedGeneratedAssets,
+        localEngineSelection: localEngineSelectionReaders,
+        manifestOperations: maintainerManifestOperations,
+        taskStrategyExecutionGate: productionTaskStrategyExecutionGate,
+        changeContract: productionChangeContract,
+        createExecution,
+      });
+      assert.equal(events.length, 0);
+      const original = service.checkSession(repository, session.sessionId, {
+        now: clock,
+      });
+      assert.deepEqual(events, [
+        'factory:1',
+        'database:1',
+        'pin:1:engine-check',
+        'pin:1:source-check',
+        'run:1:engine-check',
+        'clock',
+        'run:1:source-check',
+        'clock',
+      ]);
+      const adoption = adoptLocalEngine(repository, session.sessionId);
+      adopting = true;
+      events.length = 0;
+      const reconciled = withResumeBinding(adoption.resumeBinding, () =>
+        service.checkSession(repository, session.sessionId, { now: clock }),
+      );
+      assert.deepEqual(events, [
+        'clock',
+        'factory:2',
+        'pin:2:engine-check',
+        'pin:2:source-check',
+        'factory:3',
+        ...(runnerChanged ? ['database:3'] : []),
+        'pin:3:engine-check',
+        ...(runnerChanged ? ['pin:3:source-check'] : []),
+        'run:3:engine-check',
+        'clock',
+        ...(runnerChanged ? ['run:3:source-check', 'clock'] : []),
+      ]);
+      assert.deepEqual(
+        reconciled.executedCheckIds,
+        runnerChanged ? ['engine-check', 'source-check'] : ['engine-check'],
+      );
+      assert.deepEqual(
+        reconciled.reusedCheckIds,
+        runnerChanged ? [] : ['source-check'],
+      );
+      if (!runnerChanged)
+        assert.deepEqual(reconciled.checks[1], original.checks[1]);
+      else
+        assert.equal(
+          reconciled.checks[1]!.runnerDigest,
+          bareDigest('changed runner'),
+        );
+    } finally {
+      fs.rmSync(interventionWorkspacePath(repository), {
+        recursive: true,
+        force: true,
+      });
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
+  });
+}

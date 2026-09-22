@@ -1,7 +1,7 @@
+import { createProductionSessionCheckService } from '../src/composition-root/session-check-production.ts';
 import { createFinalizationService } from '../src/application/finalize/lifecycle.ts';
 import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import { createProductionProtectedTaskApplyGrantPort as createProtectedApplyPort } from '../src/composition-root/protected-task-apply-grant-production.ts';
-import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
 import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import { taskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
@@ -608,8 +608,7 @@ test('prepared protected apply reaches the injected document service after real 
     };
     const service = createFinalizationService(
       reviewedGeneratedAssets,
-      localEngineSelectionReaders,
-      maintainerManifestOperations,
+      createProductionSessionCheckService(localEngineSelectionReaders),
       productionTaskStrategyExecutionGate,
       productionChangeContract,
       taskDiffReview,

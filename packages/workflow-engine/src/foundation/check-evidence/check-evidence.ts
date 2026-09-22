@@ -8,6 +8,12 @@
 import crypto from 'node:crypto';
 import { canonicalJson } from '../canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../errors/errors.ts';
+export type CheckEvidenceMetadata = {
+  completedAt: () => Date;
+  externalSnapshotDigest?: string;
+  maxAgeMs?: number;
+};
+
 export type CheckEvidence = {
   checkId: string;
   outcome: 'passed';

@@ -1,8 +1,8 @@
+import { createProductionSessionCheckService } from '../src/composition-root/session-check-production.ts';
 import { createFinalizationService } from '../src/application/finalize/lifecycle.ts';
 import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import { finalizeTaskUnlocked } from '../src/application/finalize/projected-finalization.ts';
 import type { SystemDocumentDispositionService } from '../src/application/finalize/system-document-dispositions.ts';
-import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
 import { taskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
 import { assertCurrentImplementationReconciliation } from '../src/composition-root/implementation-reconciliation-production.ts';
@@ -462,8 +462,7 @@ function finalizationWithDocuments(
 ) {
   return createFinalizationService(
     reviewedGeneratedAssets,
-    localEngineSelectionReaders,
-    maintainerManifestOperations,
+    createProductionSessionCheckService(localEngineSelectionReaders),
     productionTaskStrategyExecutionGate,
     productionChangeContract,
     taskDiffReview,
@@ -510,6 +509,7 @@ test('ordinary finalization uses the injected document receiver at the original 
           managedDocuments,
           assertCurrentImplementationReconciliation,
           documents,
+          createProductionSessionCheckService(localEngineSelectionReaders),
           repository,
           sessionId,
           {},

@@ -4,15 +4,8 @@ import {
   runRequiredChecks,
   runRegisteredCheck as runRegisteredCheckUseCase,
 } from '../application/assurance/check-execution.ts';
-import type { CheckExecutionPort } from '../modules/assurance/check-execution-port.ts';
-import {
-  pinCheckRunner,
-  runCheck,
-} from '../adapters/consumer/repository/work-registry/check-runner.ts';
-import {
-  assertDisposableDatabaseForRepository,
-  createCheckEnvironmentForRepository,
-} from '../adapters/consumer/repository/work-registry/database-policy.ts';
+import type { CheckRepositoryValidation } from '../modules/assurance/check-execution-port.ts';
+import { createCheckExecution } from '../adapters/consumer/repository/work-registry/check-runner.ts';
 import {
   discoverRepository,
   fingerprintWorkingState,
@@ -23,31 +16,12 @@ import {
 } from './repository-validation.ts';
 import { productionCheckRegistryPort } from './check-registry-production.ts';
 
-function productionCheckExecution(
+export const createProductionCheckExecution = createCheckExecution;
+
+function productionCheckValidation(
   repositoryRoot: string,
-  environment: NodeJS.ProcessEnv,
-): CheckExecutionPort {
+): CheckRepositoryValidation {
   return {
-    preflightDatabase() {
-      return assertDisposableDatabaseForRepository(repositoryRoot, environment)
-        .identity;
-    },
-    pin({ checkId, definition }, databaseIdentity) {
-      const runner = pinCheckRunner(repositoryRoot, checkId, definition);
-      return () =>
-        runCheck(
-          repositoryRoot,
-          checkId,
-          definition,
-          runner,
-          createCheckEnvironmentForRepository(
-            repositoryRoot,
-            environment,
-            definition.destructiveDatabase,
-          ),
-          databaseIdentity,
-        );
-    },
     observe(head) {
       const current = discoverRepository(repositoryRoot);
       return {
@@ -80,7 +54,8 @@ export function runCiChecksAtCommit(
     head,
     checkIds,
     registry,
-    productionCheckExecution(repositoryRoot, environment),
+    createProductionCheckExecution(repositoryRoot, environment),
+    productionCheckValidation(repositoryRoot),
     'immutable-head',
   );
 }
@@ -99,6 +74,7 @@ export function runRegisteredCheck(
     },
     checkId,
     productionCheckRegistryPort,
-    productionCheckExecution(repository.repositoryRoot, environment),
+    createProductionCheckExecution(repository.repositoryRoot, environment),
+    productionCheckValidation(repository.repositoryRoot),
   );
 }

@@ -1,3 +1,9 @@
+import {
+  sha256,
+  parseObservedCheckFailure,
+  type CheckEvidence,
+} from '../src/foundation/check-evidence/check-evidence.ts';
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { CheckRegistryPortV1 } from '@jigwright/core/check-registry-port';
@@ -7,6 +13,7 @@ import {
 } from '../src/application/assurance/check-execution.ts';
 import type {
   CheckExecutionPort,
+  CheckRepositoryValidation,
   CheckCheckoutObservation,
 } from '../src/modules/assurance/check-execution-port.ts';
 
@@ -24,6 +31,8 @@ function fixture() {
     databaseError: false,
     pinFailure: '',
     executionFailure: '',
+    failedOutcome: '',
+    passed: [] as CheckEvidence[],
     observation: {
       head: 'head',
       statusEntryCount: 0,
@@ -61,22 +70,53 @@ function fixture() {
         databaseIdentity,
         check.definition.destructiveDatabase ? 'redacted database' : undefined,
       );
-      return () => {
-        events.push(`run:${check.checkId}`);
-        if (state.executionFailure === check.checkId)
-          throw new Error('check failed');
-        state.afterExecution();
-        return {
-          checkId: check.checkId,
-          outcome: 'passed',
-          exitCode: 0,
+      return {
+        runner: {
           runner: check.definition.command[1]!,
-          runnerDigest: 'digest',
-          destructiveDatabase: check.definition.destructiveDatabase,
-          ...(databaseIdentity ? { databaseIdentity } : {}),
-        };
+          executable: check.definition.command[0]!,
+          args: check.definition.command.slice(1),
+          digest: 'digest',
+        },
+        execute() {
+          events.push(`run:${check.checkId}`);
+          if (state.executionFailure === check.checkId)
+            throw new Error('check failed');
+          state.afterExecution();
+          if (state.failedOutcome === check.checkId) {
+            const body = {
+              checkId: check.checkId,
+              outcome: 'failed' as const,
+              exitCode: 7,
+              stdoutDigest: sha256(''),
+              stderrDigest: sha256(''),
+              stdoutExcerpt: '',
+              stderrExcerpt: '',
+              stdoutTruncated: false,
+              stderrTruncated: false,
+              runner: check.definition.command[1]!,
+              runnerDigest: sha256('runner'),
+            };
+            return parseObservedCheckFailure({
+              ...body,
+              failureFingerprint: sha256(canonicalJson(body)),
+            });
+          }
+          const evidence: CheckEvidence = {
+            checkId: check.checkId,
+            outcome: 'passed',
+            exitCode: 0,
+            runner: check.definition.command[1]!,
+            runnerDigest: 'digest',
+            destructiveDatabase: check.definition.destructiveDatabase,
+            ...(databaseIdentity ? { databaseIdentity } : {}),
+          };
+          state.passed.push(evidence);
+          return evidence;
+        },
       };
     },
+  };
+  const validation: CheckRepositoryValidation = {
     observe(head) {
       assert.equal(head, 'head');
       events.push('observe');
@@ -87,7 +127,7 @@ function fixture() {
       events.push(`validate:${mode}`);
     },
   };
-  return { events, state, registry, execution };
+  return { events, state, registry, execution, validation };
 }
 
 for (const mode of ['live-current-ref', 'immutable-head'] as const) {
@@ -99,6 +139,7 @@ for (const mode of ['live-current-ref', 'immutable-head'] as const) {
       ['first', 'second'],
       f.registry,
       f.execution,
+      f.validation,
       mode,
     );
     assert.deepEqual(f.events, [
@@ -117,6 +158,8 @@ for (const mode of ['live-current-ref', 'immutable-head'] as const) {
       evidence.map((e) => e.checkId),
       ['first', 'second'],
     );
+    assert.equal(evidence[0], f.state.passed[0]);
+    assert.equal(evidence[1], f.state.passed[1]);
     assert.equal(evidence[0]!.databaseIdentity, undefined);
     assert.equal(evidence[1]!.databaseIdentity, 'redacted database');
   });
@@ -135,6 +178,7 @@ test('failed database preflight or later runner pin starts no checks', () => {
           ['first', 'second'],
           f.registry,
           f.execution,
+          f.validation,
           'immutable-head',
         ),
       /no disposable database|pin failed/,
@@ -159,6 +203,7 @@ test('nonzero execution stops later checks and final validation', () => {
         ['first', 'second'],
         f.registry,
         f.execution,
+        f.validation,
         'live-current-ref',
       ),
     /check failed/,
@@ -190,6 +235,7 @@ for (const mutation of ['head', 'statusEntryCount', 'fingerprint'] as const) {
           ['first', 'second'],
           f.registry,
           f.execution,
+          f.validation,
           'immutable-head',
         ),
       hasCode('CI_CHECK_MUTATED_WORKTREE'),
@@ -215,6 +261,7 @@ test('empty selection still observes and validates the immutable head without da
       [],
       f.registry,
       f.execution,
+      f.validation,
       'immutable-head',
     ),
     [],
@@ -229,6 +276,7 @@ test('registered check uses the shared run and validates the current live reposi
     'first',
     f.registry,
     f.execution,
+    f.validation,
   );
   assert.equal(result.head, 'head');
   assert.equal(result.check.checkId, 'first');
@@ -256,9 +304,78 @@ test('registered checks refuse dirty, unknown and destructive selections before 
           ? 'CI_CHECK_UNKNOWN'
           : 'STANDALONE_DESTRUCTIVE_CHECK';
     assert.throws(
-      () => runRegisteredCheck(input, check, f.registry, f.execution),
+      () =>
+        runRegisteredCheck(input, check, f.registry, f.execution, f.validation),
       hasCode(code),
     );
     assert.deepEqual(f.events, failure === 'dirty' ? [] : ['load']);
   }
+});
+
+test('ordinary failed outcome throws CHECK_FAILED before CI observes a mutated checkout', () => {
+  const f = fixture();
+  f.state.failedOutcome = 'first';
+  f.state.afterExecution = () => {
+    f.state.observation = { ...f.state.observation, fingerprint: 'changed' };
+  };
+  assert.throws(
+    () =>
+      runRequiredChecks(
+        '/fixture',
+        'head',
+        ['first', 'second'],
+        f.registry,
+        f.execution,
+        f.validation,
+        'immutable-head',
+      ),
+    (error: unknown) => {
+      assert.ok(hasCode('CHECK_FAILED')(error));
+      assert.ok(error instanceof Error);
+      assert.equal(error.message, 'Required check first exited non-zero.');
+      assert.equal((error as Error & { exitCode: number }).exitCode, 13);
+      assert.deepEqual((error as Error & { details: unknown }).details, {
+        checkId: 'first',
+        exitCode: 7,
+        signal: null,
+      });
+      return true;
+    },
+  );
+  assert.deepEqual(f.events, [
+    'load',
+    'database',
+    'pin:first',
+    'pin:second',
+    'observe',
+    'run:first',
+  ]);
+});
+
+test('selected check order and duplicates are preserved without unnecessary database access', () => {
+  const f = fixture();
+  const result = runRequiredChecks(
+    '/fixture',
+    'head',
+    ['first', 'first'],
+    f.registry,
+    f.execution,
+    f.validation,
+    'immutable-head',
+  );
+  assert.deepEqual(
+    result.map(({ checkId }) => checkId),
+    ['first', 'first'],
+  );
+  assert.deepEqual(f.events, [
+    'load',
+    'pin:first',
+    'pin:first',
+    'observe',
+    'run:first',
+    'observe',
+    'run:first',
+    'observe',
+    'validate:immutable-head',
+  ]);
 });

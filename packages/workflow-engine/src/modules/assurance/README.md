@@ -8,11 +8,11 @@ Keep the presence and currentness of review evidence separate from the reviewer'
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:0061f09eb297568ae3399108bb6e3c9d4a2f26c8f90e5ee016ea170752eaefdf -->
+<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:1aae4ec273ef729fc5bf445a0a40d6a57c39add9939d688f2ff6cb2dd3d696db -->
 
 <!-- prettier-ignore-start -->
 
-62 files changed in this module since confirmation.
+63 files changed in this module since confirmation.
 
 ## Commands
 
@@ -63,7 +63,8 @@ Header history compares Git blame at the explanation confirmation with this sour
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
 | [assurance-assessment-chain.ts](assurance-assessment-chain.ts) | Builds assurance assessments and derives effective coverage and change- class floors. | 1 | History unavailable |
-| [check-execution-port.ts](check-execution-port.ts) | Capabilities for a bound repository check run; pinned executions retain their own runner. | 0 | History unavailable |
+| [check-execution-port.ts](check-execution-port.ts) | Bound ordinary execution; checkout validation remains a separate consumer capability. | 0 | History unavailable |
+| [check-execution.ts](check-execution.ts) | Prepare the whole selected batch before execution; consumers own post-check observation. | 0 | History unavailable |
 | [ci-attestation.ts](ci-attestation.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [ci-verification.ts](ci-verification.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [commit-replay/ci-archive-tree.ts](commit-replay/ci-archive-tree.ts) | Canonical commit replay contracts and pure predicates. | 0 | History unavailable |

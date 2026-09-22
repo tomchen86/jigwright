@@ -109,7 +109,6 @@ type ValidatedChangeContract =
 
 export type { WorkflowSession } from '../../runtime/session-workspace/session-store.ts';
 
-export { checkSession } from '../finalize/verification.ts';
 export type {
   SessionCheck,
   SessionCheckOptions,

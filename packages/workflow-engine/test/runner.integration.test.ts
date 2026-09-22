@@ -597,3 +597,206 @@ test('passing checks cannot mutate allowed working-tree state', () => {
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
+
+import { createCheckExecution } from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
+import type { CheckEvidenceMetadata } from '../src/foundation/check-evidence/check-evidence.ts';
+import { enableDisposableDatabasePolicy } from './support/session-lifecycle-fixture.ts';
+
+test('ordinary execution construction and identity pinning do not inspect database policy or environment', () => {
+  const forbiddenRead = new Error('environment read too early');
+  const environment = new Proxy(
+    {},
+    {
+      get() {
+        throw forbiddenRead;
+      },
+    },
+  );
+  assert.doesNotThrow(() =>
+    createCheckExecution('/nonexistent/check-execution-fixture', environment),
+  );
+  const repository = createFixtureRepository();
+  try {
+    const execution = createCheckExecution(repository, environment);
+    const pinned = execution.pin({
+      checkId: 'destructive',
+      definition: {
+        command: ['node', 'scripts/pass.mjs'],
+        destructiveDatabase: true,
+      },
+    });
+    assert.match(pinned.runner.digest, /^[0-9a-f]{64}$/u);
+    assert.throws(
+      () => pinned.execute(),
+      (error) =>
+        isWorkflowError(error, 'DESTRUCTIVE_DATABASE_POLICY_UNAVAILABLE'),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('each pinned execution builds its database environment at execution time', () => {
+  const repository = createFixtureRepository();
+  const output = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'check-execution-environment-'),
+  );
+  const marker = path.join(output, 'executed');
+  try {
+    enableDisposableDatabasePolicy(repository);
+    fs.writeFileSync(
+      path.join(repository, 'scripts/check-environment.mjs'),
+      [
+        "import fs from 'node:fs';",
+        "if (process.env.WORKFLOW_CHECK_EXECUTION !== '1' || process.env.WORKFLOW_DISPOSABLE_DATABASE !== '1') process.exit(9);",
+        "fs.appendFileSync(process.argv[2], new URL(process.env.TEST_DATABASE_URL).pathname + '\\n');",
+      ].join('\n'),
+    );
+    const definition = {
+      command: ['node', 'scripts/check-environment.mjs', marker],
+      destructiveDatabase: true,
+    };
+    configureChecks(repository, { fixture: definition }, ['fixture']);
+    const environment: NodeJS.ProcessEnv = {};
+    const execution = createCheckExecution(repository, environment);
+    const pinned = execution.pin({ checkId: 'fixture', definition });
+    assert.equal(fs.existsSync(marker), false);
+    assert.throws(
+      () => pinned.execute(),
+      (error) =>
+        isWorkflowError(error, 'DISPOSABLE_DATABASE_CONFIRMATION_REQUIRED'),
+    );
+    environment.WORKFLOW_DISPOSABLE_DATABASE = '1';
+    environment.TEST_DATABASE_URL = 'postgresql://fixture@localhost/first_test';
+    const identity = execution.preflightDatabase();
+    const withIdentity = execution.pin(
+      { checkId: 'fixture', definition },
+      identity,
+    );
+    const first = withIdentity.execute();
+    assert.equal(first.outcome, 'passed');
+    if (first.outcome === 'passed')
+      assert.equal(first.databaseIdentity, identity);
+    environment.TEST_DATABASE_URL =
+      'postgresql://fixture@localhost/second_test';
+    assert.equal(withIdentity.execute().outcome, 'passed');
+    assert.equal(
+      fs.readFileSync(marker, 'utf8'),
+      '/first_test\n/second_test\n',
+    );
+    delete environment.WORKFLOW_DISPOSABLE_DATABASE;
+    assert.throws(
+      () => withIdentity.execute(),
+      (error) =>
+        isWorkflowError(error, 'DISPOSABLE_DATABASE_CONFIRMATION_REQUIRED'),
+    );
+    assert.equal(
+      fs.readFileSync(marker, 'utf8'),
+      '/first_test\n/second_test\n',
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+    fs.rmSync(output, { recursive: true, force: true });
+  }
+});
+
+test('ordinary metadata is evaluated only after successful execution and unchanged runner identity', () => {
+  const repository = createFixtureRepository();
+  try {
+    const scripts = {
+      passed: 'process.exit(0);\n',
+      failed: 'process.exit(7);\n',
+      signaled: "process.kill(process.pid, 'SIGTERM');\n",
+      'changed-before': 'process.exit(0);\n',
+      'changed-after':
+        "import fs from 'node:fs';\nfs.appendFileSync(new URL(import.meta.url), '// changed\\n');\n",
+    };
+    for (const [name, source] of Object.entries(scripts))
+      fs.writeFileSync(path.join(repository, `scripts/${name}.mjs`), source);
+    const definitions = Object.fromEntries(
+      Object.keys(scripts).map((checkId) => [
+        checkId,
+        {
+          command: ['node', `scripts/${checkId}.mjs`],
+          destructiveDatabase: false,
+        },
+      ]),
+    );
+    configureChecks(repository, definitions, ['passed']);
+    const execution = createCheckExecution(repository, {});
+    const pinned = Object.fromEntries(
+      Object.entries(definitions).map(([checkId, definition]) => [
+        checkId,
+        execution.pin({ checkId, definition }),
+      ]),
+    );
+    let clockCalls = 0;
+    const completedAt = new Date('2026-09-22T01:02:03.000Z');
+    const metadata: CheckEvidenceMetadata = {
+      completedAt() {
+        clockCalls += 1;
+        return completedAt;
+      },
+      externalSnapshotDigest: 'a'.repeat(64),
+      maxAgeMs: 1234,
+    };
+    assert.equal(clockCalls, 0);
+    const passed = pinned.passed!.execute(metadata);
+    assert.equal(passed.outcome, 'passed');
+    if (passed.outcome === 'passed')
+      assert.deepEqual(
+        {
+          completedAt: passed.completedAt,
+          externalSnapshotDigest: passed.externalSnapshotDigest,
+          maxAgeMs: passed.maxAgeMs,
+        },
+        {
+          completedAt: completedAt.toISOString(),
+          externalSnapshotDigest: metadata.externalSnapshotDigest,
+          maxAgeMs: metadata.maxAgeMs,
+        },
+      );
+    assert.equal(clockCalls, 1);
+    const failed = pinned.failed!.execute({
+      ...metadata,
+      externalSnapshotDigest: 'invalid',
+      maxAgeMs: -1,
+    });
+    assert.equal(failed.outcome, 'failed');
+    assert.equal(failed.exitCode, 7);
+    assert.equal(clockCalls, 1, 'ordinary failure ignores completion metadata');
+    assert.throws(
+      () => pinned.signaled!.execute(metadata),
+      (error) => isWorkflowError(error, 'CHECK_TERMINATED'),
+    );
+    assert.equal(clockCalls, 1);
+    fs.appendFileSync(
+      path.join(repository, 'scripts/changed-before.mjs'),
+      '// changed before execution\n',
+    );
+    for (const checkId of ['changed-before', 'changed-after']) {
+      assert.throws(
+        () => pinned[checkId]!.execute(metadata),
+        (error) => isWorkflowError(error, 'CHECK_RUNNER_CHANGED'),
+      );
+      assert.equal(clockCalls, 1, checkId);
+    }
+    for (const invalid of [
+      { externalSnapshotDigest: 'invalid', maxAgeMs: 1234 },
+      { externalSnapshotDigest: 'a'.repeat(64), maxAgeMs: 0 },
+      { externalSnapshotDigest: 'a'.repeat(64), maxAgeMs: undefined },
+    ]) {
+      assert.throws(
+        () => pinned.passed!.execute({ ...metadata, ...invalid }),
+        (error) => isWorkflowError(error, 'CHECK_EVIDENCE_METADATA_INVALID'),
+      );
+    }
+    assert.equal(clockCalls, 4);
+    assert.throws(
+      () => pinned.passed!.execute({ completedAt: () => new Date(NaN) }),
+      (error) => isWorkflowError(error, 'CHECK_EVIDENCE_METADATA_INVALID'),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
