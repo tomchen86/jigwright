@@ -5,6 +5,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
+import { deriveAuthorityAuditRepositoryId } from '../src/modules/authority/authority-audit-contract.ts';
+import { showAuthorityAuditTask } from '../src/runtime/storage-journal/authority-audit-service.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { projectProviderInvocationExecution } from '../src/modules/provider-orchestration/execution-core.ts';
@@ -976,10 +978,34 @@ test('exhausted automatic budget exposes a scoped GrantRequest and executes noth
       record: original,
       request,
     }).job.jobId;
+    assert.ok(original.mandateBinding);
+    assert.deepEqual(original.mandateBinding, mandate.binding);
+    assert.equal(original.state, 'prepared');
+    const fencePath = path.join(runtime.locks, `${invocationId}.worker-active`);
+    const auditScope = {
+      repositoryRoot: fs.realpathSync(repository),
+      repositoryId: deriveAuthorityAuditRepositoryId(
+        mandate.repositoryIdentity,
+      ),
+      externalAuditRoot: mandate.externalAuditRoot,
+    };
+    const taskId = mandate.taskId;
+    const atExecution: Array<{
+      record: ReturnType<typeof readProviderInvocation>;
+      fencePresent: boolean;
+      audit: ReturnType<typeof showAuthorityAuditTask>;
+    }> = [];
+    let runnerCalls = 0;
     const dispatched: string[] = [];
 
-    runProviderWorker(repository, invocationId, {
+    const result = runProviderWorker(repository, invocationId, {
       runner() {
+        runnerCalls += 1;
+        atExecution.push({
+          record: readProviderInvocation(runtime, invocationId),
+          fencePresent: fs.existsSync(fencePath),
+          audit: showAuthorityAuditTask(auditScope, taskId),
+        });
         throw workflowError(
           'NETWORK_TRANSIENT',
           'Network is temporarily unavailable.',
@@ -993,6 +1019,42 @@ test('exhausted automatic budget exposes a scoped GrantRequest and executes noth
         },
       },
     });
+
+    // Assertions stay outside the runner: worker failure handling must not
+    // turn a failed assertion into the controlled network failure below.
+    assert.equal(atExecution.length, 1, canonicalJson({ runnerCalls, result }));
+    assert.equal(runnerCalls, 1);
+    const executed = atExecution[0]!;
+    assert.equal(executed.record.state, 'leased');
+    assert.ok(executed.record.lease);
+    assert.deepEqual(executed.record.mandateBinding, mandate.binding);
+    assert.equal(executed.fencePresent, true);
+    assert.equal(executed.audit.ok, true);
+    const invocationEvents = executed.audit.events.filter(
+      ({ event }) =>
+        event.eventType === 'provider-invocation' &&
+        event.providerInvocation?.invocationId === invocationId,
+    );
+    assert.equal(invocationEvents.length, 1);
+    const invocationEvent = invocationEvents[0]!.event;
+    assert.equal(invocationEvent.taskId, mandate.taskId);
+    assert.equal(invocationEvent.changeId, changeId);
+    assert.equal(
+      invocationEvent.grantDigest,
+      `sha256:${mandate.binding.mandateDigest}`,
+    );
+    assert.equal(invocationEvent.occurredAt, original.createdAt);
+    assert.deepEqual(invocationEvent.providerInvocation, {
+      providerId: request.providerId,
+      invocationId,
+      requestDigest: `sha256:${request.requestDigest}`,
+    });
+    assert.equal(result.state, 'failed');
+    const failed = readProviderInvocation(runtime, invocationId);
+    assert.equal(failed.state, 'failed');
+    assert.equal(failed.failure?.code, 'NETWORK_TRANSIENT');
+    assert.deepEqual(failed.mandateBinding, mandate.binding);
+    assert.equal(fs.existsSync(fencePath), false);
 
     assert.equal(
       readProviderAutomaticRetrySchedule(repository, invocationId),

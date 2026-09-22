@@ -1351,6 +1351,11 @@
       "digest": "sha256:317564334867e8f896cd050b72d6b91fe3839322b8b692898bb57d35c4387698"
     },
     {
+      "path": "src/application/provider-worker/provider-worker-claim.ts",
+      "mode": "100644",
+      "digest": "sha256:459a32ef4cc6e8cbf418c263d49832a8b61ada56cb57086948a7fe6b7f747c47"
+    },
+    {
       "path": "src/application/reconciliation/implementation-reconciliation.ts",
       "mode": "100644",
       "digest": "sha256:52569476d00b6d5d26eb300011a2fe6842c49abf90a4de9dd4ed26dccbd54b48"
@@ -1851,6 +1856,11 @@
       "digest": "sha256:dd81049d136444afca183715d6a22aa0e7bd188663eeda9754085fd029f158cc"
     },
     {
+      "path": "src/composition-root/provider-worker-claim-production.ts",
+      "mode": "100644",
+      "digest": "sha256:8cfa3f897bc2541747b1356b2fe49228270c2d44a3cadfb1fdeaca39cdfba2b1"
+    },
+    {
       "path": "src/composition-root/provider-worker-dispatch-production.ts",
       "mode": "100644",
       "digest": "sha256:4db8606b8abe1861f1f11959f6f357e5afa7e01ec8cdc96ae1bea00516d9411a"
@@ -2148,7 +2158,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:6b281cc73971786e741bcc717116875c907d876759a08a214f7e333ab6b86c28"
+      "digest": "sha256:09f48609f4d7e5643cdae74e7fadf979c2355efdd0b422be8880f01f9153fc3b"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -3178,7 +3188,7 @@
     {
       "path": "src/modules/investigation/domain/investigation-store-values.ts",
       "mode": "100644",
-      "digest": "sha256:0014e1de36f203425f044c123114e1d2413d565e6356ca5d18fdace6028d580d"
+      "digest": "sha256:592e7d8d87781047dae45a277223f1bed2f33ee7661b55f714a69a449ca92eca"
     },
     {
       "path": "src/modules/investigation/domain/investigation-terms.ts",
@@ -3593,7 +3603,7 @@
     {
       "path": "src/modules/provider-orchestration/provider-invocation-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:c02cef7559cddc59b9551a1837bf7b64719e3b4e43d448c0db006c0cfc3c6c4d"
+      "digest": "sha256:8d0e126032e417c082da9d555dab20710946dbae8a51905a68accff655953e0b"
     },
     {
       "path": "src/modules/provider-orchestration/provider-invocation-record.ts",
@@ -5178,7 +5188,7 @@
     {
       "path": "src/runtime/storage-journal/propose-exemption-store.ts",
       "mode": "100644",
-      "digest": "sha256:a97fbd457d64a5c1eda3f96145306f2c98f6c5be7d17df5a14b42d826712f6a1"
+      "digest": "sha256:f940edbc30761b2cf3a7a86e1718c8da96e8e8d09fdd8163e30bb6b1090e3221"
     },
     {
       "path": "src/runtime/storage-journal/provider-execution-admission-authority.ts",
@@ -5278,7 +5288,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-workers.ts",
       "mode": "100644",
-      "digest": "sha256:02188e52edcfa7133516441866d5b9bbae9102028a391dd97c37dd73b4f5ae36"
+      "digest": "sha256:8462dcafb10d116297ebf94ff2493270039685124fec7ae181bc2b4e028885f6"
     },
     {
       "path": "src/runtime/storage-journal/provider-native-session-chain.ts",

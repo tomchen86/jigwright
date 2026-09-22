@@ -8,6 +8,11 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { ExitCode, workflowError } from "../../../foundation/errors/errors.js";
+const SESSION_PREFIX = 'investigation-exemption-';
+export { SESSION_PREFIX as PROPOSE_EXEMPTION_SESSION_PREFIX };
+export function isProposeExemptionInvestigationId(value) {
+    return new RegExp(`^${SESSION_PREFIX}[0-9a-f]{64}$`).test(value);
+}
 export const DIGEST = /^[0-9a-f]{64}$/;
 export function isTaskMandateBinding(value, changeId) {
     return (isRecord(value) &&

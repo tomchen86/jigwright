@@ -17,6 +17,13 @@ export type ProviderCompletionCandidate = Readonly<{
   candidateDigest: string;
 }>;
 
+export type ProviderWorkerClaimInput = {
+  workerId: string;
+  leaseDurationMs: number;
+  expectedRevision?: number;
+  now?: string;
+};
+
 export type ProviderLeaseClaim = {
   record: ProviderInvocationRecord;
   leaseToken: string;

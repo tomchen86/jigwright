@@ -82,6 +82,7 @@ import '../provider-failure-recording.test.ts';
 import '../provider-invocation-failure.test.ts';
 import '../provider-native-session-closure.integration.test.ts';
 import '../provider-terminal-followups.test.ts';
+import '../provider-worker-claim.test.ts';
 import '../provider-worker-launcher.test.ts';
 import '../provider-worker-maintenance.integration.test.ts';
 import '../runtime-context-boundary.contract.test.ts';

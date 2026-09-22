@@ -1,11 +1,10 @@
 import { taskMandateOperations } from '../../composition-root/task-mandate-production.ts';
 
-type TaskMandateDependencies = Pick<
-  typeof taskMandateOperations,
-  | 'assertActiveTaskMandateBindingUnderLifecycleLock'
-  | 'recordTaskMandateProviderInvocationUnderLifecycleLock'
-  | 'withActiveTaskMandateBinding'
->;
+import {
+  claimProviderWorker,
+  type ProviderWorkerClaimOptions,
+  type ProviderWorkerClaimTaskMandate as TaskMandateDependencies,
+} from '../../composition-root/provider-worker-claim-production.ts';
 /**
  * Runs provider invocations and publishes their admitted results and
  * terminal follow-ups.
@@ -39,11 +38,9 @@ import {
   providerAcceptanceGovernedRuntimeInputs,
   providerInvocationDurableGovernedRuntimeInputs,
 } from '../../composition-root/agent-runtime-production.ts';
-import { readInvestigationSession } from '../../runtime/storage-journal/investigation-session-records.ts';
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
 
 import { resolveCurrentProviderWorkerAssignment } from '../../composition-root/provider-worker-assignment-production.ts';
-import type { ProviderWorkerAssignmentOptions } from '../../composition-root/provider-worker-assignment-production.ts';
 import { productionConsumedRoleResultReplayPort } from '../../composition-root/grant-verifier-composition.ts';
 import {
   PLAN_REVIEW_OUTPUT_SCHEMA,
@@ -75,7 +72,6 @@ import {
   blindSurveyOutputValidator,
   assertProviderInvocationAcceptanceBindingTerminalCurrent,
   claimProviderInvocationForWorker,
-  claimProviderInvocationForWorkerUnderLifecycleLock,
   completeProviderInvocationFromRunner,
   completeProviderInvocationFromRunnerForWorkerClaim,
   completeProviderInvocationFromRunnerUnderLifecycleLock,
@@ -94,17 +90,12 @@ import {
 } from '../../runtime/storage-journal/provider-invocation-store.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
-  isProposeExemptionInvestigationId,
-  readProposeExemptionSession,
-} from '../../runtime/storage-journal/propose-exemption-store.ts';
-import {
   runProviderWorkerTerminalFollowups as runTerminalFollowups,
   isRoleAssignmentGrantRequired,
   type ProviderWorkerTerminalOptions,
 } from '../../composition-root/provider-worker-terminal-production.ts';
 import { recordProviderWorkerFailure } from '../../composition-root/provider-worker-failure-production.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
-import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 
 const PROVIDER_CANCELLATION_POLL_INTERVAL_MS = 25;
 
@@ -123,9 +114,8 @@ export type AsyncProviderWorkerResult = ProviderWorkerResult &
     completionReceipt: AgentRuntimeCompletionReceipt | null;
   }>;
 
-export type ProviderWorkerOptions = ProviderWorkerAssignmentOptions &
+export type ProviderWorkerOptions = ProviderWorkerClaimOptions &
   ProviderWorkerTerminalOptions & {
-    workerId?: string;
     signal?: AbortSignal;
   };
 
@@ -359,105 +349,13 @@ function runProviderWorkerWithExecution(
     context.runtime,
     initial.invocationId,
   );
-  // Grant admission precedes the provider lease. A missing role-assignment
-  // activation must leave this exact invocation prepared so Human Gate can
-  // authorize it and the same worker command can be retried.
-  resolveCurrentProviderWorkerAssignment(
-    {
-      repositoryRoot: context.git.repositoryRoot,
-      runtime: context.runtime,
-      grantRuntimeRoot: context.lifecycleRuntime.root,
-      changeId: initial.changeId,
-      request,
-    },
+  const { claim, claimInput } = claimProviderWorker(
+    taskMandate,
+    cwd,
+    context,
+    { initial, request, taskDiffReviewOwner, taskStrategyImplementationOwner },
     options,
   );
-  const claimInput = {
-    workerId:
-      options.workerId ??
-      `provider-worker-${process.pid}-${initial.invocationId}`,
-    leaseDurationMs: request.limits.timeoutMs,
-    expectedRevision: initial.revision,
-  };
-  const claimWithActiveMandate = (
-    activeBinding: TaskMandateBinding,
-    assertOwned: () => void,
-  ) => {
-    const owner =
-      taskDiffReviewOwner !== null
-        ? assertTaskDiffReviewProviderOwnerCurrent(cwd, initial.invocationId, {
-            consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-          })
-        : taskStrategyImplementationOwner !== null
-          ? assertTaskStrategyImplementationProviderOwnerCurrent(
-              cwd,
-              initial.invocationId,
-            )
-          : isProposeExemptionInvestigationId(initial.investigationId)
-            ? readProposeExemptionSession(
-                context.runtime,
-                initial.investigationId,
-              )
-            : readInvestigationSession(
-                context.runtime,
-                initial.investigationId,
-              );
-    if (
-      owner.changeId !== initial.changeId ||
-      canonicalJson(owner.mandateBinding ?? null) !==
-        canonicalJson(activeBinding) ||
-      canonicalJson(initial.mandateBinding) !== canonicalJson(activeBinding)
-    ) {
-      throw workflowError(
-        'TASK_MANDATE_BINDING_STALE',
-        'Provider worker invocation no longer matches its durable Task Mandate owner.',
-        ExitCode.staleState,
-      );
-    }
-    taskMandate.recordTaskMandateProviderInvocationUnderLifecycleLock(
-      cwd,
-      activeBinding,
-      {
-        providerId: request.providerId,
-        invocationId: initial.invocationId,
-        requestDigest: request.requestDigest,
-        occurredAt: initial.createdAt,
-      },
-      assertOwned,
-    );
-    return claimProviderInvocationForWorkerUnderLifecycleLock(
-      context.runtime,
-      initial.invocationId,
-      claimInput,
-      assertOwned,
-    );
-  };
-  const claim = initial.mandateBinding
-    ? taskDiffReviewOwner !== null
-      ? withTaskDiffReviewProviderLifecycleOperation(
-          cwd,
-          taskDiffReviewOwner.sessionId,
-          (assertOwned) =>
-            claimWithActiveMandate(
-              taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock(
-                cwd,
-                initial.mandateBinding!,
-                assertOwned,
-              ),
-              assertOwned,
-            ),
-        )
-      : taskMandate.withActiveTaskMandateBinding(
-          cwd,
-          initial.mandateBinding.mandateTaskId,
-          {},
-          claimWithActiveMandate,
-        )
-    : claimProviderInvocationForWorker(
-        context.runtime,
-        initial.invocationId,
-        claimInput,
-      );
   const cancellationWatcher = watchDurableCancellation
     ? createProviderInvocationCancellationWatcher(
         context.runtime,

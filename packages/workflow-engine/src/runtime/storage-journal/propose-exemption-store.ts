@@ -44,9 +44,14 @@ import {
 import { PROPOSE_EXEMPTION_SESSION_STORE_POLICY_DIGEST } from '../../modules/provider-orchestration/provider-contracts.ts';
 import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 
+import {
+  PROPOSE_EXEMPTION_SESSION_PREFIX as SESSION_PREFIX,
+  isProposeExemptionInvestigationId,
+} from '../../modules/investigation/domain/investigation-store-values.ts';
+export { isProposeExemptionInvestigationId } from '../../modules/investigation/domain/investigation-store-values.ts';
+
 const DIGEST = /^[0-9a-f]{64}$/;
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
-const SESSION_PREFIX = 'investigation-exemption-';
 const CURRENT_REF = 'propose/exemption-session';
 
 export type ProposeExemptionActor = {
@@ -327,10 +332,6 @@ export function retireCurrentProposeExemptionSession(
   if (readCurrentProposeExemptionSession(paths, session.changeId) !== null) {
     throw sessionStale();
   }
-}
-
-export function isProposeExemptionInvestigationId(value: string): boolean {
-  return new RegExp(`^${SESSION_PREFIX}[0-9a-f]{64}$`).test(value);
 }
 
 function assertStoredSession(value: unknown): StoredProposeExemptionSession {
