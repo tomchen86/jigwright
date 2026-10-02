@@ -6,12 +6,7 @@ import {
   loadWorkflowConfig,
   parseExecutionBudgetGrantRequest,
   externalEffectStorePaths,
-  revokeExternalEffectGrant,
   EXTERNAL_EFFECT_MAX_TTL_SECONDS,
-  issueExternalEffectGrant,
-  inspectExternalEffectGrant,
-  reconcileExternalEffectGrant,
-  executePublishGrant,
   discoverRepository,
   assertMaintainerGrantId,
   parseMaintainerEvidenceWaivers,
@@ -21,21 +16,27 @@ import {
   parseMaintainerPolicy,
   revokeMaintainerGrantV2,
   produceControlPlaneApprovalCandidateV3,
+  inspectInvestigationQuarantineState,
+  runtimePaths,
+  prepareTaskRevisionApprovalBinding,
+  parseTaskMandateRequest,
+} from '../../composition-root/cli-command-services.ts';
+import {
+  revokeExternalEffectGrant,
+  inspectExternalEffectGrant,
+  reconcileExternalEffectGrant,
+  issueExternalEffectGrant,
+  executePublishGrant,
+} from '../../composition-root/external-effect-production.ts';
+import {
   inspectHumanResolutionGrantPublicationRecoveries,
   inspectHumanResolutionGrants,
   discardHumanResolutionGrantPublication,
   revokeHumanResolutionGrant,
-  inspectInvestigationQuarantineState,
-  runtimePaths,
-  prepareTaskRevisionApprovalBinding,
-  resumeDirectHumanTaskDiffReview,
-  issueTaskRevisionApproval,
-  parseTaskMandateRequest,
-  inspectActiveTaskMandateBinding,
-  authorizeTaskMandate,
-  inspectTaskMandate,
-  revokeTaskMandate,
-} from '../../composition-root/cli-command-services.ts';
+} from '../../composition-root/investigation-retry-production.ts';
+import { resumeDirectHumanTaskDiffReview } from '../../composition-root/task-diff-review-production.ts';
+import { issueTaskRevisionApproval } from '../../composition-root/task-revision-approval-production.ts';
+import { taskMandateOperations } from '../../composition-root/task-mandate-production.ts';
 import type {
   AuthorityPlanIntent,
   ExternalEffectTarget,
@@ -91,6 +92,13 @@ import {
 import { parseTaskDiffReviewCliInput } from './task-review-cli-input.ts';
 import type { MaintainerAuthorityOperations } from '../../composition-root/maintainer-authority-production.ts';
 import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
+const {
+  inspectActiveTaskMandateBinding,
+  authorizeTaskMandate,
+  inspectTaskMandate,
+  revokeTaskMandate,
+} = taskMandateOperations;
 
 /**
  * Parses and dispatches authority, maintainer, mandate, and external-effect

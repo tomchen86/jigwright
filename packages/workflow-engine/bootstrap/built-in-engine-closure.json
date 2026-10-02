@@ -1638,7 +1638,7 @@
     {
       "path": "src/composition-root/cli-command-services.ts",
       "mode": "100644",
-      "digest": "sha256:a585b9ee908439e960e20c73e40bd1811cbcf9ed969fbbab2eea19fe38a67832"
+      "digest": "sha256:4efc6b70d73b9720908e5788451390e391edfd5f25555740c76a980c43671b1a"
     },
     {
       "path": "src/composition-root/collaboration-grant-issuance-production.ts",
@@ -2138,7 +2138,7 @@
     {
       "path": "src/entrypoints/cli/authority-management-cli.ts",
       "mode": "100644",
-      "digest": "sha256:a710a9dc8fc70094921c813f123ff5e5f411ee7d2196a71f969bfe88aa4139fa"
+      "digest": "sha256:7380ebc93804e538d09a5cb475d41dfd730eaf81a9cee03b979b3c4c71114790"
     },
     {
       "path": "src/entrypoints/cli/boundary-cli.ts",

@@ -4,7 +4,6 @@ export type { ControlPlanePromotionBootstrapObservations } from '../modules/auth
 import { verifyPullRequest } from './ci-verification-production.ts';
 
 import { planningTransitionExecution as productionPlanningExecution } from './planning-execution-epoch-production.ts';
-import { taskMandateOperations } from './task-mandate-production.ts';
 import { productionChangeContract } from './change-routing-observation-production.ts';
 
 import { managedDocuments } from './managed-documents-production.ts';
@@ -87,13 +86,7 @@ export type { AuthorityPlanIntent } from '../application/control-plane/authority
 export { loadWorkflowConfig } from '../runtime/workflow-configuration/workflow-configuration.ts';
 export { parseExecutionBudgetGrantRequest } from '../modules/authority/execution-governance-grant-contracts.ts';
 export { externalEffectStorePaths } from '../runtime/storage-journal/external-effect-grant-store.ts';
-export {
-  revokeExternalEffectGrant,
-  inspectExternalEffectGrant,
-  reconcileExternalEffectGrant,
-} from './external-effect-production.ts';
 export { EXTERNAL_EFFECT_MAX_TTL_SECONDS } from '../modules/authority/external-effect-grant.ts';
-export { issueExternalEffectGrant } from './external-effect-production.ts';
 export type {
   ExternalEffectTarget,
   ExternalEffectRollbackPlan,
@@ -101,7 +94,6 @@ export type {
   ExternalEffectKind,
   ExternalEffectReconciliationRequest,
 } from '../modules/authority/external-effect-grant.ts';
-export { executePublishGrant } from './external-effect-production.ts';
 export { discoverRepository } from '../runtime/repository-transaction/git.ts';
 export { assertMaintainerGrantId } from '../modules/authority/maintainer-grant-contracts.ts';
 export {
@@ -157,12 +149,6 @@ export function produceControlPlaneApprovalCandidateV3(
     },
   );
 }
-export {
-  inspectHumanResolutionGrantPublicationRecoveries,
-  inspectHumanResolutionGrants,
-  discardHumanResolutionGrantPublication,
-  revokeHumanResolutionGrant,
-} from './investigation-retry-production.ts';
 export { inspectInvestigationQuarantineState } from '../runtime/storage-journal/human-resolution-state.ts';
 export { runtimePaths } from '../runtime/session-workspace/session-store.ts';
 import { prepareTaskRevisionApprovalBinding as prepareTaskRevisionApprovalBindingWithServices } from '../application/revise/task-revision.ts';
@@ -171,15 +157,7 @@ export const prepareTaskRevisionApprovalBinding =
     undefined,
     productionChangeContract,
   );
-export { resumeDirectHumanTaskDiffReview } from './task-diff-review-production.ts';
-export { issueTaskRevisionApproval } from './task-revision-approval-production.ts';
 export { parseTaskMandateRequest } from '../modules/authority/task-mandate-records.ts';
-export const {
-  inspectActiveTaskMandateBinding,
-  authorizeTaskMandate,
-  inspectTaskMandate,
-  revokeTaskMandate,
-} = taskMandateOperations;
 export { workflowGuidanceUsageLines } from '../modules/guidance/next-steps/workflow-guidance.ts';
 export { assertProtectedTaskApplyRecoveryGrantRequiredDetails } from '../modules/authority/protected-task-apply-recovery-grant.ts';
 export type { ProtectedTaskApplyRecoveryGrantRequiredDetailsV1 } from '../modules/authority/protected-task-apply-recovery-grant.ts';
