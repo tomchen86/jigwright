@@ -1,51 +1,16 @@
 import { createProductionSessionCheckService } from './session-check-production.ts';
 import { createInteractiveSshSigner } from '../adapters/signing/ssh/maintainer-signer.ts';
-import { createArchiveProjectionDependencies } from './planning-archive-projection-production.ts';
-import { loadStableValidatedChangeContract } from './validated-contract-context.ts';
 import { readAndValidateTaskRevisionApproval } from './task-revision-approval-production.ts';
 export type { ControlPlanePromotionBootstrapObservations } from '../modules/authority/intervention-bootstrap-contract.ts';
-import {
-  preparePullRequestPreMergeAssurance,
-  verifyPullRequest,
-} from './ci-verification-production.ts';
+import { verifyPullRequest } from './ci-verification-production.ts';
 
 import { planningTransitionExecution as productionPlanningExecution } from './planning-execution-epoch-production.ts';
-import { archiveEligibilityReplayServices } from './ci-replay-production.ts';
 import { productionPlanningArchiveSourcePolicy } from './planning-archive-projection-production.ts';
 import { taskMandateOperations } from './task-mandate-production.ts';
 import { productionChangeContract } from './change-routing-observation-production.ts';
 
-import { collaborationGrantCodec as productionArchiveGrantCodec } from '../runtime/grants/grant-services.ts';
-import { reconcileArchivedWorkItems as productionArchivedWorkItemReconciler } from './work-registry-production.ts';
 import { managedDocuments } from './managed-documents-production.ts';
-import {
-  handoffDocuments,
-  renderHandoffFromTrackedFacts as productionTrackedHandoffRenderer,
-} from './handoff-production.ts';
-import { commitArchiveTransition as commitArchiveTransitionWithHandoff } from '../application/archive/archive-transition.ts';
-export const commitArchiveTransition = commitArchiveTransitionWithHandoff.bind(
-  undefined,
-  loadStableValidatedChangeContract,
-  productionPlanningExecution,
-  createArchiveProjectionDependencies(),
-  archiveEligibilityReplayServices,
-  productionArchiveGrantCodec,
-  productionTrackedHandoffRenderer,
-  productionArchivedWorkItemReconciler,
-);
-import { preparePostMergeArchivePullRequest as preparePostMergeArchivePullRequestWithHandoff } from '../application/archive/archive-pr-orchestration.ts';
-export const preparePostMergeArchivePullRequest =
-  preparePostMergeArchivePullRequestWithHandoff.bind(
-    undefined,
-    loadStableValidatedChangeContract,
-    preparePullRequestPreMergeAssurance,
-    productionPlanningExecution,
-    createArchiveProjectionDependencies(),
-    archiveEligibilityReplayServices,
-    productionArchiveGrantCodec,
-    productionTrackedHandoffRenderer,
-    productionArchivedWorkItemReconciler,
-  );
+import { handoffDocuments } from './handoff-production.ts';
 import {
   loadChangeContract as productionChangeContractReader,
   loadCommittedChangeContract as productionCommittedChangeContractReader,
@@ -119,8 +84,7 @@ export const commitPlanAmendment = commitPlanAmendmentWithContractReader.bind(
  * handlers.
  *
  * Invariants:
- * - This facade re-exports its defining modules without local wrappers or
- *   duplicate implementations.
+ * - Production bindings fix workflow dependencies before CLI dispatch.
  */
 // Production services used by the CLI command families.
 

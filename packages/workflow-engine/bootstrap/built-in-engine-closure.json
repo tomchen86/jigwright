@@ -1523,7 +1523,7 @@
     {
       "path": "src/composition-root/archive-cli-production.ts",
       "mode": "100644",
-      "digest": "sha256:e2049688c1bc7dcf29226d05317566ab47d30da62b4d4892c0a3222a149aef7f"
+      "digest": "sha256:6f285722c8b132baf894325bc3ac141284e5bc382c9dfb8cca25cb5bf9e153cf"
     },
     {
       "path": "src/composition-root/archive-pr-grant-production.ts",
@@ -1633,7 +1633,7 @@
     {
       "path": "src/composition-root/cli-command-services.ts",
       "mode": "100644",
-      "digest": "sha256:54ae60640bbf063c91b6daa1a085a21f5c1695250225f900de976568020152d3"
+      "digest": "sha256:657e4ac4be22acda262a0da6e3be08cf8bec4b6e8b52cdbccd8e485501949059"
     },
     {
       "path": "src/composition-root/collaboration-grant-issuance-production.ts",
@@ -2118,7 +2118,7 @@
     {
       "path": "src/entrypoints/cli/archive-cli.ts",
       "mode": "100644",
-      "digest": "sha256:3cdeeaa4df90b88664cb7e8e1a3de1b4977ab75674e53a69b390a9690a0bf0a5"
+      "digest": "sha256:bf8d31735beb2176fae7f30eb40a9a3571c6c8661f17b88fbc3e1705161d7819"
     },
     {
       "path": "src/entrypoints/cli/authority-audit-cli.ts",

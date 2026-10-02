@@ -7,7 +7,18 @@ import { productionPlanningArchiveSourcePolicy } from './planning-archive-projec
 import { collaborationGrantCodec as productionArchiveGrantCodec } from '../runtime/grants/grant-services.ts';
 import { reconcileArchivedWorkItems as productionArchivedWorkItemReconciler } from './work-registry-production.ts';
 import { renderHandoffFromTrackedFacts as productionTrackedHandoffRenderer } from './handoff-production.ts';
-const preparePostMergeArchivePullRequest =
+import { commitArchiveTransition as commitArchiveTransitionWithHandoff } from '../application/archive/archive-transition.ts';
+export const commitArchiveTransition = commitArchiveTransitionWithHandoff.bind(
+  undefined,
+  loadStableValidatedChangeContract,
+  productionPlanningExecution,
+  createArchiveProjectionDependencies(),
+  archiveEligibilityReplayServices,
+  productionArchiveGrantCodec,
+  productionTrackedHandoffRenderer,
+  productionArchivedWorkItemReconciler,
+);
+export const preparePostMergeArchivePullRequest =
   preparePostMergeArchivePullRequestWithHandoff.bind(
     undefined,
     loadStableValidatedChangeContract,
@@ -20,7 +31,7 @@ const preparePostMergeArchivePullRequest =
     productionArchivedWorkItemReconciler,
   );
 /**
- * Assembles archive CLI discovery, preparation, authorization and
+ * Assembles archive transitions, discovery, preparation, authorization and
  * publication dependencies.
  *
  * Invariants:

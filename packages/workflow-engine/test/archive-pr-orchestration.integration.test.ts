@@ -1,26 +1,9 @@
-import { preparePullRequestPreMergeAssurance } from '../src/composition-root/ci-verification-production.ts';
-import { createArchiveProjectionDependencies } from '../src/composition-root/planning-archive-projection-production.ts';
 import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
-import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
 import { productionPlanningArchiveSourcePolicy } from '../src/composition-root/planning-archive-projection-production.ts';
 import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
-import { collaborationGrantCodec as productionArchiveGrantCodec } from '../src/runtime/grants/grant-services.ts';
-import { reconcileArchivedWorkItems as productionArchivedWorkItemReconciler } from '../src/composition-root/work-registry-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
-import { renderHandoffFromTrackedFacts as productionTrackedHandoffRenderer } from '../src/composition-root/handoff-production.ts';
-const preparePostMergeArchivePullRequest =
-  preparePostMergeArchivePullRequestWithHandoff.bind(
-    undefined,
-    loadStableValidatedChangeContract,
-    preparePullRequestPreMergeAssurance,
-    productionPlanningExecution,
-    createArchiveProjectionDependencies(),
-    archiveEligibilityReplayServices,
-    productionArchiveGrantCodec,
-    productionTrackedHandoffRenderer,
-    productionArchivedWorkItemReconciler,
-  );
+import { preparePostMergeArchivePullRequest } from '../src/composition-root/archive-cli-production.ts';
 import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
 const commitPlanningTransition =
   commitPlanningTransitionWithContractReader.bind(
@@ -35,7 +18,6 @@ import {
   discoverArchivePullRequestCandidates,
   openArchivePullRequest,
   projectArchivePullRequestCandidate,
-  preparePostMergeArchivePullRequest as preparePostMergeArchivePullRequestWithHandoff,
   projectArchivePullRequestPublication,
   type ExactArchiveBranchPublisherPortV1,
 } from '../src/application/archive/archive-pr-orchestration.ts';
