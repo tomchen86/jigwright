@@ -8,11 +8,11 @@ Keep original requirement wording separate from the working inbox so corrections
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.governance-intake-readme v=1 digest=sha256:0fbb1092c939e31476e4a11c7afa83e2fd941e1675da444ff6147bef3d0d98f0 -->
+<!-- jigwright:region id=documents.governance-intake-readme v=1 digest=sha256:4dec68400f6f2e54c5d6ac21d9c952e530120f44df7cf98b9ad936f8a4443913 -->
 
 <!-- prettier-ignore-start -->
 
-20 files changed in this module since confirmation.
+21 files changed in this module since confirmation.
 
 ## Commands
 

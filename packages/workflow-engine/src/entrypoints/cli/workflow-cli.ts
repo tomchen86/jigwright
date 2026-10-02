@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import {
+  currentGovernanceIntakeCounts,
+  createGovernanceIntakeCommandDependencies,
+} from '../../composition-root/governance-intake-command-production.ts';
 import type { WorkflowGrantServices } from '../../composition-root/grant-production.ts';
 import type {
   ProductionFinalizationService,
@@ -83,8 +87,6 @@ import {
 import { readSystemDescriptionSnapshot } from '../../runtime/repository-transaction/system-description-snapshot.ts';
 import { systemSpecPaths } from '../../modules/source/system-documents.ts';
 import { diagnoseOpenSpec } from '../../adapters/planning/openspec/documents/openspec-doctor.ts';
-import { startPropose } from '../../composition-root/propose-production.ts';
-import { productionRoleTopologyResolutionPort } from '../../composition-root/role-topology-resolution-production.ts';
 import { runProviderWorkerAsync } from '../worker/provider-worker.ts';
 import { dispatchProviderWorker } from '../../composition-root/provider-worker-dispatch-production.ts';
 
@@ -104,7 +106,6 @@ import {
 } from './cli-input.ts';
 import { type ChangeRoutingGrantRequest } from './fail-grant-cli.ts';
 import { dispatchArchiveCommand } from './archive-cli.ts';
-import { currentGovernanceIntakeCounts } from './task-lifecycle-cli.ts';
 import type { createAuthorityCommands } from './authority-management-cli.ts';
 import type { HarnessBootstrapProduction } from '../../composition-root/harness-bootstrap-production.ts';
 export { createArchivePullRequestCliDispatcherForTesting } from './archive-cli.ts';
@@ -778,10 +779,7 @@ export function createWorkflowCli({
         };
       case 'finding':
       case 'now': {
-        const providerDispatcher =
-          process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH === '1'
-            ? undefined
-            : dispatchProviderWorker;
+        const intakeDependencies = createGovernanceIntakeCommandDependencies();
         return {
           command,
           ok: true,
@@ -789,21 +787,7 @@ export function createWorkflowCli({
             command,
             rest,
             discoverRepository(cwd).repositoryRoot,
-            {
-              startImmediateChange(
-                repositoryRoot,
-                changeId,
-                intent,
-                immediateSource,
-              ) {
-                return startPropose(repositoryRoot, changeId, intent, {
-                  environment: process.env,
-                  ...(immediateSource ? { immediateSource } : {}),
-                  ...(providerDispatcher ? { providerDispatcher } : {}),
-                  roleTopologyResolution: productionRoleTopologyResolutionPort,
-                });
-              },
-            },
+            intakeDependencies,
           ),
         };
       }

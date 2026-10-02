@@ -1,3 +1,4 @@
+import { currentGovernanceIntakeCounts } from '../../composition-root/governance-intake-command-production.ts';
 /**
  * Parses and dispatches task planning, execution, status, and review
  * commands.
@@ -8,13 +9,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  loadWorkflowConfig,
   resolveOpenTaskId,
   openTask,
   contextualizeOpenTaskError,
   findOpenTaskLifecycleStatus,
   discoverRepository,
-  inspectGovernanceIntakeCounts,
   inspectFinalizeRecoveryStatus,
   findTaskCommits,
   cancelFinalizeRecovery,
@@ -24,7 +23,6 @@ import {
   listSessions,
   abortSession,
   updateTaskSessionBase,
-  runtimePaths,
   reviseTask,
   resumeTask,
   inspectTaskRevisionStatus,
@@ -89,15 +87,6 @@ function sessionStatusRepositoryRoot(
   return session.state === 'active' || session.state === 'revising'
     ? session.repositoryRoot
     : callerRoot;
-}
-
-export function currentGovernanceIntakeCounts(cwd: string) {
-  const repository = discoverRepository(cwd);
-  const config = loadWorkflowConfig(repository.repositoryRoot);
-  return inspectGovernanceIntakeCounts(
-    repository.repositoryRoot,
-    runtimePaths(repository.gitCommonDirectory, config.runtimeDirectory).root,
-  );
 }
 
 function taskDiffReviewUsage(): WorkflowError {

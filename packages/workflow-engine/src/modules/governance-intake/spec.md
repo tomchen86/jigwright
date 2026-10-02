@@ -650,7 +650,7 @@ test: packages/workflow-engine/test/governance-findings.integration.test.ts#D-01
 
 #### Scenario: Converted Finding is escalated immediately
 covers: #Requirement: Finding Conversion Has One Deterministic Target
-test: packages/workflow-engine/test/propose-planning-workspace.integration.test.ts#finding-converted immediate Source bootstrap resumes a source-only crash into one exact cited planning origin
+test: packages/workflow-engine/test/propose-planning-workspace.integration.test.ts#actual host Finding conversion keeps no Source, durable inbox/receipt, real planning bootstrap and exact replay
 
 - **WHEN** `finding convert <finding-id> --now` names one pending or exactly converted Finding
 - **THEN** conversion first publishes or reuses its deterministic inbox item and receipt

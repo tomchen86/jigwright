@@ -58,6 +58,8 @@ test('Source/Finding policy and use cases have an effect-free, type-inclusive de
     'modules/governance-intake/source-aliases.ts',
     'application/governance-intake/governance-findings.ts',
     'application/governance-intake/governance-sources.ts',
+    'application/governance-intake/governance-intake-workflow.ts',
+    'application/governance-intake/current-governance-intake-counts.ts',
   ]) {
     assert.ok(readClosure(entry).size > 1);
   }
@@ -84,3 +86,28 @@ test('Source/Finding policy and use cases have an effect-free, type-inclusive de
     /depends outward/,
   );
 });
+
+for (const entry of [
+  'application/governance-intake/governance-intake-workflow.ts',
+  'application/governance-intake/current-governance-intake-counts.ts',
+]) {
+  test(`${entry} rejects introduced physical and production dependencies`, () => {
+    for (const injected of [
+      "import fs from 'node:fs';",
+      "import type { GovernanceIntakeWorkflowOptions } from '../../composition-root/governance-intake-production.ts';",
+      "export * from '../../runtime/repository-observation/governance-intake-context.ts';",
+      "const delayed = () => import('../../runtime/repository-observation/governance-intake-context.ts');",
+      'const computed = (name: string) => import(name);',
+    ]) {
+      assert.throws(
+        () =>
+          readClosure(entry, (file, source) =>
+            file === path.join(sourceRoot, entry)
+              ? `${source}\n${injected}`
+              : source,
+          ),
+        /imports effect|depends outward|Unresolved computed dependency/,
+      );
+    }
+  });
+}

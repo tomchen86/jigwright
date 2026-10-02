@@ -254,7 +254,6 @@ export { parseChangeRoutingIntent } from '../modules/lifecycle/change-routing.ts
 export { observeChangeRoutingContinuationState } from '../runtime/change-routing/routing-observation.ts';
 
 export { openTask } from './open-task-production.ts';
-export { inspectGovernanceIntakeCounts } from './governance-findings-production.ts';
 export { findTaskCommits } from '../application/finalize/lifecycle.ts';
 export {
   inspectFinalizeRecoveryStatus,

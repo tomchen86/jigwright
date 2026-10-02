@@ -74,6 +74,8 @@ import '../completion-rollback-boundary.contract.test.ts';
 import '../control-plane-recovery-grant-boundary.test.ts';
 import '../control-plane-recovery-grant-rules.test.ts';
 import '../evidence-retention-boundary.test.ts';
+import '../governance-intake-context.integration.test.ts';
+import '../governance-intake-workflow.test.ts';
 import '../investigation-propose-flow.integration.test.ts';
 import '../lifecycle-domain-boundary.contract.test.ts';
 import '../projection-domain-boundary.contract.test.ts';

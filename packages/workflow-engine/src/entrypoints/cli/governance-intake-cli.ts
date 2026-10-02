@@ -1,7 +1,4 @@
-import type {
-  GovernanceFindingAuthoringV1,
-  GovernanceFindingContextV1,
-} from '../../modules/governance-intake/governance-intake.ts';
+import type { GovernanceFindingAuthoringV1 } from '../../modules/governance-intake/governance-intake.ts';
 /**
  * Route exact wording, observations and Work Item decisions through intake APIs.
  *
@@ -10,34 +7,27 @@ import type {
  * - Corrections supersede Sources; they never overwrite captured wording.
  * - Existing Work Item and change links resolve before a Finding receipt is written.
  */
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
 import {
-  createGovernanceSourceV1,
   GovernanceSourceError,
   type GovernanceSourceAuthoringV1,
 } from '@jigwright/core/governance-source';
 
 import {
-  assertExistingGovernanceIntakeChange,
-  findActiveTaskSessionId,
   renderGovernanceIntakeHandoff,
+  resolveActiveSession,
+  createGovernanceIntakeWorkflowForCommand,
+  GovernanceIntakeTextError,
+  type GovernanceIntakeWorkflowOptions,
   resolveGovernanceIntakeRuntimeRoot,
   resolveRepositoryFindingScope,
 } from '../../composition-root/governance-intake-production.ts';
-import { loadActiveSessionContext } from '../../composition-root/lifecycle-context.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import { INTAKE_KINDS } from '../../composition-root/governance-intake-production.ts';
 import {
-  deferredIntakeDestination,
-  INTAKE_KINDS,
-  isRequirementKind,
-} from '../../composition-root/governance-intake-production.ts';
-import {
-  convertGovernanceFinding,
   dismissGovernanceFinding,
-  linkGovernanceFinding,
   listGovernanceFindings,
   recordGovernanceFinding,
 } from '../../composition-root/governance-findings-production.ts';
@@ -47,22 +37,10 @@ import {
   readGovernanceSource,
 } from '../../composition-root/governance-sources-production.ts';
 import {
-  applyWorkItemReview,
-  attachSourceToWorkItem,
-  assertOrdinaryWorkRegistryTransition,
   createWorkItem,
-  correctWorkItemSource,
-  createWorkItemAfterExactSourceTextRecheck,
-  ensureWorkItemPromotionChangeDirectory,
-  ensureWorkItemPromotionSurveyBinding,
-  ensureFindingConversionWorkItem,
-  findWorkItemsByExactSourceText,
-  hasExactCurrentWorkItemPromotion,
   inspectWorkRegistry,
   linkSourceToChange,
   listWorkItems,
-  prepareWorkItemPromotionSurvey,
-  promoteWorkItem,
   recommendWorkItemPriorities,
   renderWorkRegistry,
   searchWorkItems,
@@ -71,7 +49,6 @@ import {
   traceWorkItem,
   validateWorkRegistry,
   validateWorkRegistryProjections,
-  workItemDigest,
 } from '../../composition-root/work-registry-production.ts';
 import type {
   WorkItemAuthoringV1,
@@ -79,38 +56,7 @@ import type {
   WorkItemReviewV1,
 } from '../../modules/governance-intake/work-registry-contracts.ts';
 
-export type GovernanceIntakeCliDependencies = Readonly<{
-  now?: () => string;
-  afterNowSourceCaptured?: () => void;
-  afterFindingConversionWorkItemPersisted?: () => void;
-  afterLaterSourceCaptured?: () => void;
-  afterCorrectSourceCaptured?: () => void;
-  resolveSession?: (
-    cwd: string,
-    sessionId: string,
-  ) => GovernanceFindingContextV1;
-  resolveRuntimeRoot?: (cwd: string) => string;
-  resolveRepositoryScope?: (cwd: string) => GovernanceFindingContextV1;
-  /** The task session covering `cwd`, or null when no task is running there. */
-  resolveTaskScope?: (cwd: string) => GovernanceFindingContextV1 | null;
-  startImmediateChange?: (
-    cwd: string,
-    changeId: string,
-    intent: Readonly<{
-      schemaVersion: 1;
-      summary: string;
-      sourceRefs: readonly `SRC-${string}`[];
-      explicitPaths: readonly string[];
-      explicitSymbols: readonly string[];
-      explicitConfigKeys: readonly string[];
-      renamePairs: readonly Readonly<{ from: string; to: string }>[];
-    }>,
-    immediateSource: Readonly<{
-      sourceId: `SRC-${string}`;
-      exactText: string;
-    }> | null,
-  ) => unknown;
-}>;
+export type GovernanceIntakeCliDependencies = GovernanceIntakeWorkflowOptions;
 
 export function dispatchGovernanceIntakeCommand(
   command:
@@ -137,6 +83,11 @@ export function dispatchGovernanceIntakeCommand(
         return dispatchFindingIntakeCommand(command, args, cwd, dependencies);
     }
   } catch (error) {
+    if (error instanceof GovernanceIntakeTextError) {
+      throw intakeUsage(
+        'Original text must be plain wording, not a flag or empty. Usage: pnpm workflow attach <work-item-id> "<original text>" --json',
+      );
+    }
     if (error instanceof GovernanceSourceError) {
       throw workflowError(error.code, error.message, ExitCode.usage);
     }
@@ -171,22 +122,7 @@ function intakeKind(value: string | null): IntakeKind {
   }
   return value as IntakeKind;
 }
-function clipTitle(text: string): string {
-  const oneLine = text.replace(/\s+/gu, ' ').trim();
-  return oneLine.length <= 160 ? oneLine : `${oneLine.slice(0, 159)}…`;
-}
-function findOpenWorkItemsBySummary(cwd: string, text: string) {
-  return listWorkItems(cwd).filter(
-    (item) =>
-      item.closure === null &&
-      item.stage !== 'closed' &&
-      item.interpretation.summary === text,
-  );
-}
-function resolveTaskScope(cwd: string): GovernanceFindingContextV1 | null {
-  const sessionId = findActiveTaskSessionId(cwd);
-  return sessionId === null ? null : resolveActiveSession(cwd, sessionId);
-}
+
 function immediateChangeNextSteps(
   _changeId: string,
   propose: unknown,
@@ -216,21 +152,6 @@ function immediateWorkItemNextSteps(
     return [steps[0]!, steps[1]!, 'pnpm workflow guide --json'];
   }
   return steps;
-}
-function resolveActiveSession(
-  cwd: string,
-  sessionId: string,
-): GovernanceFindingContextV1 {
-  const context = loadActiveSessionContext(cwd, sessionId);
-  return {
-    repositoryRoot: context.git.repositoryRoot,
-    runtimeRoot: context.runtime.root,
-    sessionId: context.session.sessionId,
-    changeId: context.session.changeId,
-    branch: context.git.branch ?? context.session.branch,
-    head: context.git.head,
-    tree: context.git.tree,
-  };
 }
 
 function readInput(cwd: string, inputPath: string): unknown {
@@ -352,129 +273,47 @@ function dispatchNowIntakeCommand(
     args.length === 1 &&
     /^WORK-[0-9A-HJKMNP-TV-Z]{26}$/u.test(args[0]!)
   ) {
-    const workItem = showWorkItem(cwd, args[0]!);
-    const originalTexts = workItem.sourceRefs.map(
-      (sourceRef) => readGovernanceSource(cwd, sourceRef).text,
-    );
-    const changeId = `work-${workItem.id.slice('WORK-'.length).toLowerCase()}`;
-    if (hasExactCurrentWorkItemPromotion(cwd, workItem.id, changeId)) {
-      return {
-        action: 'now',
-        workItemId: workItem.id,
-        title: workItem.title,
-        sourceRefs: workItem.sourceRefs,
-        originalTexts,
-        promoted: true,
-        changeId,
-        nextSteps: immediateWorkItemNextSteps(workItem.id, workItem.sourceRefs),
-      };
-    }
-    if (workItem.stage === 'inbox') {
-      return {
-        action: 'now',
-        workItemId: workItem.id,
-        title: workItem.title,
-        sourceRefs: workItem.sourceRefs,
-        originalTexts,
-        promoted: false,
-        changeId: null,
-        nextSteps: [
-          `pnpm workflow work-item review ${workItem.id} --input <accept-review.json> --json`,
-          `pnpm workflow work-item review ${workItem.id} --input <prioritize-now-review.json> --json`,
-        ],
-      };
-    }
-    if (
-      workItem.stage !== 'backlog' ||
-      workItem.interpretation.status !== 'maintainer-confirmed'
-    ) {
-      throw workflowError(
-        'WORK_REGISTRY_INVALID',
-        'Immediate Work Item promotion requires a current unpromoted backlog item.',
-        ExitCode.usage,
-      );
-    }
-    if (workItem.lane !== 'now' && workItem.lane !== 'next') {
-      return {
-        action: 'now',
-        workItemId: workItem.id,
-        title: workItem.title,
-        sourceRefs: workItem.sourceRefs,
-        originalTexts,
-        promoted: false,
-        changeId: null,
-        nextSteps: [
-          `pnpm workflow work-item review ${workItem.id} --input <prioritize-now-review.json> --json`,
-        ],
-      };
-    }
-    if (workItem.blockedBy.length > 0) {
-      const openBlockers = workItem.blockedBy.filter(
-        (blockerId) => showWorkItem(cwd, blockerId).stage !== 'closed',
-      );
-      if (openBlockers.length > 0) {
-        return {
-          action: 'now',
-          workItemId: workItem.id,
-          title: workItem.title,
-          sourceRefs: workItem.sourceRefs,
-          originalTexts,
-          promoted: false,
-          changeId: null,
-          nextSteps:
-            openBlockers.length <= 3
-              ? openBlockers.map(
-                  (blockerId) =>
-                    `pnpm workflow work-item show ${blockerId} --json`,
-                )
-              : [
-                  ...openBlockers
-                    .slice(0, 2)
-                    .map(
-                      (blockerId) =>
-                        `pnpm workflow work-item show ${blockerId} --json`,
-                    ),
-                  'pnpm workflow guide --json',
-                ],
-        };
-      }
-    }
-    const expectedDigest = workItemDigest(workItem);
-    assertOrdinaryWorkRegistryTransition(
+    const result = createGovernanceIntakeWorkflowForCommand(
+      dependencies,
+    ).startWorkItem(
       cwd,
-      'promote',
-      `pnpm workflow grant human request-work-item-promotion ${workItem.id} --change ${changeId} --expected ${expectedDigest} --reason <reason> --json`,
-      {
-        schemaVersion: 1,
-        kind: 'work-registry-grant-required.v1',
-        operation: 'promote',
-        transition: 'promote',
-        workItemId: workItem.id,
-        changeId,
-        expectedDigest,
-      },
+      args[0]!,
+      (id, changeId, digest) =>
+        `pnpm workflow grant human request-work-item-promotion ${id} --change ${changeId} --expected ${digest} --reason <reason> --json`,
     );
-    ensureWorkItemPromotionChangeDirectory(cwd, changeId);
-    ensureWorkItemPromotionSurveyBinding(cwd, workItem.id, changeId);
-    const promoted = promoteWorkItem(
-      cwd,
-      workItem.id,
-      changeId,
-      dependencies.now,
-      expectedDigest,
-    );
+    if (result.outcome === 'blocked') {
+      const { outcome, blockingWorkItemIds, ...visible } = result;
+      return {
+        action: 'now',
+        ...visible,
+        nextSteps:
+          blockingWorkItemIds.length <= 3
+            ? blockingWorkItemIds.map(
+                (id) => `pnpm workflow work-item show ${id} --json`,
+              )
+            : [
+                ...blockingWorkItemIds
+                  .slice(0, 2)
+                  .map((id) => `pnpm workflow work-item show ${id} --json`),
+                'pnpm workflow guide --json',
+              ],
+      };
+    }
+    const { outcome, ...details } = result;
     return {
       action: 'now',
-      workItemId: promoted.item.id,
-      title: promoted.item.title,
-      sourceRefs: promoted.item.sourceRefs,
-      originalTexts,
-      promoted: true,
-      changeId,
-      nextSteps: immediateWorkItemNextSteps(
-        promoted.item.id,
-        promoted.item.sourceRefs,
-      ),
+      ...details,
+      nextSteps:
+        outcome === 'needs-review'
+          ? [
+              `pnpm workflow work-item review ${result.workItemId} --input <accept-review.json> --json`,
+              `pnpm workflow work-item review ${result.workItemId} --input <prioritize-now-review.json> --json`,
+            ]
+          : outcome === 'needs-priority'
+            ? [
+                `pnpm workflow work-item review ${result.workItemId} --input <prioritize-now-review.json> --json`,
+              ]
+            : immediateWorkItemNextSteps(result.workItemId, result.sourceRefs),
     };
   }
   if (command === 'now' && (args.length === 1 || args.length === 3)) {
@@ -483,82 +322,13 @@ function dispatchNowIntakeCommand(
     const exactText = rest[0]!;
     assertIntentText(exactText, 'pnpm workflow now "<original text>" --json');
     const kind = intakeKind(kindFlag);
-    if (dependencies.startImmediateChange === undefined) {
-      throw intakeUsage('Immediate change start dependency is unavailable.');
-    }
-    const changeId = `source-${crypto.createHash('sha256').update(exactText).digest('hex')}`;
-    if (!isRequirementKind(kind)) {
-      // An observation starts a change without a Source: nothing here is a
-      // requirement the implementation must be read against.
-      const intent = {
-        schemaVersion: 1 as const,
-        summary: exactText,
-        sourceRefs: [],
-        explicitPaths: [],
-        explicitSymbols: [],
-        explicitConfigKeys: [],
-        renamePairs: [],
-      };
-      const propose = dependencies.startImmediateChange(
-        cwd,
-        changeId,
-        intent,
-        null,
-      );
-      return {
-        action: 'now',
-        originalText: exactText,
-        kind,
-        sourceId: null,
-        changeId,
-        propose,
-        nextSteps: immediateChangeNextSteps(changeId, propose),
-      };
-    }
-    const existing = listGovernanceSources(cwd)
-      .filter(
-        (source) =>
-          source.semanticAuthor === 'maintainer' &&
-          source.supersedes === null &&
-          source.text === exactText,
-      )
-      .sort((left, right) => left.id.localeCompare(right.id))[0];
-    const captured =
-      existing === undefined
-        ? captureGovernanceSource(cwd, {
-            semanticAuthor: 'maintainer',
-            capturedBy: 'jigwright-intake',
-            capturedAt: (
-              dependencies.now ?? (() => new Date().toISOString())
-            )(),
-            contextRef: 'direct-human:workflow-cli',
-            text: exactText,
-            supersedes: null,
-          })
-        : null;
-    if (captured !== null) dependencies.afterNowSourceCaptured?.();
-    const source = captured?.source ?? existing!;
-    const intent = {
-      schemaVersion: 1 as const,
-      summary: `Implement the immediate change cited by ${source.id}.`,
-      sourceRefs: [source.id],
-      explicitPaths: [],
-      explicitSymbols: [],
-      explicitConfigKeys: [],
-      renamePairs: [],
-    };
-    const propose = dependencies.startImmediateChange(cwd, changeId, intent, {
-      sourceId: source.id,
-      exactText,
-    });
+    const result = createGovernanceIntakeWorkflowForCommand(
+      dependencies,
+    ).startText(cwd, exactText, kind);
     return {
       action: 'now',
-      originalText: exactText,
-      kind,
-      sourceId: source.id,
-      changeId,
-      propose,
-      nextSteps: immediateChangeNextSteps(changeId, propose),
+      ...result,
+      nextSteps: immediateChangeNextSteps(result.changeId, result.propose),
     };
   }
   throw intakeUsage(INTAKE_USAGE);
@@ -579,137 +349,34 @@ function dispatchLaterIntakeCommand(
       'pnpm workflow later "<original text>" --json',
     );
     const kind = intakeKind(kindFlag);
-    const capturedAt = (dependencies.now ?? (() => new Date().toISOString()))();
-    // Inside a task the registry is off-limits and an observation must not
-    // land in the task diff, so it is staged as a Finding and flushed to the
-    // inbox at triage. Outside a task the inbox is the front door.
-    const taskScope = (dependencies.resolveTaskScope ?? resolveTaskScope)(cwd);
-    if (taskScope !== null && deferredIntakeDestination(true) === 'finding') {
-      const staged = recordGovernanceFinding(
-        taskScope,
-        { schemaVersion: 1, text: originalText, sourceRefs: [] },
-        dependencies.now,
-      );
-      return {
-        action: 'later',
-        originalText,
-        kind,
-        staged: 'finding',
-        findingId: staged.finding.id,
-        sessionId: staged.finding.sessionId,
-        changeId: staged.finding.changeId,
-        created: staged.created,
-        nextSteps: [
-          `pnpm workflow finding convert ${staged.finding.id} --kind ${kind} --json`,
-        ],
-      };
-    }
-    if (!isRequirementKind(kind)) {
-      // An observation goes to the inbox as it is: no Source, because it is
-      // not wording the implementation must be read against.
-      const matches = findOpenWorkItemsBySummary(cwd, originalText);
-      if (matches.length > 0) {
-        return {
-          action: 'later',
-          originalText,
-          kind,
-          sourceId: null,
-          sourceLinked: false,
-          deduplicated: true,
-          matches: matches.map(({ id }) => id),
-          nextSteps: matches
-            .slice(0, 3)
-            .map(({ id }) => `pnpm workflow work-item show ${id} --json`),
-        };
-      }
-      const created = createWorkItem(
-        cwd,
-        {
-          schemaVersion: 1,
-          kind,
-          lane: null,
-          title: clipTitle(originalText),
-          summary: originalText,
-          sourceRefs: [],
-        },
-        { now: () => capturedAt },
-      );
-      return {
-        action: 'later',
-        originalText,
-        kind,
-        sourceId: null,
-        sourceLinked: false,
-        workItemId: created.item.id,
-        title: created.item.title,
-        deduplicated: false,
-        nextSteps: [`pnpm workflow work-item show ${created.item.id} --json`],
-      };
-    }
-    const matches = findWorkItemsByExactSourceText(cwd, originalText).filter(
-      ({ closure, stage }) => closure === null && stage !== 'closed',
-    );
-    if (matches.length > 0) {
-      return {
-        action: 'later',
-        originalText,
-        kind,
-        sourceId: null,
-        sourceLinked: false,
-        deduplicated: true,
-        matches: matches.map(({ id }) => id),
-        nextSteps: matches
+    const result = createGovernanceIntakeWorkflowForCommand(
+      dependencies,
+    ).deferText(cwd, originalText, kind);
+    const { outcome, ...details } = result;
+    let nextSteps: string[];
+    switch (result.outcome) {
+      case 'finding':
+        nextSteps = [
+          `pnpm workflow finding convert ${result.findingId} --kind ${kind} --json`,
+        ];
+        break;
+      case 'observation-match':
+        nextSteps = result.matches
           .slice(0, 3)
-          .map(({ id }) => `pnpm workflow attach ${id} <original-text> --json`),
-      };
-    }
-    const source = captureGovernanceSource(cwd, {
-      semanticAuthor: 'maintainer',
-      capturedBy: 'jigwright-intake',
-      capturedAt,
-      contextRef: 'direct-human:workflow-cli',
-      text: originalText,
-      supersedes: null,
-    });
-    dependencies.afterLaterSourceCaptured?.();
-    const workItem = createWorkItemAfterExactSourceTextRecheck(
-      cwd,
-      originalText,
-      {
-        schemaVersion: 1,
-        kind,
-        lane: null,
-        title: `Review captured Source ${source.source.id}`,
-        summary: 'Interpret and disposition the linked Source.',
-        sourceRefs: [source.source.id],
-      },
-      { now: () => capturedAt },
-    );
-    if (!workItem.created) {
-      return {
-        action: 'later',
-        originalText,
-        kind,
-        sourceId: source.source.id,
-        sourceLinked: false,
-        deduplicated: true,
-        matches: workItem.matches.map(({ id }) => id),
-        nextSteps: workItem.matches
+          .map((id) => `pnpm workflow work-item show ${id} --json`);
+        break;
+      case 'requirement-match':
+        nextSteps = result.matches
           .slice(0, 3)
-          .map(({ id }) => `pnpm workflow attach ${id} <original-text> --json`),
-      };
+          .map((id) => `pnpm workflow attach ${id} <original-text> --json`);
+        break;
+      case 'created':
+        nextSteps = [
+          `pnpm workflow work-item show ${result.workItemId} --json`,
+        ];
+        break;
     }
-    return {
-      action: 'later',
-      originalText,
-      kind,
-      sourceId: source.source.id,
-      sourceLinked: true,
-      workItemId: workItem.item.id,
-      title: workItem.item.title,
-      deduplicated: false,
-      nextSteps: [`pnpm workflow work-item show ${workItem.item.id} --json`],
-    };
+    return { action: 'later', ...details, nextSteps };
   }
   throw intakeUsage(INTAKE_USAGE);
 }
@@ -725,72 +392,21 @@ function dispatchAttachIntakeCommand(
     if (rest.length !== 2) throw intakeUsage(INTAKE_USAGE);
     const requestedWorkItemId = rest[0]!;
     const wordingOrSource = rest[1]!;
-    const current = showWorkItem(cwd, requestedWorkItemId);
-    if (current.closure !== null || current.stage === 'closed') {
-      throw intakeUsage('A closed Work Item cannot receive a Source.');
-    }
-    if (SOURCE_ID.test(wordingOrSource)) {
-      // An existing Source is linked as it is: the wording already lives in
-      // the ledger and is never minted twice.
-      if (supersedes !== null) {
-        throw intakeUsage(
-          'Linking an existing Source cannot also supersede one; capture new wording instead.',
-        );
-      }
-      const source = readGovernanceSource(cwd, wordingOrSource);
-      const attached = attachSourceToWorkItem(cwd, current.id, source.id);
-      return {
-        action: 'attach',
-        originalText: source.text,
-        sourceId: source.id,
-        supersedes: source.supersedes,
-        workItemId: attached.item.id,
-        title: attached.item.title,
-        updated: attached.updated,
-        nextSteps: [`pnpm workflow work-item show ${attached.item.id} --json`],
-      };
-    }
-    const originalText = wordingOrSource;
-    assertIntentText(
-      originalText,
-      'pnpm workflow attach <work-item-id> "<original text>" --json',
+    const result = createGovernanceIntakeWorkflowForCommand(
+      dependencies,
+    ).attachSource(
+      cwd,
+      requestedWorkItemId,
+      {
+        kind: SOURCE_ID.test(wordingOrSource) ? 'existing' : 'wording',
+        value: wordingOrSource,
+      },
+      supersedes,
     );
-    if (supersedes !== null && !SOURCE_ID.test(supersedes)) {
-      throw intakeUsage('--supersedes needs an existing Source identity.');
-    }
-    const supersedesRef = supersedes as `SRC-${string}` | null;
-    const exactMatch = findWorkItemsByExactSourceText(cwd, originalText).find(
-      ({ id }) => id === current.id,
-    );
-    const existingSourceRef = exactMatch?.sourceRefs.find((sourceRef) => {
-      const source = readGovernanceSource(cwd, sourceRef);
-      return (
-        source.text === originalText && source.supersedes === supersedesRef
-      );
-    });
-    const source =
-      existingSourceRef === undefined
-        ? captureGovernanceSource(cwd, {
-            semanticAuthor: 'maintainer',
-            capturedBy: 'jigwright-intake',
-            capturedAt: (
-              dependencies.now ?? (() => new Date().toISOString())
-            )(),
-            contextRef: 'direct-human:workflow-cli',
-            text: originalText,
-            supersedes: supersedesRef,
-          }).source
-        : readGovernanceSource(cwd, existingSourceRef);
-    const attached = attachSourceToWorkItem(cwd, current.id, source.id);
     return {
       action: 'attach',
-      originalText,
-      sourceId: source.id,
-      supersedes,
-      workItemId: attached.item.id,
-      title: attached.item.title,
-      updated: attached.updated,
-      nextSteps: [`pnpm workflow work-item show ${attached.item.id} --json`],
+      ...result,
+      nextSteps: [`pnpm workflow work-item show ${result.workItemId} --json`],
     };
   }
   throw intakeUsage(INTAKE_USAGE);
@@ -808,51 +424,13 @@ function dispatchCorrectIntakeCommand(
     originalText,
     'pnpm workflow correct <work-item-id> <old-SRC-id> "<original text>" --json',
   );
-  const current = showWorkItem(cwd, id);
-  if (current.stage === 'closed' || current.closure !== null)
-    throw intakeUsage('A closed Work Item cannot receive a Source.');
-  readGovernanceSource(cwd, oldRef);
-  const matches = listGovernanceSources(cwd).filter(
-    (source) =>
-      source.semanticAuthor === 'maintainer' &&
-      source.supersedes === oldRef &&
-      source.text === originalText,
-  );
-  const attached = matches.find((source) =>
-    current.sourceRefs.includes(source.id),
-  );
-  if (!current.sourceRefs.includes(oldRef) && attached === undefined)
-    throw intakeUsage(
-      'The Source being corrected is not linked to this Work Item.',
-    );
-  const source =
-    attached ??
-    matches[0] ??
-    captureGovernanceSource(cwd, {
-      semanticAuthor: 'maintainer',
-      capturedBy: 'jigwright-intake',
-      capturedAt: (dependencies.now ?? (() => new Date().toISOString()))(),
-      contextRef: 'direct-human:workflow-cli',
-      text: originalText,
-      supersedes: oldRef,
-    }).source;
-  dependencies.afterCorrectSourceCaptured?.();
-  const corrected = correctWorkItemSource(
-    cwd,
-    current.id,
-    oldRef,
-    source.id,
-    workItemDigest(current),
-  );
+  const result = createGovernanceIntakeWorkflowForCommand(
+    dependencies,
+  ).correctSource(cwd, id, oldRef, originalText);
   return {
     action: 'correct',
-    originalText: source.text,
-    title: corrected.item.title,
-    sourceId: source.id,
-    supersedes: source.supersedes,
-    workItemId: corrected.item.id,
-    updated: corrected.updated,
-    nextSteps: [`pnpm workflow work-item show ${corrected.item.id} --json`],
+    ...result,
+    nextSteps: [`pnpm workflow work-item show ${result.workItemId} --json`],
   };
 }
 
@@ -934,19 +512,11 @@ function dispatchWorkItemIntakeCommand(
     const declaration = parsePromotionSurveyDeclaration(
       readInput(cwd, args[5]!),
     );
-    const prepared = prepareWorkItemPromotionSurvey(
-      cwd,
-      args[1]!,
-      args[3]!,
-      declaration,
-    );
     return {
       action: 'promote-prepare',
-      workItemId: args[1],
-      title: showWorkItem(cwd, args[1]!).title,
-      changeId: args[3],
-      path: prepared.relativePath,
-      surveyedCommit: prepared.survey.surveyedCommit,
+      ...createGovernanceIntakeWorkflowForCommand(
+        dependencies,
+      ).preparePromotion(cwd, args[1]!, args[3]!, declaration),
     };
   }
   if (
@@ -971,33 +541,15 @@ function dispatchWorkItemIntakeCommand(
     args[2] === '--change' &&
     args[4] === '--expected'
   ) {
-    assertOrdinaryWorkRegistryTransition(
-      cwd,
-      'promote',
-      `pnpm workflow grant human request-work-item-promotion ${args[1]} --change ${args[3]} --expected ${args[5]} --reason <reason> --json`,
-      {
-        schemaVersion: 1,
-        kind: 'work-registry-grant-required.v1',
-        operation: 'promote',
-        transition: 'promote',
-        workItemId: args[1]!,
-        changeId: args[3]!,
-        expectedDigest: args[5]!,
-      },
-    );
-    ensureWorkItemPromotionSurveyBinding(cwd, args[1]!, args[3]!);
-    const promoted = promoteWorkItem(
-      cwd,
-      args[1]!,
-      args[3]!,
-      dependencies.now,
-      args[5]!,
-    );
     return {
       action: 'promote',
-      workItemId: promoted.item.id,
-      title: promoted.item.title,
-      changeId: args[3],
+      ...createGovernanceIntakeWorkflowForCommand(dependencies).promote(
+        cwd,
+        args[1]!,
+        args[3]!,
+        args[5]!,
+        `pnpm workflow grant human request-work-item-promotion ${args[1]} --change ${args[3]} --expected ${args[5]} --reason <reason> --json`,
+      ),
     };
   }
   if (
@@ -1007,20 +559,14 @@ function dispatchWorkItemIntakeCommand(
     args[2] === '--input'
   ) {
     const review = parseWorkItemReview(readInput(cwd, args[3]!));
-    assertOrdinaryWorkRegistryTransition(
+    const item = createGovernanceIntakeWorkflowForCommand(
+      dependencies,
+    ).reviewWorkItem(
       cwd,
-      review.action === 'prioritize' ? 'prioritize' : 'intake',
+      args[1]!,
+      review,
       `pnpm workflow grant human request-work-item-review ${args[1]} --input <review.json> --reason <reason> --json`,
-      {
-        schemaVersion: 1,
-        kind: 'work-registry-grant-required.v1',
-        operation: 'review',
-        transition: review.action === 'prioritize' ? 'prioritize' : 'intake',
-        workItemId: args[1]!,
-        review,
-      },
     );
-    const item = applyWorkItemReview(cwd, args[1]!, review, dependencies.now);
     return { action: 'review', item };
   }
   if (command === 'work-item' && args.length === 1 && args[0] === 'list') {
@@ -1093,91 +639,20 @@ function dispatchFindingIntakeCommand(
       throw intakeUsage(INTAKE_USAGE);
     }
     const kind = intakeKind(kindFlag ?? 'bug');
-    const runtimeRoot = (
-      dependencies.resolveRuntimeRoot ?? resolveGovernanceIntakeRuntimeRoot
-    )(cwd);
-    const finding = listGovernanceFindings(runtimeRoot).find(
-      ({ id }) => id === positional[0],
-    );
-    if (finding === undefined) {
-      throw intakeUsage('Governance Finding does not exist.');
-    }
-    const workItemId = `WORK-${finding.id
-      .slice('FND-'.length, 'FND-'.length + 26)
-      .toUpperCase()}`;
-    if (
-      finding.disposition !== 'pending' &&
-      (finding.disposition !== 'converted' ||
-        finding.target?.kind !== 'work-item' ||
-        finding.target.id !== workItemId)
-    ) {
-      throw workflowError(
-        'GOVERNANCE_FINDING_DISPOSITION_COLLISION',
-        'Governance Finding already has a different terminal disposition.',
-        ExitCode.conflict,
-      );
-    }
-    // A Finding is an observation, so converting it mints no Source: the
-    // inbox item carries the note itself and only the Sources the Finding
-    // already cited.
-    const sourceRefs = [...new Set(finding.sourceRefs)].sort();
-    for (const sourceRef of sourceRefs) readGovernanceSource(cwd, sourceRef);
-    const ensured = ensureFindingConversionWorkItem(
-      cwd,
-      finding.id,
-      {
-        schemaVersion: 1,
-        kind,
-        lane: null,
-        title: clipTitle(finding.text),
-        summary: finding.text,
-        sourceRefs,
-      },
-      finding.createdAt,
-    );
-    dependencies.afterFindingConversionWorkItemPersisted?.();
-    const converted = convertGovernanceFinding(
-      runtimeRoot,
-      finding.id,
-      ensured.item.id,
-      dependencies.now,
-    );
-    const result = {
-      action: 'convert',
-      originalText: converted.finding.text,
-      title: ensured.item.title,
-      kind,
-      sourceId: null,
-      workItemId: ensured.item.id,
-      workItemCreated: ensured.created,
-      finding: converted.finding,
-      created: converted.created,
-      nextSteps: [`pnpm workflow work-item show ${ensured.item.id} --json`],
-    };
-    if (!now) return result;
-    if (dependencies.startImmediateChange === undefined) {
-      throw intakeUsage('Immediate change start dependency is unavailable.');
-    }
-    const changeId = `source-${crypto.createHash('sha256').update(finding.text).digest('hex')}`;
-    const propose = dependencies.startImmediateChange(
-      cwd,
-      changeId,
-      {
-        schemaVersion: 1,
-        summary: finding.text,
-        sourceRefs,
-        explicitPaths: [],
-        explicitSymbols: [],
-        explicitConfigKeys: [],
-        renamePairs: [],
-      },
-      null,
-    );
+    const result = createGovernanceIntakeWorkflowForCommand(
+      dependencies,
+    ).convertFinding(cwd, positional[0]!, kind, now);
+    const { outcome, ...details } = result;
     return {
-      ...result,
-      originalText: finding.text,
-      immediateChange: { sourceId: null, changeId, propose },
-      nextSteps: immediateChangeNextSteps(changeId, propose),
+      action: 'convert',
+      ...details,
+      nextSteps:
+        result.outcome === 'started'
+          ? immediateChangeNextSteps(
+              result.immediateChange.changeId,
+              result.immediateChange.propose,
+            )
+          : [`pnpm workflow work-item show ${result.workItemId} --json`],
     };
   }
   if (
@@ -1186,26 +661,16 @@ function dispatchFindingIntakeCommand(
     args[0] === 'link' &&
     (args[2] === '--change' || args[2] === '--work-item')
   ) {
-    const item = args[2] === '--work-item' ? showWorkItem(cwd, args[3]!) : null;
-    const target =
-      item === null
-        ? assertExistingGovernanceIntakeChange(cwd, args[3]!)
-        : { kind: 'work-item' as const, id: item.id };
-    const runtimeRoot = (
-      dependencies.resolveRuntimeRoot ?? resolveGovernanceIntakeRuntimeRoot
-    )(cwd);
-    const linked = linkGovernanceFinding(
-      runtimeRoot,
-      args[1]!,
-      target,
-      dependencies.now,
-    );
     return {
       action: 'link',
-      originalText: linked.finding.text,
-      ...(item === null ? {} : { title: item.title }),
-      finding: linked.finding,
-      created: linked.created,
+      ...createGovernanceIntakeWorkflowForCommand(dependencies).linkFinding(
+        cwd,
+        args[1]!,
+        {
+          kind: args[2] === '--work-item' ? 'work-item' : 'change',
+          id: args[3]!,
+        },
+      ),
     };
   }
   if (

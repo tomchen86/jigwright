@@ -1176,9 +1176,19 @@
       "digest": "sha256:1f2496c77fb862bc2b44f0c881cac3ea7190e81819ff9e9495d8b3ada17a68a9"
     },
     {
+      "path": "src/application/governance-intake/current-governance-intake-counts.ts",
+      "mode": "100644",
+      "digest": "sha256:4d30c3b9e9452ae4c818e322aaaac6fafd73c78243cb4c7571da5cade0e7a7e9"
+    },
+    {
       "path": "src/application/governance-intake/governance-findings.ts",
       "mode": "100644",
       "digest": "sha256:099f62be6e7473ab60ebd70f2367890ccafe89e39a5bc2c2bd1b236987a0f910"
+    },
+    {
+      "path": "src/application/governance-intake/governance-intake-workflow.ts",
+      "mode": "100644",
+      "digest": "sha256:9cd42d33e62377f299886ae053729014f3996b95658d18862e00a0fe842cdf63"
     },
     {
       "path": "src/application/governance-intake/governance-sources.ts",
@@ -1618,7 +1628,7 @@
     {
       "path": "src/composition-root/cli-command-services.ts",
       "mode": "100644",
-      "digest": "sha256:37b6331f5f7f04a199e0d7634ef24a9799e5c6430560b112b166b21c884aea25"
+      "digest": "sha256:54ae60640bbf063c91b6daa1a085a21f5c1695250225f900de976568020152d3"
     },
     {
       "path": "src/composition-root/collaboration-grant-issuance-production.ts",
@@ -1678,12 +1688,17 @@
     {
       "path": "src/composition-root/governance-findings-production.ts",
       "mode": "100644",
-      "digest": "sha256:70e8470274a2d4edb0610aaced46d4f362fec398a3928f3f2bdf6408c45b76d5"
+      "digest": "sha256:240c7d2ef396a0bdaecf2eccff20f8e1036254f782b95e612e7a9a73f8770610"
+    },
+    {
+      "path": "src/composition-root/governance-intake-command-production.ts",
+      "mode": "100644",
+      "digest": "sha256:9a5c2597d390c11eaf296a36d8b79db79fcd2422ea2aa67aac7ab3081e846d6b"
     },
     {
       "path": "src/composition-root/governance-intake-production.ts",
       "mode": "100644",
-      "digest": "sha256:336a02fc7c305e1a379eb9e9b94699838a7de21b3cd1813166064b3e19c1ba5f"
+      "digest": "sha256:3518ff637a7e95d9065dd34e2d214b834375d0804f1814a74dd7e236313bdff1"
     },
     {
       "path": "src/composition-root/governance-sources-production.ts",
@@ -2158,7 +2173,7 @@
     {
       "path": "src/entrypoints/cli/governance-intake-cli.ts",
       "mode": "100644",
-      "digest": "sha256:09f9144a9e12e27d98caa83264450df6c4d3786ced5447f31140d201361c3943"
+      "digest": "sha256:4d04fa00c27b4c6f9aeae64ce9e65b59ef300f1590988c5a68f77737cfb66339"
     },
     {
       "path": "src/entrypoints/cli/harness-bootstrap-cli.ts",
@@ -2208,7 +2223,7 @@
     {
       "path": "src/entrypoints/cli/task-lifecycle-cli.ts",
       "mode": "100644",
-      "digest": "sha256:4794375a7b36b725ef86cbbc1b12338a5ce8c1d2f0a3c86dba76c80ce98be378"
+      "digest": "sha256:8e1e9d0982b58a72943dbbdf8a8536e30c153fd2c185603d273a4e87bf1ca92c"
     },
     {
       "path": "src/entrypoints/cli/task-review-cli-input.ts",
@@ -2218,7 +2233,7 @@
     {
       "path": "src/entrypoints/cli/workflow-cli.ts",
       "mode": "100644",
-      "digest": "sha256:8a1872f1f4f1805cbad11a9019a97df94bc8e967695836316f2bf93ee08a7a3b"
+      "digest": "sha256:abf0dbd9cecb95610e7cc6dcd7f657915d592ea81f6e78715f4f42484c587e09"
     },
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
@@ -4399,6 +4414,16 @@
       "path": "src/runtime/repository-observation/contract-artifact-observation.ts",
       "mode": "100644",
       "digest": "sha256:3c00256662ce23c56eea6a69d93484e338c5884e22578044f30ff5207faba2cd"
+    },
+    {
+      "path": "src/runtime/repository-observation/governance-intake-context.ts",
+      "mode": "100644",
+      "digest": "sha256:6b27b26b1cd1cfbe1d989dd7d4349673dd0a9d924b7d03fee2006529d475cc54"
+    },
+    {
+      "path": "src/runtime/repository-observation/governance-intake-count-context.ts",
+      "mode": "100644",
+      "digest": "sha256:0f55efa6b9a511e906ca5263282e36820883c21d4fdf48917e11882227257b78"
     },
     {
       "path": "src/runtime/repository-observation/grant-policy-reader.ts",

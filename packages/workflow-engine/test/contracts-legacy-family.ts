@@ -420,6 +420,8 @@ import './work-registry-read-boundary.test.ts';
 import './work-registry-write-policy.test.ts';
 import './governance-intake-policy.test.ts';
 import './governance-intake-boundary.test.ts';
+import './governance-intake-workflow.test.ts';
+import './governance-intake-context.integration.test.ts';
 import './implementation-term-floor-policy.test.ts';
 import './implementation-term-floor-boundary.test.ts';
 import './provider-invocation-type-ownership.test.ts';

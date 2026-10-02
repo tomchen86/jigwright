@@ -1,3 +1,4 @@
+import { inspectGovernanceIntakeCounts } from '../src/composition-root/governance-intake-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -7,7 +8,6 @@ import {
   dismissGovernanceFinding,
   listGovernanceFindings,
   recordGovernanceFinding,
-  inspectGovernanceIntakeCounts,
 } from '../src/composition-root/governance-findings-production.ts';
 import { listGovernanceSources } from '../src/composition-root/governance-sources-production.ts';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
