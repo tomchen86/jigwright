@@ -72,6 +72,7 @@ import {
   COLLABORATION_GRANT_REPLAY_SCOPE,
   COLLABORATION_GRANT_RESIDUALS,
 } from '../src/modules/authority/collaboration-grant-codec.ts';
+import { prepareTaskStrategyPatchRecord } from '../src/modules/assurance/task-strategy-patch-record.ts';
 import { sealAuthoritativeCollaborationGrantVerifier } from '../src/modules/authority/grant-verifier-port.ts';
 
 const NOW = '2026-09-23T01:00:00.000Z';
@@ -2355,4 +2356,507 @@ test('caller resumes an exact reserved grant and refuses a different transition 
     ordered(f.names(), 'grant.inspect', 'grant.reserved');
     assert.equal(f.names().includes('grant.reserve'), false);
   }
+});
+
+// Initial forward recovery uses the complete lifecycle factory. These memory
+// ports test admission decisions and forwarding; real authority codecs, Git
+// effects and ordinary CLI replay are covered by patch-recovery.integration.
+function pendingInitialImplementation(authority: 'provider' | 'caller') {
+  const f = fixture({ providers: authority === 'provider' });
+  if (authority === 'provider') {
+    f.begin();
+    f.succeed();
+    assert.throws(
+      () => f.begin({ testCrashAfter: 'provider-result-persisted' }),
+      /provider result persistence/,
+    );
+  } else {
+    assert.throws(
+      () =>
+        f.begin({
+          ...f.callerOptions,
+          testCrashAfter: 'provider-result-persisted',
+        }),
+      /caller result persistence/,
+    );
+  }
+  const output = (f.state.result ?? f.state.callerResult)!.output;
+  const participant = f.state.caller?.assignment.participant;
+  f.state.patch = prepareTaskStrategyPatchRecord({
+    sessionId: f.session.sessionId,
+    changeId: f.session.changeId,
+    taskId: f.session.taskId,
+    strategy: f.transaction.strategy,
+    taskContractDigest: f.transaction.taskContractDigest,
+    sourceTree: output.sourceTree,
+    candidateTree: '6'.repeat(40),
+    patchDigest: output.patchDigest,
+    patchBase64: output.patchBase64,
+    changedPaths: ['src/feature.ts'],
+    changes: [
+      {
+        path: 'src/feature.ts',
+        before: null,
+        after: { mode: '100644', objectId: '7'.repeat(40) },
+      },
+    ],
+    implementer:
+      authority === 'provider'
+        ? {
+            providerId: f.state.attempt!.assignment.providerId,
+            assurance: 'adapter-assigned',
+          }
+        : {
+            providerId: null,
+            principalId: participant!.principalId!,
+            assurance: 'runtime-hint',
+            degradedForm: 'caller-supplied',
+            grantId: GRANT_ID,
+          },
+    createdAt: NOW,
+  });
+  f.state.previewTree = f.state.patch.candidateTree;
+  assert.equal(f.state.binding, null);
+  f.clear();
+  return f;
+}
+
+function noNewImplementationAuthority(f: ReturnType<typeof fixture>) {
+  for (const event of [
+    'root.publish',
+    'result.publish',
+    'caller.publish',
+    'caller-result.publish',
+    'provider.create',
+    'retry.publish',
+    'grant.inspect',
+    'grant.reserve',
+    'grant.reserved',
+    'grant.consume',
+    'role.authorize',
+    'role.admit',
+    'clock',
+    'mandate',
+    'round.reserve',
+    'round.result',
+    'round.import',
+  ])
+    assert.equal(f.names().includes(event), false, event);
+  assert.deepEqual(
+    f.names().filter((name) => name.startsWith('write.')),
+    ['write.fixture-red'],
+  );
+}
+
+for (const authority of ['provider', 'caller'] as const) {
+  test(`initial ${authority} recovery admits the exact pending candidate, retains authority and owns the import`, () => {
+    const f = pendingInitialImplementation(authority);
+    const result = f.state.result ?? f.state.callerResult;
+    const reservation = f.state.root ?? f.state.caller;
+    const status = f.inspect();
+    assert.equal(
+      status.state,
+      authority === 'provider'
+        ? 'provider-succeeded-awaiting-import'
+        : 'caller-supplied-awaiting-import',
+    );
+    readOnly(f);
+    if (authority === 'provider') {
+      f.clear();
+      assert.deepEqual(
+        f.lifecycle.assertTaskStrategyImplementationProviderOwnerCurrent(
+          ROOT,
+          f.state.root!.request.invocationId,
+        ),
+        f.state.root,
+      );
+      readOnly(f);
+    }
+    f.clear();
+    assert.equal(f.begin().state, 'patch-imported');
+    assert.strictEqual(f.state.result ?? f.state.callerResult, result);
+    assert.strictEqual(f.state.root ?? f.state.caller, reservation);
+    ordered(
+      f.names(),
+      'repository.enter',
+      'session.enter',
+      'owned',
+      `authority.${authority}`,
+      `patch.import-${authority}`,
+      'owned',
+      'session.release',
+      'repository.release',
+    );
+    const imported = lastEvent(f, `patch.import-${authority}`);
+    const input = imported.args[2] as { patch: Buffer };
+    assert.deepEqual(input.patch, f.patchBytes);
+    assert.strictEqual(imported.args[3], f.assertOwned);
+    noNewImplementationAuthority(f);
+    if (authority === 'provider') {
+      assert.deepEqual(lastEvent(f, 'policy.store').args, [
+        f.state.attempt!.request,
+        f.policy,
+      ]);
+    } else {
+      assert.equal(f.names().includes('policy.store'), false);
+    }
+    if (authority === 'caller') {
+      assert.equal(f.names().includes('policy.parse'), false);
+      assert.equal(
+        f.events.some(
+          (event) =>
+            event.name === 'baseline.document' &&
+            event.args[2] === 'workflow/ai-adapter-policy.json',
+        ),
+        false,
+      );
+    }
+  });
+
+  test(`initial ${authority} recovery propagates authority and import failures with both locks released`, () => {
+    for (const failAt of [
+      `authority.${authority}`,
+      `patch.import-${authority}`,
+      'owned',
+    ]) {
+      const f = pendingInitialImplementation(authority);
+      f.state.failAt = failAt;
+      assert.throws(
+        () => f.begin(),
+        (error) => error === f.sentinel,
+      );
+      assert.deepEqual(f.names().slice(-3), [
+        failAt,
+        'session.release',
+        'repository.release',
+      ]);
+      if (failAt !== `patch.import-${authority}`)
+        assert.equal(f.names().includes(`patch.import-${authority}`), false);
+      assert.equal(f.names().includes('provider.create'), false);
+      assert.equal(f.names().includes('grant.consume'), false);
+    }
+  });
+}
+
+// Vary each common candidate predicate once, across both authority branches.
+for (const [index, changed] of (
+  [
+    'tree',
+    'record',
+    'session',
+    'change',
+    'task',
+    'strategy',
+    'contract',
+    'source',
+    'digest',
+    'bytes',
+    'implementer',
+  ] as const
+).entries()) {
+  const authority = index % 2 === 0 ? 'provider' : 'caller';
+  test(`initial ${authority} recovery rejects changed ${changed} before import`, () => {
+    const f = pendingInitialImplementation(authority);
+    const patch = f.state.patch!;
+    if (changed === 'tree') f.state.previewTree = '9'.repeat(40);
+    if (changed === 'record') f.state.patch = null;
+    if (changed === 'session')
+      f.state.patch = { ...patch, sessionId: 'session-other' };
+    if (changed === 'change')
+      f.state.patch = { ...patch, changeId: 'other-change' };
+    if (changed === 'task') f.state.patch = { ...patch, taskId: '2.1' };
+    if (changed === 'strategy')
+      f.state.patch = { ...patch, strategy: 'tdd-single-agent' };
+    if (changed === 'contract')
+      f.state.patch = { ...patch, taskContractDigest: digest('other') };
+    if (changed === 'source')
+      f.state.patch = { ...patch, sourceTree: '9'.repeat(40) };
+    if (changed === 'digest')
+      f.state.patch = { ...patch, patchDigest: digest('other') };
+    if (changed === 'bytes')
+      f.state.patch = {
+        ...patch,
+        patchBase64: Buffer.from('other').toString('base64'),
+      };
+    if (changed === 'implementer')
+      f.state.patch = {
+        ...patch,
+        implementer: { providerId: 'codex', assurance: 'self-declared' },
+      };
+    assert.throws(() => f.begin(), { code: 'TASK_STRATEGY_RED_STALE' });
+    assert.equal(f.names().includes(`patch.import-${authority}`), false);
+    assert.deepEqual(f.names().slice(-2), [
+      'session.release',
+      'repository.release',
+    ]);
+    assert.equal(
+      f.names().some((name) => name.startsWith('write.')),
+      false,
+    );
+  });
+}
+
+test('initial recovery rejects a changed task contract, baseline and noninitial projection', () => {
+  for (const changed of [
+    'contract',
+    'baseline',
+    'transaction',
+    'failure',
+    'rounds',
+  ] as const) {
+    const f = pendingInitialImplementation('provider');
+    if (changed === 'contract')
+      f.inspection.contract.execution!.tasks[f.session.taskId] = {
+        ...f.task,
+        implementationPathScopes: ['other/**'],
+      };
+    if (changed === 'baseline')
+      f.state.transaction = {
+        ...f.transaction,
+        baseline: { ...f.transaction.baseline, tree: '9'.repeat(40) },
+      };
+    if (changed === 'transaction')
+      f.state.projection = {
+        ...f.state.projection,
+        transaction: { ...f.transaction, recordDigest: digest('other') },
+      };
+    if (changed === 'failure')
+      f.state.projection = { ...f.state.projection, failure: f.failure };
+    if (changed === 'rounds')
+      f.state.projection = {
+        ...f.state.projection,
+        completedCorrectionRounds: 1,
+      };
+    assert.throws(() => f.begin(), {
+      code:
+        changed === 'contract'
+          ? 'TASK_STRATEGY_IMPLEMENTATION_RESULT_STALE'
+          : 'TASK_STRATEGY_RED_STALE',
+    });
+    assert.equal(f.names().includes('patch.import-provider'), false);
+    assert.equal(
+      f.names().some((name) => name.startsWith('write.')),
+      false,
+    );
+  }
+});
+
+test('initial provider recovery authenticates the reservation and current result attempt without falling back to historical caller metadata', () => {
+  const caller = pendingInitialImplementation('caller');
+  for (const changed of [
+    'none',
+    'reservation',
+    'attempt',
+    'result',
+    'authority',
+  ] as const) {
+    const f = pendingInitialImplementation('provider');
+    f.state.caller = caller.state.caller;
+    f.state.callerResult = caller.state.callerResult;
+    if (changed === 'reservation')
+      f.state.root = { ...f.state.root!, branch: 'work/other' };
+    if (changed === 'attempt')
+      f.state.attempt = {
+        ...f.state.attempt!,
+        request: { ...f.state.attempt!.request, invocationId: 'other-attempt' },
+      };
+    if (changed === 'result') f.state.result = null;
+    if (changed === 'authority') f.state.failAt = 'authority.provider';
+    if (changed === 'none') assert.equal(f.begin().state, 'patch-imported');
+    else if (changed === 'authority')
+      assert.throws(
+        () => f.begin(),
+        (error) => error === f.sentinel,
+      );
+    else
+      assert.throws(() => f.begin(), {
+        code:
+          changed === 'reservation'
+            ? 'TASK_STRATEGY_IMPLEMENTATION_REQUEST_CONFLICT'
+            : changed === 'attempt'
+              ? 'TASK_STRATEGY_IMPLEMENTATION_RESULT_STALE'
+              : 'TASK_STRATEGY_RED_STALE',
+      });
+    assert.equal(f.names().includes('caller-result.read'), false);
+    assert.equal(f.names().includes('authority.caller'), false);
+    assert.equal(f.names().includes('patch.import-caller'), false);
+    if (changed !== 'none')
+      assert.equal(f.names().includes('patch.import-provider'), false);
+  }
+});
+
+test('initial result identity is checked independently of patch identity', () => {
+  for (const changed of ['subject', 'session', 'source'] as const) {
+    const f = pendingInitialImplementation('provider');
+    const result = f.state.result!;
+    f.state.result =
+      changed === 'subject'
+        ? { ...result, subjectDigest: digest('other-subject') }
+        : {
+            ...result,
+            output: {
+              ...result.output,
+              [changed === 'session' ? 'sessionId' : 'sourceTree']:
+                changed === 'session' ? 'session-other' : '9'.repeat(40),
+            },
+          };
+    assert.throws(() => f.begin(), {
+      code: 'TASK_STRATEGY_IMPLEMENTATION_RESULT_STALE',
+    });
+    assert.equal(f.names().includes('patch.read'), false);
+    assert.equal(f.names().includes('patch.import-provider'), false);
+  }
+});
+
+test('durable caller continuation requires a result and reservation before choosing admission', () => {
+  for (const applied of [false, true]) {
+    const missing = pendingInitialImplementation('caller');
+    missing.state.callerResult = null;
+    if (!applied)
+      missing.state.previewTree = missing.transaction.red.candidateTree;
+    if (applied)
+      assert.throws(() => missing.begin(), { code: 'TASK_STRATEGY_RED_STALE' });
+    else assert.equal(missing.begin().state, 'collaboration-grant-required');
+    assert.equal(missing.names().includes('patch.import-caller'), false);
+    assert.equal(missing.names().includes('grant.consume'), false);
+    const orphan = pendingInitialImplementation('caller');
+    orphan.state.caller = null;
+    if (!applied)
+      orphan.state.previewTree = orphan.transaction.red.candidateTree;
+    assert.throws(() => orphan.begin(), {
+      code: 'TASK_STRATEGY_IMPLEMENTATION_RESULT_STALE',
+    });
+    assert.equal(orphan.names().includes('patch.import-caller'), false);
+    assert.equal(orphan.names().includes('policy.parse'), false);
+  }
+});
+
+test('durable caller continuation narrows participant identity on both RED and pending candidates', () => {
+  for (const applied of [false, true]) {
+    for (const changed of ['principal', 'assurance'] as const) {
+      const f = pendingInitialImplementation('caller');
+      if (!applied) f.state.previewTree = f.transaction.red.candidateTree;
+      const reservation = f.state.caller!;
+      f.state.caller = {
+        ...reservation,
+        assignment: {
+          ...reservation.assignment,
+          participant: {
+            ...reservation.assignment.participant,
+            ...(changed === 'principal'
+              ? { principalId: null }
+              : { identityAssurance: 'maintainer-signed' as const }),
+          },
+        },
+      };
+      assert.throws(() => f.begin(), {
+        code: 'TASK_STRATEGY_IMPLEMENTATION_RESULT_STALE',
+      });
+      assert.equal(f.names().includes('patch.import-caller'), false);
+      assert.equal(f.names().includes('policy.parse'), false);
+    }
+  }
+});
+
+test('explicit new caller input retains grant, principal, assurance and byte conflict checks', () => {
+  for (const changed of ['grant', 'principal', 'assurance', 'bytes'] as const) {
+    const f = pendingInitialImplementation('caller');
+    const grant = f.callerOptions.collaborationGrant!;
+    const input = { ...grant, callerSupplied: { ...grant.callerSupplied! } };
+    if (changed === 'grant')
+      input.grantId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    if (changed === 'principal') input.callerSupplied.callerId = 'other';
+    if (changed === 'assurance')
+      input.callerSupplied.assurance = 'self-declared';
+    if (changed === 'bytes') input.callerSupplied.patch = Buffer.from('other');
+    assert.throws(() => f.begin({ collaborationGrant: input }), {
+      code: 'TASK_STRATEGY_IMPLEMENTATION_RESULT_STALE',
+    });
+    assert.equal(f.names().includes('authority.caller-reservation'), true);
+    assert.equal(f.names().includes('patch.import-caller'), false);
+    assert.equal(f.names().includes('grant.consume'), false);
+  }
+});
+
+test('shared pending-candidate inspect and provider ownership guards fail without writes or caller fallback', () => {
+  for (const changed of [
+    'tree',
+    'subject',
+    'attempt',
+    'authority',
+    'missing-result',
+    'caller-principal',
+  ] as const) {
+    const authority = changed === 'caller-principal' ? 'caller' : 'provider';
+    const f = pendingInitialImplementation(authority);
+    const historical = pendingInitialImplementation('caller');
+    if (authority === 'provider') {
+      f.state.caller = historical.state.caller;
+      f.state.callerResult = historical.state.callerResult;
+    }
+    if (changed === 'tree') f.state.previewTree = '9'.repeat(40);
+    if (changed === 'subject')
+      f.state.result = { ...f.state.result!, subjectDigest: digest('other') };
+    if (changed === 'attempt')
+      f.state.attempt = {
+        ...f.state.attempt!,
+        request: { ...f.state.attempt!.request, invocationId: 'other-attempt' },
+      };
+    if (changed === 'authority') f.state.failAt = 'authority.provider';
+    if (changed === 'missing-result') f.state.result = null;
+    if (changed === 'caller-principal') {
+      const reservation = f.state.caller!;
+      f.state.caller = {
+        ...reservation,
+        assignment: {
+          ...reservation.assignment,
+          participant: {
+            ...reservation.assignment.participant,
+            principalId: null,
+          },
+        },
+      };
+    }
+    const read =
+      changed === 'attempt' || changed === 'authority'
+        ? () =>
+            f.lifecycle.assertTaskStrategyImplementationProviderOwnerCurrent(
+              ROOT,
+              f.state.root!.request.invocationId,
+            )
+        : f.inspect;
+    if (changed === 'authority')
+      assert.throws(read, (error) => error === f.sentinel);
+    else
+      assert.throws(read, {
+        code:
+          changed === 'tree' || changed === 'missing-result'
+            ? 'TASK_STRATEGY_RED_STALE'
+            : 'TASK_STRATEGY_IMPLEMENTATION_RESULT_STALE',
+      });
+    readOnly(f);
+    if (authority === 'provider') {
+      assert.equal(f.names().includes('caller-result.read'), false);
+      assert.equal(f.names().includes('authority.caller'), false);
+    }
+  }
+});
+
+test('ordinary caller continuation before the patch effect retains admitted authority even when providers become available', () => {
+  const f = pendingInitialImplementation('caller');
+  f.state.previewTree = f.transaction.red.candidateTree;
+  f.state.patch = null;
+  f.policy.policy.providers.codex.enabled = true;
+  f.policy.policy.providers.claude.enabled = true;
+  const binding = f.state.callerResult;
+  assert.equal(f.begin().state, 'patch-imported');
+  assert.strictEqual(f.state.callerResult, binding);
+  noNewImplementationAuthority(f);
+  assert.equal(f.names().includes('policy.parse'), false);
+  ordered(
+    f.names(),
+    'authority.caller',
+    'authority.caller-reservation',
+    'patch.import-caller',
+  );
 });

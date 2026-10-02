@@ -2,14 +2,13 @@
 import path from 'node:path';
 import type { TaskStrategyRedRevisionOperations } from '../application/execute-task/task-strategy-red-revision-operations.ts';
 import { createTaskStrategyRedRevisionService } from '../application/execute-task/task-strategy-red-revision.ts';
-import { productionTaskStrategyCorrection } from './task-strategy-correction-production.ts';
 import { productionChangeContract } from './change-routing-observation-production.ts';
 import { assertCurrentImplementationReconciliation } from './implementation-reconciliation-production.ts';
 import { loadActiveSessionContext } from '../runtime/repository-observation/workflow-session-context.ts';
 import { observeInvestigationRuntimeContext } from '../runtime/repository-observation/investigation-runtime-context.ts';
 import { inspectSession } from '../application/session-inspection/session-inspection.ts';
 import { pinCheckRunner } from '../adapters/consumer/repository/work-registry/check-runner.ts';
-import { restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock } from '../application/execute-task/task-strategy-patch.ts';
+import { restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock } from './task-strategy-patch-production.ts';
 import { prepareTaskStrategyRedSuccessorUnlocked } from '../application/execute-task/task-strategy-execution.ts';
 import {
   withRepositoryLifecycleOperation,
@@ -105,15 +104,8 @@ export const taskStrategyRedRevisionOperations: TaskStrategyRedRevisionOperation
       };
     },
     pinCheckRunner,
-    restoreImplementationToRed: (cwd, sessionId, transaction, assertOwned) =>
-      restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock(
-        productionChangeContract,
-        productionTaskStrategyCorrection,
-        cwd,
-        sessionId,
-        transaction,
-        assertOwned,
-      ),
+    restoreImplementationToRed:
+      restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock,
     prepareSuccessor: (cwd, sessionId, options) =>
       prepareTaskStrategyRedSuccessorUnlocked(
         productionChangeContract,

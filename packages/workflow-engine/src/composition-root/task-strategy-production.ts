@@ -10,7 +10,6 @@ import {
 import { observeInvestigationRuntimeContext } from '../runtime/repository-observation/investigation-runtime-context.ts';
 import { inspectSession } from '../application/session-inspection/session-inspection.ts';
 import {
-  productionTaskStrategyCorrection,
   resolveCurrentTaskStrategyCorrection,
   resolveCurrentTaskStrategyImplementationAuthority,
 } from './task-strategy-correction-production.ts';
@@ -21,7 +20,7 @@ import {
   validateTaskStrategyCallerPatch,
   importTaskStrategyProviderPatchUnderLifecycleLock,
   importTaskStrategyCallerPatchUnderLifecycleLock,
-} from '../application/execute-task/task-strategy-patch.ts';
+} from './task-strategy-patch-production.ts';
 import { readFileAtRevision } from '../runtime/repository-transaction/git-command.ts';
 import { resolveBlobOid } from '../runtime/repository-transaction/git-object-ids.ts';
 import { previewExactStaging } from '../runtime/repository-transaction/git-transitions.ts';
@@ -226,26 +225,10 @@ const implementationOperations: TaskStrategyImplementationOperations = {
     consume: consumeCollaborationGrantUnderLifecycleLock,
   },
   patches: {
-    validateProvider: validateTaskStrategyProviderPatch.bind(
-      undefined,
-      productionChangeContract,
-      productionTaskStrategyCorrection,
-    ),
-    validateCaller: validateTaskStrategyCallerPatch.bind(
-      undefined,
-      productionChangeContract,
-      productionTaskStrategyCorrection,
-    ),
-    importProvider: importTaskStrategyProviderPatchUnderLifecycleLock.bind(
-      undefined,
-      productionChangeContract,
-      productionTaskStrategyCorrection,
-    ),
-    importCaller: importTaskStrategyCallerPatchUnderLifecycleLock.bind(
-      undefined,
-      productionChangeContract,
-      productionTaskStrategyCorrection,
-    ),
+    validateProvider: validateTaskStrategyProviderPatch,
+    validateCaller: validateTaskStrategyCallerPatch,
+    importProvider: importTaskStrategyProviderPatchUnderLifecycleLock,
+    importCaller: importTaskStrategyCallerPatchUnderLifecycleLock,
   },
   dataPolicy: AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
   correctionPolicy: DEFAULT_TASK_STRATEGY_CORRECTION_POLICY,
@@ -292,16 +275,8 @@ const lifecycle = createTaskStrategyLifecycle({
     continueRevision: continueTaskStrategyRedRevision,
   },
   adopt: {
-    implementation: adoptCurrentTaskStrategyImplementation.bind(
-      undefined,
-      productionChangeContract,
-      productionTaskStrategyCorrection,
-    ),
-    correction: adoptCurrentTaskStrategyCorrection.bind(
-      undefined,
-      productionChangeContract,
-      productionTaskStrategyCorrection,
-    ),
+    implementation: adoptCurrentTaskStrategyImplementation,
+    correction: adoptCurrentTaskStrategyCorrection,
   },
   implementation,
   readProviderRetryAccountingEvidence,

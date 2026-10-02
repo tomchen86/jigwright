@@ -15,7 +15,7 @@ import {
 import { checkSession } from './support/local-engine-selection-host.ts';
 import { runtimeRoot, sourceRepositoryRoot, git } from './fixture.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { importTaskStrategyPatch } from '../src/application/execute-task/task-strategy-patch.ts';
+import { importTaskStrategyPatch } from '../src/composition-root/task-strategy-patch-production.ts';
 import { beginTaskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
 import {
   createCrossAgentFixture,
@@ -317,17 +317,11 @@ test('single-agent TDD keeps the RED gate and uses a fresh Reviewer session', ()
       'src/feature.ts',
     ]);
     fs.rmSync(path.join(repository, 'src/feature.ts'));
-    importTaskStrategyPatch(
-      productionChangeContract,
-      productionTaskStrategyCorrection,
-      repository,
-      session.sessionId,
-      {
-        patch,
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    importTaskStrategyPatch(repository, session.sessionId, {
+      patch,
+      explicitActor: 'codex',
+      environment: {},
+    });
 
     assert.throws(
       () =>

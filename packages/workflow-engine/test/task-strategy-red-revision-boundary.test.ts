@@ -67,7 +67,7 @@ for (const [name, file, source] of [
   [
     'operations nested typeof',
     operations,
-    "\ntype Hidden = { factory: typeof import('./task-strategy-patch.ts').validateTaskStrategyPatch };",
+    "\ntype Hidden = { factory: typeof import('../../composition-root/task-strategy-patch-production.ts').validateTaskStrategyPatch };",
   ],
   [
     'dynamic production fallback',

@@ -14,7 +14,7 @@ import {
 import {
   adoptCurrentTaskStrategyImplementation,
   adoptCurrentTaskStrategyCorrection,
-} from '../src/application/execute-task/task-strategy-patch.ts';
+} from '../src/composition-root/task-strategy-patch-production.ts';
 import { beginTaskStrategyRedRevision } from '../src/composition-root/task-strategy-red-revision-production.ts';
 import { parseTaskStrategyRedRevisionRequest } from '../src/runtime/storage-journal/task-strategy-red-revision-store.ts';
 import { checkSession } from './support/local-engine-selection-host.ts';
@@ -146,12 +146,7 @@ test('ordinary resume discovers every RED revision crash before current-ref publ
       fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
       fs.writeFileSync(implementationPath, 'export const feature = true;\n');
       assert.ok(
-        adoptCurrentTaskStrategyImplementation(
-          productionChangeContract,
-          productionTaskStrategyCorrection,
-          repository,
-          session.sessionId,
-        ),
+        adoptCurrentTaskStrategyImplementation(repository, session.sessionId),
       );
       const request = {
         schemaVersion: 1 as const,
@@ -302,12 +297,7 @@ test('RED revision removes only the exact imported implementation and never acce
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     assert.ok(
-      adoptCurrentTaskStrategyImplementation(
-        productionChangeContract,
-        productionTaskStrategyCorrection,
-        repository,
-        session.sessionId,
-      ),
+      adoptCurrentTaskStrategyImplementation(repository, session.sessionId),
     );
     const predecessor = inspectTaskStrategyTransaction(
       repository,
@@ -449,12 +439,7 @@ test('RED revision restores every authenticated correction head in reverse order
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     assert.ok(
-      adoptCurrentTaskStrategyImplementation(
-        productionChangeContract,
-        productionTaskStrategyCorrection,
-        repository,
-        session.sessionId,
-      ),
+      adoptCurrentTaskStrategyImplementation(repository, session.sessionId),
     );
     assert.throws(
       () =>
@@ -470,12 +455,7 @@ test('RED revision restores every authenticated correction head in reverse order
     );
     fs.writeFileSync(implementationPath, 'export const corrected = true;\n');
     assert.ok(
-      adoptCurrentTaskStrategyCorrection(
-        productionChangeContract,
-        productionTaskStrategyCorrection,
-        repository,
-        session.sessionId,
-      ),
+      adoptCurrentTaskStrategyCorrection(repository, session.sessionId),
     );
 
     const opened = beginTaskStrategyRedRevision(repository, {

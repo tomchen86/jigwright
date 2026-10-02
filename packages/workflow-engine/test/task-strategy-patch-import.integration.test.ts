@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import {
   validateTaskStrategyPatch,
   importTaskStrategyPatch,
-} from '../src/application/execute-task/task-strategy-patch.ts';
+} from '../src/composition-root/task-strategy-patch-production.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import {
   readTaskStrategyPatchRecord,
@@ -65,22 +65,14 @@ test('cross-agent patch validation derives one bounded implementation tree witho
 
     assert.throws(
       () =>
-        validateTaskStrategyPatch(
-          productionChangeContract,
-          productionTaskStrategyCorrection,
-          repository,
-          session.sessionId,
-          {
-            patch,
-            explicitActor: 'codex',
-            environment: {},
-          },
-        ),
+        validateTaskStrategyPatch(repository, session.sessionId, {
+          patch,
+          explicitActor: 'codex',
+          environment: {},
+        }),
       hasCode('TASK_STRATEGY_IMPLEMENTER_REQUIRED'),
     );
     const validation = validateTaskStrategyPatch(
-      productionChangeContract,
-      productionTaskStrategyCorrection,
       repository,
       session.sessionId,
       {
@@ -135,17 +127,11 @@ test('patch validation rejects frozen tests, path escape, and unsafe file modes 
     fs.writeFileSync(testPath, originalTest);
     assert.throws(
       () =>
-        validateTaskStrategyPatch(
-          productionChangeContract,
-          productionTaskStrategyCorrection,
-          repository,
-          session.sessionId,
-          {
-            patch: frozenPatch,
-            explicitActor: 'claude',
-            environment: {},
-          },
-        ),
+        validateTaskStrategyPatch(repository, session.sessionId, {
+          patch: frozenPatch,
+          explicitActor: 'claude',
+          environment: {},
+        }),
       hasCode('TASK_STRATEGY_PATCH_FROZEN_PATH'),
     );
 
@@ -158,17 +144,11 @@ test('patch validation rejects frozen tests, path escape, and unsafe file modes 
     fs.rmSync(escapedPath);
     assert.throws(
       () =>
-        validateTaskStrategyPatch(
-          productionChangeContract,
-          productionTaskStrategyCorrection,
-          repository,
-          session.sessionId,
-          {
-            patch: escapedPatch,
-            explicitActor: 'claude',
-            environment: {},
-          },
-        ),
+        validateTaskStrategyPatch(repository, session.sessionId, {
+          patch: escapedPatch,
+          explicitActor: 'claude',
+          environment: {},
+        }),
       hasCode('TASK_STRATEGY_PATCH_SCOPE_INVALID'),
     );
 
@@ -181,17 +161,11 @@ test('patch validation rejects frozen tests, path escape, and unsafe file modes 
     fs.rmSync(symlinkPath);
     assert.throws(
       () =>
-        validateTaskStrategyPatch(
-          productionChangeContract,
-          productionTaskStrategyCorrection,
-          repository,
-          session.sessionId,
-          {
-            patch: symlinkPatch,
-            explicitActor: 'claude',
-            environment: {},
-          },
-        ),
+        validateTaskStrategyPatch(repository, session.sessionId, {
+          patch: symlinkPatch,
+          explicitActor: 'claude',
+          environment: {},
+        }),
       hasCode('TASK_STRATEGY_PATCH_MODE_INVALID'),
     );
   } finally {
@@ -235,8 +209,6 @@ test('single-agent patch validation permits the RED author without weakening pat
     fs.rmSync(implementationPath);
 
     const validation = validateTaskStrategyPatch(
-      productionChangeContract,
-      productionTaskStrategyCorrection,
       repository,
       session.sessionId,
       {
@@ -290,17 +262,11 @@ test('single-agent patch validation rejects an actor other than the sealed RED a
 
     assert.throws(
       () =>
-        validateTaskStrategyPatch(
-          productionChangeContract,
-          productionTaskStrategyCorrection,
-          repository,
-          session.sessionId,
-          {
-            patch,
-            explicitActor: 'claude',
-            environment: {},
-          },
-        ),
+        validateTaskStrategyPatch(repository, session.sessionId, {
+          patch,
+          explicitActor: 'claude',
+          environment: {},
+        }),
       hasCode('TASK_STRATEGY_IMPLEMENTER_REQUIRED'),
     );
   } finally {
@@ -346,18 +312,12 @@ test('patch import persists authority before mutation and exact replay reaches e
 
     assert.throws(
       () =>
-        importTaskStrategyPatch(
-          productionChangeContract,
-          productionTaskStrategyCorrection,
-          repository,
-          session.sessionId,
-          {
-            patch,
-            explicitActor: 'codex',
-            environment: {},
-            testCrashAfter: 'reservation-persisted',
-          },
-        ),
+        importTaskStrategyPatch(repository, session.sessionId, {
+          patch,
+          explicitActor: 'codex',
+          environment: {},
+          testCrashAfter: 'reservation-persisted',
+        }),
       /reservation-persisted/,
     );
     assert.equal(fs.existsSync(implementationPath), false);
@@ -373,18 +333,12 @@ test('patch import persists authority before mutation and exact replay reaches e
     );
     assert.throws(
       () =>
-        importTaskStrategyPatch(
-          productionChangeContract,
-          productionTaskStrategyCorrection,
-          repository,
-          session.sessionId,
-          {
-            patch,
-            explicitActor: 'codex',
-            environment: {},
-            testCrashAfter: 'record-persisted',
-          },
-        ),
+        importTaskStrategyPatch(repository, session.sessionId, {
+          patch,
+          explicitActor: 'codex',
+          environment: {},
+          testCrashAfter: 'record-persisted',
+        }),
       /record-persisted/,
     );
     const prepared = readTaskStrategyPatchRecord(
@@ -404,34 +358,22 @@ test('patch import persists authority before mutation and exact replay reaches e
       null,
     );
 
-    const imported = importTaskStrategyPatch(
-      productionChangeContract,
-      productionTaskStrategyCorrection,
-      repository,
-      session.sessionId,
-      {
-        patch,
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const imported = importTaskStrategyPatch(repository, session.sessionId, {
+      patch,
+      explicitActor: 'codex',
+      environment: {},
+    });
     assert.equal(imported.receipt.candidateTree, imported.record.candidateTree);
     assert.equal(
       fs.readFileSync(implementationPath, 'utf8'),
       'export const feature = true;\n',
     );
     assert.deepEqual(
-      importTaskStrategyPatch(
-        productionChangeContract,
-        productionTaskStrategyCorrection,
-        repository,
-        session.sessionId,
-        {
-          patch,
-          explicitActor: 'codex',
-          environment: {},
-        },
-      ),
+      importTaskStrategyPatch(repository, session.sessionId, {
+        patch,
+        explicitActor: 'codex',
+        environment: {},
+      }),
       imported,
     );
 
@@ -489,35 +431,23 @@ test('patch-applied crash reconciles the exact candidate and later drift stales 
 
     assert.throws(
       () =>
-        importTaskStrategyPatch(
-          productionChangeContract,
-          productionTaskStrategyCorrection,
-          repository,
-          session.sessionId,
-          {
-            patch,
-            explicitActor: 'codex',
-            environment: {},
-            testCrashAfter: 'patch-applied',
-          },
-        ),
+        importTaskStrategyPatch(repository, session.sessionId, {
+          patch,
+          explicitActor: 'codex',
+          environment: {},
+          testCrashAfter: 'patch-applied',
+        }),
       /patch-applied/,
     );
     assert.equal(
       fs.readFileSync(implementationPath, 'utf8'),
       'export const feature = true;\n',
     );
-    const recovered = importTaskStrategyPatch(
-      productionChangeContract,
-      productionTaskStrategyCorrection,
-      repository,
-      session.sessionId,
-      {
-        patch,
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const recovered = importTaskStrategyPatch(repository, session.sessionId, {
+      patch,
+      explicitActor: 'codex',
+      environment: {},
+    });
     assert.notEqual(recovered.receipt, null);
 
     fs.writeFileSync(implementationPath, 'export const feature = false;\n');
@@ -576,33 +506,21 @@ test('a durable prepared patch reservation rejects a different patch before eith
 
     assert.throws(
       () =>
-        importTaskStrategyPatch(
-          productionChangeContract,
-          productionTaskStrategyCorrection,
-          repository,
-          session.sessionId,
-          {
-            patch: patchA,
-            explicitActor: 'claude',
-            environment: {},
-            testCrashAfter: 'reservation-persisted',
-          },
-        ),
+        importTaskStrategyPatch(repository, session.sessionId, {
+          patch: patchA,
+          explicitActor: 'claude',
+          environment: {},
+          testCrashAfter: 'reservation-persisted',
+        }),
       /reservation-persisted/,
     );
     assert.throws(
       () =>
-        importTaskStrategyPatch(
-          productionChangeContract,
-          productionTaskStrategyCorrection,
-          repository,
-          session.sessionId,
-          {
-            patch: patchB,
-            explicitActor: 'claude',
-            environment: {},
-          },
-        ),
+        importTaskStrategyPatch(repository, session.sessionId, {
+          patch: patchB,
+          explicitActor: 'claude',
+          environment: {},
+        }),
       hasCode('TASK_STRATEGY_PATCH_RESERVATION_CONFLICT'),
     );
     assert.equal(fs.existsSync(implementationPath), false);
@@ -642,17 +560,11 @@ test('patch replay rejects independently redigested reservation metadata', () =>
       'src/feature.ts',
     ]);
     fs.rmSync(implementationPath);
-    const imported = importTaskStrategyPatch(
-      productionChangeContract,
-      productionTaskStrategyCorrection,
-      repository,
-      session.sessionId,
-      {
-        patch,
-        explicitActor: 'claude',
-        environment: {},
-      },
-    );
+    const imported = importTaskStrategyPatch(repository, session.sessionId, {
+      patch,
+      explicitActor: 'claude',
+      environment: {},
+    });
     const reservationPath = path.join(
       runtimeRoot(repository),
       'investigations/refs/task-strategy-patches',
@@ -675,17 +587,11 @@ test('patch replay rejects independently redigested reservation metadata', () =>
 
     assert.throws(
       () =>
-        importTaskStrategyPatch(
-          productionChangeContract,
-          productionTaskStrategyCorrection,
-          repository,
-          session.sessionId,
-          {
-            patch,
-            explicitActor: 'claude',
-            environment: {},
-          },
-        ),
+        importTaskStrategyPatch(repository, session.sessionId, {
+          patch,
+          explicitActor: 'claude',
+          environment: {},
+        }),
       hasCode('TASK_STRATEGY_PATCH_STATE_CORRUPT'),
     );
   } finally {

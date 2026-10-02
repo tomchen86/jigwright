@@ -21,7 +21,7 @@ import { commitPlanningTransition as commitPlanningTransitionWithContractReader 
 import { startSession } from '../src/application/execute-task/session.ts';
 import { resolveCurrentTaskStrategyCorrection } from '../src/composition-root/task-strategy-correction-production.ts';
 import { listTaskStrategyCorrectionRounds } from '../src/runtime/storage-journal/task-strategy-correction-round-store.ts';
-import { adoptCurrentTaskStrategyImplementation } from '../src/application/execute-task/task-strategy-patch.ts';
+import { adoptCurrentTaskStrategyImplementation } from '../src/composition-root/task-strategy-patch-production.ts';
 import { sealTaskStrategyRed } from '../src/application/execute-task/task-strategy-execution.ts';
 import { resumeTaskStrategy } from '../src/composition-root/task-strategy-production.ts';
 import { checkSession } from './support/local-engine-selection-host.ts';
@@ -60,8 +60,6 @@ test('single-agent correction reserves and authenticates one local round before 
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     const initial = adoptCurrentTaskStrategyImplementation(
-      productionChangeContract,
-      productionTaskStrategyCorrection,
       repository,
       session.sessionId,
     )!;

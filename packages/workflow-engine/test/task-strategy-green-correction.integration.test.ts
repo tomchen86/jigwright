@@ -10,7 +10,7 @@ import { sealTaskStrategyRed } from '../src/application/execute-task/task-strate
 import {
   adoptCurrentTaskStrategyImplementation,
   adoptCurrentTaskStrategyCorrection,
-} from '../src/application/execute-task/task-strategy-patch.ts';
+} from '../src/composition-root/task-strategy-patch-production.ts';
 import assert from 'node:assert/strict';
 import { checkSession } from './support/local-engine-selection-host.ts';
 import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
@@ -62,8 +62,6 @@ test('engine GREEN failure persists one bounded correction subject for the exact
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     const imported = adoptCurrentTaskStrategyImplementation(
-      productionChangeContract,
-      productionTaskStrategyCorrection,
       repository,
       session.sessionId,
     )!;
@@ -149,8 +147,6 @@ test('GREEN failure recorder reobserves runner identity before any ledger write'
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     const imported = adoptCurrentTaskStrategyImplementation(
-      productionChangeContract,
-      productionTaskStrategyCorrection,
       repository,
       session.sessionId,
     )!;
@@ -342,8 +338,6 @@ test('single-agent correction resume adopts one append-only patch head and engin
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     const initial = adoptCurrentTaskStrategyImplementation(
-      productionChangeContract,
-      productionTaskStrategyCorrection,
       repository,
       session.sessionId,
     )!;
@@ -433,12 +427,7 @@ test('single-agent correction exhaustion cannot be bypassed by routine resume', 
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const initial = true;\n');
     assert.ok(
-      adoptCurrentTaskStrategyImplementation(
-        productionChangeContract,
-        productionTaskStrategyCorrection,
-        repository,
-        session.sessionId,
-      ),
+      adoptCurrentTaskStrategyImplementation(repository, session.sessionId),
     );
     assert.throws(
       () =>
@@ -459,12 +448,7 @@ test('single-agent correction exhaustion cannot be bypassed by routine resume', 
     ]) {
       fs.writeFileSync(implementationPath, source);
       assert.ok(
-        adoptCurrentTaskStrategyCorrection(
-          productionChangeContract,
-          productionTaskStrategyCorrection,
-          repository,
-          session.sessionId,
-        ),
+        adoptCurrentTaskStrategyCorrection(repository, session.sessionId),
       );
       assert.throws(
         () =>

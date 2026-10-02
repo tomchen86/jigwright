@@ -14,6 +14,19 @@ export type TaskStrategyPatchCrashPhase =
   | 'patch-applied'
   | 'receipt-persisted';
 
+export type CallerTaskStrategyPatchInput = Readonly<{
+  patch: string | Buffer;
+  explicitActor?: string;
+  environment?: NodeJS.ProcessEnv;
+}>;
+
+export type TaskStrategyPatchImportInput = CallerTaskStrategyPatchInput &
+  Readonly<{ testCrashAfter?: TaskStrategyPatchCrashPhase }>;
+
+export type LocalTaskStrategyPatchAdoptionOptions = Readonly<{
+  testCrashAfter?: TaskStrategyPatchCrashPhase;
+}>;
+
 export type TaskStrategyPatchValidation = Readonly<{
   schemaVersion: 1;
   kind: 'task-strategy-patch-validation.v1';

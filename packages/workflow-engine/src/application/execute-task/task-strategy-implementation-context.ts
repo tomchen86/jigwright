@@ -1,7 +1,12 @@
 import type { TaskStrategyImplementationOperations } from './task-strategy-implementation-operations.ts';
 import type { TaskStrategyImplementationSession } from './task-strategy-implementation-operations.ts';
 import type { TaskStrategyImplementationJournal } from './task-strategy-implementation-operations.ts';
-import type { TaskStrategyTransaction } from '../../modules/assurance/task-strategy-evidence.ts';
+import type {
+  TaskStrategyPatchImplementer,
+  TaskStrategyImplementationResultBinding,
+  TaskStrategyCallerImplementationBinding,
+  TaskStrategyTransaction,
+} from '../../modules/assurance/task-strategy-evidence.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 import { taskStrategyImplementationReservationForAttempt } from '../../modules/assurance/task-strategy-implementation-attempt.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
@@ -174,8 +179,8 @@ export function createTaskStrategyImplementationContext(
       transaction.red.candidateTree === preview.tree &&
       canonicalJson(transaction.red.changedPaths) ===
         canonicalJson(inspection.changedPaths);
-    const currentPatchHead =
-      operations.session.resolveCorrection(inspection).head;
+    const projection = operations.session.resolveCorrection(inspection);
+    const currentPatchHead = projection.head;
     const recoverableCorrection = readRecoverableCorrectionCandidate(
       runtime,
       transaction,
@@ -191,7 +196,15 @@ export function createTaskStrategyImplementationContext(
       transaction.baseline.tree !== context.session.baseline.tree ||
       (!redCandidateCurrent &&
         !importedCandidateCurrent &&
-        !recoverableCorrection)
+        !recoverableCorrection &&
+        !readRecoverableInitialCandidate(
+          runtime,
+          context,
+          transaction,
+          inspection,
+          projection,
+          preview.tree,
+        ))
     ) {
       throw workflowError(
         'TASK_STRATEGY_RED_STALE',
@@ -200,6 +213,121 @@ export function createTaskStrategyImplementationContext(
       );
     }
     return transaction;
+  }
+
+  /** Admit a completed effect only through its already-admitted initial authority. */
+  function readRecoverableInitialCandidate(
+    runtime: TaskStrategyImplementationJournal,
+    context: TaskStrategyImplementationSession,
+    transaction: TaskStrategyTransaction,
+    inspection: SessionInspection,
+    projection: TaskStrategyCorrectionProjection,
+    currentTree: string,
+  ): boolean {
+    if (
+      transaction.strategy !== 'cross-agent-tdd' ||
+      projection.transaction.recordDigest !== transaction.recordDigest ||
+      projection.head !== null ||
+      projection.failure !== null ||
+      projection.completedCorrectionRounds !== 0
+    )
+      return false;
+    const task = inspection.contract.execution?.tasks[context.session.taskId];
+    if (
+      task?.strategy !== transaction.strategy ||
+      sha256(canonicalJson(task)) !== transaction.taskContractDigest
+    ) {
+      throw implementationResultStale();
+    }
+    const subject = createSubject(transaction);
+    const provider = runtime.implementation.readReservation(
+      context.session.sessionId,
+      subject.subjectDigest,
+    );
+    let binding:
+      | TaskStrategyImplementationResultBinding
+      | TaskStrategyCallerImplementationBinding;
+    let implementer: TaskStrategyPatchImplementer;
+    // Match the lifecycle's existing provider-reservation priority. A selected
+    // stale provider result must never fall through to a caller identity.
+    if (provider !== null) {
+      const result = runtime.implementation.readResult(
+        context.session.sessionId,
+        subject.subjectDigest,
+      );
+      if (result === null) return false;
+      assertReservationCurrent(context, transaction, subject, provider);
+      const attempt = runtime.implementation.readCurrentAttempt(provider);
+      if (result.invocationId !== attempt.request.invocationId)
+        throw implementationResultStale();
+      const reservation =
+        taskStrategyImplementationReservationForAttempt(attempt);
+      runtime.implementation.assertProviderCurrent(
+        reservation,
+        runtime.provider.read(attempt.request.invocationId),
+        result,
+      );
+      binding = result;
+      implementer = {
+        providerId: attempt.assignment.providerId,
+        assurance: 'adapter-assigned',
+      };
+    } else {
+      const result = runtime.implementation.readCallerResult(
+        context.session.sessionId,
+        subject.subjectDigest,
+      );
+      if (result === null) return false;
+      const reservation = runtime.implementation.readCallerReservation(
+        context.session.sessionId,
+        subject.subjectDigest,
+      );
+      if (reservation === null) throw implementationResultStale();
+      runtime.implementation.assertCallerCurrent(
+        transaction,
+        subject,
+        reservation,
+        result,
+      );
+      const participant = reservation.assignment.participant;
+      if (
+        participant.principalId === null ||
+        participant.identityAssurance === 'maintainer-signed'
+      )
+        throw implementationResultStale();
+      binding = result;
+      implementer = {
+        providerId: null,
+        principalId: participant.principalId,
+        assurance: participant.identityAssurance,
+        degradedForm: 'caller-supplied',
+        grantId: reservation.grantId,
+      };
+    }
+    if (
+      binding.subjectDigest !== subject.subjectDigest ||
+      binding.output.sessionId !== context.session.sessionId ||
+      binding.output.sourceTree !== subject.sourceTree
+    )
+      throw implementationResultStale();
+    const record = runtime.patch.readRecord(
+      context.session.sessionId,
+      binding.output.patchDigest,
+      subject.sourceTree,
+    );
+    return (
+      record !== null &&
+      record.sessionId === context.session.sessionId &&
+      record.changeId === transaction.changeId &&
+      record.taskId === transaction.taskId &&
+      record.strategy === transaction.strategy &&
+      record.taskContractDigest === transaction.taskContractDigest &&
+      record.sourceTree === subject.sourceTree &&
+      record.candidateTree === currentTree &&
+      record.patchDigest === binding.output.patchDigest &&
+      record.patchBase64 === binding.output.patchBase64 &&
+      canonicalJson(record.implementer) === canonicalJson(implementer)
+    );
   }
 
   function readRecoverableCorrectionCandidate(

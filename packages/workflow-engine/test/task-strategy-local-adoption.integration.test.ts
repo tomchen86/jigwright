@@ -21,7 +21,7 @@ import {
 } from '../src/application/execute-task/task-strategy-execution.ts';
 import { readTaskStrategyPatchCurrentBinding } from '../src/runtime/storage-journal/task-strategy-patch-store.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
-import { adoptCurrentTaskStrategyImplementation } from '../src/application/execute-task/task-strategy-patch.ts';
+import { adoptCurrentTaskStrategyImplementation } from '../src/composition-root/task-strategy-patch-production.ts';
 import {
   createFixtureRepository,
   git,
@@ -221,8 +221,6 @@ test('single-agent local adoption replays every durable publication cut without 
       assert.throws(
         () =>
           adoptCurrentTaskStrategyImplementation(
-            productionChangeContract,
-            productionTaskStrategyCorrection,
             repository,
             session.sessionId,
             { testCrashAfter: phase },
@@ -235,8 +233,6 @@ test('single-agent local adoption replays every durable publication cut without 
       );
 
       const replayed = adoptCurrentTaskStrategyImplementation(
-        productionChangeContract,
-        productionTaskStrategyCorrection,
         repository,
         session.sessionId,
       );
@@ -291,26 +287,15 @@ test('single-agent reservation replay never resurrects implementation bytes reve
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
     assert.throws(
       () =>
-        adoptCurrentTaskStrategyImplementation(
-          productionChangeContract,
-          productionTaskStrategyCorrection,
-          repository,
-          session.sessionId,
-          {
-            testCrashAfter: 'record-persisted',
-          },
-        ),
+        adoptCurrentTaskStrategyImplementation(repository, session.sessionId, {
+          testCrashAfter: 'record-persisted',
+        }),
       /record-persisted/,
     );
     fs.rmSync(implementationPath);
 
     assert.equal(
-      adoptCurrentTaskStrategyImplementation(
-        productionChangeContract,
-        productionTaskStrategyCorrection,
-        repository,
-        session.sessionId,
-      ),
+      adoptCurrentTaskStrategyImplementation(repository, session.sessionId),
       null,
     );
     assert.equal(fs.existsSync(implementationPath), false);

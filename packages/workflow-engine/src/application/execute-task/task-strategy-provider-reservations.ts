@@ -94,6 +94,59 @@ export function createTaskStrategyProviderReservations(
     testCrashAfter: BeginTaskStrategyImplementationOptions['testCrashAfter'],
     assertOwned: () => void,
   ): TaskStrategyImplementationReservation | TaskStrategyImplementationStatus {
+    if (collaborationGrant === undefined) {
+      const binding = runtime.implementation.readCallerResult(
+        context.session.sessionId,
+        subject.subjectDigest,
+      );
+      if (binding !== null) {
+        const reservation = runtime.implementation.readCallerReservation(
+          context.session.sessionId,
+          subject.subjectDigest,
+        );
+        if (reservation === null) throw implementationResultStale();
+        runtime.implementation.assertCallerCurrent(
+          transaction,
+          subject,
+          reservation,
+          binding,
+        );
+        const participant = reservation.assignment.participant;
+        if (
+          participant.principalId === null ||
+          (participant.identityAssurance !== 'self-declared' &&
+            participant.identityAssurance !== 'runtime-hint' &&
+            participant.identityAssurance !== 'adapter-assigned')
+        ) {
+          throw implementationResultStale();
+        }
+        const redAuthor = recordRedAuthor(transaction);
+        return importCallerSuppliedImplementation(
+          context,
+          runtime,
+          transaction,
+          subject,
+          greenFailureRecord,
+          {
+            providerId: redAuthor.providerId ?? undefined,
+            sessionId: redAuthor.sessionId ?? undefined,
+            principalId: redAuthor.principalId ?? undefined,
+            identityAssurance: redAuthor.identityAssurance,
+            engineSpawned: false,
+          },
+          {
+            grantId: reservation.grantId,
+            callerSupplied: {
+              callerId: participant.principalId,
+              assurance: participant.identityAssurance,
+              patch: Buffer.from(binding.output.patchBase64, 'base64'),
+            },
+          },
+          testCrashAfter,
+          assertOwned,
+        );
+      }
+    }
     const policy = baselineAdapterPolicy(
       context.git.repositoryRoot,
       context.session.baseline.head,

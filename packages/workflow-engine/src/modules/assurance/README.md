@@ -8,11 +8,11 @@ Keep the presence and currentness of review evidence separate from the reviewer'
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:a30fbf1b72b84cc764c2b77548d5b35250473281fdd37519a6b4248aff66dc27 -->
+<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:9353f1f6d04740b25cc1c7b88079b777e28347f25a8c4c379102ac03c74f1d2f -->
 
 <!-- prettier-ignore-start -->
 
-74 files changed in this module since confirmation.
+75 files changed in this module since confirmation.
 
 ## Commands
 
@@ -129,6 +129,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [task-strategy-implementation-record.ts](task-strategy-implementation-record.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [task-strategy-implementation-values.ts](task-strategy-implementation-values.ts) | Defines canonical task implementation value checks, digests, and store errors. | 2 | History unavailable |
 | [task-strategy-patch-contract.ts](task-strategy-patch-contract.ts) | Patch transaction inputs and results shared by their real producer and application callers. | 0 | History unavailable |
+| [task-strategy-patch-record.ts](task-strategy-patch-record.ts) | Canonical patch record codecs without durable storage or repository operations. | 0 | History unavailable |
 | [task-strategy-red-revision-contract.ts](task-strategy-red-revision-contract.ts) | Validates revision requests and digest-bound RED recovery journal states. | 2 | History unavailable |
 | [task-strategy-red-revision-values.ts](task-strategy-red-revision-values.ts) | Defines RED revision phases, exact identity checks, and stable failure codes. | 2 | History unavailable |
 | [task-strategy-transaction.ts](task-strategy-transaction.ts) | Validates immutable RED evidence and prepares its canonical transaction identity. | 0 | History unavailable |
