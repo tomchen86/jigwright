@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { diagnoseWorkflowRepository } from '../../composition-root/workflow-doctor-production.ts';
 import {
   currentGovernanceIntakeCounts,
   createGovernanceIntakeCommandDependencies,
@@ -39,11 +40,9 @@ import path from 'node:path';
 import { dispatchAiAdapterCommand } from './ai-adapter-cli.ts';
 import { dispatchAgentProviderCommand } from './agent-provider-cli.ts';
 import { dispatchAgentGuidanceCommand } from './agent-guidance-cli.ts';
-import { inspectProjectionStatus } from '../../composition-root/projection-status-production.ts';
 import { dispatchCentralRoleProviderDefaultCommand } from './central-role-provider-default-cli.ts';
 
 import { inspectChangeAssurance } from '../../runtime/repository-validation/assurance-inspection.ts';
-import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
 import {
   checkOpenSpecPlanningAssets,
   installOpenSpecPlanningPrompts,
@@ -77,16 +76,11 @@ import {
   inspectImplementationReconciliation,
   recordImplementationReconciliation,
 } from '../../composition-root/implementation-reconciliation-production.ts';
-import { listSessions } from '../../runtime/repository-observation/workflow-session-context.ts';
 import { validateManagedDocuments } from '../../composition-root/managed-documents-production.ts';
 import {
   renderSystemDocuments,
   testSystemDocuments,
-  inspectRepositorySystemDocuments,
 } from '../../runtime/managed-documents/validation/system-documents.ts';
-import { readSystemDescriptionSnapshot } from '../../runtime/repository-transaction/system-description-snapshot.ts';
-import { systemSpecPaths } from '../../modules/source/system-documents.ts';
-import { diagnoseOpenSpec } from '../../adapters/planning/openspec/documents/openspec-doctor.ts';
 import { runProviderWorkerAsync } from '../worker/provider-worker.ts';
 import { dispatchProviderWorker } from '../../composition-root/provider-worker-dispatch-production.ts';
 
@@ -134,115 +128,6 @@ const { dispatchExecutionJobCommand, dispatchRetentionCommand } =
  */
 
 /** Test-only seam proving the hidden command selects the async worker. */
-
-function doctor(cwd: string): CommandResult {
-  const git = discoverRepository(cwd);
-  const config = loadWorkflowConfig(git.repositoryRoot);
-  const openspec = diagnoseOpenSpec(git.repositoryRoot);
-  const warnings: Array<{ code: string; message: string }> = [];
-  const snapshot = readSystemDescriptionSnapshot(git.repositoryRoot);
-  const colocatedSpecs = systemSpecPaths(snapshot.listPaths());
-  let systemDocuments: {
-    configured: boolean;
-    healthy: boolean;
-    specCount: number;
-    diagnostics: readonly { code: string; message: string }[];
-  } = {
-    configured: colocatedSpecs.length > 0,
-    healthy: true,
-    specCount: colocatedSpecs.length,
-    diagnostics: [],
-  };
-  if (colocatedSpecs.length > 0) {
-    try {
-      const { report } = inspectRepositorySystemDocuments(
-        git.repositoryRoot,
-        snapshot,
-        false,
-      );
-      const diagnostics = report.issues.filter(
-        (issue) => issue.code !== 'test-not-passed',
-      );
-      systemDocuments = {
-        ...systemDocuments,
-        healthy: diagnostics.length === 0,
-        diagnostics,
-      };
-    } catch (error) {
-      systemDocuments = {
-        ...systemDocuments,
-        healthy: false,
-        diagnostics: [
-          { code: 'SYSTEM_DOCUMENTS_INVALID', message: String(error) },
-        ],
-      };
-    }
-  }
-
-  if (!git.branch) {
-    warnings.push({ code: 'DETACHED_HEAD', message: 'HEAD is detached.' });
-  } else if (config.protectedBranches.includes(git.branch)) {
-    warnings.push({
-      code: 'PROTECTED_BRANCH',
-      message: `Current branch ${git.branch} is protected; task session activation will fail.`,
-    });
-  }
-  if (git.statusEntries.length > 0) {
-    warnings.push({
-      code: 'DIRTY_WORKTREE',
-      message: `Worktree has ${git.statusEntries.length} staged, unstaged, or untracked status entries; task session activation will fail.`,
-    });
-  }
-  const baseSpecRoot = path.posix.join(
-    path.posix.dirname(config.changeRoot),
-    'specs',
-  );
-  if (
-    colocatedSpecs.length === 0 &&
-    !fs.existsSync(path.join(git.repositoryRoot, baseSpecRoot))
-  ) {
-    warnings.push({
-      code: 'NO_BASE_SPECS',
-      message: `${baseSpecRoot} does not exist yet; create the current managed base specifications before planning changes.`,
-    });
-  }
-  for (const diagnostic of openspec.diagnostics) {
-    if (diagnostic.severity !== 'info') {
-      warnings.push({
-        code: diagnostic.code,
-        message: diagnostic.message,
-      });
-    }
-  }
-
-  return {
-    command: 'doctor',
-    ok: openspec.healthy && systemDocuments.healthy,
-    mode: 'diagnostic',
-    repository: {
-      root: git.repositoryRealPath,
-      gitCommonDirectory: git.gitCommonDirectory,
-      branch: git.branch,
-      head: git.head,
-      clean: git.statusEntries.length === 0,
-    },
-    configuration: {
-      path: 'workflow/config.json',
-      changeRoot: config.changeRoot,
-      runtimeDirectory: config.runtimeDirectory,
-      protectedBranches: config.protectedBranches,
-      branchTemplate: config.branchTemplate,
-    },
-    openspec,
-    systemDocuments,
-    projections: inspectProjectionStatus(git.repositoryRoot),
-    retainedSpectraUsed: false,
-    activeSessionCount: listSessions(cwd).filter(
-      (session) => session.state === 'active' || session.state === 'revising',
-    ).length,
-    warnings,
-  };
-}
 
 function printSuccess(
   result: CommandResult,
@@ -565,7 +450,7 @@ export function createWorkflowCli({
         };
       case 'doctor':
         requireArgumentCount(command, rest, 0, 0);
-        return doctor(cwd);
+        return { command, ...diagnoseWorkflowRepository(cwd) };
       case 'guidance':
         return {
           command,

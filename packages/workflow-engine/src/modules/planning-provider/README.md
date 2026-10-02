@@ -8,11 +8,11 @@ Keep planning-provider contracts neutral and adapt only their error presentation
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.planning-provider-readme v=1 digest=sha256:4ce7a03daa1cc6b045f2693a377a67e61b021702b41b6ce81264ea720b9d9231 -->
+<!-- jigwright:region id=documents.planning-provider-readme v=1 digest=sha256:159b380a4a970b26d70ecdde2487c284b72df4e7d230f6c0b9ec1843fcc26922 -->
 
 <!-- prettier-ignore-start -->
 
-14 files changed in this module since confirmation.
+15 files changed in this module since confirmation.
 
 ## Commands
 
@@ -44,6 +44,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [change-contract.ts](change-contract.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [change-metadata-policy.ts](change-metadata-policy.ts) | Parse canonical schema metadata text under the supplied consumer policy. | 0 | History unavailable |
 | [guard-policy.ts](guard-policy.ts) | Validate guard values after repository path admission. | 0 | History unavailable |
+| [openspec-diagnostics.ts](openspec-diagnostics.ts) | Canonical OpenSpec diagnostic values shared by the provider and repository doctor. | 0 | History unavailable |
 | [planning-archive-projection-port.ts](planning-archive-projection-port.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [planning-artifact-parsers.ts](planning-artifact-parsers.ts) | Parse planning artifact values without observing repository state. | 0 | History unavailable |
 | [planning-artifact-types.ts](planning-artifact-types.ts) | Canonical planning task, execution and PlanReview artifact data; parsers and storage share these values. | 0 | History unavailable |

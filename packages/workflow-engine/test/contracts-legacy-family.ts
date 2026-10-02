@@ -106,6 +106,8 @@ import './git-authority-candidate-apply.integration.test.ts';
 import './git-authority-candidate-apply-receipt.integration.test.ts';
 import './openspec-adapter.integration.test.ts';
 import './openspec-doctor.integration.test.ts';
+import './workflow-doctor.test.ts';
+import './workflow-doctor-boundary.test.ts';
 import './openspec-schema-contract.integration.test.ts';
 import './planning-transition.contract.test.ts';
 import './openspec-planning-assets.integration.test.ts';

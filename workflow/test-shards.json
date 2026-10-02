@@ -12,9 +12,9 @@
   },
   "sourceTelemetryRunId": "run-20260912023916307-f369e0a2-e7a4-441a-bca1-57c8300410a4",
   "sourceTelemetryDigest": "sha256:9b45f37d8baf330b4fbd88d81456c97b50767229cf3cb6646d9dcdc1fdb4661d",
-  "physicalFileCount": 556,
-  "executionUnitCount": 553,
-  "inventoryDigest": "sha256:c64d8fd64f9fb1f8085f38c2b21b50a8728279deb9c8bb07c4138f8d11c3e451",
+  "physicalFileCount": 558,
+  "executionUnitCount": 555,
+  "inventoryDigest": "sha256:6256aca257aebeae174b5dd617c17d2593ad9afc5895252abe815f30adb6f40d",
   "shards": [
     {
       "shardNumber": 1,
@@ -2942,6 +2942,22 @@
             "packages/workflow-engine/test/task-strategy-red-revision.test.ts"
           ],
           "legacyOrdinal": 553,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/workflow-doctor-boundary.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/workflow-doctor-boundary.test.ts"
+          ],
+          "legacyOrdinal": 554,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/workflow-doctor.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/workflow-doctor.test.ts"
+          ],
+          "legacyOrdinal": 555,
           "estimatedDurationMs": 0
         }
       ]

@@ -52,7 +52,7 @@ Header counts cover source files in each scope; package rows include their modul
 | packages/grants | package | [Grant services](../packages/grants/spec.md) | Local | Missing | 6/6 | 1/6 |
 | packages/openspec-adapter | package | [OpenSpec adapter](../packages/openspec-adapter/spec.md) | Local | Missing | 6/6 | 6/6 |
 | packages/repository-runtime | package | [Repository contracts](../spec.md) | Inherited | [Present](../packages/repository-runtime/README.md) | 1/1 | 0/1 |
-| packages/workflow-engine | package | [Shared workflow contracts](../packages/workflow-engine/spec.md) | Local | Missing | 878/1069 | 565/1069 |
+| packages/workflow-engine | package | [Shared workflow contracts](../packages/workflow-engine/spec.md) | Local | Missing | 881/1072 | 565/1072 |
 | packages/workflow-engine/src/modules/adoption | module | [Adoption](../packages/workflow-engine/src/modules/adoption/spec.md) | Local | [Present](../packages/workflow-engine/src/modules/adoption/README.md) | 2/2 | 0/2 |
 | packages/workflow-engine/src/modules/assurance | module | [Assurance](../packages/workflow-engine/src/modules/assurance/spec.md) | Local | [Present](../packages/workflow-engine/src/modules/assurance/README.md) | 57/71 | 26/71 |
 | packages/workflow-engine/src/modules/authority | module | [Authority](../packages/workflow-engine/src/modules/authority/spec.md) | Local | [Present](../packages/workflow-engine/src/modules/authority/README.md) | 86/96 | 49/96 |
@@ -60,7 +60,7 @@ Header counts cover source files in each scope; package rows include their modul
 | packages/workflow-engine/src/modules/guidance | module | [Guidance](../packages/workflow-engine/src/modules/guidance/spec.md) | Local | [Present](../packages/workflow-engine/src/modules/guidance/README.md) | 5/5 | 5/5 |
 | packages/workflow-engine/src/modules/investigation | module | [Investigation](../packages/workflow-engine/src/modules/investigation/spec.md) | Local | [Present](../packages/workflow-engine/src/modules/investigation/README.md) | 39/44 | 28/44 |
 | packages/workflow-engine/src/modules/lifecycle | module | [Lifecycle](../packages/workflow-engine/src/modules/lifecycle/spec.md) | Local | [Present](../packages/workflow-engine/src/modules/lifecycle/README.md) | 15/17 | 7/17 |
-| packages/workflow-engine/src/modules/planning-provider | module | [Planning provider](../packages/workflow-engine/src/modules/planning-provider/spec.md) | Local | [Present](../packages/workflow-engine/src/modules/planning-provider/README.md) | 9/12 | 4/12 |
+| packages/workflow-engine/src/modules/planning-provider | module | [Planning provider](../packages/workflow-engine/src/modules/planning-provider/spec.md) | Local | [Present](../packages/workflow-engine/src/modules/planning-provider/README.md) | 10/13 | 4/13 |
 | packages/workflow-engine/src/modules/projection | module | [Projection](../packages/workflow-engine/src/modules/projection/spec.md) | Local | [Present](../packages/workflow-engine/src/modules/projection/README.md) | 6/8 | 4/8 |
 | packages/workflow-engine/src/modules/provider-orchestration | module | [Provider Orchestration](../packages/workflow-engine/src/modules/provider-orchestration/spec.md) | Local | [Present](../packages/workflow-engine/src/modules/provider-orchestration/README.md) | 47/49 | 34/49 |
 | packages/workflow-engine/src/modules/repository-consumer | module | [Repository consumer](../packages/workflow-engine/src/modules/repository-consumer/spec.md) | Local | [Present](../packages/workflow-engine/src/modules/repository-consumer/README.md) | 5/5 | 1/5 |

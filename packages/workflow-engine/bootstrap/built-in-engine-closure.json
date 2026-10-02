@@ -478,12 +478,12 @@
     {
       "path": "src/adapters/planning/openspec/documents/openspec-doctor-payload.ts",
       "mode": "100644",
-      "digest": "sha256:83b6f40c473724c287b2cf06969d9f258bdb0ab29c851a9038d5be58c53693d6"
+      "digest": "sha256:01b5a0cfcdda8f9adc2ded634e5997e3af45b69b5712439ad6c12d8992e13fd6"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-doctor.ts",
       "mode": "100644",
-      "digest": "sha256:00a56aaf5d4dee358f4c93c4e6e70196da1e938e70f6330d3d961a67bb2f980e"
+      "digest": "sha256:1e30977df843208a17d9b9dd4c093721b7bd02c387ff26e14c9356e9f2668187"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-executor.ts",
@@ -513,7 +513,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/openspec-provenance.ts",
       "mode": "100644",
-      "digest": "sha256:608675d7314bd960a4f580abe58f9205035547a967806bc80e3b84e2791528d2"
+      "digest": "sha256:0a43b89065361c549fa32898dd63c6419636b9fe775e87d40734593544526607"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-provider-binding.ts",
@@ -634,6 +634,11 @@
       "path": "src/application/assurance/pull-request-verification.ts",
       "mode": "100644",
       "digest": "sha256:09bc81ba234ae5e37eb2affa959ecccfd87f7c6e8393721d00f4928f6307d567"
+    },
+    {
+      "path": "src/application/assurance/workflow-doctor.ts",
+      "mode": "100644",
+      "digest": "sha256:deb1e8938b3c880c137dfa8c3cbddd7635833d293c8c7ee5b27fc3f2453c1deb"
     },
     {
       "path": "src/application/configure/central-role-provider-default-wizard.ts",
@@ -2086,6 +2091,11 @@
       "digest": "sha256:85f376bd65aff463be58d6818eabf550e03d92ac200c2a2bceefa520f4e376f6"
     },
     {
+      "path": "src/composition-root/workflow-doctor-production.ts",
+      "mode": "100644",
+      "digest": "sha256:14b0ebfc8dcc93cd725a7adb42ad739d3af4cb1c6076ab074f45267a6759ddc5"
+    },
+    {
       "path": "src/entrypoints/ci/managed-documents.ts",
       "mode": "100644",
       "digest": "sha256:ec86ad1bd00d28806b3b32e34c4024bebaf6cbcedbaccde2986e66fd2c281c12"
@@ -2233,7 +2243,7 @@
     {
       "path": "src/entrypoints/cli/workflow-cli.ts",
       "mode": "100644",
-      "digest": "sha256:abf0dbd9cecb95610e7cc6dcd7f657915d592ea81f6e78715f4f42484c587e09"
+      "digest": "sha256:1bdd793db51140bd0522e5e95b73c183ffd8a46cb7a141ac0f934d97b5389fd0"
     },
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
@@ -3539,6 +3549,11 @@
       "path": "src/modules/planning-provider/guard-policy.ts",
       "mode": "100644",
       "digest": "sha256:af8c8373f68f4c5c29840fb6faa58e31ec953fa1bd1978743c9a10a1878d050c"
+    },
+    {
+      "path": "src/modules/planning-provider/openspec-diagnostics.ts",
+      "mode": "100644",
+      "digest": "sha256:577f8540930dc35bc6343428d9b2a94093d9a5abf56826f97b63e778b3ca62b4"
     },
     {
       "path": "src/modules/planning-provider/planning-archive-projection-port.ts",

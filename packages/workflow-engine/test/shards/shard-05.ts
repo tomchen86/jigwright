@@ -113,3 +113,5 @@ import '../task-strategy-patch.test.ts';
 import '../task-strategy-red-revision-boundary.test.ts';
 import '../task-strategy-red-revision-contract.test.ts';
 import '../task-strategy-red-revision.test.ts';
+import '../workflow-doctor-boundary.test.ts';
+import '../workflow-doctor.test.ts';
