@@ -108,6 +108,8 @@ import './openspec-adapter.integration.test.ts';
 import './openspec-doctor.integration.test.ts';
 import './workflow-doctor.test.ts';
 import './workflow-doctor-boundary.test.ts';
+import './task-status.test.ts';
+import './task-status-boundary.test.ts';
 import './openspec-schema-contract.integration.test.ts';
 import './planning-transition.contract.test.ts';
 import './openspec-planning-assets.integration.test.ts';

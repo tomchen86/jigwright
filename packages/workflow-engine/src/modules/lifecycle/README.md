@@ -8,11 +8,11 @@ Keep repository routing in one controlled source and derive the visible inventor
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:bd7bbf43cab743a4d70920741a81b612f7f39ec51b3d7cef6bd4e2797679b300 -->
+<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:b6f779d4ca93007dcdea2b30a9ce2ad732aeb8d35f9c6584d533e4c153caf636 -->
 
 <!-- prettier-ignore-start -->
 
-21 files changed in this module since confirmation.
+22 files changed in this module since confirmation.
 
 ## Commands
 
@@ -48,6 +48,7 @@ Keep repository routing in one controlled source and derive the visible inventor
 | ManagedTaskStrategyState | not-required, session-terminal, transformation-required, transformation-produced, red-authoring, implementation-required, ready, reservation-persisted, collaboration-grant-required, waiting-for-provider, provider-succeeded-awaiting-import, provider-failed, correction-required, correction-exhausted, caller-supplied-awaiting-import, patch-imported | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
 | ManagedTaskDiffReviewState | not-required, ready, collaboration-grant-required, external-grant-resume-required, direct-human-attestation-required, external-reconciliation-required, satisfied, challenge-response-required, challenge-closure-required, changes-required, waiting-for-provider, provider-succeeded-awaiting-reconciliation, provider-failed | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
 | TaskMechanicalTransformLifecycleState | transformation-required, transformation-produced | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
+| OpenTaskPhase | prepared, plan-committed, session-active, completed | [open-task-status.ts](open-task-status.ts) |
 
 ## Contracts
 
@@ -72,6 +73,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [contract-digests.ts](contract-digests.ts) | Computes identities for the required registered check definitions. | 1 | History unavailable |
 | [harness-bootstrap-parent-session.ts](harness-bootstrap-parent-session.ts) | Complete durable parent observations and lifecycle admission decisions. | 0 | History unavailable |
 | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) | Defines shared task strategy, review and authority-plan state names. | 1 | Header changed since confirmation |
+| [open-task-status.ts](open-task-status.ts) | Durable open-task phase and status values shared by activation and status queries. | 0 | History unavailable |
 | [planning-amendment-decision.ts](planning-amendment-decision.ts) | Creates, reads and replaces canonical amendment decisions embedded in proposal markers. | 1 | History unavailable |
 | [planning-execution-epoch-observations.ts](planning-execution-epoch-observations.ts) | Required repository observations, invoked at each epoch admission phase. | 0 | History unavailable |
 | [planning-execution-epoch.ts](planning-execution-epoch.ts) | Exact epoch manifests, evidence, and recovery predicates. | 0 | History unavailable |

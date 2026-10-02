@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import { readModuleDependencies } from './support/dependency-graph.ts';
-import { assertPureDependencyClosure } from './support/pure-dependency-closure.ts';
-import { readRepositoryDependencies } from './support/repository-dependency-graph.ts';
+import {
+  assertPureDependencyClosure,
+  assertPureApplicationDependencyClosure,
+} from './support/pure-dependency-closure.ts';
 
 const sourceRoot = path.resolve(import.meta.dirname, '../src');
 const owners = [
@@ -14,34 +14,9 @@ const owners = [
 
 function doctorClosure(owner: string, additionalSource = '') {
   const entry = path.join(sourceRoot, owner);
-  if (owner !== owners[0])
-    return assertPureDependencyClosure(entry, additionalSource);
-
-  // The shared helper's pure roots are domain/foundation files. Check the
-  // application entry with the same resolver, then delegate every dependency.
-  const root = path.resolve(sourceRoot, '../../..');
-  const result = readRepositoryDependencies(root).read(entry, additionalSource);
-  assert.deepEqual(result.problems, [], 'Outward pure dependency');
-  assert.deepEqual(result.effects, [], 'Effect import');
-  const resolved = new Set(result.edges.map(({ specifier }) => specifier));
-  for (const { specifier } of readModuleDependencies(
-    entry,
-    fs.readFileSync(entry, 'utf8') + additionalSource,
-  )) {
-    assert.notEqual(specifier, null, 'Unresolved computed dependency');
-    assert.ok(
-      specifier !== null &&
-        (resolved.has(specifier) ||
-          ['crypto', 'node:crypto', 'path', 'node:path'].includes(specifier)),
-      `Implementation dependency: ${specifier}`,
-    );
-  }
-  const closure = new Set([entry]);
-  for (const edge of result.edges) {
-    for (const file of assertPureDependencyClosure(path.join(root, edge.to)))
-      closure.add(file);
-  }
-  return closure;
+  return owner === owners[0]
+    ? assertPureApplicationDependencyClosure(entry, additionalSource)
+    : assertPureDependencyClosure(entry, additionalSource);
 }
 
 test('doctor use case and provider diagnostic contract have pure value and type closures', () => {

@@ -1,3 +1,7 @@
+import type {
+  OpenTaskPhase,
+  OpenTaskLifecycleStatus,
+} from '../../modules/lifecycle/open-task-status.ts';
 import {
   type TaskMandatePreparationAuthorization,
   type TaskMandateActiveBinding,
@@ -98,9 +102,6 @@ const MANDATE_ID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const MAX_JOURNAL_BYTES = 128 * 1024;
 
-export type OpenTaskPhase =
-  'prepared' | 'plan-committed' | 'session-active' | 'completed';
-
 export type OpenTaskJournal = Readonly<{
   schemaVersion: 2;
   kind: 'open-task-transaction.v2';
@@ -124,30 +125,6 @@ export type OpenTaskJournal = Readonly<{
   sessionId: string;
   createdAt: string;
   completedAt: string | null;
-}>;
-
-export type OpenTaskLifecycleStatus = Readonly<{
-  kind: 'open-task-lifecycle-status.v1';
-  state:
-    | 'opening'
-    | 'active'
-    | 'revising'
-    | 'committed'
-    | 'aborted'
-    | 'recovery-required';
-  lastDurablePhase: OpenTaskPhase;
-  transactionId: string;
-  changeId: string;
-  taskId: string;
-  mandateTaskId: string | null;
-  sessionId: string;
-  parentCommit: string;
-  planningCommit: string;
-  baselineTree: string;
-  reportId: string;
-  retrySafe: boolean;
-  recoveryCommand: string | null;
-  errorCode: string | null;
 }>;
 
 export type OpenTaskResult = Readonly<{

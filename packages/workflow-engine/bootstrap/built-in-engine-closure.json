@@ -958,7 +958,7 @@
     {
       "path": "src/application/execute-task/open-task.ts",
       "mode": "100644",
-      "digest": "sha256:1dd7ff23546e68f453f4bab6a28d46fbaa8538671861155e4b7293a16df24c62"
+      "digest": "sha256:1abb549195912d8710c4c47dd4bda88af5ab61fb1ffe5d56c398387b7ea013a3"
     },
     {
       "path": "src/application/execute-task/session-abort.ts",
@@ -1451,6 +1451,11 @@
       "digest": "sha256:2d7baca1d67ab65cf53d1c755c897ba97424de6d02500a46d9ed40d87ee081c7"
     },
     {
+      "path": "src/application/session-inspection/task-status.ts",
+      "mode": "100644",
+      "digest": "sha256:d703f6895040e267402b91c44a849104fc2744bb003b88aac5d8a8601613e168"
+    },
+    {
       "path": "src/application/task-apply-authorization/protected-task-apply-authorization.ts",
       "mode": "100644",
       "digest": "sha256:fa9e6b8bc6d05d32b4bad2b42783537156a1a99aa3426dcc2abdebfcb175d6b5"
@@ -1633,7 +1638,7 @@
     {
       "path": "src/composition-root/cli-command-services.ts",
       "mode": "100644",
-      "digest": "sha256:12b495ae84fc25cfc9a58baaaa521906a251351e6ccf30d629ec5d838025bf70"
+      "digest": "sha256:00fef850c0d64a98fe371fddaf439c35065bd5bf5e5e40d9be50fd773657b68c"
     },
     {
       "path": "src/composition-root/collaboration-grant-issuance-production.ts",
@@ -2041,6 +2046,11 @@
       "digest": "sha256:01369c9eba9336a35bd8c3bdda19eed16e09d40f5d9cdf623da533d1d3f19a04"
     },
     {
+      "path": "src/composition-root/task-status-production.ts",
+      "mode": "100644",
+      "digest": "sha256:6e5474ec3f1ddced1d0bfe5ccb47777ee7852c37a94dad9724267eaeacba57a5"
+    },
+    {
       "path": "src/composition-root/task-strategy-correction-production.ts",
       "mode": "100644",
       "digest": "sha256:3b74bc4ae1d12a83403e7b8811cdbdb7b4c99ac89beac01a3c4900c8992ecbeb"
@@ -2233,7 +2243,7 @@
     {
       "path": "src/entrypoints/cli/task-lifecycle-cli.ts",
       "mode": "100644",
-      "digest": "sha256:25314c580296110c31ca847f65456cfba719198c6044d71997a6d97b0db71ef6"
+      "digest": "sha256:d98a3b38992bd23a23186af7e47fac6bed5d335d470464dbf7c2080aa15870a1"
     },
     {
       "path": "src/entrypoints/cli/task-review-cli-input.ts",
@@ -3484,6 +3494,11 @@
       "path": "src/modules/lifecycle/managed-workflow-state-contract.ts",
       "mode": "100644",
       "digest": "sha256:9b65eb2baf0e1d2374e0b83ec38eecdeb88394dd63f65a787212605b014e1db9"
+    },
+    {
+      "path": "src/modules/lifecycle/open-task-status.ts",
+      "mode": "100644",
+      "digest": "sha256:ecad4830a16355bd263d74acf717b6f734ce2cd2451ce793664e3eb77a4a5831"
     },
     {
       "path": "src/modules/lifecycle/planning-amendment-decision.ts",

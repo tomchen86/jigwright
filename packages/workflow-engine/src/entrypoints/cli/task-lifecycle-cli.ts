@@ -1,3 +1,4 @@
+import { queryTaskStatus } from '../../composition-root/task-status-production.ts';
 import { currentGovernanceIntakeCounts } from '../../composition-root/governance-intake-command-production.ts';
 /**
  * Parses and dispatches task planning, execution, status, and review
@@ -12,22 +13,15 @@ import {
   resolveOpenTaskId,
   openTask,
   contextualizeOpenTaskError,
-  findOpenTaskLifecycleStatus,
   discoverRepository,
-  inspectFinalizeRecoveryStatus,
-  findTaskCommits,
   cancelFinalizeRecovery,
   commitSession,
-  getSession,
   preflightTaskSession,
-  listSessions,
   abortSession,
   updateTaskSessionBase,
   reviseTask,
   resumeTask,
-  inspectTaskRevisionStatus,
   resumeTaskStrategy,
-  inspectTaskStrategyLifecycle,
   parseTaskStrategyRedRevisionRequest,
   inspectTaskDiffReviewSubject,
   inspectTaskDiffReviewStatus,
@@ -44,7 +38,6 @@ import {
   commitPlanAmendment,
   resumeProposeFromFile,
   startProposeFromFile,
-  getProposeStatus,
   readProviderInvocation,
 } from '../../composition-root/cli-command-services.ts';
 import type { TaskStrategyLifecycleStatus } from '../../composition-root/cli-command-services.ts';
@@ -79,15 +72,6 @@ import {
   taskDiffCollaborationGrantSelection,
 } from '../../composition-root/cli-authority-production.ts';
 import { parseTaskDiffReviewCliInput } from './task-review-cli-input.ts';
-
-function sessionStatusRepositoryRoot(
-  callerRoot: string,
-  session: ReturnType<typeof getSession>,
-): string {
-  return session.state === 'active' || session.state === 'revising'
-    ? session.repositoryRoot
-    : callerRoot;
-}
 
 function taskDiffReviewUsage(): WorkflowError {
   return usage(
@@ -325,124 +309,6 @@ function dispatchResumeCommand(
       ok: true,
       result,
       ...(providerDispatch === null ? {} : { providerDispatch }),
-    };
-  }
-}
-
-function dispatchStatusCommand(
-  command: 'status',
-  rest: string[],
-  cwd: string,
-): CommandResult {
-  {
-    requireArgumentCount(command, rest, 0, 1);
-    const intakeCounts = currentGovernanceIntakeCounts(cwd);
-    if (rest[0]) {
-      if (rest[0].startsWith('investigation-')) {
-        return {
-          command,
-          ok: true,
-          intakeCounts,
-          result: getProposeStatus(cwd, rest[0], {
-            consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-            consumedPlanReviewReplay: productionConsumedPlanReviewReplayPort,
-          }),
-        };
-      }
-      const openTaskStatus = findOpenTaskLifecycleStatus(cwd, rest[0]);
-      if (openTaskStatus !== null) {
-        if (
-          openTaskStatus.state === 'opening' ||
-          openTaskStatus.state === 'recovery-required'
-        ) {
-          return {
-            command,
-            ok: true,
-            intakeCounts,
-            openTask: openTaskStatus,
-          };
-        }
-        const session = getSession(cwd, openTaskStatus.sessionId);
-        const statusRoot = sessionStatusRepositoryRoot(cwd, session);
-        const finalizeStatus = inspectFinalizeRecoveryStatus(
-          statusRoot,
-          session.sessionId,
-          {
-            consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-          },
-        );
-        return {
-          command,
-          ok: true,
-          intakeCounts,
-          openTask: openTaskStatus,
-          session,
-          ...(finalizeStatus ? { finalize: finalizeStatus } : {}),
-          taskStrategy: inspectTaskStrategyLifecycle(
-            statusRoot,
-            session.sessionId,
-          ),
-          taskRevision: inspectTaskRevisionStatus(
-            statusRoot,
-            session.sessionId,
-          ),
-          taskCommits: findTaskCommits(
-            statusRoot,
-            session.changeId,
-            session.taskId,
-          ),
-        };
-      }
-      const session = getSession(cwd, rest[0]);
-      const statusRoot = sessionStatusRepositoryRoot(cwd, session);
-      const finalizeStatus = inspectFinalizeRecoveryStatus(
-        statusRoot,
-        session.sessionId,
-        {
-          consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-        },
-      );
-      return {
-        command,
-        ok: true,
-        intakeCounts,
-        session,
-        ...(finalizeStatus ? { finalize: finalizeStatus } : {}),
-        taskStrategy: inspectTaskStrategyLifecycle(
-          statusRoot,
-          session.sessionId,
-        ),
-        taskRevision: inspectTaskRevisionStatus(statusRoot, session.sessionId),
-        taskCommits: findTaskCommits(
-          statusRoot,
-          session.changeId,
-          session.taskId,
-        ),
-      };
-    }
-    const sessions = listSessions(cwd);
-    return {
-      command,
-      ok: true,
-      intakeCounts,
-      sessions,
-      taskStrategies: sessions.map((session) => {
-        const statusRoot = sessionStatusRepositoryRoot(cwd, session);
-        return inspectTaskStrategyLifecycle(statusRoot, session.sessionId);
-      }),
-      taskRevisions: sessions.map((session) => {
-        const statusRoot = sessionStatusRepositoryRoot(cwd, session);
-        return inspectTaskRevisionStatus(statusRoot, session.sessionId);
-      }),
-      taskCommits: sessions.map((session) => ({
-        changeId: session.changeId,
-        taskId: session.taskId,
-        commits: findTaskCommits(
-          sessionStatusRepositoryRoot(cwd, session),
-          session.changeId,
-          session.taskId,
-        ),
-      })),
     };
   }
 }
@@ -847,7 +713,8 @@ export function createTaskLifecycleCommands({
         return dispatchResumeCommand(command, rest, cwd);
 
       case 'status':
-        return dispatchStatusCommand(command, rest, cwd);
+        requireArgumentCount(command, rest, 0, 1);
+        return { command, ok: true, ...queryTaskStatus(cwd, rest[0]) };
 
       case 'check':
         requireArgumentCount(command, rest, 1, 1);

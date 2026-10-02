@@ -96,6 +96,8 @@ import '../task-mandate-boundary.test.ts';
 import '../task-mandate-protected-finalize.contract.test.ts';
 import '../task-mandate-rules.test.ts';
 import '../task-revision-approval-boundary.test.ts';
+import '../task-status-boundary.test.ts';
+import '../task-status.test.ts';
 import '../task-strategy-correction-boundary.test.ts';
 import '../task-strategy-correction.test.ts';
 import '../task-strategy-execution-boundary.test.ts';

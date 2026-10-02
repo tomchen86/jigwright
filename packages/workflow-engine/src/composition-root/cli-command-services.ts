@@ -29,7 +29,6 @@ export const resumeTask = resumeTaskWithContractReader.bind(
 import {
   resolveOpenTaskId as resolveOpenTaskIdWithContractReader,
   contextualizeOpenTaskError as contextualizeOpenTaskErrorWithContractReader,
-  findOpenTaskLifecycleStatus as findOpenTaskLifecycleStatusWithContractReader,
 } from '../application/execute-task/open-task.ts';
 export const resolveOpenTaskId = resolveOpenTaskIdWithContractReader.bind(
   undefined,
@@ -43,12 +42,6 @@ export const contextualizeOpenTaskError =
     productionChangeContractReader,
   );
 
-export const findOpenTaskLifecycleStatus =
-  findOpenTaskLifecycleStatusWithContractReader.bind(
-    undefined,
-    handoffDocuments,
-    productionChangeContractReader,
-  );
 import { updateTaskSessionBase as updateTaskSessionBaseWithContractReader } from '../application/execute-task/update-base.ts';
 export const updateTaskSessionBase =
   updateTaskSessionBaseWithContractReader.bind(
@@ -176,7 +169,6 @@ export {
 } from './investigation-retry-production.ts';
 export { inspectInvestigationQuarantineState } from '../runtime/storage-journal/human-resolution-state.ts';
 export { runtimePaths } from '../runtime/session-workspace/session-store.ts';
-export { inspectTaskRevisionStatus } from '../application/revise/task-revision.ts';
 import { prepareTaskRevisionApprovalBinding as prepareTaskRevisionApprovalBindingWithServices } from '../application/revise/task-revision.ts';
 export const prepareTaskRevisionApprovalBinding =
   prepareTaskRevisionApprovalBindingWithServices.bind(
@@ -217,16 +209,8 @@ export { parseChangeRoutingIntent } from '../modules/lifecycle/change-routing.ts
 export { observeChangeRoutingContinuationState } from '../runtime/change-routing/routing-observation.ts';
 
 export { openTask } from './open-task-production.ts';
-export { findTaskCommits } from '../application/finalize/lifecycle.ts';
-export {
-  inspectFinalizeRecoveryStatus,
-  cancelFinalizeRecovery,
-} from './finalization-production.ts';
+export { cancelFinalizeRecovery } from './finalization-production.ts';
 
-export {
-  getSession,
-  listSessions,
-} from '../runtime/repository-observation/workflow-session-context.ts';
 export { abortSession } from './task-session-production.ts';
 
 export { resumeTaskStrategy } from './task-strategy-production.ts';
@@ -237,7 +221,6 @@ export { createTaskDiffReviewChallengeResponse } from '../modules/assurance/task
 export {
   resumeProposeFromFile,
   startProposeFromFile,
-  getProposeStatus,
 } from './propose-production.ts';
 export { readProviderInvocation } from '../runtime/storage-journal/provider-invocation-store.ts';
 export {
@@ -265,5 +248,3 @@ export const preflightTaskSession = preflightTaskSessionWithRouting.bind(
   undefined,
   productionChangeContract,
 );
-
-export { inspectTaskStrategyLifecycle } from './task-strategy-production.ts';
