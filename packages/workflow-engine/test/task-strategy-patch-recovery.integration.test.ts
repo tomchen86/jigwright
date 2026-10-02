@@ -17,7 +17,7 @@ import { startSession } from '../src/application/execute-task/session.ts';
 import {
   inspectTaskStrategyTransaction,
   sealTaskStrategyRed,
-} from '../src/application/execute-task/task-strategy-execution.ts';
+} from '../src/composition-root/task-strategy-execution-production.ts';
 import {
   adoptCurrentTaskStrategyImplementation,
   adoptCurrentTaskStrategyCorrection,
@@ -68,12 +68,10 @@ for (const layout of ['overlapping', 'disjoint'] as const) {
       const redBytes = "throw new Error('sealed expectation');\n";
       fs.mkdirSync(path.dirname(testPath), { recursive: true });
       fs.writeFileSync(testPath, redBytes);
-      const predecessor = sealTaskStrategyRed(
-        productionChangeContract,
-        repository,
-        session.sessionId,
-        { explicitActor: 'codex', environment: {} },
-      );
+      const predecessor = sealTaskStrategyRed(repository, session.sessionId, {
+        explicitActor: 'codex',
+        environment: {},
+      });
       const implementationPath = path.join(repository, 'src/feature.ts');
       const correctionRelativePath =
         layout === 'overlapping' ? 'src/feature.ts' : 'src/correction.ts';
@@ -562,15 +560,10 @@ function createRecoveryFixture(layout: 'overlapping' | 'disjoint') {
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-    const predecessor = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const predecessor = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -833,12 +826,10 @@ function patchRecoveryFixture(single: boolean, caller = false) {
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-    const transaction = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      { explicitActor: 'codex', environment: {} },
-    );
+    const transaction = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     const context = observeInvestigationRuntimeContext(repository);

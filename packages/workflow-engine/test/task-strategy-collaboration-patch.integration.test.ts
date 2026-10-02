@@ -5,7 +5,7 @@ import test from 'node:test';
 import { startSession } from '../src/application/execute-task/session.ts';
 import fs from 'node:fs';
 import path from 'node:path';
-import { sealTaskStrategyRed } from '../src/application/execute-task/task-strategy-execution.ts';
+import { sealTaskStrategyRed } from '../src/composition-root/task-strategy-execution-production.ts';
 import {
   beginTaskStrategyImplementation,
   inspectTaskStrategyImplementation,
@@ -48,15 +48,10 @@ test('zero callable implementers expose only caller-supplied collaboration recov
       path.join(repository, 'test/feature.test.mjs'),
       "throw new Error('feature behavior is not implemented');\n",
     );
-    sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
 
     const paused = beginTaskStrategyImplementation(
       repository,
@@ -99,15 +94,10 @@ test('zero-provider caller patch imports only through an exact consumed collabor
       path.join(repository, 'test/feature.test.mjs'),
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const paused = beginTaskStrategyImplementation(
       repository,
       session.sessionId,
@@ -249,15 +239,10 @@ test('zero-provider caller patch validates frozen RED bytes before reserving its
       "throw new Error('feature behavior is not implemented');\n";
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, originalTest);
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const paused = beginTaskStrategyImplementation(
       repository,
       session.sessionId,
@@ -334,15 +319,10 @@ test('durable consumed caller grant resumes the exact patch after interruption',
       path.join(repository, 'test/feature.test.mjs'),
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const paused = beginTaskStrategyImplementation(
       repository,
       session.sessionId,

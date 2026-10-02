@@ -6,7 +6,7 @@ import path from 'node:path';
 import {
   sealTaskStrategyRed,
   inspectTaskStrategyTransaction,
-} from '../src/application/execute-task/task-strategy-execution.ts';
+} from '../src/composition-root/task-strategy-execution-production.ts';
 import {
   beginTaskStrategyImplementation,
   inspectTaskStrategyImplementation,
@@ -60,15 +60,10 @@ test('cross-agent RED schedules one session-independent implementation reservati
       path.join(repository, 'test/feature.test.mjs'),
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
 
     const waiting = beginTaskStrategyImplementation(
       repository,
@@ -247,15 +242,10 @@ test('provider worker binds task implementation output to the exact sealed subje
         testPath,
         "throw new Error('feature behavior is not implemented');\n",
       );
-      const red = sealTaskStrategyRed(
-        productionChangeContract,
-        repository,
-        session.sessionId,
-        {
-          explicitActor: 'codex',
-          environment: {},
-        },
-      );
+      const red = sealTaskStrategyRed(repository, session.sessionId, {
+        explicitActor: 'codex',
+        environment: {},
+      });
       const waiting = beginTaskStrategyImplementation(
         repository,
         session.sessionId,
@@ -315,15 +305,10 @@ test('provider completion rejects a digest-consistent wrong task subject before 
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const waiting = beginTaskStrategyImplementation(
       repository,
       session.sessionId,
@@ -684,15 +669,10 @@ test('cross-agent implementation uses the sole provider in a fresh session', () 
       path.join(repository, 'test/feature.test.mjs'),
       "throw new Error('feature behavior is not implemented');\n",
     );
-    sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
 
     const waiting = beginTaskStrategyImplementation(
       repository,
@@ -743,15 +723,10 @@ test('provider worker rejects a task implementation whose sealed RED owner has d
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const waiting = beginTaskStrategyImplementation(
       repository,
       session.sessionId,
@@ -792,15 +767,10 @@ test('provider worker cannot terminally succeed after its task implementation ow
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const waiting = beginTaskStrategyImplementation(
       repository,
       session.sessionId,
@@ -880,15 +850,10 @@ test('task implementation reservation rejects independently redigested replay me
       path.join(repository, 'test/feature.test.mjs'),
       "throw new Error('feature behavior is not implemented');\n",
     );
-    sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const waiting = beginTaskStrategyImplementation(
       repository,
       session.sessionId,

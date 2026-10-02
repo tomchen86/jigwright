@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import {
   sealTaskStrategyRed,
   inspectTaskStrategyTransaction,
-} from '../src/application/execute-task/task-strategy-execution.ts';
+} from '../src/composition-root/task-strategy-execution-production.ts';
 import assert from 'node:assert/strict';
 import {
   validateTaskStrategyPatch,
@@ -46,15 +46,10 @@ test('cross-agent patch validation derives one bounded implementation tree witho
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -110,15 +105,10 @@ test('patch validation rejects frozen tests, path escape, and unsafe file modes 
       "throw new Error('feature behavior is not implemented');\n";
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, originalTest);
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
 
     fs.writeFileSync(testPath, "throw new Error('weakened');\n");
     const frozenPatch = diffAgainstTree(repository, red.red.candidateTree, [
@@ -191,15 +181,10 @@ test('single-agent patch validation permits the RED author without weakening pat
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -243,15 +228,10 @@ test('single-agent patch validation rejects an actor other than the sealed RED a
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -292,15 +272,10 @@ test('patch import persists authority before mutation and exact replay reaches e
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -412,15 +387,10 @@ test('patch-applied crash reconciles the exact candidate and later drift stales 
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -483,15 +453,10 @@ test('a durable prepared patch reservation rejects a different patch before eith
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -544,15 +509,10 @@ test('patch replay rejects independently redigested reservation metadata', () =>
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');

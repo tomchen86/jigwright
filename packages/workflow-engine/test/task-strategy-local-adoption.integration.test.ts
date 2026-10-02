@@ -18,7 +18,7 @@ import assert from 'node:assert/strict';
 import {
   inspectTaskStrategyTransaction,
   sealTaskStrategyRed,
-} from '../src/application/execute-task/task-strategy-execution.ts';
+} from '../src/composition-root/task-strategy-execution-production.ts';
 import { readTaskStrategyPatchCurrentBinding } from '../src/runtime/storage-journal/task-strategy-patch-store.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { adoptCurrentTaskStrategyImplementation } from '../src/composition-root/task-strategy-patch-production.ts';
@@ -204,15 +204,10 @@ test('single-agent local adoption replays every durable publication cut without 
         testPath,
         "throw new Error('feature behavior is not implemented');\n",
       );
-      sealTaskStrategyRed(
-        productionChangeContract,
-        repository,
-        session.sessionId,
-        {
-          explicitActor: 'codex',
-          environment: {},
-        },
-      );
+      sealTaskStrategyRed(repository, session.sessionId, {
+        explicitActor: 'codex',
+        environment: {},
+      });
       const implementationPath = path.join(repository, 'src/feature.ts');
       fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
       const implementationBytes = Buffer.from('export const feature = true;\n');
@@ -273,15 +268,10 @@ test('single-agent reservation replay never resurrects implementation bytes reve
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');

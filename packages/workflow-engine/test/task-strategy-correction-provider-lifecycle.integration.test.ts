@@ -41,7 +41,7 @@ import {
   resumeTaskStrategy,
 } from '../src/composition-root/task-strategy-production.ts';
 import { readTaskStrategyImplementationResultBinding } from '../src/runtime/storage-journal/task-strategy-provider-store.ts';
-import { sealTaskStrategyRed } from '../src/application/execute-task/task-strategy-execution.ts';
+import { sealTaskStrategyRed } from '../src/composition-root/task-strategy-execution-production.ts';
 import { checkSession } from './support/local-engine-selection-host.ts';
 import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
 import {
@@ -72,15 +72,10 @@ for (const crashCut of [
       const testPath = path.join(repository, 'test/feature.test.mjs');
       fs.mkdirSync(path.dirname(testPath), { recursive: true });
       fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-      const red = sealTaskStrategyRed(
-        productionChangeContract,
-        repository,
-        session.sessionId,
-        {
-          explicitActor: 'codex',
-          environment: {},
-        },
-      );
+      const red = sealTaskStrategyRed(repository, session.sessionId, {
+        explicitActor: 'codex',
+        environment: {},
+      });
 
       const initialWaiting = beginTaskStrategyImplementation(
         repository,

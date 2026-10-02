@@ -94,7 +94,7 @@ import {
   inspectTaskMechanicalTransformLifecycle,
   resumeTaskMechanicalTransformation,
 } from '../application/execute-task/task-mechanical-transform-lifecycle.ts';
-import { sealTaskStrategyRed } from '../application/execute-task/task-strategy-execution.ts';
+import { sealTaskStrategyRed } from './task-strategy-execution-production.ts';
 import { readProviderRetryAccountingEvidence } from '../runtime/storage-journal/provider-retry-accounting-reader.ts';
 
 /** Each call observes paths afresh; binding the journal performs no record reads. */
@@ -270,7 +270,7 @@ const lifecycle = createTaskStrategyLifecycle({
     ),
   },
   red: {
-    seal: sealTaskStrategyRed.bind(undefined, productionChangeContract),
+    seal: sealTaskStrategyRed,
     beginRevision: beginTaskStrategyRedRevision,
     continueRevision: continueTaskStrategyRedRevision,
   },

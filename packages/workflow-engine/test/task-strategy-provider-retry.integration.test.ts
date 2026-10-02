@@ -42,7 +42,7 @@ import {
   inspectTaskStrategyLifecycle,
   resumeTaskStrategy,
 } from '../src/composition-root/task-strategy-production.ts';
-import { sealTaskStrategyRed } from '../src/application/execute-task/task-strategy-execution.ts';
+import { sealTaskStrategyRed } from '../src/composition-root/task-strategy-execution-production.ts';
 import {
   readCurrentTaskStrategyGreenFailure,
   resolveCurrentTaskStrategyCorrection,
@@ -73,15 +73,10 @@ test('routine resume replaces a failed implementation transport without changing
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const initial = beginTaskStrategyImplementation(
       repository,
       session.sessionId,
@@ -276,15 +271,10 @@ test('correction provider transport retry keeps one correction round and binds t
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const initial = beginTaskStrategyImplementation(
       repository,
       session.sessionId,
@@ -457,15 +447,10 @@ test('repeated transport failure reuses the provider within its fixed budget', (
       retry.replacement.strategyChanges,
     );
 
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -624,7 +609,7 @@ function openFailedImplementation(repository: string) {
   const testPath = path.join(repository, 'test/feature.test.mjs');
   fs.mkdirSync(path.dirname(testPath), { recursive: true });
   fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-  sealTaskStrategyRed(productionChangeContract, repository, session.sessionId, {
+  sealTaskStrategyRed(repository, session.sessionId, {
     explicitActor: 'codex',
     environment: {},
   });

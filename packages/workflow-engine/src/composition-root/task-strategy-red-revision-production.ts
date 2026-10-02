@@ -9,7 +9,7 @@ import { observeInvestigationRuntimeContext } from '../runtime/repository-observ
 import { inspectSession } from '../application/session-inspection/session-inspection.ts';
 import { pinCheckRunner } from '../adapters/consumer/repository/work-registry/check-runner.ts';
 import { restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock } from './task-strategy-patch-production.ts';
-import { prepareTaskStrategyRedSuccessorUnlocked } from '../application/execute-task/task-strategy-execution.ts';
+import { prepareTaskStrategyRedSuccessorUnlocked } from './task-strategy-execution-production.ts';
 import {
   withRepositoryLifecycleOperation,
   withSessionOperation,
@@ -107,12 +107,7 @@ export const taskStrategyRedRevisionOperations: TaskStrategyRedRevisionOperation
     restoreImplementationToRed:
       restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock,
     prepareSuccessor: (cwd, sessionId, options) =>
-      prepareTaskStrategyRedSuccessorUnlocked(
-        productionChangeContract,
-        cwd,
-        sessionId,
-        options,
-      ),
+      prepareTaskStrategyRedSuccessorUnlocked(cwd, sessionId, options),
     environment: () => process.env,
     clock: { now: () => new Date() },
   };

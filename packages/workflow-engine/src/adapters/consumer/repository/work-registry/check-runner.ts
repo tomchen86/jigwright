@@ -65,24 +65,8 @@ export const createCheckExecution: CheckExecutionFactory = (
   },
 });
 
-export type ExpectedRedCheckResult = Readonly<{
-  checkId: string;
-  exitCode: number;
-  runner: string;
-  runnerDigest: string;
-  failureCategory:
-    | 'assertion'
-    | 'behavior-mismatch'
-    | 'syntax'
-    | 'missing-dependency'
-    | 'unsafe-database'
-    | 'unrelated';
-  selector: string;
-  testPaths: readonly string[];
-  stdoutDigest: string;
-  stderrDigest: string;
-  failureFingerprint: string;
-}>;
+import type { ExpectedRedCheckResult } from '../../../../modules/assurance/check-execution-port.ts';
+export type { ExpectedRedCheckResult } from '../../../../modules/assurance/check-execution-port.ts';
 
 const RED_RESULT_PREFIX = 'WORKFLOW_RED_CHECK_RESULT ';
 

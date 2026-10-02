@@ -22,7 +22,7 @@ import { startSession } from '../src/application/execute-task/session.ts';
 import { resolveCurrentTaskStrategyCorrection } from '../src/composition-root/task-strategy-correction-production.ts';
 import { listTaskStrategyCorrectionRounds } from '../src/runtime/storage-journal/task-strategy-correction-round-store.ts';
 import { adoptCurrentTaskStrategyImplementation } from '../src/composition-root/task-strategy-patch-production.ts';
-import { sealTaskStrategyRed } from '../src/application/execute-task/task-strategy-execution.ts';
+import { sealTaskStrategyRed } from '../src/composition-root/task-strategy-execution-production.ts';
 import { resumeTaskStrategy } from '../src/composition-root/task-strategy-production.ts';
 import { checkSession } from './support/local-engine-selection-host.ts';
 import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
@@ -47,15 +47,10 @@ test('single-agent correction reserves and authenticates one local round before 
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-    const red = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');

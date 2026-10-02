@@ -413,7 +413,7 @@
     {
       "path": "src/adapters/consumer/repository/work-registry/check-runner.ts",
       "mode": "100644",
-      "digest": "sha256:16d1bf0b6c18c65b51ce43229e0ec2128c23b30603700cfd138cf576af12181d"
+      "digest": "sha256:37603426095593133d7a4fa33df65a4e2e24b5ac3456408f39725c2794c48071"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/database-policy.ts",
@@ -986,9 +986,14 @@
       "digest": "sha256:01f37fd88110455d0ed0cd8d170183d37c2f26dd7aef29acd9f4379bd5ffeeb0"
     },
     {
+      "path": "src/application/execute-task/task-strategy-execution-operations.ts",
+      "mode": "100644",
+      "digest": "sha256:dcbcbaf12121513b0c24542d4df8f8c9919a3c0d1924a13562503dd473f179aa"
+    },
+    {
       "path": "src/application/execute-task/task-strategy-execution.ts",
       "mode": "100644",
-      "digest": "sha256:6ca0a7532d38b682618e0b86133632b4236f206721b71729eab7ecb7aee8bfef"
+      "digest": "sha256:9fa679207fda07a4c9415f9261a6d5b2935a80524773e1691f5f02eb9b2896e5"
     },
     {
       "path": "src/application/execute-task/task-strategy-implementation-context.ts",
@@ -2021,6 +2026,11 @@
       "digest": "sha256:3b74bc4ae1d12a83403e7b8811cdbdb7b4c99ac89beac01a3c4900c8992ecbeb"
     },
     {
+      "path": "src/composition-root/task-strategy-execution-production.ts",
+      "mode": "100644",
+      "digest": "sha256:01768d34011275f932504be5a752c6df9f625a822a9a8f915f20705b114a2d37"
+    },
+    {
       "path": "src/composition-root/task-strategy-gate-production.ts",
       "mode": "100644",
       "digest": "sha256:38e721903e0f76713c03f1b3816c4d230625030812716c0169667f9ea525081d"
@@ -2033,12 +2043,12 @@
     {
       "path": "src/composition-root/task-strategy-production.ts",
       "mode": "100644",
-      "digest": "sha256:cf53f03fa1b8eb614cec74d9e8f118d252e8f130c8a52929355690f096ff687d"
+      "digest": "sha256:b7a59da62331382bf0146740a8dd933c2cb3415fd8b13c1a55c28315b823cd07"
     },
     {
       "path": "src/composition-root/task-strategy-red-revision-production.ts",
       "mode": "100644",
-      "digest": "sha256:b791b487667c912c73c5f122a483f677c1371126cf19eab3df5e043a89cff952"
+      "digest": "sha256:f7fbe4c7b7f8fc1a0bc655cb631dd4a30269023ca345a6e1435f81880330e59c"
     },
     {
       "path": "src/composition-root/validated-contract-context.ts",
@@ -2268,7 +2278,7 @@
     {
       "path": "src/modules/assurance/check-execution-port.ts",
       "mode": "100644",
-      "digest": "sha256:8f94f196dbdb7dc29fc4b036f2a6c9219d7f1f5b384934a86bd5a6614d1b9d79"
+      "digest": "sha256:1805ac14bf7496ddb4467bc217284ccf8b8d29533aef3dcf2108446ee41549c9"
     },
     {
       "path": "src/modules/assurance/check-execution.ts",
@@ -4504,6 +4514,11 @@
       "path": "src/runtime/repository-observation/task-strategy-gate.ts",
       "mode": "100644",
       "digest": "sha256:89b5d936d3e13494ae1ee434ec2ebd1d83e4e6ff7612ceb1ae1da744c6ee8265"
+    },
+    {
+      "path": "src/runtime/repository-observation/task-strategy-red-files.ts",
+      "mode": "100644",
+      "digest": "sha256:3314527d239d3724519fdcbe7ebe1af013cb7ee94b21642a5b184a73e1c02d59"
     },
     {
       "path": "src/runtime/repository-observation/workflow-contract-artifacts.ts",

@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import {
   inspectTaskStrategyTransaction,
   sealTaskStrategyRed,
-} from '../src/application/execute-task/task-strategy-execution.ts';
+} from '../src/composition-root/task-strategy-execution-production.ts';
 import {
   adoptCurrentTaskStrategyImplementation,
   adoptCurrentTaskStrategyCorrection,
@@ -133,15 +133,10 @@ test('ordinary resume discovers every RED revision crash before current-ref publ
       const testPath = path.join(repository, 'test/feature.test.mjs');
       fs.mkdirSync(path.dirname(testPath), { recursive: true });
       fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-      const predecessor = sealTaskStrategyRed(
-        productionChangeContract,
-        repository,
-        session.sessionId,
-        {
-          explicitActor: 'codex',
-          environment: {},
-        },
-      );
+      const predecessor = sealTaskStrategyRed(repository, session.sessionId, {
+        explicitActor: 'codex',
+        environment: {},
+      });
       const implementationPath = path.join(repository, 'src/feature.ts');
       fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
       fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -224,15 +219,10 @@ test('a rejected RED revision preflight cannot poison the next exact request', (
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-    const predecessor = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const predecessor = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
 
     assert.throws(
       () =>
@@ -284,15 +274,10 @@ test('RED revision removes only the exact imported implementation and never acce
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-    sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -354,15 +339,10 @@ test('RED revision preserves out-of-scope bytes while refusing to reseal them', 
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-    sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const predecessor = inspectTaskStrategyTransaction(
       repository,
       session.sessionId,
@@ -426,15 +406,10 @@ test('RED revision restores every authenticated correction head in reverse order
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
-    const predecessor = sealTaskStrategyRed(
-      productionChangeContract,
-      repository,
-      session.sessionId,
-      {
-        explicitActor: 'codex',
-        environment: {},
-      },
-    );
+    const predecessor = sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
     fs.writeFileSync(implementationPath, 'export const feature = true;\n');
@@ -573,12 +548,10 @@ for (const [id, effect, operation, phase] of durableCuts)
       const testPath = path.join(repository, 'test/feature.test.mjs');
       fs.mkdirSync(path.dirname(testPath), { recursive: true });
       fs.writeFileSync(testPath, "throw new Error('original expectation');\n");
-      const predecessor = sealTaskStrategyRed(
-        productionChangeContract,
-        repository,
-        session.sessionId,
-        { explicitActor: 'codex', environment: {} },
-      );
+      const predecessor = sealTaskStrategyRed(repository, session.sessionId, {
+        explicitActor: 'codex',
+        environment: {},
+      });
       const context = observeInvestigationRuntimeContext(repository);
       const sessionPath = path.join(
         context.lifecycleRuntime.sessions,
