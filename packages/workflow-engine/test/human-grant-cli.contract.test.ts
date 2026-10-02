@@ -294,8 +294,8 @@ test('required session and Grant assembly stays cold and human requests use the 
   };
   const { createProductionFinalizationService } =
     await import('../src/composition-root/finalization-production.ts');
-  const { createProductionSessionCheck } =
-    await import('../src/composition-root/cli-command-services.ts');
+  const { createProductionSessionCheckService } =
+    await import('../src/composition-root/session-check-production.ts');
   const { createProductionWorkflowGrantServices } =
     await import('../src/composition-root/grant-production.ts');
   const { createArchivePullRequestCliDependencies } =
@@ -310,7 +310,7 @@ test('required session and Grant assembly stays cold and human requests use the 
   };
   const sessionLifecycle = {
     ...createProductionFinalizationService(readers),
-    checkSession: createProductionSessionCheck(readers),
+    checkSession: createProductionSessionCheckService(readers).checkSession,
   };
   const workflowGrants = createProductionWorkflowGrantServices(
     unexpectedObservation,

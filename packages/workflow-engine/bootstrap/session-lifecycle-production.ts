@@ -5,7 +5,7 @@ import {
   createProductionFinalizationService,
   type LocalEngineSelectionReaders,
 } from '../src/composition-root/finalization-production.ts';
-import { createProductionSessionCheck } from '../src/composition-root/cli-command-services.ts';
+import { createProductionSessionCheckService } from '../src/composition-root/session-check-production.ts';
 import { createProductionWorkflowGrantServices } from '../src/composition-root/grant-production.ts';
 import { createArchivePullRequestCliDependencies } from '../src/composition-root/archive-cli-production.ts';
 export const localEngineSelectionReaders: LocalEngineSelectionReaders = {
@@ -14,7 +14,8 @@ export const localEngineSelectionReaders: LocalEngineSelectionReaders = {
 };
 export const sessionLifecycle = {
   ...createProductionFinalizationService(localEngineSelectionReaders),
-  checkSession: createProductionSessionCheck(localEngineSelectionReaders),
+  checkSession: createProductionSessionCheckService(localEngineSelectionReaders)
+    .checkSession,
 };
 export const {
   rollbackCompletion,

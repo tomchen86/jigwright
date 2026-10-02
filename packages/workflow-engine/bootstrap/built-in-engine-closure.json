@@ -1633,7 +1633,7 @@
     {
       "path": "src/composition-root/cli-command-services.ts",
       "mode": "100644",
-      "digest": "sha256:657e4ac4be22acda262a0da6e3be08cf8bec4b6e8b52cdbccd8e485501949059"
+      "digest": "sha256:12b495ae84fc25cfc9a58baaaa521906a251351e6ccf30d629ec5d838025bf70"
     },
     {
       "path": "src/composition-root/collaboration-grant-issuance-production.ts",
@@ -2013,7 +2013,7 @@
     {
       "path": "src/composition-root/session-check-production.ts",
       "mode": "100644",
-      "digest": "sha256:9f8baa77e3a20a3b0646dddd79b268fb1fa0c89c2927ed0926bf21006ebe41b9"
+      "digest": "sha256:8f43b2dfba0e23843ff94bb45e0096b4513a0fe57a1ece388d1613a059e71480"
     },
     {
       "path": "src/composition-root/system-document-disposition-production.ts",
@@ -2233,7 +2233,7 @@
     {
       "path": "src/entrypoints/cli/task-lifecycle-cli.ts",
       "mode": "100644",
-      "digest": "sha256:8e1e9d0982b58a72943dbbdf8a8536e30c153fd2c185603d273a4e87bf1ca92c"
+      "digest": "sha256:25314c580296110c31ca847f65456cfba719198c6044d71997a6d97b0db71ef6"
     },
     {
       "path": "src/entrypoints/cli/task-review-cli-input.ts",
@@ -2243,7 +2243,7 @@
     {
       "path": "src/entrypoints/cli/workflow-cli.ts",
       "mode": "100644",
-      "digest": "sha256:1bdd793db51140bd0522e5e95b73c183ffd8a46cb7a141ac0f934d97b5389fd0"
+      "digest": "sha256:5406f369bc1c2f3055b5f9e374c06ed03837cf5804a77277fc0b3d8a3a4c6388"
     },
     {
       "path": "src/entrypoints/worker/provider-worker.ts",

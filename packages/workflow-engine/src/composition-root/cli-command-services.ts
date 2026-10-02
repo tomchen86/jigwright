@@ -1,4 +1,3 @@
-import { createProductionSessionCheckService } from './session-check-production.ts';
 import { createInteractiveSshSigner } from '../adapters/signing/ssh/maintainer-signer.ts';
 import { readAndValidateTaskRevisionApproval } from './task-revision-approval-production.ts';
 export type { ControlPlanePromotionBootstrapObservations } from '../modules/authority/intervention-bootstrap-contract.ts';
@@ -267,18 +266,4 @@ export const preflightTaskSession = preflightTaskSessionWithRouting.bind(
   productionChangeContract,
 );
 
-export function createProductionSessionCheck(
-  readers: LocalEngineSelectionReaders,
-) {
-  return createProductionSessionCheckService(readers).checkSession;
-}
 export { inspectTaskStrategyLifecycle } from './task-strategy-production.ts';
-
-import type { LocalEngineSelectionReaders } from './finalization-production.ts';
-export type {
-  LocalEngineSelectionReaders,
-  ProductionFinalizationService,
-} from './finalization-production.ts';
-export type ProductionSessionCheck = ReturnType<
-  typeof createProductionSessionCheck
->;

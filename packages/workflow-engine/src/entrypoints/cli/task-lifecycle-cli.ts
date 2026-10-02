@@ -677,10 +677,8 @@ function dispatchReviewDiffCommand(
   }
 }
 
-import type {
-  ProductionFinalizationService,
-  ProductionSessionCheck,
-} from '../../composition-root/cli-command-services.ts';
+import type { ProductionFinalizationService } from '../../composition-root/finalization-production.ts';
+import type { ProductionSessionCheck } from '../../composition-root/session-check-production.ts';
 export function createTaskLifecycleCommands({
   completeTask,
   finishSession,

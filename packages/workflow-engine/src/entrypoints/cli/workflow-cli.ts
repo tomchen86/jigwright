@@ -5,10 +5,8 @@ import {
   createGovernanceIntakeCommandDependencies,
 } from '../../composition-root/governance-intake-command-production.ts';
 import type { WorkflowGrantServices } from '../../composition-root/grant-production.ts';
-import type {
-  ProductionFinalizationService,
-  ProductionSessionCheck,
-} from '../../composition-root/cli-command-services.ts';
+import type { ProductionFinalizationService } from '../../composition-root/finalization-production.ts';
+import type { ProductionSessionCheck } from '../../composition-root/session-check-production.ts';
 import type { ArchivePullRequestCliDependencies } from '../../composition-root/archive-cli-production.ts';
 import { dispatchArchivePullRequest as dispatchArchivePullRequestWithDependencies } from './archive-cli.ts';
 import { createTaskLifecycleCommands } from './task-lifecycle-cli.ts';

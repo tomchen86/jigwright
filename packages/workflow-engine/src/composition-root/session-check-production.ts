@@ -19,3 +19,7 @@ export function createProductionSessionCheckService(
     createExecution: createProductionCheckExecution,
   });
 }
+
+export type ProductionSessionCheck = ReturnType<
+  typeof createProductionSessionCheckService
+>['checkSession'];
