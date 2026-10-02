@@ -11,18 +11,28 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   resolveOpenTaskId,
-  openTask,
   contextualizeOpenTaskError,
   discoverRepository,
-  cancelFinalizeRecovery,
   commitSession,
   preflightTaskSession,
-  abortSession,
   updateTaskSessionBase,
   reviseTask,
   resumeTask,
-  resumeTaskStrategy,
   parseTaskStrategyRedRevisionRequest,
+  createTaskDiffReviewChallengeResponse,
+  commitPlanningTransition,
+  commitPlanAmendment,
+  readProviderInvocation,
+} from '../../composition-root/cli-command-services.ts';
+import { openTask } from '../../composition-root/open-task-production.ts';
+import { cancelFinalizeRecovery } from '../../composition-root/finalization-production.ts';
+import {
+  resumeProposeFromFile,
+  startProposeFromFile,
+} from '../../composition-root/propose-production.ts';
+import { abortSession } from '../../composition-root/task-session-production.ts';
+import { resumeTaskStrategy } from '../../composition-root/task-strategy-production.ts';
+import {
   inspectTaskDiffReviewSubject,
   inspectTaskDiffReviewStatus,
   reconcileTaskDiffReview,
@@ -33,14 +43,8 @@ import {
   loadCurrentAuthenticatedTaskDiffReview,
   submitExternalTaskDiffReviewContinuation,
   beginTaskDiffReview,
-  createTaskDiffReviewChallengeResponse,
-  commitPlanningTransition,
-  commitPlanAmendment,
-  resumeProposeFromFile,
-  startProposeFromFile,
-  readProviderInvocation,
-} from '../../composition-root/cli-command-services.ts';
-import type { TaskStrategyLifecycleStatus } from '../../composition-root/cli-command-services.ts';
+} from '../../composition-root/task-diff-review-production.ts';
+import type { TaskStrategyLifecycleStatus } from '../../composition-root/task-strategy-production.ts';
 
 import {
   WorkflowError,

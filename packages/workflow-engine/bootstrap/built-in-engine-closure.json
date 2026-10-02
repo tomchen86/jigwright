@@ -1638,7 +1638,7 @@
     {
       "path": "src/composition-root/cli-command-services.ts",
       "mode": "100644",
-      "digest": "sha256:00fef850c0d64a98fe371fddaf439c35065bd5bf5e5e40d9be50fd773657b68c"
+      "digest": "sha256:a585b9ee908439e960e20c73e40bd1811cbcf9ed969fbbab2eea19fe38a67832"
     },
     {
       "path": "src/composition-root/collaboration-grant-issuance-production.ts",
@@ -2243,7 +2243,7 @@
     {
       "path": "src/entrypoints/cli/task-lifecycle-cli.ts",
       "mode": "100644",
-      "digest": "sha256:d98a3b38992bd23a23186af7e47fac6bed5d335d470464dbf7c2080aa15870a1"
+      "digest": "sha256:944af7b9f62c59dc81b0bd623dade1fd3ecb7d7e5a709d7edeee6311a053dc26"
     },
     {
       "path": "src/entrypoints/cli/task-review-cli-input.ts",

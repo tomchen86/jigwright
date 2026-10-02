@@ -4,7 +4,6 @@ export type { ControlPlanePromotionBootstrapObservations } from '../modules/auth
 import { verifyPullRequest } from './ci-verification-production.ts';
 
 import { planningTransitionExecution as productionPlanningExecution } from './planning-execution-epoch-production.ts';
-import { productionPlanningArchiveSourcePolicy } from './planning-archive-projection-production.ts';
 import { taskMandateOperations } from './task-mandate-production.ts';
 import { productionChangeContract } from './change-routing-observation-production.ts';
 
@@ -103,10 +102,7 @@ export type {
   ExternalEffectReconciliationRequest,
 } from '../modules/authority/external-effect-grant.ts';
 export { executePublishGrant } from './external-effect-production.ts';
-export {
-  discoverRepository,
-  runGit,
-} from '../runtime/repository-transaction/git.ts';
+export { discoverRepository } from '../runtime/repository-transaction/git.ts';
 export { assertMaintainerGrantId } from '../modules/authority/maintainer-grant-contracts.ts';
 export {
   parseMaintainerEvidenceWaivers,
@@ -175,19 +171,7 @@ export const prepareTaskRevisionApprovalBinding =
     undefined,
     productionChangeContract,
   );
-export {
-  resumeDirectHumanTaskDiffReview,
-  inspectTaskDiffReviewSubject,
-  inspectTaskDiffReviewStatus,
-  reconcileTaskDiffReview,
-  reconcileExternalTaskDiffReview,
-  reconcileTaskDiffReviewContinuation,
-  beginTaskDiffReviewContinuationFromInput,
-  submitExternalTaskDiffReview,
-  loadCurrentAuthenticatedTaskDiffReview,
-  submitExternalTaskDiffReviewContinuation,
-  beginTaskDiffReview,
-} from './task-diff-review-production.ts';
+export { resumeDirectHumanTaskDiffReview } from './task-diff-review-production.ts';
 export { issueTaskRevisionApproval } from './task-revision-approval-production.ts';
 export { parseTaskMandateRequest } from '../modules/authority/task-mandate-records.ts';
 export const {
@@ -208,20 +192,9 @@ export type {
 export { parseChangeRoutingIntent } from '../modules/lifecycle/change-routing.ts';
 export { observeChangeRoutingContinuationState } from '../runtime/change-routing/routing-observation.ts';
 
-export { openTask } from './open-task-production.ts';
-export { cancelFinalizeRecovery } from './finalization-production.ts';
-
-export { abortSession } from './task-session-production.ts';
-
-export { resumeTaskStrategy } from './task-strategy-production.ts';
-export type { TaskStrategyLifecycleStatus } from '../application/execute-task/task-strategy-lifecycle.ts';
 export { parseTaskStrategyRedRevisionRequest } from '../runtime/storage-journal/task-strategy-red-revision-store.ts';
 export { createTaskDiffReviewChallengeResponse } from '../modules/assurance/task-diff-review-artifact.ts';
 
-export {
-  resumeProposeFromFile,
-  startProposeFromFile,
-} from './propose-production.ts';
 export { readProviderInvocation } from '../runtime/storage-journal/provider-invocation-store.ts';
 export {
   parseTaskDiffReviewChallengeResponseInput,
