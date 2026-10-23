@@ -1063,7 +1063,7 @@
     {
       "path": "src/application/finalize/commit-recovery.ts",
       "mode": "100644",
-      "digest": "sha256:b34d06b94e86670d5db5a89fd4dd37f6293570bbf2aa653d320e707d0fca7cef"
+      "digest": "sha256:104149dc8e588911123d9e82dc4a3cd60d1f4dc403f3d234b68e0019d232b731"
     },
     {
       "path": "src/application/finalize/finalize-cancellation.ts",
@@ -1073,7 +1073,7 @@
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:6dde404903d9a35260b8a5c8b9627da1915d8a720238202066d4e89b02cf5cb8"
+      "digest": "sha256:b78e2d9ad37ad88f0ff42e6cf5ce792459639a5aec7e9ab077e60843c51fcb69"
     },
     {
       "path": "src/application/finalize/predecessor-reconciliation.ts",
@@ -1083,7 +1083,7 @@
     {
       "path": "src/application/finalize/projected-finalization.ts",
       "mode": "100644",
-      "digest": "sha256:7d6967c03c71867bafbe02241c15bd1752fcaf699e8516cfe4d4199cc2f674be"
+      "digest": "sha256:e5def43ecbcb6a9de4f9c3581a6078e63f84deefc0f454fe49f8c37fafa34bad"
     },
     {
       "path": "src/application/finalize/system-document-candidate.ts",
@@ -1138,7 +1138,7 @@
     {
       "path": "src/application/finalize/task-diff-review-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:3aac305c18cac9527f77e0486cea8b775c8f574051b1f056817e461680017bb7"
+      "digest": "sha256:f7fd6af235da12cdde0b2f366d72e3f1c29964b0dee97a656d2c562ecc235110"
     },
     {
       "path": "src/application/finalize/task-diff-review-lineage.ts",
@@ -1178,7 +1178,7 @@
     {
       "path": "src/application/finalize/verification.ts",
       "mode": "100644",
-      "digest": "sha256:1f2496c77fb862bc2b44f0c881cac3ea7190e81819ff9e9495d8b3ada17a68a9"
+      "digest": "sha256:7035b85801879f30356b8a23ae14b0846ec59048c79e2a6f928d0f2970723ebb"
     },
     {
       "path": "src/application/governance-intake/current-governance-intake-counts.ts",
@@ -3538,7 +3538,7 @@
     {
       "path": "src/modules/lifecycle/workflow-report.ts",
       "mode": "100644",
-      "digest": "sha256:11303a1fd6db352a2509e747d4d7faf0b03ca44cf5dbc996cf79c8f08311ca07"
+      "digest": "sha256:b93af4de5f40bbc9290da0b20565448b1f7fbd3065ca8e35b3f6199cbe606f28"
     },
     {
       "path": "src/modules/lifecycle/workflow-session-contract.ts",
@@ -4163,7 +4163,7 @@
     {
       "path": "src/runtime/managed-documents/transaction/completion-rollback.ts",
       "mode": "100644",
-      "digest": "sha256:91537e62c41cad35a12694fb65a7fb7da072251a374a7e2bb2e3590b7878d500"
+      "digest": "sha256:10976b5c7e379c114696a362a9b46ed4e74ad7b83160c95e08d56e7c598412ad"
     },
     {
       "path": "src/runtime/managed-documents/transaction/document-refresh.ts",
@@ -5358,7 +5358,7 @@
     {
       "path": "src/runtime/storage-journal/maintainer-report.ts",
       "mode": "100644",
-      "digest": "sha256:20ad9cbded3a04e5bacaab7c0ce635e980fb3156d363885827ab611e8dd96763"
+      "digest": "sha256:333901510e640d619dc4666cdbb85b01bb6a7d542b57efd7c3340527e6b0cc28"
     },
     {
       "path": "src/runtime/storage-journal/maintainer-store.ts",
@@ -5573,12 +5573,7 @@
     {
       "path": "src/runtime/storage-journal/report-store.ts",
       "mode": "100644",
-      "digest": "sha256:41568ac5364e243d62bdecd093a5ad5a0653f7d0fa7702283cb97df0434ca1db"
-    },
-    {
-      "path": "src/runtime/storage-journal/report-validation.ts",
-      "mode": "100644",
-      "digest": "sha256:cfb4d75b8af3d081164258b5ae82f97f0a4db7c9f1b5f5ffc8200bf6b39cbf4b"
+      "digest": "sha256:a7b97dc3531e3465b771031ba4406690d9e8ccc9647adea6eb9ec9a99b2633e0"
     },
     {
       "path": "src/runtime/storage-journal/role-context-sharing-store.ts",
@@ -5589,6 +5584,11 @@
       "path": "src/runtime/storage-journal/semantic-ledger-store.ts",
       "mode": "100644",
       "digest": "sha256:8418cf776feb80b641cc55169fc4c393820075f7b9f3407f4487c4556946d5d2"
+    },
+    {
+      "path": "src/runtime/storage-journal/session-report-reader.ts",
+      "mode": "100644",
+      "digest": "sha256:19dcd4fccfd3ae39769b42c053b1585f44f9c53ae023c9295e5fc4622c1a46b1"
     },
     {
       "path": "src/runtime/storage-journal/system-document-review-store.ts",

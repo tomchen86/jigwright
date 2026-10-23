@@ -1,5 +1,4 @@
 import type { WorkflowReport } from '../../modules/lifecycle/workflow-report.ts';
-export type { WorkflowReport };
 /**
  * Persists immutable workflow reports and verifies their session and
  * content identities on read.

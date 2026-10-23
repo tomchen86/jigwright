@@ -81,21 +81,19 @@ import {
   type FinalizeTaskResult,
 } from './projected-finalization.ts';
 import type { ImplementationReconciliationGate } from '../reconciliation/implementation-reconciliation.ts';
-import {
-  readImmutableReport,
-  type WorkflowReport,
-} from '../../runtime/storage-journal/report-store.ts';
+import { readImmutableReport } from '../../runtime/storage-journal/report-store.ts';
+import type { WorkflowReport } from '../../modules/lifecycle/workflow-report.ts';
 import {
   assertCompletionTaskIds,
   assertInspectionReport,
   assertProjectionPathClassification,
   assertReportChecks,
-  readSessionReport,
   reportString,
   reportStringArray,
   reportTaskIds,
   staleReport,
-} from '../../runtime/storage-journal/report-validation.ts';
+} from '../../modules/lifecycle/workflow-report.ts';
+import { readSessionReport } from '../../runtime/storage-journal/session-report-reader.ts';
 import {
   runtimePaths,
   type WorkflowSession,

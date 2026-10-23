@@ -36,7 +36,7 @@ import {
   reportStringArray,
   reportTaskIds,
   staleReport,
-} from '../../storage-journal/report-validation.ts';
+} from '../../../modules/lifecycle/workflow-report.ts';
 import {
   completionDocumentPaths,
   rollbackGeneratedDocuments,

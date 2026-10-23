@@ -38,10 +38,8 @@ import {
   finalizeTask,
 } from './support/local-engine-selection-host.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
-import {
-  readImmutableReport,
-  type WorkflowReport,
-} from '../src/runtime/storage-journal/report-store.ts';
+import { readImmutableReport } from '../src/runtime/storage-journal/report-store.ts';
+import type { WorkflowReport } from '../src/modules/lifecycle/workflow-report.ts';
 import { checkSession } from './support/local-engine-selection-host.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';

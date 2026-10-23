@@ -430,7 +430,7 @@
       "packages/workflow-engine/src/runtime/storage-journal/provider-runtime-evidence-contract.ts",
       "packages/workflow-engine/src/runtime/storage-journal/provider-runtime-retention.ts",
       "packages/workflow-engine/src/runtime/storage-journal/provider-worker-maintenance.ts",
-      "packages/workflow-engine/src/runtime/storage-journal/report-validation.ts",
+      "packages/workflow-engine/src/runtime/storage-journal/session-report-reader.ts",
       "workflow/maintainer-policy.json",
       "workflow/maintainer-profiles.json"
     ],

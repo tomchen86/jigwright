@@ -77,8 +77,8 @@ import type {
 import {
   assertInspectionReport,
   assertReportChecks,
-  readSessionReport,
-} from '../../runtime/storage-journal/report-validation.ts';
+} from '../../modules/lifecycle/workflow-report.ts';
+import { readSessionReport } from '../../runtime/storage-journal/session-report-reader.ts';
 import {
   listActiveWorkflowSessionIds,
   withRepositoryLifecycleOperation,

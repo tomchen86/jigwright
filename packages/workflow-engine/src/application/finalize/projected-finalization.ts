@@ -55,12 +55,12 @@ import { applyGeneratedDocumentMutations } from '../../runtime/managed-documents
 import type { ImplementationReconciliationGate } from '../reconciliation/implementation-reconciliation.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 import { reconcilePredecessor } from './predecessor-reconciliation.ts';
-import type { WorkflowReport } from '../../runtime/storage-journal/report-store.ts';
+import type { WorkflowReport } from '../../modules/lifecycle/workflow-report.ts';
 import {
   assertInspectionReport,
   assertReportChecks,
-  readSessionReport,
-} from '../../runtime/storage-journal/report-validation.ts';
+} from '../../modules/lifecycle/workflow-report.ts';
+import { readSessionReport } from '../../runtime/storage-journal/session-report-reader.ts';
 import type { WorkflowSession } from '../../runtime/session-workspace/session-store.ts';
 import {
   applyTaskProjection,

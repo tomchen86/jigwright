@@ -48,8 +48,8 @@ import { projectTasksCompleted } from '../src/runtime/managed-documents/transact
 import {
   readImmutableReport,
   writeImmutableReport,
-  type WorkflowReport,
 } from '../src/runtime/storage-journal/report-store.ts';
+import type { WorkflowReport } from '../src/modules/lifecycle/workflow-report.ts';
 import {
   createFinalizeTransaction,
   readFinalizeTransaction,

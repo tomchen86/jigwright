@@ -8,7 +8,7 @@ Keep repository routing in one controlled source and derive the visible inventor
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:b6f779d4ca93007dcdea2b30a9ce2ad732aeb8d35f9c6584d533e4c153caf636 -->
+<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:63b5043f739b48d92f542897b4906b53146aa440d1ee390b5a833f5c2a5681c5 -->
 
 <!-- prettier-ignore-start -->
 
@@ -81,7 +81,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [repository-hooks.ts](repository-hooks.ts) | Repository hook admission rules over required current observations and checks. | 0 | History unavailable |
 | [repository-specification-policy.ts](repository-specification-policy.ts) | Combines canonical spec ownership with repository-specific lifecycle paths. | 1 | History unavailable |
 | [session-inspection.ts](session-inspection.ts) | Observed session facts consumed by lifecycle rules and report validation. | 0 | History unavailable |
-| [workflow-report.ts](workflow-report.ts) | Complete workflow report contract shared by lifecycle policy and durable storage. | 0 | History unavailable |
+| [workflow-report.ts](workflow-report.ts) | Workflow report contract and validation rules shared by lifecycle policy and durable storage. | 0 | History unavailable |
 | [workflow-session-contract.ts](workflow-session-contract.ts) | Current durable workflow session data shared by lifecycle rules and storage. | 0 | History unavailable |
 
 <!-- prettier-ignore-end -->

@@ -15,12 +15,16 @@ import { runCli } from '../bootstrap/workflow-engine-host.ts';
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { ExitCode, WorkflowError } from '../src/foundation/errors/errors.ts';
 import { withChangeTransitionAuthority } from '../src/runtime/session-workspace/planning-lock.ts';
-import { assertCompletionTaskIds } from '../src/runtime/storage-journal/report-validation.ts';
+import {
+  assertCompletionTaskIds,
+  assertProjectionPathClassification,
+  reportTaskIds,
+} from '../src/modules/lifecycle/workflow-report.ts';
 import {
   readImmutableReport,
   writeImmutableReport,
-  type WorkflowReport,
 } from '../src/runtime/storage-journal/report-store.ts';
+import type { WorkflowReport } from '../src/modules/lifecycle/workflow-report.ts';
 import {
   runtimePaths,
   withRepositoryLifecycleOperation,
@@ -491,6 +495,47 @@ test('a terminal JSON-looking option value is not consumed as output mode', () =
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
+});
+
+test('workflow report rules validate supplied projection facts without storage', () => {
+  const paths = {
+    taskPaths: ['src/feature.ts'],
+    taskProjectionPaths: ['openspec/changes/demo-change/tasks.md'],
+    engineProjectionPaths: [],
+    changedPaths: ['src/feature.ts', 'openspec/changes/demo-change/tasks.md'],
+  };
+  const completionReport = {
+    ...report(),
+    ...paths,
+    completedTaskIds: ['1.1'],
+  };
+  assert.doesNotThrow(() =>
+    assertProjectionPathClassification(
+      completionReport,
+      paths,
+      'REPORT_PROJECTION_STALE',
+    ),
+  );
+  assert.deepEqual(reportTaskIds(completionReport, 'REPORT_TASK_SCOPE_STALE'), [
+    '1.1',
+  ]);
+  assert.throws(
+    () =>
+      assertProjectionPathClassification(
+        { ...completionReport, changedPaths: ['src/unreviewed.ts'] },
+        paths,
+        'REPORT_PROJECTION_STALE',
+      ),
+    (error) => isWorkflowError(error, 'REPORT_PROJECTION_STALE'),
+  );
+  assert.throws(
+    () =>
+      reportTaskIds(
+        { ...completionReport, completedTaskIds: [1] },
+        'REPORT_TASK_SCOPE_STALE',
+      ),
+    (error) => isWorkflowError(error, 'REPORT_TASK_SCOPE_STALE'),
+  );
 });
 
 test('completion report validation rejects a task absent from the baseline', () => {

@@ -22,7 +22,7 @@ import {
   reportString,
   reportStringArray,
   staleReport,
-} from '../../runtime/storage-journal/report-validation.ts';
+} from '../../modules/lifecycle/workflow-report.ts';
 import {
   releaseOwnedLock,
   releaseTaskSessionIsolationLeases,

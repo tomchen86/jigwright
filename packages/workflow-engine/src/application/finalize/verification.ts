@@ -33,12 +33,12 @@ import { assertSessionId } from '../../foundation/repository-path/repository-pat
 import {
   readImmutableReport,
   writeImmutableReport,
-  type WorkflowReport,
 } from '../../runtime/storage-journal/report-store.ts';
+import type { WorkflowReport } from '../../modules/lifecycle/workflow-report.ts';
 import {
   assertInspectionReport,
   assertReportChecks,
-} from '../../runtime/storage-journal/report-validation.ts';
+} from '../../modules/lifecycle/workflow-report.ts';
 import {
   readSessionFile,
   runtimePaths,

@@ -9,11 +9,8 @@
 import type { CheckEvidence } from '../../foundation/check-evidence/check-evidence.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type { AuthoritySession } from '../../modules/authority/authority-session-contract.ts';
-import {
-  readImmutableReport,
-  writeImmutableReport,
-  type WorkflowReport,
-} from './report-store.ts';
+import { readImmutableReport, writeImmutableReport } from './report-store.ts';
+import type { WorkflowReport } from '../../modules/lifecycle/workflow-report.ts';
 
 export function writeAuthorityCheckReport(
   reportsRoot: string,

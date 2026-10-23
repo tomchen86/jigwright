@@ -30,10 +30,7 @@ import {
   withSessionOperation,
   writeJsonAtomic,
 } from '../src/runtime/session-workspace/session-store.ts';
-import {
-  writeImmutableReport,
-  type WorkflowReport as StoredWorkflowReport,
-} from '../src/runtime/storage-journal/report-store.ts';
+import { writeImmutableReport } from '../src/runtime/storage-journal/report-store.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 import { localEngineSelectionReaders } from './support/local-engine-selection-host.ts';
 import { readRepositoryDependencies } from './support/repository-dependency-graph.ts';
@@ -45,7 +42,7 @@ type Equal<A, B> =
 type Assert<T extends true> = T;
 type Context = Parameters<typeof rollbackCompletionProjection>[0];
 type Contract = [
-  Assert<Equal<WorkflowReport, StoredWorkflowReport>>,
+  Assert<Equal<WorkflowReport, Parameters<typeof writeImmutableReport>[1]>>,
   Assert<
     Equal<
       ReturnType<typeof rollbackCompletionProjection>,
