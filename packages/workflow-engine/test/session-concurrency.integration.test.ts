@@ -1,4 +1,4 @@
-import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
+import { inspectSession } from '../src/runtime/repository-validation/session-inspection.ts';
 import {
   productionChangeRoutingInspector,
   productionChangeContract,

@@ -19,7 +19,7 @@ import type {
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import type { ConsumedRoleResultReplayPort } from '../../modules/provider-orchestration/role-admission-contracts.ts';
 import type { TaskStrategyImplementationLifecycle } from '../execute-task/task-strategy-implementation-lifecycle.ts';
-import type { TaskDiffReviewOperations } from '../finalize/task-diff-review-lifecycle.ts';
+import type { TaskDiffReviewProviderOperations } from '../../modules/lifecycle/task-diff-review-contracts.ts';
 
 export type ProviderWorkerClaimTaskMandate = Pick<
   TaskMandateActiveBinding,
@@ -40,7 +40,7 @@ export type ProviderWorkerClaimObservation = {
   initial: ProviderInvocationRecord;
   request: ProviderInvocationRequest;
   taskDiffReviewOwner: ReturnType<
-    TaskDiffReviewOperations['assertTaskDiffReviewProviderOwnerCurrent']
+    TaskDiffReviewProviderOperations['assertTaskDiffReviewProviderOwnerCurrent']
   > | null;
   taskStrategyImplementationOwner: ReturnType<
     TaskStrategyImplementationLifecycle['assertTaskStrategyImplementationProviderOwnerCurrent']
@@ -52,8 +52,8 @@ type OwnerFacts = Pick<ProviderInvocationRecord, 'changeId' | 'mandateBinding'>;
 export type ProviderWorkerClaimEffects = {
   taskMandate: ProviderWorkerClaimTaskMandate;
   resolveAssignment: ReturnType<ProviderDispatchObserver>['resolveAssignment'];
-  assertTaskDiffReviewProviderOwnerCurrent: TaskDiffReviewOperations['assertTaskDiffReviewProviderOwnerCurrent'];
-  withTaskDiffReviewProviderLifecycleOperation: TaskDiffReviewOperations['withTaskDiffReviewProviderLifecycleOperation'];
+  assertTaskDiffReviewProviderOwnerCurrent: TaskDiffReviewProviderOperations['assertTaskDiffReviewProviderOwnerCurrent'];
+  withTaskDiffReviewProviderLifecycleOperation: TaskDiffReviewProviderOperations['withTaskDiffReviewProviderLifecycleOperation'];
   assertTaskStrategyImplementationProviderOwnerCurrent: TaskStrategyImplementationLifecycle['assertTaskStrategyImplementationProviderOwnerCurrent'];
   consumedRoleResultReplay: ConsumedRoleResultReplayPort;
   readProposeExemptionOwner(): OwnerFacts;

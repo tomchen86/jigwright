@@ -692,7 +692,7 @@ test('completion rejects a check report with mismatched planning assurance', () 
   }
 });
 
-import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
+import { inspectSession } from '../src/runtime/repository-validation/session-inspection.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   readSessionFile,

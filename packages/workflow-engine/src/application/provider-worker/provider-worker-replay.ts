@@ -6,7 +6,7 @@ import type { ProviderInvocationRequest } from '../../modules/provider-orchestra
 import type { ProviderCompletionRecovery } from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import type { ConsumedRoleResultReplayPort } from '../../modules/provider-orchestration/role-admission-contracts.ts';
-import type { TaskDiffReviewOperations } from '../finalize/task-diff-review-lifecycle.ts';
+import type { TaskDiffReviewProviderOperations } from '../../modules/lifecycle/task-diff-review-contracts.ts';
 import type {
   runProviderWorkerTerminalFollowups,
   ProviderWorkerTerminalOptions,
@@ -38,8 +38,8 @@ export type ProviderWorkerReplayEffects = {
     record: ProviderInvocationRecord,
     assertOwned: () => void,
   ): ProviderCompletionRecovery;
-  assertTaskDiffReviewProviderOwnerCurrent: TaskDiffReviewOperations['assertTaskDiffReviewProviderOwnerCurrent'];
-  withTaskDiffReviewProviderLifecycleOperation: TaskDiffReviewOperations['withTaskDiffReviewProviderLifecycleOperation'];
+  assertTaskDiffReviewProviderOwnerCurrent: TaskDiffReviewProviderOperations['assertTaskDiffReviewProviderOwnerCurrent'];
+  withTaskDiffReviewProviderLifecycleOperation: TaskDiffReviewProviderOperations['withTaskDiffReviewProviderLifecycleOperation'];
   taskMandate: ProviderWorkerReplayTaskMandate;
   consumedRoleResultReplay: ConsumedRoleResultReplayPort;
   runTerminalFollowups: TerminalFollowups;
@@ -52,7 +52,7 @@ export type ProviderWorkerReplayDecision =
       initial: ProviderInvocationRecord;
       request: ProviderInvocationRequest;
       taskDiffReviewOwner: ReturnType<
-        TaskDiffReviewOperations['assertTaskDiffReviewProviderOwnerCurrent']
+        TaskDiffReviewProviderOperations['assertTaskDiffReviewProviderOwnerCurrent']
       > | null;
     };
 

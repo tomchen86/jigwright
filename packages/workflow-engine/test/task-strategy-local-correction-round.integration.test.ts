@@ -25,7 +25,7 @@ import { adoptCurrentTaskStrategyImplementation } from '../src/composition-root/
 import { sealTaskStrategyRed } from '../src/composition-root/task-strategy-execution-production.ts';
 import { resumeTaskStrategy } from '../src/composition-root/task-strategy-production.ts';
 import { checkSession } from './support/session-lifecycle-host.ts';
-import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
+import { inspectSession } from '../src/runtime/repository-validation/session-inspection.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import {
   configureChecks,

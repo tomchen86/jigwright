@@ -22,7 +22,7 @@ import {
   adoptCurrentTaskStrategyImplementation,
   adoptCurrentTaskStrategyCorrection,
 } from '../src/composition-root/task-strategy-patch-production.ts';
-import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
+import { inspectSession } from '../src/runtime/repository-validation/session-inspection.ts';
 import type { ImportedTaskStrategyPatch } from '../src/modules/assurance/task-strategy-patch-contract.ts';
 import { observeInvestigationRuntimeContext } from '../src/runtime/repository-observation/investigation-runtime-context.ts';
 import { previewExactStaging } from '../src/runtime/repository-transaction/git-transitions.ts';

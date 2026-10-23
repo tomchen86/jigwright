@@ -178,7 +178,7 @@ test('the repository registry classifies its own risky substrate', () => {
       'grant',
     ],
     [
-      'packages/workflow-engine/src/application/task-apply-authorization/protected-task-apply-authorization.ts',
+      'packages/workflow-engine/src/runtime/repository-validation/protected-task-apply-authorization.ts',
       'grant',
     ],
     [

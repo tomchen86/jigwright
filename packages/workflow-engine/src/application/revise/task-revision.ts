@@ -55,7 +55,7 @@ import {
   withSessionOperation,
   writeJsonAtomic,
 } from '../../runtime/session-workspace/session-store.ts';
-import { inspectSession } from '../session-inspection/session-inspection.ts';
+import { inspectSession } from '../../runtime/repository-validation/session-inspection.ts';
 import {
   type TaskRevisionApprovalReader,
   taskRevisionApprovalTargetDigest,

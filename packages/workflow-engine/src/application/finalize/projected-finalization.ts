@@ -69,17 +69,17 @@ import {
   restoreTaskProjection,
 } from '../../runtime/managed-documents/transaction/task-projection.ts';
 import {
-  type TaskDiffReviewOperations,
+  type TaskDiffReviewCompletionOperations,
   type TaskDiffReviewCompletionGateOptions,
-} from './task-diff-review-lifecycle.ts';
+} from '../../modules/lifecycle/task-diff-review-contracts.ts';
 
 import { ensureTaskMechanicalTransformationEvidence } from './task-mechanical-transform.ts';
 import {
   type SessionCheckService,
-  persistSession,
   writeSessionReport,
 } from './verification.ts';
-import { inspectSession } from '../session-inspection/session-inspection.ts';
+import { persistSession } from '../../runtime/session-workspace/session-persistence.ts';
+import { inspectSession } from '../../runtime/repository-validation/session-inspection.ts';
 
 /**
  * A projected single-pass finalize builds the final implementation, checkbox,
@@ -134,7 +134,7 @@ export function finalizeTaskUnlocked(
   taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
   changeContract: ChangeContractServices,
   taskDiffReview: Pick<
-    TaskDiffReviewOperations,
+    TaskDiffReviewCompletionOperations,
     | 'assertTaskDiffReviewCompletionGateSatisfied'
     | 'loadTaskDiffDocumentationReviewCapture'
   >,
@@ -321,7 +321,7 @@ function continueFinalizeTransaction(
   sessionChecks: Pick<SessionCheckService, 'executeChecks'>,
   changeContract: ChangeContractServices,
   taskDiffReview: Pick<
-    TaskDiffReviewOperations,
+    TaskDiffReviewCompletionOperations,
     | 'assertTaskDiffReviewCompletionGateSatisfied'
     | 'loadTaskDiffDocumentationReviewCapture'
   >,

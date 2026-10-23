@@ -39,7 +39,7 @@ import {
 } from '../src/runtime/storage-journal/task-strategy-provider-store.ts';
 import { sealTaskStrategyRed } from '../src/composition-root/task-strategy-execution-production.ts';
 import { checkSession } from './support/session-lifecycle-host.ts';
-import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
+import { inspectSession } from '../src/runtime/repository-validation/session-inspection.ts';
 import {
   authoritativeCollaborationGrantVerifierForTest,
   configureChecks,

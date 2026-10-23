@@ -2,7 +2,7 @@
 import { createTaskStrategyExecutionService } from '../application/execute-task/task-strategy-execution.ts';
 import type { TaskStrategyExecutionOperations } from '../application/execute-task/task-strategy-execution-operations.ts';
 import { productionChangeContract } from './change-routing-observation-production.ts';
-import { inspectSession } from '../application/session-inspection/session-inspection.ts';
+import { inspectSession } from '../runtime/repository-validation/session-inspection.ts';
 import { runSessionOperation } from '../runtime/repository-observation/workflow-session-context.ts';
 import { observeInvestigationRuntimeContext } from '../runtime/repository-observation/investigation-runtime-context.ts';
 import { previewExactStaging } from '../runtime/repository-transaction/git-transitions.ts';

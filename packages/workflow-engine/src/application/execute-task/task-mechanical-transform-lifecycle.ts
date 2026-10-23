@@ -43,7 +43,7 @@ import {
   readPinnedTrackedTree,
   type TrackedTreeEntry,
 } from '../../runtime/repository-transaction/tracked-tree-reader.ts';
-import { inspectSession } from '../session-inspection/session-inspection.ts';
+import { inspectSession } from '../../runtime/repository-validation/session-inspection.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 
 const RETAINED_CLASSES = new Set([

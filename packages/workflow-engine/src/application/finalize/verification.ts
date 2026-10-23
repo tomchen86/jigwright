@@ -26,17 +26,15 @@ import { assertSessionId } from '../../foundation/repository-path/repository-pat
 import { writeImmutableReport } from '../../runtime/storage-journal/report-store.ts';
 import type { WorkflowReport } from '../../modules/lifecycle/workflow-report.ts';
 import {
-  readSessionFile,
   runtimePaths,
-  type WorkflowSession,
   withSessionOperation,
-  writeJsonAtomic,
 } from '../../runtime/session-workspace/session-store.ts';
 import { ensureTaskMechanicalTransformationEvidence } from './task-mechanical-transform.ts';
 import { type ProtectedTaskApplyAuthorizationBinding } from '../../runtime/storage-journal/finalize-transaction.ts';
-import { inspectSession } from '../session-inspection/session-inspection.ts';
+import { inspectSession } from '../../runtime/repository-validation/session-inspection.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+import { persistSession } from '../../runtime/session-workspace/session-persistence.ts';
 
 /** Execute current required checks and publish immutable session evidence. */
 
@@ -421,26 +419,6 @@ function executeChecks(
     checks.push(requirePassedCheck(checkId, outcome));
   }
   return { checks, inspection };
-}
-
-export function persistSession(
-  inspection: SessionInspection,
-  session: WorkflowSession,
-): void {
-  const runtime = runtimePaths(
-    inspection.git.gitCommonDirectory,
-    inspection.contract.config.runtimeDirectory,
-  );
-  const sessionPath = path.join(runtime.sessions, `${session.sessionId}.json`);
-  const current = readSessionFile(sessionPath);
-  if (JSON.stringify(current) !== JSON.stringify(inspection.session)) {
-    throw workflowError(
-      'SESSION_CHANGED_DURING_TRANSITION',
-      'The session changed before its transition could be persisted.',
-      ExitCode.staleState,
-    );
-  }
-  writeJsonAtomic(sessionPath, session);
 }
 
 export function writeSessionReport(

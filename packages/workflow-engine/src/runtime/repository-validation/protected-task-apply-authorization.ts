@@ -18,13 +18,13 @@ import {
   type ProtectedTaskApplyFinalizationParametersV1,
 } from '../../modules/authority/protected-task-apply-grant.ts';
 import {
+  createFileGrantRecordStore,
+  grantStorePaths,
+} from '../lifecycle-ledgers/grant-store.ts';
+import {
   parseProtectedTaskApplyAuthorizationBinding,
   type ProtectedTaskApplyAuthorizationBinding,
-} from '../../runtime/storage-journal/finalize-transaction.ts';
-import {
-  grantStorePaths,
-  createFileGrantRecordStore,
-} from '../../runtime/lifecycle-ledgers/grant-store.ts';
+} from '../storage-journal/finalize-transaction.ts';
 
 export function assertPreparedProtectedTaskApplyAuthorization(
   runtimeRoot: string,

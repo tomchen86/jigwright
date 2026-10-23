@@ -32,8 +32,8 @@ import { beginTaskStrategyImplementation } from '../src/composition-root/task-st
 import { readTaskStrategyImplementationResultBinding } from '../src/runtime/storage-journal/task-strategy-provider-store.ts';
 import { beginTaskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
 import { checkSession } from './support/session-lifecycle-host.ts';
-import { persistSession } from '../src/application/finalize/verification.ts';
-import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
+import { persistSession } from '../src/runtime/session-workspace/session-persistence.ts';
+import { inspectSession } from '../src/runtime/repository-validation/session-inspection.ts';
 import {
   configureChecks,
   createFixtureRepository,

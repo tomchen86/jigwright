@@ -78,7 +78,7 @@ import {
   reconcileTaskDiffReviewContinuation,
 } from '../src/composition-root/task-diff-review-production.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
-import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
+import { inspectSession } from '../src/runtime/repository-validation/session-inspection.ts';
 import {
   configureChecks,
   createFixtureRepository,

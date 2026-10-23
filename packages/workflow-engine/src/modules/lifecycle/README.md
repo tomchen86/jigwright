@@ -8,11 +8,11 @@ Keep repository routing in one controlled source and derive the visible inventor
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:37169d8663408a2958757dcf64190445351cc3a9fbac1693691da508b93c846f -->
+<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:9d61064e3844d6f1139dac63a1b2be31ed49251a9061d9a5a169e6af15cfa402 -->
 
 <!-- prettier-ignore-start -->
 
-21 files changed in this module since confirmation.
+22 files changed in this module since confirmation.
 
 ## Commands
 
@@ -49,6 +49,7 @@ Keep repository routing in one controlled source and derive the visible inventor
 | ManagedTaskDiffReviewState | not-required, ready, collaboration-grant-required, external-grant-resume-required, direct-human-attestation-required, external-reconciliation-required, satisfied, challenge-response-required, challenge-closure-required, changes-required, waiting-for-provider, provider-succeeded-awaiting-reconciliation, provider-failed | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
 | TaskMechanicalTransformLifecycleState | transformation-required, transformation-produced | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
 | OpenTaskPhase | prepared, plan-committed, session-active, completed | [open-task-status.ts](open-task-status.ts) |
+| TaskDiffReviewReplayMode | inspect, governing | [task-diff-review-contracts.ts](task-diff-review-contracts.ts) |
 
 ## Contracts
 
@@ -71,7 +72,6 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [change-routing.ts](change-routing.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [completion-rollback.ts](completion-rollback.ts) | Pure admission and state reset for reversing an unfinished completion projection. | 0 | History unavailable |
 | [contract-digests.ts](contract-digests.ts) | Computes identities for the required registered check definitions. | 1 | History unavailable |
-| [harness-bootstrap-parent-session.ts](harness-bootstrap-parent-session.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) | Defines shared task strategy, review and authority-plan state names. | 1 | Header changed since confirmation |
 | [open-task-status.ts](open-task-status.ts) | Durable open-task phase and status values shared by activation and status queries. | 0 | History unavailable |
 | [planning-amendment-decision.ts](planning-amendment-decision.ts) | Creates, reads and replaces canonical amendment decisions embedded in proposal markers. | 1 | History unavailable |
@@ -81,6 +81,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [repository-hooks.ts](repository-hooks.ts) | Repository hook admission rules over required current observations and checks. | 0 | History unavailable |
 | [repository-specification-policy.ts](repository-specification-policy.ts) | Combines canonical spec ownership with repository-specific lifecycle paths. | 1 | History unavailable |
 | [session-inspection.ts](session-inspection.ts) | Observed session facts consumed by lifecycle rules and report validation. | 0 | History unavailable |
+| [task-diff-review-contracts.ts](task-diff-review-contracts.ts) | Defines shared task diff review command, status, and replay contracts. | 1 | History unavailable |
 | [workflow-report.ts](workflow-report.ts) | Workflow report contract and validation rules shared by lifecycle policy and durable storage. | 0 | History unavailable |
 | [workflow-session-contract.ts](workflow-session-contract.ts) | Current durable workflow session data shared by lifecycle rules and storage. | 0 | History unavailable |
 

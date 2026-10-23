@@ -3,7 +3,7 @@ import type { TaskStrategyPatchOperations } from '../application/execute-task/ta
 import { createTaskStrategyPatchService } from '../application/execute-task/task-strategy-patch.ts';
 import { productionTaskStrategyCorrection } from './task-strategy-correction-production.ts';
 import { productionChangeContract } from './change-routing-observation-production.ts';
-import { inspectSession } from '../application/session-inspection/session-inspection.ts';
+import { inspectSession } from '../runtime/repository-validation/session-inspection.ts';
 import {
   loadActiveSessionContext,
   runSessionOperation,

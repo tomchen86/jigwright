@@ -6,7 +6,7 @@ import { productionChangeContract } from './change-routing-observation-productio
 import { assertCurrentImplementationReconciliation } from './implementation-reconciliation-production.ts';
 import { loadActiveSessionContext } from '../runtime/repository-observation/workflow-session-context.ts';
 import { observeInvestigationRuntimeContext } from '../runtime/repository-observation/investigation-runtime-context.ts';
-import { inspectSession } from '../application/session-inspection/session-inspection.ts';
+import { inspectSession } from '../runtime/repository-validation/session-inspection.ts';
 import { pinCheckRunner } from '../adapters/consumer/repository/work-registry/check-runner.ts';
 import { restoreCurrentTaskStrategyImplementationToRedUnderLifecycleLock } from './task-strategy-patch-production.ts';
 import { prepareTaskStrategyRedSuccessorUnlocked } from './task-strategy-execution-production.ts';

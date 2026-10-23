@@ -8,47 +8,48 @@
 import type {
   TaskDiffReviewReservationRecord,
   TaskDiffReviewResultBinding,
-} from '../../modules/assurance/task-diff-review-binding-record.ts';
+  TaskDiffReviewContinuationReservationRecord,
+} from '../assurance/task-diff-review-binding-record.ts';
 
 import type {
   TaskDiffExternalContinuationBinding,
   TaskDiffExternalContinuationReservation,
   TaskDiffExternalReviewBinding,
   TaskDiffExternalReviewReservation,
-} from '../../modules/assurance/task-diff-external-record.ts';
+} from '../assurance/task-diff-external-record.ts';
 // Shared lifecycle contracts for review commands, inspection, and replay.
 
+import type { TaskDiffReviewSubject } from '../assurance/task-diff-review-record.ts';
 import {
-  type DirectHumanReviewAttestation,
   type CollaborationGrantRequest,
-} from '../../modules/authority/collaboration-grant-codec.ts';
-import type { TaskDiffReviewSubject } from '../../modules/assurance/task-diff-review-record.ts';
-import {
-  type RecordedRoleParticipant,
-  type GrantedRoleAssignment,
-  type ProviderRoleAssignment,
-} from '../../modules/provider-orchestration/role-assignment.ts';
+  type DirectHumanReviewAttestation,
+} from '../authority/collaboration-grant-codec.ts';
 import {
   type AdmittedRoleResult,
   type ConsumedRoleResultReplayPort,
-} from '../../modules/provider-orchestration/role-admission-contracts.ts';
+} from '../provider-orchestration/role-admission-contracts.ts';
+import {
+  type GrantedRoleAssignment,
+  type ProviderRoleAssignment,
+  type RecordedRoleParticipant,
+} from '../provider-orchestration/role-assignment.ts';
 
 import type {
-  TaskDiffReviewRecord,
+  TaskDiffAuthenticatedReviewerAuthority,
   TaskDiffFinalAssuranceRecord,
   TaskDiffReviewChallengeResponseRecord,
-  TaskDiffAuthenticatedReviewerAuthority,
-} from '../../modules/assurance/task-diff-review-artifact-record.ts';
+  TaskDiffReviewRecord,
+} from '../assurance/task-diff-review-artifact-record.ts';
+import { type TaskDiffReviewLineageEntry } from '../assurance/task-diff-review-lineage.ts';
+import { type ConsumedCollaborationGrantReplayVerifier } from '../authority/grant-verifier-port.ts';
 import {
   type AssertExactStateSet,
   type ExactStateSet,
   type ManagedTaskDiffReviewState,
-} from '../../modules/lifecycle/managed-workflow-state-contract.ts';
-import { type ConsumedCollaborationGrantReplayVerifier } from '../../modules/authority/grant-verifier-port.ts';
-import { type TaskDiffReviewLineageEntry } from '../../modules/assurance/task-diff-review-lineage.ts';
-import type { TaskDiffReviewRuntimeBindings } from './task-diff-review-lifecycle.ts';
-
-declare const readProviderInvocation: TaskDiffReviewRuntimeBindings['readProviderInvocation'];
+} from './managed-workflow-state-contract.ts';
+import type { DocumentationReviewCapture } from '../assurance/documentation-closure.ts';
+import type { TaskDiffReviewConsumedReplayValidation } from '../assurance/task-diff-review-values.ts';
+import type { ProviderInvocationRecord } from '../provider-orchestration/provider-invocation-record.ts';
 
 export type BeginTaskDiffReviewOptions = Readonly<{
   explicitActor?: string;
@@ -199,9 +200,7 @@ export type TaskDiffReviewLifecycleStatus =
       assignment: ProviderRoleAssignment;
       ownerInvestigationId: string;
       invocationId: string;
-      failure: NonNullable<
-        ReturnType<typeof readProviderInvocation>['failure']
-      >;
+      failure: NonNullable<ProviderInvocationRecord['failure']>;
     }>
   | Readonly<{
       state:
@@ -254,9 +253,7 @@ export type TaskDiffReviewContinuationLifecycleStatus = Readonly<{
   review: TaskDiffReviewRecord;
   response: TaskDiffReviewChallengeResponseRecord;
   finalAssurance: TaskDiffFinalAssuranceRecord | null;
-  failure: NonNullable<
-    ReturnType<typeof readProviderInvocation>['failure']
-  > | null;
+  failure: NonNullable<ProviderInvocationRecord['failure']> | null;
 }>;
 
 export type TaskDiffReviewExternalContinuationLifecycleStatus =
@@ -435,4 +432,29 @@ export type ProtectedTaskApplyTaskDiffProviderGrantContinuation = Readonly<{
   sessionId: string;
   parentChallengeId: string;
   subjectDigest: string;
+}>;
+export type TaskDiffReviewCompletionOperations = Readonly<{
+  assertTaskDiffReviewCompletionGateSatisfied: (
+    cwd: string,
+    requestedSessionId: string,
+    options?: TaskDiffReviewCompletionGateOptions,
+  ) => TaskDiffReviewRecord | null;
+  loadTaskDiffDocumentationReviewCapture: (
+    cwd: string,
+    requestedSessionId: string,
+  ) => DocumentationReviewCapture | null;
+}>;
+export type TaskDiffReviewProviderOperations = Readonly<{
+  assertTaskDiffReviewProviderOwnerCurrent: (
+    cwd: string,
+    requestedInvocationId: string,
+    validation?: TaskDiffReviewConsumedReplayValidation,
+  ) =>
+    | TaskDiffReviewReservationRecord
+    | TaskDiffReviewContinuationReservationRecord;
+  withTaskDiffReviewProviderLifecycleOperation: <T>(
+    cwd: string,
+    requestedSessionId: string,
+    operation: (assertOwned: () => void) => T,
+  ) => T;
 }>;

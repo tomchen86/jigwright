@@ -19,29 +19,29 @@ import type { ChangeContractServices } from '../../modules/lifecycle/change-rout
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
-import { assertTaskProjectionSourceDigest } from '../../runtime/managed-documents/transaction/task-projection.ts';
-import { completionDocumentPaths } from '../../runtime/managed-documents/validation/managed-documents.ts';
-import { digestArtifacts } from '../../runtime/repository-observation/contract-artifact-observation.ts';
-import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+import { assertTaskProjectionSourceDigest } from '../managed-documents/transaction/task-projection.ts';
+import { completionDocumentPaths } from '../managed-documents/validation/managed-documents.ts';
+import { digestArtifacts } from '../repository-observation/contract-artifact-observation.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
 import {
   discoverRepository,
   fingerprintRepositoryProjection,
   listChangedPaths,
-  type GitState,
-} from '../../runtime/repository-transaction/git.ts';
+} from '../repository-transaction/git.ts';
 import {
   assertOwnedLock,
   assertTaskSessionIsolationLeasesOwned,
   readSessionFile,
   runtimePaths,
-  type WorkflowSession,
-} from '../../runtime/session-workspace/session-store.ts';
+} from '../session-workspace/session-store.ts';
 import {
   readFinalizeTransaction,
   type ProtectedTaskApplyAuthorizationBinding,
-} from '../../runtime/storage-journal/finalize-transaction.ts';
-import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
-import { assertPreparedProtectedTaskApplyAuthorization } from '../task-apply-authorization/protected-task-apply-authorization.ts';
+} from '../storage-journal/finalize-transaction.ts';
+import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
+import { assertPreparedProtectedTaskApplyAuthorization } from './protected-task-apply-authorization.ts';
+import type { WorkflowSession } from '../../modules/lifecycle/workflow-session-contract.ts';
+import type { GitState } from '../../modules/repository-consumer/repository-git-state.ts';
 
 export function inspectSession(
   changeContract: ChangeContractServices,

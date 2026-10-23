@@ -101,10 +101,10 @@ import {
 import { getSession } from '../../runtime/repository-observation/workflow-session-context.ts';
 import {
   type SessionCheckService,
-  persistSession,
   writeSessionReport,
 } from './verification.ts';
-import { inspectSession } from '../session-inspection/session-inspection.ts';
+import { persistSession } from '../../runtime/session-workspace/session-persistence.ts';
+import { inspectSession } from '../../runtime/repository-validation/session-inspection.ts';
 import { rollbackGeneratedDocuments } from '../../runtime/managed-documents/validation/managed-documents.ts';
 import { type GeneratedDocumentMutation } from '../../modules/projection/managed-documents.ts';
 import {
@@ -113,9 +113,9 @@ import {
   restoreTaskProjection,
 } from '../../runtime/managed-documents/transaction/task-projection.ts';
 import {
-  type TaskDiffReviewOperations,
+  type TaskDiffReviewCompletionOperations,
   type TaskDiffReviewCompletionGateOptions,
-} from './task-diff-review-lifecycle.ts';
+} from '../../modules/lifecycle/task-diff-review-contracts.ts';
 import {
   parseTaskAuthorizationPolicyFromWorkflowConfig,
   resolveTaskAuthorizationRequirementForPolicy,
@@ -130,7 +130,7 @@ import {
   type ProtectedTaskApplyRecoveryParametersV1,
 } from '../../modules/authority/protected-task-apply-recovery-grant.ts';
 import { grantSha256 } from '../../modules/authority/grant-primitives.ts';
-import { assertPreparedProtectedTaskApplyAuthorization } from '../task-apply-authorization/protected-task-apply-authorization.ts';
+import { assertPreparedProtectedTaskApplyAuthorization } from '../../runtime/repository-validation/protected-task-apply-authorization.ts';
 import { parsePathRoleRegistry } from '../../modules/source/path-role-registry.ts';
 import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
 
@@ -225,7 +225,7 @@ export type FinalizeCancellationOptions = Readonly<{
 
 export function cancelFinalizeRecovery(
   taskDiffReview: Pick<
-    TaskDiffReviewOperations,
+    TaskDiffReviewCompletionOperations,
     'assertTaskDiffReviewCompletionGateSatisfied'
   >,
   cwd: string,
@@ -247,7 +247,7 @@ export function cancelFinalizeRecovery(
 
 export function cancelProtectedTaskApplyRecoveryUnderGrant(
   taskDiffReview: Pick<
-    TaskDiffReviewOperations,
+    TaskDiffReviewCompletionOperations,
     'assertTaskDiffReviewCompletionGateSatisfied'
   >,
   cwd: string,
@@ -297,7 +297,7 @@ type ProtectedFinalizeRecoveryContext = Readonly<{
 
 function cancelFinalizeRecoveryInternal(
   taskDiffReview: Pick<
-    TaskDiffReviewOperations,
+    TaskDiffReviewCompletionOperations,
     'assertTaskDiffReviewCompletionGateSatisfied'
   >,
   cwd: string,
@@ -423,7 +423,7 @@ function cancelFinalizeRecoveryInternal(
 
 export function inspectFinalizeRecoveryStatus(
   taskDiffReview: Pick<
-    TaskDiffReviewOperations,
+    TaskDiffReviewCompletionOperations,
     'assertTaskDiffReviewCompletionGateSatisfied'
   >,
   cwd: string,
@@ -488,7 +488,7 @@ export function inspectFinalizeRecoveryStatus(
 
 function isAuthenticatedCheckedFinalizeCancellation(
   taskDiffReview: Pick<
-    TaskDiffReviewOperations,
+    TaskDiffReviewCompletionOperations,
     'assertTaskDiffReviewCompletionGateSatisfied'
   >,
   cwd: string,
@@ -1611,7 +1611,7 @@ export function createFinalizationService(
   taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
   changeContract: ChangeContractServices,
   taskDiffReview: Pick<
-    TaskDiffReviewOperations,
+    TaskDiffReviewCompletionOperations,
     | 'assertTaskDiffReviewCompletionGateSatisfied'
     | 'loadTaskDiffDocumentationReviewCapture'
   >,
