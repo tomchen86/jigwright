@@ -7,7 +7,7 @@ import '../plan-amendment-contribution.integration.test.ts';
 import '../agent-role-plan.contract.test.ts';
 import '../provider-worker-role-admission.integration.test.ts';
 import '../planning-transition.contract.test.ts';
-import '../candidate-engine-selection.test.ts';
+import '../installed-engine-identity.test.ts';
 import '../change-routing-domain.contract.test.ts';
 import '../ci-verifier-services.test.ts';
 import '../consumer-reader-caller-wiring.contract.test.ts';

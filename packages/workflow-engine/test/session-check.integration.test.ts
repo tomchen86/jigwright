@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { startSession } from '../src/application/execute-task/session.ts';
-import { checkSession } from './support/local-engine-selection-host.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import { abortSession } from '../src/composition-root/task-session-production.ts';
 import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
 import os from 'node:os';
@@ -741,7 +741,6 @@ import {
   type SessionInspection,
 } from '../src/application/finalize/verification.ts';
 import type { CheckExecutionPort } from '../src/modules/assurance/check-execution-port.ts';
-import { localEngineSelectionReaders } from './support/local-engine-selection-host.ts';
 import { pinCheckRunner } from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
@@ -848,7 +847,6 @@ function fakeSessionExecutionFixture() {
     };
     const service = createSessionCheckService({
       reviewedAssets: reviewedGeneratedAssets,
-      localEngineSelection: localEngineSelectionReaders,
       manifestOperations: maintainerManifestOperations,
       changeContract: {
         ...productionChangeContract,

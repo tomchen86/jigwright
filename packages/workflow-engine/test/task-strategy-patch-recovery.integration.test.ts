@@ -39,7 +39,7 @@ import {
   readActiveTaskStrategyRedRevision,
   taskStrategyRedRevisionId,
 } from '../src/runtime/storage-journal/task-strategy-red-revision-store.ts';
-import { checkSession } from './support/local-engine-selection-host.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import { sourceRepositoryRoot } from './fixture.ts';
 import {
   createCrossAgentFixture,

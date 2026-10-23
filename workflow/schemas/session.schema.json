@@ -47,7 +47,6 @@
     "requiredChecks": { "type": "array", "items": { "type": "string" } },
     "isolation": { "$ref": "#/$defs/taskSessionIsolationBinding" },
     "requiredCheckDigests": { "$ref": "#/$defs/digestRecord" },
-    "checkEvidenceEngineDigest": { "$ref": "#/$defs/sha256Digest" },
     "planningAssurance": { "$ref": "#/$defs/planningAssurance" },
     "revisionLeaseId": {
       "type": "string",

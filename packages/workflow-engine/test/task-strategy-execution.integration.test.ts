@@ -18,12 +18,12 @@ import { startSession } from '../src/application/execute-task/session.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-import { finalizeTask } from './support/local-engine-selection-host.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
 import {
   inspectTaskStrategyTransaction,
   sealTaskStrategyRed,
 } from '../src/composition-root/task-strategy-execution-production.ts';
-import { checkSession } from './support/local-engine-selection-host.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import { runtimeRoot, sourceRepositoryRoot, git } from './fixture.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { importTaskStrategyPatch } from '../src/composition-root/task-strategy-patch-production.ts';

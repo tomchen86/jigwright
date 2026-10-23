@@ -48,7 +48,7 @@ import {
   resolveCurrentTaskStrategyCorrection,
 } from '../src/composition-root/task-strategy-correction-production.ts';
 import { readTaskStrategyCorrectionRound } from '../src/runtime/storage-journal/task-strategy-correction-round-store.ts';
-import { checkSession } from './support/local-engine-selection-host.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
 import {
   configureChecks,

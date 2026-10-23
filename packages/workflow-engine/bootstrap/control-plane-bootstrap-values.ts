@@ -58,7 +58,6 @@ export const BUILT_IN_POLICY_SCHEMA_VERSION = 2;
 
 export const BUILT_IN_BOOTSTRAP_RUNTIME_PATHS = [
   'packages/workflow-engine/bootstrap/built-in-engine-closure-pin.ts',
-  'packages/workflow-engine/bootstrap/candidate-engine-selection.ts',
   'packages/workflow-engine/bootstrap/canonical-json.ts',
   'packages/workflow-engine/bootstrap/control-plane-bootstrap-closure.ts',
   'packages/workflow-engine/bootstrap/control-plane-bootstrap-executable.ts',

@@ -125,7 +125,6 @@ export function isWorkflowSession(value: unknown): value is WorkflowSession {
     'requiredChecks',
     'isolation',
     'requiredCheckDigests',
-    'checkEvidenceEngineDigest',
     'planningAssurance',
     'revisionLeaseId',
     'implementationReconciliationReportId',
@@ -240,12 +239,6 @@ export function isWorkflowSession(value: unknown): value is WorkflowSession {
           (!candidate.startsWith('docs/') &&
             !/(?:^|\/)README\.md$/.test(candidate)),
       ))
-  ) {
-    return false;
-  }
-  if (
-    value.checkEvidenceEngineDigest !== undefined &&
-    !isSha256Digest(value.checkEvidenceEngineDigest)
   ) {
     return false;
   }

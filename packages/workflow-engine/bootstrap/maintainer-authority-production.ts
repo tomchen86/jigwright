@@ -3,13 +3,14 @@ import { createMaintainerAuthorityProduction } from '../src/composition-root/mai
 import { createMaintainerGrantV2Production } from '../src/composition-root/maintainer-grant-v2-production.ts';
 import { createCandidateDependencyObservations } from '../src/runtime/repository-observation/maintainer-candidate-dependencies.ts';
 import { pinCheckRunner } from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
-import { resolveCandidateHarnessEngineDigest } from './candidate-engine-selection.ts';
+import { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST } from './built-in-engine-closure-pin.ts';
 
 export const maintainerGrantExecutionServices =
   createMaintainerGrantV2Production(
     createCandidateDependencyObservations({
       pinCheckRunner,
-      resolveCandidateHarnessEngineDigest,
+      resolveCandidateHarnessEngineDigest: () =>
+        BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST.slice('sha256:'.length),
       currentEnvironment: () => process.env,
     }),
   );

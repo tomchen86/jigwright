@@ -13,7 +13,7 @@ import {
 } from './fixture.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
-import { checkSession } from './support/local-engine-selection-host.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import assert from 'node:assert/strict';
 import { reviseTask } from '../src/application/revise/task-revision.ts';
 import path from 'node:path';
@@ -23,7 +23,7 @@ import { commitSession } from '../src/application/finalize/lifecycle.ts';
 import {
   finalizeTask,
   completeTask,
-} from './support/local-engine-selection-host.ts';
+} from './support/session-lifecycle-host.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 import {
   readImmutableReport,
@@ -287,7 +287,6 @@ test('tracked session schema exposes only the current WorkflowSession shape', ()
     'baseline',
     'branch',
     'changeId',
-    'checkEvidenceEngineDigest',
     'commitHash',
     'commitReportId',
     'committedAt',

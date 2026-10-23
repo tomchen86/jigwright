@@ -6,7 +6,7 @@ import path from 'node:path';
 
 import { canonicalJson } from '../../src/foundation/canonical-json/canonical-json.ts';
 import { commitSession } from '../../src/application/finalize/lifecycle.ts';
-import { finalizeTask } from './local-engine-selection-host.ts';
+import { finalizeTask } from './session-lifecycle-host.ts';
 import { startSession } from '../../src/application/execute-task/session.ts';
 import {
   beginTaskDiffReview,

@@ -1048,7 +1048,7 @@
     {
       "path": "src/application/execute-task/task-strategy-red-revision.ts",
       "mode": "100644",
-      "digest": "sha256:9696e0cd25c10d852adc06c5d2f5b4d71c72426203360431622b8ba32bd31da5"
+      "digest": "sha256:6f55e1750be1d986355b76c9433da279966284a0c6c46aed5012568c1c65eef3"
     },
     {
       "path": "src/application/execute-task/update-base.ts",
@@ -1068,7 +1068,7 @@
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:b78e2d9ad37ad88f0ff42e6cf5ce792459639a5aec7e9ab077e60843c51fcb69"
+      "digest": "sha256:1ca68c86f2601385cbddb43b7ff85054b275a9241a7ab22c330a3880d89776f9"
     },
     {
       "path": "src/application/finalize/predecessor-reconciliation.ts",
@@ -1173,7 +1173,7 @@
     {
       "path": "src/application/finalize/verification.ts",
       "mode": "100644",
-      "digest": "sha256:7035b85801879f30356b8a23ae14b0846ec59048c79e2a6f928d0f2970723ebb"
+      "digest": "sha256:07d4a5cfb07285763669c442891804d2cadb1273612ba99817869fe92fb0f568"
     },
     {
       "path": "src/application/governance-intake/current-governance-intake-counts.ts",
@@ -1438,7 +1438,7 @@
     {
       "path": "src/application/revise/task-revision.ts",
       "mode": "100644",
-      "digest": "sha256:4a6dcdba0c65bc42b0927bcef2aed4fd3d873e5e27beb4e85c77bfbebdeb7995"
+      "digest": "sha256:25e3ada987a3cde73b5f23bb292323800f10262257d40ed5c2ec2766c0991ed6"
     },
     {
       "path": "src/application/session-inspection/session-inspection.ts",
@@ -1678,7 +1678,7 @@
     {
       "path": "src/composition-root/finalization-production.ts",
       "mode": "100644",
-      "digest": "sha256:89803e49fa616bb954aa679545edbcc59c4590d77b7136f8b9bceb41bb93f505"
+      "digest": "sha256:6c5003b0380e3639968c4c885f51a0e768495d0b1e267a73b02b5242dd42f363"
     },
     {
       "path": "src/composition-root/git-authority-candidate-apply-production.ts",
@@ -2013,7 +2013,7 @@
     {
       "path": "src/composition-root/session-check-production.ts",
       "mode": "100644",
-      "digest": "sha256:8f43b2dfba0e23843ff94bb45e0096b4513a0fe57a1ece388d1613a059e71480"
+      "digest": "sha256:209b423d25b023f168b853e2d225bb43f8a6e3d11b03ca16fd6d69951e55b316"
     },
     {
       "path": "src/composition-root/system-document-disposition-production.ts",
@@ -2638,7 +2638,7 @@
     {
       "path": "src/modules/assurance/task-strategy-red-revision-contract.ts",
       "mode": "100644",
-      "digest": "sha256:8d0df3b6984b5db08063436c8f9c18b94093269b3e37b65d9629ed003f0c298a"
+      "digest": "sha256:b4c1b0e9874a95bda13567ab9b26c1b223e75c7fa6318b655c842cded256ba53"
     },
     {
       "path": "src/modules/assurance/task-strategy-red-revision-values.ts",
@@ -2704,11 +2704,6 @@
       "path": "src/modules/authority/authority-session-contract.ts",
       "mode": "100644",
       "digest": "sha256:10695ea4099b6eff8476e48df2717d612b0dd45de19c79e64bc76ee1bde6dc2e"
-    },
-    {
-      "path": "src/modules/authority/candidate-engine-selection.ts",
-      "mode": "100644",
-      "digest": "sha256:8c3cb1f546fd5ca7fd993b2edff375e6920019f8ad444c706a97aed4bea1455f"
     },
     {
       "path": "src/modules/authority/collaboration-grant-codec.ts",
@@ -2944,11 +2939,6 @@
       "path": "src/modules/authority/intervention-control.ts",
       "mode": "100644",
       "digest": "sha256:2901e296fe61f11e4a53cca11f6f210336f58d31a4bbacded281ad83495d18c8"
-    },
-    {
-      "path": "src/modules/authority/local-engine-selection.ts",
-      "mode": "100644",
-      "digest": "sha256:3e01686352d5937eceb4260ee279c0548cf394b79df9ddea6a52c0a5bc095fb3"
     },
     {
       "path": "src/modules/authority/maintainer-candidate-contracts.ts",
@@ -3538,7 +3528,7 @@
     {
       "path": "src/modules/lifecycle/workflow-session-contract.ts",
       "mode": "100644",
-      "digest": "sha256:5e80d4246f3bc98e110839b597c117d8a6f8fa331c3deecb93ac1bbc94bb50d8"
+      "digest": "sha256:efdde9734af42bbd4029030b088a018a3f2ba47691feb27553d216f081b86677"
     },
     {
       "path": "src/modules/planning-provider/change-contract-errors.ts",
@@ -4873,7 +4863,7 @@
     {
       "path": "src/runtime/session-workspace/workflow-session-records.ts",
       "mode": "100644",
-      "digest": "sha256:92ef8f4c4243312b995941b29cde9ee1d096628ae107405a4581d37976c51d0f"
+      "digest": "sha256:52337e24053b597fe17f845e287327ed2b83c1779c8d5737175882e080de76c7"
     },
     {
       "path": "src/runtime/session-workspace/workflow-session-worktrees.ts",

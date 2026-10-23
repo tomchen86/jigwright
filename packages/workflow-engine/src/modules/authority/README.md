@@ -8,11 +8,11 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:52ce77bbefe6c6578826c3e2c2a231b695a71db951961a02ee349a021e9c556c -->
+<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:52c2e6d38bb823e6f7068204be4da3f1f0d8e8152b7c84ef231da3e306d36e7b -->
 
 <!-- prettier-ignore-start -->
 
-117 files changed in this module since confirmation.
+115 files changed in this module since confirmation.
 
 ## Commands
 
@@ -130,7 +130,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [authority-refusal-audit.ts](authority-refusal-audit.ts) | Pure refusal identity/event construction and original-error preservation. | 0 | History unavailable |
 | [authority-remap-contract.ts](authority-remap-contract.ts) | Canonical mechanical-move and authority-remap request/result contracts. | 0 | History unavailable |
 | [authority-session-contract.ts](authority-session-contract.ts) | Durable state of an authority session and its pinned checks. | 0 | History unavailable |
-| [candidate-engine-selection.ts](candidate-engine-selection.ts) | Selects the exact current engine dependency from required, freshly verified observations. | 0 | History unavailable |
+| [candidate-engine-selection.ts](candidate-engine-selection.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [collaboration-grant-codec.ts](collaboration-grant-codec.ts) | No leading responsibility comment. | 0 | Header changed since confirmation |
 | [collaboration-grant-records.ts](collaboration-grant-records.ts) | Defines collaboration reservation, assignment, consumption, and inspection record shapes. | 2 | History unavailable |
 | [collaboration-grant-use.ts](collaboration-grant-use.ts) | No leading responsibility comment. | 0 | History unavailable |
@@ -178,7 +178,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [intervention-control-review.ts](intervention-control-review.ts) | Validates signed independent reviews of exact control-plane promotion material and lineage. | 2 | History unavailable |
 | [intervention-control-values.ts](intervention-control-values.ts) | Provides shared intervention value checks, signature namespaces and safe verifier calls. | 2 | History unavailable |
 | [intervention-control.ts](intervention-control.ts) | Models minimal updater transitions, recovery decisions and permitted workflow replacement reasons. | 2 | History unavailable |
-| [local-engine-selection.ts](local-engine-selection.ts) | Required observations of bootstrap-verified local engine identity at each point of use. | 0 | History unavailable |
+| [local-engine-selection.ts](local-engine-selection.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [maintainer-candidate-contracts.ts](maintainer-candidate-contracts.ts) | Builds canonical candidate bundles, supporting artifacts and check freshness contracts. | 2 | Header changed since confirmation |
 | [maintainer-candidate-dependencies.ts](maintainer-candidate-dependencies.ts) | Canonical candidate dependency projections and required observation contracts. | 0 | History unavailable |
 | [maintainer-candidate-ref-ledger.ts](maintainer-candidate-ref-ledger.ts) | Canonical ref-generation state and prestate rules. | 0 | Header changed since confirmation |

@@ -25,7 +25,7 @@ import test from 'node:test';
 
 import { commitFacts } from '../src/runtime/repository-transaction/git-transitions.ts';
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import { finalizeSession } from './support/local-engine-selection-host.ts';
+import { finalizeSession } from './support/session-lifecycle-host.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';

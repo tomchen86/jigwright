@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { finalizeTask } from './support/local-engine-selection-host.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
 import {
   readFinalizeTransaction,
   removeFinalizeTransaction,

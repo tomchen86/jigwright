@@ -21,7 +21,7 @@ import '../operational-cli-composition.contract.test.ts';
 import '../plan-review-coverage-observation.test.ts';
 import '../planning-contract-policy.test.ts';
 import '../semantic-manifest-reuse-observation.test.ts';
-import '../session-local-engine-selection.integration.test.ts';
+import '../fixed-runner-session.integration.test.ts';
 import '../task-mandate-services.contract.test.ts';
 import '../work-registry-read-policy.test.ts';
 import '../semantic-reuse-reporting.integration.test.ts';

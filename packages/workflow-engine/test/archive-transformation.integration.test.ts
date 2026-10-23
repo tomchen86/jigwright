@@ -31,7 +31,7 @@ import { withArchiveEligibility } from '../src/application/archive/archive-eligi
 import { createArchiveTransformation as createArchiveTransformationWithHandoff } from '../src/application/archive/archive-transformation.ts';
 import { createOpenSpecPlanningArchiveProjectionPort } from '../src/composition-root/planning-archive-projection-production.ts';
 import { commitSession } from '../src/application/finalize/lifecycle.ts';
-import { finalizeTask } from './support/local-engine-selection-host.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {

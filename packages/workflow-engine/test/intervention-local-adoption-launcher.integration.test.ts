@@ -21,13 +21,6 @@ import { setupInitialControlPlaneBootstrapFixture } from './control-plane-promot
 
 const NOW = new Date('2026-08-03T10:00:00.000Z');
 const SOURCE_REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../../..');
-const WORKFLOW_LAUNCHER = path.join(
-  SOURCE_REPOSITORY_ROOT,
-  'packages',
-  'workflow-engine',
-  'bootstrap',
-  'workflow-launcher.ts',
-);
 function digest(value: string | Buffer): `sha256:${string}` {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
@@ -187,6 +180,7 @@ async function fixture(healthy = true) {
   let journalDigest = adoption.journal.journalDigest;
 
   return {
+    engineRoot: controlPlane.engineRoot,
     repository,
     child,
     otherParent,
@@ -260,74 +254,42 @@ process.exit(0);
 `;
 }
 
-test('committed local adoption dispatches exact E2 on the next parent command and nowhere else', async () => {
+test('committed local adoption cannot replace the package host or release the parent WIP fence', async () => {
   const value = await fixture(true);
   try {
-    const terminal = value.complete();
-    assert.equal(terminal.record.journal.state, 'COMMITTED');
-    assert.equal(fs.existsSync(value.materializedExecutablePath), true);
-    git(value.repository, ['worktree', 'remove', '--force', value.child]);
-    assert.equal(fs.existsSync(value.child), false);
-
-    const launched = runWorkflowLauncher(value.repository, [
+    assert.equal(value.complete().record.journal.state, 'COMMITTED');
+    const binding = fs.readFileSync(value.bindingPath);
+    const inspected = runWorkflowLauncher(value.engineRoot, value.repository, [
+      '--help',
+    ]);
+    assert.equal(inspected.status, 0, inspected.stderr);
+    assert.equal(JSON.parse(inspected.stdout).engine, 'Eglobal');
+    const blocked = runWorkflowLauncher(value.engineRoot, value.repository, [
       'ordinary-command',
-      '--exact-argument',
     ]);
-    assert.equal(launched.status, 0, launched.stderr);
-    assert.deepEqual(JSON.parse(launched.stdout), {
-      kind: 'local-adopted-engine.v1',
-      engine: 'E2',
-      argv: ['ordinary-command', '--exact-argument'],
-      resume: {
-        kind: 'local-engine-resume-binding.v1',
-        parentChangeId: 'parent-A',
-        checkpointId: value.checkpointId,
-        engineDigest: value.artifact.executableDigest,
-      },
-      leakedTxId: null,
-      leakedChild: null,
-    });
-    const exited = runWorkflowLauncher(value.repository, ['--launcher-exit-7']);
-    assert.equal(exited.status, 7, exited.stderr);
-
-    const other = value.otherParent;
-    git(value.repository, [
-      'worktree',
-      'add',
-      '-b',
-      'work/parent-C',
-      other,
-      'HEAD',
-    ]);
-    const isolated = runWorkflowLauncher(other, ['--help']);
-    assert.equal(isolated.status, 0, isolated.stderr);
-    assert.equal(JSON.parse(isolated.stdout).engine, 'Eglobal');
-
-    git(value.repository, ['checkout', '--detach']);
-    const detached = runWorkflowLauncher(value.repository, ['--help']);
-    assert.equal(detached.status, 0, detached.stderr);
-    assert.equal(JSON.parse(detached.stdout).engine, 'Eglobal');
-    git(value.repository, ['checkout', 'work/parent-A']);
-    assert.equal(
-      JSON.parse(
-        runWorkflowLauncher(value.repository, ['ordinary-command']).stdout,
-      ).engine,
-      'E2',
-    );
+    assert.notEqual(blocked.status, 0);
+    assert.match(blocked.stderr, /WORKFLOW_PARENT_INTERVENTION_BLOCKED/);
+    assert.deepEqual(fs.readFileSync(value.bindingPath), binding);
   } finally {
     value.cleanup();
   }
 });
 
-test('mid-transaction local adoption fails ordinary dispatch closed', async () => {
+test('mid-transaction local adoption permits package help while preserving the parent WIP fence', async () => {
   const value = await fixture(true);
   try {
     const first = value.step(0);
     assert.equal(first.record.journal.state, 'PARENT_CHECKPOINTED');
-    const launched = runWorkflowLauncher(value.repository, ['--help']);
-    assert.notEqual(launched.status, 0);
-    assert.equal(launched.stdout, '');
-    assert.match(launched.stderr, /WORKFLOW_LOCAL_ADOPTION_INCOMPLETE/);
+    const launched = runWorkflowLauncher(value.engineRoot, value.repository, [
+      '--help',
+    ]);
+    assert.equal(launched.status, 0, launched.stderr);
+    assert.equal(JSON.parse(launched.stdout).engine, 'Eglobal');
+    const blocked = runWorkflowLauncher(value.engineRoot, value.repository, [
+      'check',
+      'parent-session',
+    ]);
+    assert.match(blocked.stderr, /WORKFLOW_PARENT_INTERVENTION_BLOCKED/);
   } finally {
     value.cleanup();
   }
@@ -350,7 +312,11 @@ test('workflow launcher preserves exact route status across incomplete local ado
       ['route', 'status'],
       ['route', 'status', '--json'],
     ]) {
-      const launched = runWorkflowLauncher(value.repository, argv);
+      const launched = runWorkflowLauncher(
+        value.engineRoot,
+        value.repository,
+        argv,
+      );
       assert.equal(launched.status, 0, launched.stderr);
       assert.deepEqual(JSON.parse(launched.stdout), {
         kind: 'repository-default-engine.v1',
@@ -372,12 +338,16 @@ test('workflow launcher preserves exact route status across incomplete local ado
       ['route', 'prepare'],
       ['route', 'status', 'extra'],
     ]) {
-      const launched = runWorkflowLauncher(value.repository, argv);
+      const launched = runWorkflowLauncher(
+        value.engineRoot,
+        value.repository,
+        argv,
+      );
       assert.notEqual(launched.status, 0, argv.join(' '));
       assert.equal(launched.stdout, '', argv.join(' '));
       assert.match(
         launched.stderr,
-        /WORKFLOW_LOCAL_ADOPTION_INCOMPLETE/,
+        /WORKFLOW_PARENT_INTERVENTION_BLOCKED/,
         argv.join(' '),
       );
     }
@@ -403,7 +373,11 @@ test('workflow launcher preserves exact task preflight across incomplete local a
       ['task-preflight', 'demo-change', '--task', '1.1'],
       ['task-preflight', 'demo-change', '--task', '1.1', '--json'],
     ]) {
-      const launched = runWorkflowLauncher(value.repository, argv);
+      const launched = runWorkflowLauncher(
+        value.engineRoot,
+        value.repository,
+        argv,
+      );
       assert.equal(launched.status, 0, launched.stderr);
       assert.deepEqual(JSON.parse(launched.stdout), {
         kind: 'repository-default-engine.v1',
@@ -427,12 +401,16 @@ test('workflow launcher preserves exact task preflight across incomplete local a
       ['task-preflight', 'demo-change', '--task', '1.1', 'extra'],
       ['task-preflight', 'demo-change', '--json', '--task', '1.1'],
     ]) {
-      const launched = runWorkflowLauncher(value.repository, argv);
+      const launched = runWorkflowLauncher(
+        value.engineRoot,
+        value.repository,
+        argv,
+      );
       assert.notEqual(launched.status, 0, argv.join(' '));
       assert.equal(launched.stdout, '', argv.join(' '));
       assert.match(
         launched.stderr,
-        /WORKFLOW_LOCAL_ADOPTION_INCOMPLETE/,
+        /WORKFLOW_PARENT_INTERVENTION_BLOCKED/,
         argv.join(' '),
       );
     }
@@ -441,7 +419,7 @@ test('workflow launcher preserves exact task preflight across incomplete local a
   }
 });
 
-test('binding-first crash windows fail closed and direct recovery reaches committed E2', async () => {
+test('binding-first recovery never changes the ordinary package host', async () => {
   const value = await fixture(true);
   try {
     value.step(0);
@@ -449,9 +427,13 @@ test('binding-first crash windows fail closed and direct recovery reaches commit
       binding.engineDigest = value.artifact.executableDigest;
       binding.generation = 2;
     });
-    const switchedAhead = runWorkflowLauncher(value.repository, ['--help']);
-    assert.notEqual(switchedAhead.status, 0);
-    assert.match(switchedAhead.stderr, /WORKFLOW_LOCAL_ADOPTION_INCOMPLETE/);
+    const switchedAhead = runWorkflowLauncher(
+      value.engineRoot,
+      value.repository,
+      ['--help'],
+    );
+    assert.equal(switchedAhead.status, 0, switchedAhead.stderr);
+    assert.equal(JSON.parse(switchedAhead.stdout).engine, 'Eglobal');
     value.step(1);
     value.step(2);
     value.step(3);
@@ -461,16 +443,20 @@ test('binding-first crash windows fail closed and direct recovery reaches commit
       binding.interventionState = 'adopted';
       binding.blocker = null;
     });
-    const finalizedAhead = runWorkflowLauncher(value.repository, ['--help']);
-    assert.notEqual(finalizedAhead.status, 0);
-    assert.match(finalizedAhead.stderr, /WORKFLOW_LOCAL_ADOPTION_INCOMPLETE/);
+    const finalizedAhead = runWorkflowLauncher(
+      value.engineRoot,
+      value.repository,
+      ['--help'],
+    );
+    assert.equal(finalizedAhead.status, 0, finalizedAhead.stderr);
+    assert.equal(JSON.parse(finalizedAhead.stdout).engine, 'Eglobal');
     const committed = value.step(4);
     assert.equal(committed.record.journal.state, 'COMMITTED');
-    const launched = runWorkflowLauncher(value.repository, [
-      'ordinary-command',
+    const launched = runWorkflowLauncher(value.engineRoot, value.repository, [
+      '--help',
     ]);
     assert.equal(launched.status, 0, launched.stderr);
-    assert.equal(JSON.parse(launched.stdout).engine, 'E2');
+    assert.equal(JSON.parse(launched.stdout).engine, 'Eglobal');
   } finally {
     value.cleanup();
   }
@@ -484,7 +470,9 @@ test('unhealthy rolled-back adoption keeps the parent on repository default with
     const binding = readLocalEngineBinding(value.bindingPath);
     assert.equal(binding.interventionState, 'active');
     assert.notEqual(binding.blocker, null);
-    const launched = runWorkflowLauncher(value.repository, ['--help']);
+    const launched = runWorkflowLauncher(value.engineRoot, value.repository, [
+      '--help',
+    ]);
     assert.equal(launched.status, 0, launched.stderr);
     assert.equal(JSON.parse(launched.stdout).engine, 'Eglobal');
   } finally {
@@ -492,8 +480,8 @@ test('unhealthy rolled-back adoption keeps the parent on repository default with
   }
 });
 
-test('committed local adoption fails closed for artifact, binding, and journal tampering', async () => {
-  for (const [name, tamper, code] of [
+test('ordinary package help does not read candidate artifacts, bindings, or adoption journals', async () => {
+  for (const [name, tamper] of [
     [
       'artifact',
       (value: Awaited<ReturnType<typeof fixture>>) => {
@@ -501,7 +489,6 @@ test('committed local adoption fails closed for artifact, binding, and journal t
         fs.appendFileSync(value.materializedExecutablePath, '\n// tampered\n');
         fs.chmodSync(value.materializedExecutablePath, 0o500);
       },
-      /WORKFLOW_LOCAL_ADOPTION_ARTIFACT_DIGEST_MISMATCH/,
     ],
     [
       'binding',
@@ -510,31 +497,30 @@ test('committed local adoption fails closed for artifact, binding, and journal t
           binding.parentWorkspacePath = value.wrongParent;
         });
       },
-      /WORKFLOW_LOCAL_ADOPTION_BINDING_MISMATCH/,
     ],
     [
       'journal',
       (value: Awaited<ReturnType<typeof fixture>>) => {
         fs.appendFileSync(adoptionPath(value.stateRoot, value.txId), ' ');
       },
-      /WORKFLOW_LOCAL_ADOPTION_JOURNAL_CORRUPT/,
     ],
   ] as const) {
     const value = await fixture(true);
     try {
       value.complete();
       tamper(value);
-      const launched = runWorkflowLauncher(value.repository, ['--help']);
-      assert.notEqual(launched.status, 0, name);
-      assert.equal(launched.stdout, '', name);
-      assert.match(launched.stderr, code, name);
+      const launched = runWorkflowLauncher(value.engineRoot, value.repository, [
+        '--help',
+      ]);
+      assert.equal(launched.status, 0, `${name}: ${launched.stderr}`);
+      assert.equal(JSON.parse(launched.stdout).engine, 'Eglobal');
     } finally {
       value.cleanup();
     }
   }
 });
 
-test('bootstrap launch rejects retired persisted V1 adoption without mutating it', async () => {
+test('ordinary package help leaves retired adoption records untouched', async () => {
   const value = await fixture(true);
   try {
     value.complete();
@@ -550,10 +536,11 @@ test('bootstrap launch rejects retired persisted V1 adoption without mutating it
     });
     const retiredBytes = fs.readFileSync(target, 'utf8');
 
-    const launched = runWorkflowLauncher(value.repository, ['--help']);
-    assert.notEqual(launched.status, 0);
-    assert.equal(launched.stdout, '');
-    assert.match(launched.stderr, /WORKFLOW_LOCAL_ADOPTION_JOURNAL_CORRUPT/);
+    const launched = runWorkflowLauncher(value.engineRoot, value.repository, [
+      '--help',
+    ]);
+    assert.equal(launched.status, 0, launched.stderr);
+    assert.equal(JSON.parse(launched.stdout).engine, 'Eglobal');
     assert.equal(fs.readFileSync(target, 'utf8'), retiredBytes);
   } finally {
     value.cleanup();
@@ -694,10 +681,18 @@ test('sealed harness-bootstrap runtime remains usable when the mutable E1 src tr
   }
 });
 
-function runWorkflowLauncher(repository: string, argv: string[]) {
+function runWorkflowLauncher(
+  engineRoot: string,
+  repository: string,
+  argv: string[],
+) {
   return childProcess.spawnSync(
     process.execPath,
-    ['--experimental-strip-types', WORKFLOW_LAUNCHER, ...argv],
+    [
+      '--experimental-strip-types',
+      path.join(engineRoot, 'bootstrap/workflow-launcher.ts'),
+      ...argv,
+    ],
     { cwd: repository, encoding: 'utf8', env: process.env },
   );
 }

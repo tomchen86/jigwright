@@ -787,11 +787,9 @@ function createPreparedRevisionJournal(
     sessionId: predecessor.sessionId,
     ...beforeExtra,
     latestCheckReportId: 'check-before',
-    checkEvidenceEngineDigest: 'a'.repeat(64),
   };
   const after: Record<string, unknown> = { ...before };
   delete after.latestCheckReportId;
-  delete after.checkEvidenceEngineDigest;
   delete after.implementationReconciliationReportId;
   delete after.implementationReconciliationPaths;
   return createTaskStrategyRedRevisionJournal(fixture.paths, {

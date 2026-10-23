@@ -24,10 +24,10 @@ import {
   completeTask,
   finalizeTask,
   finishSession,
-} from './support/local-engine-selection-host.ts';
+} from './support/session-lifecycle-host.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
-import { checkSession } from './support/local-engine-selection-host.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import {
   createFixtureRepository,
   git,

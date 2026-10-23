@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import { finalizeTask } from './support/local-engine-selection-host.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { inspectTaskDiffReviewSubject } from '../src/composition-root/task-diff-review-production.ts';
 import { createTaskDiffDocumentationClosureRequirement } from '../src/modules/assurance/task-diff-review.ts';

@@ -5,6 +5,64 @@ capabilities: [bootstrap-task-evidence, collaboration-continuation-grant, engine
 
 Define the contracts shared by planning, investigation evidence, managed execution, concurrent workspaces, archive, and their independent replay paths.
 ## Requirements
+### Requirement: Ordinary Commands Keep the Package Runner Fixed
+sources: [SRC-1a21225e5d3b38e35e098a8e17c41226edb73545fa027957d480930d37332004]
+
+Every ordinary invocation SHALL verify and execute the host and engine closure
+shipped with the invoked Jigwright package. Installed and source invocations
+SHALL follow the same rule. Consumer repository engine-selection records,
+local adoption bindings, promotion records, and resume-binding environment
+values MUST NOT replace that runner or cause a candidate engine probe during
+ordinary execution or candidate dependency observation.
+
+A task MAY edit and test a candidate Jigwright version as its workload. The
+candidate becomes the runner only when the user invokes that installed version
+for a subsequent task. Ordinary check, completion, persistence, locking, report
+freshness, and Grant Core requirements SHALL remain in force. Active parent WIP,
+Recovery Quarantine, and operational trust fences SHALL retain their recovery
+protections; adopting a candidate engine MUST NOT automatically release a
+parent WIP fence.
+
+#### Scenario: Installed runner encounters a finalized consumer candidate
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/single-package-release.contract.test.ts#single Jigwright tarball installs the complete CLI and public surfaces
+
+- **GIVEN** a complete Jigwright tarball is installed and the consumer has a valid finalized candidate selection
+- **WHEN** the installed CLI executes ordinary commands
+- **THEN** its package host produces the results without running the candidate or its probe
+- **AND** the consumer selection and Git HEAD remain unchanged
+
+#### Scenario: Source invocation encounters a finalized candidate
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/intervention-control-updater.integration.test.ts#trusted workflow launcher keeps its package E1 with finalized E2 and preserves argv and exit status
+
+- **WHEN** the source launcher runs with a different finalized consumer candidate
+- **THEN** it executes its own verified package host and preserves arguments and exit status
+
+#### Scenario: Dependency evidence identifies the executing package
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/installed-engine-identity.test.ts#candidate dependency snapshots use the package identity without probing a finalized consumer candidate
+
+- **WHEN** the production candidate dependency snapshot observes a consumer with a finalized candidate
+- **THEN** the harness engine digest identifies the executing package closure
+- **AND** observation neither probes the candidate nor changes its selection
+
+#### Scenario: Ordinary session checks and completion require no adoption binding
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/fixed-runner-session.integration.test.ts#ordinary check and completion ignore consumer engine selection; binding=absent
+
+- **GIVEN** a task has persisted consumer selection state and no engine resume binding
+- **WHEN** ordinary check and completion run with their normal prerequisites
+- **THEN** they publish current evidence and complete the task without adopting a different engine
+
+#### Scenario: Check metadata remains bound to trusted freshness policy
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/session-check-metadata.integration.test.ts#ordinary checks retain trusted external-state metadata and rerun required checks
+
+- **WHEN** ordinary checks use trusted external-state snapshots and freshness declarations
+- **THEN** missing snapshots still fail and published evidence retains the trusted completion time, snapshot digest, and maximum age
+- **AND** each ordinary check invocation executes its required checks
+
 ### Requirement: Collaboration Grants Are Human-Issued and Exactly Bound
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-5cdc4849e2c39d2af2dce4a96fd95b92fac190f87813f6ac59779ece7ab8aafb]
 

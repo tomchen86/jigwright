@@ -1605,7 +1605,6 @@ function revisionSession(
 ): WorkflowSession {
   const {
     latestCheckReportId: _latestCheckReportId,
-    checkEvidenceEngineDigest: _checkEvidenceEngineDigest,
     implementationReconciliationReportId: _reconciliationReportId,
     implementationReconciliationPaths: _reconciliationPaths,
     ...preserved

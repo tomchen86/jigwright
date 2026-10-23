@@ -42,7 +42,7 @@ import {
 } from '../src/composition-root/task-strategy-production.ts';
 import { readTaskStrategyImplementationResultBinding } from '../src/runtime/storage-journal/task-strategy-provider-store.ts';
 import { sealTaskStrategyRed } from '../src/composition-root/task-strategy-execution-production.ts';
-import { checkSession } from './support/local-engine-selection-host.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import { inspectSession } from '../src/application/session-inspection/session-inspection.ts';
 import {
   configureChecks,

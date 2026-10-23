@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 import { buildSingleJigwrightPackage } from '../../../scripts/build-single-jigwright-package.ts';
+import { setupFinalizedControlPlanePromotionFixture } from './control-plane-promotion-fixture.ts';
 
 test('installed runtime descriptors are exact embedded-only records', () => {
   const scratch = fs.mkdtempSync(
@@ -182,7 +183,7 @@ test('single Jigwright tarball exposes only read-only durable Job observation', 
   }
 });
 
-test('single Jigwright tarball installs the complete CLI and public surfaces', () => {
+test('single Jigwright tarball installs the complete CLI and public surfaces', async () => {
   const workspaceManifest = JSON.parse(
     fs.readFileSync(path.resolve('package.json'), 'utf8'),
   ) as { scripts: Record<string, string> };
@@ -519,6 +520,73 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
       vectorSetDigest:
         'sha256:b2113b55d86f6fd83cac7a1f3c62cea5df3b27a9feb0e5df5be011de694b089a',
     });
+
+    const candidateMarker = path.join(scratch, 'consumer-candidate-executed');
+    const candidate = await setupFinalizedControlPlanePromotionFixture({
+      candidateExecutableFactory: (closureDigest) =>
+        Buffer.from(`#!/usr/bin/env node
+import('node:fs').then(({ appendFileSync }) => {
+appendFileSync(${JSON.stringify(candidateMarker)}, process.argv.slice(2).join(' ') + '\\n');
+const probe = process.argv[2] === '--control-plane-restart-probe';
+process.stdout.write(JSON.stringify(probe
+  ? {kind:'control-plane-restart.v1',ready:true,closureDigest:${JSON.stringify(closureDigest)}}
+  : {kind:'control-plane-self-test.v1',healthy:true,closureDigest:${JSON.stringify(closureDigest)}}) + '\\n');
+});
+`),
+    });
+    try {
+      assert.equal(candidate.record.transaction.state, 'FINALIZED');
+      assert.ok(
+        fs
+          .readFileSync(candidateMarker, 'utf8')
+          .includes('--control-plane-self-test'),
+      );
+      fs.unlinkSync(candidateMarker);
+      const supervisorPath = path.join(
+        candidate.stateRoot,
+        'control-plane-supervisor.json',
+      );
+      const selectionBefore = fs.readFileSync(supervisorPath);
+      const headBefore = run(
+        'git',
+        ['rev-parse', 'HEAD'],
+        candidate.repository,
+      );
+      const fixedGuidance = JSON.parse(
+        run(
+          process.execPath,
+          [path.join(installedRoot, 'bin', 'jigwright.mjs'), 'guide', '--json'],
+          candidate.repository,
+        ),
+      );
+      assert.deepEqual(fixedGuidance, guidance);
+      const fixedConformance = JSON.parse(
+        run(
+          process.execPath,
+          [
+            path.join(installedRoot, 'bin', 'jigwright.mjs'),
+            'boundary',
+            'vectors',
+            '--check',
+            '--json',
+          ],
+          candidate.repository,
+        ),
+      );
+      assert.deepEqual(fixedConformance, conformance);
+      assert.equal(
+        fs.existsSync(candidateMarker),
+        false,
+        'ordinary invocation must not execute a candidate or its probe',
+      );
+      assert.deepEqual(fs.readFileSync(supervisorPath), selectionBefore);
+      assert.equal(
+        run('git', ['rev-parse', 'HEAD'], candidate.repository),
+        headBefore,
+      );
+    } finally {
+      candidate.cleanup();
+    }
 
     const runtimeStateRoot = path.join(
       repositoryRoot,

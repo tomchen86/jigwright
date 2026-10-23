@@ -10,7 +10,7 @@ import {
 } from '../src/composition-root/collaboration-grant-issuance-production.ts';
 import { inspectCollaborationGrants } from '../src/runtime/storage-journal/collaboration-grant-records.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { finalizeTask } from './support/local-engine-selection-host.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
   assertCurrentTaskDiffReviewSatisfied,

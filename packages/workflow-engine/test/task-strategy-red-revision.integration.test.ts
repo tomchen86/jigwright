@@ -17,7 +17,7 @@ import {
 } from '../src/composition-root/task-strategy-patch-production.ts';
 import { beginTaskStrategyRedRevision } from '../src/composition-root/task-strategy-red-revision-production.ts';
 import { parseTaskStrategyRedRevisionRequest } from '../src/runtime/storage-journal/task-strategy-red-revision-store.ts';
-import { checkSession } from './support/local-engine-selection-host.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import {
   createCrossAgentFixture,
   runWorkflowCli,
@@ -557,11 +557,10 @@ for (const [id, effect, operation, phase] of durableCuts)
         context.lifecycleRuntime.sessions,
         `${session.sessionId}.json`,
       );
-      // Real session producer admits these full bytes. The evidence-engine field
-      // makes before/after snapshots distinct; no fake journal phase is installed.
+      // A stale check pointer makes the real session-evidence write observable.
       writeJsonAtomic(sessionPath, {
         ...readSessionFile(sessionPath),
-        checkEvidenceEngineDigest: `sha256:${'a'.repeat(64)}`,
+        latestCheckReportId: 'a'.repeat(64),
       });
       const before = readSessionFile(sessionPath);
       const request = {
@@ -604,10 +603,10 @@ for (const [id, effect, operation, phase] of durableCuts)
       );
       assert.equal(paused?.phase ?? null, phase);
       assert.equal(
-        readSessionFile(sessionPath).checkEvidenceEngineDigest,
+        readSessionFile(sessionPath).latestCheckReportId,
         operation === 'continue' || id === 'C07' || id === 'C08'
           ? undefined
-          : before.checkEvidenceEngineDigest,
+          : before.latestCheckReportId,
       );
       const pinned = paused?.successorTransaction ?? null;
       const ref = readTaskStrategyCurrentRef(
@@ -721,6 +720,7 @@ for (const [id, effect, operation, phase] of durableCuts)
         canonicalJson(readSessionFile(sessionPath)),
         canonicalJson(completed.sessionTransition.after),
       );
+      assert.equal(readSessionFile(sessionPath).latestCheckReportId, undefined);
       assert.notEqual(
         canonicalJson(completed.sessionTransition.before),
         canonicalJson(completed.sessionTransition.after),
@@ -738,11 +738,6 @@ for (const [id, effect, operation, phase] of durableCuts)
         operation === 'begin' || id === 'C09' ? '3' : '2',
         'RED may rerun before successor pinning, never after pinning',
       );
-      if (id === 'C07')
-        assert.equal(
-          readSessionFile(sessionPath).checkEvidenceEngineDigest,
-          undefined,
-        );
       assert.equal(
         beginTaskStrategyRedRevision(repository, request).phase,
         'completed',

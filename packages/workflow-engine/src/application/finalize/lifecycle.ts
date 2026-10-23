@@ -1607,10 +1607,7 @@ export function findTaskCommits(
 /** Required reconciliation capability is bound once at the production boundary. */
 export function createFinalizationService(
   reviewedAssets: ReviewedGeneratedAssetInventory,
-  sessionChecks: Pick<
-    SessionCheckService,
-    'executeChecks' | 'reconcileSessionChecksAfterLocalEngineAdoption'
-  >,
+  sessionChecks: Pick<SessionCheckService, 'executeChecks'>,
   taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>,
   changeContract: ChangeContractServices,
   taskDiffReview: Pick<
@@ -1909,13 +1906,6 @@ export function createFinalizationService(
     options: TaskDiffReviewReplayOptions,
   ): CompleteTaskResult {
     assertCurrentTaskMayUseOrdinaryFinalize(cwd, requestedSessionId);
-    sessionChecks.reconcileSessionChecksAfterLocalEngineAdoption(
-      cwd,
-      requestedSessionId,
-      {
-        environment,
-      },
-    );
     const initial = inspectSession(changeContract, cwd, requestedSessionId);
     assertProtectedTaskApplyNotRequired(
       initial.git.repositoryRoot,

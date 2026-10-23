@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:77d298f45a5ae5c54ed65646b2b2431743525dd3f29c0f32d727ea3d858f2146"
+      "digest": "sha256:8807597c0738676b95aa096a0040b4e2bf15e41f88e735f50d99da7777bfd576"
     },
     {
       "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js",
@@ -858,7 +858,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/session-workspace/workflow-session-records.js",
       "mode": "100644",
-      "digest": "sha256:e69c5629446aa83c53f25981ed0a666aada936b7dd2531aa19fe74b43ff29623"
+      "digest": "sha256:ba15248b66799d491723e8a6d8bd5a3075f256a10f85b6189e35519bdb947700"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/session-workspace/workflow-session-worktrees.js",

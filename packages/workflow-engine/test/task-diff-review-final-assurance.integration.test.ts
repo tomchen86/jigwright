@@ -10,7 +10,7 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   completeTask,
   finalizeTask,
-} from './support/local-engine-selection-host.ts';
+} from './support/session-lifecycle-host.ts';
 import {
   readFinalizeTransaction,
   removeFinalizeTransaction,
@@ -18,7 +18,7 @@ import {
 import { restoreFinalizeTransactionProjection } from '../src/application/finalize/projected-finalization.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
-import { checkSession } from './support/local-engine-selection-host.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
   assertCurrentTaskDiffReviewSatisfied,

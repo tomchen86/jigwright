@@ -27,7 +27,7 @@ import { verifyPullRequest } from '../src/composition-root/ci-verification-produ
 import { loadHistoricalTaskAuthority } from '../src/composition-root/ci-replay-production.ts';
 import { canonicalCheckDefinition } from '../src/modules/assurance/commit-replay/ci-historical-contract.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
-import { checkSession } from './support/local-engine-selection-host.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import { abortSession } from '../src/composition-root/task-session-production.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 

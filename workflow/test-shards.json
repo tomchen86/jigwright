@@ -14,7 +14,7 @@
   "sourceTelemetryDigest": "sha256:9b45f37d8baf330b4fbd88d81456c97b50767229cf3cb6646d9dcdc1fdb4661d",
   "physicalFileCount": 560,
   "executionUnitCount": 557,
-  "inventoryDigest": "sha256:1e0251d22a1316dc02622c07479329b32abeb7325c3502301a7d3e7d4abc323b",
+  "inventoryDigest": "sha256:d7283d47bc9d351ee623fe76dd8de893d07ec1a1c35e7aa4512e4f7b53eb6433",
   "shards": [
     {
       "shardNumber": 1,
@@ -175,9 +175,9 @@
           "estimatedDurationMs": 46.379
         },
         {
-          "entrypoint": "packages/workflow-engine/test/session-local-engine-selection.integration.test.ts",
+          "entrypoint": "packages/workflow-engine/test/fixed-runner-session.integration.test.ts",
           "ownedPhysicalFiles": [
-            "packages/workflow-engine/test/session-local-engine-selection.integration.test.ts"
+            "packages/workflow-engine/test/fixed-runner-session.integration.test.ts"
           ],
           "legacyOrdinal": 108,
           "estimatedDurationMs": 34561.867
@@ -1057,9 +1057,9 @@
           "estimatedDurationMs": 2.744
         },
         {
-          "entrypoint": "packages/workflow-engine/test/candidate-engine-selection.test.ts",
+          "entrypoint": "packages/workflow-engine/test/installed-engine-identity.test.ts",
           "ownedPhysicalFiles": [
-            "packages/workflow-engine/test/candidate-engine-selection.test.ts"
+            "packages/workflow-engine/test/installed-engine-identity.test.ts"
           ],
           "legacyOrdinal": 58,
           "estimatedDurationMs": 54.358
@@ -1921,9 +1921,9 @@
           "estimatedDurationMs": 43212.672
         },
         {
-          "entrypoint": "packages/workflow-engine/test/session-check-invalidation.integration.test.ts",
+          "entrypoint": "packages/workflow-engine/test/session-check-metadata.integration.test.ts",
           "ownedPhysicalFiles": [
-            "packages/workflow-engine/test/session-check-invalidation.integration.test.ts"
+            "packages/workflow-engine/test/session-check-metadata.integration.test.ts"
           ],
           "legacyOrdinal": 381,
           "estimatedDurationMs": 61033.621

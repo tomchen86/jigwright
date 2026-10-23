@@ -6,7 +6,6 @@ import type { SystemDocumentDispositionService } from '../src/application/finali
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
 import { taskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
 import { assertCurrentImplementationReconciliation } from '../src/composition-root/implementation-reconciliation-production.ts';
-import { localEngineSelectionReaders } from './support/local-engine-selection-host.ts';
 import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
 import { readFinalizeTransaction } from '../src/runtime/storage-journal/finalize-transaction.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
@@ -46,7 +45,7 @@ import { commitPlanningTransition as commitPlanningTransitionWithContractReader 
 import {
   finalizeTask,
   finalizeSession,
-} from './support/local-engine-selection-host.ts';
+} from './support/session-lifecycle-host.ts';
 import { systemDocumentDispositions } from '../src/composition-root/system-document-disposition-production.ts';
 import { SYSTEM_DOCUMENT_GRANT_REASON } from '../src/application/finalize/system-document-grant.ts';
 import { createProductionSystemDocumentGrantService } from '../src/composition-root/grant-production.ts';
@@ -462,7 +461,7 @@ function finalizationWithDocuments(
 ) {
   return createFinalizationService(
     reviewedGeneratedAssets,
-    createProductionSessionCheckService(localEngineSelectionReaders),
+    createProductionSessionCheckService(),
     productionTaskStrategyExecutionGate,
     productionChangeContract,
     taskDiffReview,
@@ -509,7 +508,7 @@ test('ordinary finalization uses the injected document receiver at the original 
           managedDocuments,
           assertCurrentImplementationReconciliation,
           documents,
-          createProductionSessionCheckService(localEngineSelectionReaders),
+          createProductionSessionCheckService(),
           repository,
           sessionId,
           {},

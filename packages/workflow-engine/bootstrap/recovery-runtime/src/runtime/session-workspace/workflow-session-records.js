@@ -87,7 +87,6 @@ export function isWorkflowSession(value) {
         'requiredChecks',
         'isolation',
         'requiredCheckDigests',
-        'checkEvidenceEngineDigest',
         'planningAssurance',
         'revisionLeaseId',
         'implementationReconciliationReportId',
@@ -177,10 +176,6 @@ export function isWorkflowSession(value) {
             value.documentationRemediation.paths.some((candidate) => !isCanonicalDocumentationRemediationPath(candidate) ||
                 (!candidate.startsWith('docs/') &&
                     !/(?:^|\/)README\.md$/.test(candidate))))) {
-        return false;
-    }
-    if (value.checkEvidenceEngineDigest !== undefined &&
-        !isSha256Digest(value.checkEvidenceEngineDigest)) {
         return false;
     }
     if (!Object.hasOwn(value, 'planningAssurance') ||

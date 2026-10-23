@@ -59,6 +59,18 @@ async function fixture(healthy: boolean) {
     candidateExecutableFactory: (closureDigest) =>
       Buffer.from(currentGlobalEngineSource(closureDigest)),
   });
+  for (const name of [
+    'harness-bootstrap-launcher.ts',
+    'harness-bootstrap-runtime-closure-pin.ts',
+    'harness-bootstrap-dependency-closure.json',
+    'recovery-runtime',
+  ]) {
+    fs.cpSync(
+      path.join(path.dirname(WORKFLOW_LAUNCHER), name),
+      path.join(controlPlane.engineRoot, 'bootstrap', name),
+      { recursive: true },
+    );
+  }
   const root = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), 'intervention-parent-fence-')),
   );
@@ -136,6 +148,7 @@ async function fixture(healthy: boolean) {
 
   return {
     root,
+    engineRoot: controlPlane.engineRoot,
     repository,
     stateRoot,
     txId,
@@ -238,11 +251,11 @@ async function fixture(healthy: boolean) {
 test('durable intervention fence blocks before E1/E2 and routes sealed status and recovery', async () => {
   const value = await fixture(true);
   try {
-    const blockedInitialization = runWorkflowLauncher(value.repository, [
-      'control-plane',
-      'initialize',
-      '--json',
-    ]);
+    const blockedInitialization = runWorkflowLauncher(
+      value.engineRoot,
+      value.repository,
+      ['control-plane', 'initialize', '--json'],
+    );
     assert.notEqual(blockedInitialization.status, 0);
     assert.equal(blockedInitialization.stdout, '');
     assert.match(
@@ -250,10 +263,11 @@ test('durable intervention fence blocks before E1/E2 and routes sealed status an
       /WORKFLOW_PARENT_INTERVENTION_BLOCKED/,
     );
 
-    const blockedBeforeAdoption = runWorkflowLauncher(value.repository, [
-      'finish',
-      'parent-session-id',
-    ]);
+    const blockedBeforeAdoption = runWorkflowLauncher(
+      value.engineRoot,
+      value.repository,
+      ['finish', 'parent-session-id'],
+    );
     assert.notEqual(blockedBeforeAdoption.status, 0);
     assert.equal(blockedBeforeAdoption.stdout, '');
     assert.match(
@@ -261,7 +275,7 @@ test('durable intervention fence blocks before E1/E2 and routes sealed status an
       /WORKFLOW_PARENT_INTERVENTION_BLOCKED/,
     );
 
-    const status = runWorkflowLauncher(value.repository, [
+    const status = runWorkflowLauncher(value.engineRoot, value.repository, [
       'intervention',
       'status',
       'parent-A',
@@ -271,25 +285,27 @@ test('durable intervention fence blocks before E1/E2 and routes sealed status an
     assert.equal(JSON.parse(status.stdout).result.action, 'status');
 
     for (const malformed of [
-      ['status'],
-      ['status', '--json'],
       ['status', 'parent-session-id', '--json', '--extra'],
     ]) {
-      const rejected = runWorkflowLauncher(value.repository, malformed);
+      const rejected = runWorkflowLauncher(
+        value.engineRoot,
+        value.repository,
+        malformed,
+      );
       assert.notEqual(rejected.status, 0);
       assert.match(rejected.stderr, /WORKFLOW_PARENT_INTERVENTION_BLOCKED/);
     }
-    const ordinaryStatus = runWorkflowLauncher(value.repository, [
-      'status',
-      'parent-session-id',
-      '--json',
-    ]);
+    const ordinaryStatus = runWorkflowLauncher(
+      value.engineRoot,
+      value.repository,
+      ['status', 'parent-session-id', '--json'],
+    );
     assert.equal(ordinaryStatus.status, 0, ordinaryStatus.stderr);
-    assert.match(ordinaryStatus.stdout, /fixture current global engine/);
+    assert.match(ordinaryStatus.stdout, /fixture built-in engine/);
 
     value.prepareAdoption();
     value.step(0);
-    const recovery = runWorkflowLauncher(value.repository, [
+    const recovery = runWorkflowLauncher(value.engineRoot, value.repository, [
       'intervention',
       'recover',
       value.txId,
@@ -302,29 +318,37 @@ test('durable intervention fence blocks before E1/E2 and routes sealed status an
       'PARENT_CHECKPOINTED',
     );
 
-    const incompleteStatus = runWorkflowLauncher(value.repository, [
-      'status',
-      'parent-session-id',
-    ]);
+    const incompleteStatus = runWorkflowLauncher(
+      value.engineRoot,
+      value.repository,
+      ['status', 'parent-session-id'],
+    );
     assert.equal(incompleteStatus.status, 0, incompleteStatus.stderr);
-    assert.match(incompleteStatus.stdout, /fixture current global engine/);
+    assert.match(incompleteStatus.stdout, /fixture built-in engine/);
 
-    const incompleteOrdinary = runWorkflowLauncher(value.repository, [
-      'check',
-      'parent-session-id',
-    ]);
+    const incompleteOrdinary = runWorkflowLauncher(
+      value.engineRoot,
+      value.repository,
+      ['check', 'parent-session-id'],
+    );
     assert.notEqual(incompleteOrdinary.status, 0);
     assert.equal(incompleteOrdinary.stdout, '');
 
     const committed = value.completeAdoption();
     assert.equal(committed.record.journal.state, 'COMMITTED');
-    const resumed = runWorkflowLauncher(value.repository, [
+    const resumed = runWorkflowLauncher(value.engineRoot, value.repository, [
       'status',
       'parent-session-id',
     ]);
     assert.equal(resumed.status, 0, resumed.stderr);
-    assert.equal(JSON.parse(resumed.stdout).engine, 'E2');
-    assert.equal(fs.existsSync(value.localLaunchMarker), true);
+    assert.match(resumed.stdout, /fixture built-in engine/);
+    assert.equal(fs.existsSync(value.localLaunchMarker), false);
+    const stillBlocked = runWorkflowLauncher(
+      value.engineRoot,
+      value.repository,
+      ['check', 'parent-session-id'],
+    );
+    assert.match(stillBlocked.stderr, /WORKFLOW_PARENT_INTERVENTION_BLOCKED/);
   } finally {
     value.cleanup();
   }
@@ -336,7 +360,7 @@ test('rolled-back adoption retains the parent fence before repository-default la
     value.prepareAdoption();
     const rolledBack = value.completeAdoption();
     assert.equal(rolledBack.record.journal.state, 'ENGINE_BINDING_ROLLED_BACK');
-    const blocked = runWorkflowLauncher(value.repository, [
+    const blocked = runWorkflowLauncher(value.engineRoot, value.repository, [
       'complete-task',
       'parent-session-id',
     ]);
@@ -345,13 +369,13 @@ test('rolled-back adoption retains the parent fence before repository-default la
     assert.match(blocked.stderr, /WORKFLOW_PARENT_INTERVENTION_BLOCKED/);
     assert.equal(fs.existsSync(value.localLaunchMarker), false);
 
-    const status = runWorkflowLauncher(value.repository, [
+    const status = runWorkflowLauncher(value.engineRoot, value.repository, [
       'status',
       'parent-session-id',
       '--json',
     ]);
     assert.equal(status.status, 0, status.stderr);
-    assert.match(status.stdout, /fixture current global engine/);
+    assert.match(status.stdout, /fixture built-in engine/);
   } finally {
     value.cleanup();
   }
@@ -390,10 +414,18 @@ process.stdout.write('fixture current global engine\\n');
 `;
 }
 
-function runWorkflowLauncher(repository: string, argv: string[]) {
+function runWorkflowLauncher(
+  engineRoot: string,
+  repository: string,
+  argv: string[],
+) {
   return childProcess.spawnSync(
     process.execPath,
-    ['--experimental-strip-types', WORKFLOW_LAUNCHER, ...argv],
+    [
+      '--experimental-strip-types',
+      path.join(engineRoot, 'bootstrap/workflow-launcher.ts'),
+      ...argv,
+    ],
     { cwd: repository, encoding: 'utf8', env: process.env },
   );
 }

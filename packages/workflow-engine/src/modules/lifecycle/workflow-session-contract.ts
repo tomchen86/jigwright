@@ -37,8 +37,6 @@ export type WorkflowSession = TaskSessionReference & {
   /** Durable worktree, workset, and exclusive-resource lease identities. */
   isolation: TaskSessionIsolationBinding;
   requiredCheckDigests: Record<string, string>;
-  /** Engine identity against which the current durable check evidence ran. */
-  checkEvidenceEngineDigest?: `sha256:${string}`;
   planningAssurance: PlanningAssuranceBinding | null;
   /** Current same-session planning-authority lease while execution is paused. */
   revisionLeaseId?: string;

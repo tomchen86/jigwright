@@ -454,7 +454,7 @@ import './semantic-manifest-reuse-observation.test.ts';
 import './investigation-snapshot-policy.test.ts';
 
 import './harness-bootstrap-boundary.contract.test.ts';
-import './candidate-engine-selection.test.ts';
+import './installed-engine-identity.test.ts';
 
 import './ci-replay-boundary.test.ts';
 import './execution-governance-boundary.integration.test.ts';

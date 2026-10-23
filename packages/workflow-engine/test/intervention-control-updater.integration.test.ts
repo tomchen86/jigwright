@@ -120,7 +120,7 @@ test('minimal updater and production manifest loader share the protected capabil
   assert.deepEqual(typed, pure);
 });
 
-test('trusted workflow launcher uses built-in E1 only before supervisor initialization', () => {
+test('trusted workflow launcher uses its package host without supervisor initialization', () => {
   const rootPackage = JSON.parse(
     fs.readFileSync(path.join(SOURCE_REPOSITORY_ROOT, 'package.json'), 'utf8'),
   ) as { scripts: Record<string, string> };
@@ -154,7 +154,7 @@ test('trusted workflow launcher uses built-in E1 only before supervisor initiali
   }
 });
 
-test('trusted workflow launcher selection is independent of a tampered src tree', async () => {
+test('trusted workflow launcher rejects its damaged package even when a global artifact exists', async () => {
   const value = await setupInitialControlPlaneBootstrapFixture({
     builtInEntrypointBytes: initialLauncherEngineSource(),
     now: NOW,
@@ -210,12 +210,8 @@ export function resolveControlPlaneEngineSelection() { return null; }
         },
       },
     );
-    assert.equal(launched.status, 0, launched.stderr);
-    assert.deepEqual(JSON.parse(launched.stdout), {
-      kind: 'ordinary-engine.v1',
-      engine: 'E1',
-      argv: ['ordinary-command'],
-    });
+    assert.notEqual(launched.status, 0);
+    assert.match(launched.stderr, /WORKFLOW_BUILT_IN_ENGINE_CLOSURE_MISMATCH/);
     assert.equal(fs.existsSync(marker), false);
   } finally {
     value.cleanup();
@@ -274,35 +270,53 @@ test('trusted workflow launcher rejects a tampered built-in E1 dependency', () =
   }
 });
 
-test('trusted workflow launcher selects finalized E2 and preserves argv and exit status', async () => {
+test('trusted workflow launcher keeps its package E1 with finalized E2 and preserves argv and exit status', async () => {
   const value = await setupFinalizedControlPlanePromotionFixture({
+    builtInEntrypointBytes: initialLauncherEngineSource(),
     candidateExecutableFactory: (closureDigest) =>
       Buffer.from(engineSource(closureDigest, true)),
   });
   try {
     assert.equal(value.record.transaction.state, 'FINALIZED');
 
-    const launched = runWorkflowLauncher(value.repository, [
-      'ordinary-command',
-      '--exact-argument',
-    ]);
+    const launched = runWorkflowLauncher(
+      value.repository,
+      ['ordinary-command', '--exact-argument'],
+      {
+        launcherPath: path.join(
+          value.engineRoot,
+          'bootstrap/workflow-launcher.ts',
+        ),
+      },
+    );
     assert.equal(launched.status, 0, launched.stderr);
     assert.deepEqual(JSON.parse(launched.stdout), {
       kind: 'ordinary-engine.v1',
-      engine: 'E2',
+      engine: 'E1',
       argv: ['ordinary-command', '--exact-argument'],
     });
 
-    const exited = runWorkflowLauncher(value.repository, ['--launcher-exit-7']);
+    const exited = runWorkflowLauncher(
+      value.repository,
+      ['--launcher-exit-7'],
+      {
+        launcherPath: path.join(
+          value.engineRoot,
+          'bootstrap/workflow-launcher.ts',
+        ),
+      },
+    );
     assert.equal(exited.status, 7, exited.stderr);
-    assert.equal(JSON.parse(exited.stdout).engine, 'E2');
+    assert.equal(JSON.parse(exited.stdout).engine, 'E1');
   } finally {
     value.cleanup();
   }
 });
 
-test('trusted workflow launcher rejects a noncanonical terminal update record', async () => {
-  const value = await setupFinalizedControlPlanePromotionFixture();
+test('ordinary package launch does not consume a terminal update record', async () => {
+  const value = await setupFinalizedControlPlanePromotionFixture({
+    builtInEntrypointBytes: initialLauncherEngineSource(),
+  });
   try {
     assert.equal(value.record.transaction.state, 'FINALIZED');
     fs.appendFileSync(
@@ -310,18 +324,24 @@ test('trusted workflow launcher rejects a noncanonical terminal update record', 
       ' ',
     );
 
-    const launched = runWorkflowLauncher(value.repository, [
-      'ordinary-command',
-    ]);
-    assert.notEqual(launched.status, 0);
-    assert.equal(launched.stdout, '');
-    assert.match(launched.stderr, /CONTROL_PLANE_SUPERVISOR_CORRUPT/);
+    const launched = runWorkflowLauncher(
+      value.repository,
+      ['ordinary-command'],
+      {
+        launcherPath: path.join(
+          value.engineRoot,
+          'bootstrap/workflow-launcher.ts',
+        ),
+      },
+    );
+    assert.equal(launched.status, 0, launched.stderr);
+    assert.equal(JSON.parse(launched.stdout).engine, 'E1');
   } finally {
     value.cleanup();
   }
 });
 
-test('trusted workflow launcher fails closed for missing, malformed, or mismatched supervisor authority', async () => {
+test('ordinary package launch ignores missing, malformed, or mismatched candidate selection', async () => {
   for (const [name, tamper] of [
     [
       'missing initialized pointer',
@@ -381,19 +401,24 @@ test('trusted workflow launcher fails closed for missing, malformed, or mismatch
       },
     ],
   ] as const) {
-    const value = await setupInitialControlPlaneBootstrapFixture({ now: NOW });
+    const value = await setupInitialControlPlaneBootstrapFixture({
+      now: NOW,
+      builtInEntrypointBytes: initialLauncherEngineSource(),
+    });
     try {
       tamper(value);
-      const launched = runWorkflowLauncher(value.repository, [
-        'ordinary-command',
-      ]);
-      assert.notEqual(launched.status, 0, name);
-      assert.equal(launched.stdout, '', name);
-      assert.match(
-        launched.stderr,
-        /CONTROL_PLANE_(?:SUPERVISOR|EXECUTABLE|PROCESS)/,
-        name,
+      const launched = runWorkflowLauncher(
+        value.repository,
+        ['ordinary-command'],
+        {
+          launcherPath: path.join(
+            value.engineRoot,
+            'bootstrap/workflow-launcher.ts',
+          ),
+        },
       );
+      assert.equal(launched.status, 0, `${name}: ${launched.stderr}`);
+      assert.equal(JSON.parse(launched.stdout).engine, 'E1');
     } finally {
       value.cleanup();
     }

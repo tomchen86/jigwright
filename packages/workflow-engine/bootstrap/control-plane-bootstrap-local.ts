@@ -158,19 +158,11 @@ export function resolveParentInterventionFence(
   });
 }
 
-/** A committed, exact local overlay is the only automatic fence release. */
+/** A paused parent must use its sealed recovery lane before ordinary work. */
 export function assertParentInterventionFenceCleared(
   fence: BootstrapParentInterventionFence | null,
-  selection: BootstrapLocalEngineSelection | null,
 ): void {
   if (fence === null) return;
-  if (
-    selection !== null &&
-    selection.resumeBinding.parentChangeId === fence.parentChangeId &&
-    selection.resumeBinding.checkpointId === fence.checkpointId
-  ) {
-    return;
-  }
   throw trustError(
     'WORKFLOW_PARENT_INTERVENTION_BLOCKED',
     `Parent change ${fence.parentChangeId} is paused by harness intervention ${fence.blockedBy}; use the sealed harness-bootstrap recovery lane.`,

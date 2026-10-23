@@ -617,7 +617,6 @@ export function createTaskStrategyRedRevisionService(
       delete next.implementationReconciliationPaths;
     }
     delete next.latestCheckReportId;
-    delete next.checkEvidenceEngineDigest;
     return next;
   }
   return Object.freeze({

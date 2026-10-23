@@ -417,13 +417,14 @@ test('initial supervisor bootstrap rejects dirty repositories, non-empty state, 
     const initialized = runInitialize(engineRoot, identityDrift);
     assert.equal(initialized.status, 0, initialized.stderr);
     installRepositoryIdentity(identityDrift, 'github:R_different_fixture');
+    const selectionBefore = fs.readFileSync(supervisorPath(identityDrift));
     const mismatched = runLauncher(engineRoot, identityDrift, [
       'fixture-command',
     ]);
-    assert.notEqual(mismatched.status, 0);
-    assert.match(
-      mismatched.stderr,
-      /CONTROL_PLANE_SUPERVISOR_REPOSITORY_MISMATCH/,
+    assert.equal(mismatched.status, 0, mismatched.stderr);
+    assert.deepEqual(
+      fs.readFileSync(supervisorPath(identityDrift)),
+      selectionBefore,
     );
   } finally {
     fs.rmSync(engineRoot, { recursive: true, force: true });
@@ -540,7 +541,7 @@ test('initial supervisor bootstrap rejects external package roots, feature branc
   }
 });
 
-test('ordinary launch fails closed on every authority-bearing or unknown global residue without a supervisor', () => {
+test('ordinary package launch leaves global selection residue unconsumed without a supervisor', () => {
   const engineRoot = createSealedEnginePackage();
   const globalResidues = [
     'control-plane-approval-candidates',
@@ -571,8 +572,7 @@ test('ordinary launch fails closed on every authority-bearing or unknown global 
         });
       }
       const result = runLauncher(engineRoot, repository, ['fixture-command']);
-      assert.notEqual(result.status, 0, `${name}: ${result.stderr}`);
-      assert.match(result.stderr, /CONTROL_PLANE_SUPERVISOR_CORRUPT/);
+      assert.equal(result.status, 0, `${name}: ${result.stderr}`);
     }
 
     const localRoot = stateRoot(local);
@@ -636,7 +636,7 @@ test('initial supervisor bootstrap rejects a self-consistent local main not auth
   }
 });
 
-test('ordinary launch rejects a forged generation-one supervisor without completed bootstrap provenance', () => {
+test('ordinary package launch does not select a forged generation-one supervisor', () => {
   const engineRoot = createSealedEnginePackage();
   const repository = createRepository(
     engineRoot,
@@ -665,15 +665,14 @@ test('ordinary launch rejects a forged generation-one supervisor without complet
     });
 
     const result = runLauncher(engineRoot, repository, ['fixture-command']);
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /CONTROL_PLANE_SUPERVISOR_NOT_TERMINAL/);
+    assert.equal(result.status, 0, result.stderr);
   } finally {
     fs.rmSync(engineRoot, { recursive: true, force: true });
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
-test('ordinary launch rejects a self-digested V1 terminal and never executes its probe-capable artifact', () => {
+test('ordinary package launch ignores a self-digested V1 terminal and never executes its probe-capable artifact', () => {
   const engineRoot = createSealedEnginePackage();
   const repository = createRepository(
     engineRoot,
@@ -787,8 +786,7 @@ if (process.argv[2] === '--control-plane-restart-probe') {
     writeJsonRecord(supervisorPath(repository), supervisor);
 
     const rejected = runLauncher(engineRoot, repository, ['fixture-command']);
-    assert.notEqual(rejected.status, 0);
-    assert.match(rejected.stderr, /CONTROL_PLANE_SUPERVISOR_NOT_TERMINAL/);
+    assert.equal(rejected.status, 0, rejected.stderr);
     assert.equal(fs.existsSync(marker), false);
   } finally {
     fs.rmSync(engineRoot, { recursive: true, force: true });
@@ -979,7 +977,7 @@ test('Recovery Quarantine canonical inventory rejects tamper and ignores noncano
   }
 });
 
-test('generation-one selection allows an advanced origin descendant and rejects rewritten origin history', () => {
+test('ordinary package launch does not select an engine from origin history', () => {
   const engineRoot = createSealedEnginePackage();
   const advanced = createRepository(engineRoot, 'github:R_remote_advanced');
   const rewritten = createRepository(engineRoot, 'github:R_remote_rewritten');
@@ -999,8 +997,7 @@ test('generation-one selection allows an advanced origin descendant and rejects 
     assert.equal(runInitialize(engineRoot, rewritten).status, 0);
     git(rewritten, ['update-ref', 'refs/remotes/origin/main', 'HEAD^']);
     const rejected = runLauncher(engineRoot, rewritten, ['fixture-command']);
-    assert.notEqual(rejected.status, 0);
-    assert.match(rejected.stderr, /CONTROL_PLANE_SUPERVISOR_NOT_TERMINAL/);
+    assert.equal(rejected.status, 0, rejected.stderr);
   } finally {
     fs.rmSync(engineRoot, { recursive: true, force: true });
     fs.rmSync(advanced, { recursive: true, force: true });

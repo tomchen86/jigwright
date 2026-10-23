@@ -267,7 +267,6 @@ type Event = { name: string; args: unknown[]; frame?: number };
 function memory() {
   const f = facts();
   f.session.latestCheckReportId = 'check-before';
-  f.session.checkEvidenceEngineDigest = `sha256:${digest('engine')}`;
   const layout = {
     root: '/lock/root',
     locks: '/lock/locks',
@@ -1460,7 +1459,7 @@ function reconciliation(
     ledgerProjection: null,
   };
 }
-test('RED reconciliation gate is mandatory only for a recorded report and clears exactly four fields', () => {
+test('RED reconciliation gate is mandatory only for a recorded report and clears exactly three fields', () => {
   for (const mode of [
     'valid',
     'null',
@@ -1523,7 +1522,6 @@ test('RED reconciliation gate is mandatory only for a recorded report and clears
       };
       for (const key of [
         'latestCheckReportId',
-        'checkEvidenceEngineDigest',
         'implementationReconciliationReportId',
         'implementationReconciliationPaths',
       ])

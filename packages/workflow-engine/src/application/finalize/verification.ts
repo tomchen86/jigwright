@@ -2,9 +2,7 @@ import type { MaintainerManifestOperations } from '../../modules/authority/maint
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
 import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
-import crypto from 'node:crypto';
 import path from 'node:path';
-import type { LocalEngineSelectionReaders } from '../../modules/authority/local-engine-selection.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
@@ -18,11 +16,6 @@ import {
   requirePassedCheck,
 } from '../../modules/assurance/check-execution.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  readLocalEngineBinding,
-  readPersistedWipBundle,
-} from '../control-plane/intervention-control-bootstrap.ts';
-import { readPersistedEngineAdoption } from '../../runtime/storage-journal/intervention-control-persistence.ts';
 import { type CheckDependency } from '../../modules/authority/maintainer-manifest-contracts.ts';
 import {
   discoverRepository,
@@ -30,15 +23,8 @@ import {
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
 import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
-import {
-  readImmutableReport,
-  writeImmutableReport,
-} from '../../runtime/storage-journal/report-store.ts';
+import { writeImmutableReport } from '../../runtime/storage-journal/report-store.ts';
 import type { WorkflowReport } from '../../modules/lifecycle/workflow-report.ts';
-import {
-  assertInspectionReport,
-  assertReportChecks,
-} from '../../modules/lifecycle/workflow-report.ts';
 import {
   readSessionFile,
   runtimePaths,
@@ -52,14 +38,7 @@ import { inspectSession } from '../session-inspection/session-inspection.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
 
-/**
- * Inspects task sessions, executes checks, and reconciles evidence after
- * engine adoption.
- *
- * Invariants:
- * - Adoption reconciliation rejects a session changed since its trusted
- *   checkpoint.
- */
+/** Execute current required checks and publish immutable session evidence. */
 
 export type SessionCheck = {
   sessionId: string;
@@ -84,8 +63,6 @@ export type SessionCheckOptions = {
    * fields, or ambient environment values.
    */
   externalSnapshotDigests?: Readonly<Record<string, string>>;
-  /** Test-only crash window after immutable publication and before CAS. */
-  testAfterReconciliationReport?: () => void;
 };
 
 type TrustedCheckPolicy = {
@@ -95,7 +72,6 @@ type TrustedCheckPolicy = {
 
 type SessionCheckDependencies = Readonly<{
   reviewedAssets: ReviewedGeneratedAssetInventory;
-  localEngineSelection: LocalEngineSelectionReaders;
   manifestOperations: MaintainerManifestOperations;
   taskStrategyExecutionGate: TaskStrategyExecutionGate<SessionInspection>;
   changeContract: ChangeContractServices;
@@ -106,8 +82,6 @@ type SessionCheckDependencies = Readonly<{
 export function createSessionCheckService(services: SessionCheckDependencies) {
   return Object.freeze({
     checkSession: checkSession.bind(undefined, services),
-    reconcileSessionChecksAfterLocalEngineAdoption:
-      reconcileSessionChecksAfterLocalEngineAdoption.bind(undefined, services),
     executeChecks: executeChecks.bind(undefined, services),
   });
 }
@@ -140,18 +114,10 @@ function checkSessionUnlocked(
 ): SessionCheck {
   const {
     reviewedAssets,
-    localEngineSelection,
     manifestOperations,
     taskStrategyExecutionGate,
     changeContract,
   } = services;
-  const reconciled = reconcileSessionChecksAfterLocalEngineAdoption(
-    services,
-    cwd,
-    requestedSessionId,
-    options,
-  );
-  if (reconciled !== null) return reconciled;
   const initial = inspectSession(changeContract, cwd, requestedSessionId);
   ensureTaskMechanicalTransformationEvidence(reviewedAssets, initial);
   taskStrategyExecutionGate.assertExecutionAdmitted(
@@ -205,17 +171,9 @@ function checkSessionUnlocked(
       : {}),
   };
   const reportId = writeSessionReport(verified.inspection, report);
-  const localAdoption = resolveVerifiedLocalAdoption(
-    localEngineSelection,
-    verified.inspection,
-    options.environment ?? process.env,
-  );
   persistSession(verified.inspection, {
     ...verified.inspection.session,
     latestCheckReportId: reportId,
-    ...(localAdoption
-      ? { checkEvidenceEngineDigest: localAdoption.toEngineDigest }
-      : {}),
   });
 
   return {
@@ -230,375 +188,6 @@ function checkSessionUnlocked(
     passed: true,
     reportId,
   };
-}
-
-type VerifiedLocalAdoption = {
-  txId: string;
-  checkpointId: `sha256:${string}`;
-  fromEngineDigest: `sha256:${string}`;
-  toEngineDigest: `sha256:${string}`;
-  committedAt: string;
-  journalDigest: `sha256:${string}`;
-  snapshotSession: WorkflowSession;
-};
-
-/**
- * Reconcile only check evidence affected by a bootstrap-verified local engine
- * adoption.  The immutable replacement report is intentionally timestamped
- * from the adoption journal, so a crash after publication but before the
- * session CAS replays to the same content-addressed report ID.
- */
-function reconcileSessionChecksAfterLocalEngineAdoption(
-  services: SessionCheckDependencies,
-  cwd: string,
-  requestedSessionId: string,
-  options: SessionCheckOptions = {},
-): SessionCheck | null {
-  const { localEngineSelection, manifestOperations, changeContract } = services;
-  const initial = inspectSession(changeContract, cwd, requestedSessionId);
-  const adoption = resolveVerifiedLocalAdoption(
-    localEngineSelection,
-    initial,
-    options.environment ?? process.env,
-  );
-  if (adoption === null || !initial.session.latestCheckReportId) return null;
-  if (initial.session.checkEvidenceEngineDigest === adoption.toEngineDigest) {
-    return null;
-  }
-  if (
-    initial.session.checkEvidenceEngineDigest !== undefined &&
-    initial.session.checkEvidenceEngineDigest !== adoption.fromEngineDigest
-  ) {
-    throw workflowError(
-      'SESSION_CHECK_ENGINE_BINDING_CONFLICT',
-      'Durable check evidence is bound to neither side of the verified local engine adoption.',
-      ExitCode.staleState,
-    );
-  }
-  if (
-    canonicalJson(adoption.snapshotSession) !== canonicalJson(initial.session)
-  ) {
-    throw workflowError(
-      'SESSION_ADOPTION_CHECKPOINT_CHANGED',
-      'The durable parent session changed after its intervention checkpoint.',
-      ExitCode.staleState,
-    );
-  }
-
-  const previousReportId = initial.session.latestCheckReportId;
-  const previousReport = readImmutableReport(
-    runtimePaths(
-      initial.git.gitCommonDirectory,
-      initial.contract.config.runtimeDirectory,
-    ).reports,
-    initial.session.sessionId,
-    previousReportId,
-  );
-  assertInspectionReport(
-    previousReport,
-    initial,
-    'check',
-    'CHECK_REPORT_STALE',
-  );
-  assertReportChecks(
-    previousReport,
-    initial,
-    initial.session.requiredChecks,
-    'CHECK_REPORT_STALE',
-  );
-  if (previousReport.parentReportId !== undefined) {
-    throw workflowError(
-      'CHECK_REPORT_STALE',
-      'The current check report has an unexpected report parent.',
-      ExitCode.staleState,
-    );
-  }
-
-  const trustedPolicy = loadTrustedCheckPolicy(
-    manifestOperations,
-    initial.git.repositoryRoot,
-    initial.session.baseline.head,
-    initial.session.requiredChecks,
-  );
-  const { checkDependencies, externalStateFreshness } = trustedPolicy;
-  if (
-    previousReport.checkDependencies !== undefined &&
-    canonicalJson(previousReport.checkDependencies) !==
-      canonicalJson(checkDependencies)
-  ) {
-    throw workflowError(
-      'SESSION_CHECK_ATTESTATION_MISMATCH',
-      'Persisted check dependency attestation differs from its trust-base declaration.',
-      ExitCode.staleState,
-    );
-  }
-  if (
-    previousReport.externalStateFreshness !== undefined &&
-    canonicalJson(previousReport.externalStateFreshness) !==
-      canonicalJson(externalStateFreshness)
-  ) {
-    throw workflowError(
-      'SESSION_CHECK_ATTESTATION_MISMATCH',
-      'Persisted external-state freshness attestation differs from its trust-base declaration.',
-      ExitCode.staleState,
-    );
-  }
-
-  const previousChecks = previousReport.checks as CheckEvidence[];
-  const previousById = new Map(
-    previousChecks.map((evidence) => [evidence.checkId, evidence]),
-  );
-  const now = (options.now ?? (() => new Date()))();
-  if (!Number.isFinite(now.getTime())) {
-    throw workflowError(
-      'SESSION_CHECK_CLOCK_INVALID',
-      'The trusted check freshness clock is invalid.',
-      ExitCode.staleState,
-    );
-  }
-  const identityExecution = services.createExecution(
-    initial.git.repositoryRoot,
-    options.environment ?? process.env,
-  );
-  const externalStateInvalidated = new Set<string>();
-  const invalidatedCheckIds = initial.session.requiredChecks.filter(
-    (checkId) => {
-      const dependencies = checkDependencies[checkId]!;
-      const definition = initial.contract.checks.checks[checkId];
-      const runner = identityExecution.pin({ checkId, definition }).runner;
-      const evidence = previousById.get(checkId)!;
-      const externalInvalid = dependencies.includes('external-state')
-        ? !isReusableExternalStateEvidence(
-            checkId,
-            evidence,
-            externalStateFreshness[checkId],
-            options.externalSnapshotDigests?.[checkId],
-            now,
-          )
-        : false;
-      if (externalInvalid) externalStateInvalidated.add(checkId);
-      return (
-        dependencies.includes('harness-engine') ||
-        externalInvalid ||
-        evidence.runnerDigest !== runner.digest
-      );
-    },
-  );
-  const invalidated = new Set(invalidatedCheckIds);
-  const reusedCheckIds = initial.session.requiredChecks.filter(
-    (checkId) => !invalidated.has(checkId),
-  );
-  const rerun = executeChecks(services, {
-    cwd,
-    initial,
-    checkIds: invalidatedCheckIds,
-    environment: options.environment ?? process.env,
-    evidenceMetadata: createSessionEvidenceMetadata(
-      invalidatedCheckIds,
-      trustedPolicy,
-      options.now
-        ? options
-        : {
-            ...options,
-            // A durable adoption timestamp is conservative (never later than
-            // actual completion) and keeps crash replay content-addressed.
-            now: () => new Date(adoption.committedAt),
-          },
-    ),
-  });
-  const rerunById = new Map(
-    rerun.checks.map((evidence) => [evidence.checkId, evidence]),
-  );
-  const checks = initial.session.requiredChecks.map(
-    (checkId) => rerunById.get(checkId) ?? previousById.get(checkId)!,
-  );
-  const selectiveInvalidation = {
-    schemaVersion: 1 as const,
-    kind: 'local-engine-check-invalidation.v1' as const,
-    adoptionTxId: adoption.txId,
-    checkpointId: adoption.checkpointId,
-    fromEngineDigest: adoption.fromEngineDigest,
-    toEngineDigest: adoption.toEngineDigest,
-    changedDependencies:
-      externalStateInvalidated.size > 0
-        ? (['external-state', 'harness-engine'] as const)
-        : (['harness-engine'] as const),
-    invalidatedCheckIds,
-    reusedCheckIds,
-    checkDependencies,
-    ...(Object.keys(externalStateFreshness).length > 0
-      ? { externalStateFreshness }
-      : {}),
-  };
-  const report: WorkflowReport = {
-    ...previousReport,
-    createdAt: adoption.committedAt,
-    checks,
-    checkDependencies,
-    ...(Object.keys(externalStateFreshness).length > 0
-      ? { externalStateFreshness }
-      : {}),
-    reconciledFromReportId: previousReportId,
-    selectiveInvalidation,
-  };
-  const reportId = writeSessionReport(rerun.inspection, report);
-  options.testAfterReconciliationReport?.();
-  persistSession(rerun.inspection, {
-    ...rerun.inspection.session,
-    latestCheckReportId: reportId,
-    checkEvidenceEngineDigest: adoption.toEngineDigest,
-  });
-  return {
-    sessionId: initial.session.sessionId,
-    changeId: initial.session.changeId,
-    taskId: initial.session.taskId,
-    changedPaths: rerun.inspection.changedPaths,
-    unexpectedPaths: [],
-    checks,
-    executedCheckIds: invalidatedCheckIds,
-    reusedCheckIds,
-    passed: true,
-    reportId,
-  };
-}
-
-function resolveVerifiedLocalAdoption(
-  {
-    bootstrapInterventionStateRoot,
-    resolveLocalEngineSelection,
-  }: LocalEngineSelectionReaders,
-  inspection: SessionInspection,
-  environment: NodeJS.ProcessEnv,
-): VerifiedLocalAdoption | null {
-  const stateRoot = bootstrapInterventionStateRoot(
-    inspection.git.gitCommonDirectory,
-  );
-  const selection = resolveLocalEngineSelection(stateRoot, {
-    worktreeRoot: inspection.git.repositoryRealPath,
-    branchRef: inspection.git.branch
-      ? `refs/heads/${inspection.git.branch}`
-      : null,
-  });
-  const rawResumeBinding = environment.WORKFLOW_LOCAL_ENGINE_RESUME_BINDING;
-  if (selection === null) {
-    if (rawResumeBinding !== undefined) {
-      throw workflowError(
-        'SESSION_LOCAL_ENGINE_RESUME_BINDING_INVALID',
-        'A local engine resume binding was supplied without a verified adoption.',
-        ExitCode.staleState,
-      );
-    }
-    return null;
-  }
-  if (rawResumeBinding === undefined) {
-    throw workflowError(
-      'SESSION_LOCAL_ENGINE_RESUME_BINDING_REQUIRED',
-      'A committed local adoption must resume through the bootstrap-selected engine.',
-      ExitCode.staleState,
-    );
-  }
-  let parsedResumeBinding: unknown;
-  try {
-    parsedResumeBinding = JSON.parse(rawResumeBinding);
-  } catch {
-    throw workflowError(
-      'SESSION_LOCAL_ENGINE_RESUME_BINDING_INVALID',
-      'The local engine resume binding is malformed.',
-      ExitCode.staleState,
-    );
-  }
-  if (
-    canonicalJson(parsedResumeBinding) !==
-      canonicalJson(selection.resumeBinding) ||
-    selection.resumeBinding.parentChangeId !== inspection.session.changeId
-  ) {
-    throw workflowError(
-      'SESSION_LOCAL_ENGINE_RESUME_BINDING_INVALID',
-      'The local engine resume binding differs from bootstrap-verified state.',
-      ExitCode.staleState,
-    );
-  }
-
-  const bindingPath = path.join(
-    stateRoot,
-    'local-parent-sessions',
-    `${crypto
-      .createHash('sha256')
-      .update(`parent-session\0${inspection.session.changeId}`)
-      .digest('hex')}.json`,
-  );
-  const binding = readLocalEngineBinding(bindingPath);
-  const adoption = readPersistedEngineAdoption(stateRoot, binding.txId);
-  const journal = adoption.journal;
-  if (
-    journal.state !== 'COMMITTED' ||
-    journal.parentChangeId !== inspection.session.changeId ||
-    journal.txId !== binding.txId ||
-    journal.checkpointId !== selection.resumeBinding.checkpointId ||
-    journal.toEngineDigest !== selection.resumeBinding.engineDigest ||
-    journal.toEngineDigest !== binding.engineDigest
-  ) {
-    throw workflowError(
-      'SESSION_LOCAL_ENGINE_ADOPTION_MISMATCH',
-      'Bootstrap selection, local binding, and adoption journal disagree.',
-      ExitCode.staleState,
-    );
-  }
-  const committedAt = journal.history.at(-1)?.at;
-  if (
-    journal.history.at(-1)?.state !== 'COMMITTED' ||
-    typeof committedAt !== 'string'
-  ) {
-    throw workflowError(
-      'SESSION_LOCAL_ENGINE_ADOPTION_MISMATCH',
-      'Committed adoption journal lacks a terminal timestamp.',
-      ExitCode.staleState,
-    );
-  }
-  const bundle = readPersistedWipBundle(stateRoot, journal.checkpointId);
-  let snapshotSession: unknown;
-  try {
-    snapshotSession = JSON.parse(
-      Buffer.from(bundle.session.contentBase64, 'base64').toString('utf8'),
-    );
-  } catch {
-    throw workflowError(
-      'SESSION_ADOPTION_CHECKPOINT_INVALID',
-      'The intervention checkpoint does not contain a valid session snapshot.',
-      ExitCode.staleState,
-    );
-  }
-  if (!isWorkflowSessionSnapshot(snapshotSession, inspection.session)) {
-    throw workflowError(
-      'SESSION_ADOPTION_CHECKPOINT_INVALID',
-      'The intervention checkpoint session identity is invalid.',
-      ExitCode.staleState,
-    );
-  }
-  return {
-    txId: journal.txId,
-    checkpointId: journal.checkpointId,
-    fromEngineDigest: journal.fromEngineDigest,
-    toEngineDigest: journal.toEngineDigest,
-    committedAt,
-    journalDigest: journal.journalDigest,
-    snapshotSession,
-  };
-}
-
-function isWorkflowSessionSnapshot(
-  value: unknown,
-  current: WorkflowSession,
-): value is WorkflowSession {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
-    (value as { schemaVersion?: unknown }).schemaVersion === 1 &&
-    (value as { sessionId?: unknown }).sessionId === current.sessionId &&
-    (value as { changeId?: unknown }).changeId === current.changeId &&
-    (value as { taskId?: unknown }).taskId === current.taskId
-  );
 }
 
 function loadTrustedCheckPolicy(
@@ -739,27 +328,6 @@ function createSessionEvidenceMetadata(
         },
       ];
     }),
-  );
-}
-
-function isReusableExternalStateEvidence(
-  checkId: string,
-  evidence: CheckEvidence,
-  freshness: { maxAgeMs: number } | undefined,
-  currentSnapshotDigest: string | undefined,
-  now: Date,
-): boolean {
-  const completedAt = Date.parse(evidence.completedAt ?? '');
-  return (
-    freshness !== undefined &&
-    typeof currentSnapshotDigest === 'string' &&
-    /^[0-9a-f]{64}$/.test(currentSnapshotDigest) &&
-    evidence.externalSnapshotDigest === currentSnapshotDigest &&
-    evidence.maxAgeMs === freshness.maxAgeMs &&
-    Number.isFinite(completedAt) &&
-    completedAt <= now.getTime() &&
-    now.getTime() - completedAt <= freshness.maxAgeMs &&
-    evidence.checkId === checkId
   );
 }
 

@@ -4,7 +4,6 @@ import path from 'node:path';
 // Independent fixture inventory for the isolated bootstrap runtime.
 export const BOOTSTRAP_RUNTIME_NAMES = [
   'built-in-engine-closure-pin.ts',
-  'candidate-engine-selection.ts',
   'canonical-json.ts',
   'control-plane-bootstrap-closure.ts',
   'control-plane-bootstrap-executable.ts',
@@ -34,7 +33,6 @@ export function sealFixtureWorkflowHost(packageRoot: string): void {
   // These test engines deliberately expose only their small synthetic CLI.
   // Unused production assembly files must not import absent fixture services.
   for (const name of [
-    'candidate-engine-selection.ts',
     'harness-bootstrap-production.ts',
     'maintainer-authority-production.ts',
     'session-lifecycle-production.ts',

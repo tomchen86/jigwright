@@ -135,7 +135,6 @@ function fixture() {
     sessionId: predecessor.sessionId,
     unrelated: { keep: true },
     latestCheckReportId: 'check',
-    checkEvidenceEngineDigest: 'engine',
     implementationReconciliationReportId: 'reconcile',
     implementationReconciliationPaths: ['src/semantic.ts'],
   };

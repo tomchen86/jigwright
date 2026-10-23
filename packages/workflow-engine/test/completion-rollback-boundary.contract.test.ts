@@ -32,7 +32,6 @@ import {
 } from '../src/runtime/session-workspace/session-store.ts';
 import { writeImmutableReport } from '../src/runtime/storage-journal/report-store.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
-import { localEngineSelectionReaders } from './support/local-engine-selection-host.ts';
 import { readRepositoryDependencies } from './support/repository-dependency-graph.ts';
 
 type Equal<A, B> =
@@ -123,7 +122,6 @@ function createRollbackFixture(documentExisted = true) {
     requiredChecks: ['fixture'],
     requiredCheckDigests: { fixture: 'a'.repeat(64) },
     latestCheckReportId: 'b'.repeat(64),
-    checkEvidenceEngineDigest: `sha256:${'c'.repeat(64)}`,
     isolation: {
       schemaVersion: 1,
       routingRole: 'single',
@@ -322,10 +320,6 @@ test('rollback reset removes only the two evidence pointers and preserves comple
     assert.equal(reset.artifacts, session.artifacts);
     assert.equal(reset.allowedPaths, session.allowedPaths);
     assert.equal(reset.mandateBinding, null);
-    assert.equal(
-      reset.checkEvidenceEngineDigest,
-      session.checkEvidenceEngineDigest,
-    );
     assert.equal(Object.isFrozen(reset), false);
     assert.ok(session.latestCheckReportId);
     assert.ok(session.completionReportId);
@@ -335,12 +329,8 @@ test('rollback reset removes only the two evidence pointers and preserves comple
 });
 
 test('production composes the original frozen operation shape with fresh rollback identity per construction', () => {
-  const first = createProductionFinalizationService(
-    localEngineSelectionReaders,
-  );
-  const second = createProductionFinalizationService(
-    localEngineSelectionReaders,
-  );
+  const first = createProductionFinalizationService();
+  const second = createProductionFinalizationService();
   const keys = [
     'rollbackCompletion',
     'recoverFinalize',

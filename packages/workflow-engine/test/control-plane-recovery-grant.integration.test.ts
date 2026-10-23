@@ -851,7 +851,7 @@ function captureHarness(run: () => number): {
   }
 }
 
-test('sealed bootstrap signs an exact Recovery Grant and uniquely restores a control plane that cannot launch', async () => {
+test('sealed bootstrap restores a broken candidate control plane while ordinary commands keep the package host', async () => {
   const value = await sealedBrokenFixture();
   const controlAudit: ControlPlaneUpdaterAuditRecord[] = [];
   const recoveryAudit: ControlPlaneRecoveryAuditRecord[] = [];
@@ -867,12 +867,24 @@ test('sealed bootstrap signs an exact Recovery Grant and uniquely restores a con
       value.controlVerifier,
     );
   try {
-    const blocked = runWorkflowLauncher(value.repositoryRoot, [
-      'ordinary-command',
+    assert.throws(() => resolveControlPlaneEngineSelection(value.storageRoot), {
+      code: 'CONTROL_PLANE_SUPERVISOR_NOT_TERMINAL',
+    });
+    const supervisorPath = path.join(
+      value.storageRoot,
+      'control-plane-supervisor.json',
+    );
+    const selectionBefore = fs.readFileSync(supervisorPath);
+    const ordinary = runWorkflowLauncher(value.repositoryRoot, [
+      'guide',
+      '--json',
     ]);
-    assert.notEqual(blocked.status, 0);
-    assert.equal(blocked.stdout, '');
-    assert.match(blocked.stderr, /CONTROL_PLANE_SUPERVISOR_NOT_TERMINAL/);
+    assert.equal(ordinary.status, 0, ordinary.stderr);
+    assert.equal(
+      JSON.parse(ordinary.stdout).guide.kind,
+      'workflow-command-guide.v1',
+    );
+    assert.deepEqual(fs.readFileSync(supervisorPath), selectionBefore);
 
     let crashBeforeRecoveryConsumption = true;
     const interrupted = captureHarness(() =>
@@ -1034,10 +1046,11 @@ test('sealed bootstrap signs an exact Recovery Grant and uniquely restores a con
       value.oldArtifact.artifactId,
     );
     const resumed = runWorkflowLauncher(value.repositoryRoot, [
-      '--control-plane-restart-probe',
+      'guide',
+      '--json',
     ]);
     assert.equal(resumed.status, 0, resumed.stderr);
-    assert.equal(JSON.parse(resumed.stdout).ready, true);
+    assert.deepEqual(JSON.parse(resumed.stdout), JSON.parse(ordinary.stdout));
 
     const replay = captureHarness(() =>
       runHarnessBootstrapCli(

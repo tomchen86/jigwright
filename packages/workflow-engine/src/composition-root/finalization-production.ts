@@ -9,7 +9,6 @@ import {
   runSessionOperation,
 } from './lifecycle-context.ts';
 import { systemDocumentDispositions } from './system-document-disposition-production.ts';
-import type { LocalEngineSelectionReaders } from '../modules/authority/local-engine-selection.ts';
 import { createProductionSessionCheckService } from './session-check-production.ts';
 import { productionTaskStrategyExecutionGate } from './task-strategy-gate-production.ts';
 import { productionChangeContract } from './change-routing-observation-production.ts';
@@ -18,12 +17,10 @@ import { managedDocuments } from './managed-documents-production.ts';
 /** Binds the mandatory reconciliation gate for every finalization path. */
 import { createFinalizationService } from '../application/finalize/lifecycle.ts';
 import { assertCurrentImplementationReconciliation } from './implementation-reconciliation-production.ts';
-export function createProductionFinalizationService(
-  localEngineSelection: LocalEngineSelectionReaders,
-) {
+export function createProductionFinalizationService() {
   const finalization = createFinalizationService(
     reviewedGeneratedAssets,
-    createProductionSessionCheckService(localEngineSelection),
+    createProductionSessionCheckService(),
     productionTaskStrategyExecutionGate,
     productionChangeContract,
     taskDiffReview,
@@ -53,7 +50,6 @@ export type ProductionFinalizationService = ReturnType<
 >;
 export type ProtectedTaskApplyFinalizer =
   ProductionFinalizationService['finalizeProtectedTaskApplyUnderGrant'];
-export type { LocalEngineSelectionReaders } from '../modules/authority/local-engine-selection.ts';
 
 import {
   cancelFinalizeRecovery as cancelFinalizeRecoveryWithTaskDiffReview,

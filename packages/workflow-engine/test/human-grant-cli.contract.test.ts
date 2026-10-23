@@ -304,13 +304,9 @@ test('required session and Grant assembly stays cold and human requests use the 
     await import('../src/entrypoints/cli/workflow-cli.ts');
   const { createHumanGrantCli } =
     await import('../src/entrypoints/cli/human-grant-cli.ts');
-  const readers = {
-    bootstrapInterventionStateRoot: unexpectedObservation,
-    resolveLocalEngineSelection: unexpectedObservation,
-  };
   const sessionLifecycle = {
-    ...createProductionFinalizationService(readers),
-    checkSession: createProductionSessionCheckService(readers).checkSession,
+    ...createProductionFinalizationService(),
+    checkSession: createProductionSessionCheckService().checkSession,
   };
   const workflowGrants = createProductionWorkflowGrantServices(
     unexpectedObservation,

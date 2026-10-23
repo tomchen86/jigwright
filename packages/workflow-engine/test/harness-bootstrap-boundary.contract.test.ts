@@ -221,7 +221,6 @@ test('parent snapshot retains complete session bytes and reference before serial
     allowedPaths: ['src/**'],
     requiredChecks: ['unit'],
     requiredCheckDigests: { unit: 'unit-digest' },
-    checkEvidenceEngineDigest: `sha256:${'e'.repeat(64)}`,
     mandateBinding: {
       schemaVersion: 1,
       mandateTaskId: 'mandate-task',

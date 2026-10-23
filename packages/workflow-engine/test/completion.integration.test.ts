@@ -31,12 +31,12 @@ import {
   commitSession,
   findTaskCommits,
 } from '../src/application/finalize/lifecycle.ts';
-import { rollbackCompletion } from './support/local-engine-selection-host.ts';
+import { rollbackCompletion } from './support/session-lifecycle-host.ts';
 import {
   completeTask,
   finalizeTask,
   finishSession,
-} from './support/local-engine-selection-host.ts';
+} from './support/session-lifecycle-host.ts';
 import {
   hasExactTrailers,
   previewExactStaging,
@@ -60,7 +60,7 @@ import {
   withSessionOperation,
   writeJsonAtomic,
 } from '../src/runtime/session-workspace/session-store.ts';
-import { checkSession } from './support/local-engine-selection-host.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
 import { abortSession } from '../src/composition-root/task-session-production.ts';

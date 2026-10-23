@@ -7,7 +7,6 @@ import { productionChangeContract } from '../src/composition-root/change-routing
 import { taskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
 import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { assertCurrentImplementationReconciliation } from '../src/composition-root/implementation-reconciliation-production.ts';
-import { localEngineSelectionReaders } from './support/local-engine-selection-host.ts';
 import { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -26,7 +25,7 @@ import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coo
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import { loadGrantPolicyV2 } from '../src/runtime/repository-observation/grant-policy-reader.ts';
 import { protectedTaskApplyGrantTransitionDefinitions } from '../src/modules/authority/protected-task-apply-grant.ts';
-import { createProductionProtectedTaskApplyGrantPort } from './support/local-engine-selection-host.ts';
+import { createProductionProtectedTaskApplyGrantPort } from './support/session-lifecycle-host.ts';
 import { issueProductionCollaborationGrant } from '../src/composition-root/collaboration-grant-production.ts';
 import {
   runtimePaths,
@@ -608,7 +607,7 @@ test('prepared protected apply reaches the injected document service after real 
     };
     const service = createFinalizationService(
       reviewedGeneratedAssets,
-      createProductionSessionCheckService(localEngineSelectionReaders),
+      createProductionSessionCheckService(),
       productionTaskStrategyExecutionGate,
       productionChangeContract,
       taskDiffReview,

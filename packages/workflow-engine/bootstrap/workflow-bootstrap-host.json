@@ -1,17 +1,12 @@
 {
   "kind": "workflow-bootstrap-host.v1",
   "entrypoint": "bootstrap/workflow-engine-host.ts",
-  "engineManifestDigest": "sha256:c9c8f1f464e865c3d9fc8614d75be3ba94440fdd3c9d2322a3b8a352cf1494e4",
+  "engineManifestDigest": "sha256:4f19c31dbd84f356d78931d0c07fa9f3edc4ea658b12b2de2ab2fe358c89e93c",
   "files": [
     {
       "path": "bootstrap/built-in-engine-closure-pin.ts",
       "mode": "100644",
-      "digest": "sha256:c8619aece3fae589446fb12b8710e3f79dee49757ac6612109389356a6101ece"
-    },
-    {
-      "path": "bootstrap/candidate-engine-selection.ts",
-      "mode": "100644",
-      "digest": "sha256:f4b184f4de37a0cf8d6bd1b45c04ddcbc3376be23c1ec15601ecba075a13d083"
+      "digest": "sha256:fc5711461af79a9d930732152ebd799ed89ce643fed3f4932834ec6440bd07b1"
     },
     {
       "path": "bootstrap/canonical-json.ts",
@@ -46,7 +41,7 @@
     {
       "path": "bootstrap/control-plane-bootstrap-local.ts",
       "mode": "100644",
-      "digest": "sha256:db42bbc11b81fd176b6a8081d56b2208189ba8e566852311267314527d0d829b"
+      "digest": "sha256:bee669753587cdc979ab6c67a796506754363c3a62959a1552de28630222fd71"
     },
     {
       "path": "bootstrap/control-plane-bootstrap-promotion-records.ts",
@@ -86,7 +81,7 @@
     {
       "path": "bootstrap/control-plane-bootstrap-values.ts",
       "mode": "100644",
-      "digest": "sha256:fb4ec41c318170e7ce45d1422ba4c9df30a96078a3a8778d4625f8a039b7837b"
+      "digest": "sha256:8bbe2969797f57e14a89806f66a942ca497a0f9181afcc153ba9d8833ae1880d"
     },
     {
       "path": "bootstrap/control-plane-trust.ts",
@@ -101,12 +96,12 @@
     {
       "path": "bootstrap/maintainer-authority-production.ts",
       "mode": "100644",
-      "digest": "sha256:70726fcdcc90aceee2b2cf42da3418e4d3bb0c3dcb7cfa91af592d04f53f68b6"
+      "digest": "sha256:a9f9eab242129e07fdd5d01ac6feb6e52463f8a6c47d26c308de2832466e9b45"
     },
     {
       "path": "bootstrap/session-lifecycle-production.ts",
       "mode": "100644",
-      "digest": "sha256:9bef7effec81d008f8e9a7b26fb71fc47124bb6b37cd5d69b4c7a3ac02b7c068"
+      "digest": "sha256:04e46b0edd2c2cd0dfcf543559eb939ff6ea5289d028323e98b6e6c644ca601d"
     },
     {
       "path": "bootstrap/workflow-bootstrap-host.ts",

@@ -50,7 +50,7 @@ import '../task-diff-review-external-inventory.contract.test.ts';
 import '../generated/package-tests/core/contract-values.contract.test.ts';
 import '../role-topology-resolution.contract.test.ts';
 import '../grant-verifier-composition.contract.test.ts';
-import '../session-check-invalidation.integration.test.ts';
+import '../session-check-metadata.integration.test.ts';
 import '../git-authority-candidate-apply.integration.test.ts';
 import '../role-assignment-fail-grant-cli.contract.test.ts';
 import '../task-diff-review-lineage-supersession.contract.test.ts';

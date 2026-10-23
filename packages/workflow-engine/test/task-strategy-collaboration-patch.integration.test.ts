@@ -20,7 +20,7 @@ import {
 import { readTaskStrategyPatchRecord } from '../src/runtime/storage-journal/task-strategy-patch-store.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { inspectCollaborationGrants } from '../src/runtime/storage-journal/collaboration-grant-records.ts';
-import { checkSession } from './support/local-engine-selection-host.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import {
   createCrossAgentFixture,
   collaborationSigner,

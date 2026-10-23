@@ -49,10 +49,10 @@ import { taskRevisionApprovalTargetDigest } from '../src/modules/authority/task-
 import type { MaintainerSignerProvider } from '../src/modules/authority/maintainer-signer-port.ts';
 import { commitChangedPaths } from '../src/runtime/repository-transaction/git-transitions.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
-import { completeTask } from './support/local-engine-selection-host.ts';
+import { completeTask } from './support/session-lifecycle-host.ts';
 import { readImmutableReport } from '../src/runtime/storage-journal/report-store.ts';
 import { startPropose } from '../src/composition-root/propose-production.ts';
-import { checkSession } from './support/local-engine-selection-host.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
   getSession,

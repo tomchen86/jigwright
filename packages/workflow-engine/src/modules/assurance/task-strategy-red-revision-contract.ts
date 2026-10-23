@@ -509,7 +509,6 @@ function isExactSessionEvidenceClearingTransition(
 ): boolean {
   const expected = { ...transition.before };
   delete expected.latestCheckReportId;
-  delete expected.checkEvidenceEngineDigest;
   delete expected.implementationReconciliationReportId;
   delete expected.implementationReconciliationPaths;
   return canonicalJson(expected) === canonicalJson(transition.after);

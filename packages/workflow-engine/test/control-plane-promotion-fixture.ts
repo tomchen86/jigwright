@@ -100,7 +100,10 @@ export async function setupInitialControlPlaneBootstrapFixture(
   const signing = createSshSigningFixture();
   const repository = createRepository(engineRoot, signing.trustedSigners);
   const cleanup = () => {
-    fs.rmSync(engineRoot, { recursive: true, force: true });
+    fs.rmSync(path.resolve(engineRoot, '../..'), {
+      recursive: true,
+      force: true,
+    });
     fs.rmSync(repository, { recursive: true, force: true });
     signing.cleanup();
   };
@@ -147,7 +150,10 @@ export async function setupControlPlaneProducerFixture(
   fs.chmodSync(childWorkspace, 0o700);
   fs.rmdirSync(childWorkspace);
   const cleanup = () => {
-    fs.rmSync(engineRoot, { recursive: true, force: true });
+    fs.rmSync(path.resolve(engineRoot, '../..'), {
+      recursive: true,
+      force: true,
+    });
     fs.rmSync(repository, { recursive: true, force: true });
     fs.rmSync(childWorkspace, { recursive: true, force: true });
     signing.cleanup();
@@ -303,7 +309,11 @@ export async function setupFinalizedControlPlanePromotionFixture(
       fs.realpathSync(fixture.repository),
     );
     assert.equal(promoted.record?.kind, 'persisted-control-plane-update.v3');
-    assert.equal(promoted.record.transaction.state, 'FINALIZED');
+    assert.equal(
+      promoted.record.transaction.state,
+      'FINALIZED',
+      JSON.stringify(promoted.record.transaction),
+    );
     return {
       ...fixture,
       produced,
@@ -642,9 +652,10 @@ function freezeClassCCandidate(
 }
 
 function createSealedEnginePackage(builtInEntrypointBytes?: string): string {
-  const root = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'control-plane-producer-engine-'),
+  const workspace = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'control-plane-producer-engine-')),
   );
+  const root = path.join(workspace, 'packages', 'workflow-engine');
   const bootstrap = path.join(root, 'bootstrap');
   const source = path.join(root, 'src/entrypoints/cli');
   fs.mkdirSync(bootstrap, { recursive: true });

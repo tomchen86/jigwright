@@ -2,7 +2,7 @@ import { verifyWorkflowBootstrapHost } from './workflow-bootstrap-host.ts';
 import { WORKFLOW_BOOTSTRAP_HOST_MANIFEST_DIGEST } from './workflow-bootstrap-host-pin.ts';
 import { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST } from './built-in-engine-closure-pin.ts';
 /**
- * Selects and runs the engine a repository command is entitled to, before any engine code loads.
+ * Verifies and runs this package host for every ordinary repository command.
  *
  * Invariants:
  * - The built-in closure is verified against its pin, so a changed or indirect engine never launches.
@@ -17,12 +17,9 @@ import {
   assertParentInterventionFenceCleared,
   bootstrapInterventionStateRoot,
   initializeBuiltInControlPlaneSupervisor,
-  resolveControlPlaneEngineSelection,
-  resolveLocalEngineSelection,
   resolveParentInterventionFence,
   resolveRecoveryOperationalTrustRootFence,
   resolveRecoveryQuarantineMarker,
-  verifyBootstrapRepositoryIdentity,
   verifyBuiltInEngineClosure,
 } from './control-plane-trust.ts';
 import { canonicalJson } from './canonical-json.ts';
@@ -35,7 +32,6 @@ try {
     repository.gitCommonDirectory,
   );
   const argv = process.argv.slice(2);
-  let local: ReturnType<typeof resolveLocalEngineSelection> = null;
   let invocation: { executable: string; argv: string[] };
   const quarantine = resolveRecoveryQuarantineMarker(
     repository.gitCommonDirectory,
@@ -64,7 +60,7 @@ try {
   } else {
     const fence = resolveParentInterventionFence(stateRoot, repository);
     if (isInitialControlPlaneProvisioning(argv)) {
-      assertParentInterventionFenceCleared(fence, null);
+      assertParentInterventionFenceCleared(fence);
       if (
         resolveRecoveryQuarantineMarker(repository.gitCommonDirectory) !== null
       ) {
@@ -86,46 +82,16 @@ try {
       );
       process.exit(0);
     }
-    const readOnlyInspection = isReadOnlyRepositoryInspectionInvocation(argv);
-    let localAdoptionIncomplete = false;
     if (fence !== null && isSealedInterventionInvocation(argv)) {
       invocation = sealedInterventionInvocation(argv);
     } else {
-      try {
-        local = resolveLocalEngineSelection(stateRoot, repository);
-      } catch (error) {
-        if (
-          !readOnlyInspection ||
-          errorCode(error) !== 'WORKFLOW_LOCAL_ADOPTION_INCOMPLETE'
-        ) {
-          throw error;
-        }
-        localAdoptionIncomplete = true;
-      }
       if (
         !isReadOnlyHelpInvocation(argv) &&
-        (!readOnlyInspection ||
-          (fence !== null &&
-            !localAdoptionIncomplete &&
-            !isBoundedSessionStatusInvocation(argv)))
+        !isReadOnlyRepositoryInspectionInvocation(argv)
       ) {
-        assertParentInterventionFenceCleared(fence, local);
+        assertParentInterventionFenceCleared(fence);
       }
-      const global =
-        local === null
-          ? resolveGlobalEngineSelection(stateRoot, repository)
-          : null;
-      invocation = local
-        ? {
-            executable: local.executablePath,
-            argv,
-          }
-        : global === null
-          ? builtInInvocation(argv)
-          : {
-              executable: global.activeArtifact.executablePath,
-              argv,
-            };
+      invocation = builtInInvocation(argv);
     }
   }
   const quarantineAtLaunch = resolveRecoveryQuarantineMarker(
@@ -157,7 +123,7 @@ try {
     invocation.argv,
     {
       cwd: process.cwd(),
-      env: launchEnvironment(local?.resumeBinding ?? null),
+      env: launchEnvironment(),
       stdio: 'inherit',
       windowsHide: true,
     },
@@ -190,18 +156,6 @@ function isInitialControlPlaneProvisioning(argv: readonly string[]): boolean {
   );
 }
 
-function resolveGlobalEngineSelection(
-  stateRoot: string,
-  repository: ReturnType<typeof discoverRepositoryIdentity>,
-) {
-  const supervisorPath = path.join(stateRoot, 'control-plane-supervisor.json');
-  if (fs.lstatSync(supervisorPath, { throwIfNoEntry: false }) === undefined) {
-    return resolveControlPlaneEngineSelection(stateRoot);
-  }
-  const repositoryId = verifyBootstrapRepositoryIdentity(repository);
-  return resolveControlPlaneEngineSelection(stateRoot, repositoryId);
-}
-
 function isReadOnlyRepositoryInspectionInvocation(
   argv: readonly string[],
 ): boolean {
@@ -229,14 +183,6 @@ function isReadOnlySessionStatusInvocation(argv: readonly string[]): boolean {
     !argv[1].startsWith('-') &&
     !argv[1].includes('\0') &&
     !argv[1].includes('\n')
-  );
-}
-
-function isBoundedSessionStatusInvocation(argv: readonly string[]): boolean {
-  return (
-    (argv.length === 2 || (argv.length === 3 && argv[2] === '--json')) &&
-    argv[0] === 'status' &&
-    isBoundedNonOptionArgument(argv[1])
   );
 }
 
@@ -534,22 +480,11 @@ function exactGitDirectory(
   return fs.realpathSync(candidate);
 }
 
-function launchEnvironment(
-  resumeBinding: {
-    kind: 'local-engine-resume-binding.v1';
-    parentChangeId: string;
-    checkpointId: string;
-    engineDigest: string;
-  } | null,
-): NodeJS.ProcessEnv {
+function launchEnvironment(): NodeJS.ProcessEnv {
   const environment = { ...process.env };
   delete environment.WORKFLOW_LOCAL_ENGINE_RESUME_BINDING;
   delete environment.WORKFLOW_LOCAL_ENGINE_TX_ID;
   delete environment.WORKFLOW_LOCAL_ENGINE_CHILD_WORKTREE;
-  if (resumeBinding !== null) {
-    environment.WORKFLOW_LOCAL_ENGINE_RESUME_BINDING =
-      canonicalJson(resumeBinding);
-  }
   return environment;
 }
 

@@ -24,7 +24,7 @@ import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coo
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import { loadGrantPolicyV2 } from '../src/runtime/repository-observation/grant-policy-reader.ts';
 import { protectedTaskApplyGrantTransitionDefinitions } from '../src/modules/authority/protected-task-apply-grant.ts';
-import { createProductionProtectedTaskApplyGrantPort } from './support/local-engine-selection-host.ts';
+import { createProductionProtectedTaskApplyGrantPort } from './support/session-lifecycle-host.ts';
 import { requestChangeRoleAssignmentGrant } from '../bootstrap/session-lifecycle-production.ts';
 import { withProductionGrantLifecycleOperation } from '../src/composition-root/grant-production.ts';
 import { createProductionChangeRoleAssignmentGrantPort } from '../src/composition-root/change-role-assignment-grant-production.ts';

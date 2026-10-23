@@ -36,7 +36,7 @@ import {
 import { renderHandoff as renderHandoffWithContractReader } from '../../src/adapters/consumer/repository/handoff/handoff.ts';
 import { startSession } from '../../src/application/execute-task/session.ts';
 import { commitSession } from '../../src/application/finalize/lifecycle.ts';
-import { finalizeTask } from './local-engine-selection-host.ts';
+import { finalizeTask } from './session-lifecycle-host.ts';
 
 export function prepareCurrentChange(
   repository: string,

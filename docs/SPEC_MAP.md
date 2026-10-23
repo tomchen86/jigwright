@@ -28,7 +28,7 @@
 | packages/github-adapter | [GitHub adapter](../packages/github-adapter/spec.md) | 1 | 2 |
 | packages/grants | [Grant services](../packages/grants/spec.md) | 2 | 4 |
 | packages/openspec-adapter | [OpenSpec adapter](../packages/openspec-adapter/spec.md) | 2 | 3 |
-| packages/workflow-engine | [Shared workflow contracts](../packages/workflow-engine/spec.md) | 69 | 194 |
+| packages/workflow-engine | [Shared workflow contracts](../packages/workflow-engine/spec.md) | 70 | 199 |
 | packages/workflow-engine/src/modules/adoption | [Adoption](../packages/workflow-engine/src/modules/adoption/spec.md) | 4 | 9 |
 | packages/workflow-engine/src/modules/assurance | [Assurance](../packages/workflow-engine/src/modules/assurance/spec.md) | 7 | 22 |
 | packages/workflow-engine/src/modules/authority | [Authority](../packages/workflow-engine/src/modules/authority/spec.md) | 18 | 58 |
