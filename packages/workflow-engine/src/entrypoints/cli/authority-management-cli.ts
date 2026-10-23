@@ -47,7 +47,7 @@ import {
   inspectHumanResolutionGrantPublicationRecoveries,
   inspectHumanResolutionGrants,
   revokeHumanResolutionGrant,
-} from '../../composition-root/investigation-retry-production.ts';
+} from '../../composition-root/human-resolution-grant-production.ts';
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
 import type { MaintainerAuthorityOperations } from '../../composition-root/maintainer-authority-production.ts';
 import { resumeDirectHumanTaskDiffReview } from '../../composition-root/task-diff-review-production.ts';

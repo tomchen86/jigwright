@@ -22,25 +22,28 @@ import { discoverRepository } from '../src/runtime/repository-transaction/git.ts
 import {
   createInvestigationCheckpointEnvelope,
   startInvestigationSession as startInvestigationSessionWithMandate,
-  type GrantCoreHumanResolutionAuthorization,
-  type GrantCoreHumanResolutionExecutionOptions,
 } from '../src/adapters/planning/investigation/investigation-session.ts';
-import { executeGrantCoreHumanResolution } from '../src/composition-root/investigation-retry-production.ts';
+
 import {
   PROVIDER_RUNNER_RESIDUALS,
   type ProviderExecutableIdentity,
   type ProviderRunnerHost,
   type ProviderRunnerReport,
 } from '../src/runtime/provider-execution/provider-runner.ts';
+
 import {
-  inspectInvestigationQuarantineState,
-  inspectInvestigationResolutionState,
-} from '../src/runtime/storage-journal/human-resolution-state.ts';
-import {
-  type HumanResolutionConsequences,
-  type HumanResolutionDecision,
+  createHumanResolutionNode,
+  type HumanResolutionNode,
+  type InvestigationResolutionState,
 } from '../src/modules/investigation/domain/human-resolution-contract.ts';
-import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
+import {
+  investigationRuntimePaths,
+  type InvestigationRuntimePaths,
+} from '../src/runtime/paths/runtime-paths.ts';
+import {
+  writeHumanResolutionNode,
+  compareAndSwapHumanResolutionHead,
+} from '../src/runtime/storage-journal/human-resolution-nodes.ts';
 import { investigationManifestPublicationNamespace } from '../src/modules/investigation/manifest/investigation-publication-contracts.ts';
 import {
   createProviderInvocationRequest,
@@ -66,10 +69,6 @@ import {
   builtInProviderDefinitionSnapshotForTest,
   builtInProviderExecutableIdentityForTest,
 } from './fixture.ts';
-import {
-  runtimePaths as workflowRuntimePaths,
-  withRepositoryLifecycleOperation,
-} from '../src/runtime/session-workspace/session-store.ts';
 
 export const FIRST_INSTANT = '2026-07-24T00:00:00.000Z';
 
@@ -86,6 +85,8 @@ export const WORKFLOW_SOURCE_MODULE_PATHS = {
     'runtime/storage-journal/human-resolution-grant-store.ts',
   'investigation-session.ts':
     'composition-root/investigation-retry-production.ts',
+  'human-resolution-grant-management.ts':
+    'composition-root/human-resolution-grant-production.ts',
   'propose-orchestrator.ts': 'composition-root/propose-production.ts',
   'evidence-object-store.ts':
     'runtime/storage-journal/evidence-object-store.ts',
@@ -106,6 +107,10 @@ export const HUMAN_RESOLUTION_GRANT_STORE_MODULE_URL = workflowSourceModuleUrl(
 
 export const INVESTIGATION_SESSION_MODULE_URL = workflowSourceModuleUrl(
   'investigation-session.ts',
+);
+
+export const HUMAN_RESOLUTION_MODULE_URL = workflowSourceModuleUrl(
+  'human-resolution-grant-management.ts',
 );
 
 export const PROPOSE_ORCHESTRATOR_MODULE_URL = workflowSourceModuleUrl(
@@ -265,38 +270,16 @@ export function writeFixtureProviderRuntime(
   }
 }
 
-export function grantCoreHumanResolutionAuthorizationFixture(
-  repository: string,
-  investigationId: string,
-  decision: HumanResolutionDecision,
-  consequences: HumanResolutionConsequences,
-  challengeId: string,
-  quarantine = false,
-): GrantCoreHumanResolutionAuthorization {
-  const repositoryState = discoverRepository(repository);
-  const runtime = investigationRuntimePaths(
-    repositoryState.gitCommonDirectory,
-    'workflow-engine',
-  );
-  const state = quarantine
-    ? inspectInvestigationQuarantineState(
-        runtime,
-        investigationId,
-        'github:R_fixture',
-      )
-    : inspectInvestigationResolutionState(
-        runtime,
-        investigationId,
-        'github:R_fixture',
-      );
-  return {
-    schemaVersion: 1,
-    kind: 'grant-core-human-resolution.v1',
-    challengeId,
-    approvalSubjectDigest: `sha256:${sha256(`approval-${challengeId}`)}`,
-    repositoryId: state.envelope.repositoryId,
-    repositoryHead: repositoryState.head,
-    repositoryTree: repositoryState.tree,
+/** Seeds an existing historical node for consumers; it does not execute a Grant. */
+export function writeHistoricalHumanResolutionNodeFixture(
+  paths: InvestigationRuntimePaths,
+  state: InvestigationResolutionState,
+  input: Pick<
+    HumanResolutionNode,
+    'decision' | 'consequences' | 'grantId' | 'createdAt'
+  >,
+): HumanResolutionNode {
+  const node = createHumanResolutionNode({
     target: {
       workflowKind: 'investigation',
       changeId: state.envelope.changeId,
@@ -307,35 +290,18 @@ export function grantCoreHumanResolutionAuthorizationFixture(
       stateDigest: state.currentStateDigest,
       currentRefDigest: state.currentRefDigest,
     },
-    decision,
-    consequences,
-  };
-}
-
-export function executeGrantCoreHumanResolutionFixture(
-  repository: string,
-  authorization: GrantCoreHumanResolutionAuthorization,
-  options: GrantCoreHumanResolutionExecutionOptions = {},
-) {
-  const repositoryState = discoverRepository(repository);
-  const runtime = workflowRuntimePaths(
-    repositoryState.gitCommonDirectory,
-    'workflow-engine',
+    ...input,
+    grantDigest: sha256(`historical-resolution-grant:${input.grantId}`),
+    previousResolutionNodeId: state.envelope.resolutionHeadNodeId,
+  });
+  writeHumanResolutionNode(paths, node);
+  compareAndSwapHumanResolutionHead(
+    paths,
+    state.envelope.investigationId,
+    state.envelope.resolutionHeadNodeId,
+    node.nodeId,
   );
-  return withRepositoryLifecycleOperation(
-    runtime,
-    (assertOwned) =>
-      executeGrantCoreHumanResolution(
-        repository,
-        authorization,
-        assertOwned,
-        options,
-      ),
-    {
-      allowHumanResolutionGrantId: authorization.challengeId,
-      allowHumanResolutionChangeId: authorization.target.changeId,
-    },
-  );
+  return node;
 }
 
 export function installFixtureMaintainerPolicy(repository: string): void {

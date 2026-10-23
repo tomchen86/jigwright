@@ -436,19 +436,9 @@
       "digest": "sha256:a8cc51e8e4e3ea290e11dc1512eac85f1cf355e8b90c77b7da07a64575dfc3c3"
     },
     {
-      "path": "src/adapters/planning/investigation/human-resolution-grant-management.ts",
-      "mode": "100644",
-      "digest": "sha256:000bdb587fc7cc18de3f40efa1b115a428b5170c9357f1f7ef83f0c9a9f874e9"
-    },
-    {
-      "path": "src/adapters/planning/investigation/human-resolution-lifecycle.ts",
-      "mode": "100644",
-      "digest": "sha256:74e4a71bd14918082334a98996ebf44d9ea807e9759045acc54a8efaa7b70901"
-    },
-    {
       "path": "src/adapters/planning/investigation/investigation-session.ts",
       "mode": "100644",
-      "digest": "sha256:1cbdde2753c5863e95ffdb492716bf9114d86992d6556366628e0cf12d4248fc"
+      "digest": "sha256:52aef384f5996b23e225f085b6c3b5ad7c4c6af920176b60c49818ea4b79fae7"
     },
     {
       "path": "src/adapters/planning/openspec/documents/colocated-openspec-view.ts",
@@ -1646,6 +1636,11 @@
       "digest": "sha256:6befb4a7fbb6124f387d9a4059410764aa7aab51503352610faebe78eb8473b8"
     },
     {
+      "path": "src/composition-root/human-resolution-grant-production.ts",
+      "mode": "100644",
+      "digest": "sha256:a2c12373be1d76acb5581d7ba4645aad57388ede5d27a86539351ae93029b446"
+    },
+    {
       "path": "src/composition-root/human-revocation-production.ts",
       "mode": "100644",
       "digest": "sha256:d662577eba16f3b143844c3da1bf450107d9172690f5dd666eb44fae3aa27519"
@@ -1678,7 +1673,7 @@
     {
       "path": "src/composition-root/investigation-retry-production.ts",
       "mode": "100644",
-      "digest": "sha256:be348dd2da7a834298154f0f0022dbfabd8c1868e569c65f6840798520e6da95"
+      "digest": "sha256:5235d87bb2d1a661e882cc29718c6db24e1edf8d6c2e3954c09e1c2f62ea153d"
     },
     {
       "path": "src/composition-root/lifecycle-context.ts",
@@ -2048,7 +2043,7 @@
     {
       "path": "src/entrypoints/cli/authority-management-cli.ts",
       "mode": "100644",
-      "digest": "sha256:b65677353bf0b83f82a7c47d937f50071a5dd634615954fb836013b71cfc775f"
+      "digest": "sha256:0e6a0d71cd5a0ff38f31c2a530d76e28dfe4b9d9616ba728a84e6f8947e56c78"
     },
     {
       "path": "src/entrypoints/cli/boundary-cli.ts",
@@ -3969,6 +3964,11 @@
       "path": "src/runtime/governance-intake/source-ledger.ts",
       "mode": "100644",
       "digest": "sha256:6521abc44381800e4814a212bc9afe232f4555a4630f4c1053de54ff0137c332"
+    },
+    {
+      "path": "src/runtime/grant-management/human-resolution-grant-management.ts",
+      "mode": "100644",
+      "digest": "sha256:e5911588417e880d2520c2f6efc59efd1da27df487cb66e771541c8fcc4e9225"
     },
     {
       "path": "src/runtime/grants/collaboration-grant-issuance.ts",

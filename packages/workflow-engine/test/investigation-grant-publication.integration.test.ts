@@ -8,7 +8,7 @@ import { discoverRepository } from '../src/runtime/repository-transaction/git.ts
 import {
   discardHumanResolutionGrantPublication,
   inspectHumanResolutionGrantPublicationRecoveries,
-} from '../src/composition-root/investigation-retry-production.ts';
+} from '../src/composition-root/human-resolution-grant-production.ts';
 import { createHumanResolutionJournal } from '../src/modules/investigation/domain/human-resolution-journal-contract.ts';
 import {
   inspectStoredHumanResolutionGrants,
@@ -19,7 +19,7 @@ import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 import {
   FIRST_INSTANT,
-  INVESTIGATION_SESSION_MODULE_URL,
+  HUMAN_RESOLUTION_MODULE_URL,
   runWorkflowCli,
 } from './investigation-session-fixture.ts';
 
@@ -687,7 +687,7 @@ test('publication recovery resumes after a prepared receipt crash', () => {
             return originalRename(source, target);
           };
           const { discardHumanResolutionGrantPublication } =
-            await import(${JSON.stringify(INVESTIGATION_SESSION_MODULE_URL)});
+            await import(${JSON.stringify(HUMAN_RESOLUTION_MODULE_URL)});
           discardHumanResolutionGrantPublication(
             ${JSON.stringify(repository)},
             ${JSON.stringify(grantId)},
@@ -799,7 +799,7 @@ test('publication recovery remains visible after rename and terminally reserves 
             return result;
           };
           const { discardHumanResolutionGrantPublication } =
-            await import(${JSON.stringify(INVESTIGATION_SESSION_MODULE_URL)});
+            await import(${JSON.stringify(HUMAN_RESOLUTION_MODULE_URL)});
           discardHumanResolutionGrantPublication(
             ${JSON.stringify(repository)},
             ${JSON.stringify(grantId)},
@@ -944,7 +944,7 @@ test('publication recovery reclaims receipt publication temps before and after a
               return originalRename(source, target);
             };
             const { discardHumanResolutionGrantPublication } =
-              await import(${JSON.stringify(INVESTIGATION_SESSION_MODULE_URL)});
+              await import(${JSON.stringify(HUMAN_RESOLUTION_MODULE_URL)});
             discardHumanResolutionGrantPublication(
               ${JSON.stringify(repository)},
               ${JSON.stringify(grantId)},

@@ -42,31 +42,12 @@ export const blockInvestigationForPlanReviewRetryUnderAuthority =
   blockRetryLocked.bind(undefined, createInvestigationHumanActionBlocker);
 
 import {
-  createInvestigationHumanResolutionOperations,
   reopenInvestigationForReviewerTerms as reopen,
   reopenInvestigationForReviewerTermsUnderAuthority as reopenLocked,
   inspectReviewerTermResolutionAuthorization as inspectReviewer,
 } from '../adapters/planning/investigation/investigation-session.ts';
-import {
-  assertResolutionDecisionTarget,
-  loadMaintainerPolicyForResolution,
-} from '../runtime/repository-observation/human-resolution-grants.ts';
-import {
-  revokeStoredHumanResolutionGrant,
-  verifyHumanResolutionGrantForRevocation,
-} from './human-revocation-production.ts';
-export const {
-  inspectHumanResolutionGrants,
-  inspectHumanResolutionGrantPublicationRecoveries,
-  discardHumanResolutionGrantPublication,
-  revokeHumanResolutionGrant,
-  executeGrantCoreHumanResolution,
-} = createInvestigationHumanResolutionOperations({
-  assertResolutionDecisionTarget,
-  loadMaintainerPolicyForResolution,
-  revokeStoredHumanResolutionGrant,
-  verifyHumanResolutionGrantForRevocation,
-});
+import { loadMaintainerPolicyForResolution } from '../runtime/repository-observation/human-resolution-grants.ts';
+
 export const reopenInvestigationForReviewerTerms = reopen.bind(
   undefined,
   loadMaintainerPolicyForResolution,

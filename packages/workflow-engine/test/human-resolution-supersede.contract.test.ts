@@ -9,7 +9,7 @@ import { discoverRepository } from '../src/runtime/repository-transaction/git.ts
 import {
   inspectHumanResolutionGrants,
   revokeHumanResolutionGrant,
-} from '../src/composition-root/investigation-retry-production.ts';
+} from '../src/composition-root/human-resolution-grant-production.ts';
 import { startInvestigationSession as startInvestigationSessionWithMandate } from '../src/adapters/planning/investigation/investigation-session.ts';
 import {
   assertHumanResolutionDecision,

@@ -3,28 +3,12 @@ import {
   type TaskMandateActiveBinding,
 } from '../../../modules/authority/task-mandate-access-contract.ts';
 
-import {
-  type HumanResolutionServices,
-  assertResolutionConsequences,
-  assertResolutionDecisionAvailable,
-  humanResolutionBlockerBinding,
-  parseHumanResolutionGrantEnvelope,
-  type HumanResolutionGrantRevoker,
-  type HumanResolutionGrantStoreEntry,
-} from '../../../modules/investigation/domain/human-resolution-grant-contract.ts';
+import type { HumanResolutionServices } from '../../../modules/investigation/domain/human-resolution-grant-contract.ts';
 
 import {
   type InvestigationHumanActionBlockerFactory,
-  assertHumanResolutionDecision,
-  createHumanResolutionNode,
-  investigationCurrentRefDigest,
   investigationResolutionStateDigest,
-  humanResolutionDecisionSchemaDigest,
-  type HumanResolutionConsequences,
-  type HumanResolutionDecision,
-  type HumanResolutionExpectedState,
   type HumanResolutionNode,
-  type HumanResolutionTarget,
   type InvestigationResolutionState,
 } from '../../../modules/investigation/domain/human-resolution-contract.ts';
 
@@ -45,19 +29,13 @@ type TaskMandateDependencies = Pick<
  *   repository baseline, intent and input manifest.
  */
 import type { ProviderRetryAccountingReader } from '../../../modules/provider-orchestration/provider-retry-accounting.ts';
-import crypto from 'node:crypto';
 
 import {
   AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
   loadAiAdapterPolicy,
 } from '../../../runtime/provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
-import {
-  compareAndSwapEvidenceRefsDocument,
-  investigationEvidenceRefsClosureDigest,
-  quarantineUnsafeEvidenceRefsDocument,
-  readInvestigationEvidenceRefsClosure,
-} from '../../../runtime/storage-journal/evidence-object-store.ts';
+
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import {
   createReplacementAttempt,
@@ -69,8 +47,6 @@ import {
   loadProviderExecutionRepairContext,
   preflightProviderRepairRetry,
 } from '../../../runtime/storage-journal/provider-execution-governance.ts';
-import { runGit } from '../../../runtime/repository-transaction/git.ts';
-import { copyGrantDate } from '../../../modules/authority/grant-primitives.ts';
 
 import {
   assertInvestigationCheckpointEnvelope,
@@ -78,7 +54,6 @@ import {
   checkpointEnvelopeDigest,
 } from '../../../modules/investigation/domain/investigation-checkpoint-contract.ts';
 import {
-  compareAndSwapCurrentInvestigationRef,
   compareAndSwapInvestigationSession,
   createCurrentInvestigationRef,
   createInvestigationId,
@@ -88,45 +63,16 @@ import {
   readInvestigationSession,
 } from '../../../runtime/storage-journal/investigation-session-records.ts';
 import {
-  compareAndSwapHumanResolutionHead,
   readHumanResolutionHead,
   readHumanResolutionNode,
-  writeHumanResolutionNode,
 } from '../../../runtime/storage-journal/human-resolution-nodes.ts';
-import {
-  createHumanResolutionJournal,
-  type HumanResolutionJournal,
-} from '../../../modules/investigation/domain/human-resolution-journal-contract.ts';
+
 import {
   deriveInvestigationSessionState,
   investigationCheckpointId,
 } from '../../../modules/investigation/domain/investigation-session-contract.ts';
-import {
-  inspectInvestigationResolutionState,
-  inspectInvestigationQuarantineState,
-} from '../../../runtime/storage-journal/human-resolution-state.ts';
-import {
-  inspectInterruptedHumanResolutionGrantPublications,
-  quarantineInterruptedHumanResolutionGrantPublication,
-} from '../../../runtime/storage-journal/human-resolution-grant-publication.ts';
-import {
-  inspectStoredHumanResolutionGrants,
-  withHumanResolutionGrantExecution,
-} from '../../../runtime/storage-journal/human-resolution-grant-store.ts';
-import { scanProviderInvocationLifecycles } from '../../../runtime/storage-journal/provider-invocation-lifecycle.ts';
-import {
-  quarantineUnsafeCurrentInvestigationRef,
-  quarantineUnsafeInvestigationStartReservation,
-  quarantineUnsafeHumanResolutionRef,
-  archiveHumanResolutionSingleton,
-} from '../../../runtime/storage-journal/human-resolution-archive.ts';
-import {
-  readHumanResolutionArchive,
-  readHumanResolutionJournal,
-  writeHumanResolutionArchive,
-  writeHumanResolutionJournal,
-  writeHumanResolutionReceipt,
-} from '../../../runtime/lifecycle-ledgers/human-resolution-journal.ts';
+import { inspectInvestigationResolutionState } from '../../../runtime/storage-journal/human-resolution-state.ts';
+
 import {
   type GroupDispositionsPayload,
   type InvestigationCheckpointEnvelope,
@@ -137,16 +83,9 @@ import {
   type StoredInvestigationCheckpoint,
   type WhyAnswersPayload,
 } from '../../../modules/investigation/domain/investigation-session-types.ts';
-import {
-  type HumanResolutionGrantPublicationAuditTag,
-  type HumanResolutionGrantPublicationStateBinding,
-  type HumanResolutionGrantPublicationStoreState,
-  type QuarantinedHumanResolutionGrantPublication,
-} from '../../../modules/investigation/domain/human-resolution-grant-publication-contract.ts';
 
 import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../../runtime/repository-observation/investigation-runtime-context.ts';
 
-import type { HumanRevocationOptions } from '../../../modules/authority/human-revocation-contract.ts';
 import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../../modules/investigation/manifest/plan-review-coverage-policy.ts';
 import {
   assertChangeId,
@@ -155,13 +94,10 @@ import {
 import {
   assertHeldChangeTransitionAuthority,
   type HeldChangeTransitionAuthority,
-  withGrantHumanResolutionTransitionAuthority,
-  withHumanResolutionTransitionAuthority,
   withInvestigationTransitionAuthority,
 } from '../../../runtime/session-workspace/planning-lock.ts';
 import type { ProviderInvocationRequest } from '../../../modules/provider-orchestration/provider-contracts.ts';
 import {
-  assertProviderWorkersQuiescentUnderLifecycleLock,
   blindSurveyIntentDigest,
   blindSurveyManifestDigest,
   createInvestigationStartReservation,
@@ -173,11 +109,9 @@ import {
   providerInvocationExists,
   readBlindSurveyManifest,
   readInvestigationStartReservation,
-  readInvestigationStartReservationSnapshot,
   readProviderInvocation,
   readProviderInvocationRequest,
   readProviderRetryReservation,
-  retireInvestigationStartReservation,
 } from '../../../runtime/storage-journal/provider-invocation-store.ts';
 import type { BlindSurveyManifest } from '../../../modules/investigation/manifest/blind-survey-manifest.ts';
 import type { InvestigationStartReservation } from '../../../modules/provider-orchestration/provider-invocation-reservations.ts';
@@ -195,102 +129,6 @@ import {
   type ProviderExecutionGrantAuthorization,
 } from '../../../modules/provider-orchestration/provider-retry-decision.ts';
 import { type TaskMandateBinding } from '../../../modules/authority/task-mandate-contract.ts';
-import { createHumanResolutionLifecycle } from './human-resolution-lifecycle.ts';
-export { SimulatedHumanResolutionCrash } from './human-resolution-lifecycle.ts';
-export type {
-  HumanResolutionExecutionOptions,
-  HumanResolutionExecutionResult,
-  GrantCoreHumanResolutionAuthorization,
-  HumanResolutionGrantInspection,
-  HumanResolutionGrantPublicationRecoveryInspection,
-  GrantCoreHumanResolutionExecutionOptions,
-} from './human-resolution-lifecycle.ts';
-const humanResolutionRuntime = {
-  crypto,
-  canonicalJson,
-  compareAndSwapEvidenceRefsDocument,
-  investigationEvidenceRefsClosureDigest,
-  quarantineUnsafeEvidenceRefsDocument,
-  readInvestigationEvidenceRefsClosure,
-  ExitCode,
-  workflowError,
-  runGit,
-  copyGrantDate,
-  assertHumanResolutionDecision,
-  compareAndSwapCurrentInvestigationRef,
-  compareAndSwapHumanResolutionHead,
-  createHumanResolutionJournal,
-  createHumanResolutionNode,
-  inspectInvestigationResolutionState,
-  inspectInvestigationQuarantineState,
-  inspectInterruptedHumanResolutionGrantPublications,
-  investigationCurrentRefDigest,
-  investigationResolutionStateDigest,
-  humanResolutionDecisionSchemaDigest,
-  inspectStoredHumanResolutionGrants,
-  scanProviderInvocationLifecycles,
-  quarantineUnsafeCurrentInvestigationRef,
-  quarantineUnsafeInvestigationStartReservation,
-  quarantineInterruptedHumanResolutionGrantPublication,
-  quarantineUnsafeHumanResolutionRef,
-  readCurrentInvestigationRef,
-  readHumanResolutionArchive,
-  readHumanResolutionHead,
-  readHumanResolutionJournal,
-  readHumanResolutionNode,
-  readInvestigationSession,
-  archiveHumanResolutionSingleton,
-  withHumanResolutionGrantExecution,
-  writeHumanResolutionArchive,
-  writeHumanResolutionJournal,
-  writeHumanResolutionNode,
-  writeHumanResolutionReceipt,
-  loadInvestigationRuntimeContext,
-  assertResolutionConsequences,
-  assertResolutionDecisionAvailable,
-  humanResolutionBlockerBinding,
-  parseHumanResolutionGrantEnvelope,
-  assertChangeId,
-  assertInvestigationId,
-  assertHeldChangeTransitionAuthority,
-  withGrantHumanResolutionTransitionAuthority,
-  withHumanResolutionTransitionAuthority,
-  assertProviderWorkersQuiescentUnderLifecycleLock,
-  readInvestigationStartReservationSnapshot,
-  retireInvestigationStartReservation,
-};
-export type HumanResolutionRuntimeBindings = typeof humanResolutionRuntime &
-  InvestigationHumanResolutionServices;
-export type InvestigationHumanResolutionServices = Pick<
-  HumanResolutionServices,
-  | 'assertResolutionDecisionTarget'
-  | 'loadMaintainerPolicyForResolution'
-  | 'verifyHumanResolutionGrantForRevocation'
-> & { revokeStoredHumanResolutionGrant: HumanResolutionGrantRevoker };
-export type HumanResolutionRuntimeTypes = {
-  HumanResolutionGrantPublicationAuditTag: HumanResolutionGrantPublicationAuditTag;
-  HumanResolutionGrantPublicationStateBinding: HumanResolutionGrantPublicationStateBinding;
-  HumanResolutionGrantPublicationStoreState: HumanResolutionGrantPublicationStoreState;
-  QuarantinedHumanResolutionGrantPublication: QuarantinedHumanResolutionGrantPublication;
-  HumanResolutionConsequences: HumanResolutionConsequences;
-  HumanResolutionDecision: HumanResolutionDecision;
-  HumanResolutionExpectedState: HumanResolutionExpectedState;
-  HumanResolutionJournal: HumanResolutionJournal;
-  HumanResolutionGrantStoreEntry: HumanResolutionGrantStoreEntry;
-  HumanResolutionNode: HumanResolutionNode;
-  HumanResolutionTarget: HumanResolutionTarget;
-  InvestigationResolutionState: InvestigationResolutionState;
-  HumanRevocationOptions: HumanRevocationOptions;
-};
-export function createInvestigationHumanResolutionOperations(
-  services: InvestigationHumanResolutionServices,
-) {
-  return createHumanResolutionLifecycle({
-    ...humanResolutionRuntime,
-    ...services,
-  });
-}
-
 export type InvestigationStatus = {
   kind: 'investigation';
   investigationId: string;
