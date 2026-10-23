@@ -36,6 +36,7 @@ import {
 import { createTrustedExecutionEnvironment } from '../../../../runtime/process-environment/execution-environment.ts';
 import { ensurePlainDirectory } from '../../../../runtime/repository-transaction/filesystem-safety.ts';
 import { resolveOpenSpecInstallation } from './openspec-executor.ts';
+import { inspectOpenSpecSchemaContract } from './openspec-schema-contract.ts';
 import type { CheckRunnerResolver } from '../../../../modules/source/check-command.ts';
 
 const EXPECTED_GENERATOR_STDERR =
@@ -76,6 +77,23 @@ export type OpenSpecPlanningAssetOptions = {
   timeoutMs?: number;
   maxOutputBytes?: number;
 };
+
+export function validateWorkflowIntegrationAssets(
+  repositoryRoot: string,
+  options: { regeneratePlanningAssets?: boolean } = {},
+): void {
+  const installationPresent = fs.existsSync(
+    path.join(repositoryRoot, 'node_modules/@fission-ai/openspec/package.json'),
+  );
+  if (installationPresent || options.regeneratePlanningAssets) {
+    inspectOpenSpecSchemaContract(repositoryRoot);
+  }
+  const manifest = readOpenSpecAssetManifest(repositoryRoot);
+  verifyOpenSpecRepositoryAssets(repositoryRoot, manifest);
+  verifyOpenSpecRepositoryClosure(repositoryRoot);
+  if (options.regeneratePlanningAssets)
+    checkOpenSpecPlanningAssets(repositoryRoot);
+}
 
 export function generateOpenSpecPlanningAssets(
   resolveCheckRunner: CheckRunnerResolver,

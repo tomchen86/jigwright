@@ -12,7 +12,7 @@ import {
   verifySshDataSignature,
   verifyTrustedCommitSignature,
 } from '../adapters/signing/ssh/ci-signature.ts';
-import { validateWorkflowIntegrationAssets } from '../adapters/consumer/repository/work-registry/integration-assets.ts';
+import { validateWorkflowIntegrationAssets } from '../adapters/planning/openspec/documents/openspec-planning-assets.ts';
 import {
   listVerifiedRoleContextSharingTerminalReceipts,
   assertRoleContextSharingTerminalReceiptUseBijection,

@@ -421,11 +421,6 @@
       "digest": "sha256:fe5453dd5ee85c7e3f03f9b7fbd7cf9c77fea7a411e65e8bee6d43fa9f01904d"
     },
     {
-      "path": "src/adapters/consumer/repository/work-registry/integration-assets.ts",
-      "mode": "100644",
-      "digest": "sha256:c082e3b4f862b5ce366d185681f394218ffec6e30f56d5d5096ed753abf49dea"
-    },
-    {
       "path": "src/adapters/consumer/repository/work-registry/runner-resolution.ts",
       "mode": "100644",
       "digest": "sha256:9c0af152984e4bff645292b613038dd30e5dd1b322f0556fef1cb790cab0c839"
@@ -508,7 +503,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/openspec-planning-assets.ts",
       "mode": "100644",
-      "digest": "sha256:a98365177b74c9e5b0fe8b959d411f4f0fd4e6d72bfc3e2848499f9752de58a3"
+      "digest": "sha256:757860f48e1d69a095d9a6322c3a2d88fa055b5bca05904eb2c8c939f5df935f"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-provenance.ts",
@@ -1628,7 +1623,7 @@
     {
       "path": "src/composition-root/ci-verification-production.ts",
       "mode": "100644",
-      "digest": "sha256:27abdd4900de19b5223e4232dd1ebff2afad743c5bcebf7df4bfc8b037948d24"
+      "digest": "sha256:78422d3a7a5bcc9bbe4ed71dafcdb12f7558491372f4a0e65ac658597d59a0ec"
     },
     {
       "path": "src/composition-root/cli-authority-production.ts",
@@ -1973,7 +1968,7 @@
     {
       "path": "src/composition-root/repository-hooks-production.ts",
       "mode": "100644",
-      "digest": "sha256:0f4694bd0ab24044e33585265777faf47d368fea70908d49e241c792062c3a2b"
+      "digest": "sha256:fc61cd9f5fcce4589e2edb9b6de3ce360c2f75b700381daac85ca25f3b45574b"
     },
     {
       "path": "src/composition-root/repository-validation.ts",
