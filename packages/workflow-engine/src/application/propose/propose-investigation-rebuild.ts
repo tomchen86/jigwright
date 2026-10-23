@@ -8,6 +8,7 @@
  */
 
 import { extractFileHeader } from '../../modules/source/file-header.ts';
+import { deriveReviewedMutationClassPolicy } from '../../modules/source/reviewed-mutation-policy.ts';
 import { snapshotFromTrackedTree } from '../../modules/source/system-description-snapshot.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -369,8 +370,10 @@ export function rebuildInvestigation(
     repositoryRoot: context.git.repositoryRoot,
     treeOid: session.baseline.tree,
   });
-  const mutationPolicy =
-    services.workspace.deriveReviewedMutationClassPolicy(snapshot);
+  const mutationPolicy = deriveReviewedMutationClassPolicy(
+    services.workspace.reviewedGeneratedAssets,
+    snapshot,
+  );
 
   const invocation = services.provider.readProviderInvocation(
     context.runtime,

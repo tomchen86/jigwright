@@ -170,6 +170,8 @@ import './investigation-grant-transitions.contract.test.ts';
 import './investigation-v3-grant-adapter.contract.test.ts';
 import './investigation-v3-grant-publication.integration.test.ts';
 import './committed-investigation-manifest.contract.test.ts';
+import './reviewed-mutation-policy.contract.test.ts';
+import './reviewed-mutation-policy-boundary.contract.test.ts';
 import './investigation-groups.contract.test.ts';
 import './intervention-control.contract.test.ts';
 import './maintainer-candidate-artifacts.contract.test.ts';

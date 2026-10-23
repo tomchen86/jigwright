@@ -45,7 +45,6 @@ import type { MaintainerSignerProvider } from '../../modules/authority/maintaine
 import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 import { type InvestigationManifestV3 } from '../../modules/investigation/manifest/investigation-manifest-types.ts';
 import { type ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
-import { deriveReviewedMutationClassPolicy } from '../../runtime/managed-documents/ownership/reviewed-mutation-policy.ts';
 import {
   inspectInvestigationManifestPublication,
   investigationManifestPublicationGitStateDigest,
@@ -246,10 +245,8 @@ function createProposeRuntime(decisions: ProposeDecisionServices) {
       parseTasks,
       assertTaskMandateOptional,
       loadInvestigationRuntimeContext,
-      deriveReviewedMutationClassPolicy: deriveReviewedMutationClassPolicy.bind(
-        undefined,
+      reviewedGeneratedAssets:
         decisions.planningProvider.reviewedGeneratedAssets,
-      ),
       replaceTextAtomic,
       discoverRepository,
       resolveProtectedBaseRef,

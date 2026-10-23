@@ -40,7 +40,7 @@ import {
   matchesAllowedPath,
   normalizeChangedPath,
 } from '../../foundation/repository-path/repository-path.ts';
-import { deriveReviewedMutationClassPolicy } from '../../runtime/managed-documents/ownership/reviewed-mutation-policy.ts';
+import { deriveReviewedMutationClassPolicy } from '../../modules/source/reviewed-mutation-policy.ts';
 import {
   readPinnedTrackedTree,
   type TrackedTreeEntry,

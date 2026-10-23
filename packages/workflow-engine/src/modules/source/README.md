@@ -8,11 +8,11 @@ Use the directory tree to locate governing contracts and source imports to disco
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.source-readme v=1 digest=sha256:8ecbd6e222f10d21bc0ef1f225a71c6bb095c777f41edbf82a8fb21a9c23fda0 -->
+<!-- jigwright:region id=documents.source-readme v=1 digest=sha256:3fe9c987e9bccba4c6525018239f0177039d8c516b8dc61d40d6ea295f391c0c -->
 
 <!-- prettier-ignore-start -->
 
-19 files changed in this module since confirmation.
+20 files changed in this module since confirmation.
 
 ## Commands
 
@@ -55,6 +55,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [path-role-registry.ts](path-role-registry.ts) | Classifies repository paths by planning evidence responsibility and compression eligibility. | 1 | History unavailable |
 | [planning-paths.ts](planning-paths.ts) | Checks planning artifact boundaries and maps cited Sources to immutable ledger paths. | 1 | History unavailable |
 | [planning-role-policy-paths.ts](planning-role-policy-paths.ts) | Separates the change-bound role policy path from planning provider changes. | 1 | History unavailable |
+| [reviewed-mutation-policy.ts](reviewed-mutation-policy.ts) | Derives mutation classifications from reviewed generated assets and the pinned document policy. | 1 | History unavailable |
 | [search-term.ts](search-term.ts) | Shared source-matching value used by investigation and implementation review. | 0 | History unavailable |
 | [spec-ownership.ts](spec-ownership.ts) | Resolves colocated contracts and their proof references from a caller's snapshot. | 2 | Possibly stale |
 | [system-description-snapshot.ts](system-description-snapshot.ts) | Projects an already-read tracked tree into system document snapshot accessors. | 1 | Header changed since confirmation |

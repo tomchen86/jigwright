@@ -883,7 +883,7 @@
     {
       "path": "src/application/execute-task/task-mechanical-transform-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:e0af82238d6d0328409e1572fd5c36cd8dd1b3538c551662d62c3d78f4bdb327"
+      "digest": "sha256:990f85335731c71c61cc82e67974e24ef8c187fb7c18b6032a22d87635f92693"
     },
     {
       "path": "src/application/execute-task/task-strategy-caller-admission.ts",
@@ -1078,7 +1078,7 @@
     {
       "path": "src/application/finalize/task-mechanical-transform.ts",
       "mode": "100644",
-      "digest": "sha256:4a2f2898956697caa094c95fde882df1c84dfe423996cc77c87ad9f919b66897"
+      "digest": "sha256:09173dba1c3385c590c1a59fb9d9d6e71b06fd6d5979d82cb37c861b6c4a8ab8"
     },
     {
       "path": "src/application/finalize/task-strategy-gate.ts",
@@ -1208,12 +1208,12 @@
     {
       "path": "src/application/propose/propose-investigation-rebuild.ts",
       "mode": "100644",
-      "digest": "sha256:70844a815c3e4d65198e7a7471f985e268a3bed88ab246416b9e7e68ee59bcdc"
+      "digest": "sha256:0c05709fa0287905cd0f1a0cb4bd98920e5d8d4e8187d7247989a960bd623a29"
     },
     {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:370252e4c75519a103616550a54c7355c946fd7b0dc9c225e83024be58de94a1"
+      "digest": "sha256:1e366bb03571ed3bf8b92ecaa8c0798d204731e6e9d959d5eb6afc1870a33685"
     },
     {
       "path": "src/application/propose/propose-output.ts",
@@ -1278,7 +1278,7 @@
     {
       "path": "src/application/propose/propose-types.ts",
       "mode": "100644",
-      "digest": "sha256:88ec4cdf2bd5004ca7bd2a6020e211a30959c43b3e1e8126063305dfdb18cdc3"
+      "digest": "sha256:c6389f85464d3c470a10089562beedeb367aa0cbfc605e3f13b9a4f2c964cc49"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -3836,6 +3836,11 @@
       "digest": "sha256:9ace91397c5c60a13105ff6c58b0711070a9a4544ef2e9eae67f9414db4c7cbf"
     },
     {
+      "path": "src/modules/source/reviewed-mutation-policy.ts",
+      "mode": "100644",
+      "digest": "sha256:1ebf7f6003cc6d7f34e16134697be4dd0bed05d32a8266bba472092a23dca362"
+    },
+    {
       "path": "src/modules/source/search-term.ts",
       "mode": "100644",
       "digest": "sha256:7e5ca2349e105ecd133a600581beb78c98aad04ba546ef3c7ef5b29711788e7e"
@@ -4014,11 +4019,6 @@
       "path": "src/runtime/managed-documents/contracts/markdown-sections.ts",
       "mode": "100644",
       "digest": "sha256:1c43c92bb83edc3053bbcd5036a7f19cd9146d8d8d004656f2a3e378e77c4385"
-    },
-    {
-      "path": "src/runtime/managed-documents/ownership/reviewed-mutation-policy.ts",
-      "mode": "100644",
-      "digest": "sha256:287d984080326ffe8b731efebf4a437a964e94e7ee3204fcf48c0e4f7467e323"
     },
     {
       "path": "src/runtime/managed-documents/transaction/completion-rollback.ts",

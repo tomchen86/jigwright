@@ -75,6 +75,7 @@ import type {
   StoredInvestigationCheckpoint,
 } from './propose-runtime.ts';
 import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
+import type { MutationClassPolicy } from '../../modules/source/mutation-class-policy.ts';
 import type { PlanReviewManifest } from '../../modules/assurance/provider-review-manifests.ts';
 import type { ProviderExecutionPolicySnapshotCurrent } from '../../modules/provider-orchestration/provider-execution-policy-snapshot.ts';
 import type { ProviderRetryDecisionBinding } from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
@@ -485,9 +486,7 @@ export type RebuiltInvestigation = {
     canonicalTerms: PreviewInvestigationTerm[];
     scanFacts: InvestigationScanFacts;
     groupFacts: InvestigationGroupFacts;
-    mutationPolicy: ReturnType<
-      ProposeRuntime['workspace']['deriveReviewedMutationClassPolicy']
-    >;
+    mutationPolicy: MutationClassPolicy;
     reviewedRelationships: ReviewedPathRelationship[];
     dispositionInputs: InvestigationDispositionInput[];
     dispositionDecisions: InvestigationDispositionDecision[];

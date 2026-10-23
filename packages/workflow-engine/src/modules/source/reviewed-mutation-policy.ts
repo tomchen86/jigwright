@@ -9,17 +9,18 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 
-import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
-import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
+import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
+import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
+import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   createMutationClassPolicy,
   type MutationClass,
   type MutationClassPolicy,
   type MutationClassRule,
   type ReviewedGeneratedAssetInventory,
-} from '../../../modules/source/mutation-class-policy.ts';
-import { normalizePolicyPath } from '../../../foundation/repository-path/repository-path.ts';
-import type { TrackedTreeSnapshot } from '../../repository-transaction/tracked-tree-reader.ts';
+} from './mutation-class-policy.ts';
+import { normalizePolicyPath } from '../../foundation/repository-path/repository-path.ts';
+import type { TrackedObjectSnapshotV1 } from '@jigwright/core/tracked-object-reader-port';
 
 const DOCUMENT_POLICY_MODES = new Set([
   'append-only',
@@ -39,7 +40,7 @@ const DOCUMENT_POLICY_MODES = new Set([
  */
 export function deriveReviewedMutationClassPolicy(
   reviewedAssets: ReviewedGeneratedAssetInventory,
-  snapshot: TrackedTreeSnapshot,
+  snapshot: TrackedObjectSnapshotV1,
 ): MutationClassPolicy {
   const rules = new Map<string, MutationClassRule>();
   const addExactRule = (
@@ -94,7 +95,7 @@ export function deriveReviewedMutationClassPolicy(
   return createMutationClassPolicy({ rules: [...rules.values()] });
 }
 
-function readPinnedDocumentPolicy(snapshot: TrackedTreeSnapshot): {
+function readPinnedDocumentPolicy(snapshot: TrackedObjectSnapshotV1): {
   documents: Record<string, { mode: string }>;
 } {
   const policyEntry = snapshot.entries.find(
@@ -202,10 +203,6 @@ function sha256Key(
     .createHash('sha256')
     .update(canonicalJson({ mutationClass, path: pathValue, source }), 'utf8')
     .digest('hex');
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function hasExactKeys(
