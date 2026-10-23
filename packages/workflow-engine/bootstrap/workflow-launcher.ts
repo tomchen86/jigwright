@@ -281,19 +281,6 @@ function isExactAbsoluteLauncherPath(value: unknown): value is string {
   );
 }
 
-function isExactLauncherIdentifier(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    value.length > 0 &&
-    value.length <= 255 &&
-    value.trim() === value &&
-    !value.startsWith('-') &&
-    !value.includes('\0') &&
-    !value.includes('\n') &&
-    !value.includes('\r')
-  );
-}
-
 function sealedInterventionInvocation(argv: string[]): {
   executable: string;
   argv: string[];

@@ -81,9 +81,3 @@ export function hasExactObjectKeys(value, keys) {
         !Array.isArray(value) &&
         sameJson(Object.keys(value).sort(), [...keys].sort()));
 }
-export function assertMonotonicTimestamp(previous, next, code) {
-    assertIsoTimestamp(next, code);
-    if (Date.parse(next) < Date.parse(previous)) {
-        throw workflowError(code, 'Journal timestamps must be monotonic.', ExitCode.staleState);
-    }
-}

@@ -27,7 +27,6 @@ export function interventionControlPersistencePaths(
     checkpoints: path.join(root, 'checkpoints'),
     interventions: path.join(root, 'interventions'),
     sidecarSessions: path.join(root, 'sidecar-sessions'),
-    sidecarHistory: path.join(root, 'sidecar-session-history'),
     operations: path.join(root, 'operations'),
   };
 }
@@ -59,7 +58,6 @@ export function ensurePersistenceDirectories(storageRoot: string): void {
     paths.checkpoints,
     paths.interventions,
     paths.sidecarSessions,
-    paths.sidecarHistory,
     paths.operations,
   ]) {
     ensurePlainDirectory(directory);

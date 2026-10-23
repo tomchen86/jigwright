@@ -23,7 +23,6 @@ export interface InterventionControlPersistencePaths {
   checkpoints: string;
   interventions: string;
   sidecarSessions: string;
-  sidecarHistory: string;
   operations: string;
 }
 

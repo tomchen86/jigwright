@@ -19,8 +19,6 @@ export const RECOVERY_QUARANTINE_HISTORY_DIRECTORY = /^[0-9a-f]{64}$/;
 
 export const RECOVERY_QUARANTINE_CLAIM_FILE = /^[0-9a-f]{64}\.json$/;
 
-export const PROCESS_TIMEOUT_MS = 10_000;
-
 export const BUILT_IN_BOOTSTRAP_RUNTIME_PATHS = [
   'packages/workflow-engine/bootstrap/built-in-engine-closure-pin.ts',
   'packages/workflow-engine/bootstrap/canonical-json.ts',
