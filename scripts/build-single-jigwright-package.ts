@@ -304,6 +304,25 @@ function writePublicRuntimeProjection(
     path.join(stagedPackage, 'native'),
     path.join(stagedPackage, 'dist', 'native'),
   );
+  const initBootstrap = path.join(
+    stagedPackage,
+    'bootstrap',
+    'jigwright-init.mjs',
+  );
+  fs.writeFileSync(
+    initBootstrap,
+    fs
+      .readFileSync(initBootstrap, 'utf8')
+      .replaceAll(
+        '../src/entrypoints/cli/consumer-setup-cli.ts',
+        '../dist/runtime/entrypoints/cli/consumer-setup-cli.js',
+      )
+      .replaceAll(
+        '../src/entrypoints/cli/human-command-output.ts',
+        '../dist/runtime/entrypoints/cli/human-command-output.js',
+      ),
+    'utf8',
+  );
 }
 
 function writePackageManifest(

@@ -299,6 +299,23 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
       entrypoint: './bin/jigwright.mjs',
     });
 
+    const initBootstrap = run('tar', [
+      '-xOzf',
+      tarballPath,
+      'package/bootstrap/jigwright-init.mjs',
+    ]);
+    assert.ok(
+      initBootstrap.includes(
+        '../dist/runtime/entrypoints/cli/consumer-setup-cli.js',
+      ),
+    );
+    assert.ok(
+      initBootstrap.includes(
+        '../dist/runtime/entrypoints/cli/human-command-output.js',
+      ),
+    );
+    assert.ok(!initBootstrap.includes('../src/'));
+
     const inventory = run('tar', ['-tzf', tarballPath]);
     const topLevel = [
       ...new Set(
@@ -422,6 +439,55 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
       consumerRoot,
     );
     const installedRoot = path.join(consumerRoot, 'node_modules', 'jigwright');
+    const initRoot = path.join(scratch, 'init-consumer');
+    fs.mkdirSync(initRoot);
+    const initEnvironment: NodeJS.ProcessEnv = {
+      ...process.env,
+      JIGWRIGHT_SETUP_HOME: path.join(scratch, 'init-host'),
+    };
+    delete initEnvironment.JIGWRIGHT_AGENT_PROVIDER_CONFIG;
+    let initializedProfile: string | undefined;
+    for (const expectedStatus of ['initialized', 'unchanged']) {
+      const initialized = spawnSync(
+        process.execPath,
+        [path.join(installedRoot, 'bin', 'jigwright.mjs'), 'init', '--json'],
+        {
+          cwd: initRoot,
+          encoding: 'utf8',
+          env: initEnvironment,
+        },
+      );
+      assert.equal(initialized.status, 0, initialized.stderr);
+      const result = JSON.parse(initialized.stdout);
+      assert.equal(result.ok, true);
+      assert.equal(result.result.kind, 'jigwright-init-result.v1');
+      assert.equal(result.result.status, expectedStatus);
+      assert.equal(result.result.path, 'workflow/jigwright-profile.json');
+      const profile = fs.readFileSync(
+        path.join(initRoot, 'workflow', 'jigwright-profile.json'),
+        'utf8',
+      );
+      if (expectedStatus === 'initialized') initializedProfile = profile;
+      else assert.equal(profile, initializedProfile);
+    }
+    const initHelp = spawnSync(
+      process.execPath,
+      [
+        path.join(installedRoot, 'bin', 'jigwright.mjs'),
+        'init',
+        '--help',
+        '--non-interactive',
+      ],
+      {
+        cwd: initRoot,
+        encoding: 'utf8',
+        env: initEnvironment,
+      },
+    );
+    assert.equal(initHelp.status, 0, initHelp.stderr);
+    assert.match(initHelp.stdout, /^Init\n/u);
+    assert.match(initHelp.stdout, /jigwright init \[--answers <json-file>\]/u);
+
     const repositoryRoot = path.join(scratch, 'repository');
     fs.mkdirSync(repositoryRoot);
     run('git', ['init', '--quiet'], repositoryRoot);

@@ -1,28 +1,6 @@
-import fs from 'node:fs';
-
-// Packaged init runs before repository runtime setup and uses its compiled
-// projection; source checkouts use Node's built-in TypeScript support.
-const setupModule = fs.existsSync(
-  new URL('./installed-runtime.json', import.meta.url),
-)
-  ? new URL(
-      '../dist/runtime/entrypoints/cli/consumer-setup-cli.js',
-      import.meta.url,
-    )
-  : new URL('../src/entrypoints/cli/consumer-setup-cli.ts', import.meta.url);
-const setup = await import(setupModule.href);
-
-export const initializeJigwrightConsumer = setup.initializeJigwrightConsumer;
-export const configuredJigwrightEnvironment =
-  setup.configuredJigwrightEnvironment;
-
-const outputModule = fs.existsSync(
-  new URL('./installed-runtime.json', import.meta.url),
-)
-  ? new URL(
-      '../dist/runtime/entrypoints/cli/human-command-output.js',
-      import.meta.url,
-    )
-  : new URL('../src/entrypoints/cli/human-command-output.ts', import.meta.url);
-export const renderHumanCommandResult = (await import(outputModule.href))
-  .renderHumanCommandResult;
+// Packaging retargets these CLI owners to their compiled projection.
+export {
+  initializeJigwrightConsumer,
+  configuredJigwrightEnvironment,
+} from '../src/entrypoints/cli/consumer-setup-cli.ts';
+export { renderHumanCommandResult } from '../src/entrypoints/cli/human-command-output.ts';

@@ -70,14 +70,12 @@ test('adoption policy and use cases have an effect-free, type-inclusive dependen
   );
 });
 
-test('source and installed init bootstrap resolve the CLI owner rather than domain policy', () => {
+test('source init bootstrap resolves the CLI owners rather than domain policy', () => {
   const source = fs.readFileSync(
     path.resolve(import.meta.dirname, '../bootstrap/jigwright-init.mjs'),
     'utf8',
   );
   assert.ok(source.includes('../src/entrypoints/cli/consumer-setup-cli.ts'));
-  assert.ok(
-    source.includes('../dist/runtime/entrypoints/cli/consumer-setup-cli.js'),
-  );
+  assert.ok(source.includes('../src/entrypoints/cli/human-command-output.ts'));
   assert.ok(!source.includes('modules/adoption/setup-questions'));
 });
