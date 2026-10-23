@@ -178,6 +178,26 @@ test('the repository registry classifies its own risky substrate', () => {
       'grant',
     ],
     [
+      'packages/workflow-engine/src/application/task-apply-authorization/protected-task-apply-authorization.ts',
+      'grant',
+    ],
+    [
+      'packages/workflow-engine/src/application/revise/task-revision-approval.ts',
+      'grant',
+    ],
+    [
+      'packages/workflow-engine/src/composition-root/task-revision-approval-production.ts',
+      'grant',
+    ],
+    [
+      'packages/workflow-engine/src/runtime/repository-observation/task-revision-approval.ts',
+      'grant',
+    ],
+    [
+      'packages/workflow-engine/src/runtime/storage-journal/task-revision-approval.ts',
+      'grant',
+    ],
+    [
       'packages/workflow-engine/src/application/propose/planning-transition.ts',
       'lifecycle',
     ],
@@ -200,13 +220,26 @@ test('the repository registry classifies its own risky substrate', () => {
   assert.equal(compressionEligible(protectedDependency), false);
 });
 
-/**
- * The committed registrations are only rejected by their production loaders,
- * not by any check group, so a relocation batch can leave a path list
- * unsorted and stay green until a full gate runs. This moves that rejection
- * to where it costs seconds. It adds no rule: both loaders already enforce
- * sorted and unique path lists.
- */
+test('exact package role registrations refer to existing files', () => {
+  const root = repositoryRoot();
+  const registry = parsePathRoleRegistry(
+    JSON.parse(
+      fs.readFileSync(path.join(root, 'workflow/path-roles.json'), 'utf8'),
+    ),
+  );
+  for (const { pattern } of registry.rules) {
+    if (pattern.startsWith('packages/') && !pattern.includes('*')) {
+      assert.ok(
+        fs
+          .statSync(path.join(root, pattern), { throwIfNoEntry: false })
+          ?.isFile(),
+        `Missing registered package path: ${pattern}`,
+      );
+    }
+  }
+});
+
+// Exercise the production parsers without requiring a full gate.
 test('committed path-roles and maintainer-profiles load through their production parsers', () => {
   const root = repositoryRoot();
   parsePathRoleRegistry(

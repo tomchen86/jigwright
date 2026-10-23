@@ -20,10 +20,6 @@ const EXPECTED_ROLES: ReadonlyArray<
     'control-plane',
   ],
   [
-    'packages/workflow-engine/src/runtime/storage-journal/intervention-engine-artifact-store.ts',
-    'control-plane',
-  ],
-  [
     'packages/workflow-engine/src/runtime/recovery/recovery-trust-root-restore.ts',
     'grant',
   ],
@@ -49,6 +45,7 @@ test('new unified-plan authority modules have exact non-compressible roles', () 
   );
 
   for (const [repositoryPath, expectedRole] of EXPECTED_ROLES) {
+    assert.ok(fs.statSync(path.join(repositoryRoot, repositoryPath)).isFile());
     const resolution = resolvePathRole(registry, repositoryPath);
     assert.equal(resolution.registered, true, repositoryPath);
     if (!resolution.registered) continue;

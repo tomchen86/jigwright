@@ -136,15 +136,15 @@
         "packages/workflow-engine/src/runtime/storage-journal/role-context-sharing-store.ts"
       ],
       "sourceDigest": "sha256:9d3d5d494efbb29fdf02f03577200086e00dcab182a2f0e69f9787b2f8f970c0",
-      "authorizationClosureDigest": "sha256:a5c5262b9d30976db43e559de45882e2c82f50f94c4200c5ee51c4e5c188ad8b"
+      "authorizationClosureDigest": "sha256:fd5c42d5548d37d2ac5412988ab31cf8c525944a5e436182159f56f8fba75c8a"
     },
-    "authorizationClosureDigest": "sha256:a5c5262b9d30976db43e559de45882e2c82f50f94c4200c5ee51c4e5c188ad8b",
+    "authorizationClosureDigest": "sha256:fd5c42d5548d37d2ac5412988ab31cf8c525944a5e436182159f56f8fba75c8a",
     "humanTrustRootsClosureDigest": "sha256:5e63cc234e69f69f380eb64420581924863925ad19a48d9d25724f944ab734e4",
     "applyJournalClosureDigest": "sha256:aee643daa288503e8158e674ba60ed52cdc4a772fa33fed1a4c4963c19800fc9",
     "controlPlaneUpdateClosureDigest": "sha256:9c80960214d62b337bfcbec8e2684ae8683a1051c3b3233ca32ed12a355f92cc",
     "recoveryClosureDigest": "sha256:964b3f239883a25e56e8d88201e8d4ca746b2da590c4a0a8be4cfd55cdceddba",
     "repairAuthority": "human-only-authority-plan-or-sealed-recovery",
-    "compositionDigest": "sha256:29c1b7d3dfa7efaaca31fa500af0e538e532bfb4735f5bc56da7beb4fd7f37f5"
+    "compositionDigest": "sha256:9da66be2adeeb1a44df44a401c19838d996dfcd02bac17f367d06edda8e599c4"
   },
   "entries": [
     {
@@ -881,8 +881,8 @@
         "workflow/path-roles.json",
         "workflow/protected-capabilities.json"
       ],
-      "contentDigest": "sha256:0e9578bf31da66e5704ba41319378af966e693364822b4e595803a66be29ae8c",
-      "closureDigest": "sha256:a5c5262b9d30976db43e559de45882e2c82f50f94c4200c5ee51c4e5c188ad8b"
+      "contentDigest": "sha256:af6f4e246b2d9dbe20795687b57ee51d54c811fa361219f321b37197e330dbc1",
+      "closureDigest": "sha256:fd5c42d5548d37d2ac5412988ab31cf8c525944a5e436182159f56f8fba75c8a"
     },
     {
       "capability": "control-plane.update",
