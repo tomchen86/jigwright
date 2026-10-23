@@ -1566,6 +1566,11 @@
       "digest": "sha256:af4d29a1b5a2b457df1bf66c5c209d84cbefb891823397c38d79d286cca8bcd4"
     },
     {
+      "path": "src/composition-root/execution-budget-grant-production.ts",
+      "mode": "100644",
+      "digest": "sha256:88d59725018cdb700f62c102c2f4cbcae77302d088d9e48b85bd8a39f2cf0fb1"
+    },
+    {
       "path": "src/composition-root/execution-governance-production.ts",
       "mode": "100644",
       "digest": "sha256:f3f9a665161179310a948e534c244a4d519f4dd1c9e9500031e75be3cd92d42b"
@@ -2043,7 +2048,7 @@
     {
       "path": "src/entrypoints/cli/authority-management-cli.ts",
       "mode": "100644",
-      "digest": "sha256:0e6a0d71cd5a0ff38f31c2a530d76e28dfe4b9d9616ba728a84e6f8947e56c78"
+      "digest": "sha256:42810d2ac131281068b216a7f21d471b89ee147f84d64a1fc7e2bd0030b40870"
     },
     {
       "path": "src/entrypoints/cli/boundary-cli.ts",
@@ -2084,11 +2089,6 @@
       "path": "src/entrypoints/cli/document-refresh-cli.ts",
       "mode": "100644",
       "digest": "sha256:ec9a6ecef5246495cfd26341aaeada2b0c1657b042384e880f98d7f4bcfb31d1"
-    },
-    {
-      "path": "src/entrypoints/cli/execution-grant-cli.ts",
-      "mode": "100644",
-      "digest": "sha256:f2893ad0477aefda5b19c03e3d4da9e521cfcabd0bd44510d44130b801e8439b"
     },
     {
       "path": "src/entrypoints/cli/fail-grant-cli.ts",
@@ -3964,6 +3964,11 @@
       "path": "src/runtime/governance-intake/source-ledger.ts",
       "mode": "100644",
       "digest": "sha256:6521abc44381800e4814a212bc9afe232f4555a4630f4c1053de54ff0137c332"
+    },
+    {
+      "path": "src/runtime/grant-management/execution-budget-grant-management.ts",
+      "mode": "100644",
+      "digest": "sha256:0bbe8bc747f230fc7a5da806a3cab353002b96cb55482f2c4c97e1759df4cc3e"
     },
     {
       "path": "src/runtime/grant-management/human-resolution-grant-management.ts",

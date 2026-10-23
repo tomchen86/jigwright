@@ -8,7 +8,7 @@ import {
   requestExecutionReplacement,
   SimulatedExecutionReplacementCrash,
 } from '../src/composition-root/execution-retry-production.ts';
-import { issueExecutionBudgetGrant } from '../src/entrypoints/cli/execution-grant-cli.ts';
+import { issueExecutionBudgetGrant } from '../src/composition-root/execution-budget-grant-production.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';

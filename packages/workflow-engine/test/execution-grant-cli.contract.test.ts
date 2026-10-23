@@ -14,7 +14,7 @@ import {
   inspectIssuedExecutionBudgetGrant,
   issueExecutionBudgetGrant,
   revokeIssuedExecutionBudgetGrant,
-} from '../src/entrypoints/cli/execution-grant-cli.ts';
+} from '../src/composition-root/execution-budget-grant-production.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { listExecutionJobs } from '../src/runtime/provider-execution/execution-runtime.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';

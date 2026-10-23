@@ -74,7 +74,7 @@ import {
   inspectIssuedExecutionBudgetGrant,
   issueExecutionBudgetGrant,
   revokeIssuedExecutionBudgetGrant,
-} from './execution-grant-cli.ts';
+} from '../../composition-root/execution-budget-grant-production.ts';
 import {
   assertSupportedBootstrapInterventionCommand,
   dispatchBootstrapInterventionCommand,

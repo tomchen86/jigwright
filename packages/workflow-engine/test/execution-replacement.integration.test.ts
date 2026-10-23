@@ -31,7 +31,7 @@ import {
   inspectExecutionBudgetGrant,
   storeExecutionBudgetGrant,
 } from '../src/runtime/storage-journal/execution-budget-grants.ts';
-import { issueExecutionBudgetGrant } from '../src/entrypoints/cli/execution-grant-cli.ts';
+import { issueExecutionBudgetGrant } from '../src/composition-root/execution-budget-grant-production.ts';
 import { listExecutionJobs } from '../src/runtime/provider-execution/execution-runtime.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';

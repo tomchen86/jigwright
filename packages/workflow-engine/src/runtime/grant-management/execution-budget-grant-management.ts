@@ -1,10 +1,7 @@
-import { withAuthorityRefusalAudit } from '../../composition-root/authority-refusal-production.ts';
-import { taskMandateOperations } from '../../composition-root/task-mandate-production.ts';
 import crypto from 'node:crypto';
-import { deriveAuthorityAuditRepositoryId } from '../../runtime/storage-journal/authority-audit-ledger.ts';
 import { authorityRefusalDigest } from '../../modules/authority/authority-refusal-audit.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
 import { requireExecutionJobMandateBinding } from '../../modules/provider-orchestration/execution-core.ts';
 import {
   canonicalExecutionBudgetGrantEnvelope,
@@ -21,29 +18,32 @@ import {
   inspectExecutionBudgetGrantAuthorization,
   revokeExecutionBudgetGrant,
   storeExecutionBudgetGrant,
-} from '../../runtime/storage-journal/execution-budget-grants.ts';
-import { inspectExecutionJob } from '../../runtime/provider-execution/execution-runtime.ts';
+} from '../storage-journal/execution-budget-grants.ts';
+import { inspectExecutionJob } from '../provider-execution/execution-runtime.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
+import { discoverRepository } from '../repository-transaction/git.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import {
-  createInteractiveSshSigner,
-  type MaintainerSignerProvider,
-} from '../../adapters/signing/ssh/maintainer-signer.ts';
+import type {
+  MaintainerSignerFactory,
+  MaintainerSignerProvider,
+} from '../../modules/authority/maintainer-signer-port.ts';
+import type { TaskMandateActiveBinding } from '../../modules/authority/task-mandate-access-contract.ts';
 import {
   runtimePaths,
   withRepositoryLifecycleOperation,
-} from '../../runtime/session-workspace/session-store.ts';
+} from '../session-workspace/session-store.ts';
 import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import {
+  deriveAuthorityAuditRepositoryId,
+  type WithAuthorityRefusalAudit,
   type AuthorityAuditRecordedEvent,
   type AuthorityAuditServiceHooks,
   type AuthorityRefusalAuditBinding,
 } from '../../modules/authority/authority-audit-contract.ts';
-import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
 
 type TaskMandateDependencies = Pick<
-  typeof taskMandateOperations,
+  TaskMandateActiveBinding,
   'inspectActiveTaskMandateBinding' | 'withActiveTaskMandateBinding'
 >;
 /**
@@ -69,8 +69,10 @@ export type IssueExecutionBudgetGrantResult = {
   envelope: ExecutionBudgetGrantEnvelope;
 };
 
-export function issueExecutionBudgetGrantWithMandate(
+export function issueExecutionBudgetGrant(
   taskMandate: TaskMandateDependencies,
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
+  createMaintainerSigner: MaintainerSignerFactory,
   cwd: string,
   untrustedRequest: ExecutionBudgetGrantRequest,
   options: IssueExecutionBudgetGrantOptions = {},
@@ -89,8 +91,7 @@ export function issueExecutionBudgetGrantWithMandate(
     ),
   );
   const signer =
-    options.signer ??
-    createInteractiveSshSigner(repository.repositoryRoot, policy);
+    options.signer ?? createMaintainerSigner(repository.repositoryRoot, policy);
   const job = inspectExecutionJob(repository.repositoryRoot, request.jobId).job;
   const jobBinding = requireExecutionJobMandateBinding(job);
   const now = options.now ?? new Date();
@@ -100,7 +101,7 @@ export function issueExecutionBudgetGrantWithMandate(
     jobBinding.mandateTaskId,
     { now, signer },
   );
-  const refusalBinding = executionBudgetCliRefusalBinding({
+  const refusalBinding = executionBudgetRefusalBinding({
     repositoryRoot: repository.repositoryRoot,
     repositoryIdentity: policy.repository.id,
     mandateBinding: activeBinding,
@@ -234,6 +235,8 @@ export function inspectIssuedExecutionBudgetGrant(
 }
 
 export function revokeIssuedExecutionBudgetGrant(
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
+  createMaintainerSigner: MaintainerSignerFactory,
   cwd: string,
   grantId: string,
   options: {
@@ -260,8 +263,7 @@ export function revokeIssuedExecutionBudgetGrant(
     ),
   );
   const revoker =
-    options.signer ??
-    createInteractiveSshSigner(repository.repositoryRoot, policy);
+    options.signer ?? createMaintainerSigner(repository.repositoryRoot, policy);
   const authorization = inspectExecutionBudgetGrantAuthorization(
     runtime.root,
     grantId,
@@ -294,7 +296,7 @@ export function revokeIssuedExecutionBudgetGrant(
     .createHash('sha256')
     .update(canonicalExecutionBudgetGrantEnvelope(envelope))
     .digest('hex')}` as const;
-  const refusalBinding = executionBudgetCliRefusalBinding({
+  const refusalBinding = executionBudgetRefusalBinding({
     repositoryRoot: repository.repositoryRoot,
     repositoryIdentity: policy.repository.id,
     mandateBinding,
@@ -375,7 +377,7 @@ export function revokeIssuedExecutionBudgetGrant(
   );
 }
 
-function executionBudgetCliRefusalBinding(input: {
+function executionBudgetRefusalBinding(input: {
   repositoryRoot: string;
   repositoryIdentity: string;
   mandateBinding: TaskMandateBinding;
@@ -406,6 +408,3 @@ function executionBudgetCliRefusalBinding(input: {
     refusalIdentity: input.refusalIdentity,
   };
 }
-
-export const issueExecutionBudgetGrant =
-  issueExecutionBudgetGrantWithMandate.bind(undefined, taskMandateOperations);
