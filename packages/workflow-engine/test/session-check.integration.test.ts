@@ -736,10 +736,8 @@ test('change validation rejects bare executable check runners', () => {
   }
 });
 
-import {
-  createSessionCheckService,
-  type SessionInspection,
-} from '../src/application/finalize/verification.ts';
+import { createSessionCheckService } from '../src/runtime/repository-validation/session-verification.ts';
+import { type SessionInspection } from '../src/modules/lifecycle/session-inspection.ts';
 import type { CheckExecutionPort } from '../src/modules/assurance/check-execution-port.ts';
 import { pinCheckRunner } from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
@@ -845,7 +843,8 @@ function fakeSessionExecutionFixture() {
         };
       },
     };
-    const service = createSessionCheckService({
+    let executionLookups = 0;
+    const services: Parameters<typeof createSessionCheckService>[0] = {
       reviewedAssets: reviewedGeneratedAssets,
       manifestOperations: maintainerManifestOperations,
       changeContract: {
@@ -877,12 +876,29 @@ function fakeSessionExecutionFixture() {
           return null;
         },
       },
-      createExecution(root) {
-        assert.equal(root, repository);
-        events.push('factory');
-        return execution;
+      get createExecution() {
+        executionLookups += 1;
+        assert.equal(executionLookups, 1);
+        assert.ok(state.admitted, 'executor lookup must follow admission');
+        return function (this: typeof services, root: string) {
+          assert.equal(
+            this,
+            services,
+            'retain the original capability receiver',
+          );
+          assert.equal(root, repository);
+          events.push('factory');
+          return execution;
+        };
       },
-    });
+    };
+    const service = createSessionCheckService(services);
+    const another = createSessionCheckService(services);
+    assert.equal(Object.isFrozen(service), true);
+    assert.equal(Object.isFrozen(another), true);
+    assert.notEqual(service.checkSession, another.checkSession);
+    assert.notEqual(service.executeChecks, another.executeChecks);
+    assert.equal(executionLookups, 0);
     assert.equal(events.length, 0, 'service construction must be inert');
     const reports = () => {
       const directory = path.join(

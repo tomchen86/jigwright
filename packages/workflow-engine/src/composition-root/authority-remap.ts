@@ -38,10 +38,8 @@ import {
   workflowError,
 } from '../foundation/errors/errors.ts';
 import { runGitBuffer } from '../runtime/repository-transaction/git.ts';
-import {
-  readPinnedTrackedTree,
-  type TrackedTreeEntry,
-} from '../runtime/repository-transaction/tracked-tree-reader.ts';
+import { readPinnedTrackedTree } from '../runtime/repository-transaction/tracked-tree-reader.ts';
+import { type TrackedTreeEntry } from '../modules/source/tracked-path.ts';
 import {
   assertChangeId,
   assertTaskId,

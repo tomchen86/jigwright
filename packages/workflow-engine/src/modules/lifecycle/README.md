@@ -8,11 +8,11 @@ Keep repository routing in one controlled source and derive the visible inventor
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:9d61064e3844d6f1139dac63a1b2be31ed49251a9061d9a5a169e6af15cfa402 -->
+<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:2f4b1205e426139e05b2a1432f16a5d9f2ea1bef695566db3b9e48be3daec595 -->
 
 <!-- prettier-ignore-start -->
 
-22 files changed in this module since confirmation.
+24 files changed in this module since confirmation.
 
 ## Commands
 
@@ -73,6 +73,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [completion-rollback.ts](completion-rollback.ts) | Pure admission and state reset for reversing an unfinished completion projection. | 0 | History unavailable |
 | [contract-digests.ts](contract-digests.ts) | Computes identities for the required registered check definitions. | 1 | History unavailable |
 | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) | Defines shared task strategy, review and authority-plan state names. | 1 | Header changed since confirmation |
+| [mechanical-transformation-evidence.ts](mechanical-transformation-evidence.ts) | Pure mechanical transformation closure, projection and immutable evidence validation. | 0 | History unavailable |
 | [open-task-status.ts](open-task-status.ts) | Durable open-task phase and status values shared by activation and status queries. | 0 | History unavailable |
 | [planning-amendment-decision.ts](planning-amendment-decision.ts) | Creates, reads and replaces canonical amendment decisions embedded in proposal markers. | 1 | History unavailable |
 | [planning-execution-epoch-observations.ts](planning-execution-epoch-observations.ts) | Required repository observations, invoked at each epoch admission phase. | 0 | History unavailable |
@@ -80,6 +81,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [planning-transition-report.ts](planning-transition-report.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [repository-hooks.ts](repository-hooks.ts) | Repository hook admission rules over required current observations and checks. | 0 | History unavailable |
 | [repository-specification-policy.ts](repository-specification-policy.ts) | Combines canonical spec ownership with repository-specific lifecycle paths. | 1 | History unavailable |
+| [session-check.ts](session-check.ts) | Data returned by session checks and their caller-supplied execution options. | 0 | History unavailable |
 | [session-inspection.ts](session-inspection.ts) | Observed session facts consumed by lifecycle rules and report validation. | 0 | History unavailable |
 | [task-diff-review-contracts.ts](task-diff-review-contracts.ts) | Defines shared task diff review command, status, and replay contracts. | 1 | History unavailable |
 | [workflow-report.ts](workflow-report.ts) | Workflow report contract and validation rules shared by lifecycle policy and durable storage. | 0 | History unavailable |

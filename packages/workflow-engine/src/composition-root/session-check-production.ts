@@ -1,4 +1,4 @@
-import { createSessionCheckService } from '../application/finalize/verification.ts';
+import { createSessionCheckService } from '../runtime/repository-validation/session-verification.ts';
 import { reviewedGeneratedAssets } from './planning-provider-authoring-production.ts';
 import { maintainerManifestOperations } from './maintainer-manifest-production.ts';
 import { productionTaskStrategyExecutionGate } from './task-strategy-gate-production.ts';

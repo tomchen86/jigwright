@@ -43,6 +43,25 @@ test('ordinary checks retain trusted external-state metadata and rerun required 
   );
   const externalCounter = path.join(countersRoot, 'external.log');
   const snapshot = bareDigest('external-snapshot-v1');
+  let clockCalls = 0;
+  const now = () => {
+    assert.equal(lineCount(externalCounter), 1, 'read clock after execution');
+    clockCalls += 1;
+    return NOW;
+  };
+  const observedGate: typeof productionTaskStrategyExecutionGate = {
+    ...productionTaskStrategyExecutionGate,
+    assertExecutionAdmitted(...args) {
+      assert.equal(
+        clockCalls,
+        0,
+        'construction and admission must not read clock',
+      );
+      return productionTaskStrategyExecutionGate.assertExecutionAdmitted(
+        ...args,
+      );
+    },
+  };
   try {
     installExternalCountingChecks(repository, {
       'external-check': externalCounter,
@@ -68,28 +87,34 @@ test('ordinary checks retain trusted external-state metadata and rerun required 
       () =>
         checkSession(
           maintainerManifestOperations,
-          productionTaskStrategyExecutionGate,
+          observedGate,
           productionChangeContract,
           repository,
           session.sessionId,
-          { now: () => NOW },
+          { now },
         ),
       (error) =>
         isWorkflowError(error, 'SESSION_EXTERNAL_STATE_SNAPSHOT_REQUIRED'),
     );
     assert.equal(lineCount(externalCounter), 0);
+    assert.equal(
+      clockCalls,
+      0,
+      'missing snapshot must refuse without reading clock',
+    );
     const original = checkSession(
       maintainerManifestOperations,
-      productionTaskStrategyExecutionGate,
+      observedGate,
       productionChangeContract,
       repository,
       session.sessionId,
       {
-        now: () => NOW,
+        now,
         externalSnapshotDigests: { 'external-check': snapshot },
       },
     );
     assert.equal(lineCount(externalCounter), 1);
+    assert.equal(clockCalls, 1);
     assert.equal(original.checks[0]!.completedAt, NOW.toISOString());
     assert.equal(original.checks[0]!.externalSnapshotDigest, snapshot);
     assert.equal(original.checks[0]!.maxAgeMs, 10 * 60 * 1_000);

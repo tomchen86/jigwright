@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import test from 'node:test';
+import { assertPureDependencyClosure } from './support/pure-dependency-closure.ts';
 import type { TaskSessionReference } from '@jigwright/core/workflow-identifiers';
 import type { WorkflowSession } from '../src/modules/lifecycle/workflow-session-contract.ts';
 import type { TaskStrategyTransaction } from '../src/modules/assurance/task-strategy-evidence.ts';
@@ -105,6 +106,26 @@ function referenceContract(
   return undefined;
 }
 void referenceContract;
+
+for (const name of ['mechanical-transformation-evidence', 'session-check']) {
+  const entry = path.resolve(
+    import.meta.dirname,
+    `../src/modules/lifecycle/${name}.ts`,
+  );
+  test(`${name} has a pure transitive value and type closure`, () => {
+    assert.ok(assertPureDependencyClosure(entry).size > 1);
+  });
+  test(`${name} rejects injected runtime types and filesystem effects`, () => {
+    for (const source of [
+      "\nimport type { InvestigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';\n",
+      "\nimport fs from 'node:fs';\n",
+    ])
+      assert.throws(
+        () => assertPureDependencyClosure(entry, source),
+        /Outward pure dependency|Effect import/,
+      );
+  });
+}
 
 test('assurance rules have no lifecycle imports and reject value or type back-edges', () => {
   const root = path.resolve(import.meta.dirname, '../../..');

@@ -1,10 +1,13 @@
+import type {
+  SessionCheck,
+  SessionCheckOptions,
+} from '../../modules/lifecycle/session-check.ts';
 import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
 import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
-import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
 import type {
   CheckEvidence,
@@ -21,47 +24,20 @@ import {
   discoverRepository,
   fingerprintWorkingState,
   runGit,
-} from '../../runtime/repository-transaction/git.ts';
+} from '../repository-transaction/git.ts';
 import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
-import { writeImmutableReport } from '../../runtime/storage-journal/report-store.ts';
+import { writeImmutableReport } from '../storage-journal/report-store.ts';
 import type { WorkflowReport } from '../../modules/lifecycle/workflow-report.ts';
 import {
   runtimePaths,
   withSessionOperation,
-} from '../../runtime/session-workspace/session-store.ts';
+} from '../session-workspace/session-store.ts';
 import { ensureTaskMechanicalTransformationEvidence } from './task-mechanical-transform.ts';
-import { type ProtectedTaskApplyAuthorizationBinding } from '../../runtime/storage-journal/finalize-transaction.ts';
-import { inspectSession } from '../../runtime/repository-validation/session-inspection.ts';
+import { type ProtectedTaskApplyAuthorizationBinding } from '../storage-journal/finalize-transaction.ts';
+import { inspectSession } from './session-inspection.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
-import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
-import { persistSession } from '../../runtime/session-workspace/session-persistence.ts';
-
-/** Execute current required checks and publish immutable session evidence. */
-
-export type SessionCheck = {
-  sessionId: string;
-  changeId: string;
-  taskId: string;
-  changedPaths: string[];
-  unexpectedPaths: string[];
-  checks: CheckEvidence[];
-  executedCheckIds: string[];
-  reusedCheckIds: string[];
-  passed: true;
-  reportId: string;
-};
-
-export type SessionCheckOptions = {
-  environment?: NodeJS.ProcessEnv;
-  /** Trusted clock used to bind persisted check completion and freshness. */
-  now?: () => Date;
-  /**
-   * Engine-owned trust seam for current external snapshots. Production callers
-   * must never populate this from argv, candidate content, persisted session
-   * fields, or ambient environment values.
-   */
-  externalSnapshotDigests?: Readonly<Record<string, string>>;
-};
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
+import { persistSession } from '../session-workspace/session-persistence.ts';
 
 type TrustedCheckPolicy = {
   checkDependencies: Record<string, CheckDependency[]>;
@@ -445,5 +421,3 @@ export function writeSessionReport(
     { ...report, planningAssurance },
   );
 }
-
-export type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';

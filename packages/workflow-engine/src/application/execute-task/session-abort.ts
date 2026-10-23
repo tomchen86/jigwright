@@ -103,7 +103,7 @@ export type { WorkflowSession } from '../../runtime/session-workspace/session-st
 export type {
   SessionCheck,
   SessionCheckOptions,
-} from '../finalize/verification.ts';
+} from '../../modules/lifecycle/session-check.ts';
 
 export function abortSession(
   grantRecordStore: (

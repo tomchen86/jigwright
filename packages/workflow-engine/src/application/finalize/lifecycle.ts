@@ -75,8 +75,6 @@ import {
   finalizeTaskUnlocked,
   PROJECTED_SINGLE_PASS_ASSURANCE,
   restoreFinalizeTransactionProjection,
-  transactionReportCheckEscalation,
-  transactionRequiredChecks,
   type FinalizeTaskOptions,
   type FinalizeTaskResult,
 } from './projected-finalization.ts';
@@ -102,7 +100,7 @@ import { getSession } from '../../runtime/repository-observation/workflow-sessio
 import {
   type SessionCheckService,
   writeSessionReport,
-} from './verification.ts';
+} from '../../runtime/repository-validation/session-verification.ts';
 import { persistSession } from '../../runtime/session-workspace/session-persistence.ts';
 import { inspectSession } from '../../runtime/repository-validation/session-inspection.ts';
 import { rollbackGeneratedDocuments } from '../../runtime/managed-documents/validation/managed-documents.ts';
@@ -1087,12 +1085,8 @@ function commitSessionUnlocked(
           inspection.contract.config,
         )
       : {
-          requiredChecks: transactionRequiredChecks(
-            finalizeTransaction,
-            initialSession,
-          ),
-          checkEscalation:
-            transactionReportCheckEscalation(finalizeTransaction),
+          requiredChecks: [...finalizeTransaction.requiredChecks],
+          checkEscalation: finalizeTransaction.checkEscalation,
         };
   const requiredChecks = [...checkPolicy.requiredChecks];
   assertInspectionReport(
@@ -1429,7 +1423,7 @@ function finalizeResultFromTransaction(
     completionReportId: transaction.completionReportId,
     finishReportId: transaction.finishReportId,
     completedTaskIds: [...transaction.completedTaskIds],
-    requiredChecks: transactionRequiredChecks(transaction, session),
+    requiredChecks: [...transaction.requiredChecks],
     checkEscalation: transaction.checkEscalation,
     stagedPaths: [...transaction.changedPaths],
     tree: transaction.candidateTree,

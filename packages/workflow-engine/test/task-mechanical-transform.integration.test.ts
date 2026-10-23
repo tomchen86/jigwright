@@ -17,9 +17,16 @@ import path from 'node:path';
 import test from 'node:test';
 
 import type {
+  MechanicalTransformExecution,
   TransformationRetainedDisposition,
   TransformationTerm,
 } from '../src/modules/planning-provider/planning-artifact-types.ts';
+import {
+  evaluateMechanicalClosure,
+  assertDeterministicMechanicalProjection,
+} from '../src/modules/lifecycle/mechanical-transformation-evidence.ts';
+import { createMutationClassPolicy } from '../src/modules/source/mutation-class-policy.ts';
+import type { TrackedTreeEntry } from '../src/modules/source/tracked-path.ts';
 import {
   completeTask,
   finalizeTask,
@@ -46,6 +53,193 @@ type MechanicalFixtureOptions = Readonly<{
   referencePolicy?: boolean;
   additionalPendingTask?: boolean;
 }>;
+
+function mechanicalRuleTask(
+  contract: Partial<
+    MechanicalTransformExecution['transformationContract']
+  > = {},
+): MechanicalTransformExecution {
+  return {
+    strategy: 'mechanical-transform',
+    enforcement: 'planned',
+    allowedPaths: ['src/**'],
+    requiredChecks: [],
+    diffReview: 'policy-required',
+    transformationContract: {
+      rule: 'Replace exact reviewed bytes.',
+      examples: [{ before: 'OLD_NAME', after: 'NEW_NAME' }],
+      fileScopes: ['src/**'],
+      oldTerms: [{ kind: 'symbol', value: 'OLD_NAME' }],
+      replacementTerms: [{ kind: 'symbol', value: 'NEW_NAME' }],
+      retainedDispositions: [],
+      redInapplicableReason: 'Exact-byte transformation.',
+      ...contract,
+    },
+  };
+}
+
+function mechanicalEntry(
+  relativePath: string,
+  text: string | Buffer,
+  mode = '100644',
+): TrackedTreeEntry {
+  const content = Buffer.from(text);
+  return {
+    path: {
+      rawBase64: Buffer.from(relativePath).toString('base64'),
+      utf8: relativePath,
+    },
+    objectId: 'a'.repeat(40),
+    objectType: 'blob',
+    mode,
+    byteSize: content.length,
+    content,
+  };
+}
+
+test('pure mechanical closure scans unchanged live terms beyond mutation scopes', () => {
+  const entries = [
+    mechanicalEntry('src/feature.ts', 'NEW_NAME'),
+    mechanicalEntry('other/unchanged.ts', 'OLD_NAME'),
+  ];
+  assert.throws(
+    () =>
+      evaluateMechanicalClosure(
+        entries,
+        'b'.repeat(40),
+        'c'.repeat(64),
+        ['src/feature.ts'],
+        mechanicalRuleTask(),
+        createMutationClassPolicy({ rules: [] }),
+      ),
+    (error) =>
+      isWorkflowError(
+        error,
+        'TASK_MECHANICAL_TRANSFORMATION_LIVE_TERM_REMAINS',
+      ),
+  );
+});
+
+test('pure mechanical closure requires exact retained dispositions and rejects unused ones', () => {
+  const entries = [
+    mechanicalEntry('src/feature.ts', 'NEW_NAME'),
+    mechanicalEntry('docs/history.txt', 'OLD_NAME'),
+  ];
+  const task = mechanicalRuleTask();
+  const policy = createMutationClassPolicy({
+    rules: [
+      {
+        ruleId: 'retained-history',
+        mutationClass: 'immutable',
+        selector: { kind: 'exact-path', path: 'docs/history.txt' },
+      },
+    ],
+  });
+  const evaluate = () =>
+    evaluateMechanicalClosure(
+      entries,
+      'b'.repeat(40),
+      'c'.repeat(64),
+      ['src/feature.ts'],
+      task,
+      policy,
+    );
+  assert.throws(evaluate, (error) =>
+    isWorkflowError(
+      error,
+      'TASK_MECHANICAL_TRANSFORMATION_RETAINED_DISPOSITION_REQUIRED',
+    ),
+  );
+  const disposition: TransformationRetainedDisposition = {
+    term: { kind: 'symbol', value: 'OLD_NAME' },
+    path: 'docs/history.txt',
+    mutationClass: 'immutable',
+    reason: 'Preserve historical wording.',
+  };
+  task.transformationContract.retainedDispositions.push(disposition);
+  const result = evaluate();
+  assert.equal(result.scannedPathCount, 2);
+  assert.equal(result.oldTermHits[0]!.path, 'docs/history.txt');
+  assert.equal(result.oldTermHits[0]!.occurrenceCount, 1);
+  assert.equal(
+    result.retainedDispositions,
+    task.transformationContract.retainedDispositions,
+  );
+  task.transformationContract.retainedDispositions.push({
+    ...disposition,
+    path: 'docs/absent.txt',
+  });
+  assert.throws(evaluate, (error) =>
+    isWorkflowError(
+      error,
+      'TASK_MECHANICAL_TRANSFORMATION_RETAINED_DISPOSITION_INVALID',
+    ),
+  );
+});
+
+test('pure mechanical projection replaces overlapping terms simultaneously and preserves bytes and modes', () => {
+  const task = mechanicalRuleTask({
+    oldTerms: [
+      { kind: 'content', value: 'AA' },
+      { kind: 'content', value: 'A' },
+    ],
+    replacementTerms: [
+      { kind: 'content', value: 'A' },
+      { kind: 'content', value: 'Z' },
+    ],
+  });
+  const baseline = [mechanicalEntry('src/feature.ts', 'AAA\r\né')];
+  const candidate = [mechanicalEntry('src/feature.ts', 'AZ\r\né')];
+  const policy = createMutationClassPolicy({ rules: [] });
+  assert.match(
+    assertDeterministicMechanicalProjection(baseline, candidate, task, policy),
+    /^[0-9a-f]{64}$/,
+  );
+  assert.equal(baseline[0]!.content!.toString(), 'AAA\r\né');
+  for (const altered of [
+    mechanicalEntry('src/feature.ts', 'AZ\né'),
+    mechanicalEntry('src/feature.ts', 'AZ\r\né', '100755'),
+    mechanicalEntry('src/feature.ts', 'ZZZ\r\né'),
+  ])
+    assert.throws(
+      () =>
+        assertDeterministicMechanicalProjection(
+          baseline,
+          [altered],
+          task,
+          policy,
+        ),
+      (error) =>
+        isWorkflowError(
+          error,
+          'TASK_MECHANICAL_TRANSFORMATION_PROJECTION_MISMATCH',
+        ),
+    );
+});
+
+test('pure mechanical projection rejects a path rename collision', () => {
+  const task = mechanicalRuleTask({
+    oldTerms: [{ kind: 'path', value: 'OLD' }],
+    replacementTerms: [{ kind: 'path', value: 'NEW' }],
+  });
+  assert.throws(
+    () =>
+      assertDeterministicMechanicalProjection(
+        [
+          mechanicalEntry('src/OLD.ts', 'same'),
+          mechanicalEntry('src/NEW.ts', 'same'),
+        ],
+        [mechanicalEntry('src/NEW.ts', 'same')],
+        task,
+        createMutationClassPolicy({ rules: [] }),
+      ),
+    (error) =>
+      isWorkflowError(
+        error,
+        'TASK_MECHANICAL_TRANSFORMATION_PROJECTION_MISMATCH',
+      ),
+  );
+});
 
 test('mechanical transformation closure scans unchanged live consumers in the full candidate tree', () => {
   const fixture = createMechanicalFixture({

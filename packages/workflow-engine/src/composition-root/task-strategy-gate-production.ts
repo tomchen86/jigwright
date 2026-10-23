@@ -5,7 +5,7 @@ import {
   recordTaskStrategyGreenFailure,
   resolveCurrentTaskStrategyCorrection,
 } from './task-strategy-correction-production.ts';
-import { assertTaskMechanicalTransformationEvidence } from '../application/finalize/task-mechanical-transform.ts';
+import { assertTaskMechanicalTransformationEvidence } from '../runtime/repository-validation/task-mechanical-transform.ts';
 import { pinCheckRunner } from '../adapters/consumer/repository/work-registry/check-runner.ts';
 export const productionTaskStrategyExecutionGate =
   createTaskStrategyExecutionGate<SessionInspection>({

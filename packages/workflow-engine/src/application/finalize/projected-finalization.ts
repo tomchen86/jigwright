@@ -73,11 +73,11 @@ import {
   type TaskDiffReviewCompletionGateOptions,
 } from '../../modules/lifecycle/task-diff-review-contracts.ts';
 
-import { ensureTaskMechanicalTransformationEvidence } from './task-mechanical-transform.ts';
+import { ensureTaskMechanicalTransformationEvidence } from '../../runtime/repository-validation/task-mechanical-transform.ts';
 import {
   type SessionCheckService,
   writeSessionReport,
-} from './verification.ts';
+} from '../../runtime/repository-validation/session-verification.ts';
 import { persistSession } from '../../runtime/session-workspace/session-persistence.ts';
 import { inspectSession } from '../../runtime/repository-validation/session-inspection.ts';
 
@@ -347,10 +347,9 @@ function continueFinalizeTransaction(
     if (transaction.phase === 'candidate-prepared') {
       if (state.indexState !== 'previous') throw transactionDiverged();
       if (transaction.checkEscalation) {
-        options.onCheckEscalation?.(
-          transaction.checkEscalation,
-          transactionRequiredChecks(transaction, session),
-        );
+        options.onCheckEscalation?.(transaction.checkEscalation, [
+          ...transaction.requiredChecks,
+        ]);
       }
       transaction = advanceFinalizeTransaction(
         state.context.runtime.root,
@@ -361,7 +360,7 @@ function continueFinalizeTransaction(
       const verified = sessionChecks.executeChecks({
         cwd,
         initial: state.inspection,
-        checkIds: transactionRequiredChecks(transaction, session),
+        checkIds: [...transaction.requiredChecks],
         environment,
         projectedTaskIds: [...transaction.completedTaskIds],
         projectionSourceDigest: transaction.projectionSourceDigest,
@@ -715,10 +714,7 @@ function createCheckReport(
   inspection: ReturnType<typeof inspectSession>,
   checks: unknown[],
 ): WorkflowReport {
-  const requiredChecks = transactionRequiredChecks(
-    transaction,
-    inspection.session,
-  );
+  const requiredChecks = [...transaction.requiredChecks];
   return {
     schemaVersion: 1,
     kind: 'check',
@@ -799,19 +795,19 @@ function currentCheckReport(
     { ...inspection, fingerprint: transaction.candidateFingerprint },
     'check',
     'CHECK_REPORT_STALE',
-    transactionRequiredChecks(transaction, inspection.session),
+    [...transaction.requiredChecks],
   );
   assertReportChecks(
     report,
     inspection,
-    transactionRequiredChecks(transaction, inspection.session),
+    [...transaction.requiredChecks],
     'CHECK_REPORT_STALE',
   );
   if (
     report.parentReportId !== undefined ||
     report.finalizeProfile !== PROJECTED_SINGLE_PASS_ASSURANCE ||
     report.candidateTree !== transaction.candidateTree ||
-    report.checkEscalation !== transactionReportCheckEscalation(transaction)
+    report.checkEscalation !== transaction.checkEscalation
   ) {
     throw transactionDiverged();
   }
@@ -867,24 +863,11 @@ function resultFrom(
     completionReportId: transaction.completionReportId,
     finishReportId: transaction.finishReportId,
     completedTaskIds: [...transaction.completedTaskIds],
-    requiredChecks: transactionRequiredChecks(transaction, session),
+    requiredChecks: [...transaction.requiredChecks],
     checkEscalation: transaction.checkEscalation,
     stagedPaths: [...transaction.changedPaths],
     tree: transaction.candidateTree,
   };
-}
-
-export function transactionRequiredChecks(
-  transaction: FinalizeTransaction,
-  _session: Pick<WorkflowSession, 'requiredChecks'>,
-): string[] {
-  return [...transaction.requiredChecks];
-}
-
-export function transactionReportCheckEscalation(
-  transaction: FinalizeTransaction,
-): FinalizeCheckEscalation {
-  return transaction.checkEscalation;
 }
 
 function assertExplicitCheckRequestMatches(
@@ -900,8 +883,7 @@ function assertExplicitCheckRequestMatches(
   );
   if (
     terminalChecks.length === 0 ||
-    JSON.stringify(transactionRequiredChecks(transaction, context.session)) !==
-      JSON.stringify(expected)
+    JSON.stringify([...transaction.requiredChecks]) !== JSON.stringify(expected)
   ) {
     throw workflowError(
       'FINALIZE_REQUEST_CHANGED',

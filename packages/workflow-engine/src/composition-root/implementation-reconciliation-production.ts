@@ -4,7 +4,7 @@ import { productionChangeContract } from './change-routing-observation-productio
 import { createImplementationReconciliationService } from '../application/reconciliation/implementation-reconciliation.ts';
 import { readCurrentImplementationReconciliationRequirement } from '../application/reconciliation/investigation-reconciliation.ts';
 import { listSessions } from '../runtime/repository-observation/workflow-session-context.ts';
-import { writeSessionReport } from '../application/finalize/verification.ts';
+import { writeSessionReport } from '../runtime/repository-validation/session-verification.ts';
 import { persistSession } from '../runtime/session-workspace/session-persistence.ts';
 import { inspectSession } from '../runtime/repository-validation/session-inspection.ts';
 import { deriveImplementationTarget } from '../runtime/repository-observation/implementation-target.ts';

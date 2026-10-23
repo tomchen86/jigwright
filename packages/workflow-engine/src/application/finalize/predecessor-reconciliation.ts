@@ -7,7 +7,7 @@ import {
   hasExactTrailers,
 } from '../../runtime/repository-transaction/git-transitions.ts';
 import { matchesAllowedPath } from '../../foundation/repository-path/repository-path.ts';
-import type { SessionCheckService } from './verification.ts';
+import type { SessionCheckService } from '../../runtime/repository-validation/session-verification.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
 

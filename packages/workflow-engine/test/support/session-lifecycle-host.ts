@@ -1,9 +1,7 @@
 /** Shared test assembly for ordinary session verification and finalization. */
 import { reviewedGeneratedAssets } from '../../src/composition-root/planning-provider-authoring-production.ts';
-import {
-  createSessionCheckService,
-  type SessionCheckOptions,
-} from '../../src/application/finalize/verification.ts';
+import { createSessionCheckService } from '../../src/runtime/repository-validation/session-verification.ts';
+import { type SessionCheckOptions } from '../../src/modules/lifecycle/session-check.ts';
 import { createProductionCheckExecution } from '../../src/composition-root/check-execution-production.ts';
 import { createProductionFinalizationService } from '../../src/composition-root/finalization-production.ts';
 

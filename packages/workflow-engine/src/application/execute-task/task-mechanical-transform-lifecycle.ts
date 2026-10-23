@@ -39,10 +39,8 @@ import {
   withRepositoryLifecycleOperation,
   withSessionOperation,
 } from '../../runtime/session-workspace/session-store.ts';
-import {
-  readPinnedTrackedTree,
-  type TrackedTreeEntry,
-} from '../../runtime/repository-transaction/tracked-tree-reader.ts';
+import { readPinnedTrackedTree } from '../../runtime/repository-transaction/tracked-tree-reader.ts';
+import { type TrackedTreeEntry } from '../../modules/source/tracked-path.ts';
 import { inspectSession } from '../../runtime/repository-validation/session-inspection.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 
