@@ -5,58 +5,32 @@ import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
-  CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE,
-  CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2,
-  CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3,
-  CONTROL_PLANE_SIGNATURE_NAMESPACE_V2,
-  CONTROL_PLANE_SIGNATURE_NAMESPACE_V3,
   HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE,
   REQUIRED_PROTECTED_CAPABILITIES,
   advanceEngineAdoption,
-  advanceMinimalUpdaterTransaction,
   beginHarnessIntervention,
   canonicalHarnessMaintenanceGrantPayload,
-  classifyProtectedCandidateImpact,
-  controlPlaneCandidateDigest,
   createEngineArtifact,
   createProtectedCapabilityManifest,
   createWipCheckpoint,
-  decideControlPlaneRecovery,
   decideEngineAdoptionRecovery,
   finalizeEngineAdoption,
   prepareEngineAdoption,
-  prepareMinimalUpdaterTransaction,
   protectedCapabilityClosureDigest,
+  validateWorkflowSupersedeReason,
   verifyHarnessMaintenanceGrant,
   verifyWipCheckpoint,
-  validateWorkflowSupersedeReason,
-  type ExactControlPlaneChange,
   type HarnessMaintenanceGrantEnvelope,
   type ParentChangeState,
   type ProtectedCapabilityEntry,
-  type VerifiedControlPlaneGrantV3,
 } from '../src/modules/authority/intervention-control.ts';
 
 const NOW = new Date('2026-08-03T10:00:00.000Z');
 
-test('intervention signature namespaces use the Jigwright product identity', () => {
-  assert.deepEqual(
-    [
-      HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE,
-      CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE,
-      CONTROL_PLANE_SIGNATURE_NAMESPACE_V2,
-      CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2,
-      CONTROL_PLANE_SIGNATURE_NAMESPACE_V3,
-      CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3,
-    ],
-    [
-      'jigwright.harness-maintenance-grant.v1',
-      'jigwright.control-plane-independent-review.v1',
-      'jigwright.control-plane-grant.v2',
-      'jigwright.control-plane-independent-review.v2',
-      'jigwright.control-plane-grant.v3',
-      'jigwright.control-plane-independent-review.v3',
-    ],
+test('maintenance signature namespace uses the Jigwright product identity', () => {
+  assert.equal(
+    HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE,
+    'jigwright.harness-maintenance-grant.v1',
   );
 });
 
@@ -574,233 +548,6 @@ test('intervention-control requires an exact role-context-sharing binding when t
       hasCode('PROTECTED_CAPABILITY_MANIFEST_INVALID'),
     );
   }
-});
-
-test('protected capability closure classifies dependency and manifest changes as control-plane', () => {
-  const manifest = createProtectedCapabilityManifest({
-    schemaVersion: 1,
-    manifestPath: 'workflow/protected-capabilities.json',
-    entries: protectedEntries(),
-  });
-  const dependency = manifest.entries[0].dependencies[0];
-  const controlPlane = classifyProtectedCandidateImpact({
-    beforeManifest: manifest,
-    afterManifest: manifest,
-    changes: [
-      {
-        path: dependency,
-        beforeDigest: digest('dependency-before'),
-        afterDigest: digest('dependency-after'),
-      },
-    ],
-  });
-  assert.equal(controlPlane.class, 'C');
-  assert.equal(controlPlane.kind, 'control-plane');
-  assert.deepEqual(controlPlane.affectedCapabilities, [
-    manifest.entries[0].capability,
-  ]);
-
-  const ordinary = classifyProtectedCandidateImpact({
-    beforeManifest: manifest,
-    afterManifest: manifest,
-    changes: [
-      {
-        path: 'apps/api/src/example.ts',
-        beforeDigest: digest('api-before'),
-        afterDigest: digest('api-after'),
-      },
-    ],
-  });
-  assert.deepEqual(ordinary, {
-    class: 'A',
-    kind: 'ordinary',
-    affectedCapabilities: [],
-    manifestChanged: false,
-  });
-
-  const manifestMutation = classifyProtectedCandidateImpact({
-    beforeManifest: manifest,
-    afterManifest: manifest,
-    changes: [
-      {
-        path: manifest.manifestPath,
-        beforeDigest: digest('manifest-before'),
-        afterDigest: digest('manifest-after'),
-      },
-    ],
-  });
-  assert.equal(manifestMutation.class, 'C');
-  assert.equal(manifestMutation.manifestChanged, true);
-
-  const invalidEntries = protectedEntries();
-  invalidEntries[0] = {
-    ...invalidEntries[0],
-    closureDigest: digest('forged-closure'),
-  };
-  assert.throws(
-    () =>
-      createProtectedCapabilityManifest({
-        schemaVersion: 1,
-        manifestPath: 'workflow/protected-capabilities.json',
-        entries: invalidEntries,
-      }),
-    hasCode('PROTECTED_CAPABILITY_CLOSURE_DIGEST_MISMATCH'),
-  );
-});
-
-test('control-plane exact diffs use canonical code-unit ordering for case-sensitive paths', () => {
-  const changes: ExactControlPlaneChange[] = [
-    {
-      path: 'docs/readme.md',
-      beforeDigest: digest('lower-before'),
-      afterDigest: digest('lower-after'),
-    },
-    {
-      path: 'docs/Readme.md',
-      beforeDigest: digest('upper-before'),
-      afterDigest: digest('upper-after'),
-    },
-  ];
-
-  assert.doesNotThrow(() => controlPlaneCandidateDigest(changes));
-  assert.equal(
-    controlPlaneCandidateDigest(changes),
-    controlPlaneCandidateDigest([...changes].reverse()),
-  );
-});
-
-function verifiedControlPlaneGrantV3(
-  beforeClosureDigest: ReturnType<typeof digest>,
-  afterClosureDigest: ReturnType<typeof digest>,
-  grantId = 'control-grant-3',
-): VerifiedControlPlaneGrantV3 {
-  return {
-    payload: {
-      kind: 'control-plane-grant.v3',
-      grantId,
-      mandateBinding: {
-        schemaVersion: 1,
-        parentTaskId: 'control-plane-task',
-        mandateId: '33333333-3333-4333-8333-333333333333',
-        mandateDigest: '3'.repeat(64),
-        changeId: 'control-plane-change',
-        externalAuditRoot: '/external/audit/control-plane',
-      },
-      repositoryId: 'github:example/expense-app',
-      frozenCandidateBundleDigest: digest('frozen-candidate-bundle'),
-      candidateDigest: digest('control-plane-candidate'),
-      promotionMaterialDigest: digest('promotion-material'),
-      promotionBundleDigest: digest('promotion-bundle'),
-      promotionLineageDigest: digest('promotion-lineage'),
-      exactChanges: [
-        {
-          path: 'packages/workflow-engine/engine.mjs',
-          beforeDigest: digest('control-before'),
-          afterDigest: digest('control-after'),
-          beforeMode: '100644',
-          afterMode: '100644',
-        },
-      ],
-      beforeClosureDigest,
-      afterClosureDigest,
-      affectedCapabilities: [REQUIRED_PROTECTED_CAPABILITIES[0]!],
-      behaviorChangeSummary: 'Promote the repaired engine verifier closure.',
-      recoveryBundle: {
-        bundleDigest: digest('recovery-bundle'),
-        previousClosureDigest: beforeClosureDigest,
-        restartArtifactDigest: digest('restart-old-control-plane'),
-        rollbackTestReportDigest: digest('rollback-test'),
-      },
-      independentReviewAttestationDigest: digest('independent-review'),
-      updaterVersion: 3,
-      oneShot: true,
-      issuedAt: '2026-08-03T09:55:00.000Z',
-      expiresAt: '2026-08-03T11:00:00.000Z',
-      humanSigner: 'maintainer@example.test',
-    },
-    signature: 'control-plane-human-signature',
-    verifiedAt: NOW.toISOString(),
-    verification: 'human-signature-verified',
-  };
-}
-
-test('minimal updater v3 rolls back purely', () => {
-  const beforeClosureDigest = digest('control-before-closure');
-  const afterClosureDigest = digest('control-after-closure');
-  const verifiedGrant = verifiedControlPlaneGrantV3(
-    beforeClosureDigest,
-    afterClosureDigest,
-  );
-
-  let tx = prepareMinimalUpdaterTransaction(verifiedGrant, {
-    txId: 'control-update-1',
-    now: NOW,
-  });
-  for (const [kind, at] of [
-    ['old-closure-verified', '2026-08-03T10:01:00.000Z'],
-    ['candidate-verified', '2026-08-03T10:02:00.000Z'],
-    ['recovery-bundle-verified', '2026-08-03T10:03:00.000Z'],
-    ['atomic-switch-completed', '2026-08-03T10:04:00.000Z'],
-  ] as const) {
-    tx = advanceMinimalUpdaterTransaction(tx, { kind, at });
-  }
-  assert.deepEqual(decideControlPlaneRecovery(tx), {
-    action: 'rollback-with-recovery-bundle',
-    authoritativeClosureDigest: beforeClosureDigest,
-    terminal: false,
-  });
-  assert.throws(
-    () =>
-      advanceMinimalUpdaterTransaction(tx, {
-        kind: 'finalize',
-        at: '2026-08-03T10:04:30.000Z',
-      }),
-    hasCode('CONTROL_PLANE_UPDATE_TRANSITION_INVALID'),
-  );
-  tx = advanceMinimalUpdaterTransaction(tx, {
-    kind: 'self-tests-failed',
-    at: '2026-08-03T10:05:00.000Z',
-  });
-  tx = advanceMinimalUpdaterTransaction(tx, {
-    kind: 'rollback-completed',
-    at: '2026-08-03T10:06:00.000Z',
-  });
-  assert.equal(tx.state, 'ROLLED_BACK');
-  assert.deepEqual(decideControlPlaneRecovery(tx), {
-    action: 'none',
-    authoritativeClosureDigest: beforeClosureDigest,
-    terminal: true,
-  });
-});
-
-test('minimal updater v3 finalizes only after self-test', () => {
-  const beforeClosureDigest = digest('control-before-closure');
-  const afterClosureDigest = digest('control-after-closure');
-  const verified = verifiedControlPlaneGrantV3(
-    beforeClosureDigest,
-    afterClosureDigest,
-    'control-grant-success-3',
-  );
-  let tx = prepareMinimalUpdaterTransaction(verified, {
-    txId: 'control-update-success',
-    now: NOW,
-  });
-  for (const [kind, at] of [
-    ['old-closure-verified', '2026-08-03T10:01:00.000Z'],
-    ['candidate-verified', '2026-08-03T10:02:00.000Z'],
-    ['recovery-bundle-verified', '2026-08-03T10:03:00.000Z'],
-    ['atomic-switch-completed', '2026-08-03T10:04:00.000Z'],
-    ['self-tests-passed', '2026-08-03T10:05:00.000Z'],
-    ['finalize', '2026-08-03T10:06:00.000Z'],
-  ] as const) {
-    tx = advanceMinimalUpdaterTransaction(tx, { kind, at });
-  }
-  assert.equal(tx.state, 'FINALIZED');
-  assert.deepEqual(decideControlPlaneRecovery(tx), {
-    action: 'none',
-    authoritativeClosureDigest: afterClosureDigest,
-    terminal: true,
-  });
 });
 
 test('supersede rejects execution failures', () => {

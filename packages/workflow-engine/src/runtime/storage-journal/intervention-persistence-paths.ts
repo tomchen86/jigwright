@@ -7,7 +7,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
+import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { ensurePlainDirectory } from '../repository-transaction/filesystem-safety.ts';
 import {
   type InterventionControlPersistencePaths,
@@ -25,9 +25,7 @@ export function interventionControlPersistencePaths(
     interventions: path.join(root, 'interventions'),
     sidecarSessions: path.join(root, 'sidecar-sessions'),
     sidecarHistory: path.join(root, 'sidecar-session-history'),
-    sidecarPromotionPins: path.join(root, 'sidecar-promotion-pins'),
     adoptions: path.join(root, 'adoptions'),
-    controlUpdates: path.join(root, 'control-updates'),
     operations: path.join(root, 'operations'),
   };
 }
@@ -62,26 +60,6 @@ export function engineAdoptionRecordPath(
   );
 }
 
-export function bootstrapSidecarPromotionPinPath(
-  storageRoot: string,
-  txId: string,
-): string {
-  return path.join(
-    interventionControlPersistencePaths(storageRoot).sidecarPromotionPins,
-    `${identityFileName('sidecar-promotion-pin', txId)}.json`,
-  );
-}
-
-export function controlPlaneUpdateRecordPath(
-  storageRoot: string,
-  grantId: string,
-): string {
-  return path.join(
-    interventionControlPersistencePaths(storageRoot).controlUpdates,
-    `${identityFileName('control-update', grantId)}.json`,
-  );
-}
-
 export function ensurePersistenceDirectories(storageRoot: string): void {
   const paths = interventionControlPersistencePaths(storageRoot);
   for (const directory of [
@@ -90,9 +68,7 @@ export function ensurePersistenceDirectories(storageRoot: string): void {
     paths.interventions,
     paths.sidecarSessions,
     paths.sidecarHistory,
-    paths.sidecarPromotionPins,
     paths.adoptions,
-    paths.controlUpdates,
     paths.operations,
   ]) {
     ensurePlainDirectory(directory);

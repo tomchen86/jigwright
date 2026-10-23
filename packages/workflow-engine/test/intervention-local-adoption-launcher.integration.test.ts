@@ -6,7 +6,6 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   capturePersistedWipIntervention,
   executePersistedAdoptionStep,
@@ -14,10 +13,11 @@ import {
   materializeInterventionChildWorktree,
   readLocalEngineBinding,
 } from '../src/application/control-plane/intervention-control-bootstrap.ts';
-import { createEngineArtifact } from '../src/modules/authority/intervention-control.ts';
 import { persistInterventionEngineArtifact } from '../src/application/control-plane/intervention-maintenance.ts';
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import { createEngineArtifact } from '../src/modules/authority/intervention-control.ts';
 import { preparePersistedEngineAdoption } from '../src/runtime/storage-journal/intervention-control-persistence.ts';
-import { setupInitialControlPlaneBootstrapFixture } from './control-plane-promotion-fixture.ts';
+import { setupFixedRunnerFixture } from './fixed-runner-fixture.ts';
 
 const NOW = new Date('2026-08-03T10:00:00.000Z');
 const SOURCE_REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../../..');
@@ -49,9 +49,8 @@ function dependencies(now = NOW) {
 }
 
 async function fixture(healthy = true) {
-  const controlPlane = await setupInitialControlPlaneBootstrapFixture({
+  const controlPlane = await setupFixedRunnerFixture({
     builtInEntrypointBytes: repositoryDefaultEngineSource(),
-    now: NOW,
   });
   const workspacePrefix = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), 'local-adoption-launcher-')),
@@ -65,8 +64,7 @@ async function fixture(healthy = true) {
   git(repository, ['checkout', '-b', 'work/parent-A']);
   const sessionPath = path.join(stateRoot, 'parent-session-snapshot.json');
   fs.writeFileSync(sessionPath, '{"step":"P1"}\n', { mode: 0o600 });
-  const fromEngineDigest =
-    controlPlane.initialized.activeArtifact.executableDigest;
+  const fromEngineDigest = controlPlane.packageEngineDigest;
   const captured = capturePersistedWipIntervention(stateRoot, {
     repositoryRoot: repository,
     parent: {

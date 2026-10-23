@@ -12,10 +12,10 @@ import {
   initializeLocalEngineBinding,
   materializeInterventionChildWorktree,
 } from '../src/application/control-plane/intervention-control-bootstrap.ts';
+import { persistInterventionEngineArtifact } from '../src/application/control-plane/intervention-maintenance.ts';
 import { createEngineArtifact } from '../src/modules/authority/intervention-control.ts';
 import { preparePersistedEngineAdoption } from '../src/runtime/storage-journal/intervention-control-persistence.ts';
-import { persistInterventionEngineArtifact } from '../src/application/control-plane/intervention-maintenance.ts';
-import { setupFinalizedControlPlanePromotionFixture } from './control-plane-promotion-fixture.ts';
+import { setupFixedRunnerFixture } from './fixed-runner-fixture.ts';
 
 const NOW = new Date('2026-08-09T10:00:00.000Z');
 const SOURCE_REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../../..');
@@ -55,7 +55,7 @@ function dependencies(now = NOW) {
 }
 
 async function fixture(healthy: boolean) {
-  const controlPlane = await setupFinalizedControlPlanePromotionFixture({
+  const controlPlane = await setupFixedRunnerFixture({
     candidateExecutableFactory: (closureDigest) =>
       Buffer.from(currentGlobalEngineSource(closureDigest)),
   });
@@ -83,7 +83,7 @@ async function fixture(healthy: boolean) {
   const localLaunchMarker = path.join(root, 'local-engine-started');
   const stateRoot = controlPlane.stateRoot;
   const globalArtifact = {
-    executableDigest: controlPlane.supervisor.activeArtifact.executableDigest,
+    executableDigest: controlPlane.packageEngineDigest,
   };
   git(repository, ['checkout', '-b', 'work/parent-A']);
 

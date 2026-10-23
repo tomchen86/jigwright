@@ -23,27 +23,41 @@ Recovery Quarantine, and operational trust fences SHALL retain their recovery
 protections; adopting a candidate engine MUST NOT automatically release a
 parent WIP fence.
 
-#### Scenario: Installed runner encounters a finalized consumer candidate
+The package SHALL reject `control-plane produce`, `control-plane approve-and-apply`,
+`control-plane recover`, `control-plane initialize`, `control-plane status`,
+`control-plane classify`, and `harness-bootstrap control-plane rollback` without creating,
+advancing, signing, or probing consumer self-update state.
+
+#### Scenario: Retired self-update commands cannot activate consumer state
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/retired-self-update-cli.integration.test.ts#retired self-update commands leave empty and prepared consumer state and Git unchanged
+
+- **GIVEN** either an empty consumer store or a retained prepared update record
+- **WHEN** a retired self-update command is invoked
+- **THEN** the command fails as unsupported before authority assembly or repository observation
+- **AND** consumer files, Git HEAD, and index bytes remain unchanged
+
+#### Scenario: Installed runner encounters an inert retired consumer state
 covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
 test: packages/workflow-engine/test/single-package-release.contract.test.ts#single Jigwright tarball installs the complete CLI and public surfaces
 
-- **GIVEN** a complete Jigwright tarball is installed and the consumer has a valid finalized candidate selection
+- **GIVEN** a complete Jigwright tarball is installed and the consumer has inert retired engine-selection state
 - **WHEN** the installed CLI executes ordinary commands
 - **THEN** its package host produces the results without running the candidate or its probe
 - **AND** the consumer selection and Git HEAD remain unchanged
 
-#### Scenario: Source invocation encounters a finalized candidate
+#### Scenario: Source invocation encounters an inert retired candidate
 covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
-test: packages/workflow-engine/test/intervention-control-updater.integration.test.ts#trusted workflow launcher keeps its package E1 with finalized E2 and preserves argv and exit status
+test: packages/workflow-engine/test/fixed-package-launcher.integration.test.ts#trusted workflow launcher keeps its package E1 with retired E2 state and preserves argv and exit status
 
-- **WHEN** the source launcher runs with a different finalized consumer candidate
+- **WHEN** the source launcher runs with a different inert retired consumer state
 - **THEN** it executes its own verified package host and preserves arguments and exit status
 
 #### Scenario: Dependency evidence identifies the executing package
 covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
-test: packages/workflow-engine/test/installed-engine-identity.test.ts#candidate dependency snapshots use the package identity without probing a finalized consumer candidate
+test: packages/workflow-engine/test/installed-engine-identity.test.ts#candidate dependency snapshots use the package identity without probing an inert retired consumer state
 
-- **WHEN** the production candidate dependency snapshot observes a consumer with a finalized candidate
+- **WHEN** the production candidate dependency snapshot observes a consumer with an inert retired candidate
 - **THEN** the harness engine digest identifies the executing package closure
 - **AND** observation neither probes the candidate nor changes its selection
 

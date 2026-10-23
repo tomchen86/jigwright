@@ -2,6 +2,14 @@
 
 **Status:** Implemented parity re-audit complete; operational gates remain open
 
+**Product update, 2026-10-24:** The parity dispositions below record the
+2026-09-02 checkpoint. The [fixed package runner contract](../packages/workflow-engine/spec.md#requirement-ordinary-commands-keep-the-package-runner-fixed)
+supersedes the global self-update portion of that checkpoint: the `control-plane`
+command family (CLI-025), including its dedicated sealed rollback, is retired.
+An installed version runs the task while a candidate version is edited and
+tested. Ordinary task, Grant, Git, WIP, quarantine, and trust-root recovery
+remain; the historical counts below do not imply support for retired routes.
+
 **Requirement:** R-014 — full current-v3 product parity (owner directive; source provenance below)
 
 **Source baseline:** `jigwright-quarry@t3-integration-freeze-2`

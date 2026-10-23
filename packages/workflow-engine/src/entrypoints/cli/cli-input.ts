@@ -6,12 +6,12 @@
  * - A trailing JSON flag used as a recognized text option value does not
  *   select JSON output.
  */
+import { workflowGuidanceUsageLines } from '../../composition-root/cli-command-services.ts';
 import {
+  ExitCode,
   WorkflowError,
   workflowError,
-  ExitCode,
 } from '../../foundation/errors/errors.ts';
-import { workflowGuidanceUsageLines } from '../../composition-root/cli-command-services.ts';
 
 export type CommandResult = Record<string, unknown>;
 
@@ -138,13 +138,9 @@ export function usageText(): string {
     '  pnpm workflow change intervene <parent-change-id> --reason <text> --audit-root <absolute-external-path> [--json] — Request human intervention in the named parent change.',
     '  pnpm workflow change revoke-intervention <parent-change-id> --reason <text> [--json] — Revoke intervention in the named parent change.',
     '  pnpm workflow engine build-artifact <absolute-executable-path> --for <parent-change-id> --protocol-version <positive-integer> --policy-schema-version <positive-integer> --audit-root <absolute-path> [--json] — Build an engine artifact for the exact intervention target.',
-    '  pnpm workflow engine adopt <artifact-id> --into <parent-change-id> --audit-root <absolute-external-path> [--json] — Adopt the selected engine artifact into the parent change.',
+    '  pnpm workflow engine adopt <artifact-id> --into <parent-change-id> --audit-root <absolute-external-path> [--json] — Record a local parent intervention adoption; ordinary commands keep the package runner.',
     '  pnpm workflow intervention status <parent-change-id> [--tx <tx-id>] [--json] — Inspect the durable intervention transaction.',
     '  pnpm workflow intervention recover <tx-id> [--json] — Recover the recorded intervention transaction.',
-    '  pnpm workflow control-plane produce <frozen-candidate-bundle-digest> [--json] — Produce a candidate from the frozen control-plane bundle.',
-    '  pnpm workflow control-plane approve-and-apply <candidate-id> --task <parent-task-id> [--json] — Authorize and apply the exact control-plane candidate.',
-    '  pnpm workflow control-plane recover <grant-id> [--json] — Recover the recorded control-plane operation.',
-    '  pnpm workflow control-plane status <grant-id> [--json] — Inspect the recorded control-plane operation.',
     '  pnpm workflow audit show <task-id> --audit-root <absolute-external-path> [--json] — Show audit evidence for the named task.',
     '  pnpm workflow audit verify <repository-id> --audit-root <absolute-external-path> [--json] — Verify the repository audit evidence.',
     '  pnpm workflow run-check <check-id> [--json] — Run the selected registered check and report its actual result.',

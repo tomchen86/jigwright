@@ -258,7 +258,6 @@ export function createInterventionBootstrapAbandonment(
     const boundServices: InterventionBootstrapAbandonmentBindings = bindings();
     const {
       inFlightPersistedEngineAdoptionTxIds,
-      activeBootstrapSidecarPromotionPinTxIds,
       workflowError,
       ExitCode,
       isHarnessInterventionBlocker,
@@ -269,18 +268,6 @@ export function createInterventionBootstrapAbandonment(
       storageRoot,
       intervention.parent.changeId,
     );
-    const promotionTxIds = activeBootstrapSidecarPromotionPinTxIds(
-      storageRoot,
-      intervention.parent.changeId,
-    );
-    if (promotionTxIds.length > 0) {
-      throw workflowError(
-        'INTERVENTION_ABANDONMENT_PROMOTION_NOT_TERMINAL',
-        'An in-flight repository promotion must be recovered before intervention abandonment.',
-        ExitCode.guard,
-        { details: { txIds: promotionTxIds } },
-      );
-    }
     if (localBinding === null) {
       if (inFlightTxIds.length > 0) {
         throw workflowError(

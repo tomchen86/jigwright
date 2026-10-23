@@ -1,30 +1,26 @@
 /**
- * Maps bootstrap recovery, quarantine and control-plane events into durable
+ * Maps bootstrap recovery and quarantine events into durable
  * authority audit records.
  *
  * Invariants:
  * - Quarantine entry records the marker as poststate, while release records
  *   it as prestate.
  */
-import type {
-  HarnessRecoveryRefusalAuthority,
-  HarnessBootstrapRuntimeOverrides,
-} from './harness-bootstrap-contracts.ts';
 import { WorkflowError } from '../../foundation/errors/errors.ts';
-import { authorityRefusalDigest } from '../../modules/authority/authority-refusal-audit.ts';
-import type { RecoveryOperationalTrustRootRestoreAuditRecord } from '../../modules/authority/recovery-trust-root-contract.ts';
-import type { RecoveryQuarantineAuditRecord } from '../../modules/authority/recovery-quarantine-contract.ts';
-import type { ControlPlaneUpdaterAuditRecord } from './intervention-control-updater.ts';
-import { type ControlPlaneRecoveryAuditRecord } from '../../modules/authority/control-plane-recovery-grant-values.ts';
 import type {
   AuthorityAuditEventInput,
-  AuthorityAuditEventType,
-  AuthorityAuditResult,
   AuthorityAuditLedgerScope,
   AuthorityAuditRecordedEvent,
   AuthorityAuditServiceHooks,
   RecordAuthorityRefusal,
 } from '../../modules/authority/authority-audit-contract.ts';
+import { authorityRefusalDigest } from '../../modules/authority/authority-refusal-audit.ts';
+import type { RecoveryQuarantineAuditRecord } from '../../modules/authority/recovery-quarantine-contract.ts';
+import type { RecoveryOperationalTrustRootRestoreAuditRecord } from '../../modules/authority/recovery-trust-root-contract.ts';
+import type {
+  HarnessBootstrapRuntimeOverrides,
+  HarnessRecoveryRefusalAuthority,
+} from './harness-bootstrap-contracts.ts';
 export type HarnessBootstrapAuditBindings = {
   deriveAuthorityAuditRepositoryId: (
     repositoryIdentity: string,
@@ -191,131 +187,9 @@ export function createHarnessBootstrapAudit(
     };
   }
 
-  function productionControlPlaneAuditSink(repositoryRoot: string) {
-    return {
-      append(record: ControlPlaneUpdaterAuditRecord): void {
-        recordAuthorityAuditEvent(
-          {
-            externalAuditRoot: record.externalAuditRoot,
-            repositoryRoot,
-            repositoryId: deriveAuthorityAuditRepositoryId(record.repositoryId),
-          },
-          {
-            eventType: controlPlaneAuditEventType(record),
-            occurredAt: record.recordedAt,
-            idempotencyKey: record.recordId,
-            grantDigest: record.grantEnvelopeDigest,
-            candidateBundleDigest: record.promotionBundleDigest,
-            prestateDigest: null,
-            poststateDigest: record.evidenceDigest,
-            actor: { kind: 'engine', identity: 'sealed-control-plane-updater' },
-            taskId: record.parentTaskId,
-            changeId: record.changeId,
-            workflowId: record.txId,
-            command: {
-              name: 'control-plane.recovery.rollback-source-transaction',
-              argvDigest: record.recordDigest,
-            },
-            providerInvocation: null,
-            externalEffect: null,
-            result: controlPlaneAuditResult(record),
-            outcomeDigest: record.recordDigest,
-            errorCode: null,
-          },
-        );
-      },
-    };
-  }
-
-  function productionRecoveryAuditSink(repositoryRoot: string) {
-    return {
-      append(record: ControlPlaneRecoveryAuditRecord): void {
-        recordAuthorityAuditEvent(
-          {
-            externalAuditRoot: record.externalAuditRoot,
-            repositoryRoot,
-            repositoryId: deriveAuthorityAuditRepositoryId(record.repositoryId),
-          },
-          {
-            eventType:
-              record.event === 'authorized' ||
-              record.event === 'expired' ||
-              record.event === 'failed'
-                ? 'recovery'
-                : record.event === 'rolled-back'
-                  ? 'rollback'
-                  : 'grant-consume',
-            occurredAt: record.recordedAt,
-            idempotencyKey: record.recordId,
-            grantDigest: record.grantEnvelopeDigest,
-            candidateBundleDigest: record.promotionBundleDigest,
-            prestateDigest: record.prestateDigest,
-            poststateDigest: record.poststateDigest,
-            actor: {
-              kind: record.event === 'authorized' ? 'human' : 'engine',
-              identity:
-                record.event === 'authorized'
-                  ? record.humanSigner
-                  : 'sealed-control-plane-recovery',
-            },
-            taskId: null,
-            changeId: null,
-            workflowId: record.sourceControlPlaneGrantId,
-            command: {
-              name: 'control-plane.recovery.rollback-control-plane',
-              argvDigest: record.recordDigest,
-            },
-            providerInvocation: null,
-            externalEffect: null,
-            result:
-              record.event === 'rolled-back'
-                ? 'rolled-back'
-                : record.event === 'consumed'
-                  ? 'succeeded'
-                  : record.event === 'expired' || record.event === 'failed'
-                    ? 'failed'
-                    : 'recorded',
-            outcomeDigest: record.receiptDigest ?? record.recordDigest,
-            errorCode: null,
-          },
-        );
-      },
-    };
-  }
-
-  function controlPlaneAuditEventType(
-    record: ControlPlaneUpdaterAuditRecord,
-  ): AuthorityAuditEventType {
-    switch (record.event) {
-      case 'prepared':
-        return 'control-plane-grant';
-      case 'switched':
-        return 'cas';
-      case 'rollback-required':
-      case 'rolled-back':
-        return 'rollback';
-      case 'finalized':
-        return 'grant-consume';
-      default:
-        return 'poststate';
-    }
-  }
-
-  function controlPlaneAuditResult(
-    record: ControlPlaneUpdaterAuditRecord,
-  ): AuthorityAuditResult {
-    return record.event === 'finalized'
-      ? 'succeeded'
-      : record.event === 'rolled-back'
-        ? 'rolled-back'
-        : 'recorded';
-  }
-
   return {
     auditHarnessRecoveryRefusal,
     productionRecoveryTrustRootAuditSink,
     productionRecoveryQuarantineAuditSink,
-    productionControlPlaneAuditSink,
-    productionRecoveryAuditSink,
   };
 }

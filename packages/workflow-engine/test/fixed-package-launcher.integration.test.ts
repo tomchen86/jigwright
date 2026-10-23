@@ -8,36 +8,16 @@ import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
-  ExitCode,
-  WorkflowError,
-  workflowError,
-} from '../src/foundation/errors/errors.ts';
-import {
-  controlPlaneCandidateDigest,
-  controlPlaneIndependentReviewAttestationDigest,
-  createEngineArtifact,
   createProtectedCapabilityManifest,
   protectedCapabilityClosureDigest,
   REQUIRED_PROTECTED_CAPABILITIES,
-  type ControlPlaneIndependentReviewAttestationEnvelope,
-  type ExactControlPlaneChange,
   type ProtectedCapabilityEntry,
 } from '../src/modules/authority/intervention-control.ts';
-import {
-  executeControlPlanePromotion,
-  initializeControlPlaneSupervisorState,
-  readControlPlaneSupervisorState,
-  recoverControlPlanePromotion,
-  type ControlPlaneUpdaterAuditRecord,
-} from '../src/application/control-plane/intervention-control-updater.ts';
 import {
   REQUIRED_PROTECTED_CAPABILITIES as TYPED_REQUIRED_PROTECTED_CAPABILITIES,
   type ProtectedCapabilitiesManifest as TypedProtectedCapabilitiesManifest,
 } from '../src/runtime/repository-validation/protected-capabilities.ts';
-import {
-  setupFinalizedControlPlanePromotionFixture,
-  setupInitialControlPlaneBootstrapFixture,
-} from './control-plane-promotion-fixture.ts';
+import { setupFixedRunnerFixture } from './fixed-runner-fixture.ts';
 import { createFixtureRepository } from './fixture.ts';
 
 const NOW = new Date('2026-08-03T10:00:00.000Z');
@@ -155,9 +135,8 @@ test('trusted workflow launcher uses its package host without supervisor initial
 });
 
 test('trusted workflow launcher rejects its damaged package even when a global artifact exists', async () => {
-  const value = await setupInitialControlPlaneBootstrapFixture({
+  const value = await setupFixedRunnerFixture({
     builtInEntrypointBytes: initialLauncherEngineSource(),
-    now: NOW,
   });
   const isolatedPackage = fs.mkdtempSync(
     path.join(os.tmpdir(), 'workflow-launcher-trust-boundary-'),
@@ -183,7 +162,6 @@ test('trusted workflow launcher rejects its damaged package even when a global a
     const maliciousModule = `import fs from 'node:fs';
 fs.writeFileSync(process.env.LAUNCHER_SRC_TAMPER_MARKER, 'loaded\\n');
 export function bootstrapInterventionStateRoot() { return process.env.LAUNCHER_ATTACKER_STATE_ROOT; }
-export function resolveControlPlaneEngineSelection() { return null; }
 `;
     fs.writeFileSync(
       path.join(mutableSource, 'intervention-control-bootstrap-cli.ts'),
@@ -270,14 +248,14 @@ test('trusted workflow launcher rejects a tampered built-in E1 dependency', () =
   }
 });
 
-test('trusted workflow launcher keeps its package E1 with finalized E2 and preserves argv and exit status', async () => {
-  const value = await setupFinalizedControlPlanePromotionFixture({
+test('trusted workflow launcher keeps its package E1 with retired E2 state and preserves argv and exit status', async () => {
+  const value = await setupFixedRunnerFixture({
     builtInEntrypointBytes: initialLauncherEngineSource(),
     candidateExecutableFactory: (closureDigest) =>
       Buffer.from(engineSource(closureDigest, true)),
   });
   try {
-    assert.equal(value.record.transaction.state, 'FINALIZED');
+    assert.equal(value.retiredUpdate.transaction.state, 'FINALIZED');
 
     const launched = runWorkflowLauncher(
       value.repository,
@@ -314,11 +292,11 @@ test('trusted workflow launcher keeps its package E1 with finalized E2 and prese
 });
 
 test('ordinary package launch does not consume a terminal update record', async () => {
-  const value = await setupFinalizedControlPlanePromotionFixture({
+  const value = await setupFixedRunnerFixture({
     builtInEntrypointBytes: initialLauncherEngineSource(),
   });
   try {
-    assert.equal(value.record.transaction.state, 'FINALIZED');
+    assert.equal(value.retiredUpdate.transaction.state, 'FINALIZED');
     fs.appendFileSync(
       onlyPrivateJsonFile(path.join(value.stateRoot, 'control-updates')),
       ' ',
@@ -361,7 +339,7 @@ test('ordinary package launch ignores missing, malformed, or mismatched candidat
     [
       'artifact path mismatch',
       (value: InitialControlPlaneFixture) => {
-        const supervisor = readControlPlaneSupervisorState(value.stateRoot);
+        const supervisor = value.retiredSelection;
         const alternate = path.join(
           value.stateRoot,
           'control-plane-artifacts',
@@ -383,8 +361,7 @@ test('ordinary package launch ignores missing, malformed, or mismatched candidat
     [
       'artifact digest mismatch',
       (value: InitialControlPlaneFixture) => {
-        const executable = readControlPlaneSupervisorState(value.stateRoot)
-          .activeArtifact.executablePath;
+        const executable = value.retiredSelection.activeArtifact.executablePath;
         fs.chmodSync(executable, 0o700);
         fs.writeFileSync(executable, '#!/usr/bin/env node\nprocess.exit(0);\n');
         fs.chmodSync(executable, 0o500);
@@ -393,16 +370,14 @@ test('ordinary package launch ignores missing, malformed, or mismatched candidat
     [
       'artifact symlink',
       (value: InitialControlPlaneFixture) => {
-        const executable = readControlPlaneSupervisorState(value.stateRoot)
-          .activeArtifact.executablePath;
+        const executable = value.retiredSelection.activeArtifact.executablePath;
         const target = `${executable}.target`;
         fs.renameSync(executable, target);
         fs.symlinkSync(path.basename(target), executable);
       },
     ],
   ] as const) {
-    const value = await setupInitialControlPlaneBootstrapFixture({
-      now: NOW,
+    const value = await setupFixedRunnerFixture({
       builtInEntrypointBytes: initialLauncherEngineSource(),
     });
     try {
@@ -426,7 +401,7 @@ test('ordinary package launch ignores missing, malformed, or mismatched candidat
 });
 
 type InitialControlPlaneFixture = Awaited<
-  ReturnType<typeof setupInitialControlPlaneBootstrapFixture>
+  ReturnType<typeof setupFixedRunnerFixture>
 >;
 
 function initialLauncherEngineSource(): string {

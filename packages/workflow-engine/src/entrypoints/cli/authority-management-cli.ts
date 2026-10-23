@@ -1,97 +1,87 @@
-import type { ControlPlanePromotionBootstrapObservations } from '../../composition-root/cli-command-services.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  inspectAuthorityPlan,
-  loadWorkflowConfig,
-  parseExecutionBudgetGrantRequest,
-  externalEffectStorePaths,
-  EXTERNAL_EFFECT_MAX_TTL_SECONDS,
-  discoverRepository,
-  assertMaintainerGrantId,
-  parseMaintainerEvidenceWaivers,
-  maintainerGrantStorePaths,
-  inspectMaintainerGrants,
-  assertInteractiveSignerContext,
-  parseMaintainerPolicy,
-  revokeMaintainerGrantV2,
-  produceControlPlaneApprovalCandidateV3,
-  inspectInvestigationQuarantineState,
-  runtimePaths,
-  prepareTaskRevisionApprovalBinding,
-  parseTaskMandateRequest,
-} from '../../composition-root/cli-command-services.ts';
-import {
-  revokeExternalEffectGrant,
-  inspectExternalEffectGrant,
-  reconcileExternalEffectGrant,
-  issueExternalEffectGrant,
-  executePublishGrant,
-} from '../../composition-root/external-effect-production.ts';
-import {
-  inspectHumanResolutionGrantPublicationRecoveries,
-  inspectHumanResolutionGrants,
-  discardHumanResolutionGrantPublication,
-  revokeHumanResolutionGrant,
-} from '../../composition-root/investigation-retry-production.ts';
-import { resumeDirectHumanTaskDiffReview } from '../../composition-root/task-diff-review-production.ts';
-import { issueTaskRevisionApproval } from '../../composition-root/task-revision-approval-production.ts';
-import { taskMandateOperations } from '../../composition-root/task-mandate-production.ts';
-import type {
-  AuthorityPlanIntent,
-  ExternalEffectTarget,
-  ExternalEffectRollbackPlan,
-  ExternalEffectGrantRequest,
-  ExternalEffectKind,
-  ExternalEffectReconciliationRequest,
-  MaintainerGrantV2PreflightRequest,
-  MaintainerEvidenceWaiver,
-  AuthorityAttestationRequest,
-  ApproveAndApplyMaintainerGrantV2Request,
-  ReissueAndApplyMaintainerGrantV2Request,
-  CandidateExternalEffect,
-} from '../../composition-root/cli-command-services.ts';
-import { dispatchAuthorityAuditCommand } from './authority-audit-cli.ts';
-import {
-  isCollaborationGrantCommand,
-  dispatchCollaborationGrantCommand,
-} from './collaboration-grant-cli.ts';
-import { dispatchRoleContextSharingGrantCommand } from './role-context-sharing-grant-cli.ts';
-import {
-  WorkflowError,
-  workflowError,
-  ExitCode,
-} from '../../foundation/errors/errors.ts';
-import {
-  issueExecutionBudgetGrant,
-  inspectIssuedExecutionBudgetGrant,
-  revokeIssuedExecutionBudgetGrant,
-} from './execution-grant-cli.ts';
-import { productionConsumedRoleResultReplayPort } from '../../composition-root/grant-verifier-composition.ts';
-import {
-  bootstrapInterventionStateRoot,
-  dispatchBootstrapInterventionCommand,
-} from './intervention-control-bootstrap-cli.ts';
-import { dispatchInterventionControlCommand } from './intervention-control-cli.ts';
-import {
-  dispatchProductionControlPlaneUpdaterCommand,
-  controlPlaneTaskMandateBindingFromTaskMandate,
-} from './intervention-control-updater-cli.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
-import {
-  usage,
-  requireArgumentCount,
-  type CommandResult,
-  usageText,
-} from './cli-input.ts';
-import {
-  controlPlaneUpdaterDependencies,
   interventionControlDependencies,
   taskDiffCollaborationGrantSelection,
 } from '../../composition-root/cli-authority-production.ts';
-import { parseTaskDiffReviewCliInput } from './task-review-cli-input.ts';
+import type {
+  ApproveAndApplyMaintainerGrantV2Request,
+  AuthorityAttestationRequest,
+  AuthorityPlanIntent,
+  CandidateExternalEffect,
+  ExternalEffectGrantRequest,
+  ExternalEffectKind,
+  ExternalEffectReconciliationRequest,
+  ExternalEffectRollbackPlan,
+  ExternalEffectTarget,
+  MaintainerEvidenceWaiver,
+  MaintainerGrantV2PreflightRequest,
+  ReissueAndApplyMaintainerGrantV2Request,
+} from '../../composition-root/cli-command-services.ts';
+import {
+  EXTERNAL_EFFECT_MAX_TTL_SECONDS,
+  assertInteractiveSignerContext,
+  assertMaintainerGrantId,
+  discoverRepository,
+  externalEffectStorePaths,
+  inspectAuthorityPlan,
+  inspectInvestigationQuarantineState,
+  inspectMaintainerGrants,
+  loadWorkflowConfig,
+  maintainerGrantStorePaths,
+  parseExecutionBudgetGrantRequest,
+  parseMaintainerEvidenceWaivers,
+  parseMaintainerPolicy,
+  parseTaskMandateRequest,
+  prepareTaskRevisionApprovalBinding,
+  revokeMaintainerGrantV2,
+  runtimePaths,
+} from '../../composition-root/cli-command-services.ts';
+import {
+  executePublishGrant,
+  inspectExternalEffectGrant,
+  issueExternalEffectGrant,
+  reconcileExternalEffectGrant,
+  revokeExternalEffectGrant,
+} from '../../composition-root/external-effect-production.ts';
+import { productionConsumedRoleResultReplayPort } from '../../composition-root/grant-verifier-composition.ts';
+import {
+  discardHumanResolutionGrantPublication,
+  inspectHumanResolutionGrantPublicationRecoveries,
+  inspectHumanResolutionGrants,
+  revokeHumanResolutionGrant,
+} from '../../composition-root/investigation-retry-production.ts';
+import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
 import type { MaintainerAuthorityOperations } from '../../composition-root/maintainer-authority-production.ts';
+import { resumeDirectHumanTaskDiffReview } from '../../composition-root/task-diff-review-production.ts';
+import { taskMandateOperations } from '../../composition-root/task-mandate-production.ts';
+import { issueTaskRevisionApproval } from '../../composition-root/task-revision-approval-production.ts';
+import {
+  ExitCode,
+  WorkflowError,
+  workflowError,
+} from '../../foundation/errors/errors.ts';
 import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+import { dispatchAuthorityAuditCommand } from './authority-audit-cli.ts';
+import {
+  requireArgumentCount,
+  usage,
+  usageText,
+  type CommandResult,
+} from './cli-input.ts';
+import {
+  dispatchCollaborationGrantCommand,
+  isCollaborationGrantCommand,
+} from './collaboration-grant-cli.ts';
+import {
+  inspectIssuedExecutionBudgetGrant,
+  issueExecutionBudgetGrant,
+  revokeIssuedExecutionBudgetGrant,
+} from './execution-grant-cli.ts';
+import { dispatchBootstrapInterventionCommand } from './intervention-control-bootstrap-cli.ts';
+import { dispatchInterventionControlCommand } from './intervention-control-cli.ts';
+import { dispatchRoleContextSharingGrantCommand } from './role-context-sharing-grant-cli.ts';
+import { parseTaskDiffReviewCliInput } from './task-review-cli-input.ts';
 
 const {
   inspectActiveTaskMandateBinding,
@@ -565,42 +555,6 @@ function executionGrantUsage(): WorkflowError {
   );
 }
 
-function dispatchProductionControlPlaneCommand(
-  bootstrapObservations: ControlPlanePromotionBootstrapObservations,
-  rest: string[],
-  cwd: string,
-) {
-  const repository = discoverRepository(cwd);
-  const stateRoot = bootstrapInterventionStateRoot(
-    repository.gitCommonDirectory,
-  );
-  const dependencies = controlPlaneUpdaterDependencies(
-    cwd,
-    controlPlaneTaskMandateBindingFromTaskMandate,
-  );
-  if (rest[0] === 'produce' && rest.length === 2) {
-    return produceControlPlaneApprovalCandidateV3(
-      repository.repositoryRealPath,
-      stateRoot,
-      rest[1]!,
-      {
-        bootstrapObservations,
-        now: dependencies.now,
-        reviewSigner: dependencies.approvalSigner,
-        verifyHumanSignature: dependencies.verifyHumanSignature,
-        presentReviewSummary: dependencies.presentReviewSummary,
-      },
-    );
-  }
-  return dispatchProductionControlPlaneUpdaterCommand(
-    bootstrapObservations.bootstrapInterventionStateRoot,
-    rest,
-    stateRoot,
-    dependencies,
-    cwd,
-  );
-}
-
 function dispatchExternalEffectCommand(
   command: 'external-effect',
   rest: string[],
@@ -722,7 +676,6 @@ export function createAuthorityCommands(
     | 'approveAndApplyMaintainerGrantV2'
     | 'reissueAndApplyMaintainerGrantV2'
   >,
-  bootstrapObservations: ControlPlanePromotionBootstrapObservations,
 ) {
   const {
     createAuthorityPlan,
@@ -836,33 +789,12 @@ export function createAuthorityCommands(
           ),
         };
       case 'control-plane':
-        if (
-          [
-            'produce',
-            'approve-and-apply',
-            'promote',
-            'recover',
-            'status',
-          ].includes(rest[0] ?? '')
-        ) {
-          return {
-            command,
-            ok: true,
-            result: dispatchProductionControlPlaneCommand(
-              bootstrapObservations,
-              rest,
-              cwd,
-            ),
-          };
-        }
-        return {
-          command,
-          ok: true,
-          result: dispatchInterventionControlCommand(
-            [command, ...rest],
-            interventionControlDependencies(cwd),
-          ),
-        };
+        throw workflowError(
+          'CONTROL_PLANE_UPDATER_COMMAND_UNSUPPORTED',
+          'Repository engine self-update commands are no longer supported.',
+          ExitCode.usage,
+        );
+
       case 'audit':
         return {
           command,

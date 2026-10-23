@@ -1,12 +1,12 @@
-import { verifyWorkflowBootstrapHost } from './workflow-bootstrap-host.ts';
-import { WORKFLOW_BOOTSTRAP_HOST_MANIFEST_DIGEST } from './workflow-bootstrap-host-pin.ts';
 import { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST } from './built-in-engine-closure-pin.ts';
+import { WORKFLOW_BOOTSTRAP_HOST_MANIFEST_DIGEST } from './workflow-bootstrap-host-pin.ts';
+import { verifyWorkflowBootstrapHost } from './workflow-bootstrap-host.ts';
 /**
  * Verifies and runs this package host for every ordinary repository command.
  *
  * Invariants:
  * - The built-in closure is verified against its pin, so a changed or indirect engine never launches.
- * - Read-only inspection and session status are recognised ahead of provisioning, so looking never provisions.
+ * - Ordinary commands never provision a repository-default engine.
  * - The child process exit code is passed through unchanged; the launcher never reports success for a failed run.
  */
 import childProcess from 'node:child_process';
@@ -16,13 +16,11 @@ import path from 'node:path';
 import {
   assertParentInterventionFenceCleared,
   bootstrapInterventionStateRoot,
-  initializeBuiltInControlPlaneSupervisor,
   resolveParentInterventionFence,
   resolveRecoveryOperationalTrustRootFence,
   resolveRecoveryQuarantineMarker,
   verifyBuiltInEngineClosure,
 } from './control-plane-trust.ts';
-import { canonicalJson } from './canonical-json.ts';
 
 const ENGINE_PACKAGE_ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -59,29 +57,6 @@ try {
     invocation = sealedInterventionInvocation(argv);
   } else {
     const fence = resolveParentInterventionFence(stateRoot, repository);
-    if (isInitialControlPlaneProvisioning(argv)) {
-      assertParentInterventionFenceCleared(fence);
-      if (
-        resolveRecoveryQuarantineMarker(repository.gitCommonDirectory) !== null
-      ) {
-        throw launcherError(
-          'WORKFLOW_RECOVERY_QUARANTINED',
-          'Workflow execution became Recovery Quarantined before control-plane initialization.',
-        );
-      }
-      const supervisor = initializeBuiltInControlPlaneSupervisor(
-        stateRoot,
-        ENGINE_PACKAGE_ROOT,
-        repository,
-      );
-      process.stdout.write(
-        `${canonicalJson({
-          kind: 'control-plane-initialization.v1',
-          supervisor,
-        })}\n`,
-      );
-      process.exit(0);
-    }
     if (fence !== null && isSealedInterventionInvocation(argv)) {
       invocation = sealedInterventionInvocation(argv);
     } else {
@@ -145,15 +120,6 @@ try {
     })}\n`,
   );
   process.exit(errorExitCode(error));
-}
-
-function isInitialControlPlaneProvisioning(argv: readonly string[]): boolean {
-  return (
-    argv.length === 3 &&
-    argv[0] === 'control-plane' &&
-    argv[1] === 'initialize' &&
-    argv[2] === '--json'
-  );
 }
 
 function isReadOnlyRepositoryInspectionInvocation(
@@ -239,7 +205,6 @@ function isSealedRecoveryInvocation(argv: readonly string[]): boolean {
   const args = exactRecoveryArguments(argv);
   if (args === null) return false;
   return (
-    isExactControlPlaneRollback(args) ||
     (args.length === 5 &&
       args[0] === 'recovery-authority' &&
       args[1] === 'import' &&
@@ -263,8 +228,7 @@ function isQuarantinePermittedRecoveryInvocation(
   const args = exactRecoveryArguments(argv);
   return (
     args !== null &&
-    (isExactControlPlaneRollback(args) ||
-      isExactRecoveryAuthorityRestore(args) ||
+    (isExactRecoveryAuthorityRestore(args) ||
       isExactQuarantineOperation(args, 'release'))
   );
 }
@@ -286,15 +250,6 @@ function exactRecoveryArguments(
     return null;
   }
   return json ? argv.slice(0, -1) : argv;
-}
-
-function isExactControlPlaneRollback(argv: readonly string[]): boolean {
-  return (
-    argv.length === 3 &&
-    argv[0] === 'control-plane' &&
-    argv[1] === 'rollback' &&
-    isExactLauncherIdentifier(argv[2])
-  );
 }
 
 function isExactRecoveryAuthorityRestore(argv: readonly string[]): boolean {

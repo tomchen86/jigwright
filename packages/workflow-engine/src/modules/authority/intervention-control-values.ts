@@ -15,27 +15,12 @@ import {
   compareCanonicalStrings,
 } from '../../foundation/canonical-json/canonical-json.ts';
 
-import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
+import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
 export type Sha256Digest = `sha256:${string}`;
 
 export const HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE =
   'jigwright.harness-maintenance-grant.v1';
-
-export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE =
-  'jigwright.control-plane-independent-review.v1';
-
-export const CONTROL_PLANE_SIGNATURE_NAMESPACE_V2 =
-  'jigwright.control-plane-grant.v2';
-
-export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2 =
-  'jigwright.control-plane-independent-review.v2';
-
-export const CONTROL_PLANE_SIGNATURE_NAMESPACE_V3 =
-  'jigwright.control-plane-grant.v3';
-
-export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3 =
-  'jigwright.control-plane-independent-review.v3';
 
 export type HumanSignatureVerifier = (
   payload: string,

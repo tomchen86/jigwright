@@ -1,5 +1,5 @@
 /**
- * Exposes durable intervention, sidecar, adoption, and control-update operations.
+ * Exposes durable intervention, sidecar, and local adoption operations.
  *
  * Invariants:
  * - Existing callers retain the same public functions, types, and persisted record contracts.
@@ -7,30 +7,25 @@
  */
 
 export {
-  type PersistenceHumanSignatureVerifier,
-  type PersistenceHumanDependencies,
-  type InterventionControlPersistencePaths,
-  type ChildWorktreeMetadata,
-  type PersistedInterventionRecord,
+  type BootstrapMaintenanceWorkflowBindingV1,
+  type BootstrapMaintenanceWorkflowStatus,
   type BootstrapSidecarSessionEventKind,
   type BootstrapSidecarSessionHistoryEntry,
-  type BootstrapMaintenanceWorkflowStatus,
-  type BootstrapMaintenanceWorkflowBindingV1,
+  type ChildWorktreeMetadata,
+  type InterventionControlPersistencePaths,
   type PersistedBootstrapSidecarSessionV2,
-  type PersistedTransitionObservation,
   type PersistedEngineAdoptionRecord,
-  type PersistedBootstrapSidecarPromotionPin,
-  type PersistedControlPlaneUpdateRecordV3,
-  type PersistedControlPlaneUpdateRecord,
+  type PersistedInterventionRecord,
+  type PersistedTransitionObservation,
+  type PersistenceHumanDependencies,
+  type PersistenceHumanSignatureVerifier,
 } from './intervention-persistence-contracts.ts';
 
 export {
+  engineAdoptionRecordPath,
   interventionControlPersistencePaths,
   interventionRecordPath,
   persistedBootstrapSidecarSessionPath,
-  engineAdoptionRecordPath,
-  bootstrapSidecarPromotionPinPath,
-  controlPlaneUpdateRecordPath,
 } from './intervention-persistence-paths.ts';
 
 export {
@@ -39,38 +34,23 @@ export {
 } from './intervention-plan-store.ts';
 
 export {
-  readPersistedBootstrapSidecarWorkflow,
   findPersistedBootstrapSidecarSessionForIntervention,
-  recordBootstrapSidecarWorkspaceMaterialized,
-  recordBootstrapSidecarArtifactReady,
-  recordBootstrapSidecarAdopted,
+  readPersistedBootstrapSidecarWorkflow,
   recordBootstrapSidecarAbandoned,
+  recordBootstrapSidecarAdopted,
+  recordBootstrapSidecarArtifactReady,
+  recordBootstrapSidecarWorkspaceMaterialized,
 } from './intervention-sidecar-store.ts';
 
 export {
-  reserveBootstrapSidecarPromotion,
-  advanceBootstrapSidecarPromotionPin,
-  readBootstrapSidecarPromotionPin,
-  activeBootstrapSidecarPromotionPinTxIds,
-  recordBootstrapSidecarPromotionIfPresent,
-} from './intervention-promotion-store.ts';
-
-export {
-  preparePersistedEngineAdoption,
   advancePersistedEngineAdoption,
-  renewPersistedEngineAdoptionAuthority,
-  recoverPersistedEngineAdoption,
-  rollbackPersistedEngineAdoption,
-  readPersistedEngineAdoption,
   inFlightPersistedEngineAdoptionTxIds,
+  preparePersistedEngineAdoption,
+  readPersistedEngineAdoption,
+  recoverPersistedEngineAdoption,
+  renewPersistedEngineAdoptionAuthority,
+  rollbackPersistedEngineAdoption,
 } from './intervention-adoption-store.ts';
-
-export {
-  preparePersistedControlPlaneUpdateV3,
-  advancePersistedControlPlaneUpdate,
-  recoverPersistedControlPlaneUpdate,
-  readPersistedControlPlaneUpdate,
-} from './intervention-update-store.ts';
 
 export { activeBootstrapMaintenanceWorkflowBindingDigest } from './intervention-sidecar-records.ts';
 

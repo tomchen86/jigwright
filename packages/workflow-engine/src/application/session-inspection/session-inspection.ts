@@ -6,16 +6,23 @@
  * - Repository identity, pinned artifacts and task projection are all
  *   rechecked against the stored session before any inspection is returned.
  */
-import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { digestArtifacts } from '../../runtime/repository-observation/contract-artifact-observation.ts';
-import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
-import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
-import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import {
+  assertSessionId,
+  matchesAllowedPath,
+} from '../../foundation/repository-path/repository-path.ts';
+import type { ValidatedChangeContract } from '../../modules/assurance/validated-change-contract.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
+import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
+import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
+import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
+import { assertTaskProjectionSourceDigest } from '../../runtime/managed-documents/transaction/task-projection.ts';
 import { completionDocumentPaths } from '../../runtime/managed-documents/validation/managed-documents.ts';
+import { digestArtifacts } from '../../runtime/repository-observation/contract-artifact-observation.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
 import {
   discoverRepository,
   fingerprintRepositoryProjection,
@@ -23,34 +30,18 @@ import {
   type GitState,
 } from '../../runtime/repository-transaction/git.ts';
 import {
-  assertSessionId,
-  matchesAllowedPath,
-} from '../../foundation/repository-path/repository-path.ts';
-import {
   assertOwnedLock,
   assertTaskSessionIsolationLeasesOwned,
   readSessionFile,
   runtimePaths,
   type WorkflowSession,
 } from '../../runtime/session-workspace/session-store.ts';
-import { assertTaskProjectionSourceDigest } from '../../runtime/managed-documents/transaction/task-projection.ts';
 import {
   readFinalizeTransaction,
   type ProtectedTaskApplyAuthorizationBinding,
 } from '../../runtime/storage-journal/finalize-transaction.ts';
+import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
 import { assertPreparedProtectedTaskApplyAuthorization } from '../task-apply-authorization/protected-task-apply-authorization.ts';
-import type { ValidatedChangeContract } from '../../modules/assurance/validated-change-contract.ts';
-import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
-import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
-
-/**
- * Inspects task sessions, executes checks, and reconciles evidence after
- * engine adoption.
- *
- * Invariants:
- * - Adoption reconciliation rejects a session changed since its trusted
- *   checkpoint.
- */
 
 export function inspectSession(
   changeContract: ChangeContractServices,

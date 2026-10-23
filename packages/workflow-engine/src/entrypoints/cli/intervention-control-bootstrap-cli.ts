@@ -1,6 +1,8 @@
 import type { BootstrapInterventionCliDependencies } from '../../modules/authority/intervention-bootstrap-contract.ts';
-export type { BootstrapInterventionCliDependencies } from '../../modules/authority/intervention-bootstrap-contract.ts';
-export type { DurableInterventionParentState } from '../../modules/authority/intervention-bootstrap-contract.ts';
+export type {
+  BootstrapInterventionCliDependencies,
+  DurableInterventionParentState,
+} from '../../modules/authority/intervention-bootstrap-contract.ts';
 /**
  * Dispatches durable local intervention and engine adoption commands.
  *
@@ -11,22 +13,6 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import {
-  ExitCode,
-  WorkflowError,
-  workflowError,
-} from '../../foundation/errors/errors.ts';
-import {
-  discoverRepository,
-  runGit,
-} from '../../runtime/repository-transaction/git.ts';
-import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import {
-  recordAuthorityAuditEvent,
-  verifyAuthorityAuditEvents,
-} from '../../runtime/storage-journal/authority-audit-service.ts';
-import { deriveAuthorityAuditRepositoryId } from '../../runtime/storage-journal/authority-audit-ledger.ts';
 import {
   abandonPersistedIntervention,
   assertPersistedInterventionAbandonable,
@@ -40,25 +26,6 @@ import {
   rebindLocalEngineAfterRolledBackAdoption,
   type LocalEngineBinding,
 } from '../../application/control-plane/intervention-control-bootstrap.ts';
-import { type BootstrapDependencies } from '../../modules/authority/intervention-bootstrap-contract.ts';
-import {
-  engineAdoptionRecordPath,
-  recordBootstrapSidecarAdopted,
-  readPersistedIntervention,
-  recoverPersistedEngineAdoption,
-  renewPersistedEngineAdoptionAuthority,
-  type PersistedEngineAdoptionRecord,
-  type PersistedInterventionRecord,
-} from '../../runtime/storage-journal/intervention-control-persistence.ts';
-import {
-  type EngineAdoptionRecoveryDecision,
-  type EngineArtifact,
-  canonicalHarnessMaintenanceGrantPayload,
-  HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE,
-  verifyHarnessMaintenanceGrant,
-  type HarnessMaintenanceGrantEnvelope,
-  type Sha256Digest,
-} from '../../modules/authority/intervention-control.ts';
 import {
   buildAndPersistInterventionEngineArtifact,
   maintenanceApprovalSummary,
@@ -72,9 +39,46 @@ import {
   type PersistedMaintenanceGrantRecord,
 } from '../../application/control-plane/intervention-maintenance.ts';
 import { revokeMaintenanceGrantForParent } from '../../composition-root/human-revocation-production.ts';
-import { type MaintenanceApprovalSummary } from '../../modules/authority/intervention-bootstrap-contract.ts';
 import type { MaintainerSignerProvider } from '../../composition-root/maintainer-signer.ts';
+import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
+import {
+  ExitCode,
+  WorkflowError,
+  workflowError,
+} from '../../foundation/errors/errors.ts';
+import {
+  type BootstrapDependencies,
+  type MaintenanceApprovalSummary,
+} from '../../modules/authority/intervention-bootstrap-contract.ts';
+import {
+  canonicalHarnessMaintenanceGrantPayload,
+  HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE,
+  verifyHarnessMaintenanceGrant,
+  type EngineAdoptionRecoveryDecision,
+  type EngineArtifact,
+  type HarnessMaintenanceGrantEnvelope,
+  type Sha256Digest,
+} from '../../modules/authority/intervention-control.ts';
+import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
+import {
+  discoverRepository,
+  runGit,
+} from '../../runtime/repository-transaction/git.ts';
 import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
+import { deriveAuthorityAuditRepositoryId } from '../../runtime/storage-journal/authority-audit-ledger.ts';
+import {
+  recordAuthorityAuditEvent,
+  verifyAuthorityAuditEvents,
+} from '../../runtime/storage-journal/authority-audit-service.ts';
+import {
+  engineAdoptionRecordPath,
+  readPersistedIntervention,
+  recordBootstrapSidecarAdopted,
+  recoverPersistedEngineAdoption,
+  renewPersistedEngineAdoptionAuthority,
+  type PersistedEngineAdoptionRecord,
+  type PersistedInterventionRecord,
+} from '../../runtime/storage-journal/intervention-control-persistence.ts';
 
 export type BootstrapInterventionCliAction =
   | 'intervene'
@@ -439,7 +443,7 @@ export function bootstrapInterventionUsage(): string {
     '  pnpm workflow change intervene <parent-change-id> --reason <text> --audit-root <absolute-path> [--json]',
     '  pnpm workflow change revoke-intervention <parent-change-id> --reason <text> [--json]',
     '  pnpm workflow engine build-artifact <absolute-executable-path> --for <parent-change-id> --protocol-version <positive-integer> --policy-schema-version <positive-integer> --audit-root <absolute-path> [--json]',
-    '  pnpm workflow engine adopt <artifact-id> --into <parent-change-id> --audit-root <absolute-path> [--json]',
+    '  pnpm workflow engine adopt <artifact-id> --into <parent-change-id> --audit-root <absolute-path> [--json] (local parent adoption; package runner unchanged)',
     '  pnpm workflow intervention status <parent-change-id> [--tx <tx-id>] [--json]',
     '  pnpm workflow intervention recover <tx-id> [--json]',
     'Caller-supplied maintenance envelopes and adoption manifests are disabled.',

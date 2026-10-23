@@ -8,11 +8,11 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:52c2e6d38bb823e6f7068204be4da3f1f0d8e8152b7c84ef231da3e306d36e7b -->
+<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:83fc8042d140d4d053ade2e0d7077d832dc4af69a21764cb314a9257f59f2fd3 -->
 
 <!-- prettier-ignore-start -->
 
-115 files changed in this module since confirmation.
+114 files changed in this module since confirmation.
 
 ## Commands
 
@@ -32,13 +32,9 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 | change intervene &lt;parent-change-id&gt; --reason &lt;text&gt; --audit-root &lt;absolute-external-path&gt; [--json] | Request human intervention in the named parent change. |
 | change revoke-intervention &lt;parent-change-id&gt; --reason &lt;text&gt; [--json] | Revoke intervention in the named parent change. |
 | engine build-artifact &lt;absolute-executable-path&gt; --for &lt;parent-change-id&gt; --protocol-version &lt;positive-integer&gt; --policy-schema-version &lt;positive-integer&gt; --audit-root &lt;absolute-path&gt; [--json] | Build an engine artifact for the exact intervention target. |
-| engine adopt &lt;artifact-id&gt; --into &lt;parent-change-id&gt; --audit-root &lt;absolute-external-path&gt; [--json] | Adopt the selected engine artifact into the parent change. |
+| engine adopt &lt;artifact-id&gt; --into &lt;parent-change-id&gt; --audit-root &lt;absolute-external-path&gt; [--json] | Record a local parent intervention adoption; ordinary commands keep the package runner. |
 | intervention status &lt;parent-change-id&gt; [--tx &lt;tx-id&gt;] [--json] | Inspect the durable intervention transaction. |
 | intervention recover &lt;tx-id&gt; [--json] | Recover the recorded intervention transaction. |
-| control-plane produce &lt;frozen-candidate-bundle-digest&gt; [--json] | Produce a candidate from the frozen control-plane bundle. |
-| control-plane approve-and-apply &lt;candidate-id&gt; --task &lt;parent-task-id&gt; [--json] | Authorize and apply the exact control-plane candidate. |
-| control-plane recover &lt;grant-id&gt; [--json] | Recover the recorded control-plane operation. |
-| control-plane status &lt;grant-id&gt; [--json] | Inspect the recorded control-plane operation. |
 | audit show &lt;task-id&gt; --audit-root &lt;absolute-external-path&gt; [--json] | Show audit evidence for the named task. |
 | audit verify &lt;repository-id&gt; --audit-root &lt;absolute-external-path&gt; [--json] | Verify the repository audit evidence. |
 | maintainer grant preflight --profile &lt;profile-id&gt; [--json] | Inspect the frozen candidate and required checks before signing. |
@@ -68,8 +64,6 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 | CollaborationLifecyclePhase | blind-survey, plan-review, task-diff-review, task-implementation | [collaboration-grant-codec.ts](collaboration-grant-codec.ts) |
 | CollaborationAuthorRole | investigation-author, plan-author, task-implementer, red-author | [collaboration-grant-codec.ts](collaboration-grant-codec.ts) |
 | CollaborationConflictingRole | plan-reviewer, task-diff-reviewer, task-implementer | [collaboration-grant-codec.ts](collaboration-grant-codec.ts) |
-| ControlPlaneRecoverySourceState | RECOVERY_VERIFIED, SWITCHED, ROLLBACK_REQUIRED | [control-plane-recovery-grant-values.ts](control-plane-recovery-grant-values.ts) |
-| ControlPlaneRecoveryAuditEvent | authorized, expired, failed, rolled-back, consumed | [control-plane-recovery-grant-values.ts](control-plane-recovery-grant-values.ts) |
 | RepairKind | schema, semantic | [execution-governance-repair.ts](execution-governance-repair.ts) |
 | Retention | active, expiring, pinned | [execution-governance-retention.ts](execution-governance-retention.ts) |
 | ExternalEffectReconciliationOutcome | succeeded, rolled-back, failed | [external-effect-grant.ts](external-effect-grant.ts) |
@@ -80,8 +74,6 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 | HarnessMaintenanceOperation | adopt-engine-into-parent, build-engine-artifact, create-isolated-workspace, modify-engine, run-engine-tests | [intervention-control-adoption.ts](intervention-control-adoption.ts) |
 | HarnessMaintenanceWaiver | active-change-exclusivity, clean-worktree-required, engine-path-protection, parent-terminalization-required, selected-workflow-check | [intervention-control-adoption.ts](intervention-control-adoption.ts) |
 | EngineAdoptionState | PREPARED, PARENT_CHECKPOINTED, ENGINE_BINDING_UPDATED, NEW_ENGINE_STARTED, ROLLBACK_REQUIRED, HEALTHY, COMMITTED, ENGINE_BINDING_ROLLED_BACK | [intervention-control-adoption.ts](intervention-control-adoption.ts) |
-| ControlPlaneFileModeV2 | 100644, 100755 | [intervention-control-promotion-material.ts](intervention-control-promotion-material.ts) |
-| MinimalUpdaterState | PREPARED, OLD_CLOSURE_VERIFIED, CANDIDATE_VERIFIED, RECOVERY_VERIFIED, SWITCHED, SELF_TESTED, ROLLBACK_REQUIRED, FINALIZED, ROLLED_BACK | [intervention-control.ts](intervention-control.ts) |
 | CheckReuseClass | content-pure, toolchain-dependent, external-state | [maintainer-candidate-contracts.ts](maintainer-candidate-contracts.ts) |
 | CandidateClassification | ordinary, root-one-shot, control-plane | [maintainer-candidate-contracts.ts](maintainer-candidate-contracts.ts) |
 | FileRole | implementation, evidence, policy, verification-infrastructure, forbidden | [maintainer-manifest-contracts.ts](maintainer-manifest-contracts.ts) |
@@ -130,14 +122,13 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [authority-refusal-audit.ts](authority-refusal-audit.ts) | Pure refusal identity/event construction and original-error preservation. | 0 | History unavailable |
 | [authority-remap-contract.ts](authority-remap-contract.ts) | Canonical mechanical-move and authority-remap request/result contracts. | 0 | History unavailable |
 | [authority-session-contract.ts](authority-session-contract.ts) | Durable state of an authority session and its pinned checks. | 0 | History unavailable |
-| [candidate-engine-selection.ts](candidate-engine-selection.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [collaboration-grant-codec.ts](collaboration-grant-codec.ts) | No leading responsibility comment. | 0 | Header changed since confirmation |
 | [collaboration-grant-records.ts](collaboration-grant-records.ts) | Defines collaboration reservation, assignment, consumption, and inspection record shapes. | 2 | History unavailable |
 | [collaboration-grant-use.ts](collaboration-grant-use.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [collaboration-grant-values.ts](collaboration-grant-values.ts) | Defines exact collaboration store values, canonical records, and stable error codes. | 2 | History unavailable |
-| [control-plane-recovery-grant-records.ts](control-plane-recovery-grant-records.ts) | Pure signed payload, receipt, failure and audit rules for control-plane recovery. | 0 | History unavailable |
-| [control-plane-recovery-grant-values.ts](control-plane-recovery-grant-values.ts) | Canonical recovery Grant values, pure checks and the required persistence contract. | 0 | History unavailable |
-| [control-plane-recovery-grant.ts](control-plane-recovery-grant.ts) | Pure persisted recovery record validation and one-use state transitions. | 0 | History unavailable |
+| [control-plane-recovery-grant-records.ts](control-plane-recovery-grant-records.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [control-plane-recovery-grant-values.ts](control-plane-recovery-grant-values.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [control-plane-recovery-grant.ts](control-plane-recovery-grant.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [execution-governance-context.ts](execution-governance-context.ts) | Defines manifest-bound prompts, result eligibility, and explicit epoch rollover decisions. | 3 | Possibly stale |
 | [execution-governance-epoch-port.ts](execution-governance-epoch-port.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [execution-governance-grant-contracts.ts](execution-governance-grant-contracts.ts) | Defines strict execution-budget grant envelopes, usage records, and canonical signing bytes. | 2 | Possibly stale |
@@ -172,13 +163,12 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [immutable-git-candidate.ts](immutable-git-candidate.ts) | Builds immutable Git candidates and verifies their observed repository state and pinned objects. | 2 | History unavailable |
 | [intervention-bootstrap-contract.ts](intervention-bootstrap-contract.ts) | Canonical intervention bootstrap inputs, parent state and human approval data. | 0 | History unavailable |
 | [intervention-control-adoption.ts](intervention-control-adoption.ts) | Models intervention checkpoints, maintenance Grants and recoverable engine adoption transitions. | 2 | History unavailable |
-| [intervention-control-promotion-grant.ts](intervention-control-promotion-grant.ts) | Builds and verifies promotion Grants bound to exact control-plane material and review evidence. | 2 | History unavailable |
-| [intervention-control-promotion-material.ts](intervention-control-promotion-material.ts) | Normalizes promotion material, recovery bundles and lineage while classifying protected changes. | 2 | History unavailable |
-| [intervention-control-protected-manifest.ts](intervention-control-protected-manifest.ts) | Builds protected-capability manifests and classifies the affected protected closures. | 2 | History unavailable |
-| [intervention-control-review.ts](intervention-control-review.ts) | Validates signed independent reviews of exact control-plane promotion material and lineage. | 2 | History unavailable |
+| [intervention-control-promotion-grant.ts](intervention-control-promotion-grant.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [intervention-control-promotion-material.ts](intervention-control-promotion-material.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [intervention-control-protected-manifest.ts](intervention-control-protected-manifest.ts) | Builds exact protected-capability manifests shared by ordinary Grant policy. | 0 | History unavailable |
+| [intervention-control-review.ts](intervention-control-review.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [intervention-control-values.ts](intervention-control-values.ts) | Provides shared intervention value checks, signature namespaces and safe verifier calls. | 2 | History unavailable |
-| [intervention-control.ts](intervention-control.ts) | Models minimal updater transitions, recovery decisions and permitted workflow replacement reasons. | 2 | History unavailable |
-| [local-engine-selection.ts](local-engine-selection.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [intervention-control.ts](intervention-control.ts) | Local intervention contracts and permitted workflow replacement reasons. | 0 | History unavailable |
 | [maintainer-candidate-contracts.ts](maintainer-candidate-contracts.ts) | Builds canonical candidate bundles, supporting artifacts and check freshness contracts. | 2 | Header changed since confirmation |
 | [maintainer-candidate-dependencies.ts](maintainer-candidate-dependencies.ts) | Canonical candidate dependency projections and required observation contracts. | 0 | History unavailable |
 | [maintainer-candidate-ref-ledger.ts](maintainer-candidate-ref-ledger.ts) | Canonical ref-generation state and prestate rules. | 0 | Header changed since confirmation |

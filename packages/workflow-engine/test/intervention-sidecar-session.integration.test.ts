@@ -6,8 +6,6 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import * as interventionControlPersistence from '../src/runtime/storage-journal/intervention-control-persistence.ts';
 import {
   capturePersistedWipIntervention,
   executePersistedAdoptionStep,
@@ -15,22 +13,21 @@ import {
   localEngineArtifactPath,
   materializeInterventionChildWorktree,
 } from '../src/application/control-plane/intervention-control-bootstrap.ts';
-import { createEngineArtifact } from '../src/modules/authority/intervention-control.ts';
 import {
-  advanceBootstrapSidecarPromotionPin,
+  persistInterventionEngineArtifact,
+  readInterventionEngineArtifact,
+} from '../src/application/control-plane/intervention-maintenance.ts';
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import { createEngineArtifact } from '../src/modules/authority/intervention-control.ts';
+import * as interventionControlPersistence from '../src/runtime/storage-journal/intervention-control-persistence.ts';
+import {
   findPersistedBootstrapSidecarSessionForIntervention,
   interventionControlPersistencePaths,
   preparePersistedEngineAdoption,
   readPersistedBootstrapSidecarWorkflow as readPersistedBootstrapSidecarSession,
   readPersistedIntervention,
   recoverPersistedEngineAdoption,
-  recordBootstrapSidecarPromotionIfPresent,
-  reserveBootstrapSidecarPromotion,
 } from '../src/runtime/storage-journal/intervention-control-persistence.ts';
-import {
-  persistInterventionEngineArtifact,
-  readInterventionEngineArtifact,
-} from '../src/application/control-plane/intervention-maintenance.ts';
 
 const NOW = new Date('2026-08-10T01:00:00.000Z');
 
@@ -423,50 +420,13 @@ test('current sidecar Workflow durably repairs every post-authority crash window
       resolvedAt: committedAt,
     });
 
-    const promotionInput = {
-      interventionChangeId: 'intervention-B',
-      grantId: 'sidecar-control-plane-grant',
-      txId: 'sidecar-global-promotion',
-      artifact,
-      closureDigest: digest('sidecar-default-closure-E2'),
-      evidenceDigest: digest('sidecar-global-promotion-evidence'),
-      at: '2026-08-10T01:10:00.000Z',
-    };
-    reserveBootstrapSidecarPromotion(value.stateRoot, {
-      ...promotionInput,
-      candidateExecutableProvenanceDigest: artifactRecord.recordDigest,
-      at: '2026-08-10T01:09:30.000Z',
-    });
-    advanceBootstrapSidecarPromotionPin(value.stateRoot, {
-      txId: promotionInput.txId,
-      expectedState: 'reserved',
-      state: 'commit-intent',
-      at: '2026-08-10T01:09:45.000Z',
-    });
-    const promoted = recordBootstrapSidecarPromotionIfPresent(
-      value.stateRoot,
-      promotionInput,
-    );
-    assert.notEqual(promoted, null);
-    const replayedPromotion = recordBootstrapSidecarPromotionIfPresent(
-      value.stateRoot,
-      promotionInput,
-    );
-    assert.deepEqual(replayedPromotion, promoted);
-
-    const terminal = readPersistedBootstrapSidecarSession(
-      value.stateRoot,
-      'parent-A',
-    );
-    assert.equal(terminal.promotion?.grantId, 'sidecar-control-plane-grant');
     assert.deepEqual(
-      terminal.history.map((entry) => entry.eventKind),
+      adopted.history.map((entry) => entry.eventKind),
       [
         'sidecar-created',
         'workspace-materialized',
         'artifact-ready',
         'adopted-by-parent',
-        'repository-default-promoted',
       ],
     );
   } finally {

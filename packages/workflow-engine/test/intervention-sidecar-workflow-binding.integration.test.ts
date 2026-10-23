@@ -6,37 +6,33 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   abandonPersistedIntervention,
   capturePersistedWipIntervention,
-  executePersistedAdoptionStep,
-  initializeLocalEngineBinding,
-  localEngineArtifactPath,
   materializeInterventionChildWorktree,
 } from '../src/application/control-plane/intervention-control-bootstrap.ts';
-import { resolveLocalEngineSelection } from '../bootstrap/control-plane-trust.ts';
-import { createEngineArtifact } from '../src/modules/authority/intervention-control.ts';
-import {
-  interventionEngineArtifactRecordPath,
-  readStoredInterventionEngineArtifact,
-} from '../src/runtime/storage-journal/intervention-engine-artifact-store.ts';
-import {
-  advancePersistedEngineAdoption,
-  persistedBootstrapSidecarSessionPath,
-  preparePersistedEngineAdoption,
-  readPersistedBootstrapSidecarWorkflow,
-  readPersistedIntervention,
-  recoverPersistedEngineAdoption,
-  rollbackPersistedEngineAdoption,
-  recordBootstrapSidecarAbandoned,
-} from '../src/runtime/storage-journal/intervention-control-persistence.ts';
 import {
   buildAndPersistInterventionEngineArtifact,
   persistInterventionEngineArtifact,
   preparePersistedEngineAdoptionFromArtifactRecord,
   readInterventionEngineArtifact,
 } from '../src/application/control-plane/intervention-maintenance.ts';
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import { createEngineArtifact } from '../src/modules/authority/intervention-control.ts';
+import {
+  advancePersistedEngineAdoption,
+  persistedBootstrapSidecarSessionPath,
+  preparePersistedEngineAdoption,
+  readPersistedBootstrapSidecarWorkflow,
+  readPersistedIntervention,
+  recordBootstrapSidecarAbandoned,
+  recoverPersistedEngineAdoption,
+  rollbackPersistedEngineAdoption,
+} from '../src/runtime/storage-journal/intervention-control-persistence.ts';
+import {
+  interventionEngineArtifactRecordPath,
+  readStoredInterventionEngineArtifact,
+} from '../src/runtime/storage-journal/intervention-engine-artifact-store.ts';
 
 const CAPTURED_AT = new Date('2026-08-10T03:00:00.000Z');
 
@@ -503,104 +499,6 @@ test('build and adoption fail closed on a missing or tampered workflow binding',
   }
 });
 
-test('sealed local launch rejects a semantically re-digested sidecar binding', () => {
-  const value = fixture();
-  try {
-    const { captured } = captureAndMaterialize(value);
-    const artifactRecord = buildArtifact(value);
-    const prepared = preparePersistedEngineAdoption(
-      value.stateRoot,
-      {
-        txId: 'sealed-workflow-binding-adoption',
-        parentChangeId: 'parent-A',
-        artifact: artifactRecord.artifact,
-        maintenanceGrantEnvelope: value.maintenanceGrantEnvelope,
-        priorLocalAdoptions: 0,
-      },
-      humanDependencies(new Date('2026-08-10T03:03:00.000Z')),
-    );
-    const bindingPath = path.join(
-      value.stateRoot,
-      'local-parent-sessions',
-      `${crypto
-        .createHash('sha256')
-        .update('parent-session\0parent-A')
-        .digest('hex')}.json`,
-    );
-    initializeLocalEngineBinding(value.stateRoot, bindingPath, {
-      parentChangeId: 'parent-A',
-      parentWorkspacePath: value.repository,
-      parentBranch: 'refs/heads/work/parent-A',
-      interventionChangeId: 'intervention-B',
-      txId: prepared.journal.txId,
-      checkpointId: captured.intervention.checkpoint.checkpointId,
-      engineDigest: value.captureInput.parent.engineBinding,
-      artifactId: artifactRecord.artifact.artifactId,
-      executableDigest: artifactRecord.artifact.executableDigest,
-      executablePath: localEngineArtifactPath(
-        value.stateRoot,
-        artifactRecord.artifact.artifactId,
-      ),
-      sessionSchema: 'v4',
-      now: new Date('2026-08-10T03:03:00.000Z'),
-    });
-    let current = prepared;
-    for (const at of [
-      '2026-08-10T03:04:00.000Z',
-      '2026-08-10T03:05:00.000Z',
-      '2026-08-10T03:06:00.000Z',
-      '2026-08-10T03:07:00.000Z',
-      '2026-08-10T03:08:00.000Z',
-    ]) {
-      const stepped = executePersistedAdoptionStep(
-        value.stateRoot,
-        {
-          txId: current.journal.txId,
-          expectedJournalDigest: current.journal.journalDigest,
-          bindingPath,
-          artifact: artifactRecord.artifact,
-          executablePath: artifactRecord.executablePath,
-          at,
-        },
-        humanDependencies(new Date(at)),
-      );
-      current = stepped.record;
-    }
-    assert.equal(current.journal.state, 'COMMITTED');
-    const identity = {
-      worktreeRoot: value.repository,
-      branchRef: 'refs/heads/work/parent-A',
-    };
-    assert.equal(
-      resolveLocalEngineSelection(value.stateRoot, identity)?.executableDigest,
-      artifactRecord.artifact.executableDigest,
-    );
-
-    const original = replaceSidecarRecord(value.stateRoot, (record) => {
-      record.workflowBinding.changeId = 'intervention-C';
-      const { workflowBindingDigest: _bindingDigest, ...bindingPayload } =
-        record.workflowBinding;
-      record.workflowBinding.workflowBindingDigest = digest(
-        canonicalJson(bindingPayload),
-      );
-    });
-    assert.throws(
-      () => resolveLocalEngineSelection(value.stateRoot, identity),
-      (error: unknown) =>
-        error instanceof Error &&
-        'code' in error &&
-        error.code === 'WORKFLOW_LOCAL_ADOPTION_JOURNAL_CORRUPT',
-    );
-    restoreSidecarRecord(value.stateRoot, original);
-    assert.notEqual(
-      resolveLocalEngineSelection(value.stateRoot, identity),
-      null,
-    );
-  } finally {
-    value.cleanup();
-  }
-});
-
 test('v2 adoption authority requires the exact persisted artifact record', () => {
   const value = fixture();
   try {
@@ -744,6 +642,63 @@ test('artifact projection evidence cannot be replaced by adoption fallback', () 
         error instanceof Error &&
         'code' in error &&
         error.code === 'INTERVENTION_SIDECAR_SESSION_CONFLICT',
+    );
+  } finally {
+    value.cleanup();
+  }
+});
+
+test('retired global promotion pins cannot block abandonment or mutate parent data', () => {
+  const value = fixture();
+  try {
+    captureAndMaterialize(value);
+    const pinDirectory = path.join(value.stateRoot, 'sidecar-promotion-pins');
+    fs.mkdirSync(pinDirectory, { mode: 0o700 });
+    const pinPath = path.join(pinDirectory, 'retired-pin.json');
+    const pinBytes = Buffer.from(
+      '{"state":"commit-intent","txId":"retired-global-promotion"}\n',
+    );
+    fs.writeFileSync(pinPath, pinBytes, { mode: 0o600 });
+    const tracked = path.join(value.repository, 'tracked.txt');
+    const untracked = path.join(value.repository, 'untracked-wip.txt');
+    fs.writeFileSync(tracked, 'parent WIP remains\n');
+    fs.writeFileSync(untracked, 'untracked parent WIP remains\n');
+    const head = git(value.repository, ['rev-parse', 'HEAD']);
+    const index = fs.readFileSync(path.join(value.repository, '.git/index'));
+    const input = {
+      parentChangeId: 'parent-A',
+      grantId: 'abandon-with-retired-pin',
+      grantRecordDigest: digest('abandon-with-retired-pin-authority'),
+      reason: 'Abandon an intervention with inert retired global state.',
+      at: '2026-08-10T03:04:00.000Z',
+    };
+    const bindingPath = path.join(
+      value.stateRoot,
+      'missing-parent-binding.json',
+    );
+    const result = abandonPersistedIntervention(
+      value.stateRoot,
+      bindingPath,
+      input,
+    );
+    assert.equal(result.effectsPerformed, true);
+    const replay = abandonPersistedIntervention(
+      value.stateRoot,
+      bindingPath,
+      input,
+    );
+    assert.equal(replay.effectsPerformed, false);
+    assert.deepEqual(replay.receipt, result.receipt);
+    assert.deepEqual(fs.readFileSync(pinPath), pinBytes);
+    assert.equal(fs.readFileSync(tracked, 'utf8'), 'parent WIP remains\n');
+    assert.equal(
+      fs.readFileSync(untracked, 'utf8'),
+      'untracked parent WIP remains\n',
+    );
+    assert.equal(git(value.repository, ['rev-parse', 'HEAD']), head);
+    assert.deepEqual(
+      fs.readFileSync(path.join(value.repository, '.git/index')),
+      index,
     );
   } finally {
     value.cleanup();

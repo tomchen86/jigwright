@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 import { buildSingleJigwrightPackage } from '../../../scripts/build-single-jigwright-package.ts';
-import { setupFinalizedControlPlanePromotionFixture } from './control-plane-promotion-fixture.ts';
+import { setupFixedRunnerFixture } from './fixed-runner-fixture.ts';
 
 test('installed runtime descriptors are exact embedded-only records', () => {
   const scratch = fs.mkdtempSync(
@@ -522,7 +522,7 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', a
     });
 
     const candidateMarker = path.join(scratch, 'consumer-candidate-executed');
-    const candidate = await setupFinalizedControlPlanePromotionFixture({
+    const candidate = await setupFixedRunnerFixture({
       candidateExecutableFactory: (closureDigest) =>
         Buffer.from(`#!/usr/bin/env node
 import('node:fs').then(({ appendFileSync }) => {
@@ -535,7 +535,16 @@ process.stdout.write(JSON.stringify(probe
 `),
     });
     try {
-      assert.equal(candidate.record.transaction.state, 'FINALIZED');
+      const positiveControl = spawnSync(
+        process.execPath,
+        [
+          candidate.retiredSelection.activeArtifact.executablePath,
+          '--control-plane-self-test',
+        ],
+        { encoding: 'utf8' },
+      );
+      assert.equal(positiveControl.status, 0, positiveControl.stderr);
+      assert.equal(candidate.retiredUpdate.transaction.state, 'FINALIZED');
       assert.ok(
         fs
           .readFileSync(candidateMarker, 'utf8')

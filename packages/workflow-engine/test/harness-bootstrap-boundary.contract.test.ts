@@ -1,19 +1,18 @@
-import crypto from 'node:crypto';
 import { canonicalJson } from '@jigwright/core/canonical-json';
-import type { LocalEngineBinding } from '../src/modules/authority/intervention-bootstrap-contract.ts';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { createHarnessBootstrapDependencies } from '../bootstrap/harness-bootstrap-production.ts';
 import {
   createHarnessBootstrapParentState,
   type HarnessBootstrapParentBindings,
 } from '../src/application/control-plane/harness-bootstrap-parent-state.ts';
-import { createHarnessBootstrapDependencies } from '../bootstrap/harness-bootstrap-production.ts';
+import type { LocalEngineBinding } from '../src/modules/authority/intervention-bootstrap-contract.ts';
 import {
   admitHarnessBootstrapParent,
   type HarnessBootstrapParentObservation,
 } from '../src/modules/lifecycle/harness-bootstrap-parent-session.ts';
-import { workflowError, ExitCode } from '../src/foundation/errors/errors.ts';
 import { assertPureDependencyClosure } from './support/pure-dependency-closure.ts';
 
 function fixture() {
@@ -84,14 +83,6 @@ function fixture() {
       events.push('read-binding');
       throw new Error('unexpected binding read');
     },
-    readControlPlaneSupervisorState() {
-      events.push('supervisor');
-      throw workflowError(
-        'CONTROL_PLANE_SUPERVISOR_NOT_FOUND',
-        'missing supervisor',
-        ExitCode.staleState,
-      );
-    },
     persistTrustedBootstrapSessionSnapshot(root, session) {
       events.push('snapshot');
       assert.equal(root, '/state/intervention-control');
@@ -133,15 +124,10 @@ test('parent admission rejects a stale baseline before querying bindings or pers
   assert.deepEqual(f.events, ['observe']);
 });
 
-test('required in-memory parent services preserve supervisor absence and snapshot publication order', () => {
+test('required in-memory parent services preserve fixed package identity and snapshot publication order', () => {
   const f = fixture();
   const result = f.run();
-  assert.deepEqual(f.events, [
-    'observe',
-    'binding-path',
-    'supervisor',
-    'snapshot',
-  ]);
+  assert.deepEqual(f.events, ['observe', 'binding-path', 'snapshot']);
   assert.equal(
     result.parent.engineBinding,
     f.bindings.BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST,
@@ -165,13 +151,7 @@ test('parent snapshot still publishes before a later policy serialization failur
     },
   );
   assert.throws(f.run, (error) => error === failure);
-  assert.deepEqual(f.events, [
-    'observe',
-    'binding-path',
-    'supervisor',
-    'snapshot',
-    'policy',
-  ]);
+  assert.deepEqual(f.events, ['observe', 'binding-path', 'snapshot', 'policy']);
 });
 
 test('bootstrap construction preserves lazy signer resolution and override identity', () => {
@@ -282,12 +262,7 @@ test('parent snapshot retains complete session bytes and reference before serial
     return '/state/full-snapshot.json';
   };
   const result = f.run();
-  assert.deepEqual(f.events, [
-    'observe',
-    'binding-path',
-    'supervisor',
-    'snapshot',
-  ]);
+  assert.deepEqual(f.events, ['observe', 'binding-path', 'snapshot']);
   assert.equal(result.sessionSnapshotPath, '/state/full-snapshot.json');
   assert.equal(result.parent.sessionSchema, 'workflow-session.v1');
   assert.equal(
@@ -374,12 +349,7 @@ test('parent policy retains nullish defaults without normalizing the stored sess
     assert.fail('undefined snapshot data was accepted');
   };
   assert.throws(f.run, { code: 'CANONICAL_JSON_INVALID' });
-  assert.deepEqual(f.events, [
-    'observe',
-    'binding-path',
-    'supervisor',
-    'snapshot',
-  ]);
+  assert.deepEqual(f.events, ['observe', 'binding-path', 'snapshot']);
 });
 
 test('parent candidate, stale identity and state-root failures keep their precedence and prevent external work', () => {
@@ -467,7 +437,7 @@ function parentBinding(): LocalEngineBinding {
   };
 }
 
-test('parent binding override and each conflict retain admission before snapshot and skip supervisor', () => {
+test('parent binding override and each conflict retain admission before snapshot without global selection', () => {
   const base = parentBinding();
   const changes: Array<Partial<LocalEngineBinding>> = [
     {},
@@ -513,52 +483,13 @@ test('parent binding override and each conflict retain admission before snapshot
   }
 });
 
-test('parent supervisor override retains schema and propagates foreign absence errors before persistence', () => {
+test('parent without a local binding uses the fixed package identity and preserves schema', () => {
   const f = fixture();
-  const digest = `sha256:${'e'.repeat(64)}` as const;
-  f.bindings.readControlPlaneSupervisorState = (root) => {
-    f.events.push('supervisor');
-    assert.equal(root, '/state/intervention-control');
-    return {
-      kind: 'control-plane-supervisor-state.v1',
-      repositoryId: 'repo',
-      activeArtifact: {
-        artifactId: digest,
-        executableDigest: digest,
-        closureDigest: digest,
-        executablePath: '/engine',
-      },
-      generation: 1,
-      transition: null,
-      updatedAt: '2026-08-01T00:00:00.000Z',
-      recordDigest: digest,
-    };
-  };
   const result = f.run();
-  assert.equal(result.parent.engineBinding, digest);
+  assert.equal(
+    result.parent.engineBinding,
+    f.bindings.BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST,
+  );
   assert.equal(result.parent.sessionSchema, 'workflow-session.v1');
-  assert.deepEqual(f.events, [
-    'observe',
-    'binding-path',
-    'supervisor',
-    'snapshot',
-  ]);
-  for (const failure of [
-    Object.assign(new Error('foreign missing'), {
-      code: 'CONTROL_PLANE_SUPERVISOR_NOT_FOUND',
-    }),
-    workflowError(
-      'CONTROL_PLANE_SUPERVISOR_CORRUPT',
-      'corrupt',
-      ExitCode.staleState,
-    ),
-  ]) {
-    const failed = fixture();
-    failed.bindings.readControlPlaneSupervisorState = () => {
-      failed.events.push('supervisor');
-      throw failure;
-    };
-    assert.throws(failed.run, (error) => error === failure);
-    assert.deepEqual(failed.events, ['observe', 'binding-path', 'supervisor']);
-  }
+  assert.deepEqual(f.events, ['observe', 'binding-path', 'snapshot']);
 });

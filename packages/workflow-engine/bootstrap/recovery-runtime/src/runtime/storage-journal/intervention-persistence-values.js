@@ -8,7 +8,7 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
-import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
+import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { MAX_RECORD_BYTES, } from "./intervention-persistence-contracts.js";
 export function validateObservations(observations, expectedCount, terminalState) {
     if (!Array.isArray(observations) || observations.length !== expectedCount) {
@@ -156,9 +156,6 @@ export function corruptPersistenceRecord() {
 }
 export function adoptionRecordCorrupt() {
     return workflowError('INTERVENTION_ADOPTION_RECORD_CORRUPT', 'Persisted adoption record failed integrity verification.', ExitCode.verification);
-}
-export function controlUpdateRecordCorrupt() {
-    return workflowError('INTERVENTION_CONTROL_UPDATE_RECORD_CORRUPT', 'Persisted minimal updater record failed integrity verification.', ExitCode.verification);
 }
 export function unsafePersistenceLock() {
     return workflowError('INTERVENTION_PERSISTENCE_LOCK_UNSAFE', 'Persistence operation lock is unsafe.', ExitCode.unsafeEnvironment);

@@ -1,3 +1,4 @@
+export { capturePersistedWipIntervention, discoverBootstrapUntrackedAllowlist, persistTrustedBootstrapSessionSnapshot, readPersistedWipBundle, restorePersistedWipBundle, };
 /**
  * Executes persisted engine adoption steps through intervention bootstrap
  * ports.
@@ -6,21 +7,21 @@
  * - The executable and artifact must match the exact persisted adoption
  *   record.
  */
-import { createInterventionBootstrapWorkspace } from "./intervention-bootstrap-workspace.js";
-import { createInterventionBootstrapAbandonment } from "./intervention-bootstrap-abandonment.js";
-import { createInterventionBootstrapStorage } from "./intervention-bootstrap-storage.js";
-import { createInterventionBootstrapChildWorktree } from "./intervention-bootstrap-child-worktree.js";
-import { createInterventionBootstrapEngine } from "./intervention-bootstrap-engine.js";
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createInterventionBootstrapAbandonment } from "./intervention-bootstrap-abandonment.js";
+import { createInterventionBootstrapChildWorktree } from "./intervention-bootstrap-child-worktree.js";
+import { createInterventionBootstrapEngine } from "./intervention-bootstrap-engine.js";
+import { createInterventionBootstrapStorage } from "./intervention-bootstrap-storage.js";
+import { createInterventionBootstrapWorkspace } from "./intervention-bootstrap-workspace.js";
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError, } from "../../foundation/errors/errors.js";
-import { ensurePlainDirectory } from "../../runtime/repository-transaction/filesystem-safety.js";
-import { readStoredInterventionEngineArtifact } from "../../runtime/storage-journal/intervention-engine-artifact-store.js";
 import { createWipCheckpoint, verifyHarnessMaintenanceGrant, } from "../../modules/authority/intervention-control.js";
-import { advancePersistedEngineAdoption, activeBootstrapSidecarPromotionPinTxIds, inFlightPersistedEngineAdoptionTxIds, interventionRecordPath, interventionControlPersistencePaths, persistInterventionPlan, recordBootstrapSidecarAbandoned, recordBootstrapSidecarAdopted, recordBootstrapSidecarWorkspaceMaterialized, readPersistedIntervention, recoverPersistedEngineAdoption, rollbackPersistedEngineAdoption, withInterventionParentOperation, } from "../../runtime/storage-journal/intervention-control-persistence.js";
+import { ensurePlainDirectory } from "../../runtime/repository-transaction/filesystem-safety.js";
+import { advancePersistedEngineAdoption, inFlightPersistedEngineAdoptionTxIds, interventionControlPersistencePaths, interventionRecordPath, persistInterventionPlan, readPersistedIntervention, recordBootstrapSidecarAbandoned, recordBootstrapSidecarAdopted, recordBootstrapSidecarWorkspaceMaterialized, recoverPersistedEngineAdoption, rollbackPersistedEngineAdoption, withInterventionParentOperation, } from "../../runtime/storage-journal/intervention-control-persistence.js";
+import { readStoredInterventionEngineArtifact } from "../../runtime/storage-journal/intervention-engine-artifact-store.js";
 const MAX_PATCH_BYTES = 16 * 1024 * 1024;
 const MAX_UNTRACKED_FILE_BYTES = 4 * 1024 * 1024;
 const MAX_UNTRACKED_TOTAL_BYTES = 16 * 1024 * 1024;
@@ -420,7 +421,6 @@ const { discoverBootstrapUntrackedAllowlist, persistTrustedBootstrapSessionSnaps
     ensurePrivateDirectory,
     isPathInside,
 }));
-export { discoverBootstrapUntrackedAllowlist, persistTrustedBootstrapSessionSnapshot, capturePersistedWipIntervention, readPersistedWipBundle, restorePersistedWipBundle, };
 const { assertPersistedInterventionAbandonable, abandonPersistedIntervention } = createInterventionBootstrapAbandonment(() => ({
     readPersistedIntervention,
     withInterventionParentOperation,
@@ -439,7 +439,6 @@ const { assertPersistedInterventionAbandonable, abandonPersistedIntervention } =
     interventionRecordPath,
     recordBootstrapSidecarAbandoned,
     inFlightPersistedEngineAdoptionTxIds,
-    activeBootstrapSidecarPromotionPinTxIds,
     isHarnessInterventionBlocker,
     recoverPersistedEngineAdoption,
     readLocalEngineBinding,
@@ -451,7 +450,7 @@ const { assertPersistedInterventionAbandonable, abandonPersistedIntervention } =
     hasExactKeys,
     isDigest,
 }));
-export { assertPersistedInterventionAbandonable, abandonPersistedIntervention };
+export { abandonPersistedIntervention, assertPersistedInterventionAbandonable };
 const { localEngineArtifactPath, bindingStateRoot, bootstrapBundleDirectory, wipBundlePath, bootstrapReceiptPath, persistBootstrapReceipt, readBootstrapReceipt, canonicalRepositoryRoot, canonicalPlannedWorkspacePath, canonicalPlainFile, canonicalAbsolutePath, assertPersistenceOwnedPath, assertSafeRelativePath, safeRepositoryPath, ensureSafeParentDirectories, isPathInside, gitBuffer, gitBufferNoThrow, gitText, gitRefExists, createPrivateFileExclusive, createPrivateExecutableExclusive, assertPrivateLocalEngineExecutable, writePrivateFileAtomic, replacePrivateFileAtomic, ensurePrivateDirectory, readCanonicalPrivateJson, readPrivateBytes, readOptionalPlainFile, fsyncDirectory, } = createInterventionBootstrapStorage(() => ({
     assertDigest,
     path,

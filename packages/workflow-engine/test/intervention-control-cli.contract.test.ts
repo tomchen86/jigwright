@@ -6,13 +6,6 @@ import {
   dispatchInterventionControlCommand,
   parseInterventionControlCommand,
 } from '../src/entrypoints/cli/intervention-control-cli.ts';
-import {
-  REQUIRED_PROTECTED_CAPABILITIES,
-  createProtectedCapabilityManifest,
-  protectedCapabilityClosureDigest,
-  type ExactControlPlaneChange,
-  type ProtectedCapabilityEntry,
-} from '../src/modules/authority/intervention-control.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 
 const NOW = new Date('2026-08-03T10:00:00.000Z');
@@ -83,93 +76,6 @@ test('production parser rejects caller-supplied engine recovery journals', () =>
   }
 });
 
-function protectedEntries(): ProtectedCapabilityEntry[] {
-  return REQUIRED_PROTECTED_CAPABILITIES.map((capability) => {
-    const entrypoints = [`packages/bootstrap/${capability}.ts`];
-    const dependencies = [`packages/bootstrap/shared/${capability}.ts`];
-    const contentDigest = digest(`content:${capability}`);
-    return {
-      capability,
-      entrypoints,
-      dependencies,
-      contentDigest,
-      closureDigest: protectedCapabilityClosureDigest(
-        entrypoints,
-        dependencies,
-        contentDigest,
-      ),
-    };
-  });
-}
-
-function controlPlaneFixture() {
-  const beforeManifest = createProtectedCapabilityManifest({
-    schemaVersion: 1,
-    manifestPath: 'workflow/protected-capabilities.json',
-    entries: protectedEntries(),
-  });
-  const entries = protectedEntries();
-  const changedContent = digest('changed-control-content');
-  entries[0] = {
-    ...entries[0],
-    contentDigest: changedContent,
-    closureDigest: protectedCapabilityClosureDigest(
-      entries[0].entrypoints,
-      entries[0].dependencies,
-      changedContent,
-    ),
-  };
-  const afterManifest = createProtectedCapabilityManifest({
-    schemaVersion: 1,
-    manifestPath: beforeManifest.manifestPath,
-    entries,
-  });
-  const changes: ExactControlPlaneChange[] = [
-    {
-      path: beforeManifest.entries[0].entrypoints[0],
-      beforeDigest: beforeManifest.entries[0].contentDigest,
-      afterDigest: changedContent,
-    },
-    {
-      path: beforeManifest.manifestPath,
-      beforeDigest: beforeManifest.manifestDigest,
-      afterDigest: afterManifest.manifestDigest,
-    },
-  ];
-  return { beforeManifest, afterManifest, changes };
-}
-
-test('control-plane classify remains read-only and legacy verify-grant is unsupported', () => {
-  const fixture = controlPlaneFixture();
-  const classification = dispatchInterventionControlCommand([
-    'control-plane',
-    'classify',
-    '--request',
-    json({
-      beforeManifest: fixture.beforeManifest,
-      afterManifest: fixture.afterManifest,
-      changes: fixture.changes,
-    }),
-  ]);
-  assert.equal(classification.kind, 'control-plane-classify');
-  if (classification.kind !== 'control-plane-classify') {
-    assert.fail('Expected a protected capability classification.');
-  }
-  assert.equal(classification.impact.class, 'C');
-  assert.equal(classification.effectsPerformed, false);
-
-  assert.throws(
-    () =>
-      dispatchInterventionControlCommand([
-        'control-plane',
-        'verify-grant',
-        '--request',
-        json({}),
-      ]),
-    hasCode('INTERVENTION_CONTROL_COMMAND_UNSUPPORTED'),
-  );
-});
-
 test('dispatcher rejects promotion and live ref mutation rather than performing effects', () => {
   assert.throws(
     () =>
@@ -197,7 +103,7 @@ test('dispatcher rejects promotion and live ref mutation rather than performing 
         '--request',
         json({ updateRef: 'refs/heads/main' }),
       ]),
-    hasCode('INTERVENTION_CONTROL_LIVE_REF_MUTATION_FORBIDDEN'),
+    hasCode('INTERVENTION_CONTROL_COMMAND_UNSUPPORTED'),
   );
 });
 

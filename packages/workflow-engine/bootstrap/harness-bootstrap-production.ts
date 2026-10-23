@@ -11,10 +11,7 @@ export const {
   auditHarnessRecoveryRefusal,
   productionRecoveryTrustRootAuditSink,
   productionRecoveryQuarantineAuditSink,
-  productionControlPlaneAuditSink,
-  productionRecoveryAuditSink,
   recoveryOperationalTrustRootDependencies,
   recoveryQuarantineDependencies,
-  createHarnessRecoveryDependencies,
   createHarnessBootstrapCommandDispatcher,
 } = harnessBootstrapProduction;

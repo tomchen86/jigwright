@@ -1,9 +1,20 @@
-import type { LocalEngineBinding } from '../../modules/authority/intervention-bootstrap-contract.ts';
-import type { BootstrapDependencies } from '../../modules/authority/intervention-bootstrap-contract.ts';
-import type { BootstrapHumanSignatureVerifier } from '../../modules/authority/intervention-bootstrap-contract.ts';
-export type { LocalEngineBinding } from '../../modules/authority/intervention-bootstrap-contract.ts';
-export type { BootstrapDependencies } from '../../modules/authority/intervention-bootstrap-contract.ts';
-export type { BootstrapHumanSignatureVerifier } from '../../modules/authority/intervention-bootstrap-contract.ts';
+import type {
+  BootstrapDependencies,
+  BootstrapHumanSignatureVerifier,
+  LocalEngineBinding,
+} from '../../modules/authority/intervention-bootstrap-contract.ts';
+export type {
+  BootstrapDependencies,
+  BootstrapHumanSignatureVerifier,
+  LocalEngineBinding,
+} from '../../modules/authority/intervention-bootstrap-contract.ts';
+export {
+  capturePersistedWipIntervention,
+  discoverBootstrapUntrackedAllowlist,
+  persistTrustedBootstrapSessionSnapshot,
+  readPersistedWipBundle,
+  restorePersistedWipBundle,
+};
 /**
  * Executes persisted engine adoption steps through intervention bootstrap
  * ports.
@@ -12,15 +23,15 @@ export type { BootstrapHumanSignatureVerifier } from '../../modules/authority/in
  * - The executable and artifact must match the exact persisted adoption
  *   record.
  */
-import { createInterventionBootstrapWorkspace } from './intervention-bootstrap-workspace.ts';
-import { createInterventionBootstrapAbandonment } from './intervention-bootstrap-abandonment.ts';
-import { createInterventionBootstrapStorage } from './intervention-bootstrap-storage.ts';
-import { createInterventionBootstrapChildWorktree } from './intervention-bootstrap-child-worktree.ts';
-import { createInterventionBootstrapEngine } from './intervention-bootstrap-engine.ts';
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createInterventionBootstrapAbandonment } from './intervention-bootstrap-abandonment.ts';
+import { createInterventionBootstrapChildWorktree } from './intervention-bootstrap-child-worktree.ts';
+import { createInterventionBootstrapEngine } from './intervention-bootstrap-engine.ts';
+import { createInterventionBootstrapStorage } from './intervention-bootstrap-storage.ts';
+import { createInterventionBootstrapWorkspace } from './intervention-bootstrap-workspace.ts';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
@@ -28,8 +39,6 @@ import {
   WorkflowError,
   workflowError,
 } from '../../foundation/errors/errors.ts';
-import { ensurePlainDirectory } from '../../runtime/repository-transaction/filesystem-safety.ts';
-import { readStoredInterventionEngineArtifact } from '../../runtime/storage-journal/intervention-engine-artifact-store.ts';
 import {
   createWipCheckpoint,
   verifyHarnessMaintenanceGrant,
@@ -37,23 +46,24 @@ import {
   type HarnessMaintenanceGrantEnvelope,
   type Sha256Digest,
 } from '../../modules/authority/intervention-control.ts';
+import { ensurePlainDirectory } from '../../runtime/repository-transaction/filesystem-safety.ts';
 import {
   advancePersistedEngineAdoption,
-  activeBootstrapSidecarPromotionPinTxIds,
   inFlightPersistedEngineAdoptionTxIds,
-  interventionRecordPath,
   interventionControlPersistencePaths,
+  interventionRecordPath,
   persistInterventionPlan,
+  readPersistedIntervention,
   recordBootstrapSidecarAbandoned,
   recordBootstrapSidecarAdopted,
   recordBootstrapSidecarWorkspaceMaterialized,
-  readPersistedIntervention,
   recoverPersistedEngineAdoption,
   rollbackPersistedEngineAdoption,
   withInterventionParentOperation,
   type PersistedEngineAdoptionRecord,
   type PersistedInterventionRecord,
 } from '../../runtime/storage-journal/intervention-control-persistence.ts';
+import { readStoredInterventionEngineArtifact } from '../../runtime/storage-journal/intervention-engine-artifact-store.ts';
 
 const MAX_PATCH_BYTES = 16 * 1024 * 1024;
 const MAX_UNTRACKED_FILE_BYTES = 4 * 1024 * 1024;
@@ -820,13 +830,6 @@ const {
   ensurePrivateDirectory,
   isPathInside,
 }));
-export {
-  discoverBootstrapUntrackedAllowlist,
-  persistTrustedBootstrapSessionSnapshot,
-  capturePersistedWipIntervention,
-  readPersistedWipBundle,
-  restorePersistedWipBundle,
-};
 
 export type InterventionBootstrapAbandonmentBindings = {
   readPersistedIntervention: typeof readPersistedIntervention;
@@ -846,7 +849,6 @@ export type InterventionBootstrapAbandonmentBindings = {
   interventionRecordPath: typeof interventionRecordPath;
   recordBootstrapSidecarAbandoned: typeof recordBootstrapSidecarAbandoned;
   inFlightPersistedEngineAdoptionTxIds: typeof inFlightPersistedEngineAdoptionTxIds;
-  activeBootstrapSidecarPromotionPinTxIds: typeof activeBootstrapSidecarPromotionPinTxIds;
   isHarnessInterventionBlocker: typeof isHarnessInterventionBlocker;
   recoverPersistedEngineAdoption: typeof recoverPersistedEngineAdoption;
   readLocalEngineBinding: typeof readLocalEngineBinding;
@@ -886,7 +888,6 @@ const { assertPersistedInterventionAbandonable, abandonPersistedIntervention } =
     interventionRecordPath,
     recordBootstrapSidecarAbandoned,
     inFlightPersistedEngineAdoptionTxIds,
-    activeBootstrapSidecarPromotionPinTxIds,
     isHarnessInterventionBlocker,
     recoverPersistedEngineAdoption,
     readLocalEngineBinding,
@@ -898,7 +899,7 @@ const { assertPersistedInterventionAbandonable, abandonPersistedIntervention } =
     hasExactKeys,
     isDigest,
   }));
-export { assertPersistedInterventionAbandonable, abandonPersistedIntervention };
+export { abandonPersistedIntervention, assertPersistedInterventionAbandonable };
 
 export type InterventionBootstrapStorageBindings = {
   assertDigest: typeof assertDigest;

@@ -8,11 +8,11 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
+import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type { Sha256Digest } from '../../modules/authority/intervention-control.ts';
 import {
-  type PersistedTransitionObservation,
   MAX_RECORD_BYTES,
+  type PersistedTransitionObservation,
   type PersistenceHumanDependencies,
   type PersistenceHumanSignatureVerifier,
 } from './intervention-persistence-contracts.ts';
@@ -263,14 +263,6 @@ export function adoptionRecordCorrupt() {
   return workflowError(
     'INTERVENTION_ADOPTION_RECORD_CORRUPT',
     'Persisted adoption record failed integrity verification.',
-    ExitCode.verification,
-  );
-}
-
-export function controlUpdateRecordCorrupt() {
-  return workflowError(
-    'INTERVENTION_CONTROL_UPDATE_RECORD_CORRUPT',
-    'Persisted minimal updater record failed integrity verification.',
     ExitCode.verification,
   );
 }

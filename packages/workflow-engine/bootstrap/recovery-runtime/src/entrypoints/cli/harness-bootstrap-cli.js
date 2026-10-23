@@ -1,7 +1,7 @@
 import { ExitCode, WorkflowError, workflowError, } from "../../foundation/errors/errors.js";
-import { dispatchBootstrapInterventionCommand, bootstrapInterventionStateRoot, bootstrapInterventionUsage, } from "./intervention-control-bootstrap-cli.js";
+import { bootstrapInterventionStateRoot, bootstrapInterventionUsage, dispatchBootstrapInterventionCommand, } from "./intervention-control-bootstrap-cli.js";
 export function createHarnessBootstrapCli({ createHarnessBootstrapDependencies, auditHarnessRecoveryRefusal, createHarnessBootstrapCommandDispatcher, }) {
-    const { isRecoveryAuthorityCommand, isRecoveryQuarantineCommand, isControlPlaneRecoveryCommand, assertHarnessRecoveryQuarantineRouting, dispatchRecoveryAuthorityCommand, dispatchRecoveryQuarantineCommand, dispatchSealedControlPlaneRecovery, harnessBootstrapUsage, } = createHarnessBootstrapCommandDispatcher({
+    const { isRecoveryAuthorityCommand, isRecoveryQuarantineCommand, assertHarnessRecoveryQuarantineRouting, dispatchRecoveryAuthorityCommand, dispatchRecoveryQuarantineCommand, harnessBootstrapUsage, } = createHarnessBootstrapCommandDispatcher({
         bootstrapInterventionStateRoot,
         bootstrapInterventionUsage,
     });
@@ -15,6 +15,9 @@ export function createHarnessBootstrapCli({ createHarnessBootstrapDependencies, 
             : withoutOutputFlag;
         try {
             if (outputFlagCount !== (json ? 1 : 0)) {
+                throw workflowError('HARNESS_RECOVERY_COMMAND_UNSUPPORTED', harnessBootstrapUsage(), ExitCode.usage);
+            }
+            if (args[0] === 'control-plane') {
                 throw workflowError('HARNESS_RECOVERY_COMMAND_UNSUPPORTED', harnessBootstrapUsage(), ExitCode.usage);
             }
             assertHarnessRecoveryQuarantineRouting(args, cwd, (authority) => {
@@ -31,9 +34,7 @@ export function createHarnessBootstrapCli({ createHarnessBootstrapDependencies, 
                 ? dispatchRecoveryAuthorityCommand(args, cwd, overrides)
                 : isRecoveryQuarantineCommand(args)
                     ? dispatchRecoveryQuarantineCommand(args, cwd, overrides)
-                    : isControlPlaneRecoveryCommand(args)
-                        ? dispatchSealedControlPlaneRecovery(args, cwd, overrides)
-                        : dispatchBootstrapInterventionCommand(args, cwd, createHarnessBootstrapDependencies(cwd, overrides));
+                    : dispatchBootstrapInterventionCommand(args, cwd, createHarnessBootstrapDependencies(cwd, overrides));
             const output = {
                 kind: 'harness-bootstrap-cli-result.v1',
                 ok: true,

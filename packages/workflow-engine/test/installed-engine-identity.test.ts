@@ -1,14 +1,15 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import crypto from 'node:crypto';
-import { setupFinalizedControlPlanePromotionFixture } from './control-plane-promotion-fixture.ts';
-import { git } from './fixture.ts';
-import { maintainerGrantExecutionServices } from '../bootstrap/maintainer-authority-production.ts';
+import test from 'node:test';
 import { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST } from '../bootstrap/built-in-engine-closure-pin.ts';
+import { maintainerGrantExecutionServices } from '../bootstrap/maintainer-authority-production.ts';
 import type { GitState } from '../src/modules/repository-consumer/repository-git-state.ts';
+import { setupFixedRunnerFixture } from './fixed-runner-fixture.ts';
+import { git } from './fixture.ts';
 
 const repository: GitState = {
   repositoryRoot: '/repo',
@@ -53,12 +54,12 @@ test('candidate dependency identity stays fixed to the package with consumer sel
   }
 });
 
-test('candidate dependency snapshots use the package identity without probing a finalized consumer candidate', async () => {
+test('candidate dependency snapshots use the package identity without probing an inert retired consumer state', async () => {
   const scratch = fs.mkdtempSync(
     path.join(os.tmpdir(), 'fixed-engine-snapshot-'),
   );
   const marker = path.join(scratch, 'candidate-executed');
-  const fixture = await setupFinalizedControlPlanePromotionFixture({
+  const fixture = await setupFixedRunnerFixture({
     candidateExecutableFactory: (closureDigest) =>
       Buffer.from(`#!/usr/bin/env node
 import('node:fs').then(({ appendFileSync }) => {
@@ -71,7 +72,16 @@ process.stdout.write(JSON.stringify(probe
 `),
   });
   try {
-    assert.equal(fixture.record.transaction.state, 'FINALIZED');
+    const positiveControl = spawnSync(
+      process.execPath,
+      [
+        fixture.retiredSelection.activeArtifact.executablePath,
+        '--control-plane-self-test',
+      ],
+      { encoding: 'utf8' },
+    );
+    assert.equal(positiveControl.status, 0, positiveControl.stderr);
+    assert.equal(fixture.retiredUpdate.transaction.state, 'FINALIZED');
     assert.ok(
       fs.readFileSync(marker, 'utf8').includes('--control-plane-self-test'),
     );
@@ -104,7 +114,9 @@ process.stdout.write(JSON.stringify(probe
     );
     assert.notEqual(
       snapshot.harnessEngineDigest,
-      fixture.supervisor.activeArtifact.closureDigest.slice('sha256:'.length),
+      fixture.retiredSelection.activeArtifact.closureDigest.slice(
+        'sha256:'.length,
+      ),
     );
     assert.equal(fs.existsSync(marker), false);
     assert.deepEqual(fs.readFileSync(supervisorPath), before);

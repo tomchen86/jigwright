@@ -1,11 +1,10 @@
 /** Resolve an admitted durable parent and publish its trusted bootstrap snapshot. */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
-import { WorkflowError } from "../../foundation/errors/errors.js";
-import { canonicalDigest as digestCanonical } from "../../modules/authority/intervention-control-values.js";
 import { assertHarnessBootstrapParentBinding, } from "../../modules/authority/harness-bootstrap-parent-contract.js";
+import { canonicalDigest as digestCanonical } from "../../modules/authority/intervention-control-values.js";
 import { admitHarnessBootstrapParent, } from "../../modules/lifecycle/harness-bootstrap-parent-session.js";
 export function createHarnessBootstrapParentState(bindings) {
-    const { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST, observeParentSessions, observeParentBindingPath, readLocalEngineBinding, readControlPlaneSupervisorState, persistTrustedBootstrapSessionSnapshot, } = bindings;
+    const { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST, observeParentSessions, observeParentBindingPath, readLocalEngineBinding, persistTrustedBootstrapSessionSnapshot, } = bindings;
     function resolveHarnessBootstrapParentState(cwd, parentChangeId, stateRoot) {
         const observation = observeParentSessions(cwd, parentChangeId);
         const { repository } = observation;
@@ -17,12 +16,6 @@ export function createHarnessBootstrapParentState(bindings) {
             assertHarnessBootstrapParentBinding(localBinding, parentChangeId, repository, expectedBranch);
             engineBinding = localBinding.engineDigest;
             sessionSchema = localBinding.sessionSchema;
-        }
-        else {
-            const supervisor = readOptionalSupervisor(stateRoot);
-            if (supervisor !== null) {
-                engineBinding = supervisor.activeArtifact.executableDigest;
-            }
         }
         return {
             parent: {
@@ -59,18 +52,6 @@ export function createHarnessBootstrapParentState(bindings) {
         if (bindingPath === null)
             return null;
         return readLocalEngineBinding(bindingPath);
-    }
-    function readOptionalSupervisor(stateRoot) {
-        try {
-            return readControlPlaneSupervisorState(stateRoot);
-        }
-        catch (error) {
-            if (error instanceof WorkflowError &&
-                error.code === 'CONTROL_PLANE_SUPERVISOR_NOT_FOUND') {
-                return null;
-            }
-            throw error;
-        }
     }
     return { resolveHarnessBootstrapParentState };
 }

@@ -7,18 +7,18 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
-import { ExitCode, WorkflowError, workflowError, } from "../../foundation/errors/errors.js";
-import { discoverRepository, runGit, } from "../../runtime/repository-transaction/git.js";
-import { parseMaintainerPolicy } from "../../modules/authority/maintainer-policy.js";
-import { recordAuthorityAuditEvent, verifyAuthorityAuditEvents, } from "../../runtime/storage-journal/authority-audit-service.js";
-import { deriveAuthorityAuditRepositoryId } from "../../runtime/storage-journal/authority-audit-ledger.js";
 import { abandonPersistedIntervention, assertPersistedInterventionAbandonable, capturePersistedWipIntervention, discoverBootstrapUntrackedAllowlist, executePersistedAdoptionStep, initializeLocalEngineBinding, localEngineArtifactPath, materializeInterventionChildWorktree, readLocalEngineBinding, rebindLocalEngineAfterRolledBackAdoption, } from "../../application/control-plane/intervention-control-bootstrap.js";
-import { engineAdoptionRecordPath, recordBootstrapSidecarAdopted, readPersistedIntervention, recoverPersistedEngineAdoption, renewPersistedEngineAdoptionAuthority, } from "../../runtime/storage-journal/intervention-control-persistence.js";
-import { canonicalHarnessMaintenanceGrantPayload, HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE, verifyHarnessMaintenanceGrant, } from "../../modules/authority/intervention-control.js";
 import { buildAndPersistInterventionEngineArtifact, maintenanceApprovalSummary, maintenanceGrantId, persistMaintenanceGrantRecord, preparePersistedEngineAdoptionFromArtifactRecord, readInterventionEngineArtifact, readMaintenanceGrantForParent, terminalizeExpiredMaintenanceGrantForParent, } from "../../application/control-plane/intervention-maintenance.js";
 import { revokeMaintenanceGrantForParent } from "../../composition-root/human-revocation-production.js";
+import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
+import { ExitCode, WorkflowError, workflowError, } from "../../foundation/errors/errors.js";
+import { canonicalHarnessMaintenanceGrantPayload, HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE, verifyHarnessMaintenanceGrant, } from "../../modules/authority/intervention-control.js";
+import { parseMaintainerPolicy } from "../../modules/authority/maintainer-policy.js";
+import { discoverRepository, runGit, } from "../../runtime/repository-transaction/git.js";
 import { runtimePaths } from "../../runtime/session-workspace/session-store.js";
+import { deriveAuthorityAuditRepositoryId } from "../../runtime/storage-journal/authority-audit-ledger.js";
+import { recordAuthorityAuditEvent, verifyAuthorityAuditEvents, } from "../../runtime/storage-journal/authority-audit-service.js";
+import { engineAdoptionRecordPath, readPersistedIntervention, recordBootstrapSidecarAdopted, recoverPersistedEngineAdoption, renewPersistedEngineAdoptionAuthority, } from "../../runtime/storage-journal/intervention-control-persistence.js";
 /**
  * Effectful local-only harness-bootstrap CLI. The repository-default engine
  * channel is intentionally absent: global promotion belongs to the minimal
@@ -221,7 +221,7 @@ export function bootstrapInterventionUsage() {
         '  pnpm workflow change intervene <parent-change-id> --reason <text> --audit-root <absolute-path> [--json]',
         '  pnpm workflow change revoke-intervention <parent-change-id> --reason <text> [--json]',
         '  pnpm workflow engine build-artifact <absolute-executable-path> --for <parent-change-id> --protocol-version <positive-integer> --policy-schema-version <positive-integer> --audit-root <absolute-path> [--json]',
-        '  pnpm workflow engine adopt <artifact-id> --into <parent-change-id> --audit-root <absolute-path> [--json]',
+        '  pnpm workflow engine adopt <artifact-id> --into <parent-change-id> --audit-root <absolute-path> [--json] (local parent adoption; package runner unchanged)',
         '  pnpm workflow intervention status <parent-change-id> [--tx <tx-id>] [--json]',
         '  pnpm workflow intervention recover <tx-id> [--json]',
         'Caller-supplied maintenance envelopes and adoption manifests are disabled.',

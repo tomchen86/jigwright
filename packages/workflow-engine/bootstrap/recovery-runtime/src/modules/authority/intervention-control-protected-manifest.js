@@ -1,15 +1,9 @@
 /**
- * Builds protected-capability manifests and classifies the affected
- * protected closures.
- *
- * Invariants:
- * - A manifest must cover every capability in
- *   `REQUIRED_PROTECTED_CAPABILITIES`; any missing capability is rejected.
- * - `verifyProtectedManifest` rebuilds the manifest and requires the
- *   recomputed `manifestDigest` to match.
+ * Builds exact protected-capability manifests shared by ordinary Grant policy.
+ * Every required capability and any optional verifier composition are validated.
  */
-import { assertSafePath, assertSortedUnique, assertDigest, canonicalDigest, hasExactObjectKeys, sameJson, freezeDeep, } from "./intervention-control-values.js";
-import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
+import { assertDigest, assertSafePath, assertSortedUnique, canonicalDigest, freezeDeep, hasExactObjectKeys, sameJson, } from "./intervention-control-values.js";
+import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { compareCanonicalStrings } from "../../foundation/canonical-json/canonical-json.js";
 // ---------------------------------------------------------------------------
 // M11: protected capability closure and candidate classification
@@ -271,77 +265,4 @@ export function createProtectedCapabilityManifest(input) {
         entries,
     });
     return freezeDeep({ ...payload, manifestDigest: canonicalDigest(payload) });
-}
-export function verifyProtectedManifest(manifest) {
-    const rebuilt = createProtectedCapabilityManifest(manifest);
-    if (rebuilt.manifestDigest !== manifest.manifestDigest) {
-        throw workflowError('PROTECTED_CAPABILITY_MANIFEST_DIGEST_MISMATCH', 'Protected capability manifest digest mismatch.', ExitCode.verification);
-    }
-}
-export function normalizedExactChanges(changes) {
-    if (changes.length === 0) {
-        throw workflowError('CONTROL_PLANE_EXACT_DIFF_INVALID', 'Candidate exact diff is empty.', ExitCode.usage);
-    }
-    const normalized = changes
-        .map((change) => {
-        assertSafePath(change.path, false, 'CONTROL_PLANE_EXACT_DIFF_INVALID');
-        if (change.beforeDigest !== null) {
-            assertDigest(change.beforeDigest, 'CONTROL_PLANE_EXACT_DIFF_INVALID');
-        }
-        if (change.afterDigest !== null) {
-            assertDigest(change.afterDigest, 'CONTROL_PLANE_EXACT_DIFF_INVALID');
-        }
-        if ((change.beforeDigest === null && change.afterDigest === null) ||
-            change.beforeDigest === change.afterDigest) {
-            throw workflowError('CONTROL_PLANE_EXACT_DIFF_INVALID', 'Exact diff contains a no-op.', ExitCode.usage);
-        }
-        return { ...change };
-    })
-        .sort((left, right) => compareCanonicalStrings(left.path, right.path));
-    assertSortedUnique(normalized.map((change) => change.path), 'CONTROL_PLANE_EXACT_DIFF_INVALID');
-    return normalized;
-}
-export function controlPlaneCandidateDigest(changes) {
-    return canonicalDigest({
-        kind: 'control-plane-candidate.v1',
-        changes: normalizedExactChanges(changes),
-    });
-}
-export function classifyProtectedCandidateImpact(input) {
-    verifyProtectedManifest(input.beforeManifest);
-    verifyProtectedManifest(input.afterManifest);
-    const changes = normalizedExactChanges(input.changes);
-    const changedPaths = new Set(changes.map((change) => change.path));
-    const manifestChanged = changedPaths.has(input.beforeManifest.manifestPath) ||
-        input.beforeManifest.manifestDigest !== input.afterManifest.manifestDigest;
-    const capabilities = new Set();
-    for (const capability of REQUIRED_PROTECTED_CAPABILITIES) {
-        const before = input.beforeManifest.entries.find((entry) => entry.capability === capability);
-        const after = input.afterManifest.entries.find((entry) => entry.capability === capability);
-        const paths = new Set([
-            ...before.entrypoints,
-            ...before.dependencies,
-            ...after.entrypoints,
-            ...after.dependencies,
-        ]);
-        if (before.closureDigest !== after.closureDigest ||
-            [...changedPaths].some((path) => paths.has(path))) {
-            capabilities.add(capability);
-        }
-    }
-    const affectedCapabilities = [...capabilities].sort(compareCanonicalStrings);
-    const controlPlane = manifestChanged || affectedCapabilities.length > 0;
-    return freezeDeep(controlPlane
-        ? {
-            class: 'C',
-            kind: 'control-plane',
-            affectedCapabilities,
-            manifestChanged,
-        }
-        : {
-            class: 'A',
-            kind: 'ordinary',
-            affectedCapabilities: [],
-            manifestChanged: false,
-        });
 }

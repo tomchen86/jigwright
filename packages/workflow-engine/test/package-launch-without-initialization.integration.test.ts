@@ -1,59 +1,53 @@
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import { git, createFixtureRepository } from './fixture.ts';
 import {
   createEngineArtifact,
   createProtectedCapabilityManifest,
+  protectedCapabilityClosureDigest,
   type ProtectedCapabilityEntry,
   REQUIRED_PROTECTED_CAPABILITIES,
-  protectedCapabilityClosureDigest,
 } from '../src/modules/authority/intervention-control.ts';
-import { initializeControlPlaneSupervisorState } from '../src/application/control-plane/intervention-control-updater.ts';
-import crypto from 'node:crypto';
 import {
-  setupFinalizedControlPlanePromotionFixture,
-  CONTROL_PLANE_FIXTURE_REPOSITORY_ID,
-} from './control-plane-promotion-fixture.ts';
-import os from 'node:os';
-import {
-  BOOTSTRAP_RUNTIME_NAMES,
-  sealFixtureWorkflowHost,
-} from './support/bootstrap-runtime-fixture.ts';
-import { loadProtectedCapabilitiesFromTrustBase } from '../src/runtime/repository-validation/protected-capabilities.ts';
-import { spawnSync } from 'node:child_process';
-import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';
+  recoveryAuthorityDescriptorDigest,
+  type RecoveryAuthorityDescriptorPayloadV1,
+  type RecoveryAuthorityDescriptorV1,
+  type RecoveryAuthorityExpectations,
+  recoveryAuthorityRepositoryIdentityDigest,
+} from '../src/modules/authority/recovery-authority-contract.ts';
 import {
   createRecoveryQuarantineEnterGrantPayload,
   createRecoveryQuarantineReleaseGrantPayload,
   RECOVERY_QUARANTINE_ENTER_NAMESPACE,
   RECOVERY_QUARANTINE_RELEASE_NAMESPACE,
-  type RecoveryQuarantineGrantPayload,
-  type RecoveryQuarantineEnvelope,
   type RecoveryQuarantineAuditRecord,
+  type RecoveryQuarantineEnvelope,
+  type RecoveryQuarantineGrantPayload,
 } from '../src/modules/authority/recovery-quarantine-contract.ts';
 import {
   executeRecoveryQuarantineEnter,
   executeRecoveryQuarantineRelease,
 } from '../src/runtime/recovery/recovery-quarantine.ts';
-import {
-  type RecoveryAuthorityDescriptorV1,
-  type RecoveryAuthorityExpectations,
-  type RecoveryAuthorityDescriptorPayloadV1,
-  recoveryAuthorityRepositoryIdentityDigest,
-  recoveryAuthorityDescriptorDigest,
-} from '../src/modules/authority/recovery-authority-contract.ts';
-import { pathToFileURL } from 'node:url';
+import { loadProtectedCapabilitiesFromTrustBase } from '../src/runtime/repository-validation/protected-capabilities.ts';
 import {
   digest,
-  readJsonRecord,
-  recordField,
-  recordDigest,
   writeJsonRecord,
-  errorCode,
 } from './control-plane-supervisor-selection-fixture.ts';
+import {
+  FIXED_RUNNER_FIXTURE_REPOSITORY_ID,
+  setupFixedRunnerFixture,
+} from './fixed-runner-fixture.ts';
+import { createFixtureRepository, git } from './fixture.ts';
+import {
+  BOOTSTRAP_RUNTIME_NAMES,
+  sealFixtureWorkflowHost,
+} from './support/bootstrap-runtime-fixture.ts';
 
 const SOURCE_ENGINE_ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -73,7 +67,7 @@ const FIXTURE_ROLE_CONTEXT_SHARING_SOURCE =
 const FIXTURE_PROTECTED_CAPABILITY_LOADER_PATH =
   'src/runtime/repository-validation/protected-capabilities.ts';
 
-test('anti-lockout bootstrap accepts and binds an optional sealed Grant verifier composition', () => {
+test('protected manifest loader accepts and binds an optional sealed Grant verifier composition', () => {
   const engineRoot = createSealedEnginePackage();
   const repository = createRepository(
     engineRoot,
@@ -92,12 +86,8 @@ test('anti-lockout bootstrap accepts and binds an optional sealed Grant verifier
       digest(canonicalJson(historicalPayload)),
     );
 
-    const initialized = runInitialize(engineRoot, repository);
-    assert.equal(initialized.status, 0, initialized.stderr);
-    const state = JSON.parse(
-      fs.readFileSync(supervisorPath(repository), 'utf8'),
-    ) as { activeArtifact: { closureDigest: string } };
-    assert.equal(state.activeArtifact.closureDigest, expectedManifestDigest);
+    const verified = loadProtectedCapabilitiesFromTrustBase(repository, 'HEAD');
+    assert.equal(verified.manifestDigest, expectedManifestDigest);
     assert.equal(manifest.grantVerifierComposition.packageVersion, '0.1.0');
     assert.equal(
       manifest.grantVerifierComposition.verifierImplementation,
@@ -109,7 +99,7 @@ test('anti-lockout bootstrap accepts and binds an optional sealed Grant verifier
   }
 });
 
-test('anti-lockout bootstrap keeps a historical manifest without a Grant verifier composition readable', () => {
+test('protected manifest loader keeps a historical manifest without a Grant verifier composition readable', () => {
   const engineRoot = createSealedEnginePackage();
   const repository = createRepository(
     engineRoot,
@@ -117,16 +107,16 @@ test('anti-lockout bootstrap keeps a historical manifest without a Grant verifie
   );
 
   try {
-    const initialized = runInitialize(engineRoot, repository);
-    assert.equal(initialized.status, 0, initialized.stderr);
-    assert.equal(fs.existsSync(supervisorPath(repository)), true);
+    const verified = loadProtectedCapabilitiesFromTrustBase(repository, 'HEAD');
+    assert.equal(verified.grantVerifierComposition, undefined);
+    assert.equal(fs.existsSync(supervisorPath(repository)), false);
   } finally {
     fs.rmSync(engineRoot, { recursive: true, force: true });
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
-test('anti-lockout bootstrap rejects a partial Grant verifier composition candidate', () => {
+test('protected manifest loader rejects a partial Grant verifier composition candidate', () => {
   const engineRoot = createSealedEnginePackage();
   const repository = createRepository(
     engineRoot,
@@ -137,11 +127,8 @@ test('anti-lockout bootstrap rejects a partial Grant verifier composition candid
     installFixtureGrantVerifierComposition(repository, (composition) => {
       delete composition.packageVersion;
     });
-    const rejected = runInitialize(engineRoot, repository);
-    assert.notEqual(rejected.status, 0);
-    assert.match(
-      rejected.stderr,
-      /CONTROL_PLANE_BOOTSTRAP_PROTECTED_MANIFEST_INVALID/,
+    assert.throws(() =>
+      loadProtectedCapabilitiesFromTrustBase(repository, 'HEAD'),
     );
     assert.equal(fs.existsSync(supervisorPath(repository)), false);
   } finally {
@@ -150,7 +137,7 @@ test('anti-lockout bootstrap rejects a partial Grant verifier composition candid
   }
 });
 
-test('anti-lockout bootstrap rejects unknown Grant verifier composition keys', () => {
+test('protected manifest loader rejects unknown Grant verifier composition keys', () => {
   const engineRoot = createSealedEnginePackage();
   const repository = createRepository(
     engineRoot,
@@ -161,11 +148,8 @@ test('anti-lockout bootstrap rejects unknown Grant verifier composition keys', (
     installFixtureGrantVerifierComposition(repository, (composition) => {
       composition.unreviewedFallback = true;
     });
-    const rejected = runInitialize(engineRoot, repository);
-    assert.notEqual(rejected.status, 0);
-    assert.match(
-      rejected.stderr,
-      /CONTROL_PLANE_BOOTSTRAP_PROTECTED_MANIFEST_INVALID/,
+    assert.throws(() =>
+      loadProtectedCapabilitiesFromTrustBase(repository, 'HEAD'),
     );
     assert.equal(fs.existsSync(supervisorPath(repository)), false);
   } finally {
@@ -174,7 +158,7 @@ test('anti-lockout bootstrap rejects unknown Grant verifier composition keys', (
   }
 });
 
-test('anti-lockout bootstrap requires an exact role-context-sharing verifier binding when the Grant verifier composition is present', () => {
+test('protected manifest loader requires an exact role-context-sharing verifier binding when the Grant verifier composition is present', () => {
   for (const variant of ['exact', 'omitted', 'partial', 'unknown'] as const) {
     const engineRoot = createSealedEnginePackage();
     const repository = createRepository(
@@ -199,345 +183,20 @@ test('anti-lockout bootstrap requires an exact role-context-sharing verifier bin
         },
         true,
       );
-      const initialized = runInitialize(engineRoot, repository);
       if (variant === 'exact') {
-        assert.equal(initialized.status, 0, initialized.stderr);
+        assert.ok(
+          loadProtectedCapabilitiesFromTrustBase(repository, 'HEAD')
+            .grantVerifierComposition,
+        );
       } else {
-        assert.notEqual(initialized.status, 0);
-        assert.match(
-          initialized.stderr,
-          /CONTROL_PLANE_BOOTSTRAP_PROTECTED_MANIFEST_INVALID/,
+        assert.throws(() =>
+          loadProtectedCapabilitiesFromTrustBase(repository, 'HEAD'),
         );
       }
     } finally {
       fs.rmSync(engineRoot, { recursive: true, force: true });
       fs.rmSync(repository, { recursive: true, force: true });
     }
-  }
-});
-
-test('sealed launcher initializes generation-one supervisor from the verified built-in closure and replays exactly', () => {
-  const engineRoot = createSealedEnginePackage();
-  const repository = createRepository(engineRoot, 'github:R_bootstrap_fixture');
-
-  try {
-    const help = runLauncher(engineRoot, repository, ['--help']);
-    assert.equal(help.status, 0, help.stderr);
-    assert.equal(fs.existsSync(supervisorPath(repository)), false);
-    const status = runLauncher(engineRoot, repository, [
-      'status',
-      'fixture-session',
-      '--json',
-    ]);
-    assert.equal(status.status, 0, status.stderr);
-    assert.equal(fs.existsSync(supervisorPath(repository)), false);
-
-    const initialized = runInitialize(engineRoot, repository);
-    assert.equal(initialized.status, 0, initialized.stderr);
-    assert.equal(
-      JSON.parse(initialized.stdout).kind,
-      'control-plane-initialization.v1',
-    );
-
-    const first = runLauncher(engineRoot, repository, ['fixture-command']);
-    assert.equal(first.status, 0, first.stderr);
-    assert.match(first.stdout, /"kind":"fixture-built-in-engine"/);
-
-    const statePath = supervisorPath(repository);
-    assert.equal(fs.existsSync(statePath), true);
-    const firstBytes = fs.readFileSync(statePath, 'utf8');
-    const firstState = JSON.parse(firstBytes) as {
-      repositoryId: string;
-      generation: number;
-      transition: unknown;
-      activeArtifact: {
-        artifactId: string;
-        closureDigest: string;
-        executableDigest: string;
-        executablePath: string;
-      };
-      recordDigest: string;
-    };
-    assert.equal(firstState.repositoryId, 'github:R_bootstrap_fixture');
-    assert.equal(firstState.generation, 1);
-    assert.equal(firstState.transition, null);
-    assert.equal(
-      firstState.activeArtifact.closureDigest,
-      protectedManifest(repository).manifestDigest,
-    );
-    assert.match(firstState.activeArtifact.artifactId, /^sha256:[0-9a-f]{64}$/);
-    assert.match(
-      firstState.activeArtifact.closureDigest,
-      /^sha256:[0-9a-f]{64}$/,
-    );
-    assert.match(
-      firstState.activeArtifact.executableDigest,
-      /^sha256:[0-9a-f]{64}$/,
-    );
-    assert.equal(
-      firstState.activeArtifact.executablePath.startsWith(
-        `${stateRoot(repository)}${path.sep}control-plane-artifacts${path.sep}`,
-      ),
-      true,
-    );
-    assert.equal(
-      fs.statSync(firstState.activeArtifact.executablePath).mode & 0o777,
-      0o500,
-    );
-
-    const replay = runInitialize(engineRoot, repository);
-    assert.equal(replay.status, 0, replay.stderr);
-    assert.equal(fs.readFileSync(statePath, 'utf8'), firstBytes);
-  } finally {
-    fs.rmSync(engineRoot, { recursive: true, force: true });
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('initial supervisor bootstrap allows local namespaces and exactly replays a fully materialized artifact after a crash', async () => {
-  const engineRoot = createSealedEnginePackage();
-  const withLocalState = createRepository(
-    engineRoot,
-    'github:R_local_state_fixture',
-  );
-  const replay = createRepository(engineRoot, 'github:R_crash_replay_fixture');
-  const mismatch = createRepository(
-    engineRoot,
-    'github:R_crash_mismatch_fixture',
-  );
-
-  try {
-    const localStateRoot = stateRoot(withLocalState);
-    fs.mkdirSync(path.join(localStateRoot, 'checkpoints'), {
-      recursive: true,
-      mode: 0o700,
-    });
-    fs.writeFileSync(
-      path.join(localStateRoot, 'checkpoints', 'local-checkpoint.json'),
-      '{}\n',
-      { mode: 0o600 },
-    );
-    const initializedWithLocalState = runInitialize(engineRoot, withLocalState);
-    assert.equal(
-      initializedWithLocalState.status,
-      0,
-      initializedWithLocalState.stderr,
-    );
-
-    const replayInitializer = await fixtureInitializer(replay);
-    assert.throws(
-      () =>
-        initializeWithCrashHook(
-          replay,
-          'ARTIFACT_MATERIALIZED',
-          replayInitializer,
-        ),
-      /simulated bootstrap hard crash/,
-    );
-    const recovered = runInitialize(engineRoot, replay);
-    assert.equal(recovered.status, 0, recovered.stderr);
-    assert.equal(fs.existsSync(supervisorPath(replay)), true);
-    const replayState = JSON.parse(
-      fs.readFileSync(supervisorPath(replay), 'utf8'),
-    ) as { activeArtifact: { executablePath: string } };
-
-    const mismatchInitializer = await fixtureInitializer(mismatch);
-    assert.throws(
-      () =>
-        initializeWithCrashHook(
-          mismatch,
-          'ARTIFACT_MATERIALIZED',
-          mismatchInitializer,
-        ),
-      /simulated bootstrap hard crash/,
-    );
-    const mismatchArtifactRoot = path.join(
-      stateRoot(mismatch),
-      'control-plane-artifacts',
-    );
-    const [mismatchArtifactId] = fs.readdirSync(mismatchArtifactRoot);
-    assert.ok(mismatchArtifactId);
-    const mismatchExecutable = path.join(
-      mismatchArtifactRoot,
-      mismatchArtifactId,
-      'engine',
-    );
-    fs.chmodSync(mismatchExecutable, 0o700);
-    fs.appendFileSync(mismatchExecutable, '\n// crash residue tamper\n');
-    const rejected = runInitialize(engineRoot, mismatch);
-    assert.notEqual(rejected.status, 0);
-    assert.match(rejected.stderr, /CONTROL_PLANE_BOOTSTRAP_ARTIFACT_MISMATCH/);
-    assert.equal(fs.existsSync(supervisorPath(mismatch)), false);
-
-    assert.equal(
-      fs.existsSync(replayState.activeArtifact.executablePath),
-      true,
-    );
-  } finally {
-    fs.rmSync(engineRoot, { recursive: true, force: true });
-    fs.rmSync(withLocalState, { recursive: true, force: true });
-    fs.rmSync(replay, { recursive: true, force: true });
-    fs.rmSync(mismatch, { recursive: true, force: true });
-  }
-});
-
-test('initial supervisor bootstrap rejects dirty repositories, non-empty state, and repository identity drift', () => {
-  const engineRoot = createSealedEnginePackage();
-  const dirty = createRepository(engineRoot, 'github:R_dirty_fixture');
-  const nonEmpty = createRepository(engineRoot, 'github:R_nonempty_fixture');
-  const identityDrift = createRepository(
-    engineRoot,
-    'github:R_identity_fixture',
-  );
-
-  try {
-    fs.writeFileSync(path.join(dirty, 'untracked.txt'), 'dirty\n');
-    const dirtyResult = runInitialize(engineRoot, dirty);
-    assert.notEqual(dirtyResult.status, 0);
-    assert.match(
-      dirtyResult.stderr,
-      /CONTROL_PLANE_BOOTSTRAP_REPOSITORY_DIRTY/,
-    );
-    assert.equal(fs.existsSync(supervisorPath(dirty)), false);
-
-    fs.mkdirSync(stateRoot(nonEmpty), { recursive: true, mode: 0o700 });
-    fs.writeFileSync(
-      path.join(stateRoot(nonEmpty), 'unexpected.json'),
-      '{}\n',
-      { mode: 0o600 },
-    );
-    const nonEmptyResult = runInitialize(engineRoot, nonEmpty);
-    assert.notEqual(nonEmptyResult.status, 0);
-    assert.match(
-      nonEmptyResult.stderr,
-      /CONTROL_PLANE_BOOTSTRAP_STATE_NOT_EMPTY/,
-    );
-    assert.equal(fs.existsSync(supervisorPath(nonEmpty)), false);
-
-    const initialized = runInitialize(engineRoot, identityDrift);
-    assert.equal(initialized.status, 0, initialized.stderr);
-    installRepositoryIdentity(identityDrift, 'github:R_different_fixture');
-    const selectionBefore = fs.readFileSync(supervisorPath(identityDrift));
-    const mismatched = runLauncher(engineRoot, identityDrift, [
-      'fixture-command',
-    ]);
-    assert.equal(mismatched.status, 0, mismatched.stderr);
-    assert.deepEqual(
-      fs.readFileSync(supervisorPath(identityDrift)),
-      selectionBefore,
-    );
-  } finally {
-    fs.rmSync(engineRoot, { recursive: true, force: true });
-    fs.rmSync(dirty, { recursive: true, force: true });
-    fs.rmSync(nonEmpty, { recursive: true, force: true });
-    fs.rmSync(identityDrift, { recursive: true, force: true });
-  }
-});
-
-test('initial supervisor bootstrap fails closed when the pinned built-in closure changed', () => {
-  const engineRoot = createSealedEnginePackage();
-  const repository = createRepository(engineRoot, 'github:R_tampered_fixture');
-
-  try {
-    const trackedEntrypoint = path.join(
-      repositoryEngineRoot(repository),
-      'src/entrypoints/cli/workflow-cli.ts',
-    );
-    fs.appendFileSync(trackedEntrypoint, "process.stderr.write('tampered');\n");
-    git(repository, [
-      'add',
-      'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
-    ]);
-    git(repository, ['commit', '-m', 'Tamper tracked built-in closure']);
-    git(repository, ['update-ref', 'refs/remotes/origin/main', 'HEAD']);
-    const result = runInitialize(engineRoot, repository);
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /BUILT_IN_ENGINE_CLOSURE_MISMATCH/);
-    assert.equal(fs.existsSync(supervisorPath(repository)), false);
-  } finally {
-    fs.rmSync(engineRoot, { recursive: true, force: true });
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('initial supervisor bootstrap rejects stale protected capability content digests from HEAD', () => {
-  const engineRoot = createSealedEnginePackage();
-  const repository = createRepository(
-    engineRoot,
-    'github:R_stale_protected_fixture',
-  );
-
-  try {
-    const protectedFile = path.join(
-      repository,
-      'protected/adoption.journal/entry.ts',
-    );
-    fs.appendFileSync(protectedFile, 'changed without manifest refresh\n');
-    git(repository, ['add', 'protected/adoption.journal/entry.ts']);
-    git(repository, [
-      'commit',
-      '-m',
-      'Change protected bytes without manifest',
-    ]);
-    git(repository, ['update-ref', 'refs/remotes/origin/main', 'HEAD']);
-
-    const result = runInitialize(engineRoot, repository);
-    assert.notEqual(result.status, 0);
-    assert.match(
-      result.stderr,
-      /CONTROL_PLANE_BOOTSTRAP_PROTECTED_MANIFEST_INVALID/,
-    );
-    assert.equal(fs.existsSync(supervisorPath(repository)), false);
-  } finally {
-    fs.rmSync(engineRoot, { recursive: true, force: true });
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('initial supervisor bootstrap rejects external package roots, feature branches, and detached HEAD', () => {
-  const engineRoot = createSealedEnginePackage();
-  const externalRootRepository = createRepository(
-    engineRoot,
-    'github:R_external_package_fixture',
-  );
-  const featureRepository = createRepository(
-    engineRoot,
-    'github:R_feature_branch_fixture',
-  );
-  const detachedRepository = createRepository(
-    engineRoot,
-    'github:R_detached_fixture',
-  );
-
-  try {
-    const external = runLauncherFromRoot(engineRoot, externalRootRepository, [
-      'control-plane',
-      'initialize',
-      '--json',
-    ]);
-    assert.notEqual(external.status, 0);
-    assert.match(
-      external.stderr,
-      /CONTROL_PLANE_BOOTSTRAP_PACKAGE_ROOT_INVALID/,
-    );
-    assert.equal(fs.existsSync(supervisorPath(externalRootRepository)), false);
-
-    git(featureRepository, ['switch', '-c', 'feature/bootstrap-attack']);
-    const feature = runInitialize(engineRoot, featureRepository);
-    assert.notEqual(feature.status, 0);
-    assert.match(feature.stderr, /CONTROL_PLANE_BOOTSTRAP_BASE_MISMATCH/);
-    assert.equal(fs.existsSync(supervisorPath(featureRepository)), false);
-
-    git(detachedRepository, ['switch', '--detach', 'HEAD']);
-    const detached = runInitialize(engineRoot, detachedRepository);
-    assert.notEqual(detached.status, 0);
-    assert.match(detached.stderr, /CONTROL_PLANE_BOOTSTRAP_BASE_MISMATCH/);
-    assert.equal(fs.existsSync(supervisorPath(detachedRepository)), false);
-  } finally {
-    fs.rmSync(engineRoot, { recursive: true, force: true });
-    fs.rmSync(externalRootRepository, { recursive: true, force: true });
-    fs.rmSync(featureRepository, { recursive: true, force: true });
-    fs.rmSync(detachedRepository, { recursive: true, force: true });
   }
 });
 
@@ -601,41 +260,6 @@ test('ordinary package launch leaves global selection residue unconsumed without
   }
 });
 
-test('initial supervisor bootstrap rejects a self-consistent local main not authorized by origin main', () => {
-  const engineRoot = createSealedEnginePackage();
-  const repository = createRepository(
-    engineRoot,
-    'github:R_remote_base_attack',
-  );
-
-  try {
-    const entrypoint = path.join(
-      repositoryEngineRoot(repository),
-      'src/entrypoints/cli/workflow-cli.ts',
-    );
-    fs.appendFileSync(
-      entrypoint,
-      "process.stderr.write('local-main-attack');\n",
-    );
-    regenerateFixtureEngineClosure(repository);
-    writeFixtureProtectedManifest(repository);
-    git(repository, ['add', '.']);
-    git(repository, [
-      'commit',
-      '-m',
-      'Regenerate self-consistent local engine',
-    ]);
-
-    const result = runInitialize(engineRoot, repository);
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /CONTROL_PLANE_BOOTSTRAP_REMOTE_BASE_MISMATCH/);
-    assert.equal(fs.existsSync(supervisorPath(repository)), false);
-  } finally {
-    fs.rmSync(engineRoot, { recursive: true, force: true });
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
 test('ordinary package launch does not select a forged generation-one supervisor', () => {
   const engineRoot = createSealedEnginePackage();
   const repository = createRepository(
@@ -656,12 +280,16 @@ test('ordinary package launch does not select a forged generation-one supervisor
       policySchemaVersion: 2,
       smokeReportDigest: digest('forged-smoke'),
     });
-    initializeControlPlaneSupervisorState(stateRoot(repository), {
-      repositoryId: 'github:R_forged_generation_one',
-      closureDigest,
-      artifact,
-      executableBase64: Buffer.from(source).toString('base64'),
-      now: new Date('2026-08-10T10:00:00.000Z'),
+    const root = stateRoot(repository);
+    fs.mkdirSync(root, { recursive: true, mode: 0o700 });
+    writeJsonRecord(supervisorPath(repository), {
+      kind: 'control-plane-supervisor-state.v1',
+      generation: 1,
+      activeArtifact: {
+        artifactId: artifact.artifactId,
+        executableDigest: artifact.executableDigest,
+        closureDigest,
+      },
     });
 
     const result = runLauncher(engineRoot, repository, ['fixture-command']);
@@ -672,135 +300,60 @@ test('ordinary package launch does not select a forged generation-one supervisor
   }
 });
 
-test('ordinary package launch ignores a self-digested V1 terminal and never executes its probe-capable artifact', () => {
-  const engineRoot = createSealedEnginePackage();
-  const repository = createRepository(
-    engineRoot,
-    'github:R_v1_terminal_downgrade',
-  );
-  const marker = path.join(repository, 'v1-terminal-executed');
+test('ordinary package launch ignores inert V1 records and never executes their probe-capable artifact', () => {
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'inert-v1-selection-'));
+  const marker = path.join(scratch, 'executed');
+  const value = setupFixedRunnerFixture({
+    candidateExecutableFactory: () =>
+      Buffer.from(`#!/usr/bin/env node
+require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'executed');
+`),
+  });
   try {
-    const initialized = runInitialize(engineRoot, repository);
-    assert.equal(initialized.status, 0, initialized.stderr);
-    const storageRoot = stateRoot(repository);
-    const initial = readJsonRecord(supervisorPath(repository));
-    const repositoryId = String(initial.repositoryId);
-    const grantId = 'forged-v1-terminal-grant';
-    const txId = 'forged-v1-terminal-tx';
-    const closureDigest = digest('forged-v1-terminal-closure');
-    const executableBytes = Buffer.from(`#!/usr/bin/env node
-const fs = require('node:fs');
-if (process.argv[2] === '--control-plane-restart-probe') {
-  process.stdout.write(JSON.stringify({kind:'control-plane-restart.v1',ready:true,closureDigest:${JSON.stringify(closureDigest)}}) + '\\n');
-} else {
-  fs.writeFileSync(${JSON.stringify(marker)}, 'executed\\n');
-  process.stdout.write('forged v1 terminal executed\\n');
-}
-`);
-    const executableDigest = digest(executableBytes);
-    const artifactId = digest('forged-v1-terminal-artifact');
-    const artifactDirectory = path.join(
-      storageRoot,
-      'control-plane-artifacts',
-      artifactId.slice('sha256:'.length),
+    const positiveControl = spawnSync(
+      process.execPath,
+      [
+        value.retiredSelection.activeArtifact.executablePath,
+        '--control-plane-restart-probe',
+      ],
+      { encoding: 'utf8' },
     );
-    fs.mkdirSync(artifactDirectory, { recursive: true, mode: 0o700 });
-    const executablePath = path.join(artifactDirectory, 'engine');
-    fs.writeFileSync(executablePath, executableBytes, { mode: 0o500 });
-    fs.chmodSync(executablePath, 0o500);
-
-    const history = [
-      'PREPARED',
-      'OLD_CLOSURE_VERIFIED',
-      'CANDIDATE_VERIFIED',
-      'RECOVERY_VERIFIED',
-      'SWITCHED',
-      'SELF_TESTED',
-      'FINALIZED',
-    ].map((state, index) => ({
-      state,
-      at: new Date(Date.UTC(2026, 7, 10, 12, 0, 0, index)).toISOString(),
-    }));
-    const transaction: Record<string, unknown> = {
-      kind: 'minimal-control-plane-updater.v1',
-      txId,
-      grantId,
-      candidateDigest: digest('forged-v1-terminal-candidate'),
-      beforeClosureDigest: String(
-        recordField(initial, 'activeArtifact').closureDigest,
-      ),
-      afterClosureDigest: closureDigest,
-      recoveryBundleDigest: digest('forged-v1-terminal-recovery'),
-      updaterVersion: 1,
-      state: 'FINALIZED',
-      history,
-    };
-    transaction.journalDigest = recordDigest(transaction, 'journalDigest');
-    const record: Record<string, unknown> = {
-      kind: 'persisted-control-plane-update.v1',
-      grantState: 'consumed',
-      transaction,
-      envelope: {
-        payload: {
-          grantId,
-          repositoryId,
-          candidateDigest: transaction.candidateDigest,
-          beforeClosureDigest: transaction.beforeClosureDigest,
-          afterClosureDigest: transaction.afterClosureDigest,
-          updaterVersion: 1,
-        },
-        signature: 'attacker-controlled-v1-signature',
-      },
-      beforeManifest: { manifestDigest: transaction.beforeClosureDigest },
-      afterManifest: { manifestDigest: transaction.afterClosureDigest },
-      changes: [],
-      observations: [],
-      createdAt: history[0]!.at,
-      updatedAt: history.at(-1)!.at,
-      effectsPerformed: false,
-    };
-    record.recordDigest = recordDigest(record, 'recordDigest');
-    const updates = path.join(storageRoot, 'control-updates');
-    fs.mkdirSync(updates, { mode: 0o700 });
-    writeJsonRecord(
-      path.join(
-        updates,
-        `${crypto.createHash('sha256').update(`control-update\0${grantId}`).digest('hex')}.json`,
-      ),
-      record,
+    assert.equal(positiveControl.status, 0, positiveControl.stderr);
+    assert.equal(fs.readFileSync(marker, 'utf8'), 'executed');
+    fs.unlinkSync(marker);
+    const supervisor = path.join(
+      value.stateRoot,
+      'control-plane-supervisor.json',
     );
-    const supervisor: Record<string, unknown> = {
-      kind: 'control-plane-supervisor-state.v1',
-      repositoryId,
-      activeArtifact: {
-        artifactId,
-        executableDigest,
-        closureDigest,
-        executablePath,
-      },
-      generation: 2,
-      transition: { grantId, txId, phase: 'candidate-selected' },
-      updatedAt: record.updatedAt,
-    };
-    supervisor.recordDigest = recordDigest(supervisor, 'recordDigest');
-    writeJsonRecord(supervisorPath(repository), supervisor);
-
-    const rejected = runLauncher(engineRoot, repository, ['fixture-command']);
-    assert.equal(rejected.status, 0, rejected.stderr);
+    const historicalBytes = Buffer.from(
+      JSON.stringify({
+        ...value.retiredSelection,
+        kind: 'control-plane-supervisor-state.v1',
+      }) + '\n',
+    );
+    fs.writeFileSync(supervisor, historicalBytes);
+    const head = git(value.repository, ['rev-parse', 'HEAD']);
+    const result = runLauncher(value.engineRoot, value.repository, [
+      'fixture-command',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /fixture built-in engine/);
     assert.equal(fs.existsSync(marker), false);
+    assert.deepEqual(fs.readFileSync(supervisor), historicalBytes);
+    assert.equal(git(value.repository, ['rev-parse', 'HEAD']), head);
   } finally {
-    fs.rmSync(engineRoot, { recursive: true, force: true });
-    fs.rmSync(repository, { recursive: true, force: true });
+    value.cleanup();
+    fs.rmSync(scratch, { recursive: true, force: true });
   }
 });
 
-test('active Recovery Quarantine fences built-in and promoted engines before any probe', async () => {
+test('active Recovery Quarantine fences package and inert retired engine state before any probe', async () => {
   const engineRoot = createSealedEnginePackage();
   const builtInRepository = createRepository(
     engineRoot,
     'github:R_recovery_quarantine_builtin_fixture',
   );
-  const promoted = await setupFinalizedControlPlanePromotionFixture();
+  const promoted = await setupFixedRunnerFixture();
   let builtInQuarantine: ReturnType<
     typeof installActiveRecoveryQuarantineMarker
   > | null = null;
@@ -849,7 +402,7 @@ test('active Recovery Quarantine fences built-in and promoted engines before any
       '--json',
     ]);
     assert.notEqual(sealedRecovery.status, 0);
-    assert.doesNotMatch(sealedRecovery.stderr, /WORKFLOW_RECOVERY_QUARANTINED/);
+    assert.match(sealedRecovery.stderr, /WORKFLOW_RECOVERY_QUARANTINED/);
     assert.doesNotMatch(sealedRecovery.stdout, /fixture-built-in-engine/);
 
     const sealedRelease = runLauncher(engineRoot, builtInRepository, [
@@ -873,7 +426,7 @@ test('active Recovery Quarantine fences built-in and promoted engines before any
 
     promotedQuarantine = installActiveRecoveryQuarantineMarker(
       promoted.repository,
-      CONTROL_PLANE_FIXTURE_REPOSITORY_ID,
+      FIXED_RUNNER_FIXTURE_REPOSITORY_ID,
     );
     const promotedProbe = runLauncher(SOURCE_ENGINE_ROOT, promoted.repository, [
       '--control-plane-self-test',
@@ -983,7 +536,6 @@ test('ordinary package launch does not select an engine from origin history', ()
   const rewritten = createRepository(engineRoot, 'github:R_remote_rewritten');
 
   try {
-    assert.equal(runInitialize(engineRoot, advanced).status, 0);
     fs.writeFileSync(
       path.join(advanced, 'after-bootstrap.txt'),
       'descendant\n',
@@ -994,7 +546,6 @@ test('ordinary package launch does not select an engine from origin history', ()
     const allowed = runLauncher(engineRoot, advanced, ['fixture-command']);
     assert.equal(allowed.status, 0, allowed.stderr);
 
-    assert.equal(runInitialize(engineRoot, rewritten).status, 0);
     git(rewritten, ['update-ref', 'refs/remotes/origin/main', 'HEAD^']);
     const rejected = runLauncher(engineRoot, rewritten, ['fixture-command']);
     assert.equal(rejected.status, 0, rejected.stderr);
@@ -1002,105 +553,6 @@ test('ordinary package launch does not select an engine from origin history', ()
     fs.rmSync(engineRoot, { recursive: true, force: true });
     fs.rmSync(advanced, { recursive: true, force: true });
     fs.rmSync(rewritten, { recursive: true, force: true });
-  }
-});
-
-test('initial supervisor bootstrap rechecks exact HEAD and tree before any durable write', async () => {
-  const engineRoot = createSealedEnginePackage();
-  const repository = createRepository(engineRoot, 'github:R_toctou_fixture');
-
-  try {
-    const initialize = await fixtureInitializer(repository);
-    assert.throws(
-      () =>
-        initialize(
-          stateRoot(repository),
-          repositoryEngineRoot(repository),
-          repositoryIdentity(repository),
-          new Date('2026-08-10T10:00:00.000Z'),
-          {
-            testAfterProvenanceCapture() {
-              fs.appendFileSync(path.join(repository, 'package.json'), ' \n');
-              git(repository, ['add', 'package.json']);
-              git(repository, ['commit', '-m', 'Move HEAD after capture']);
-            },
-          },
-        ),
-      (error) =>
-        errorCode(error) === 'CONTROL_PLANE_BOOTSTRAP_PROVENANCE_CHANGED',
-    );
-    assert.equal(fs.existsSync(supervisorPath(repository)), false);
-    assert.equal(fs.existsSync(bootstrapJournalDirectory(repository)), false);
-  } finally {
-    fs.rmSync(engineRoot, { recursive: true, force: true });
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('initial supervisor journal reconciles exact crash residues and rejects malformed, multiple, or symlink residues', async () => {
-  const engineRoot = createSealedEnginePackage();
-  const recoverable = createRepository(engineRoot, 'github:R_journal_replay');
-  const unsafeRepositories = ['malformed', 'multiple', 'symlink'].map(
-    (kind) => ({
-      kind,
-      repository: createRepository(engineRoot, `github:R_journal_${kind}`),
-    }),
-  );
-
-  try {
-    const recoverableInitializer = await fixtureInitializer(recoverable);
-    assert.throws(
-      () =>
-        initializeWithCrashHook(
-          recoverable,
-          'ARTIFACT_MATERIALIZED',
-          recoverableInitializer,
-        ),
-      /simulated bootstrap hard crash/,
-    );
-    assert.equal(fs.existsSync(supervisorPath(recoverable)), false);
-    assert.equal(fs.existsSync(bootstrapJournalDirectory(recoverable)), true);
-    const recovered = runInitialize(engineRoot, recoverable);
-    assert.equal(recovered.status, 0, recovered.stderr);
-    assert.equal(fs.existsSync(supervisorPath(recoverable)), true);
-
-    for (const { kind, repository } of unsafeRepositories) {
-      const initialize = await fixtureInitializer(repository);
-      assert.throws(
-        () => initializeWithCrashHook(repository, 'PREPARED', initialize),
-        /simulated bootstrap hard crash/,
-      );
-      const journal = bootstrapJournalDirectory(repository);
-      if (kind === 'malformed') {
-        fs.writeFileSync(
-          path.join(journal, '01-artifact-materialized.json.pending'),
-          '{',
-          { mode: 0o600 },
-        );
-      } else if (kind === 'multiple') {
-        fs.writeFileSync(path.join(journal, 'first.pending'), '{}\n', {
-          mode: 0o600,
-        });
-        fs.writeFileSync(path.join(journal, 'second.pending'), '{}\n', {
-          mode: 0o600,
-        });
-      } else {
-        fs.symlinkSync(
-          path.join(repository, 'package.json'),
-          path.join(journal, '01-artifact-materialized.json.pending'),
-        );
-      }
-      const rejected = runInitialize(engineRoot, repository);
-      assert.notEqual(rejected.status, 0);
-      assert.match(rejected.stderr, /CONTROL_PLANE_BOOTSTRAP_JOURNAL_CORRUPT/);
-      assert.equal(fs.existsSync(supervisorPath(repository)), false);
-    }
-  } finally {
-    fs.rmSync(engineRoot, { recursive: true, force: true });
-    fs.rmSync(recoverable, { recursive: true, force: true });
-    for (const { repository } of unsafeRepositories) {
-      fs.rmSync(repository, { recursive: true, force: true });
-    }
   }
 });
 
@@ -1265,48 +717,6 @@ function writeFixtureProtectedManifest(repository: string): void {
   );
 }
 
-function regenerateFixtureEngineClosure(repository: string): void {
-  const packageRoot = repositoryEngineRoot(repository);
-  const files = [
-    'package.json',
-    FIXTURE_PROTECTED_CAPABILITY_LOADER_PATH,
-    'src/entrypoints/cli/workflow-cli.ts',
-  ].map((filePath) => {
-    const bytes = fs.readFileSync(path.join(packageRoot, filePath));
-    return {
-      path: filePath,
-      mode: '100644',
-      digest: digest(bytes),
-    };
-  });
-  const manifest = {
-    kind: 'built-in-engine-closure-manifest.v2',
-    entrypoint: 'src/entrypoints/cli/workflow-cli.ts',
-    scope: 'workspace-runtime-source-closure',
-    packages: [
-      {
-        name: 'jigwright',
-        sourceRoot: 'packages/workflow-engine',
-        closureRoot: '.',
-      },
-    ],
-    files,
-  };
-  const manifestBytes = `${JSON.stringify(manifest, null, 2)}\n`;
-  fs.writeFileSync(
-    path.join(packageRoot, 'bootstrap/built-in-engine-closure.json'),
-    manifestBytes,
-  );
-  fs.writeFileSync(
-    path.join(packageRoot, 'bootstrap/built-in-engine-closure-pin.ts'),
-    [
-      'export const BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST =',
-      `  '${digest(manifestBytes)}' as const;`,
-      '',
-    ].join('\n'),
-  );
-}
-
 function forgedSupervisorSource(closureDigest: string): string {
   return `#!/usr/bin/env node
 const mode = process.argv[2];
@@ -1409,6 +819,10 @@ function installFixtureGrantVerifierComposition(
       ...(includeRoleContextSharing
         ? {
             exports: {
+              './collaboration-grant-envelope-reader':
+                './src/collaboration-grant-envelope-reader.ts',
+              './grant-envelope-verifier': './src/grant-envelope-verifier.ts',
+              './grant-lifecycle': './src/grant-lifecycle.ts',
               './role-context-sharing-degradation':
                 './src/role-context-sharing-degradation.ts',
             },
@@ -1542,17 +956,6 @@ function installFixtureGrantVerifierComposition(
   return payload;
 }
 
-function protectedManifest(repository: string) {
-  return loadProtectedCapabilitiesFromTrustBase(repository, 'HEAD');
-}
-
-function withoutManifestDigest<T extends { manifestDigest: string }>(
-  manifest: T,
-) {
-  const { manifestDigest: _manifestDigest, ...payload } = manifest;
-  return payload;
-}
-
 function artifactId(activeArtifact: { artifactId: string }): string {
   return activeArtifact.artifactId;
 }
@@ -1587,14 +990,6 @@ function runLauncherFromRoot(
 
 function repositoryEngineRoot(repository: string): string {
   return path.join(fs.realpathSync(repository), 'packages/workflow-engine');
-}
-
-function runInitialize(engineRoot: string, repository: string) {
-  return runLauncher(engineRoot, repository, [
-    'control-plane',
-    'initialize',
-    '--json',
-  ]);
 }
 
 function stateRoot(repository: string): string {
@@ -1782,10 +1177,6 @@ function supervisorPath(repository: string): string {
   return path.join(stateRoot(repository), 'control-plane-supervisor.json');
 }
 
-function bootstrapJournalDirectory(repository: string): string {
-  return path.join(stateRoot(repository), 'initial-supervisor-bootstrap');
-}
-
 function repositoryIdentity(repository: string) {
   return {
     gitCommonDirectory: fs.realpathSync(
@@ -1798,52 +1189,4 @@ function repositoryIdentity(repository: string) {
     worktreeRoot: fs.realpathSync(repository),
     branchRef: git(repository, ['symbolic-ref', 'HEAD']).trim(),
   };
-}
-
-type FixtureInitializer = (
-  storageRoot: string,
-  packageRoot: string,
-  identity: ReturnType<typeof repositoryIdentity>,
-  now: Date,
-  hooks?: {
-    testAfterProvenanceCapture?: () => void;
-    testAfterBootstrapPhase?: (
-      phase: 'PREPARED' | 'ARTIFACT_MATERIALIZED' | 'SUPERVISOR_PUBLISHED',
-    ) => void;
-  },
-) => unknown;
-
-async function fixtureInitializer(
-  repository: string,
-): Promise<FixtureInitializer> {
-  const moduleUrl = pathToFileURL(
-    path.join(
-      repositoryEngineRoot(repository),
-      'bootstrap/control-plane-trust.ts',
-    ),
-  );
-  moduleUrl.searchParams.set('fixture', crypto.randomUUID());
-  const trust = (await import(moduleUrl.href)) as {
-    initializeBuiltInControlPlaneSupervisor: FixtureInitializer;
-  };
-  return trust.initializeBuiltInControlPlaneSupervisor;
-}
-
-function initializeWithCrashHook(
-  repository: string,
-  crashPhase: 'PREPARED' | 'ARTIFACT_MATERIALIZED',
-  initialize: FixtureInitializer,
-) {
-  return initialize(
-    stateRoot(repository),
-    repositoryEngineRoot(repository),
-    repositoryIdentity(repository),
-    new Date('2026-08-10T10:00:00.000Z'),
-    {
-      testAfterBootstrapPhase(phase) {
-        if (phase === crashPhase)
-          throw new Error('simulated bootstrap hard crash');
-      },
-    },
-  );
 }

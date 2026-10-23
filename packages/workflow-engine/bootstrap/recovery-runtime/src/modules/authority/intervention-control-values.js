@@ -10,13 +10,8 @@
  */
 import crypto from 'node:crypto';
 import { canonicalJson, compareCanonicalStrings, } from "../../foundation/canonical-json/canonical-json.js";
-import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
+import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 export const HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE = 'jigwright.harness-maintenance-grant.v1';
-export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE = 'jigwright.control-plane-independent-review.v1';
-export const CONTROL_PLANE_SIGNATURE_NAMESPACE_V2 = 'jigwright.control-plane-grant.v2';
-export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2 = 'jigwright.control-plane-independent-review.v2';
-export const CONTROL_PLANE_SIGNATURE_NAMESPACE_V3 = 'jigwright.control-plane-grant.v3';
-export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3 = 'jigwright.control-plane-independent-review.v3';
 export function verifyHumanSignatureSafely(verifier, payload, signature, signer, namespace) {
     try {
         return verifier(payload, signature, signer, namespace);

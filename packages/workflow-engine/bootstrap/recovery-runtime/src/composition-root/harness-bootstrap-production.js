@@ -1,23 +1,21 @@
-import { recordAuthorityRefusal } from "../runtime/storage-journal/authority-refusal-audit.js";
-import { controlPlaneRecoveryGrantPersistence } from "../runtime/storage-journal/control-plane-recovery-grant.js";
+import { createInteractiveSshSigner, verifySshSignatureWithPublicKey, } from "../adapters/signing/ssh/maintainer-signer.js";
 import { createHarnessBootstrapAudit } from "../application/control-plane/harness-bootstrap-audit.js";
+import { createHarnessBootstrapParentState } from "../application/control-plane/harness-bootstrap-parent-state.js";
 import { createHarnessBootstrapRecoveryProduction } from "../application/control-plane/harness-bootstrap-production.js";
 import { createHarnessBootstrapRecoveryCommands, } from "../application/control-plane/harness-bootstrap-recovery-commands.js";
+import { persistTrustedBootstrapSessionSnapshot, readLocalEngineBinding, } from "../application/control-plane/intervention-control-bootstrap.js";
+import { parseMaintainerPolicy } from "../modules/authority/maintainer-policy.js";
+import { verifyRecoveryAuthorityDescriptor } from "../modules/authority/recovery-authority-contract.js";
+import { RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE } from "../modules/authority/recovery-trust-root-values.js";
+import { importRecoveryAuthorityDescriptor, readRecoveryAuthorityDescriptor, } from "../runtime/recovery/recovery-authority-store.js";
+import { executeRecoveryQuarantineEnter, executeRecoveryQuarantineRelease, readRecoveryQuarantineMarker, } from "../runtime/recovery/recovery-quarantine.js";
+import { executeRecoveryOperationalTrustRootRestore } from "../runtime/recovery/recovery-trust-root-restore.js";
+import { observeParentBindingPath, observeParentSessions, } from "../runtime/repository-observation/harness-bootstrap-parent-state.js";
+import { readFileAtRevision } from "../runtime/repository-transaction/git-command.js";
+import { discoverRepository } from "../runtime/repository-transaction/git.js";
 import { deriveAuthorityAuditRepositoryId } from "../runtime/storage-journal/authority-audit-ledger.js";
 import { recordAuthorityAuditEvent } from "../runtime/storage-journal/authority-audit-service.js";
-import { discoverRepository } from "../runtime/repository-transaction/git.js";
-import { parseMaintainerPolicy } from "../modules/authority/maintainer-policy.js";
-import { createInteractiveSshSigner, verifySshSignatureWithPublicKey, } from "../adapters/signing/ssh/maintainer-signer.js";
-import { importRecoveryAuthorityDescriptor, readRecoveryAuthorityDescriptor, } from "../runtime/recovery/recovery-authority-store.js";
-import { verifyRecoveryAuthorityDescriptor } from "../modules/authority/recovery-authority-contract.js";
-import { executeRecoveryQuarantineEnter, executeRecoveryQuarantineRelease, readRecoveryQuarantineMarker, } from "../runtime/recovery/recovery-quarantine.js";
-import { RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE } from "../modules/authority/recovery-trust-root-values.js";
-import { executeRecoveryOperationalTrustRootRestore } from "../runtime/recovery/recovery-trust-root-restore.js";
-import { createHarnessBootstrapParentState } from "../application/control-plane/harness-bootstrap-parent-state.js";
-import { observeParentSessions, observeParentBindingPath, } from "../runtime/repository-observation/harness-bootstrap-parent-state.js";
-import { readLocalEngineBinding, persistTrustedBootstrapSessionSnapshot, } from "../application/control-plane/intervention-control-bootstrap.js";
-import { readControlPlaneSupervisorState } from "../application/control-plane/intervention-control-updater.js";
-import { readFileAtRevision } from "../runtime/repository-transaction/git-command.js";
+import { recordAuthorityRefusal } from "../runtime/storage-journal/authority-refusal-audit.js";
 /** Assemble recovery capabilities around the independently trusted built-in engine identity. */
 export function createHarnessBootstrapProduction(BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST) {
     const { resolveHarnessBootstrapParentState } = createHarnessBootstrapParentState({
@@ -26,7 +24,6 @@ export function createHarnessBootstrapProduction(BUILT_IN_ENGINE_CLOSURE_MANIFES
         observeParentBindingPath,
         readLocalEngineBinding,
         persistTrustedBootstrapSessionSnapshot,
-        readControlPlaneSupervisorState,
     });
     function createHarnessBootstrapDependencies(cwd, overrides = {}) {
         let resolvedSigner = overrides.maintenanceSigner;
@@ -65,20 +62,16 @@ export function createHarnessBootstrapProduction(BUILT_IN_ENGINE_CLOSURE_MANIFES
             },
         };
     }
-    const { auditHarnessRecoveryRefusal, productionRecoveryTrustRootAuditSink, productionRecoveryQuarantineAuditSink, productionControlPlaneAuditSink, productionRecoveryAuditSink, } = createHarnessBootstrapAudit({
+    const { auditHarnessRecoveryRefusal, productionRecoveryTrustRootAuditSink, productionRecoveryQuarantineAuditSink, } = createHarnessBootstrapAudit({
         recordAuthorityRefusal,
         deriveAuthorityAuditRepositoryId,
         recordAuthorityAuditEvent,
     });
-    const { recoveryOperationalTrustRootDependencies, recoveryQuarantineDependencies, createHarnessRecoveryDependencies, } = createHarnessBootstrapRecoveryProduction({
-        recoveryGrants: controlPlaneRecoveryGrantPersistence,
+    const { recoveryOperationalTrustRootDependencies, recoveryQuarantineDependencies, } = createHarnessBootstrapRecoveryProduction({
         RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE,
         verifySshSignatureWithPublicKey,
-        createHarnessBootstrapDependencies,
         productionRecoveryTrustRootAuditSink,
         productionRecoveryQuarantineAuditSink,
-        productionControlPlaneAuditSink,
-        productionRecoveryAuditSink,
     });
     function createHarnessBootstrapCommandDispatcher({ bootstrapInterventionStateRoot, bootstrapInterventionUsage, }) {
         return createHarnessBootstrapRecoveryCommands({
@@ -94,7 +87,6 @@ export function createHarnessBootstrapProduction(BUILT_IN_ENGINE_CLOSURE_MANIFES
             readRecoveryQuarantineMarker,
             recoveryOperationalTrustRootDependencies,
             recoveryQuarantineDependencies,
-            createHarnessRecoveryDependencies,
         });
     }
     return {
@@ -103,11 +95,8 @@ export function createHarnessBootstrapProduction(BUILT_IN_ENGINE_CLOSURE_MANIFES
         auditHarnessRecoveryRefusal,
         productionRecoveryTrustRootAuditSink,
         productionRecoveryQuarantineAuditSink,
-        productionControlPlaneAuditSink,
-        productionRecoveryAuditSink,
         recoveryOperationalTrustRootDependencies,
         recoveryQuarantineDependencies,
-        createHarnessRecoveryDependencies,
         createHarnessBootstrapCommandDispatcher,
     };
 }

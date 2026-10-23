@@ -1,8 +1,8 @@
 /** Instantiate required maintainer services in the trusted host process. */
+import { pinCheckRunner } from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
 import { createMaintainerAuthorityProduction } from '../src/composition-root/maintainer-authority-production.ts';
 import { createMaintainerGrantV2Production } from '../src/composition-root/maintainer-grant-v2-production.ts';
 import { createCandidateDependencyObservations } from '../src/runtime/repository-observation/maintainer-candidate-dependencies.ts';
-import { pinCheckRunner } from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
 import { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST } from './built-in-engine-closure-pin.ts';
 
 export const maintainerGrantExecutionServices =
@@ -35,16 +35,3 @@ export const {
   resumeAuthorityPlan,
   attestAuthorityPlan,
 } = maintainerAuthorityOperations;
-
-import {
-  bootstrapInterventionStateRoot,
-  readInitialControlPlaneSupervisorAnchorEvidence,
-  readBuiltInControlPlaneEngineArtifact,
-} from './control-plane-trust.ts';
-import type { ControlPlanePromotionBootstrapObservations } from '../src/modules/authority/intervention-bootstrap-contract.ts';
-export const controlPlanePromotionBootstrapObservations: ControlPlanePromotionBootstrapObservations =
-  {
-    bootstrapInterventionStateRoot,
-    readInitialControlPlaneSupervisorAnchorEvidence,
-    readBuiltInControlPlaneEngineArtifact,
-  };

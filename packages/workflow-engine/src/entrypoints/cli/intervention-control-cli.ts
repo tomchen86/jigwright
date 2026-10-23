@@ -7,28 +7,24 @@
  *   engine.
  */
 import {
+  ExitCode,
+  WorkflowError,
+  workflowError,
+} from '../../foundation/errors/errors.ts';
+import {
   advanceEngineAdoption,
   beginHarnessIntervention,
-  classifyProtectedCandidateImpact,
   createWipCheckpoint,
   prepareEngineAdoption,
   verifyHarnessMaintenanceGrant,
   type EngineAdoptionJournal,
   type EngineArtifact,
-  type ExactControlPlaneChange,
   type HarnessInterventionRelationship,
   type HarnessMaintenanceGrantEnvelope,
   type ParentChangeState,
-  type ProtectedCandidateImpact,
-  type ProtectedCapabilityManifest,
   type WipCheckpoint,
   type WipCheckpointInput,
 } from '../../modules/authority/intervention-control.ts';
-import {
-  ExitCode,
-  WorkflowError,
-  workflowError,
-} from '../../foundation/errors/errors.ts';
 
 const MAX_REQUEST_BYTES = 1024 * 1024;
 
@@ -53,10 +49,6 @@ type ParsedRequestCommand =
   | {
       command: 'engine-adopt';
       request: Record<string, unknown>;
-    }
-  | {
-      command: 'control-plane-classify';
-      request: Record<string, unknown>;
     };
 
 export type ParsedInterventionControlCommand = ParsedRequestCommand;
@@ -72,11 +64,6 @@ export type InterventionControlDispatchResult =
   | {
       kind: 'engine-adopt';
       journal: EngineAdoptionJournal;
-      effectsPerformed: false;
-    }
-  | {
-      kind: 'control-plane-classify';
-      impact: ProtectedCandidateImpact;
       effectsPerformed: false;
     };
 
@@ -108,13 +95,6 @@ export function parseInterventionControlCommand(
     return {
       command: 'engine-adopt',
       request: parseRequestOnly(argv, 'engine adopt'),
-    };
-  }
-
-  if (argv[0] === 'control-plane' && argv[1] === 'classify') {
-    return {
-      command: 'control-plane-classify',
-      request: parseRequestOnly(argv, 'control-plane classify'),
     };
   }
 
@@ -155,8 +135,6 @@ export function dispatchInterventionControlCommand(
         return dispatchChangeIntervene(parsed);
       case 'engine-adopt':
         return dispatchEngineAdopt(parsed.request, dependencies);
-      case 'control-plane-classify':
-        return dispatchControlPlaneClassify(parsed.request);
     }
   } catch (error) {
     if (error instanceof WorkflowError) {
@@ -273,28 +251,6 @@ function dispatchEngineAdopt(
     'Engine adopt request action must be prepare or transition.',
     ExitCode.usage,
   );
-}
-
-function dispatchControlPlaneClassify(
-  request: Record<string, unknown>,
-): Extract<
-  InterventionControlDispatchResult,
-  { kind: 'control-plane-classify' }
-> {
-  assertExactKeys(
-    request,
-    ['afterManifest', 'beforeManifest', 'changes'],
-    'INTERVENTION_CONTROL_REQUEST_INVALID',
-  );
-  return {
-    kind: 'control-plane-classify',
-    impact: classifyProtectedCandidateImpact({
-      beforeManifest: request.beforeManifest as ProtectedCapabilityManifest,
-      afterManifest: request.afterManifest as ProtectedCapabilityManifest,
-      changes: request.changes as ExactControlPlaneChange[],
-    }),
-    effectsPerformed: false,
-  };
 }
 
 function parseRequestOnly(

@@ -1,6 +1,5 @@
-import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
 export function createHarnessBootstrapRecoveryProduction(bindings) {
-    const { recoveryGrants, RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE, verifySshSignatureWithPublicKey, createHarnessBootstrapDependencies, productionRecoveryTrustRootAuditSink, productionRecoveryQuarantineAuditSink, productionControlPlaneAuditSink, productionRecoveryAuditSink, } = bindings;
+    const { RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE, verifySshSignatureWithPublicKey, productionRecoveryTrustRootAuditSink, productionRecoveryQuarantineAuditSink, } = bindings;
     function recoveryOperationalTrustRootDependencies(descriptor, expectations, externalAuditRoot, repositoryRoot, overrides) {
         return {
             authorityDescriptor: descriptor,
@@ -49,36 +48,8 @@ export function createHarnessBootstrapRecoveryProduction(bindings) {
                 productionRecoveryQuarantineAuditSink(repositoryRoot).append,
         };
     }
-    function createHarnessRecoveryDependencies(cwd, repositoryRoot, overrides) {
-        const bootstrapDependencies = createHarnessBootstrapDependencies(cwd, {
-            ...overrides,
-            maintenanceSigner: overrides.recoverySigner ?? overrides.maintenanceSigner,
-        });
-        const signer = overrides.recoverySigner ?? bootstrapDependencies.maintenanceSigner;
-        if (signer === undefined) {
-            throw workflowError('HARNESS_RECOVERY_SIGNER_REQUIRED', 'Sealed recovery requires a controlling-terminal human signer.', ExitCode.unsafeEnvironment);
-        }
-        const verifyHumanSignature = bootstrapDependencies.verifyHumanSignature;
-        if (verifyHumanSignature === undefined) {
-            throw workflowError('HARNESS_RECOVERY_VERIFIER_REQUIRED', 'Sealed recovery requires the trusted root signature verifier.', ExitCode.unsafeEnvironment);
-        }
-        return {
-            signer,
-            dependencies: {
-                recoveryGrants,
-                now: overrides.now ?? (() => new Date()),
-                consumedGrantIds: new Set(),
-                verifyHumanSignature,
-                auditSink: overrides.controlPlaneAuditSink ??
-                    productionControlPlaneAuditSink(repositoryRoot),
-                recoveryAuditSink: overrides.recoveryAuditSink ??
-                    productionRecoveryAuditSink(repositoryRoot),
-            },
-        };
-    }
     return {
         recoveryOperationalTrustRootDependencies,
         recoveryQuarantineDependencies,
-        createHarnessRecoveryDependencies,
     };
 }

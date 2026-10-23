@@ -1,28 +1,25 @@
 /** Resolve an admitted durable parent and publish its trusted bootstrap snapshot. */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { WorkflowError } from '../../foundation/errors/errors.ts';
-import { type DurableInterventionParentState } from '../../modules/authority/intervention-bootstrap-contract.ts';
-import type {
-  persistTrustedBootstrapSessionSnapshot,
-  readLocalEngineBinding,
-} from './intervention-control-bootstrap.ts';
-import type { readControlPlaneSupervisorState } from './intervention-control-updater.ts';
-import { canonicalDigest as digestCanonical } from '../../modules/authority/intervention-control-values.ts';
 import {
   type HarnessBootstrapParentBindingObservations,
   assertHarnessBootstrapParentBinding,
 } from '../../modules/authority/harness-bootstrap-parent-contract.ts';
+import { type DurableInterventionParentState } from '../../modules/authority/intervention-bootstrap-contract.ts';
+import { canonicalDigest as digestCanonical } from '../../modules/authority/intervention-control-values.ts';
 import {
   type HarnessBootstrapParentSessionObservations,
   admitHarnessBootstrapParent,
 } from '../../modules/lifecycle/harness-bootstrap-parent-session.ts';
+import type {
+  persistTrustedBootstrapSessionSnapshot,
+  readLocalEngineBinding,
+} from './intervention-control-bootstrap.ts';
 export interface HarnessBootstrapParentBindings
   extends
     HarnessBootstrapParentSessionObservations,
     HarnessBootstrapParentBindingObservations {
   BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST: DurableInterventionParentState['parent']['engineBinding'];
   readLocalEngineBinding: typeof readLocalEngineBinding;
-  readControlPlaneSupervisorState: typeof readControlPlaneSupervisorState;
   persistTrustedBootstrapSessionSnapshot: typeof persistTrustedBootstrapSessionSnapshot;
 }
 export function createHarnessBootstrapParentState(
@@ -33,7 +30,6 @@ export function createHarnessBootstrapParentState(
     observeParentSessions,
     observeParentBindingPath,
     readLocalEngineBinding,
-    readControlPlaneSupervisorState,
     persistTrustedBootstrapSessionSnapshot,
   } = bindings;
   function resolveHarnessBootstrapParentState(
@@ -61,11 +57,6 @@ export function createHarnessBootstrapParentState(
       );
       engineBinding = localBinding.engineDigest;
       sessionSchema = localBinding.sessionSchema;
-    } else {
-      const supervisor = readOptionalSupervisor(stateRoot);
-      if (supervisor !== null) {
-        engineBinding = supervisor.activeArtifact.executableDigest;
-      }
     }
 
     return {
@@ -108,19 +99,6 @@ export function createHarnessBootstrapParentState(
     const bindingPath = observeParentBindingPath(stateRoot, parentChangeId);
     if (bindingPath === null) return null;
     return readLocalEngineBinding(bindingPath);
-  }
-  function readOptionalSupervisor(stateRoot: string) {
-    try {
-      return readControlPlaneSupervisorState(stateRoot);
-    } catch (error) {
-      if (
-        error instanceof WorkflowError &&
-        error.code === 'CONTROL_PLANE_SUPERVISOR_NOT_FOUND'
-      ) {
-        return null;
-      }
-      throw error;
-    }
   }
   return { resolveHarnessBootstrapParentState };
 }

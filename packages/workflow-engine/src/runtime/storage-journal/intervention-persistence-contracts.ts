@@ -1,21 +1,17 @@
 /**
- * Defines the persisted intervention, sidecar, adoption, and control-update record contracts.
+ * Defines the persisted intervention, sidecar, and local adoption record contracts.
  *
  * Invariants:
  * - Schema discriminants, optional fields, record digests, and authority bindings retain their meaning.
  * - Shared size and permission constants preserve the existing storage limits.
  */
 import type {
-  Sha256Digest,
-  ParentChangeState,
-  HarnessInterventionRelationship,
-  WipCheckpoint,
   EngineAdoptionJournal,
+  HarnessInterventionRelationship,
   HarnessMaintenanceGrantEnvelope,
-  MinimalUpdaterTransaction,
-  ProtectedCapabilityManifest,
-  ControlPlaneGrantEnvelopeV3,
-  ExactControlPlaneChangeV2,
+  ParentChangeState,
+  Sha256Digest,
+  WipCheckpoint,
 } from '../../modules/authority/intervention-control.ts';
 
 export const MAX_RECORD_BYTES = 4 * 1024 * 1024;
@@ -42,9 +38,7 @@ export interface InterventionControlPersistencePaths {
   interventions: string;
   sidecarSessions: string;
   sidecarHistory: string;
-  sidecarPromotionPins: string;
   adoptions: string;
-  controlUpdates: string;
   operations: string;
 }
 
@@ -203,43 +197,3 @@ export interface PersistedEngineAdoptionRecord {
   effectsPerformed: false;
   recordDigest: Sha256Digest;
 }
-
-export interface PersistedBootstrapSidecarPromotionPin {
-  kind: 'bootstrap-sidecar-promotion-pin.v1';
-  parentChangeId: string;
-  interventionChangeId: string;
-  sidecarSessionId: Sha256Digest;
-  workflowBindingDigest: Sha256Digest;
-  artifactId: Sha256Digest;
-  artifactRecordDigest: Sha256Digest;
-  sourceDigest: Sha256Digest;
-  executableDigest: Sha256Digest;
-  closureDigest: Sha256Digest;
-  grantId: string;
-  txId: string;
-  state: 'reserved' | 'commit-intent' | 'finalized' | 'rolled-back';
-  createdAt: string;
-  updatedAt: string;
-  recordDigest: Sha256Digest;
-}
-
-interface PersistedControlPlaneUpdateRecordFields {
-  grantState: 'reserved' | 'consumed';
-  transaction: MinimalUpdaterTransaction;
-  beforeManifest: ProtectedCapabilityManifest;
-  afterManifest: ProtectedCapabilityManifest;
-  observations: PersistedTransitionObservation[];
-  createdAt: string;
-  updatedAt: string;
-  effectsPerformed: false;
-  recordDigest: Sha256Digest;
-}
-
-export interface PersistedControlPlaneUpdateRecordV3 extends PersistedControlPlaneUpdateRecordFields {
-  kind: 'persisted-control-plane-update.v3';
-  envelope: ControlPlaneGrantEnvelopeV3;
-  changes: ExactControlPlaneChangeV2[];
-}
-
-export type PersistedControlPlaneUpdateRecord =
-  PersistedControlPlaneUpdateRecordV3;
