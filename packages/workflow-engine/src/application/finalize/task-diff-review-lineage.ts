@@ -6,6 +6,11 @@
  * - An exact external review cannot coexist with provider authority for the
  *   same subject.
  */
+import type {
+  TaskDiffReviewResultBinding,
+  TaskDiffReviewReservationRecord,
+} from '../../modules/assurance/task-diff-review-binding-record.ts';
+
 // Resolve review ancestry, candidate reuse, and durable supersession recovery.
 import { deriveTaskDiffReviewCandidatePlan } from '../../modules/assurance/task-diff-review.ts';
 import type {
@@ -19,10 +24,7 @@ import type {
   TaskDiffFinalAssuranceRecord,
   TaskDiffReviewRecord,
 } from '../../modules/assurance/task-diff-review-artifact-record.ts';
-import type {
-  TaskDiffReviewRuntimeBindings,
-  TaskDiffReviewRuntimeData,
-} from './task-diff-review-lifecycle.ts';
+import type { TaskDiffReviewRuntimeBindings } from './task-diff-review-lifecycle.ts';
 import type {
   TaskDiffReviewConsumedReplayValidation,
   CurrentExternalTaskDiffTerminalAssurance,
@@ -41,12 +43,6 @@ import type { createTaskDiffReviewSubjectModule } from './task-diff-review-subje
 import type { createTaskDiffReviewExternalBindingModule } from './task-diff-review-external-binding.ts';
 import type { createTaskDiffReviewExternalContinuationBindingModule } from './task-diff-review-external-continuation-binding.ts';
 import type { createTaskDiffReviewProviderBindingModule } from './task-diff-review-provider-binding.ts';
-
-type TaskDiffReviewResultBinding =
-  TaskDiffReviewRuntimeData['TaskDiffReviewResultBinding'];
-
-type TaskDiffReviewReservationRecord =
-  TaskDiffReviewRuntimeData['TaskDiffReviewReservationRecord'];
 
 export function createTaskDiffReviewLineageModule(
   runtime: TaskDiffReviewRuntimeBindings,

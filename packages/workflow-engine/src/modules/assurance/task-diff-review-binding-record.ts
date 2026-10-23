@@ -12,22 +12,27 @@ import {
   workflowError,
   ExitCode,
 } from '../../foundation/errors/errors.ts';
-import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
-import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
-import type { RecordedRoleParticipant } from '../../modules/provider-orchestration/role-assignment.ts';
-import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+import type { ProviderInvocationRequest } from '../provider-orchestration/provider-contracts.ts';
+import type { ProviderId } from '../provider-orchestration/provider-registry.ts';
+import type { RecordedRoleParticipant } from '../provider-orchestration/role-assignment.ts';
+import type { AdmittedRoleResult } from '../provider-orchestration/role-admission-contracts.ts';
 
 import type {
   TaskDiffReviewRecord,
   TaskDiffReviewChallengeResponseRecord,
   TaskDiffReviewContinuationSubmission,
   TaskDiffFinalAssuranceRecord,
-} from '../../modules/assurance/task-diff-review-artifact-record.ts';
+} from './task-diff-review-artifact-record.ts';
 import type {
   TaskDiffReviewSubject,
   TaskDiffReviewScope,
-} from '../../modules/assurance/task-diff-review-record.ts';
-import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
+} from './task-diff-review-record.ts';
+import type { TaskMandateBinding } from '../authority/task-mandate-contract.ts';
+
+import type {
+  TaskDiffReviewManifest,
+  TaskDiffReviewContinuationManifest,
+} from './provider-review-manifests.ts';
 
 export const DIGEST = /^[0-9a-f]{64}$/;
 
@@ -35,26 +40,7 @@ const IDENTITY = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,511}$/;
 
 export const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 
-export const TASK_DIFF_REVIEW_GLOBAL_NAMESPACES = new Set([
-  'external-authority',
-  'final-assurance',
-  'lineage-supersessions',
-]);
-
-export type TaskDiffReviewManifestSnapshot = Readonly<{
-  schemaVersion: 1;
-  kind: 'task-diff-review-manifest';
-  changeId: string;
-  taskId: string;
-  sessionId: string;
-  repositoryId: string;
-  repositoryIdentity: string;
-  baseCommit: string;
-  baseTree: string;
-  subject: TaskDiffReviewSubject;
-  reviewScope: TaskDiffReviewScope;
-  capabilityProfile: 'repository-read-only';
-}>;
+export type TaskDiffReviewManifestSnapshot = Readonly<TaskDiffReviewManifest>;
 
 export type TaskDiffReviewReservationRecord = Readonly<{
   schemaVersion: 1;
@@ -98,21 +84,8 @@ export type TaskDiffReviewResultBinding = Readonly<{
   createdAt: string;
 }>;
 
-export type TaskDiffReviewContinuationManifestSnapshot = Readonly<{
-  schemaVersion: 1;
-  kind: 'task-diff-review-continuation-manifest';
-  changeId: string;
-  taskId: string;
-  sessionId: string;
-  repositoryId: string;
-  repositoryIdentity: string;
-  baseCommit: string;
-  baseTree: string;
-  subject: TaskDiffReviewSubject;
-  review: TaskDiffReviewRecord;
-  response: TaskDiffReviewChallengeResponseRecord;
-  capabilityProfile: 'repository-read-only';
-}>;
+export type TaskDiffReviewContinuationManifestSnapshot =
+  Readonly<TaskDiffReviewContinuationManifest>;
 
 export type TaskDiffReviewContinuationReservationRecord = Readonly<{
   schemaVersion: 1;

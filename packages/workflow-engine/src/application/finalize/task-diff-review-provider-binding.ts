@@ -1,3 +1,8 @@
+import type {
+  TaskDiffReviewReservationRecord,
+  TaskDiffReviewContinuationReservationRecord,
+  TaskDiffReviewContinuationResultBinding,
+} from '../../modules/assurance/task-diff-review-binding-record.ts';
 import type { CollaborationGrantCodec } from '../../modules/authority/collaboration-grant-codec.ts';
 /**
  * Validates provider review reservations, results, and their final
@@ -50,17 +55,8 @@ import type { createTaskDiffReviewCommonModule } from './task-diff-review-common
 import type { createTaskDiffReviewSubjectModule } from './task-diff-review-subject.ts';
 import { resolveBlobOid } from '../../runtime/repository-transaction/git-object-ids.ts';
 
-type TaskDiffReviewReservationRecord =
-  TaskDiffReviewRuntimeData['TaskDiffReviewReservationRecord'];
-
-type TaskDiffReviewContinuationReservationRecord =
-  TaskDiffReviewRuntimeData['TaskDiffReviewContinuationReservationRecord'];
-
 type VerifiedConsumedCollaborationGrantReplay =
   TaskDiffReviewRuntimeData['VerifiedConsumedCollaborationGrantReplay'];
-
-type TaskDiffReviewContinuationResultBinding =
-  TaskDiffReviewRuntimeData['TaskDiffReviewContinuationResultBinding'];
 
 export function createTaskDiffReviewProviderBindingModule(
   runtime: TaskDiffReviewRuntimeBindings,

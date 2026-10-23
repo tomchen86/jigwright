@@ -1,3 +1,11 @@
+import type {
+  TaskDiffReviewManifest,
+  TaskDiffReviewContinuationManifest,
+} from '../../modules/assurance/provider-review-manifests.ts';
+import type {
+  TaskDiffReviewReservationRecord,
+  TaskDiffReviewContinuationReservationRecord,
+} from '../../modules/assurance/task-diff-review-binding-record.ts';
 import type { TaskMandateProviderAdmission } from '../../modules/authority/task-mandate-access-contract.ts';
 import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 
@@ -32,10 +40,7 @@ import {
   TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA,
 } from '../../modules/assurance/task-diff-review-artifact.ts';
 import type { TaskDiffReviewChallengeResponseRecord } from '../../modules/assurance/task-diff-review-artifact-record.ts';
-import type {
-  TaskDiffReviewRuntimeBindings,
-  TaskDiffReviewRuntimeData,
-} from './task-diff-review-lifecycle.ts';
+import type { TaskDiffReviewRuntimeBindings } from './task-diff-review-lifecycle.ts';
 import type {
   BeginTaskDiffReviewOptions,
   TaskDiffReviewCollaborationGrantRequiredStatus,
@@ -43,18 +48,6 @@ import type {
 } from './task-diff-review-contracts.ts';
 import type { createTaskDiffReviewCommonModule } from './task-diff-review-common.ts';
 import type { createTaskDiffReviewProviderBindingModule } from './task-diff-review-provider-binding.ts';
-
-type TaskDiffReviewReservationRecord =
-  TaskDiffReviewRuntimeData['TaskDiffReviewReservationRecord'];
-
-type TaskDiffReviewManifest =
-  TaskDiffReviewRuntimeData['TaskDiffReviewManifest'];
-
-type TaskDiffReviewContinuationReservationRecord =
-  TaskDiffReviewRuntimeData['TaskDiffReviewContinuationReservationRecord'];
-
-type TaskDiffReviewContinuationManifest =
-  TaskDiffReviewRuntimeData['TaskDiffReviewContinuationManifest'];
 
 export function createTaskDiffReviewProviderReservationsModule(
   runtime: TaskDiffReviewRuntimeBindings,

@@ -111,3 +111,5 @@ import '../task-diff-external-record-boundary.contract.test.ts';
 import '../task-diff-external-record.contract.test.ts';
 import '../reviewed-mutation-policy-boundary.contract.test.ts';
 import '../reviewed-mutation-policy.contract.test.ts';
+import '../task-diff-review-binding-boundary.contract.test.ts';
+import '../task-diff-review-binding.contract.test.ts';

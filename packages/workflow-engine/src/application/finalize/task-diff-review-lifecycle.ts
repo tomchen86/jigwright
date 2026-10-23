@@ -69,10 +69,7 @@ import {
   readProviderInvocationRequest,
   storeProviderExecutionPolicySnapshot,
 } from '../../runtime/storage-journal/provider-invocation-store.ts';
-import type {
-  TaskDiffReviewContinuationManifest,
-  TaskDiffReviewManifest,
-} from '../../modules/assurance/provider-review-manifests.ts';
+
 import {
   assertInspectionReport,
   assertReportChecks,
@@ -122,10 +119,6 @@ import {
   readTaskDiffReviewContinuationResultBinding,
   readTaskDiffReviewReservation,
   readTaskDiffReviewResultBinding,
-  type TaskDiffReviewContinuationReservationRecord,
-  type TaskDiffReviewContinuationResultBinding,
-  type TaskDiffReviewReservationRecord,
-  type TaskDiffReviewResultBinding,
 } from '../../runtime/storage-journal/task-diff-review-store.ts';
 import { readTaskStrategyGreenFailureRecord } from '../../runtime/storage-journal/task-strategy-correction-store.ts';
 import {
@@ -245,13 +238,8 @@ export type TaskDiffReviewRuntimeData = {
   CollaborationGrantSelectionCoreBinding: CollaborationGrantSelectionCoreBinding;
   VerifiedConsumedCollaborationGrantReplay: VerifiedConsumedCollaborationGrantReplay;
   DocumentationReviewCapture: DocumentationReviewCapture;
-  TaskDiffReviewContinuationManifest: TaskDiffReviewContinuationManifest;
-  TaskDiffReviewManifest: TaskDiffReviewManifest;
+
   RepositoryLifecycleOperationOptions: RepositoryLifecycleOperationOptions;
-  TaskDiffReviewContinuationReservationRecord: TaskDiffReviewContinuationReservationRecord;
-  TaskDiffReviewContinuationResultBinding: TaskDiffReviewContinuationResultBinding;
-  TaskDiffReviewReservationRecord: TaskDiffReviewReservationRecord;
-  TaskDiffReviewResultBinding: TaskDiffReviewResultBinding;
 };
 export type TaskDiffReviewGrantServices = Readonly<{
   taskMandate: Pick<

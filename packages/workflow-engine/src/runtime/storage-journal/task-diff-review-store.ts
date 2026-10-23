@@ -5,6 +5,14 @@
  * - Create-only writes retain conflict codes and the verifying read after publication.
  * - Inventory reads preserve session validation and deterministic record ordering.
  */
+import {
+  prepareTaskDiffReviewReservation,
+  prepareTaskDiffReviewResultBinding,
+  prepareTaskDiffReviewContinuationReservation,
+  prepareTaskDiffReviewContinuationResultBinding,
+  prepareTaskDiffFinalAssuranceBinding,
+} from '../../modules/assurance/task-diff-review-binding-codec.ts';
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
@@ -18,7 +26,6 @@ import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import {
   type TaskDiffReviewReservationRecord,
-  sha256,
   storeUnsafe,
   assertDigest,
   type TaskDiffReviewResultBinding,
@@ -26,30 +33,18 @@ import {
   type TaskDiffReviewContinuationResultBinding,
   type TaskDiffFinalAssuranceBinding,
   DIGEST,
-} from './task-diff-review-store-contracts.ts';
+} from '../../modules/assurance/task-diff-review-binding-record.ts';
 import {
   parseTaskDiffReviewReservation,
   parseTaskDiffReviewResultBinding,
   parseTaskDiffReviewContinuationReservation,
   parseTaskDiffReviewContinuationResultBinding,
   parseTaskDiffFinalAssuranceBinding,
-} from './task-diff-review-record-codec.ts';
+} from '../../modules/assurance/task-diff-review-binding-codec.ts';
 import {
   listPrivateDigestJson,
   listTaskDiffReviewProviderSessionIds,
 } from './task-diff-review-store-inventory.ts';
-
-export {
-  type TaskDiffReviewManifestSnapshot,
-  type TaskDiffReviewReservationRecord,
-  type TaskDiffReviewResultBinding,
-  type TaskDiffReviewContinuationManifestSnapshot,
-  type TaskDiffReviewContinuationReservationRecord,
-  type TaskDiffReviewContinuationResultBinding,
-  type TaskDiffFinalAssuranceBinding,
-  type TaskDiffReviewLineageSupersessionRecord,
-  type CreateTaskDiffReviewLineageSupersessionInput,
-} from './task-diff-review-store-contracts.ts';
 
 export {
   createTaskDiffReviewLineageSupersession,
@@ -60,20 +55,9 @@ export {
 
 export function createTaskDiffReviewReservation(
   paths: InvestigationRuntimePaths,
-  input: Omit<
-    TaskDiffReviewReservationRecord,
-    'schemaVersion' | 'kind' | 'reservationDigest'
-  >,
+  input: Parameters<typeof prepareTaskDiffReviewReservation>[0],
 ): TaskDiffReviewReservationRecord {
-  const body = {
-    schemaVersion: 1 as const,
-    kind: 'task-diff-review-reservation.v1' as const,
-    ...input,
-  };
-  const reservation = parseTaskDiffReviewReservation({
-    ...body,
-    reservationDigest: sha256(canonicalJson(body)),
-  });
+  const reservation = prepareTaskDiffReviewReservation(input);
   createPrivateCanonicalJson(
     paths,
     taskDiffReviewReservationPath(
@@ -115,20 +99,9 @@ export function readTaskDiffReviewReservation(
 
 export function createTaskDiffReviewResultBinding(
   paths: InvestigationRuntimePaths,
-  input: Omit<
-    TaskDiffReviewResultBinding,
-    'schemaVersion' | 'kind' | 'bindingDigest'
-  >,
+  input: Parameters<typeof prepareTaskDiffReviewResultBinding>[0],
 ): TaskDiffReviewResultBinding {
-  const body = {
-    schemaVersion: 1 as const,
-    kind: 'task-diff-review-result-binding.v1' as const,
-    ...input,
-  };
-  const binding = parseTaskDiffReviewResultBinding({
-    ...body,
-    bindingDigest: sha256(canonicalJson(body)),
-  });
+  const binding = prepareTaskDiffReviewResultBinding(input);
   createPrivateCanonicalJson(
     paths,
     taskDiffReviewResultPath(paths, binding.sessionId, binding.subjectDigest),
@@ -194,20 +167,9 @@ export function taskDiffReviewResultPath(
 
 export function createTaskDiffReviewContinuationReservation(
   paths: InvestigationRuntimePaths,
-  input: Omit<
-    TaskDiffReviewContinuationReservationRecord,
-    'schemaVersion' | 'kind' | 'reservationDigest'
-  >,
+  input: Parameters<typeof prepareTaskDiffReviewContinuationReservation>[0],
 ): TaskDiffReviewContinuationReservationRecord {
-  const body = {
-    schemaVersion: 1 as const,
-    kind: 'task-diff-review-continuation-reservation.v1' as const,
-    ...input,
-  };
-  const reservation = parseTaskDiffReviewContinuationReservation({
-    ...body,
-    reservationDigest: sha256(canonicalJson(body)),
-  });
+  const reservation = prepareTaskDiffReviewContinuationReservation(input);
   createPrivateCanonicalJson(
     paths,
     taskDiffReviewContinuationReservationPath(
@@ -253,20 +215,9 @@ export function readTaskDiffReviewContinuationReservation(
 
 export function createTaskDiffReviewContinuationResultBinding(
   paths: InvestigationRuntimePaths,
-  input: Omit<
-    TaskDiffReviewContinuationResultBinding,
-    'schemaVersion' | 'kind' | 'bindingDigest'
-  >,
+  input: Parameters<typeof prepareTaskDiffReviewContinuationResultBinding>[0],
 ): TaskDiffReviewContinuationResultBinding {
-  const body = {
-    schemaVersion: 1 as const,
-    kind: 'task-diff-review-continuation-result-binding.v1' as const,
-    ...input,
-  };
-  const binding = parseTaskDiffReviewContinuationResultBinding({
-    ...body,
-    bindingDigest: sha256(canonicalJson(body)),
-  });
+  const binding = prepareTaskDiffReviewContinuationResultBinding(input);
   createPrivateCanonicalJson(
     paths,
     taskDiffReviewContinuationResultPath(
@@ -341,20 +292,9 @@ export function taskDiffReviewContinuationResultPath(
 
 export function createTaskDiffFinalAssuranceBinding(
   paths: InvestigationRuntimePaths,
-  input: Omit<
-    TaskDiffFinalAssuranceBinding,
-    'schemaVersion' | 'kind' | 'bindingDigest'
-  >,
+  input: Parameters<typeof prepareTaskDiffFinalAssuranceBinding>[0],
 ): TaskDiffFinalAssuranceBinding {
-  const body = {
-    schemaVersion: 1 as const,
-    kind: 'task-diff-final-assurance-binding.v1' as const,
-    ...input,
-  };
-  const binding = parseTaskDiffFinalAssuranceBinding({
-    ...body,
-    bindingDigest: sha256(canonicalJson(body)),
-  });
+  const binding = prepareTaskDiffFinalAssuranceBinding(input);
   createPrivateCanonicalJson(
     paths,
     taskDiffFinalAssurancePath(paths, binding.subjectDigest),

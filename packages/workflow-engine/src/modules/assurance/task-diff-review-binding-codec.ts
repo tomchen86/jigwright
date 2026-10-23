@@ -11,13 +11,13 @@ import {
   assertSessionId,
   assertInvocationId,
 } from '../../foundation/repository-path/repository-path.ts';
-import { recreateProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
-import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
+import { recreateProviderInvocationRequest } from '../provider-orchestration/provider-contracts.ts';
+import type { ProviderId } from '../provider-orchestration/provider-registry.ts';
 import type {
   ProviderRoleAssignment,
   RecordedRoleParticipant,
-} from '../../modules/provider-orchestration/role-assignment.ts';
-import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+} from '../provider-orchestration/role-assignment.ts';
+import type { AdmittedRoleResult } from '../provider-orchestration/role-admission-contracts.ts';
 
 import {
   parseTaskDiffReviewRecord,
@@ -26,9 +26,12 @@ import {
   TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA,
   parseTaskDiffReviewContinuationSubmission,
   parseTaskDiffFinalAssuranceRecord,
-} from '../../modules/assurance/task-diff-review-artifact.ts';
-import type { TaskDiffReviewRecord } from '../../modules/assurance/task-diff-review-artifact-record.ts';
-import { parseTaskDiffReviewSubject } from '../../modules/assurance/task-diff-review.ts';
+} from './task-diff-review-artifact.ts';
+import type { TaskDiffReviewRecord } from './task-diff-review-artifact-record.ts';
+import {
+  parseTaskDiffReviewSubject,
+  parseTaskDiffReviewScope,
+} from './task-diff-review.ts';
 import {
   type TaskDiffReviewReservationRecord,
   isRecord,
@@ -45,7 +48,10 @@ import {
   type TaskDiffReviewContinuationReservationRecord,
   type TaskDiffReviewContinuationResultBinding,
   type TaskDiffFinalAssuranceBinding,
-} from './task-diff-review-store-contracts.ts';
+  type TaskDiffReviewLineageSupersessionRecord,
+  type CreateTaskDiffReviewLineageSupersessionInput,
+  assertDigest,
+} from './task-diff-review-binding-record.ts';
 import {
   parseManifest,
   parseParticipant,
@@ -562,4 +568,217 @@ function isAdmittedTaskDiffRoleResultShape(
     isRecord(value.participant) &&
     isRecord(value.content)
   );
+}
+
+export function parseTaskDiffReviewLineageSupersession(
+  value: unknown,
+): TaskDiffReviewLineageSupersessionRecord {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'schemaVersion',
+      'kind',
+      'supersessionDigest',
+      'predecessorSubject',
+      'predecessorSubjectDigest',
+      'predecessorReview',
+      'predecessorReviewRecordDigest',
+      'successorSubject',
+      'successorSubjectDigest',
+      'successorReview',
+      'successorReviewRecordDigest',
+      'successorReviewScope',
+      'successorReviewScopeDigest',
+    ]) ||
+    value.schemaVersion !== 1 ||
+    value.kind !== 'task-diff-review-lineage-supersession.v1' ||
+    !isDigest(value.supersessionDigest) ||
+    !isDigest(value.predecessorSubjectDigest) ||
+    !isDigest(value.predecessorReviewRecordDigest) ||
+    !isDigest(value.successorSubjectDigest) ||
+    !isDigest(value.successorReviewRecordDigest) ||
+    !isDigest(value.successorReviewScopeDigest)
+  ) {
+    throw storeUnsafe();
+  }
+  const predecessorSubject = parseTaskDiffReviewSubject(
+    value.predecessorSubject,
+  );
+  const predecessorReview = parseTaskDiffReviewRecord(value.predecessorReview);
+  const successorSubject = parseTaskDiffReviewSubject(value.successorSubject);
+  const successorReview = parseTaskDiffReviewRecord(value.successorReview);
+  const successorReviewScope = parseTaskDiffReviewScope(
+    value.successorReviewScope,
+  );
+  const record: TaskDiffReviewLineageSupersessionRecord = {
+    schemaVersion: 1,
+    kind: 'task-diff-review-lineage-supersession.v1',
+    supersessionDigest: value.supersessionDigest,
+    predecessorSubject,
+    predecessorSubjectDigest: value.predecessorSubjectDigest,
+    predecessorReview,
+    predecessorReviewRecordDigest: value.predecessorReviewRecordDigest,
+    successorSubject,
+    successorSubjectDigest: value.successorSubjectDigest,
+    successorReview,
+    successorReviewRecordDigest: value.successorReviewRecordDigest,
+    successorReviewScope,
+    successorReviewScopeDigest: value.successorReviewScopeDigest,
+  };
+  const predecessor = successorReviewScope.predecessor;
+  if (
+    record.predecessorSubjectDigest !== predecessorSubject.subjectDigest ||
+    record.predecessorReviewRecordDigest !== predecessorReview.recordDigest ||
+    predecessorReview.subjectDigest !== predecessorSubject.subjectDigest ||
+    canonicalJson(predecessorReview.subject) !==
+      canonicalJson(predecessorSubject) ||
+    record.successorSubjectDigest !== successorSubject.subjectDigest ||
+    record.successorReviewRecordDigest !== successorReview.recordDigest ||
+    successorReview.subjectDigest !== successorSubject.subjectDigest ||
+    canonicalJson(successorReview.subject) !==
+      canonicalJson(successorSubject) ||
+    canonicalJson(successorReview.reviewScope) !==
+      canonicalJson(successorReviewScope) ||
+    record.successorReviewScopeDigest !== successorReviewScope.scopeDigest ||
+    successorReviewScope.currentSubjectDigest !==
+      successorSubject.subjectDigest ||
+    predecessor === null ||
+    predecessor.subjectDigest !== predecessorSubject.subjectDigest ||
+    predecessor.reviewRecordDigest !== predecessorReview.recordDigest ||
+    predecessorSubject.subjectDigest === successorSubject.subjectDigest ||
+    predecessorReview.recordDigest === successorReview.recordDigest ||
+    predecessorSubject.repositoryId !== successorSubject.repositoryId ||
+    predecessorSubject.changeId !== successorSubject.changeId ||
+    predecessorSubject.taskId !== successorSubject.taskId ||
+    predecessorSubject.baseCommit !== successorSubject.baseCommit ||
+    predecessorSubject.baseTree !== successorSubject.baseTree ||
+    record.supersessionDigest !==
+      sha256(canonicalJson(withoutDigest(record, 'supersessionDigest')))
+  ) {
+    throw storeUnsafe();
+  }
+  return deepFreeze(record);
+}
+
+export function prepareTaskDiffReviewReservation(
+  input: Omit<
+    TaskDiffReviewReservationRecord,
+    'schemaVersion' | 'kind' | 'reservationDigest'
+  >,
+): TaskDiffReviewReservationRecord {
+  const body = {
+    schemaVersion: 1 as const,
+    kind: 'task-diff-review-reservation.v1' as const,
+    ...input,
+  };
+  const reservation = parseTaskDiffReviewReservation({
+    ...body,
+    reservationDigest: sha256(canonicalJson(body)),
+  });
+  return reservation;
+}
+
+export function prepareTaskDiffReviewResultBinding(
+  input: Omit<
+    TaskDiffReviewResultBinding,
+    'schemaVersion' | 'kind' | 'bindingDigest'
+  >,
+): TaskDiffReviewResultBinding {
+  const body = {
+    schemaVersion: 1 as const,
+    kind: 'task-diff-review-result-binding.v1' as const,
+    ...input,
+  };
+  const binding = parseTaskDiffReviewResultBinding({
+    ...body,
+    bindingDigest: sha256(canonicalJson(body)),
+  });
+  return binding;
+}
+
+export function prepareTaskDiffReviewContinuationReservation(
+  input: Omit<
+    TaskDiffReviewContinuationReservationRecord,
+    'schemaVersion' | 'kind' | 'reservationDigest'
+  >,
+): TaskDiffReviewContinuationReservationRecord {
+  const body = {
+    schemaVersion: 1 as const,
+    kind: 'task-diff-review-continuation-reservation.v1' as const,
+    ...input,
+  };
+  const reservation = parseTaskDiffReviewContinuationReservation({
+    ...body,
+    reservationDigest: sha256(canonicalJson(body)),
+  });
+  return reservation;
+}
+
+export function prepareTaskDiffReviewContinuationResultBinding(
+  input: Omit<
+    TaskDiffReviewContinuationResultBinding,
+    'schemaVersion' | 'kind' | 'bindingDigest'
+  >,
+): TaskDiffReviewContinuationResultBinding {
+  const body = {
+    schemaVersion: 1 as const,
+    kind: 'task-diff-review-continuation-result-binding.v1' as const,
+    ...input,
+  };
+  const binding = parseTaskDiffReviewContinuationResultBinding({
+    ...body,
+    bindingDigest: sha256(canonicalJson(body)),
+  });
+  return binding;
+}
+
+export function prepareTaskDiffFinalAssuranceBinding(
+  input: Omit<
+    TaskDiffFinalAssuranceBinding,
+    'schemaVersion' | 'kind' | 'bindingDigest'
+  >,
+): TaskDiffFinalAssuranceBinding {
+  const body = {
+    schemaVersion: 1 as const,
+    kind: 'task-diff-final-assurance-binding.v1' as const,
+    ...input,
+  };
+  const binding = parseTaskDiffFinalAssuranceBinding({
+    ...body,
+    bindingDigest: sha256(canonicalJson(body)),
+  });
+  return binding;
+}
+
+export function prepareTaskDiffReviewLineageSupersession(
+  input: CreateTaskDiffReviewLineageSupersessionInput,
+): TaskDiffReviewLineageSupersessionRecord {
+  const predecessorSubject = parseTaskDiffReviewSubject(
+    input.predecessorSubject,
+  );
+  const predecessorReview = parseTaskDiffReviewRecord(input.predecessorReview);
+  const successorSubject = parseTaskDiffReviewSubject(input.successorSubject);
+  const successorReview = parseTaskDiffReviewRecord(input.successorReview);
+  const successorReviewScope = parseTaskDiffReviewScope(
+    input.successorReviewScope,
+  );
+  const body = {
+    schemaVersion: 1 as const,
+    kind: 'task-diff-review-lineage-supersession.v1' as const,
+    predecessorSubject,
+    predecessorSubjectDigest: predecessorSubject.subjectDigest,
+    predecessorReview,
+    predecessorReviewRecordDigest: predecessorReview.recordDigest,
+    successorSubject,
+    successorSubjectDigest: successorSubject.subjectDigest,
+    successorReview,
+    successorReviewRecordDigest: successorReview.recordDigest,
+    successorReviewScope,
+    successorReviewScopeDigest: assertDigest(input.successorReviewScopeDigest),
+  };
+  const record = parseTaskDiffReviewLineageSupersession({
+    ...body,
+    supersessionDigest: sha256(canonicalJson(body)),
+  });
+  return record;
 }

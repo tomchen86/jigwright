@@ -6,6 +6,11 @@
  *   authority fields.
  */
 import type {
+  TaskDiffReviewReservationRecord,
+  TaskDiffReviewResultBinding,
+} from '../../modules/assurance/task-diff-review-binding-record.ts';
+
+import type {
   TaskDiffExternalContinuationBinding,
   TaskDiffExternalContinuationReservation,
   TaskDiffExternalReviewBinding,
@@ -41,16 +46,7 @@ import {
 } from '../../modules/lifecycle/managed-workflow-state-contract.ts';
 import { type ConsumedCollaborationGrantReplayVerifier } from '../../modules/authority/grant-verifier-port.ts';
 import { type TaskDiffReviewLineageEntry } from '../../modules/assurance/task-diff-review-lineage.ts';
-import type {
-  TaskDiffReviewRuntimeBindings,
-  TaskDiffReviewRuntimeData,
-} from './task-diff-review-lifecycle.ts';
-
-type TaskDiffReviewReservationRecord =
-  TaskDiffReviewRuntimeData['TaskDiffReviewReservationRecord'];
-
-type TaskDiffReviewResultBinding =
-  TaskDiffReviewRuntimeData['TaskDiffReviewResultBinding'];
+import type { TaskDiffReviewRuntimeBindings } from './task-diff-review-lifecycle.ts';
 
 declare const readProviderInvocation: TaskDiffReviewRuntimeBindings['readProviderInvocation'];
 

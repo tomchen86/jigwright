@@ -7,17 +7,17 @@
  */
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import type { RecordedRoleParticipant } from '../../modules/provider-orchestration/role-assignment.ts';
+import type { RecordedRoleParticipant } from '../provider-orchestration/role-assignment.ts';
 import {
   parseTaskDiffReviewRecord,
   assertTaskDiffReviewChallengeResponseCurrent,
   parseTaskDiffReviewChallengeResponseRecord,
-} from '../../modules/assurance/task-diff-review-artifact.ts';
+} from './task-diff-review-artifact.ts';
 import {
   parseTaskDiffReviewSubject,
   parseTaskDiffReviewScope,
-} from '../../modules/assurance/task-diff-review.ts';
-import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
+} from './task-diff-review.ts';
+import type { TaskMandateBinding } from '../authority/task-mandate-contract.ts';
 import {
   type TaskDiffReviewManifestSnapshot,
   isRecord,
@@ -31,7 +31,7 @@ import {
   isIdentityOrNull,
   isDigest,
   isAbsolutePath,
-} from './task-diff-review-store-contracts.ts';
+} from './task-diff-review-binding-record.ts';
 
 export function parseManifest(value: unknown): TaskDiffReviewManifestSnapshot {
   if (

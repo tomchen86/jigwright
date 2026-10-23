@@ -11,10 +11,13 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import { assertPrivateInvestigationDirectory } from '../journal-primitives/investigation-private-files.ts';
 import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
-import {
-  storeUnsafe,
-  TASK_DIFF_REVIEW_GLOBAL_NAMESPACES,
-} from './task-diff-review-store-contracts.ts';
+import { storeUnsafe } from '../../modules/assurance/task-diff-review-binding-record.ts';
+
+const TASK_DIFF_REVIEW_GLOBAL_NAMESPACES = new Set([
+  'external-authority',
+  'final-assurance',
+  'lineage-supersessions',
+]);
 
 export function listTaskDiffReviewProviderSessionIds(
   paths: InvestigationRuntimePaths,

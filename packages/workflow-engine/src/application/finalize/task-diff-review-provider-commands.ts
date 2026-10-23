@@ -5,6 +5,8 @@
  * - Review admission must retain the subject inspected before the lifecycle
  *   operation.
  */
+import type { TaskDiffReviewReservationRecord } from '../../modules/assurance/task-diff-review-binding-record.ts';
+
 // Begin and reconcile provider reviews, preserving durable result and replay order.
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
@@ -46,9 +48,6 @@ import type { createTaskDiffReviewProviderBindingModule } from './task-diff-revi
 import type { createTaskDiffReviewLineageModule } from './task-diff-review-lineage.ts';
 import type { createTaskDiffReviewInspectionModule } from './task-diff-review-inspection.ts';
 import type { createTaskDiffReviewProviderReservationsModule } from './task-diff-review-provider-reservations.ts';
-
-type TaskDiffReviewReservationRecord =
-  TaskDiffReviewRuntimeData['TaskDiffReviewReservationRecord'];
 
 type CollaborationGrantUseProjection =
   TaskDiffReviewRuntimeData['CollaborationGrantUseProjection'];

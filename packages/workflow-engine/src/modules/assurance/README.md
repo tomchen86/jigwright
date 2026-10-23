@@ -8,11 +8,11 @@ Keep the presence and currentness of review evidence separate from the reviewer'
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:ccec1e57558adc82c0656bf9d9d5eb70d0f5dcf99a8436371ca3bdf476264452 -->
+<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:264ec2b9e99123fce06e79b912536b655d97f75bfd6457c76a226c0ef11c4c9e -->
 
 <!-- prettier-ignore-start -->
 
-78 files changed in this module since confirmation.
+81 files changed in this module since confirmation.
 
 ## Commands
 
@@ -117,9 +117,12 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [task-diff-final-assurance-artifact.ts](task-diff-final-assurance-artifact.ts) | Builds and validates final task diff assurance from current reviews and responses. | 1 | Header changed since confirmation |
 | [task-diff-review-artifact-record.ts](task-diff-review-artifact-record.ts) | Canonical task diff review artifact record data; parsing and effects stay with their existing implementation. | 0 | History unavailable |
 | [task-diff-review-artifact.ts](task-diff-review-artifact.ts) | Creates and validates task diff review, disposition, and challenge- response records. | 1 | History unavailable |
+| [task-diff-review-binding-codec.ts](task-diff-review-binding-codec.ts) | Validates review reservation and result envelopes against their embedded authority. | 2 | History unavailable |
+| [task-diff-review-binding-record.ts](task-diff-review-binding-record.ts) | Defines persisted review records and their shared identity and error operations. | 2 | History unavailable |
 | [task-diff-review-continuation-submission.ts](task-diff-review-continuation-submission.ts) | Parses advisory task diff continuation proposals and checks their review and response bindings. | 1 | Header changed since confirmation |
 | [task-diff-review-input.ts](task-diff-review-input.ts) | Parses external task diff reviews, challenge responses and advisory closure requests. | 1 | History unavailable |
 | [task-diff-review-lineage.ts](task-diff-review-lineage.ts) | Validates task diff review ancestry and selects the predecessor at the end of the chain. | 1 | History unavailable |
+| [task-diff-review-manifest-codec.ts](task-diff-review-manifest-codec.ts) | Validates stored review manifests and their repository, actor, and mandate context. | 2 | History unavailable |
 | [task-diff-review-record.ts](task-diff-review-record.ts) | Canonical task diff review record data; parsing and effects stay with their existing implementation. | 0 | History unavailable |
 | [task-diff-review-schema.ts](task-diff-review-schema.ts) | Canonical shared task-diff review schema values. | 0 | History unavailable |
 | [task-diff-review-submission.ts](task-diff-review-submission.ts) | Defines task diff provider submissions, canonical findings, and evidence validation. | 1 | Header changed since confirmation |

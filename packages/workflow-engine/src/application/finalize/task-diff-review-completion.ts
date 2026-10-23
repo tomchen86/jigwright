@@ -1,3 +1,7 @@
+import type {
+  TaskDiffReviewReservationRecord,
+  TaskDiffReviewContinuationReservationRecord,
+} from '../../modules/assurance/task-diff-review-binding-record.ts';
 import { taskDiffExternalContinuationTargetDigest } from '../../modules/assurance/task-diff-external-authority.ts';
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
@@ -46,12 +50,6 @@ import type { createTaskDiffReviewInspectionModule } from './task-diff-review-in
 
 type DocumentationReviewCapture =
   TaskDiffReviewRuntimeData['DocumentationReviewCapture'];
-
-type TaskDiffReviewReservationRecord =
-  TaskDiffReviewRuntimeData['TaskDiffReviewReservationRecord'];
-
-type TaskDiffReviewContinuationReservationRecord =
-  TaskDiffReviewRuntimeData['TaskDiffReviewContinuationReservationRecord'];
 
 type CollaborationGrantSelectionCoreBinding =
   TaskDiffReviewRuntimeData['CollaborationGrantSelectionCoreBinding'];

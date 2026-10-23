@@ -6,6 +6,11 @@
  * - Competing active external grants cannot be resolved by filename order.
  */
 import type {
+  TaskDiffReviewReservationRecord,
+  TaskDiffReviewContinuationReservationRecord,
+} from '../../modules/assurance/task-diff-review-binding-record.ts';
+
+import type {
   TaskDiffExternalContinuationReservation,
   TaskDiffExternalReviewReservation,
 } from '../../modules/assurance/task-diff-external-record.ts';
@@ -15,10 +20,7 @@ import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { assertTaskDiffReviewChallengeResponseCurrent } from '../../modules/assurance/task-diff-review-artifact.ts';
 import { type ProviderRoleAssignment } from '../../modules/provider-orchestration/role-assignment.ts';
-import type {
-  TaskDiffReviewRuntimeBindings,
-  TaskDiffReviewRuntimeData,
-} from './task-diff-review-lifecycle.ts';
+import type { TaskDiffReviewRuntimeBindings } from './task-diff-review-lifecycle.ts';
 import type {
   TaskDiffReviewLifecycleStatus,
   TaskDiffReviewExternalContinuationLifecycleStatus,
@@ -32,12 +34,6 @@ import type { createTaskDiffReviewExternalBindingModule } from './task-diff-revi
 import type { createTaskDiffReviewExternalContinuationBindingModule } from './task-diff-review-external-continuation-binding.ts';
 import type { createTaskDiffReviewProviderBindingModule } from './task-diff-review-provider-binding.ts';
 import type { createTaskDiffReviewLineageModule } from './task-diff-review-lineage.ts';
-
-type TaskDiffReviewReservationRecord =
-  TaskDiffReviewRuntimeData['TaskDiffReviewReservationRecord'];
-
-type TaskDiffReviewContinuationReservationRecord =
-  TaskDiffReviewRuntimeData['TaskDiffReviewContinuationReservationRecord'];
 
 export function createTaskDiffReviewInspectionModule(
   runtime: TaskDiffReviewRuntimeBindings,

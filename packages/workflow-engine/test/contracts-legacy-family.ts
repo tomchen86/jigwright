@@ -54,6 +54,8 @@ import './task-diff-external-record-boundary.contract.test.ts';
 import './task-diff-review-external-store.contract.test.ts';
 import './task-diff-review-external-inventory.contract.test.ts';
 import './task-diff-review-store.contract.test.ts';
+import './task-diff-review-binding.contract.test.ts';
+import './task-diff-review-binding-boundary.contract.test.ts';
 import './task-diff-review-lineage.contract.test.ts';
 import './task-diff-review-lineage-supersession.contract.test.ts';
 import './task-diff-review-external-continuation.integration.test.ts';
