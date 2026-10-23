@@ -1,3 +1,10 @@
+import {
+  reviewNotSatisfied,
+  collaborationTransitionDigest,
+  resolveConsumedRoleResultReplayPort,
+  assertStoredAdmittedRoleResultDigest,
+} from '../../modules/assurance/task-diff-review-values.ts';
+import { sha256 } from '../../modules/assurance/task-diff-review-binding-record.ts';
 import type {
   TaskDiffReviewReservationRecord,
   TaskDiffReviewContinuationReservationRecord,
@@ -92,15 +99,7 @@ export function createTaskDiffReviewProviderBindingModule(
     createTaskDiffFinalAssuranceBinding,
     readTaskDiffFinalAssuranceBinding,
   } = runtime;
-  const {
-    parseBaselineJson,
-    baselineAdapterPolicy,
-    sha256,
-    reviewNotSatisfied,
-    collaborationTransitionDigest,
-    resolveConsumedRoleResultReplayPort,
-    assertStoredAdmittedRoleResultDigest,
-  } = common;
+  const { parseBaselineJson, baselineAdapterPolicy } = common;
   const { assertTaskDiffReviewCandidateCurrent } = subject;
   function taskDiffReviewGrantRequest(input: {
     context: ReturnType<typeof loadActiveSessionContext>;

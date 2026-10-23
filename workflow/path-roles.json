@@ -571,6 +571,7 @@
       "packages/workflow-engine/src/modules/assurance/task-diff-review-binding-codec.ts",
       "packages/workflow-engine/src/modules/assurance/task-diff-review-binding-record.ts",
       "packages/workflow-engine/src/modules/assurance/task-diff-review-manifest-codec.ts",
+      "packages/workflow-engine/src/modules/assurance/task-diff-review-values.ts",
       "packages/workflow-engine/src/modules/assurance/task-execution-evidence.ts",
       "packages/workflow-engine/src/modules/assurance/task-strategy-correction-round-record.ts",
       "packages/workflow-engine/src/modules/assurance/task-strategy-evidence.ts",

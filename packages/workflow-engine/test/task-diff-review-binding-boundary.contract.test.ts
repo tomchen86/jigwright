@@ -3,7 +3,12 @@ import path from 'node:path';
 import test from 'node:test';
 import { assertPureDependencyClosure } from './support/pure-dependency-closure.ts';
 
-for (const name of ['binding-record', 'manifest-codec', 'binding-codec']) {
+for (const name of [
+  'binding-record',
+  'manifest-codec',
+  'binding-codec',
+  'values',
+]) {
   const entry = path.resolve(
     import.meta.dirname,
     `../src/modules/assurance/task-diff-review-${name}.ts`,

@@ -6,6 +6,13 @@
  * - An exact external review cannot coexist with provider authority for the
  *   same subject.
  */
+import {
+  reviewNotSatisfied,
+  taskDiffReviewLineageConflict,
+  taskDiffReviewPriorChallengeOpen,
+  taskDiffReviewSupersessionReconciliationRequired,
+  type TaskDiffReviewConsumedReplayValidation,
+} from '../../modules/assurance/task-diff-review-values.ts';
 import type {
   TaskDiffReviewResultBinding,
   TaskDiffReviewReservationRecord,
@@ -26,7 +33,6 @@ import type {
 } from '../../modules/assurance/task-diff-review-artifact-record.ts';
 import type { TaskDiffReviewRuntimeBindings } from './task-diff-review-lifecycle.ts';
 import type {
-  TaskDiffReviewConsumedReplayValidation,
   CurrentExternalTaskDiffTerminalAssurance,
   CurrentAuthenticatedTaskDiffReview,
   CurrentTaskDiffReviewForProviderContinuation,
@@ -38,7 +44,7 @@ import type {
   ReplayedTaskDiffReviewTerminal,
   CurrentExternalTaskDiffReview,
 } from './task-diff-review-contracts.ts';
-import type { createTaskDiffReviewCommonModule } from './task-diff-review-common.ts';
+
 import type { createTaskDiffReviewSubjectModule } from './task-diff-review-subject.ts';
 import type { createTaskDiffReviewExternalBindingModule } from './task-diff-review-external-binding.ts';
 import type { createTaskDiffReviewExternalContinuationBindingModule } from './task-diff-review-external-continuation-binding.ts';
@@ -46,7 +52,6 @@ import type { createTaskDiffReviewProviderBindingModule } from './task-diff-revi
 
 export function createTaskDiffReviewLineageModule(
   runtime: TaskDiffReviewRuntimeBindings,
-  common: ReturnType<typeof createTaskDiffReviewCommonModule>,
   subject: ReturnType<typeof createTaskDiffReviewSubjectModule>,
   externalBinding: ReturnType<typeof createTaskDiffReviewExternalBindingModule>,
   externalContinuationBinding: ReturnType<
@@ -71,12 +76,6 @@ export function createTaskDiffReviewLineageModule(
     listTaskDiffReviewLineageSupersessions,
     createTaskDiffReviewLineageSupersession,
   } = runtime;
-  const {
-    reviewNotSatisfied,
-    taskDiffReviewLineageConflict,
-    taskDiffReviewPriorChallengeOpen,
-    taskDiffReviewSupersessionReconciliationRequired,
-  } = common;
   const { inspectTaskDiffReviewSubject, assertTaskDiffReviewCandidateCurrent } =
     subject;
   const {

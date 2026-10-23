@@ -1,3 +1,10 @@
+import {
+  reviewNotSatisfied,
+  continuationNotStarted,
+  reviewNotStarted,
+  protectedTaskApplyReviewAuthorizationInvalid,
+  type TaskDiffReviewConsumedReplayValidation,
+} from '../../modules/assurance/task-diff-review-values.ts';
 import type {
   TaskDiffReviewReservationRecord,
   TaskDiffReviewContinuationReservationRecord,
@@ -35,7 +42,6 @@ import type {
   TaskDiffReviewRuntimeData,
 } from './task-diff-review-lifecycle.ts';
 import type {
-  TaskDiffReviewConsumedReplayValidation,
   TaskDiffReviewCompletionGateOptions,
   ProtectedTaskApplyTaskDiffProviderGrantContinuation,
   ProtectedTaskApplyTaskDiffGrantContinuation,
@@ -78,11 +84,7 @@ export function createTaskDiffReviewCompletionModule(
     listActiveWorkflowSessionIds,
   } = runtime;
   const {
-    reviewNotSatisfied,
-    continuationNotStarted,
-    reviewNotStarted,
     protectedTaskApplyReviewChallenge,
-    protectedTaskApplyReviewAuthorizationInvalid,
     baselineAdapterPolicy,
     parseBaselineJson,
   } = common;

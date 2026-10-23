@@ -298,7 +298,6 @@ export function createTaskDiffReviewLifecycle(
   );
   const lineage = createTaskDiffReviewLineageModule(
     runtime,
-    common,
     subject,
     externalBinding,
     externalContinuationBinding,
@@ -306,7 +305,6 @@ export function createTaskDiffReviewLifecycle(
   );
   const inspection = createTaskDiffReviewInspectionModule(
     runtime,
-    common,
     subject,
     externalBinding,
     externalContinuationBinding,

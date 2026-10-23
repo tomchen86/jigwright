@@ -1,32 +1,21 @@
 /**
- * Shares lifecycle locks, authority checks, and helpers across task diff
- * review modules.
+ * Coordinates lifecycle locks, protected-apply admission and baseline
+ * observations across task diff review modules.
  *
  * Invariants:
  * - Protected apply review requires a checked transaction matching the
  *   current session.
  */
-// Lifecycle lock selection, authority checks, and shared digest helpers.
+import { protectedTaskApplyReviewAuthorizationInvalid } from '../../modules/assurance/task-diff-review-values.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { assertPreparedProtectedTaskApplyAuthorization } from '../task-apply-authorization/protected-task-apply-authorization.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
-import {
-  type AuthoritativeCollaborationGrantVerifier,
-  assertAuthoritativeCollaborationGrantVerifier,
-  type ConsumedCollaborationGrantReplayVerifier,
-  assertConsumedCollaborationGrantReplayVerifier,
-} from '../../modules/authority/grant-verifier-port.ts';
-import {
-  type AdmittedRoleResult,
-  type ConsumedRoleResultReplayPort,
-} from '../../modules/provider-orchestration/role-admission-contracts.ts';
-import { type CollaborationGrantExpectedBinding } from '../../modules/authority/collaboration-grant-codec.ts';
-import crypto from 'node:crypto';
+
 import type {
   TaskDiffReviewRuntimeBindings,
   TaskDiffReviewRuntimeData,
 } from './task-diff-review-lifecycle.ts';
-import type { TaskDiffReviewConsumedReplayValidation } from './task-diff-review-contracts.ts';
+
 import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
 
 type RepositoryLifecycleOperationOptions =
@@ -40,7 +29,6 @@ export function createTaskDiffReviewCommonModule(
     readFinalizeTransaction,
     withRepositoryLifecycleOperation,
     parseAiAdapterPolicyDocument,
-    runGit,
   } = runtime;
   function taskDiffReviewLifecycleOptions(
     context: ReturnType<typeof loadActiveSessionContext>,
@@ -117,14 +105,6 @@ export function createTaskDiffReviewCommonModule(
     return binding.challengeId;
   }
 
-  function protectedTaskApplyReviewAuthorizationInvalid() {
-    return workflowError(
-      'PROTECTED_TASK_APPLY_REVIEW_AUTHORIZATION_INVALID',
-      'TaskDiffReview cannot cross a protected Apply barrier without the exact current prepared Grant journal binding.',
-      ExitCode.guard,
-    );
-  }
-
   function withTaskDiffReviewProviderLifecycleOperation<T>(
     cwd: string,
     requestedSessionId: string,
@@ -140,62 +120,6 @@ export function createTaskDiffReviewCommonModule(
         return operation(assertOwned);
       },
       taskDiffReviewLifecycleOptions(initialContext, requestedSessionId),
-    );
-  }
-
-  function resolveAuthoritativeCollaborationGrantVerifier(
-    candidate: unknown,
-  ): AuthoritativeCollaborationGrantVerifier {
-    assertAuthoritativeCollaborationGrantVerifier(candidate);
-    return candidate;
-  }
-
-  function resolveConsumedCollaborationGrantReplayVerifier(
-    candidate: unknown,
-  ): ConsumedCollaborationGrantReplayVerifier {
-    assertConsumedCollaborationGrantReplayVerifier(candidate);
-    return candidate;
-  }
-
-  function resolveConsumedRoleResultReplayPort(
-    validation: TaskDiffReviewConsumedReplayValidation | undefined,
-  ): ConsumedRoleResultReplayPort {
-    const replayPort = validation?.consumedRoleResultReplay;
-    if (replayPort === undefined || typeof replayPort.verify !== 'function') {
-      throw workflowError(
-        'COLLABORATION_GRANT_CONSUMED_REPLAY_VERIFIER_UNAVAILABLE',
-        'The terminal-only Collaboration Grant replay verifier is unavailable.',
-        ExitCode.guard,
-      );
-    }
-    return replayPort;
-  }
-
-  function isExternalRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
-  }
-
-  function assertStoredAdmittedRoleResultDigest(
-    roleResult: AdmittedRoleResult,
-  ): void {
-    const { resultDigest, ...semantic } = roleResult;
-    if (
-      resultDigest !==
-      sha256(canonicalJson({ schema: 'admitted-role-result.v1', ...semantic }))
-    ) {
-      throw externalTaskDiffAuthorityInvalid();
-    }
-  }
-
-  function collaborationTransitionDigest(
-    expectedBinding: CollaborationGrantExpectedBinding,
-  ): string {
-    return sha256(
-      canonicalJson({
-        schemaVersion: 1,
-        kind: 'collaboration-role-transition',
-        expectedBinding,
-      }),
     );
   }
 
@@ -260,149 +184,12 @@ export function createTaskDiffReviewCommonModule(
       );
     }
   }
-
-  function sha256(value: string): string {
-    return crypto.createHash('sha256').update(value).digest('hex');
-  }
-
-  function reviewNotReady() {
-    return workflowError(
-      'TASK_DIFF_REVIEW_NOT_READY',
-      'TaskDiffReview is unavailable until finalize freezes a checked candidate tree.',
-      ExitCode.staleState,
-    );
-  }
-
-  function reviewNotStarted() {
-    return workflowError(
-      'TASK_DIFF_REVIEW_NOT_STARTED',
-      'TaskDiffReview has no durable provider reservation for this session.',
-      ExitCode.staleState,
-    );
-  }
-
-  function reviewNotSatisfied() {
-    return workflowError(
-      'TASK_DIFF_REVIEW_NOT_SATISFIED',
-      'TaskDiffReview has no current, provider-bound result for this candidate.',
-      ExitCode.verification,
-    );
-  }
-
-  function continuationNotStarted() {
-    return workflowError(
-      'TASK_DIFF_REVIEW_CONTINUATION_NOT_STARTED',
-      'TaskDiffReview challenge continuation has no durable provider reservation for this response.',
-      ExitCode.staleState,
-    );
-  }
-
-  function continuationResultInvalid() {
-    return workflowError(
-      'TASK_DIFF_REVIEW_CONTINUATION_RESULT_INVALID',
-      'TaskDiffReview challenge continuation output does not cover the exact current review and response.',
-      ExitCode.verification,
-    );
-  }
-
-  function candidateDiverged() {
-    return workflowError(
-      'TASK_DIFF_REVIEW_CANDIDATE_DIVERGED',
-      'TaskDiffReview candidate state no longer matches the durable finalize transaction.',
-      ExitCode.staleState,
-    );
-  }
-
-  function taskDiffReviewLineageConflict() {
-    return workflowError(
-      'TASK_DIFF_REVIEW_LINEAGE_CONFLICT',
-      'TaskDiffReview predecessor and supersession records do not form one exact append-only chain.',
-      ExitCode.guard,
-    );
-  }
-
-  function taskDiffReviewSupersessionReconciliationRequired() {
-    return workflowError(
-      'TASK_DIFF_REVIEW_SUPERSESSION_RECONCILIATION_REQUIRED',
-      'A durable successor TaskDiffReview result requires deterministic supersession reconciliation.',
-      ExitCode.staleState,
-    );
-  }
-
-  function taskDiffReviewPriorChallengeOpen() {
-    return workflowError(
-      'TASK_DIFF_REVIEW_PRIOR_CHALLENGE_OPEN',
-      'The prior TaskDiffReview challenge set lacks authenticated Final Assurance and cannot authorize candidate re-review.',
-      ExitCode.verification,
-    );
-  }
-
-  function externalTaskDiffInputStale() {
-    return workflowError(
-      'TASK_DIFF_REVIEW_EXTERNAL_INPUT_STALE',
-      'External TaskDiffReview input does not bind the exact current subject.',
-      ExitCode.staleState,
-    );
-  }
-
-  function directHumanTaskDiffResumeInvalid() {
-    return workflowError(
-      'TASK_DIFF_DIRECT_HUMAN_RESUME_INVALID',
-      'Direct-human TaskDiffReview resume requires the exact durable pause, authority-free input, and reserved or consumed signed grant.',
-      ExitCode.guard,
-    );
-  }
-
-  function externalTaskDiffLineageDeferred() {
-    return workflowError(
-      'TASK_DIFF_EXTERNAL_REVIEW_LINEAGE_DEFERRED',
-      'External TaskDiffReview currently requires an initial full-scope review; mixed-source delta lineage is a separate lifecycle transition.',
-      ExitCode.guard,
-    );
-  }
-
-  function externalTaskDiffAuthorityInvalid() {
-    return workflowError(
-      'TASK_DIFF_EXTERNAL_REVIEW_AUTHORITY_INVALID',
-      'External TaskDiffReview authority does not replay from the exact submission, consumed grant, admitted role result, and evidence node.',
-      ExitCode.verification,
-    );
-  }
-
-  function externalTaskDiffReconciliationNotAvailable() {
-    return workflowError(
-      'TASK_DIFF_EXTERNAL_RECONCILIATION_NOT_AVAILABLE',
-      'External TaskDiffReview reconciliation requires one exact consumed Grant and its durable reservation.',
-      ExitCode.staleState,
-    );
-  }
   return {
     taskDiffReviewLifecycleOptions,
     assertTaskDiffReviewLifecycleGrantCurrent,
     protectedTaskApplyReviewChallenge,
-    protectedTaskApplyReviewAuthorizationInvalid,
     withTaskDiffReviewProviderLifecycleOperation,
-    resolveAuthoritativeCollaborationGrantVerifier,
-    resolveConsumedCollaborationGrantReplayVerifier,
-    resolveConsumedRoleResultReplayPort,
-    isExternalRecord,
-    assertStoredAdmittedRoleResultDigest,
-    collaborationTransitionDigest,
     baselineAdapterPolicy,
     parseBaselineJson,
-    sha256,
-    reviewNotReady,
-    reviewNotStarted,
-    reviewNotSatisfied,
-    continuationNotStarted,
-    candidateDiverged,
-    taskDiffReviewLineageConflict,
-    taskDiffReviewSupersessionReconciliationRequired,
-    taskDiffReviewPriorChallengeOpen,
-    externalTaskDiffInputStale,
-    directHumanTaskDiffResumeInvalid,
-    externalTaskDiffLineageDeferred,
-    externalTaskDiffAuthorityInvalid,
-    externalTaskDiffReconciliationNotAvailable,
   };
 }

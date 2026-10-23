@@ -1,3 +1,9 @@
+import {
+  resolveAuthoritativeCollaborationGrantVerifier,
+  collaborationTransitionDigest,
+  reviewNotSatisfied,
+} from '../../modules/assurance/task-diff-review-values.ts';
+import { sha256 } from '../../modules/assurance/task-diff-review-binding-record.ts';
 import type {
   TaskDiffReviewManifest,
   TaskDiffReviewContinuationManifest,
@@ -81,13 +87,7 @@ export function createTaskDiffReviewProviderReservationsModule(
     readProviderInvocationManifest,
     createProviderInvocation,
   } = runtime;
-  const {
-    baselineAdapterPolicy,
-    sha256,
-    resolveAuthoritativeCollaborationGrantVerifier,
-    collaborationTransitionDigest,
-    reviewNotSatisfied,
-  } = common;
+  const { baselineAdapterPolicy } = common;
   const {
     taskDiffReviewGrantRequest,
     deriveTaskDiffCollaborationGrantBinding,

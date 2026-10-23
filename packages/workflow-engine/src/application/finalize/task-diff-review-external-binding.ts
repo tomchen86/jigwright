@@ -1,3 +1,12 @@
+import {
+  externalTaskDiffAuthorityInvalid,
+  collaborationTransitionDigest,
+  resolveConsumedRoleResultReplayPort,
+  assertStoredAdmittedRoleResultDigest,
+  isExternalRecord,
+  type TaskDiffReviewConsumedReplayValidation,
+} from '../../modules/assurance/task-diff-review-values.ts';
+import { sha256 } from '../../modules/assurance/task-diff-review-binding-record.ts';
 import type {
   TaskDiffExternalReviewBinding,
   TaskDiffExternalReviewReservation,
@@ -49,7 +58,6 @@ import type {
   BeginTaskDiffReviewOptions,
   TaskDiffReviewLifecycleStatus,
   TaskDiffReviewCollaborationGrantRequiredStatus,
-  TaskDiffReviewConsumedReplayValidation,
   CurrentExternalTaskDiffReview,
 } from './task-diff-review-contracts.ts';
 import type { createTaskDiffReviewCommonModule } from './task-diff-review-common.ts';
@@ -90,16 +98,7 @@ export function createTaskDiffReviewExternalBindingModule(
     readCollaborationGrantInspection,
     readTaskDiffExternalReviewSubmission,
   } = runtime;
-  const {
-    sha256,
-    externalTaskDiffAuthorityInvalid,
-    collaborationTransitionDigest,
-    baselineAdapterPolicy,
-    parseBaselineJson,
-    resolveConsumedRoleResultReplayPort,
-    assertStoredAdmittedRoleResultDigest,
-    isExternalRecord,
-  } = common;
+  const { baselineAdapterPolicy, parseBaselineJson } = common;
   const { resolveTaskDiffImplementationActor } = subject;
   function createExternalTaskDiffReviewContentNode(
     submission: ReturnType<typeof createTaskDiffExternalReviewSubmission>,

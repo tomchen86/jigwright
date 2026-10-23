@@ -8,11 +8,11 @@ Keep the presence and currentness of review evidence separate from the reviewer'
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:264ec2b9e99123fce06e79b912536b655d97f75bfd6457c76a226c0ef11c4c9e -->
+<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:6c6bb150c444551cbd7c3b29da2a76a133883c032d795a592ecf31e14cb5004b -->
 
 <!-- prettier-ignore-start -->
 
-81 files changed in this module since confirmation.
+82 files changed in this module since confirmation.
 
 ## Commands
 
@@ -126,6 +126,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [task-diff-review-record.ts](task-diff-review-record.ts) | Canonical task diff review record data; parsing and effects stay with their existing implementation. | 0 | History unavailable |
 | [task-diff-review-schema.ts](task-diff-review-schema.ts) | Canonical shared task-diff review schema values. | 0 | History unavailable |
 | [task-diff-review-submission.ts](task-diff-review-submission.ts) | Defines task diff provider submissions, canonical findings, and evidence validation. | 1 | Header changed since confirmation |
+| [task-diff-review-values.ts](task-diff-review-values.ts) | Defines TaskDiffReview identity, replay-capability guards and refusal values. | 0 | History unavailable |
 | [task-diff-review.ts](task-diff-review.ts) | Derives task diff review subjects, candidate scopes, and documentation requirements. | 1 | History unavailable |
 | [task-execution-evidence.ts](task-execution-evidence.ts) | Pure admission rules and facts for task execution generation evidence. | 0 | History unavailable |
 | [task-strategy-correction-round-record.ts](task-strategy-correction-round-record.ts) | Canonical correction lineage facts; observation and durable validation stay with their producers. | 0 | History unavailable |

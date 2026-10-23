@@ -5,6 +5,11 @@
  * Invariants:
  * - Competing active external grants cannot be resolved by filename order.
  */
+import {
+  externalTaskDiffAuthorityInvalid,
+  taskDiffReviewLineageConflict,
+  reviewNotSatisfied,
+} from '../../modules/assurance/task-diff-review-values.ts';
 import type {
   TaskDiffReviewReservationRecord,
   TaskDiffReviewContinuationReservationRecord,
@@ -28,7 +33,7 @@ import type {
   TaskDiffReviewInspectionStatus,
   TaskDiffReviewContinuationLifecycleStatus,
 } from './task-diff-review-contracts.ts';
-import type { createTaskDiffReviewCommonModule } from './task-diff-review-common.ts';
+
 import type { createTaskDiffReviewSubjectModule } from './task-diff-review-subject.ts';
 import type { createTaskDiffReviewExternalBindingModule } from './task-diff-review-external-binding.ts';
 import type { createTaskDiffReviewExternalContinuationBindingModule } from './task-diff-review-external-continuation-binding.ts';
@@ -37,7 +42,6 @@ import type { createTaskDiffReviewLineageModule } from './task-diff-review-linea
 
 export function createTaskDiffReviewInspectionModule(
   runtime: TaskDiffReviewRuntimeBindings,
-  common: ReturnType<typeof createTaskDiffReviewCommonModule>,
   subject: ReturnType<typeof createTaskDiffReviewSubjectModule>,
   externalBinding: ReturnType<typeof createTaskDiffReviewExternalBindingModule>,
   externalContinuationBinding: ReturnType<
@@ -67,11 +71,6 @@ export function createTaskDiffReviewInspectionModule(
     readTaskDiffReviewContinuationResultBinding,
     readTaskDiffReviewReservation,
   } = runtime;
-  const {
-    externalTaskDiffAuthorityInvalid,
-    taskDiffReviewLineageConflict,
-    reviewNotSatisfied,
-  } = common;
   const {
     resolveTaskDiffImplementationActor,
     assertTaskDiffReviewCandidateCurrent,

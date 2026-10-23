@@ -6,6 +6,17 @@
  * - Terminal external assurance requires exactly one matching continuation
  *   binding.
  */
+import {
+  taskDiffReviewLineageConflict,
+  externalTaskDiffAuthorityInvalid,
+  externalTaskDiffInputStale,
+  isExternalRecord,
+  resolveConsumedRoleResultReplayPort,
+  assertStoredAdmittedRoleResultDigest,
+  reviewNotSatisfied,
+  type TaskDiffReviewConsumedReplayValidation,
+} from '../../modules/assurance/task-diff-review-values.ts';
+import { sha256 } from '../../modules/assurance/task-diff-review-binding-record.ts';
 import { taskDiffExternalContinuationTargetDigest } from '../../modules/assurance/task-diff-external-authority.ts';
 import type {
   TaskDiffExternalContinuationBinding,
@@ -56,7 +67,6 @@ import type {
 import type {
   CurrentAuthenticatedTaskDiffReview,
   TaskDiffReviewReplayMode,
-  TaskDiffReviewConsumedReplayValidation,
   CurrentExternalTaskDiffTerminalAssurance,
   TaskDiffReviewExternalContinuationLifecycleStatus,
   AuthenticatedExternalTaskDiffContinuation,
@@ -100,18 +110,7 @@ export function createTaskDiffReviewExternalContinuationBindingModule(
     createTaskDiffFinalAssuranceBinding,
     readTaskDiffFinalAssuranceBinding,
   } = runtime;
-  const {
-    taskDiffReviewLineageConflict,
-    externalTaskDiffAuthorityInvalid,
-    externalTaskDiffInputStale,
-    baselineAdapterPolicy,
-    isExternalRecord,
-    parseBaselineJson,
-    resolveConsumedRoleResultReplayPort,
-    assertStoredAdmittedRoleResultDigest,
-    sha256,
-    reviewNotSatisfied,
-  } = common;
+  const { baselineAdapterPolicy, parseBaselineJson } = common;
   const {
     externalTaskDiffGrantCore,
     inspectExternalGrant,

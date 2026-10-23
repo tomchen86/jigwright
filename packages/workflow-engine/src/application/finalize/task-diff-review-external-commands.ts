@@ -1,3 +1,15 @@
+import {
+  externalTaskDiffInputStale,
+  taskDiffReviewLineageConflict,
+  externalTaskDiffLineageDeferred,
+  resolveConsumedCollaborationGrantReplayVerifier,
+  resolveAuthoritativeCollaborationGrantVerifier,
+  reviewNotSatisfied,
+  externalTaskDiffReconciliationNotAvailable,
+  externalTaskDiffAuthorityInvalid,
+  directHumanTaskDiffResumeInvalid,
+} from '../../modules/assurance/task-diff-review-values.ts';
+import { sha256 } from '../../modules/assurance/task-diff-review-binding-record.ts';
 import { taskDiffExternalContinuationTargetDigest } from '../../modules/assurance/task-diff-external-authority.ts';
 import type {
   TaskDiffExternalContinuationReservation,
@@ -124,19 +136,9 @@ export function createTaskDiffReviewExternalCommandsModule(
     readReservedCollaborationGrant,
   } = runtime;
   const {
-    externalTaskDiffInputStale,
     assertTaskDiffReviewLifecycleGrantCurrent,
-    sha256,
-    taskDiffReviewLineageConflict,
-    externalTaskDiffLineageDeferred,
     parseBaselineJson,
-    resolveConsumedCollaborationGrantReplayVerifier,
-    resolveAuthoritativeCollaborationGrantVerifier,
-    reviewNotSatisfied,
     taskDiffReviewLifecycleOptions,
-    externalTaskDiffReconciliationNotAvailable,
-    externalTaskDiffAuthorityInvalid,
-    directHumanTaskDiffResumeInvalid,
   } = common;
   const {
     inspectTaskDiffReviewSubject,

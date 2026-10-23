@@ -1,4 +1,10 @@
 import {
+  reviewNotSatisfied,
+  reviewNotReady,
+  candidateDiverged,
+} from '../../modules/assurance/task-diff-review-values.ts';
+import { sha256 } from '../../modules/assurance/task-diff-review-binding-record.ts';
+import {
   resolveParentCommitOid,
   resolveTreeOid,
 } from '../../runtime/repository-transaction/git-object-ids.ts';
@@ -77,13 +83,7 @@ export function createTaskDiffReviewSubjectModule(
     listStagedPaths,
     fingerprintUnstagedRepositoryProjection,
   } = runtime;
-  const {
-    reviewNotSatisfied,
-    reviewNotReady,
-    candidateDiverged,
-    parseBaselineJson,
-    sha256,
-  } = common;
+  const { parseBaselineJson } = common;
   function assertTaskDiffReviewCandidateCurrent(
     subject: TaskDiffReviewSubject,
     review: TaskDiffReviewRecord,

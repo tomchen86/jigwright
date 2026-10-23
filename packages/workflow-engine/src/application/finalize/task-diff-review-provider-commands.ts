@@ -5,6 +5,17 @@
  * - Review admission must retain the subject inspected before the lifecycle
  *   operation.
  */
+import {
+  candidateDiverged,
+  taskDiffReviewLineageConflict,
+  continuationNotStarted,
+  reviewNotStarted,
+  reviewNotSatisfied,
+  collaborationTransitionDigest,
+  resolveAuthoritativeCollaborationGrantVerifier,
+  type TaskDiffReviewConsumedReplayValidation,
+} from '../../modules/assurance/task-diff-review-values.ts';
+import { sha256 } from '../../modules/assurance/task-diff-review-binding-record.ts';
 import type { TaskDiffReviewReservationRecord } from '../../modules/assurance/task-diff-review-binding-record.ts';
 
 // Begin and reconcile provider reviews, preserving durable result and replay order.
@@ -36,7 +47,6 @@ import type {
 import type {
   BeginTaskDiffReviewOptions,
   TaskDiffReviewInspectionStatus,
-  TaskDiffReviewConsumedReplayValidation,
   TaskDiffReviewContinuationLifecycleStatus,
   ReconcileTaskDiffReviewContinuationOptions,
   ReconcileTaskDiffReviewOptions,
@@ -88,17 +98,9 @@ export function createTaskDiffReviewProviderCommandsModule(
   } = runtime;
   const {
     assertTaskDiffReviewLifecycleGrantCurrent,
-    candidateDiverged,
-    taskDiffReviewLineageConflict,
     taskDiffReviewLifecycleOptions,
-    continuationNotStarted,
-    sha256,
-    reviewNotStarted,
-    reviewNotSatisfied,
     baselineAdapterPolicy,
-    collaborationTransitionDigest,
     parseBaselineJson,
-    resolveAuthoritativeCollaborationGrantVerifier,
   } = common;
   const {
     inspectTaskDiffReviewSubject,

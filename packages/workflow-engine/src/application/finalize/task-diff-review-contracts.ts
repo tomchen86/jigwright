@@ -112,10 +112,6 @@ export type TaskDiffReviewCompletionGateOptions = Readonly<{
   consumedRoleResultReplay?: ConsumedRoleResultReplayPort;
 }>;
 
-export type TaskDiffReviewConsumedReplayValidation = Readonly<{
-  consumedRoleResultReplay?: ConsumedRoleResultReplayPort;
-}>;
-
 export type TaskDiffReviewLifecycleStatus =
   | Readonly<{
       state: 'not-required';
