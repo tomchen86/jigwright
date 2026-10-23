@@ -36,7 +36,6 @@ import {
   reserveCollaborationGrantUnderLifecycleLock,
   selectAndReserveCollaborationGrantUnderLifecycleLock,
 } from '../../runtime/storage-journal/collaboration-grant-reservation.ts';
-import { validateCollaborationGrantUseProjection } from '../../runtime/grants/grant-services.ts';
 import {
   type CollaborationGrantUseProjection,
   type CollaborationGrantSelectionCoreBinding,
@@ -105,11 +104,6 @@ import {
   readTaskDiffExternalReviewBinding,
   readTaskDiffExternalReviewReservation,
   readTaskDiffExternalReviewSubmission,
-  taskDiffExternalContinuationTargetDigest,
-  type TaskDiffExternalContinuationBinding,
-  type TaskDiffExternalContinuationReservation,
-  type TaskDiffExternalReviewBinding,
-  type TaskDiffExternalReviewReservation,
 } from '../../runtime/storage-journal/task-diff-review-external-store.ts';
 import {
   createTaskDiffFinalAssuranceBinding,
@@ -122,7 +116,6 @@ import {
   listAllTaskDiffReviewReservations,
   listAllTaskDiffReviewContinuationReservations,
   listAllTaskDiffReviewContinuationResultBindings,
-  listTaskDiffReviewResultBindings,
   listTaskDiffReviewLineageSupersessions,
   readTaskDiffFinalAssuranceBinding,
   readTaskDiffReviewContinuationReservation,
@@ -181,7 +174,6 @@ const runtime = {
   reserveCollaborationGrantUnderLifecycleLock,
   selectAndReserveCollaborationGrantUnderLifecycleLock,
   verifyExactConsumedCollaborationGrantCrashReplay,
-  validateCollaborationGrantUseProjection,
   readEvidenceNode,
   writeEvidenceNode,
   createEvidenceNode,
@@ -226,7 +218,6 @@ const runtime = {
   readTaskDiffExternalReviewBinding,
   readTaskDiffExternalReviewReservation,
   readTaskDiffExternalReviewSubmission,
-  taskDiffExternalContinuationTargetDigest,
   createTaskDiffFinalAssuranceBinding,
   createTaskDiffReviewLineageSupersession,
   createTaskDiffReviewContinuationReservation,
@@ -237,7 +228,6 @@ const runtime = {
   listAllTaskDiffReviewReservations,
   listAllTaskDiffReviewContinuationReservations,
   listAllTaskDiffReviewContinuationResultBindings,
-  listTaskDiffReviewResultBindings,
   listTaskDiffReviewLineageSupersessions,
   readTaskDiffFinalAssuranceBinding,
   readTaskDiffReviewContinuationReservation,
@@ -258,10 +248,6 @@ export type TaskDiffReviewRuntimeData = {
   TaskDiffReviewContinuationManifest: TaskDiffReviewContinuationManifest;
   TaskDiffReviewManifest: TaskDiffReviewManifest;
   RepositoryLifecycleOperationOptions: RepositoryLifecycleOperationOptions;
-  TaskDiffExternalContinuationBinding: TaskDiffExternalContinuationBinding;
-  TaskDiffExternalContinuationReservation: TaskDiffExternalContinuationReservation;
-  TaskDiffExternalReviewBinding: TaskDiffExternalReviewBinding;
-  TaskDiffExternalReviewReservation: TaskDiffExternalReviewReservation;
   TaskDiffReviewContinuationReservationRecord: TaskDiffReviewContinuationReservationRecord;
   TaskDiffReviewContinuationResultBinding: TaskDiffReviewContinuationResultBinding;
   TaskDiffReviewReservationRecord: TaskDiffReviewReservationRecord;

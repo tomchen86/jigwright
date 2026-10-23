@@ -28,7 +28,7 @@ import {
   type TaskDiffExternalChallengeResponse,
   type TaskDiffExternalReviewSubmission,
   type TaskDiffExternalClosureSubmission,
-} from './task-diff-external-store-contracts.ts';
+} from '../../modules/assurance/task-diff-external-record.ts';
 import {
   parseTaskDiffExternalReviewReservation,
   parseTaskDiffExternalReviewBinding,
@@ -36,12 +36,12 @@ import {
   parseTaskDiffExternalContinuationBinding,
   reviewBindingMatchesReservation,
   continuationBindingMatchesReservation,
-} from './task-diff-external-authority-records.ts';
+} from '../../modules/assurance/task-diff-external-authority.ts';
 import {
   parseTaskDiffExternalChallengeResponse,
   parseTaskDiffExternalReviewSubmission,
   parseTaskDiffExternalClosureSubmission,
-} from './task-diff-external-content-records.ts';
+} from '../../modules/assurance/task-diff-external-content.ts';
 
 /**
  * Validate the whole external-authority namespace before trusting any entry.

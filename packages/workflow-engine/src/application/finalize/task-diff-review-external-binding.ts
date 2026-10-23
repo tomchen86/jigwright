@@ -1,3 +1,7 @@
+import type {
+  TaskDiffExternalReviewBinding,
+  TaskDiffExternalReviewReservation,
+} from '../../modules/assurance/task-diff-external-record.ts';
 import type { CollaborationGrantCodec } from '../../modules/authority/collaboration-grant-codec.ts';
 /**
  * Authenticates initial external task diff reviews and their recorded grant
@@ -57,12 +61,6 @@ type CollaborationGrantSelectionCoreBinding =
 
 type CollaborationGrantUseProjection =
   TaskDiffReviewRuntimeData['CollaborationGrantUseProjection'];
-
-type TaskDiffExternalReviewReservation =
-  TaskDiffReviewRuntimeData['TaskDiffExternalReviewReservation'];
-
-type TaskDiffExternalReviewBinding =
-  TaskDiffReviewRuntimeData['TaskDiffExternalReviewBinding'];
 
 export function createTaskDiffReviewExternalBindingModule(
   runtime: TaskDiffReviewRuntimeBindings,

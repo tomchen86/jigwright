@@ -1,3 +1,8 @@
+import { taskDiffExternalContinuationTargetDigest } from '../../modules/assurance/task-diff-external-authority.ts';
+import type {
+  TaskDiffExternalContinuationReservation,
+  TaskDiffExternalReviewReservation,
+} from '../../modules/assurance/task-diff-external-record.ts';
 import type {
   CollaborationGrantCodec,
   DirectHumanReviewAttestationIssuer,
@@ -58,17 +63,11 @@ import type { createTaskDiffReviewLineageModule } from './task-diff-review-linea
 import type { createTaskDiffReviewInspectionModule } from './task-diff-review-inspection.ts';
 import type { ConsumedRoleResultReplayPort } from '../../modules/provider-orchestration/role-admission-contracts.ts';
 
-type TaskDiffExternalReviewReservation =
-  TaskDiffReviewRuntimeData['TaskDiffExternalReviewReservation'];
-
 type CollaborationGrantUseProjection =
   TaskDiffReviewRuntimeData['CollaborationGrantUseProjection'];
 
 type VerifiedConsumedCollaborationGrantReplay =
   TaskDiffReviewRuntimeData['VerifiedConsumedCollaborationGrantReplay'];
-
-type TaskDiffExternalContinuationReservation =
-  TaskDiffReviewRuntimeData['TaskDiffExternalContinuationReservation'];
 
 export function createTaskDiffReviewExternalCommandsModule(
   runtime: TaskDiffReviewRuntimeBindings,
@@ -114,7 +113,6 @@ export function createTaskDiffReviewExternalCommandsModule(
     createTaskDiffExternalReviewReservation,
     consumeCollaborationGrantUnderLifecycleLock,
     createTaskDiffExternalReviewBinding,
-    taskDiffExternalContinuationTargetDigest,
     readTaskDiffExternalContinuationBinding,
     createTaskDiffExternalClosureSubmission,
     createTaskDiffExternalChallengeResponse,

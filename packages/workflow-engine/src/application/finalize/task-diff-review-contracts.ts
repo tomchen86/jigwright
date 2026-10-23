@@ -5,6 +5,12 @@
  * - Lifecycle states carry their own required provider or external
  *   authority fields.
  */
+import type {
+  TaskDiffExternalContinuationBinding,
+  TaskDiffExternalContinuationReservation,
+  TaskDiffExternalReviewBinding,
+  TaskDiffExternalReviewReservation,
+} from '../../modules/assurance/task-diff-external-record.ts';
 // Shared lifecycle contracts for review commands, inspection, and replay.
 
 import {
@@ -39,18 +45,6 @@ import type {
   TaskDiffReviewRuntimeBindings,
   TaskDiffReviewRuntimeData,
 } from './task-diff-review-lifecycle.ts';
-
-type TaskDiffExternalContinuationReservation =
-  TaskDiffReviewRuntimeData['TaskDiffExternalContinuationReservation'];
-
-type TaskDiffExternalContinuationBinding =
-  TaskDiffReviewRuntimeData['TaskDiffExternalContinuationBinding'];
-
-type TaskDiffExternalReviewBinding =
-  TaskDiffReviewRuntimeData['TaskDiffExternalReviewBinding'];
-
-type TaskDiffExternalReviewReservation =
-  TaskDiffReviewRuntimeData['TaskDiffExternalReviewReservation'];
 
 type TaskDiffReviewReservationRecord =
   TaskDiffReviewRuntimeData['TaskDiffReviewReservationRecord'];

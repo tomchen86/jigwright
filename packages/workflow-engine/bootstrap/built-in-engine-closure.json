@@ -1018,37 +1018,37 @@
     {
       "path": "src/application/finalize/task-diff-review-completion.ts",
       "mode": "100644",
-      "digest": "sha256:fb6111bd42a207a910deadd0ba0c58353c6baf3aa093fb2dcd76fe2c7126d661"
+      "digest": "sha256:0d6ef3e1a2cfc5f505f14e7bd7775a92aff35290550b60837559144953cdfea6"
     },
     {
       "path": "src/application/finalize/task-diff-review-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:de4f20a875fa5793a3df5bdd948ad10127acb8e6b5bcb399e52497e90d2a9736"
+      "digest": "sha256:afb3d72b5db629ab7607e665975658fc3eeae17a85309ec0854adc6db9305620"
     },
     {
       "path": "src/application/finalize/task-diff-review-external-binding.ts",
       "mode": "100644",
-      "digest": "sha256:36fbe16fb6439597845e0471877b9e216b055dc7abb72eab46e205969e277454"
+      "digest": "sha256:9a0dfc0826a04b65b0a079ca44f2dcf4bdfd2fda92cec046c53b5a8adceacd51"
     },
     {
       "path": "src/application/finalize/task-diff-review-external-commands.ts",
       "mode": "100644",
-      "digest": "sha256:0b63d6aca3fb9236499d866216a51e70d795dfb6789026ca03a7d1edaaebffe7"
+      "digest": "sha256:0d77dbbd0a643cbcefe7c030d5963533fe0c6581c4a35e574178ef25d178cdeb"
     },
     {
       "path": "src/application/finalize/task-diff-review-external-continuation-binding.ts",
       "mode": "100644",
-      "digest": "sha256:795effeb3efb9cdea446314ffb70e55cfa45967e275d622c35fcc54e12a14aa1"
+      "digest": "sha256:9d5f5492e7c1a2ffc1ef9e397d8355b632c5535c3d1eec85a66dc52f56cf6f45"
     },
     {
       "path": "src/application/finalize/task-diff-review-inspection.ts",
       "mode": "100644",
-      "digest": "sha256:08c47ef09c582537201039d5ad6cf84a2ff9d59a65c8f60245f86a0e5c73bb02"
+      "digest": "sha256:b97abad4c1410719f37a1b12cafa097f2340c3cfa59d9f5e73ae28d2f0009bba"
     },
     {
       "path": "src/application/finalize/task-diff-review-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:f7fd6af235da12cdde0b2f366d72e3f1c29964b0dee97a656d2c562ecc235110"
+      "digest": "sha256:b0584b055c578c11b5cf1be12a8ae93aab09640f650ed13f3155e9fd07356efc"
     },
     {
       "path": "src/application/finalize/task-diff-review-lineage.ts",
@@ -2439,6 +2439,21 @@
       "path": "src/modules/assurance/review-coverage.ts",
       "mode": "100644",
       "digest": "sha256:1c5652c1d9aa0821d133e29a1081be53298b627ea4af0dfbb480284bbe8cf5ce"
+    },
+    {
+      "path": "src/modules/assurance/task-diff-external-authority.ts",
+      "mode": "100644",
+      "digest": "sha256:12ce920047b14c22bcbed60dded100eb18e0c21444ca086cc60eeb1b5e185f27"
+    },
+    {
+      "path": "src/modules/assurance/task-diff-external-content.ts",
+      "mode": "100644",
+      "digest": "sha256:39da74d17dd6e89ef27cc80a4dfe636d37efad1bc767d41825537122f729876b"
+    },
+    {
+      "path": "src/modules/assurance/task-diff-external-record.ts",
+      "mode": "100644",
+      "digest": "sha256:a71bdf6093c39910d05183b2dfbba45ac11772a43c7e3757de7e3fbe1da5c160"
     },
     {
       "path": "src/modules/assurance/task-diff-final-assurance-artifact.ts",
@@ -5391,34 +5406,19 @@
       "digest": "sha256:04fd410cd18f2d6afef0924436cb8887d2e4d9d86dd903c7b1a6e7fec6271b46"
     },
     {
-      "path": "src/runtime/storage-journal/task-diff-external-authority-records.ts",
-      "mode": "100644",
-      "digest": "sha256:197887c0b92f31644d2182ac4d2cfc498704872c7464c327928dfecf4b5099a7"
-    },
-    {
-      "path": "src/runtime/storage-journal/task-diff-external-content-records.ts",
-      "mode": "100644",
-      "digest": "sha256:cdc49409301807af0cdbe46656b39450855ce60e85536c1eae0cdeb19c9ab090"
-    },
-    {
-      "path": "src/runtime/storage-journal/task-diff-external-store-contracts.ts",
-      "mode": "100644",
-      "digest": "sha256:224c5365e7a4ae505e2458d8cf599bcf197d569d1baaabc33d7776489bec24cb"
-    },
-    {
       "path": "src/runtime/storage-journal/task-diff-external-store-inventory.ts",
       "mode": "100644",
-      "digest": "sha256:636822ba5829272aa09e8e80f3cafff1ed76e2c2f6de90b826202cbc13dc61bb"
+      "digest": "sha256:18305a403c059322f99aa9d0d2d349df47904d1a6bb71782d31e836fcee813e3"
     },
     {
       "path": "src/runtime/storage-journal/task-diff-external-store-paths.ts",
       "mode": "100644",
-      "digest": "sha256:1aef31ba56bc60867bbf9c8ac323b9822a7ef61c62c1849ea62bdbe13b748510"
+      "digest": "sha256:25ca84a10ef4fe91bc2b4b780d3e81605e8e1ee31ffdb4026d4f3922221fdec0"
     },
     {
       "path": "src/runtime/storage-journal/task-diff-review-external-store.ts",
       "mode": "100644",
-      "digest": "sha256:319b2ac10c57cc4ed7a90fd60b51a198aa587a574ee8fad474da08f7e1ea3361"
+      "digest": "sha256:467541550ef4a2972786c0f0ab9245c9e7be8e6d3a9a220e946b5ad8076c3412"
     },
     {
       "path": "src/runtime/storage-journal/task-diff-review-lineage-store.ts",

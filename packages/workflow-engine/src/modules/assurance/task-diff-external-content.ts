@@ -9,14 +9,14 @@ import {
   parseTaskDiffReviewChallengeResponseRecord,
   parseTaskDiffReviewSubmission,
   parseTaskDiffReviewContinuationSubmission,
-} from '../../modules/assurance/task-diff-review-artifact.ts';
+} from './task-diff-review-artifact.ts';
 import type {
   TaskDiffReviewChallengeResponseRecord,
   TaskDiffReviewSubmission,
   TaskDiffReviewContinuationSubmission,
-} from '../../modules/assurance/task-diff-review-artifact-record.ts';
-import { parseTaskDiffReviewScope } from '../../modules/assurance/task-diff-review.ts';
-import type { TaskDiffReviewScope } from '../../modules/assurance/task-diff-review-record.ts';
+} from './task-diff-review-artifact-record.ts';
+import { parseTaskDiffReviewScope } from './task-diff-review.ts';
+import type { TaskDiffReviewScope } from './task-diff-review-record.ts';
 import {
   type PrepareTaskDiffExternalChallengeResponseInput,
   type TaskDiffExternalChallengeResponse,
@@ -32,8 +32,8 @@ import {
   hasExactKeys,
   withoutDigest,
   deepFreeze,
-} from './task-diff-external-store-contracts.ts';
-import { taskDiffExternalContinuationTargetDigest } from './task-diff-external-authority-records.ts';
+} from './task-diff-external-record.ts';
+import { taskDiffExternalContinuationTargetDigest } from './task-diff-external-authority.ts';
 
 export function prepareTaskDiffExternalChallengeResponse(
   input: PrepareTaskDiffExternalChallengeResponseInput,

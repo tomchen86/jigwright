@@ -49,6 +49,8 @@ import './task-diff-review.contract.test.ts';
 import './task-diff-review-artifact.contract.test.ts';
 import './task-diff-review-external-input.contract.test.ts';
 import './task-diff-review-external-cli.contract.test.ts';
+import './task-diff-external-record.contract.test.ts';
+import './task-diff-external-record-boundary.contract.test.ts';
 import './task-diff-review-external-store.contract.test.ts';
 import './task-diff-review-external-inventory.contract.test.ts';
 import './task-diff-review-store.contract.test.ts';

@@ -47,7 +47,7 @@ import {
 } from '../src/composition-root/task-diff-review-production.ts';
 import { createTaskDiffReviewChallengeResponse } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact-record.ts';
-import { taskDiffExternalContinuationTargetDigest } from '../src/runtime/storage-journal/task-diff-review-external-store.ts';
+import { taskDiffExternalContinuationTargetDigest } from '../src/modules/assurance/task-diff-external-authority.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
 import type { TaskDiffReviewSubject } from '../src/modules/assurance/task-diff-review-record.ts';
 import { productionConsumedRoleResultReplayPort } from '../src/composition-root/grant-verifier-composition.ts';

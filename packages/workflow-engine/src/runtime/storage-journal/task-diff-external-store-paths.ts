@@ -6,7 +6,7 @@
  */
 import path from 'node:path';
 import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
-import { assertDigest } from './task-diff-external-store-contracts.ts';
+import { assertDigest } from '../../modules/assurance/task-diff-external-record.ts';
 
 export const DIGEST_FILE = /^([0-9a-f]{64})\.json$/u;
 

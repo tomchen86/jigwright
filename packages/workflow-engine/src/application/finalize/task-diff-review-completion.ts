@@ -1,3 +1,4 @@
+import { taskDiffExternalContinuationTargetDigest } from '../../modules/assurance/task-diff-external-authority.ts';
 import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
@@ -77,7 +78,6 @@ export function createTaskDiffReviewCompletionModule(
     readTaskDiffReviewContinuationReservation,
     readTaskDiffReviewReservation,
     listActiveWorkflowSessionIds,
-    taskDiffExternalContinuationTargetDigest,
   } = runtime;
   const {
     reviewNotSatisfied,

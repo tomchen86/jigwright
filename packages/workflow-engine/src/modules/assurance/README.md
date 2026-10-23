@@ -8,11 +8,11 @@ Keep the presence and currentness of review evidence separate from the reviewer'
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:9353f1f6d04740b25cc1c7b88079b777e28347f25a8c4c379102ac03c74f1d2f -->
+<!-- jigwright:region id=documents.assurance-readme v=1 digest=sha256:ccec1e57558adc82c0656bf9d9d5eb70d0f5dcf99a8436371ca3bdf476264452 -->
 
 <!-- prettier-ignore-start -->
 
-75 files changed in this module since confirmation.
+78 files changed in this module since confirmation.
 
 ## Commands
 
@@ -41,6 +41,7 @@ Keep the presence and currentness of review evidence separate from the reviewer'
 | PreMergeCoverageCategory | planning, implementation, base-context, check-policy, integration-question | [pre-merge-assurance.ts](pre-merge-assurance.ts) |
 | ChallengeDisposition | accepted, rebutted, superseded, withdrawn, waived | [review-challenge.ts](review-challenge.ts) |
 | ChallengeSeverity | ordinary, forbidden-floor | [review-challenge.ts](review-challenge.ts) |
+| TaskDiffExternalDegradedForm | caller-supplied, direct-human-review | [task-diff-external-record.ts](task-diff-external-record.ts) |
 | TaskDiffReviewVerdict | advisory-approve, advisory-reject | [task-diff-review-artifact-record.ts](task-diff-review-artifact-record.ts) |
 | TaskDiffReviewSeverity | critical, high, medium, low, informational | [task-diff-review-artifact-record.ts](task-diff-review-artifact-record.ts) |
 | TaskDiffReviewContinuationDecision | accepted, rebutted, superseded, withdrawn, waived | [task-diff-review-artifact-record.ts](task-diff-review-artifact-record.ts) |
@@ -110,6 +111,9 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [required-checks.ts](required-checks.ts) | Resolves required check definitions through the existing versioned registry contract. | 0 | History unavailable |
 | [review-challenge.ts](review-challenge.ts) | Enforces review challenge closure authority and identifies targets requiring another review. | 1 | History unavailable |
 | [review-coverage.ts](review-coverage.ts) | Builds review populations and selects the required targets for each assurance tier. | 1 | History unavailable |
+| [task-diff-external-authority.ts](task-diff-external-authority.ts) | Constructs and validates external review and continuation grant bindings. | 2 | History unavailable |
+| [task-diff-external-content.ts](task-diff-external-content.ts) | Constructs and validates immutable external submissions and challenge responses. | 2 | History unavailable |
+| [task-diff-external-record.ts](task-diff-external-record.ts) | Defines immutable external review records and shared subject and identity validation. | 2 | History unavailable |
 | [task-diff-final-assurance-artifact.ts](task-diff-final-assurance-artifact.ts) | Builds and validates final task diff assurance from current reviews and responses. | 1 | Header changed since confirmation |
 | [task-diff-review-artifact-record.ts](task-diff-review-artifact-record.ts) | Canonical task diff review artifact record data; parsing and effects stay with their existing implementation. | 0 | History unavailable |
 | [task-diff-review-artifact.ts](task-diff-review-artifact.ts) | Creates and validates task diff review, disposition, and challenge- response records. | 1 | History unavailable |

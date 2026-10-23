@@ -5,6 +5,10 @@
  * Invariants:
  * - Competing active external grants cannot be resolved by filename order.
  */
+import type {
+  TaskDiffExternalContinuationReservation,
+  TaskDiffExternalReviewReservation,
+} from '../../modules/assurance/task-diff-external-record.ts';
 // Read and render the current review state without advancing its lifecycle.
 import type { TaskDiffReviewSubject } from '../../modules/assurance/task-diff-review-record.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
@@ -28,12 +32,6 @@ import type { createTaskDiffReviewExternalBindingModule } from './task-diff-revi
 import type { createTaskDiffReviewExternalContinuationBindingModule } from './task-diff-review-external-continuation-binding.ts';
 import type { createTaskDiffReviewProviderBindingModule } from './task-diff-review-provider-binding.ts';
 import type { createTaskDiffReviewLineageModule } from './task-diff-review-lineage.ts';
-
-type TaskDiffExternalReviewReservation =
-  TaskDiffReviewRuntimeData['TaskDiffExternalReviewReservation'];
-
-type TaskDiffExternalContinuationReservation =
-  TaskDiffReviewRuntimeData['TaskDiffExternalContinuationReservation'];
 
 type TaskDiffReviewReservationRecord =
   TaskDiffReviewRuntimeData['TaskDiffReviewReservationRecord'];

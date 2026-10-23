@@ -69,8 +69,8 @@ import type {
 import {
   readTaskDiffExternalContinuationBinding,
   readTaskDiffExternalReviewBinding,
-  taskDiffExternalContinuationTargetDigest,
 } from '../src/runtime/storage-journal/task-diff-review-external-store.ts';
+import { taskDiffExternalContinuationTargetDigest } from '../src/modules/assurance/task-diff-external-authority.ts';
 import {
   readTaskDiffFinalAssuranceBinding,
   readTaskDiffReviewResultBinding,

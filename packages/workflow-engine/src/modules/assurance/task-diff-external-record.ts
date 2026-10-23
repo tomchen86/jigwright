@@ -12,13 +12,13 @@ import type {
   TaskDiffReviewChallengeResponseRecord,
   TaskDiffReviewSubmission,
   TaskDiffReviewContinuationSubmission,
-} from '../../modules/assurance/task-diff-review-artifact-record.ts';
-import { parseTaskDiffReviewSubject } from '../../modules/assurance/task-diff-review.ts';
+} from './task-diff-review-artifact-record.ts';
+import { parseTaskDiffReviewSubject } from './task-diff-review.ts';
 import type {
   TaskDiffReviewSubject,
   TaskDiffReviewScope,
-} from '../../modules/assurance/task-diff-review-record.ts';
-import type { RecordedRoleParticipant } from '../../modules/provider-orchestration/role-assignment.ts';
+} from './task-diff-review-record.ts';
+import type { RecordedRoleParticipant } from '../provider-orchestration/role-assignment.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/u;
 

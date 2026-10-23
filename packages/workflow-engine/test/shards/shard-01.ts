@@ -107,3 +107,5 @@ import '../task-strategy-red-revision.test.ts';
 import '../workflow-doctor-boundary.test.ts';
 import '../workflow-doctor.test.ts';
 import '../intervention-metadata-disposition.integration.test.ts';
+import '../task-diff-external-record-boundary.contract.test.ts';
+import '../task-diff-external-record.contract.test.ts';

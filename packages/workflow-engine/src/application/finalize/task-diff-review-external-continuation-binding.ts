@@ -6,6 +6,11 @@
  * - Terminal external assurance requires exactly one matching continuation
  *   binding.
  */
+import { taskDiffExternalContinuationTargetDigest } from '../../modules/assurance/task-diff-external-authority.ts';
+import type {
+  TaskDiffExternalContinuationBinding,
+  TaskDiffExternalContinuationReservation,
+} from '../../modules/assurance/task-diff-external-record.ts';
 // Authenticate external continuation bindings and recover terminal assurance.
 import {
   assertTaskDiffReviewChallengeResponseCurrent,
@@ -62,12 +67,6 @@ import type { createTaskDiffReviewExternalBindingModule } from './task-diff-revi
 type CollaborationGrantSelectionCoreBinding =
   TaskDiffReviewRuntimeData['CollaborationGrantSelectionCoreBinding'];
 
-type TaskDiffExternalContinuationReservation =
-  TaskDiffReviewRuntimeData['TaskDiffExternalContinuationReservation'];
-
-type TaskDiffExternalContinuationBinding =
-  TaskDiffReviewRuntimeData['TaskDiffExternalContinuationBinding'];
-
 export function createTaskDiffReviewExternalContinuationBindingModule(
   runtime: TaskDiffReviewRuntimeBindings,
   common: ReturnType<typeof createTaskDiffReviewCommonModule>,
@@ -94,7 +93,6 @@ export function createTaskDiffReviewExternalContinuationBindingModule(
     readTaskDiffExternalContinuationReservation,
     createTaskDiffExternalClosureSubmission,
     createEvidenceNode,
-    taskDiffExternalContinuationTargetDigest,
     readTaskDiffExternalClosureSubmission,
     readEvidenceNode,
     readCollaborationGrantInspection,
