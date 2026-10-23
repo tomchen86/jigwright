@@ -576,7 +576,6 @@
       "packages/workflow-engine/src/modules/assurance/task-strategy-patch-contract.ts",
       "packages/workflow-engine/src/modules/assurance/task-strategy-patch-record.ts",
       "packages/workflow-engine/src/modules/assurance/task-strategy-transaction.ts",
-      "packages/workflow-engine/src/modules/authority/intervention-control-protected-manifest.ts",
       "packages/workflow-engine/src/modules/authority/intervention-control-values.ts",
       "packages/workflow-engine/src/modules/authority/intervention-control.ts",
       "packages/workflow-engine/src/modules/authority/intervention-record-contract.ts",

@@ -1,3 +1,4 @@
+import { createFixtureProtectedManifest } from './support/protected-capability-fixture.ts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -7,12 +8,6 @@ import path from 'node:path';
 import test from 'node:test';
 import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import {
-  createProtectedCapabilityManifest,
-  protectedCapabilityClosureDigest,
-  type ProtectedCapabilityEntry,
-  REQUIRED_PROTECTED_CAPABILITIES,
-} from '../src/modules/authority/intervention-control.ts';
 import {
   recoveryAuthorityDescriptorDigest,
   type RecoveryAuthorityDescriptorPayloadV1,
@@ -33,7 +28,10 @@ import {
   executeRecoveryQuarantineEnter,
   executeRecoveryQuarantineRelease,
 } from '../src/runtime/recovery/recovery-quarantine.ts';
-import { loadProtectedCapabilitiesFromTrustBase } from '../src/runtime/repository-validation/protected-capabilities.ts';
+import {
+  REQUIRED_PROTECTED_CAPABILITIES,
+  loadProtectedCapabilitiesFromTrustBase,
+} from '../src/runtime/repository-validation/protected-capabilities.ts';
 import {
   digest,
   writeJsonRecord,
@@ -703,10 +701,9 @@ function installRepositoryIdentity(
 
 function writeFixtureProtectedManifest(repository: string): void {
   const manifest = createFixtureProtectedManifest(repository);
-  const { manifestDigest: _manifestDigest, ...manifestPayload } = manifest;
   fs.writeFileSync(
     path.join(repository, 'workflow/protected-capabilities.json'),
-    `${JSON.stringify(manifestPayload, null, 2)}\n`,
+    `${JSON.stringify(manifest, null, 2)}\n`,
   );
 }
 
@@ -720,82 +717,6 @@ if (mode === '--control-plane-restart-probe') {
 process.stdout.write(JSON.stringify({kind:'forged-generation-one'}) + '\\n');
 process.exit(0);
 `;
-}
-
-function createFixtureProtectedManifest(
-  repository: string,
-  extraAuthorizationDependencies: readonly string[] = [],
-): ReturnType<typeof createProtectedCapabilityManifest> {
-  const entries: ProtectedCapabilityEntry[] =
-    REQUIRED_PROTECTED_CAPABILITIES.map((capability) => {
-      const entrypoints = [`protected/${capability}/entry.ts`];
-      const dependencies = [
-        ...new Set([
-          `protected/${capability}/dependency.ts`,
-          ...(capability === 'adoption.journal'
-            ? ['workflow/protected-capabilities.json']
-            : []),
-          ...(capability === 'authorization.verify'
-            ? extraAuthorizationDependencies
-            : []),
-          ...(capability === 'policy.classify'
-            ? [
-                'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts',
-              ]
-            : []),
-          ...(capability === 'control-plane.update'
-            ? BOOTSTRAP_RUNTIME_NAMES.map(
-                (name) => `packages/workflow-engine/bootstrap/${name}`,
-              )
-            : []),
-        ]),
-      ].sort();
-      for (const filePath of [...entrypoints, ...dependencies]) {
-        if (filePath === 'workflow/protected-capabilities.json') continue;
-        const absolute = path.join(repository, filePath);
-        fs.mkdirSync(path.dirname(absolute), { recursive: true });
-        if (!fs.existsSync(absolute)) {
-          fs.writeFileSync(absolute, `fixture protected file: ${filePath}\n`);
-        }
-      }
-      const identities = [...new Set([...entrypoints, ...dependencies])]
-        .map((filePath) =>
-          filePath === 'workflow/protected-capabilities.json'
-            ? {
-                path: filePath,
-                mode: 'manifest-self',
-                objectId: 'manifest-self',
-              }
-            : {
-                path: filePath,
-                mode: '100644',
-                objectId: git(repository, ['hash-object', filePath]).trim(),
-              },
-        )
-        .sort((left, right) => left.path.localeCompare(right.path));
-      const contentDigest = digest(
-        canonicalJson({
-          kind: 'protected-capability-content.v1',
-          files: identities,
-        }),
-      );
-      return {
-        capability,
-        entrypoints,
-        dependencies,
-        contentDigest,
-        closureDigest: protectedCapabilityClosureDigest(
-          entrypoints,
-          dependencies,
-          contentDigest,
-        ),
-      };
-    });
-  return createProtectedCapabilityManifest({
-    schemaVersion: 1,
-    manifestPath: 'workflow/protected-capabilities.json',
-    entries,
-  });
 }
 
 function installFixtureGrantVerifierComposition(
@@ -927,13 +848,12 @@ function installFixtureGrantVerifierComposition(
   const { compositionDigest: _compositionDigest, ...mutatedPayload } =
     composition;
   composition.compositionDigest = digest(canonicalJson(mutatedPayload));
-  const { manifestDigest: _manifestDigest, ...historicalPayload } = manifest;
   const payload = {
-    kind: historicalPayload.kind,
-    schemaVersion: historicalPayload.schemaVersion,
-    manifestPath: historicalPayload.manifestPath,
+    kind: manifest.kind,
+    schemaVersion: manifest.schemaVersion,
+    manifestPath: manifest.manifestPath,
     grantVerifierComposition: composition,
-    entries: historicalPayload.entries,
+    entries: manifest.entries,
   };
   fs.writeFileSync(
     path.join(repository, 'workflow/protected-capabilities.json'),

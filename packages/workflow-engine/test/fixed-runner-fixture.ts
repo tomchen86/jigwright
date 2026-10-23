@@ -1,3 +1,4 @@
+import { createFixtureProtectedManifest } from './support/protected-capability-fixture.ts';
 /** Copied package host plus inert retired state. No updater or authority ceremony. */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -5,12 +6,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import {
-  createProtectedCapabilityManifest,
-  protectedCapabilityClosureDigest,
-  REQUIRED_PROTECTED_CAPABILITIES,
-  type ProtectedCapabilityEntry,
-} from '../src/modules/authority/intervention-control.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 import {
   BOOTSTRAP_RUNTIME_NAMES,
@@ -212,10 +207,9 @@ function createRepository(engineRoot: string): string {
   );
   fs.cpSync(engineRoot, repositoryEngineRoot(repository), { recursive: true });
   const manifest = createFixtureProtectedManifest(repository);
-  const { manifestDigest: _manifestDigest, ...manifestPayload } = manifest;
   fs.writeFileSync(
     path.join(repository, 'workflow/protected-capabilities.json'),
-    `${JSON.stringify(manifestPayload, null, 2)}\n`,
+    `${JSON.stringify(manifest, null, 2)}\n`,
   );
   git(repository, ['add', '.']);
   git(repository, ['commit', '-m', 'Install fixture package']);
@@ -225,74 +219,6 @@ function createRepository(engineRoot: string): string {
     git(repository, ['rev-parse', 'HEAD']).trim(),
   ]);
   return repository;
-}
-
-function createFixtureProtectedManifest(repository: string) {
-  const entries: ProtectedCapabilityEntry[] =
-    REQUIRED_PROTECTED_CAPABILITIES.map((capability) => {
-      const entrypoints = [`protected/${capability}/entry.ts`];
-      const dependencies = [
-        `protected/${capability}/dependency.ts`,
-        ...(capability === 'adoption.journal'
-          ? ['workflow/protected-capabilities.json']
-          : []),
-        ...(capability === 'policy.classify'
-          ? [
-              'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts',
-            ]
-          : []),
-        ...(capability === 'control-plane.update'
-          ? BOOTSTRAP_RUNTIME_NAMES.map(
-              (name) => `packages/workflow-engine/bootstrap/${name}`,
-            )
-          : []),
-      ].sort();
-      for (const filePath of [...entrypoints, ...dependencies]) {
-        if (filePath === 'workflow/protected-capabilities.json') continue;
-        const absolute = path.join(repository, filePath);
-        fs.mkdirSync(path.dirname(absolute), { recursive: true });
-        if (!fs.existsSync(absolute)) {
-          fs.writeFileSync(absolute, `fixture protected file: ${filePath}\n`);
-        }
-      }
-      const identities = [...new Set([...entrypoints, ...dependencies])]
-        .map((filePath) =>
-          filePath === 'workflow/protected-capabilities.json'
-            ? {
-                path: filePath,
-                mode: 'manifest-self',
-                objectId: 'manifest-self',
-              }
-            : {
-                path: filePath,
-                mode: '100644',
-                objectId: git(repository, ['hash-object', filePath]).trim(),
-              },
-        )
-        .sort((left, right) => left.path.localeCompare(right.path));
-      const contentDigest = controlPlaneFixtureDigest(
-        canonicalJson({
-          kind: 'protected-capability-content.v1',
-          files: identities,
-        }),
-      );
-      return {
-        capability,
-        entrypoints,
-        dependencies,
-        contentDigest,
-        closureDigest: protectedCapabilityClosureDigest(
-          entrypoints,
-          dependencies,
-          contentDigest,
-        ),
-      };
-    });
-  return createProtectedCapabilityManifest({
-    schemaVersion: 1,
-    manifestPath: 'workflow/protected-capabilities.json',
-    entries,
-  });
 }
 
 function repositoryEngineRoot(repository: string): string {

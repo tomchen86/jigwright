@@ -2791,11 +2791,6 @@
       "digest": "sha256:96cc80a984143163381c71276ad9c2153972bda2f03328aafb1800bfba6f7bbb"
     },
     {
-      "path": "src/modules/authority/intervention-control-protected-manifest.ts",
-      "mode": "100644",
-      "digest": "sha256:a3f6d19e9f2d52e52d7e458a26ecb45f0c768bf0e379c1cbc1c0edb0c50b1734"
-    },
-    {
       "path": "src/modules/authority/intervention-control-values.ts",
       "mode": "100644",
       "digest": "sha256:a2494e7491ff39df19d03c2382c177835f24c1e5b69bbabea2d964a26aa08753"
@@ -2803,7 +2798,7 @@
     {
       "path": "src/modules/authority/intervention-control.ts",
       "mode": "100644",
-      "digest": "sha256:3af5572c22c2bd48a9b7af4c43bf1a6268f74ca1acc095cbdb0c2032bec65fe6"
+      "digest": "sha256:e40212737bcfda65dba01328ae4084f9ae5c3ae0f4c31aaaa6739d1a73a8c2df"
     },
     {
       "path": "src/modules/authority/intervention-record-contract.ts",

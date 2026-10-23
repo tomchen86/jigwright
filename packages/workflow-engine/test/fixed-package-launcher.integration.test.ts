@@ -7,20 +7,8 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import {
-  createProtectedCapabilityManifest,
-  protectedCapabilityClosureDigest,
-  REQUIRED_PROTECTED_CAPABILITIES,
-  type ProtectedCapabilityEntry,
-} from '../src/modules/authority/intervention-control.ts';
-import {
-  REQUIRED_PROTECTED_CAPABILITIES as TYPED_REQUIRED_PROTECTED_CAPABILITIES,
-  type ProtectedCapabilitiesManifest as TypedProtectedCapabilitiesManifest,
-} from '../src/runtime/repository-validation/protected-capabilities.ts';
 import { setupFixedRunnerFixture } from './fixed-runner-fixture.ts';
 import { createFixtureRepository } from './fixture.ts';
-
-const NOW = new Date('2026-08-03T10:00:00.000Z');
 const SOURCE_REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../../..');
 const SOURCE_PROMOTION_STATE = path.join(
   SOURCE_REPOSITORY_ROOT,
@@ -39,28 +27,6 @@ const WORKFLOW_LAUNCHER = path.join(
 
 function digest(value: string | Buffer): `sha256:${string}` {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
-}
-
-function protectedEntries(): ProtectedCapabilityEntry[] {
-  return REQUIRED_PROTECTED_CAPABILITIES.map((capability) => {
-    const entrypoints =
-      capability === 'control-plane.update'
-        ? ['packages/workflow-engine/engine.mjs']
-        : [`packages/bootstrap/${capability}.ts`];
-    const dependencies = [`packages/bootstrap/shared/${capability}.ts`];
-    const contentDigest = digest(`content:${capability}`);
-    return {
-      capability,
-      entrypoints,
-      dependencies,
-      contentDigest,
-      closureDigest: protectedCapabilityClosureDigest(
-        entrypoints,
-        dependencies,
-        contentDigest,
-      ),
-    };
-  });
 }
 
 function engineSource(
@@ -82,23 +48,6 @@ process.stdout.write(JSON.stringify({kind:'ordinary-engine.v1',engine:'${engine}
 process.exit(mode === '--launcher-exit-7' ? 7 : 0);
 `;
 }
-
-test('minimal updater and production manifest loader share the protected capability vocabulary', () => {
-  assert.deepEqual(
-    REQUIRED_PROTECTED_CAPABILITIES,
-    TYPED_REQUIRED_PROTECTED_CAPABILITIES,
-  );
-  const pure = createProtectedCapabilityManifest({
-    schemaVersion: 1,
-    manifestPath: 'workflow/protected-capabilities.json',
-    entries: protectedEntries(),
-  });
-  const typed: TypedProtectedCapabilitiesManifest = {
-    ...pure,
-    manifestPath: 'workflow/protected-capabilities.json',
-  };
-  assert.deepEqual(typed, pure);
-});
 
 test('trusted workflow launcher uses its package host without supervisor initialization', () => {
   const rootPackage = JSON.parse(

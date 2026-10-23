@@ -537,6 +537,10 @@ test('repository publishes the complete typed control-plane capability closure',
     assert.match(String(entry.contentDigest), /^sha256:[0-9a-f]{64}$/);
     assert.match(String(entry.closureDigest), /^sha256:[0-9a-f]{64}$/);
   }
+  assert.deepEqual(
+    loadProtectedCapabilitiesFromWorktree(SOURCE_REPOSITORY_ROOT).entries,
+    value.entries,
+  );
 
   const byCapability = new Map(
     (value.entries ?? []).map((entry) => [entry.capability, entry]),
@@ -572,14 +576,6 @@ test('repository publishes the complete typed control-plane capability closure',
       byCapability.get('authorization.verify')?.dependencies as unknown[]
     ).includes(
       'packages/workflow-engine/src/modules/assurance/pre-merge-assurance.ts',
-    ),
-    true,
-  );
-  assert.equal(
-    (
-      byCapability.get('control-plane.update')?.entrypoints as unknown[]
-    ).includes(
-      'packages/workflow-engine/src/application/control-plane/intervention-control-updater.ts',
     ),
     true,
   );

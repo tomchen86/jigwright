@@ -155,7 +155,6 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [immutable-git-candidate.ts](immutable-git-candidate.ts) | Builds immutable Git candidates and verifies their observed repository state and pinned objects. | 2 | History unavailable |
 | [intervention-bootstrap-contract.ts](intervention-bootstrap-contract.ts) | Retained intervention metadata and signed disposition inputs. | 0 | History unavailable |
 | [intervention-control-adoption.ts](intervention-control-adoption.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [intervention-control-protected-manifest.ts](intervention-control-protected-manifest.ts) | Builds exact protected-capability manifests shared by ordinary Grant policy. | 0 | History unavailable |
 | [intervention-control-values.ts](intervention-control-values.ts) | Provides shared intervention value checks, signature namespaces and safe verifier calls. | 2 | History unavailable |
 | [intervention-control.ts](intervention-control.ts) | Local intervention contracts and permitted workflow replacement reasons. | 0 | History unavailable |
 | [intervention-record-contract.ts](intervention-record-contract.ts) | Validate retained intervention checkpoints and their signed maintenance grants. | 0 | History unavailable |

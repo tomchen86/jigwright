@@ -231,11 +231,6 @@
       "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/modules/authority/intervention-control-protected-manifest.js",
-      "mode": "100644",
-      "digest": "sha256:ef3f89f397c41bb97fe1fbdeb1a6e1e49f16a4371c603be01cf4164b5ecee2dd"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/modules/authority/intervention-control-values.js",
       "mode": "100644",
       "digest": "sha256:33e2c4414164946fdebecf03437240a499ea478d74ed740e663edd4437d5691e"
@@ -243,7 +238,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/intervention-control.js",
       "mode": "100644",
-      "digest": "sha256:d80cf7395feefc796dfc576bc713ef8aed8628af864b65de1632b7fdb5c47c82"
+      "digest": "sha256:191ab28c9b6ae6b886b28c3db3111400c16eaafddfd4509158f06c0cad4fda71"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/intervention-record-contract.js",

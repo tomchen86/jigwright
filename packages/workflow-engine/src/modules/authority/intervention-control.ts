@@ -25,20 +25,6 @@ export type {
   WipCheckpointInput,
 } from './intervention-record-contract.ts';
 
-export {
-  createProtectedCapabilityManifest,
-  protectedCapabilityClosureDigest,
-  REQUIRED_PROTECTED_CAPABILITIES,
-} from './intervention-control-protected-manifest.ts';
-
-export type {
-  CollaborationGrantVerifierComposition,
-  ProtectedCapability,
-  ProtectedCapabilityEntry,
-  ProtectedCapabilityManifest,
-  RoleContextSharingGrantVerifierBinding,
-} from './intervention-control-protected-manifest.ts';
-
 export const WORKFLOW_SUPERSEDE_REASONS = [
   'semantic-decision-no-continuing-value',
   'user-abandoned-goal-for-different-workflow',
