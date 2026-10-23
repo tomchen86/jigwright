@@ -6,9 +6,7 @@
  * - Shared size and permission constants preserve the existing storage limits.
  */
 import type {
-  EngineAdoptionJournal,
   HarnessInterventionRelationship,
-  HarnessMaintenanceGrantEnvelope,
   ParentChangeState,
   Sha256Digest,
   WipCheckpoint,
@@ -20,25 +18,12 @@ export const PRIVATE_FILE_MODE = 0o600;
 
 export const PRIVATE_DIRECTORY_MODE = 0o700;
 
-export type PersistenceHumanSignatureVerifier = (
-  payload: string,
-  signature: string,
-  signer: string,
-  namespace: string,
-) => boolean;
-
-export interface PersistenceHumanDependencies {
-  now?: () => Date;
-  verifyHumanSignature?: PersistenceHumanSignatureVerifier;
-}
-
 export interface InterventionControlPersistencePaths {
   root: string;
   checkpoints: string;
   interventions: string;
   sidecarSessions: string;
   sidecarHistory: string;
-  adoptions: string;
   operations: string;
 }
 
@@ -172,28 +157,5 @@ export interface PersistedBootstrapSidecarSessionV2 {
   history: BootstrapSidecarSessionHistoryEntry[];
   createdAt: string;
   updatedAt: string;
-  recordDigest: Sha256Digest;
-}
-
-export interface PersistedTransitionObservation {
-  sequence: number;
-  eventKind: string;
-  fromState: string;
-  toState: string;
-  evidenceDigest: Sha256Digest;
-  recordedAt: string;
-}
-
-export interface PersistedEngineAdoptionRecord {
-  kind: 'persisted-engine-adoption.v2';
-  journal: EngineAdoptionJournal;
-  /** Present when adoption is prepared from a persisted artifact record. */
-  artifactRecordDigest?: Sha256Digest;
-  maintenanceGrantEnvelope: HarnessMaintenanceGrantEnvelope;
-  grantEnvelopeDigest: Sha256Digest;
-  observations: PersistedTransitionObservation[];
-  createdAt: string;
-  updatedAt: string;
-  effectsPerformed: false;
   recordDigest: Sha256Digest;
 }

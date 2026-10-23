@@ -20,13 +20,34 @@ candidate becomes the runner only when the user invokes that installed version
 for a subsequent task. Ordinary check, completion, persistence, locking, report
 freshness, and Grant Core requirements SHALL remain in force. Active parent WIP,
 Recovery Quarantine, and operational trust fences SHALL retain their recovery
-protections; adopting a candidate engine MUST NOT automatically release a
-parent WIP fence.
+protections. Existing intervention fences SHALL clear only through signed
+metadata disposition; stored WIP, checkpoints, snapshots, child workspaces and
+refs SHALL remain unchanged.
 
 The package SHALL reject `control-plane produce`, `control-plane approve-and-apply`,
 `control-plane recover`, `control-plane initialize`, `control-plane status`,
 `control-plane classify`, and `harness-bootstrap control-plane rollback` without creating,
 advancing, signing, or probing consumer self-update state.
+
+The package SHALL also reject local `change intervene`, `engine build-artifact`,
+`engine adopt`, `intervention recover`, and `intervention status --tx`, including
+aliases and caller-supplied request forms. Their specialized WIP capture/restore,
+child creation, artifact building and engine switching machinery SHALL be absent.
+Ordinary task and Git recovery SHALL remain independent of these retired paths.
+
+Existing `intervention status` SHALL remain read-only. Existing
+`change revoke-intervention` SHALL use the current HEAD trusted human revocation,
+original signed grant binding, audit and durable abandonment replay. It MAY dispose
+active or adopted parent metadata without completing an engine rollback. It SHALL
+preserve existing sidecar evidence and append the abandonment event. An expired
+maintenance record MAY become revoked solely for this metadata disposition;
+its original `expiredAt` SHALL be preserved and equal the envelope expiry. A
+revocation signed before expiry SHALL retain its original `revokedAt` when replayed
+after expiry. Neither transition grants new work or restores workspace bytes.
+Disposition SHALL match the grant's parent, intervention and checkpoint before
+signing or replay, and recheck that target under the parent operation lock before
+writing an abandonment intent. A different valid checkpoint MUST NOT be disposed
+using an earlier checkpoint's authority.
 
 #### Scenario: Retired self-update commands cannot activate consumer state
 covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
@@ -36,6 +57,39 @@ test: packages/workflow-engine/test/retired-self-update-cli.integration.test.ts#
 - **WHEN** a retired self-update command is invoked
 - **THEN** the command fails as unsupported before authority assembly or repository observation
 - **AND** consumer files, Git HEAD, and index bytes remain unchanged
+
+#### Scenario: Local self-update routes are retired before observation
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/retired-self-update-cli.integration.test.ts#retired local self-update routes reject before repository and signer access
+
+- **WHEN** any retired local self-update route or alias is invoked
+- **THEN** it fails before repository observation or signer construction
+
+#### Scenario: Prepared revocation retains its signed time across expiry
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/intervention-metadata-disposition.integration.test.ts#prepared pre-expiry revocation replays after expiry without rewriting signed time
+
+- **GIVEN** revocation was signed before expiry and interrupted before disposition
+- **WHEN** the same authorization is replayed after the record has expired
+- **THEN** both original timestamps remain and only authorized metadata is disposed
+- **AND** WIP, HEAD, index, snapshots, child data, refs and candidate bytes are unchanged
+
+#### Scenario: Adopted sidecar metadata can be disposed without candidate execution
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/intervention-metadata-disposition.integration.test.ts#signed disposal preserves adopted sidecar evidence and appends one abandonment event
+
+- **GIVEN** an existing adopted sidecar and a probe-capable candidate
+- **WHEN** the current trusted human authorizes metadata disposition
+- **THEN** the original adoption history remains with one abandonment event
+- **AND** replay does not execute the candidate or alter retained workspace data
+
+#### Scenario: Existing authority cannot dispose another valid checkpoint
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/intervention-metadata-disposition.integration.test.ts#metadata disposition rejects a different valid checkpoint before signing or replay
+
+- **GIVEN** retained authority belongs to one checkpoint and current intervention metadata belongs to another valid checkpoint
+- **WHEN** disposition is requested with available, expired or already revoked authority
+- **THEN** it rejects the target mismatch before signing or changing stored bytes
 
 #### Scenario: Installed runner encounters an inert retired consumer state
 covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed

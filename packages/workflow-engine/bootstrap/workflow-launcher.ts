@@ -192,12 +192,8 @@ function isReadOnlyHelpInvocation(argv: readonly string[]): boolean {
 
 function isSealedInterventionInvocation(argv: readonly string[]): boolean {
   return (
-    (argv[0] === 'intervention' &&
-      (argv[1] === 'status' || argv[1] === 'recover')) ||
-    (argv[0] === 'change' &&
-      (argv[1] === 'intervene' || argv[1] === 'revoke-intervention')) ||
-    (argv[0] === 'engine' &&
-      (argv[1] === 'build-artifact' || argv[1] === 'adopt'))
+    (argv[0] === 'intervention' && argv[1] === 'status') ||
+    (argv[0] === 'change' && argv[1] === 'revoke-intervention')
   );
 }
 

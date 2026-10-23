@@ -1,4 +1,4 @@
-/** Parent intervention fencing and exact local adoption/journal binding. */
+/** Enforce the retained active parent intervention fence. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from './canonical-json.ts';

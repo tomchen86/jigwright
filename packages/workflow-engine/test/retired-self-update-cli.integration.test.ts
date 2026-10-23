@@ -6,6 +6,7 @@ import test from 'node:test';
 import { harnessBootstrapProduction } from '../bootstrap/harness-bootstrap-production.ts';
 import { createAuthorityCommands } from '../src/entrypoints/cli/authority-management-cli.ts';
 import { createHarnessBootstrapCli } from '../src/entrypoints/cli/harness-bootstrap-cli.ts';
+import { dispatchBootstrapInterventionCommand } from '../src/entrypoints/cli/intervention-control-bootstrap-cli.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 
 const retiredCommands = [
@@ -24,6 +25,67 @@ function commands() {
 function noBootstrapDependencies(): never {
   throw new Error('A retired route must not construct authority dependencies.');
 }
+
+const retiredLocalCommands = [
+  ['change', 'intervene', 'parent', '--reason', 'repair'],
+  [
+    'change',
+    'intervene',
+    'parent',
+    '--reason',
+    'repair',
+    '--audit-root',
+    '/unused',
+  ],
+  ['engine', 'build-artifact', 'parent'],
+  ['engine', 'adopt', 'artifact', '--into', 'parent'],
+  ['recover', 'transaction'],
+  ['status', 'parent', '--tx', 'transaction'],
+  ['promote'],
+];
+
+test('retired local self-update routes reject before repository and signer access', () => {
+  const { runHarnessBootstrapCli } = createHarnessBootstrapCli({
+    ...harnessBootstrapProduction,
+    createHarnessBootstrapDependencies: noBootstrapDependencies,
+  });
+  const originalWrite = process.stderr.write;
+  try {
+    for (const args of retiredLocalCommands) {
+      assert.throws(
+        () => dispatchBootstrapInterventionCommand(args, '/not/a/repository'),
+        { code: 'INTERVENTION_BOOTSTRAP_COMMAND_UNSUPPORTED' },
+      );
+      assert.throws(
+        () =>
+          commands().dispatchAuthorityCommand(
+            ['intervention', ...args],
+            '/not/a/repository',
+            noBootstrapDependencies,
+          ),
+        { code: 'INTERVENTION_BOOTSTRAP_COMMAND_UNSUPPORTED' },
+      );
+      let output = '';
+      process.stderr.write = ((chunk: string) => {
+        output += chunk;
+        return true;
+      }) as typeof process.stderr.write;
+      assert.notEqual(
+        runHarnessBootstrapCli(
+          ['intervention', ...args, '--json'],
+          '/not/a/repository',
+        ),
+        0,
+      );
+      assert.equal(
+        JSON.parse(output).error.code,
+        'INTERVENTION_BOOTSTRAP_COMMAND_UNSUPPORTED',
+      );
+    }
+  } finally {
+    process.stderr.write = originalWrite;
+  }
+});
 
 test('retired self-update commands reject before repository observation or authority assembly', () => {
   const missingRepository = path.join(
@@ -65,6 +127,24 @@ test('retired self-update commands leave empty and prepared consumer state and G
           { mode: 0o600 },
         );
       }
+      if (prepared) {
+        for (const name of [
+          'adoptions',
+          'local-parent-sessions',
+          'interventions',
+          'bootstrap-wip-bundles',
+        ]) {
+          fs.mkdirSync(path.join(stateRoot, name), {
+            recursive: true,
+            mode: 0o700,
+          });
+          fs.writeFileSync(
+            path.join(stateRoot, name, 'inert.json'),
+            '{"retired":true}\n',
+            { mode: 0o600 },
+          );
+        }
+      }
       const before = treeSnapshot(repository);
       const head = git(repository, ['rev-parse', 'HEAD']);
       const index = fs.readFileSync(path.join(repository, '.git/index'));
@@ -79,6 +159,21 @@ test('retired self-update commands leave empty and prepared consumer state and G
           {
             code: 'CONTROL_PLANE_UPDATER_COMMAND_UNSUPPORTED',
           },
+        );
+      }
+      for (const args of retiredLocalCommands) {
+        assert.throws(
+          () =>
+            commands().dispatchAuthorityCommand(
+              ['intervention', ...args],
+              repository,
+              noBootstrapDependencies,
+            ),
+          { code: 'INTERVENTION_BOOTSTRAP_COMMAND_UNSUPPORTED' },
+        );
+        assert.throws(
+          () => dispatchBootstrapInterventionCommand(args, repository),
+          { code: 'INTERVENTION_BOOTSTRAP_COMMAND_UNSUPPORTED' },
         );
       }
       assert.deepEqual(treeSnapshot(repository), before);

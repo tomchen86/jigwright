@@ -8,7 +8,6 @@ import test from 'node:test';
 import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
-  createEngineArtifact,
   createProtectedCapabilityManifest,
   protectedCapabilityClosureDigest,
   type ProtectedCapabilityEntry,
@@ -270,16 +269,10 @@ test('ordinary package launch does not select a forged generation-one supervisor
   try {
     const closureDigest = digest('forged-generation-one-closure');
     const source = forgedSupervisorSource(closureDigest);
-    const artifact = createEngineArtifact({
-      sourceChangeId: 'forged-generation-one',
-      sourceDigest: digest('forged-source'),
+    const artifact = {
+      artifactId: digest('forged-artifact'),
       executableDigest: digest(source),
-      protocolVersion: 3,
-      canReadSessionSchemas: ['v4'],
-      writesSessionSchema: 'v4',
-      policySchemaVersion: 2,
-      smokeReportDigest: digest('forged-smoke'),
-    });
+    };
     const root = stateRoot(repository);
     fs.mkdirSync(root, { recursive: true, mode: 0o700 });
     writeJsonRecord(supervisorPath(repository), {

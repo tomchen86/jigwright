@@ -7,24 +7,12 @@ export { HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE } from './intervention-control-
 export type { Sha256Digest } from './intervention-control-values.ts';
 
 export {
-  advanceEngineAdoption,
-  beginHarnessIntervention,
   canonicalHarnessMaintenanceGrantPayload,
-  createEngineArtifact,
-  createWipCheckpoint,
-  decideEngineAdoptionRecovery,
-  finalizeEngineAdoption,
-  prepareEngineAdoption,
   verifyHarnessMaintenanceGrant,
   verifyWipCheckpoint,
-} from './intervention-control-adoption.ts';
+} from './intervention-record-contract.ts';
 
 export type {
-  EngineAdoptionJournal,
-  EngineAdoptionRecoveryDecision,
-  EngineAdoptionState,
-  EngineArtifact,
-  EngineArtifactInput,
   HarnessInterventionBlocker,
   HarnessInterventionRelationship,
   HarnessMaintenanceGrantEnvelope,
@@ -33,10 +21,9 @@ export type {
   HarnessMaintenanceWaiver,
   ParentChangeState,
   ParentChangeStatus,
-  VerifiedHarnessMaintenanceGrant,
   WipCheckpoint,
   WipCheckpointInput,
-} from './intervention-control-adoption.ts';
+} from './intervention-record-contract.ts';
 
 export {
   createProtectedCapabilityManifest,

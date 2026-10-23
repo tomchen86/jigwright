@@ -1,7 +1,7 @@
 /** Local intervention contracts and permitted workflow replacement reasons. */
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 export { HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE } from "./intervention-control-values.js";
-export { advanceEngineAdoption, beginHarnessIntervention, canonicalHarnessMaintenanceGrantPayload, createEngineArtifact, createWipCheckpoint, decideEngineAdoptionRecovery, finalizeEngineAdoption, prepareEngineAdoption, verifyHarnessMaintenanceGrant, verifyWipCheckpoint, } from "./intervention-control-adoption.js";
+export { canonicalHarnessMaintenanceGrantPayload, verifyHarnessMaintenanceGrant, verifyWipCheckpoint, } from "./intervention-record-contract.js";
 export { createProtectedCapabilityManifest, protectedCapabilityClosureDigest, REQUIRED_PROTECTED_CAPABILITIES, } from "./intervention-control-protected-manifest.js";
 export const WORKFLOW_SUPERSEDE_REASONS = [
     'semantic-decision-no-continuing-value',

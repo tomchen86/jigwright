@@ -5,17 +5,11 @@ import {
 } from '../adapters/signing/ssh/maintainer-signer.ts';
 import { createHarnessBootstrapAudit } from '../application/control-plane/harness-bootstrap-audit.ts';
 import type { HarnessBootstrapRuntimeOverrides } from '../application/control-plane/harness-bootstrap-contracts.ts';
-import type { HarnessBootstrapParentBindings } from '../application/control-plane/harness-bootstrap-parent-state.ts';
-import { createHarnessBootstrapParentState } from '../application/control-plane/harness-bootstrap-parent-state.ts';
 import { createHarnessBootstrapRecoveryProduction } from '../application/control-plane/harness-bootstrap-production.ts';
 import {
   createHarnessBootstrapRecoveryCommands,
   type HarnessBootstrapRecoveryCommandBindings,
 } from '../application/control-plane/harness-bootstrap-recovery-commands.ts';
-import {
-  persistTrustedBootstrapSessionSnapshot,
-  readLocalEngineBinding,
-} from '../application/control-plane/intervention-control-bootstrap.ts';
 import { type BootstrapInterventionCliDependencies } from '../modules/authority/intervention-bootstrap-contract.ts';
 import { parseMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
 import { verifyRecoveryAuthorityDescriptor } from '../modules/authority/recovery-authority-contract.ts';
@@ -30,10 +24,6 @@ import {
   readRecoveryQuarantineMarker,
 } from '../runtime/recovery/recovery-quarantine.ts';
 import { executeRecoveryOperationalTrustRootRestore } from '../runtime/recovery/recovery-trust-root-restore.ts';
-import {
-  observeParentBindingPath,
-  observeParentSessions,
-} from '../runtime/repository-observation/harness-bootstrap-parent-state.ts';
 import { readFileAtRevision } from '../runtime/repository-transaction/git-command.ts';
 import { discoverRepository } from '../runtime/repository-transaction/git.ts';
 import { deriveAuthorityAuditRepositoryId } from '../runtime/storage-journal/authority-audit-ledger.ts';
@@ -42,17 +32,7 @@ import { recordAuthorityRefusal } from '../runtime/storage-journal/authority-ref
 
 /** Assemble recovery capabilities around the independently trusted built-in engine identity. */
 
-export function createHarnessBootstrapProduction(
-  BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST: HarnessBootstrapParentBindings['BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST'],
-) {
-  const { resolveHarnessBootstrapParentState } =
-    createHarnessBootstrapParentState({
-      BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST,
-      observeParentSessions,
-      observeParentBindingPath,
-      readLocalEngineBinding,
-      persistTrustedBootstrapSessionSnapshot,
-    });
+export function createHarnessBootstrapProduction() {
   function createHarnessBootstrapDependencies(
     cwd: string,
     overrides: HarnessBootstrapRuntimeOverrides = {},
@@ -86,13 +66,6 @@ export function createHarnessBootstrapProduction(
         verify: (payload, signature, identity, namespace) =>
           resolveSigner().verify(payload, signature, identity, namespace),
       },
-      presentMaintenanceSummary:
-        overrides.presentMaintenanceSummary ??
-        ((summary) => {
-          process.stderr.write(`\n${summary.humanReadable}\n\n`);
-        }),
-      resolveParentDurableState: ({ parentChangeId, stateRoot }) =>
-        resolveHarnessBootstrapParentState(cwd, parentChangeId, stateRoot),
       verifyHumanSignature(
         payload: string,
         signature: string,
@@ -157,7 +130,6 @@ export function createHarnessBootstrapProduction(
     });
   }
   return {
-    resolveHarnessBootstrapParentState,
     createHarnessBootstrapDependencies,
     auditHarnessRecoveryRefusal,
     productionRecoveryTrustRootAuditSink,

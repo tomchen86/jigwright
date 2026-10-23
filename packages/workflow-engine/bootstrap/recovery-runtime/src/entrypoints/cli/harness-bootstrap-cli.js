@@ -1,5 +1,5 @@
 import { ExitCode, WorkflowError, workflowError, } from "../../foundation/errors/errors.js";
-import { bootstrapInterventionStateRoot, bootstrapInterventionUsage, dispatchBootstrapInterventionCommand, } from "./intervention-control-bootstrap-cli.js";
+import { assertSupportedBootstrapInterventionCommand, bootstrapInterventionStateRoot, bootstrapInterventionUsage, dispatchBootstrapInterventionCommand, } from "./intervention-control-bootstrap-cli.js";
 export function createHarnessBootstrapCli({ createHarnessBootstrapDependencies, auditHarnessRecoveryRefusal, createHarnessBootstrapCommandDispatcher, }) {
     const { isRecoveryAuthorityCommand, isRecoveryQuarantineCommand, assertHarnessRecoveryQuarantineRouting, dispatchRecoveryAuthorityCommand, dispatchRecoveryQuarantineCommand, harnessBootstrapUsage, } = createHarnessBootstrapCommandDispatcher({
         bootstrapInterventionStateRoot,
@@ -19,6 +19,12 @@ export function createHarnessBootstrapCli({ createHarnessBootstrapDependencies, 
             }
             if (args[0] === 'control-plane') {
                 throw workflowError('HARNESS_RECOVERY_COMMAND_UNSUPPORTED', harnessBootstrapUsage(), ExitCode.usage);
+            }
+            if (args.length > 0 &&
+                !['--help', '-h', 'help'].includes(args[0]) &&
+                !isRecoveryAuthorityCommand(args) &&
+                !isRecoveryQuarantineCommand(args)) {
+                assertSupportedBootstrapInterventionCommand(args);
             }
             assertHarnessRecoveryQuarantineRouting(args, cwd, (authority) => {
                 refusalAuthority = authority;

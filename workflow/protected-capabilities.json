@@ -136,15 +136,15 @@
         "packages/workflow-engine/src/runtime/storage-journal/role-context-sharing-store.ts"
       ],
       "sourceDigest": "sha256:9d3d5d494efbb29fdf02f03577200086e00dcab182a2f0e69f9787b2f8f970c0",
-      "authorizationClosureDigest": "sha256:a10c14bcb2b0334fc8b7a1d4c97b3618b0590dc6eda9269adf18b4180360a807"
+      "authorizationClosureDigest": "sha256:ee0b7b800e02d772b0737c2ac0465c4eb088d3a79cb350da8663e499fe14acc7"
     },
-    "authorizationClosureDigest": "sha256:a10c14bcb2b0334fc8b7a1d4c97b3618b0590dc6eda9269adf18b4180360a807",
+    "authorizationClosureDigest": "sha256:ee0b7b800e02d772b0737c2ac0465c4eb088d3a79cb350da8663e499fe14acc7",
     "humanTrustRootsClosureDigest": "sha256:5e63cc234e69f69f380eb64420581924863925ad19a48d9d25724f944ab734e4",
-    "applyJournalClosureDigest": "sha256:b4883c230e1a804f27ee869bb89ed2489ea7945ced918a154fbfc96402a763c9",
-    "controlPlaneUpdateClosureDigest": "sha256:f48f6d10d1730b77e05b03c07cf4ee602463d6094f987bab919554886b08fe44",
-    "recoveryClosureDigest": "sha256:4a7d7d9f9ed6ee88f45c4468c31dc6249fa2b6779a86e90f7f1bd6d02b870b8b",
+    "applyJournalClosureDigest": "sha256:aee643daa288503e8158e674ba60ed52cdc4a772fa33fed1a4c4963c19800fc9",
+    "controlPlaneUpdateClosureDigest": "sha256:aede694f84709caf16766a8c6f659e745562e5fea07cb9f29dd872213821ff11",
+    "recoveryClosureDigest": "sha256:f08e4ab0b77d101d52204a36dfaf453698ed5ca871887f711fe79f4866ef6137",
     "repairAuthority": "human-only-authority-plan-or-sealed-recovery",
-    "compositionDigest": "sha256:9a303e5fcfbfa035da60e7045d4bfd0c5b81f88a43d9b7094375265bf93290ea"
+    "compositionDigest": "sha256:8ddca0b65058cfbd9b238d1e7c7299b795ea70900d49fced03c0246a7459eccf"
   },
   "entries": [
     {
@@ -153,17 +153,12 @@
         "packages/workflow-engine/bootstrap/harness-bootstrap-host.ts",
         "packages/workflow-engine/bootstrap/harness-bootstrap-launcher.ts",
         "packages/workflow-engine/bootstrap/harness-bootstrap-production.ts",
-        "packages/workflow-engine/src/application/control-plane/harness-bootstrap-parent-state.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-control-bootstrap.ts",
         "packages/workflow-engine/src/application/control-plane/intervention-maintenance.ts",
         "packages/workflow-engine/src/composition-root/harness-bootstrap-production.ts",
         "packages/workflow-engine/src/entrypoints/cli/harness-bootstrap-cli.ts",
         "packages/workflow-engine/src/entrypoints/cli/intervention-control-bootstrap-cli.ts",
-        "packages/workflow-engine/src/modules/authority/harness-bootstrap-parent-contract.ts",
         "packages/workflow-engine/src/modules/authority/intervention-bootstrap-contract.ts",
         "packages/workflow-engine/src/modules/authority/intervention-control.ts",
-        "packages/workflow-engine/src/modules/lifecycle/harness-bootstrap-parent-session.ts",
-        "packages/workflow-engine/src/runtime/repository-observation/harness-bootstrap-parent-state.ts",
         "packages/workflow-engine/src/runtime/storage-journal/intervention-control-persistence.ts"
       ],
       "dependencies": [
@@ -189,21 +184,14 @@
         "packages/workflow-engine/src/application/control-plane/harness-bootstrap-external-input.ts",
         "packages/workflow-engine/src/application/control-plane/harness-bootstrap-production.ts",
         "packages/workflow-engine/src/application/control-plane/harness-bootstrap-recovery-commands.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-artifact-production.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-abandonment.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-child-worktree.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-engine.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-storage.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-workspace.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-maintenance-publication.ts",
         "packages/workflow-engine/src/foundation/canonical-json/canonical-json.ts",
         "packages/workflow-engine/src/foundation/repository-path/repository-path.ts",
         "packages/workflow-engine/src/modules/authority/collaboration-grant-codec.ts",
         "packages/workflow-engine/src/modules/authority/collaboration-grant-use.ts",
         "packages/workflow-engine/src/modules/authority/grant-errors.ts",
-        "packages/workflow-engine/src/modules/authority/intervention-control-adoption.ts",
         "packages/workflow-engine/src/modules/authority/intervention-control-protected-manifest.ts",
         "packages/workflow-engine/src/modules/authority/intervention-control-values.ts",
+        "packages/workflow-engine/src/modules/authority/intervention-record-contract.ts",
         "packages/workflow-engine/src/modules/authority/role-context-sharing-consumed-replay.ts",
         "packages/workflow-engine/src/modules/authority/role-context-sharing-grant-lifecycle-port.ts",
         "packages/workflow-engine/src/modules/authority/role-context-sharing-grant.ts",
@@ -231,7 +219,8 @@
         "packages/workflow-engine/src/runtime/session-workspace/workflow-session-isolation.ts",
         "packages/workflow-engine/src/runtime/session-workspace/workflow-session-records.ts",
         "packages/workflow-engine/src/runtime/session-workspace/workflow-session-worktrees.ts",
-        "packages/workflow-engine/src/runtime/storage-journal/intervention-adoption-store.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/intervention-abandonment.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/intervention-parent-binding.ts",
         "packages/workflow-engine/src/runtime/storage-journal/intervention-persistence-contracts.ts",
         "packages/workflow-engine/src/runtime/storage-journal/intervention-persistence-files.ts",
         "packages/workflow-engine/src/runtime/storage-journal/intervention-persistence-locks.ts",
@@ -241,8 +230,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/intervention-sidecar-records.ts",
         "packages/workflow-engine/src/runtime/storage-journal/intervention-sidecar-store.ts"
       ],
-      "contentDigest": "sha256:a4d033d46d36ff8cceda1bb082e9acaa1e3e6f040bef5a4cb04659bcb72c585f",
-      "closureDigest": "sha256:ff3ee3b7b255f2a2de7484ef176bce0809cf46dbcea40773632b69b89724f058"
+      "contentDigest": "sha256:04369a0e0202f0eb23e5a965e719e034776eab84a5ce93fa8a8786a8af8d69c1",
+      "closureDigest": "sha256:b7a1445ef48a015838dbfeea238e5583871b579d6c57a1eeb5de0f50c3907fe2"
     },
     {
       "capability": "apply.journal",
@@ -456,8 +445,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/task-mandate-repository.ts",
         "packages/workflow-engine/src/runtime/storage-journal/task-mandate-store.ts"
       ],
-      "contentDigest": "sha256:782c99e8a2453034ede9505f299007a2691ee1cd7f4fa11f7d06815d7938e439",
-      "closureDigest": "sha256:b4883c230e1a804f27ee869bb89ed2489ea7945ced918a154fbfc96402a763c9"
+      "contentDigest": "sha256:a35793723d9737a0563355a655dae6cebd4722e61492e531d56c292dd81db316",
+      "closureDigest": "sha256:aee643daa288503e8158e674ba60ed52cdc4a772fa33fed1a4c4963c19800fc9"
     },
     {
       "capability": "audit.append",
@@ -538,8 +527,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/authority-audit-record-publication.ts",
         "packages/workflow-engine/src/runtime/storage-journal/authority-audit-values.ts"
       ],
-      "contentDigest": "sha256:e1894ca1d4298b534249e8ef3d1d7dc204e75cc3ef310aac0e0062e9221ad15d",
-      "closureDigest": "sha256:d764f7d07b677e58f043d36776a89c5a03b83e4032f4e30d747394d66c358da6"
+      "contentDigest": "sha256:81a83450e52448fe18bbc9f879c67e098bb676af55d9d19c83e8db3e69324757",
+      "closureDigest": "sha256:22a86189ae29e6f3683f1f247a4942951bf42d83bc29932aac980852a18293bd"
     },
     {
       "capability": "authorization.verify",
@@ -660,8 +649,6 @@
         "packages/workflow-engine/src/application/control-plane/execution-replacement-records.ts",
         "packages/workflow-engine/src/application/control-plane/external-effect-grant-reconciliation.ts",
         "packages/workflow-engine/src/application/control-plane/external-effect-grant-transaction.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-artifact-production.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-maintenance-publication.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-apply-audit.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-apply-checks.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-apply-reissue.ts",
@@ -766,9 +753,9 @@
         "packages/workflow-engine/src/modules/authority/grant-errors.ts",
         "packages/workflow-engine/src/modules/authority/grant-revocation-contract.ts",
         "packages/workflow-engine/src/modules/authority/human-revocation-contract.ts",
-        "packages/workflow-engine/src/modules/authority/intervention-control-adoption.ts",
         "packages/workflow-engine/src/modules/authority/intervention-control-protected-manifest.ts",
         "packages/workflow-engine/src/modules/authority/intervention-control-values.ts",
+        "packages/workflow-engine/src/modules/authority/intervention-record-contract.ts",
         "packages/workflow-engine/src/modules/authority/maintainer-grant-contracts.ts",
         "packages/workflow-engine/src/modules/authority/maintainer-grant-v2-codec.ts",
         "packages/workflow-engine/src/modules/authority/maintainer-manifest-contracts.ts",
@@ -896,8 +883,8 @@
         "workflow/path-roles.json",
         "workflow/protected-capabilities.json"
       ],
-      "contentDigest": "sha256:06198914439040298e735d7847e5f9d0af44ba79430739050401e4f09ceab2d3",
-      "closureDigest": "sha256:a10c14bcb2b0334fc8b7a1d4c97b3618b0590dc6eda9269adf18b4180360a807"
+      "contentDigest": "sha256:e06ae03c6a7701559829c6cdf20256803233d38daf72d0d8ad9894c6eed94b7b",
+      "closureDigest": "sha256:ee0b7b800e02d772b0737c2ac0465c4eb088d3a79cb350da8663e499fe14acc7"
     },
     {
       "capability": "control-plane.update",
@@ -926,12 +913,6 @@
         "packages/workflow-engine/bootstrap/session-lifecycle-production.ts",
         "packages/workflow-engine/bootstrap/workflow-engine-host.ts",
         "packages/workflow-engine/src/application/assurance/workflow-doctor.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-abandonment.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-child-worktree.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-engine.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-storage.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-workspace.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-control-bootstrap.ts",
         "packages/workflow-engine/src/application/control-plane/task-mandate-audit.ts",
         "packages/workflow-engine/src/application/control-plane/task-mandate-provider-lifecycle.ts",
         "packages/workflow-engine/src/application/control-plane/task-mandate-trust.ts",
@@ -955,7 +936,6 @@
         "packages/workflow-engine/src/entrypoints/cli/cli-input.ts",
         "packages/workflow-engine/src/entrypoints/cli/fail-grant-cli.ts",
         "packages/workflow-engine/src/entrypoints/cli/intervention-control-bootstrap-cli.ts",
-        "packages/workflow-engine/src/entrypoints/cli/intervention-control-cli.ts",
         "packages/workflow-engine/src/entrypoints/cli/provider-operations-cli.ts",
         "packages/workflow-engine/src/entrypoints/cli/task-lifecycle-cli.ts",
         "packages/workflow-engine/src/entrypoints/cli/task-review-cli-input.ts",
@@ -963,10 +943,10 @@
         "packages/workflow-engine/src/modules/assurance/task-execution-evidence.ts",
         "packages/workflow-engine/src/modules/authority/authority-audit-contract.ts",
         "packages/workflow-engine/src/modules/authority/intervention-bootstrap-contract.ts",
-        "packages/workflow-engine/src/modules/authority/intervention-control-adoption.ts",
         "packages/workflow-engine/src/modules/authority/intervention-control-protected-manifest.ts",
         "packages/workflow-engine/src/modules/authority/intervention-control-values.ts",
         "packages/workflow-engine/src/modules/authority/intervention-control.ts",
+        "packages/workflow-engine/src/modules/authority/intervention-record-contract.ts",
         "packages/workflow-engine/src/modules/authority/task-mandate-access-contract.ts",
         "packages/workflow-engine/src/modules/authority/task-mandate-audit.ts",
         "packages/workflow-engine/src/modules/authority/task-mandate-contract.ts",
@@ -1008,8 +988,9 @@
         "packages/workflow-engine/src/runtime/storage-journal/authority-audit-record-publication.ts",
         "packages/workflow-engine/src/runtime/storage-journal/authority-audit-service.ts",
         "packages/workflow-engine/src/runtime/storage-journal/authority-audit-values.ts",
-        "packages/workflow-engine/src/runtime/storage-journal/intervention-adoption-store.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/intervention-abandonment.ts",
         "packages/workflow-engine/src/runtime/storage-journal/intervention-control-persistence.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/intervention-parent-binding.ts",
         "packages/workflow-engine/src/runtime/storage-journal/intervention-persistence-contracts.ts",
         "packages/workflow-engine/src/runtime/storage-journal/intervention-persistence-files.ts",
         "packages/workflow-engine/src/runtime/storage-journal/intervention-persistence-locks.ts",
@@ -1022,8 +1003,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/task-mandate-store.ts",
         "workflow/protected-capabilities.json"
       ],
-      "contentDigest": "sha256:6ca960458daa551658e7d8e5a1843d16e3dcc486bf49e9ab60f9240407ad3fbf",
-      "closureDigest": "sha256:f48f6d10d1730b77e05b03c07cf4ee602463d6094f987bab919554886b08fe44"
+      "contentDigest": "sha256:cfa051f373d3aa7521d5c440a2ee35ebd6860afd6ec767562270774a2d607ca3",
+      "closureDigest": "sha256:aede694f84709caf16766a8c6f659e745562e5fea07cb9f29dd872213821ff11"
     },
     {
       "capability": "effect.monitor",
@@ -1226,8 +1207,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/task-mandate-store.ts",
         "workflow/ai-adapter-policy.json"
       ],
-      "contentDigest": "sha256:a43a4ac10f8e6d9d8526d63f9a56c688c8296da6f08dba8bf58d5bc22ba74aad",
-      "closureDigest": "sha256:2ff23155e8e1178617d3a9e7e5e40ad8886cdda5477838207a61a23b0d896f30"
+      "contentDigest": "sha256:2d852aba3bb7d765cf6f6b288dd5237f291cf77f5a56f5308e02ac8328b38821",
+      "closureDigest": "sha256:cbd38ee7a810fb1e2d11ea6f71557e753eb8dd8ee396a79c858ec06d63ae301d"
     },
     {
       "capability": "human.trust-roots",
@@ -1326,16 +1307,11 @@
         "packages/workflow-engine/bootstrap/harness-bootstrap-production.ts",
         "packages/workflow-engine/bootstrap/workflow-bootstrap-host-pin.ts",
         "packages/workflow-engine/bootstrap/workflow-bootstrap-host.json",
-        "packages/workflow-engine/src/application/control-plane/harness-bootstrap-parent-state.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-control-bootstrap.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-recovery.ts",
         "packages/workflow-engine/src/application/finalize/commit-recovery.ts",
         "packages/workflow-engine/src/composition-root/harness-bootstrap-production.ts",
         "packages/workflow-engine/src/entrypoints/cli/harness-bootstrap-cli.ts",
-        "packages/workflow-engine/src/modules/authority/harness-bootstrap-parent-contract.ts",
-        "packages/workflow-engine/src/modules/authority/intervention-bootstrap-contract.ts",
-        "packages/workflow-engine/src/modules/lifecycle/harness-bootstrap-parent-session.ts",
-        "packages/workflow-engine/src/runtime/repository-observation/harness-bootstrap-parent-state.ts"
+        "packages/workflow-engine/src/modules/authority/intervention-bootstrap-contract.ts"
       ],
       "dependencies": [
         "packages/workflow-engine/bootstrap/built-in-engine-closure-pin.ts",
@@ -1358,13 +1334,6 @@
         "packages/workflow-engine/src/application/control-plane/harness-bootstrap-external-input.ts",
         "packages/workflow-engine/src/application/control-plane/harness-bootstrap-production.ts",
         "packages/workflow-engine/src/application/control-plane/harness-bootstrap-recovery-commands.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-artifact-production.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-abandonment.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-child-worktree.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-engine.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-storage.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-workspace.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-maintenance-publication.ts",
         "packages/workflow-engine/src/application/control-plane/intervention-maintenance.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-recovery-audit.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-recovery-journal.ts",
@@ -1409,8 +1378,9 @@
         "packages/workflow-engine/src/runtime/storage-journal/authority-audit-record-publication.ts",
         "packages/workflow-engine/src/runtime/storage-journal/authority-audit-service.ts",
         "packages/workflow-engine/src/runtime/storage-journal/authority-audit-values.ts",
-        "packages/workflow-engine/src/runtime/storage-journal/intervention-adoption-store.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/intervention-abandonment.ts",
         "packages/workflow-engine/src/runtime/storage-journal/intervention-control-persistence.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/intervention-parent-binding.ts",
         "packages/workflow-engine/src/runtime/storage-journal/intervention-persistence-contracts.ts",
         "packages/workflow-engine/src/runtime/storage-journal/intervention-persistence-files.ts",
         "packages/workflow-engine/src/runtime/storage-journal/intervention-persistence-locks.ts",
@@ -1427,8 +1397,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/maintainer-grant-values.ts",
         "packages/workflow-engine/src/runtime/storage-journal/maintainer-store.ts"
       ],
-      "contentDigest": "sha256:a8701fa3f591c679e395ecb162c01c9db5ba7331d6c78ccc87b1a9bdc86d9543",
-      "closureDigest": "sha256:4a7d7d9f9ed6ee88f45c4468c31dc6249fa2b6779a86e90f7f1bd6d02b870b8b"
+      "contentDigest": "sha256:dd66238abd2216a7ed760775ed9e3111f9a5ef12427d775475e52640f35b253a",
+      "closureDigest": "sha256:f08e4ab0b77d101d52204a36dfaf453698ed5ca871887f711fe79f4866ef6137"
     },
     {
       "capability": "ref-generation.ledger",
@@ -1496,7 +1466,6 @@
         "packages/workflow-engine/src/adapters/remote/github/publish-runner.ts",
         "packages/workflow-engine/src/application/control-plane/external-effect-grant-context.ts",
         "packages/workflow-engine/src/application/control-plane/external-effect-grant.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-control-bootstrap.ts",
         "packages/workflow-engine/src/application/control-plane/publish-executor.ts",
         "packages/workflow-engine/src/composition-root/external-effect-production.ts",
         "packages/workflow-engine/src/composition-root/maintainer-authority-production.ts",
@@ -1528,11 +1497,6 @@
         "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
         "packages/workflow-engine/src/application/control-plane/external-effect-grant-reconciliation.ts",
         "packages/workflow-engine/src/application/control-plane/external-effect-grant-transaction.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-abandonment.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-child-worktree.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-engine.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-storage.ts",
-        "packages/workflow-engine/src/application/control-plane/intervention-bootstrap-workspace.ts",
         "packages/workflow-engine/src/foundation/check-evidence/check-evidence.ts",
         "packages/workflow-engine/src/foundation/repository-path/repository-path.ts",
         "packages/workflow-engine/src/modules/assurance/check-execution-port.ts",
@@ -1571,10 +1535,14 @@
         "packages/workflow-engine/src/runtime/repository-transaction/governed-provider-projection.ts",
         "packages/workflow-engine/src/runtime/repository-transaction/post-approval-budget.ts",
         "packages/workflow-engine/src/runtime/storage-journal/external-effect-grant-audit.ts",
-        "packages/workflow-engine/src/runtime/storage-journal/external-effect-grant-store.ts"
+        "packages/workflow-engine/src/runtime/storage-journal/external-effect-grant-store.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/intervention-abandonment.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/intervention-parent-binding.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/intervention-persistence-files.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/intervention-persistence-paths.ts"
       ],
-      "contentDigest": "sha256:4c988f6832e3193a02b609e5c038f1aa8b867dd0ad888e094ee86435ab8e1fb6",
-      "closureDigest": "sha256:76588c1747d8043501e83c163a5234581d6edd3f0cc1956f180f46a7a9c6b51e"
+      "contentDigest": "sha256:b6d0bbdb7039c2b91328a7841c1a76ef9dd9747027f0cc29422ca7336856fbbf",
+      "closureDigest": "sha256:25aa96dd51842a2a359ac1d48c47f26f10ea11b51937e4463c9294c72c4863da"
     },
     {
       "capability": "workflow.abort-or-supersede",
@@ -1633,9 +1601,9 @@
         "packages/workflow-engine/src/modules/authority/collaboration-grant-use.ts",
         "packages/workflow-engine/src/modules/authority/grant-errors.ts",
         "packages/workflow-engine/src/modules/authority/grant-revocation-contract.ts",
-        "packages/workflow-engine/src/modules/authority/intervention-control-adoption.ts",
         "packages/workflow-engine/src/modules/authority/intervention-control-protected-manifest.ts",
         "packages/workflow-engine/src/modules/authority/intervention-control-values.ts",
+        "packages/workflow-engine/src/modules/authority/intervention-record-contract.ts",
         "packages/workflow-engine/src/modules/authority/maintainer-grant-contracts.ts",
         "packages/workflow-engine/src/modules/authority/role-context-sharing-consumed-replay.ts",
         "packages/workflow-engine/src/modules/authority/role-context-sharing-grant-lifecycle-port.ts",
@@ -1713,8 +1681,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/provider-runtime-evidence-contract.ts",
         "packages/workflow-engine/src/runtime/storage-journal/provider-runtime-retention.ts"
       ],
-      "contentDigest": "sha256:a7fdb71e0515c6dc3f6f9b5b2223acb0f4130275b94d5a308b43f2ad6c7218b1",
-      "closureDigest": "sha256:056acd49b314819b157a86374cb68d42995f037f84f9436113b64f1b4b35eccb"
+      "contentDigest": "sha256:24c93db9131a575a01acc2a7b4061f07a980b11ad95a3026f66bf4055007fb81",
+      "closureDigest": "sha256:0f874f836b4a7d68214482e1fa319604829678b0c520a1194efe10c002c741f0"
     }
   ]
 }

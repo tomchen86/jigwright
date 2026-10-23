@@ -6,11 +6,6 @@
   "claim": "This sealed compiled recovery runtime is independent of the mutable E1 src tree and remains usable when E1 cannot load.",
   "files": [
     {
-      "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
-      "mode": "100644",
-      "digest": "sha256:aac7c6cdc89372c17e9590311f789664718360a94a22228483d873583791f56a"
-    },
-    {
       "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-host.js",
       "mode": "100755",
       "digest": "sha256:9b312cc53f70b9410ecf4c6356b98685ec230902fee6be366b4af71b9eaa3bef"
@@ -18,12 +13,12 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/harness-bootstrap-production.js",
       "mode": "100644",
-      "digest": "sha256:135605b02cbfe721c2f1be5792b944faaf106f9f50509caf87b885596fcd8531"
+      "digest": "sha256:e693e9d36ae751a9d59781cdfd89057c0d4db3dc382b487cd35330022c63a373"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/package.json",
       "mode": "100644",
-      "digest": "sha256:9a3744529f1142f06d85f38e377df0cac475484f360258e7d69427d2c1a9076b"
+      "digest": "sha256:50536787cd3e6b3e6a1788a64c9ba38e15cb05bd616ef0df52d09c8df9c5c048"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/built-in-provider-catalog.js",
@@ -41,24 +36,9 @@
       "digest": "sha256:2258bd9d95a874947b2097519a3b4445e089922d9342edcd720bccff210d8357"
     },
     {
-      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/check-command.js",
-      "mode": "100644",
-      "digest": "sha256:862f09273b7fe0f27bbbc1f4261cb0f003aab0e06f9bf3d7bbaf52e002472c22"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/check-registry-port.js",
-      "mode": "100644",
-      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
-    },
-    {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/contract-values.js",
       "mode": "100644",
       "digest": "sha256:c2856f46e0f315531e4176fc89b4fd2c9640f50a9aec88387623369f23be21f6"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/evidence-node.js",
-      "mode": "100644",
-      "digest": "sha256:c582574f9aa7c0225d2193929aa2df20e8b8eee078337047402ab16230865527"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/governance-source.js",
@@ -69,16 +49,6 @@
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/markdown-sections.js",
       "mode": "100644",
       "digest": "sha256:db014dbb946994f48ffb724aafef7a4fe3b6ce92dca27ace9b819638460ca315"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/planning-provider-binding.js",
-      "mode": "100644",
-      "digest": "sha256:62c8a96cf6d0cb610a1d89d18e4c5d7e2074a078dddbab24b2b4d15dc8e38098"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/repository-consumer-port.js",
-      "mode": "100644",
-      "digest": "sha256:f0eb264b0c529fde121431685560790e86f7879371d7f33669de2716e023bdb9"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/repository-path.js",
@@ -99,11 +69,6 @@
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/workflow-identifiers.js",
       "mode": "100644",
       "digest": "sha256:15cad186dca1c281da02bc57711920566b468b56708e140a6cf68eb77bbd42db"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/workflow-namespace.js",
-      "mode": "100644",
-      "digest": "sha256:0505781c53f8198df3e0c413d838976a487ab9298bb030efd6e0402bbcaf37c7"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/repository-runtime/package.json",
@@ -136,11 +101,6 @@
       "digest": "sha256:12a91629eeabb0bbfdaf7cd101361805dfcc01c9ae045412888342ff421303be"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/application/control-plane/harness-bootstrap-parent-state.js",
-      "mode": "100644",
-      "digest": "sha256:409531ca8f818c0c968e5e0cffa8627facb5be015bc09f044632ce03aa7911d0"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/harness-bootstrap-production.js",
       "mode": "100644",
       "digest": "sha256:4f64e8ff21710aceae4029aa205849eb536c621d969b33bf39370e4afdcae126"
@@ -161,54 +121,14 @@
       "digest": "sha256:b27b100fb3e4c8e0eecbf5e82957c6e957355ef831993607decade6aa7744eb8"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/application/control-plane/intervention-artifact-production.js",
-      "mode": "100644",
-      "digest": "sha256:a7a0eef61e20e58db83ab81751286eda94cc29144c5c0c4aafd41170d2fc8370"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/application/control-plane/intervention-bootstrap-abandonment.js",
-      "mode": "100644",
-      "digest": "sha256:050735d6c85e11a937cc19b7b9603c89e4d7085dfbf3efa9cd2f255d7cb89f6c"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/application/control-plane/intervention-bootstrap-child-worktree.js",
-      "mode": "100644",
-      "digest": "sha256:a0e5e3ef709eb5b49f0e67473f42ca0ca4fdb513628f3e2ff04ec57b33d1d46a"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/application/control-plane/intervention-bootstrap-engine.js",
-      "mode": "100644",
-      "digest": "sha256:e65b87bbe640436e98d91084b8f45ee1c8578c30a30009b6f6acb0e88342684c"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/application/control-plane/intervention-bootstrap-storage.js",
-      "mode": "100644",
-      "digest": "sha256:9e28802d3e135ae7e3ae86c8b082d0345c4ff8358bafaa23d8b449abb05054f8"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/application/control-plane/intervention-bootstrap-workspace.js",
-      "mode": "100644",
-      "digest": "sha256:d475631d88505319907592611ecac3922f54ac9dd39ddf27665dc016e3bfd98d"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/application/control-plane/intervention-control-bootstrap.js",
-      "mode": "100644",
-      "digest": "sha256:1c1c5766ccf9a51bb8eb0eadef571d2ac721dccd82d9cb5117a328bc2dc2a15d"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/application/control-plane/intervention-maintenance-publication.js",
-      "mode": "100644",
-      "digest": "sha256:3c0bcab37e0d50550e5020ea5f9c22169d1f42dd7a15847e376656e003bb4579"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/intervention-maintenance.js",
       "mode": "100644",
-      "digest": "sha256:ddd6c39ec25ed0057106426f76dc0fa3a529beb1f151ca0cc5c71b814f76af16"
+      "digest": "sha256:04073ebfef2c660556a1e19e57b86bf4beeda5b8852ff4bf9b7f1425bde6cc9f"
     },
     {
       "path": "bootstrap/recovery-runtime/src/composition-root/harness-bootstrap-production.js",
       "mode": "100644",
-      "digest": "sha256:59cf10712d245fa67cfba24854cc03f105606e79d255e9498733c2c5001bc325"
+      "digest": "sha256:dba79ecfa273f362ee3557dff74a374efdb3de667282793eef0f2a2f31649694"
     },
     {
       "path": "bootstrap/recovery-runtime/src/composition-root/human-revocation-production.js",
@@ -216,19 +136,14 @@
       "digest": "sha256:66b5dc2cb5b29cd199d5fe9e282823429dcf34e353f6489f9438d854280c6f4a"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/composition-root/maintainer-signer.js",
-      "mode": "100644",
-      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/entrypoints/cli/harness-bootstrap-cli.js",
       "mode": "100644",
-      "digest": "sha256:43bf2b4df05e1259be884e73d2e5417ecadfb0a5bca3f8a1ffdaeba0d3d7114c"
+      "digest": "sha256:f2797de7535f8e1c493a2e39ecbc3b5ecc28cdfa6f8295974ace4e95eb90edc5"
     },
     {
       "path": "bootstrap/recovery-runtime/src/entrypoints/cli/intervention-control-bootstrap-cli.js",
       "mode": "100644",
-      "digest": "sha256:07e75453333a11d29a7016f6a456a3955f942559a19b5d98ddebcd7a41b4b9c2"
+      "digest": "sha256:761d852cb970d7870333c104bf4df4f7c9613d342358b543cab338c08e858c4f"
     },
     {
       "path": "bootstrap/recovery-runtime/src/foundation/canonical-json/canonical-json.js",
@@ -306,11 +221,6 @@
       "digest": "sha256:95db4d9b93104796f17a7e153aaf0478ae451ccedaafd62bd2a09156d45adc96"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/modules/authority/harness-bootstrap-parent-contract.js",
-      "mode": "100644",
-      "digest": "sha256:52fb1a445a2e40be63d42008250f35d85ea737129281b0fd7fb13fee627e9064"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/modules/authority/human-revocation-contract.js",
       "mode": "100644",
       "digest": "sha256:11318766232fed8b5801e36d0ada7be32c52f02b2e20420f9cab35c3a899c402"
@@ -319,11 +229,6 @@
       "path": "bootstrap/recovery-runtime/src/modules/authority/intervention-bootstrap-contract.js",
       "mode": "100644",
       "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/modules/authority/intervention-control-adoption.js",
-      "mode": "100644",
-      "digest": "sha256:a763efcabef38408bcd63a0be5b18d39c5c6a47d552876f74182f6edc93b8aed"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/intervention-control-protected-manifest.js",
@@ -338,7 +243,12 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/intervention-control.js",
       "mode": "100644",
-      "digest": "sha256:cacbc79d3159e94bae45a4b58fdedfac92f03615dd3b1cd813868342deab666e"
+      "digest": "sha256:d80cf7395feefc796dfc576bc713ef8aed8628af864b65de1632b7fdb5c47c82"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/intervention-record-contract.js",
+      "mode": "100644",
+      "digest": "sha256:4e43961e6d5031f18137a4fe29f98ea68809461c93a7252db1e430dfcdae9177"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/maintainer-grant-contracts.js",
@@ -501,11 +411,6 @@
       "digest": "sha256:fc36b3f0fdb34fec7917230743984463b1d284354397c7abddb820bb754621bf"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/modules/investigation/manifest/investigation-observation.js",
-      "mode": "100644",
-      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/manifest/investigation-replay-input.js",
       "mode": "100644",
       "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
@@ -526,27 +431,7 @@
       "digest": "sha256:8dc51d4b26a95c6c3bbbcee7a99a2695bd057e0e80c5e3922a81390ae63366ee"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/modules/lifecycle/harness-bootstrap-parent-session.js",
-      "mode": "100644",
-      "digest": "sha256:f0d50e502f98da472fae494ec933399479ed08fe2ff6a5bfc63f288a2c4ded6e"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/modules/lifecycle/workflow-session-contract.js",
-      "mode": "100644",
-      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/modules/planning-provider/change-contract-errors.js",
-      "mode": "100644",
-      "digest": "sha256:fb3b03f44ed738af05082b63a19bfdbd7b10c1567fce0961d189143843343e92"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/modules/planning-provider/change-contract.js",
-      "mode": "100644",
-      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/modules/planning-provider/planning-artifact-types.js",
       "mode": "100644",
       "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
     },
@@ -556,29 +441,14 @@
       "digest": "sha256:11cad93e17656be824d848130b7beb53e34b4000422e921cd231525e1c020db9"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/modules/repository-consumer/repository-consumer-policy.js",
-      "mode": "100644",
-      "digest": "sha256:cef683b3bc102aa66cf17030bf59466baa5a203a8a40f5e4eaa2d0cf35e25972"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/modules/repository-consumer/repository-git-state.js",
       "mode": "100644",
       "digest": "sha256:c51fc1caf79a9e1b637751b8cf4ad7f24fab2cde1c4e90fd5e2f74943a032cb4"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/modules/repository-consumer/workflow-config.js",
-      "mode": "100644",
-      "digest": "sha256:f14b78454e3c60ccd66dc1480a627dd43c27f8fc4280f649bcc6991a65ccc334"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/modules/source/change-intent.js",
       "mode": "100644",
       "digest": "sha256:d87cd6cb79bceb59ecad70d55b5f0103b9b1b144fca3f8614c1addea035c003f"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/modules/source/check-command.js",
-      "mode": "100644",
-      "digest": "sha256:0f014b84611585a693e51914cb719c6210838f73b0d76660622d157995c5fd8c"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/source/file-header.js",
@@ -689,11 +559,6 @@
       "path": "bootstrap/recovery-runtime/src/runtime/recovery/recovery-trust-root-store.js",
       "mode": "100644",
       "digest": "sha256:9f050df565c4eba6f225d3ad97e094f9f4e9dea52af644805526c8517a18b87b"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/runtime/repository-observation/harness-bootstrap-parent-state.js",
-      "mode": "100644",
-      "digest": "sha256:183707ff5161e0c0c2822d675f0b3db7abd25b4581f420cc6d67767f1bea21a7"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/repository-observation/human-resolution-grants.js",
@@ -896,19 +761,19 @@
       "digest": "sha256:8bab3613c521ed4d36a43cf6641b05049e772f76644251bb509251e958e70f36"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-adoption-store.js",
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-abandonment.js",
       "mode": "100644",
-      "digest": "sha256:676f223ac630d17cd9774e070e68ba5eb1c2bec4e43d7e3e4500fea984cf9bec"
+      "digest": "sha256:2ae36221906919ba8e5f00dad8c515416d68e2fca5e4991955ca6c10b451ecca"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-control-persistence.js",
       "mode": "100644",
-      "digest": "sha256:fbf06df1ac66e4f1afa82d64d475662fd8774d83cb53cc497e0800da16bbbf75"
+      "digest": "sha256:67cb3aeed91d65b08cbe0a9860af07656dbda3fdf6e4bc14d20680d4b8edc68d"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-engine-artifact-store.js",
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-parent-binding.js",
       "mode": "100644",
-      "digest": "sha256:16457dd0ebca9ad3006b0c1f0a7d416cc1e2c0fd8827a298b90bdb80df8c876e"
+      "digest": "sha256:a47c7190ffb5bc89a0b3f3d2f68e14e10da86296f65552d827a43b22a67b36a4"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-persistence-contracts.js",
@@ -918,7 +783,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-persistence-files.js",
       "mode": "100644",
-      "digest": "sha256:48e9ac10dd2216770d8f654e39029d007fb595d4e8b79acf97ee6d4b15c809fe"
+      "digest": "sha256:93fcaf6460f2e0d241739eadc039ff41dc8d77ba5dd5252bd449f67518e8254e"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-persistence-locks.js",
@@ -928,42 +793,32 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-persistence-paths.js",
       "mode": "100644",
-      "digest": "sha256:34b7b9855f586396f30ebd269defeba825a955499904b94416a80872f0bc29fb"
+      "digest": "sha256:176468766d5ed6b5503aea404f7c6901b30bba39d278f19fa4f584684b430cb2"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-persistence-values.js",
       "mode": "100644",
-      "digest": "sha256:8fabeb2e0222a80e6cd2ceed1b9ce9481d91b7acc2ad4342803e63d4335cd16d"
+      "digest": "sha256:d87822eaf060bafd2179bd6ced9b6c486afde4600f1fa26833907b25fbbd4e27"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-plan-store.js",
       "mode": "100644",
-      "digest": "sha256:b948c2bf5fbb577d6b07bf0343ff54949e6f97606063f38273649e792640c523"
+      "digest": "sha256:2ffbfa3f8a4c09b7dcc89522246ffede8b6f0d89c4dd0f41182fb657bdc0c209"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-sidecar-records.js",
       "mode": "100644",
-      "digest": "sha256:0bd7d67ff2ef79ce31445e127ba817a234bbe1f0ed3e60a24c395bfcb3b2bc7f"
+      "digest": "sha256:41faf7d98b79a0cf5f0b444918967c4bf3613af9c7601bf4bcea53dd5db4e268"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-sidecar-store.js",
       "mode": "100644",
-      "digest": "sha256:4b6163e317725bcc051a243646298866c3fe3ca042ca505f07223a845d31bb8c"
+      "digest": "sha256:9e7f6d77642937e33915df094794ca572d11b87ea2d2468c495e308e4dcef655"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/investigation-session-records.js",
       "mode": "100644",
       "digest": "sha256:6cef14d6102d18f640101d2c515bfc80fff971238dd7bc07dd9ffb49a11411a6"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/runtime/workflow-configuration/repository-consumer.js",
-      "mode": "100644",
-      "digest": "sha256:372890eda509c0137fa0cb3f2a9db0f708546336fdcb5209738c876c29f08e61"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/runtime/workflow-configuration/workflow-configuration.js",
-      "mode": "100644",
-      "digest": "sha256:a88d44cd014c4f1d4b4405e0f9517c66c95d933cfeaedc7f4385e9e318b6f5ec"
     }
   ]
 }

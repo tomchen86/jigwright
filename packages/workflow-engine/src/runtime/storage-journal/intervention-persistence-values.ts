@@ -1,57 +1,10 @@
-/**
- * Shares canonical record digests and bounded identity, observation, and authority-input checks.
- *
- * Invariants:
- * - Record payloads retain exact canonical digest bytes and their validation error codes.
- * - Human verifier and timestamp inputs retain their current requirements and invocation semantics.
- */
+/** Canonical values and identity checks for retained intervention metadata. */
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type { Sha256Digest } from '../../modules/authority/intervention-control.ts';
-import {
-  MAX_RECORD_BYTES,
-  type PersistedTransitionObservation,
-  type PersistenceHumanDependencies,
-  type PersistenceHumanSignatureVerifier,
-} from './intervention-persistence-contracts.ts';
-
-export function validateObservations(
-  observations: PersistedTransitionObservation[],
-  expectedCount: number,
-  terminalState: string,
-): void {
-  if (!Array.isArray(observations) || observations.length !== expectedCount) {
-    throw new Error('Observation count mismatch.');
-  }
-  for (let index = 0; index < observations.length; index += 1) {
-    const observation = observations[index];
-    if (
-      observation.sequence !== index + 1 ||
-      typeof observation.eventKind !== 'string' ||
-      observation.eventKind.length === 0 ||
-      typeof observation.fromState !== 'string' ||
-      typeof observation.toState !== 'string'
-    ) {
-      throw new Error('Observation is invalid.');
-    }
-    assertDigest(observation.evidenceDigest, 'OBSERVATION_INVALID');
-    exactIso(observation.recordedAt, 'OBSERVATION_INVALID');
-    if (
-      index > 0 &&
-      observations[index - 1].toState !== observation.fromState
-    ) {
-      throw new Error('Observation chain is discontinuous.');
-    }
-  }
-  if (
-    observations.length > 0 &&
-    observations.at(-1)?.toState !== terminalState
-  ) {
-    throw new Error('Observation state does not match journal.');
-  }
-}
+import { MAX_RECORD_BYTES } from './intervention-persistence-contracts.ts';
 
 export function serializeRecord(value: unknown): string {
   const serialized = `${canonicalJson(value)}\n`;
@@ -156,28 +109,6 @@ export function assertSafeChangeRef(value: string): void {
   }
 }
 
-export function requireHumanVerifier(
-  dependencies: PersistenceHumanDependencies,
-): PersistenceHumanSignatureVerifier {
-  if (dependencies.verifyHumanSignature === undefined) {
-    throw workflowError(
-      'INTERVENTION_PERSISTENCE_HUMAN_VERIFIER_REQUIRED',
-      'A trusted human signature verifier is required.',
-      ExitCode.guard,
-    );
-  }
-  return dependencies.verifyHumanSignature;
-}
-
-export function persistenceNow(
-  dependencies: PersistenceHumanDependencies,
-): Date {
-  return exactDate(
-    dependencies.now?.() ?? new Date(),
-    'INTERVENTION_PERSISTENCE_CLOCK_INVALID',
-  );
-}
-
 export function exactDate(value: Date, code: string): Date {
   if (!(value instanceof Date) || !Number.isFinite(value.getTime())) {
     throw workflowError(
@@ -255,14 +186,6 @@ export function corruptPersistenceRecord() {
   return workflowError(
     'INTERVENTION_PERSISTENCE_RECORD_CORRUPT',
     'Persisted intervention record failed integrity verification.',
-    ExitCode.verification,
-  );
-}
-
-export function adoptionRecordCorrupt() {
-  return workflowError(
-    'INTERVENTION_ADOPTION_RECORD_CORRUPT',
-    'Persisted adoption record failed integrity verification.',
     ExitCode.verification,
   );
 }

@@ -733,17 +733,12 @@
     {
       "path": "src/application/control-plane/harness-bootstrap-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:fcc3a0268df84ed05a41df9226ad743ffa015a0b4d03dab84a342ed72946db8a"
+      "digest": "sha256:8296ca5e72c5fb12f8c267480e012843eb74d060c052d7064a668fd986b678d2"
     },
     {
       "path": "src/application/control-plane/harness-bootstrap-external-input.ts",
       "mode": "100644",
       "digest": "sha256:30070864be792bcac0fc7f884187bcdc08f9544b7d6cd63eceb599c4409f65d4"
-    },
-    {
-      "path": "src/application/control-plane/harness-bootstrap-parent-state.ts",
-      "mode": "100644",
-      "digest": "sha256:48cea70ab28720f4502d8aef3a5f683230bd8a0a9951283589ea6aeeb9ebca28"
     },
     {
       "path": "src/application/control-plane/harness-bootstrap-production.ts",
@@ -766,49 +761,9 @@
       "digest": "sha256:beed08aa77d715d5342015f1bddc7ec85c97ec2bb3bf38c212811b4609fd265a"
     },
     {
-      "path": "src/application/control-plane/intervention-artifact-production.ts",
-      "mode": "100644",
-      "digest": "sha256:ad3ed5e320506f2b87293ae46b015faae33b9dc21da5145a350427a5535e5963"
-    },
-    {
-      "path": "src/application/control-plane/intervention-bootstrap-abandonment.ts",
-      "mode": "100644",
-      "digest": "sha256:b3b8d77c4b9cab47879ab96e90e6a98eb057ed16b53010f66d539bae4e2919e0"
-    },
-    {
-      "path": "src/application/control-plane/intervention-bootstrap-child-worktree.ts",
-      "mode": "100644",
-      "digest": "sha256:35d5fc12db2ed20606be45e081f928d40a03e35cf0024e764b03b54789c857cc"
-    },
-    {
-      "path": "src/application/control-plane/intervention-bootstrap-engine.ts",
-      "mode": "100644",
-      "digest": "sha256:5675a5a888867654be0e83640eb4c3a853403dcfc85bd62d7805506320131b93"
-    },
-    {
-      "path": "src/application/control-plane/intervention-bootstrap-storage.ts",
-      "mode": "100644",
-      "digest": "sha256:91ca20fefa4a10da81b702b0a75d824950d5b2a26f72df290075e0b4961b528e"
-    },
-    {
-      "path": "src/application/control-plane/intervention-bootstrap-workspace.ts",
-      "mode": "100644",
-      "digest": "sha256:ce52c4c8645ac65cf1f060a9d4e28962881b62aebbf6d96488a792197e25e78a"
-    },
-    {
-      "path": "src/application/control-plane/intervention-control-bootstrap.ts",
-      "mode": "100644",
-      "digest": "sha256:9e39c5e314a61e50267b8949176a4b753c208f16e9ebc29477b1be0c7771a224"
-    },
-    {
-      "path": "src/application/control-plane/intervention-maintenance-publication.ts",
-      "mode": "100644",
-      "digest": "sha256:2ca4e6e8611c2ad0fd9f5928b582d5cace2dbf79585ee940202f8b9e69fb0dc2"
-    },
-    {
       "path": "src/application/control-plane/intervention-maintenance.ts",
       "mode": "100644",
-      "digest": "sha256:3f000f924daff27e43cdc9766303380e333b51b2ce902fdf54b8d22d6af71680"
+      "digest": "sha256:c22ee71c61a3597517380a66680e003f486838be7d8b270f68d9003d6934c8a8"
     },
     {
       "path": "src/application/control-plane/maintainer-apply-audit.ts",
@@ -1588,7 +1543,7 @@
     {
       "path": "src/composition-root/cli-authority-production.ts",
       "mode": "100644",
-      "digest": "sha256:7e9fea21acefdf557d1adb0e1527f39a521e5dcc012ea2f945ba72229ee3c862"
+      "digest": "sha256:298e2df496e319b2dd9ef9a32d820a6a827aed1e4f0e9118af8d2ad636673025"
     },
     {
       "path": "src/composition-root/cli-command-services.ts",
@@ -1688,7 +1643,7 @@
     {
       "path": "src/composition-root/harness-bootstrap-production.ts",
       "mode": "100644",
-      "digest": "sha256:aa12907729bfafa678903599431e95ed76006ee4a5fd5fb3fd2281ef49ade086"
+      "digest": "sha256:6befb4a7fbb6124f387d9a4059410764aa7aab51503352610faebe78eb8473b8"
     },
     {
       "path": "src/composition-root/human-revocation-production.ts",
@@ -2093,7 +2048,7 @@
     {
       "path": "src/entrypoints/cli/authority-management-cli.ts",
       "mode": "100644",
-      "digest": "sha256:fa866079042fda9d3230308770f2277d132458489f77f1c203918b9fa228fe8f"
+      "digest": "sha256:b65677353bf0b83f82a7c47d937f50071a5dd634615954fb836013b71cfc775f"
     },
     {
       "path": "src/entrypoints/cli/boundary-cli.ts",
@@ -2118,7 +2073,7 @@
     {
       "path": "src/entrypoints/cli/cli-input.ts",
       "mode": "100644",
-      "digest": "sha256:2bdecc88b99e382a86239c7bebdbc6dca48a90ec5fa04d4bc1a779869c165e4b"
+      "digest": "sha256:88e16119dcecc3904c4a338126f872f0ee7c671a1ef4bcf78cb22596dd435fb0"
     },
     {
       "path": "src/entrypoints/cli/collaboration-grant-cli.ts",
@@ -2153,7 +2108,7 @@
     {
       "path": "src/entrypoints/cli/harness-bootstrap-cli.ts",
       "mode": "100644",
-      "digest": "sha256:6b3cf77debc3e03ac330475c3fa68b3e2168607ce8ba29edd5f3c7ecd16c1a14"
+      "digest": "sha256:3be7bc0910f1cc3da74c12e898440c108baa69719e7773db8fa3a415ebe8c2cd"
     },
     {
       "path": "src/entrypoints/cli/human-command-output.ts",
@@ -2168,12 +2123,7 @@
     {
       "path": "src/entrypoints/cli/intervention-control-bootstrap-cli.ts",
       "mode": "100644",
-      "digest": "sha256:1056893d5a45763e3039b156c03b291682a707c56c5d28841fc00d4df75ddda7"
-    },
-    {
-      "path": "src/entrypoints/cli/intervention-control-cli.ts",
-      "mode": "100644",
-      "digest": "sha256:98c6e237452c15095c0fb95e28e86c315484c3ff8431a215f4aa25f21260f833"
+      "digest": "sha256:c38b4a6d6d1cae988744f09e97c6d3aefbbb622c12e494da5c849844d4871b6d"
     },
     {
       "path": "src/entrypoints/cli/provider-operations-cli.ts",
@@ -2821,11 +2771,6 @@
       "digest": "sha256:bbd7068899357d3d123bf5d4df0d7b2d887ebf6a8b1ec9e8bdeca0ec54f2ce01"
     },
     {
-      "path": "src/modules/authority/harness-bootstrap-parent-contract.ts",
-      "mode": "100644",
-      "digest": "sha256:7c2b310d1f3ecd50ba69160e258f8c89ed0d55699c56fd1d73031a0dca925177"
-    },
-    {
       "path": "src/modules/authority/human-revocation-contract.ts",
       "mode": "100644",
       "digest": "sha256:56bde1abcc94e1fc05518444b2586d7694515b990c01cfa03db359f3190da08e"
@@ -2843,12 +2788,7 @@
     {
       "path": "src/modules/authority/intervention-bootstrap-contract.ts",
       "mode": "100644",
-      "digest": "sha256:2eaa75ba36f69c26b4eebad57563a1d5937da90b62fd1448289536eb63fffd68"
-    },
-    {
-      "path": "src/modules/authority/intervention-control-adoption.ts",
-      "mode": "100644",
-      "digest": "sha256:7c6b76f29a6fca4a7f3e4df07629ab970268333c75617bd69d12b34e960a1424"
+      "digest": "sha256:96cc80a984143163381c71276ad9c2153972bda2f03328aafb1800bfba6f7bbb"
     },
     {
       "path": "src/modules/authority/intervention-control-protected-manifest.ts",
@@ -2863,7 +2803,12 @@
     {
       "path": "src/modules/authority/intervention-control.ts",
       "mode": "100644",
-      "digest": "sha256:82adb9747f80d9901125326a73e5825efc76b3f2397a38939161ef04f06bda0e"
+      "digest": "sha256:3af5572c22c2bd48a9b7af4c43bf1a6268f74ca1acc095cbdb0c2032bec65fe6"
+    },
+    {
+      "path": "src/modules/authority/intervention-record-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:76347402bc37dbfffd825df6be39161bab6ef8bdb930f2ffd6fdae7157f7cc97"
     },
     {
       "path": "src/modules/authority/maintainer-candidate-contracts.ts",
@@ -3394,11 +3339,6 @@
       "path": "src/modules/lifecycle/contract-digests.ts",
       "mode": "100644",
       "digest": "sha256:cc22959c4379ac749fdce0db6dbca554c3ccaa0a07dc7319419c49f385f81070"
-    },
-    {
-      "path": "src/modules/lifecycle/harness-bootstrap-parent-session.ts",
-      "mode": "100644",
-      "digest": "sha256:013e1420bd5c358c02bfcbd83ae033e63f6783563aa52564ab2e97231f79a770"
     },
     {
       "path": "src/modules/lifecycle/managed-workflow-state-contract.ts",
@@ -4371,11 +4311,6 @@
       "digest": "sha256:af18f6185c21892a7b0d38840c9a62ff5f5120388b6dda538f1a4daeec54a972"
     },
     {
-      "path": "src/runtime/repository-observation/harness-bootstrap-parent-state.ts",
-      "mode": "100644",
-      "digest": "sha256:60ca92a33a185780e4e806594449a359c5cd48447900e34ca5183a0bb0ec5169"
-    },
-    {
       "path": "src/runtime/repository-observation/human-resolution-grants.ts",
       "mode": "100644",
       "digest": "sha256:bba4d8dc30b2a61a7375a6200fd914cd69ecc0a876885dad73fec5f60290145a"
@@ -5121,29 +5056,29 @@
       "digest": "sha256:d4a20ef09201893011d1beb5e6d3d6563188f1eff4244fcecb934941af83549c"
     },
     {
-      "path": "src/runtime/storage-journal/intervention-adoption-store.ts",
+      "path": "src/runtime/storage-journal/intervention-abandonment.ts",
       "mode": "100644",
-      "digest": "sha256:abf7359ec63722ef6554b81d026a07a8581305a3bc16b90a2407c4ec5cce59d0"
+      "digest": "sha256:8de0ff028ba0595963a7cac9205b8578e01217d3ea3bcff19cec2b9f2d315ffe"
     },
     {
       "path": "src/runtime/storage-journal/intervention-control-persistence.ts",
       "mode": "100644",
-      "digest": "sha256:a4ee66aae2fb182c40838f711148d9fafb7047b2bd94e261ffaab4ec11666422"
+      "digest": "sha256:affd67613cb4d6e01a5fea42ed1358545cba13fd7324b0e3f3192ee668641537"
     },
     {
-      "path": "src/runtime/storage-journal/intervention-engine-artifact-store.ts",
+      "path": "src/runtime/storage-journal/intervention-parent-binding.ts",
       "mode": "100644",
-      "digest": "sha256:ba45c3b65bb03167b7d3171b30cf439f2dda5ad57457a818549b98bb10ed6a1f"
+      "digest": "sha256:c093004328484ba075154071b2e15186b6307496a7fa3ab95c57ce1f92569726"
     },
     {
       "path": "src/runtime/storage-journal/intervention-persistence-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:75991b68f098d6265ed5d4757920cd22a6c52c505ac82bdc850379ee9df08e63"
+      "digest": "sha256:d1c6c11fdafc0a069faca4c359682b7dabcf46fbe4d0d47fad139d7e2ee0c922"
     },
     {
       "path": "src/runtime/storage-journal/intervention-persistence-files.ts",
       "mode": "100644",
-      "digest": "sha256:91ba8ccf435a666e90f4f45d56edd64958170703926cd01afd68972fc50f63a8"
+      "digest": "sha256:76faafd4ae63046de907512f9bedb6add28b2843589f66b74fac63fe72a09ee9"
     },
     {
       "path": "src/runtime/storage-journal/intervention-persistence-locks.ts",
@@ -5153,27 +5088,27 @@
     {
       "path": "src/runtime/storage-journal/intervention-persistence-paths.ts",
       "mode": "100644",
-      "digest": "sha256:c0fbcf9c28323f63a5bcaae1f2d4ec5062cefd28f983b1dbab438e554b3471d8"
+      "digest": "sha256:f8c58c6357c355ce1bdf988a8bf36b2cabeff4997b1485fc0a60e0e2aa9c382d"
     },
     {
       "path": "src/runtime/storage-journal/intervention-persistence-values.ts",
       "mode": "100644",
-      "digest": "sha256:2a838b6c83781003b96b327069053aa4cf70c7c3b6a908245bd5c4e4c7aaae7d"
+      "digest": "sha256:0316207e0f801566a0d47487ccf5909420c5caa95da856bd2cd5d377fc71ea54"
     },
     {
       "path": "src/runtime/storage-journal/intervention-plan-store.ts",
       "mode": "100644",
-      "digest": "sha256:39536f641ae0b480fdc4348b76392b339b62639ab58b62940c4c86360738eb1d"
+      "digest": "sha256:876dd1ed2e306f12d3961303e7649e92a7076e6facfe7861185ed879bda78cee"
     },
     {
       "path": "src/runtime/storage-journal/intervention-sidecar-records.ts",
       "mode": "100644",
-      "digest": "sha256:fd68867de38e85f4f2cf554f526f6ea832362b31b7a5cc606d23d374c2443c60"
+      "digest": "sha256:0b99a62382077af490c2405706b09affcbac1298b8877b5dd37beb9924ce2ff6"
     },
     {
       "path": "src/runtime/storage-journal/intervention-sidecar-store.ts",
       "mode": "100644",
-      "digest": "sha256:f801c30164a6b6474cb6d17f82c283fbd12f2b06710db5658aebcbfac8dd2290"
+      "digest": "sha256:bcf55c896eb49113b64039a84e185193ecedbce93248bf46730e2424aeeb8029"
     },
     {
       "path": "src/runtime/storage-journal/investigation-session-records.ts",

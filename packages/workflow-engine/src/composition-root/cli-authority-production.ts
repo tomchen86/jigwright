@@ -1,4 +1,3 @@
-import { createInteractiveSshSigner } from '../adapters/signing/ssh/maintainer-signer.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { parseMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
 import { readFileAtRevision } from '../runtime/repository-transaction/git-command.ts';
@@ -20,39 +19,6 @@ import { taskMandateOperations } from './task-mandate-production.ts';
  * - External review reconciliation requires the exact durably consumed
  *   Grant.
  */
-
-export function interventionControlDependencies(cwd: string) {
-  return {
-    now: () => new Date(),
-    verifyHumanSignature(
-      payload: string,
-      signature: string,
-      signer: string,
-      namespace: string,
-    ): boolean {
-      try {
-        const repository = discoverRepository(cwd);
-        const policy = parseMaintainerPolicy(
-          JSON.parse(
-            readFileAtRevision(
-              repository.repositoryRoot,
-              repository.head,
-              'workflow/maintainer-policy.json',
-            ),
-          ),
-        );
-        const verifier = createInteractiveSshSigner(
-          repository.repositoryRoot,
-          policy,
-        );
-        verifier.verify(payload, signature, signer, namespace);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-  };
-}
 
 export function currentCollaborationGrantSelection(
   cwd: string,

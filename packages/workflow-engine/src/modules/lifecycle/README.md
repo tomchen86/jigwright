@@ -8,11 +8,11 @@ Keep repository routing in one controlled source and derive the visible inventor
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:63b5043f739b48d92f542897b4906b53146aa440d1ee390b5a833f5c2a5681c5 -->
+<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:37169d8663408a2958757dcf64190445351cc3a9fbac1693691da508b93c846f -->
 
 <!-- prettier-ignore-start -->
 
-22 files changed in this module since confirmation.
+21 files changed in this module since confirmation.
 
 ## Commands
 
@@ -71,7 +71,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [change-routing.ts](change-routing.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [completion-rollback.ts](completion-rollback.ts) | Pure admission and state reset for reversing an unfinished completion projection. | 0 | History unavailable |
 | [contract-digests.ts](contract-digests.ts) | Computes identities for the required registered check definitions. | 1 | History unavailable |
-| [harness-bootstrap-parent-session.ts](harness-bootstrap-parent-session.ts) | Complete durable parent observations and lifecycle admission decisions. | 0 | History unavailable |
+| [harness-bootstrap-parent-session.ts](harness-bootstrap-parent-session.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) | Defines shared task strategy, review and authority-plan state names. | 1 | Header changed since confirmation |
 | [open-task-status.ts](open-task-status.ts) | Durable open-task phase and status values shared by activation and status queries. | 0 | History unavailable |
 | [planning-amendment-decision.ts](planning-amendment-decision.ts) | Creates, reads and replaces canonical amendment decisions embedded in proposal markers. | 1 | History unavailable |

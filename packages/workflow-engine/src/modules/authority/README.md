@@ -8,7 +8,7 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:83fc8042d140d4d053ade2e0d7077d832dc4af69a21764cb314a9257f59f2fd3 -->
+<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:c95bda3f4e2b4c9e12fb29fb0b87769515c0b3831229ecbc1cdc53471d1a61f4 -->
 
 <!-- prettier-ignore-start -->
 
@@ -29,12 +29,8 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 | task authorize &lt;manifest.json&gt; --audit-root &lt;absolute-external-path&gt; [--json] | Authorize the exact task manifest and its audit destination. |
 | task status &lt;task-id&gt; [--json] | Inspect the Task Mandate state. |
 | task revoke &lt;task-id&gt; --reason &lt;text&gt; [--json] | Revoke the Task Mandate with a recorded reason. |
-| change intervene &lt;parent-change-id&gt; --reason &lt;text&gt; --audit-root &lt;absolute-external-path&gt; [--json] | Request human intervention in the named parent change. |
-| change revoke-intervention &lt;parent-change-id&gt; --reason &lt;text&gt; [--json] | Revoke intervention in the named parent change. |
-| engine build-artifact &lt;absolute-executable-path&gt; --for &lt;parent-change-id&gt; --protocol-version &lt;positive-integer&gt; --policy-schema-version &lt;positive-integer&gt; --audit-root &lt;absolute-path&gt; [--json] | Build an engine artifact for the exact intervention target. |
-| engine adopt &lt;artifact-id&gt; --into &lt;parent-change-id&gt; --audit-root &lt;absolute-external-path&gt; [--json] | Record a local parent intervention adoption; ordinary commands keep the package runner. |
-| intervention status &lt;parent-change-id&gt; [--tx &lt;tx-id&gt;] [--json] | Inspect the durable intervention transaction. |
-| intervention recover &lt;tx-id&gt; [--json] | Recover the recorded intervention transaction. |
+| change revoke-intervention &lt;parent-change-id&gt; --reason &lt;text&gt; [--json] | Authorize disposal of retained intervention metadata; preserve WIP and child data. |
+| intervention status &lt;parent-change-id&gt; [--json] | Inspect retained intervention metadata. |
 | audit show &lt;task-id&gt; --audit-root &lt;absolute-external-path&gt; [--json] | Show audit evidence for the named task. |
 | audit verify &lt;repository-id&gt; --audit-root &lt;absolute-external-path&gt; [--json] | Verify the repository audit evidence. |
 | maintainer grant preflight --profile &lt;profile-id&gt; [--json] | Inspect the frozen candidate and required checks before signing. |
@@ -70,10 +66,9 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 | TerminalState | consumed, revoked, expired, failed, manual-reconciliation | [external-effect-grant.ts](external-effect-grant.ts) |
 | GitAuthorityCandidateApplyPhase | pending, prepared, index-published, commit-created, ref-update-prepared, ref-updated, completed, failed | [git-authority-candidate-apply-grant.ts](git-authority-candidate-apply-grant.ts) |
 | GitObjectFormat | sha1, sha256 | [immutable-git-candidate.ts](immutable-git-candidate.ts) |
-| ParentChangeStatus | draft, active, completed, cancelled, superseded | [intervention-control-adoption.ts](intervention-control-adoption.ts) |
-| HarnessMaintenanceOperation | adopt-engine-into-parent, build-engine-artifact, create-isolated-workspace, modify-engine, run-engine-tests | [intervention-control-adoption.ts](intervention-control-adoption.ts) |
-| HarnessMaintenanceWaiver | active-change-exclusivity, clean-worktree-required, engine-path-protection, parent-terminalization-required, selected-workflow-check | [intervention-control-adoption.ts](intervention-control-adoption.ts) |
-| EngineAdoptionState | PREPARED, PARENT_CHECKPOINTED, ENGINE_BINDING_UPDATED, NEW_ENGINE_STARTED, ROLLBACK_REQUIRED, HEALTHY, COMMITTED, ENGINE_BINDING_ROLLED_BACK | [intervention-control-adoption.ts](intervention-control-adoption.ts) |
+| ParentChangeStatus | draft, active, completed, cancelled, superseded | [intervention-record-contract.ts](intervention-record-contract.ts) |
+| HarnessMaintenanceOperation | adopt-engine-into-parent, build-engine-artifact, create-isolated-workspace, modify-engine, run-engine-tests | [intervention-record-contract.ts](intervention-record-contract.ts) |
+| HarnessMaintenanceWaiver | active-change-exclusivity, clean-worktree-required, engine-path-protection, parent-terminalization-required, selected-workflow-check | [intervention-record-contract.ts](intervention-record-contract.ts) |
 | CheckReuseClass | content-pure, toolchain-dependent, external-state | [maintainer-candidate-contracts.ts](maintainer-candidate-contracts.ts) |
 | CandidateClassification | ordinary, root-one-shot, control-plane | [maintainer-candidate-contracts.ts](maintainer-candidate-contracts.ts) |
 | FileRole | implementation, evidence, policy, verification-infrastructure, forbidden | [maintainer-manifest-contracts.ts](maintainer-manifest-contracts.ts) |
@@ -126,9 +121,6 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [collaboration-grant-records.ts](collaboration-grant-records.ts) | Defines collaboration reservation, assignment, consumption, and inspection record shapes. | 2 | History unavailable |
 | [collaboration-grant-use.ts](collaboration-grant-use.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [collaboration-grant-values.ts](collaboration-grant-values.ts) | Defines exact collaboration store values, canonical records, and stable error codes. | 2 | History unavailable |
-| [control-plane-recovery-grant-records.ts](control-plane-recovery-grant-records.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [control-plane-recovery-grant-values.ts](control-plane-recovery-grant-values.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [control-plane-recovery-grant.ts](control-plane-recovery-grant.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [execution-governance-context.ts](execution-governance-context.ts) | Defines manifest-bound prompts, result eligibility, and explicit epoch rollover decisions. | 3 | Possibly stale |
 | [execution-governance-epoch-port.ts](execution-governance-epoch-port.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [execution-governance-grant-contracts.ts](execution-governance-grant-contracts.ts) | Defines strict execution-budget grant envelopes, usage records, and canonical signing bytes. | 2 | Possibly stale |
@@ -157,18 +149,16 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [grant-revocation-contract.ts](grant-revocation-contract.ts) | Canonical collaboration revocation targets and required transaction capabilities. | 0 | History unavailable |
 | [grant-transition-registry.ts](grant-transition-registry.ts) | Registers Grant transitions and renders choices bound to their declared parameters and consequences. | 2 | History unavailable |
 | [grant-verifier-port.ts](grant-verifier-port.ts) | Seals authoritative collaboration verifiers and resolves opaque consumed- replay verifier handles. | 2 | History unavailable |
-| [harness-bootstrap-parent-contract.ts](harness-bootstrap-parent-contract.ts) | Observe and admit an existing engine overlay for a parent session. | 0 | History unavailable |
+| [harness-bootstrap-parent-contract.ts](harness-bootstrap-parent-contract.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [human-revocation-contract.ts](human-revocation-contract.ts) | Parses canonical human revocation envelopes and validates their exact subject bindings. | 2 | History unavailable |
 | [immutable-git-candidate-codec.ts](immutable-git-candidate-codec.ts) | Decodes immutable Git candidates and validates their canonical patch, policy and check bindings. | 2 | Header changed since confirmation |
 | [immutable-git-candidate.ts](immutable-git-candidate.ts) | Builds immutable Git candidates and verifies their observed repository state and pinned objects. | 2 | History unavailable |
-| [intervention-bootstrap-contract.ts](intervention-bootstrap-contract.ts) | Canonical intervention bootstrap inputs, parent state and human approval data. | 0 | History unavailable |
-| [intervention-control-adoption.ts](intervention-control-adoption.ts) | Models intervention checkpoints, maintenance Grants and recoverable engine adoption transitions. | 2 | History unavailable |
-| [intervention-control-promotion-grant.ts](intervention-control-promotion-grant.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [intervention-control-promotion-material.ts](intervention-control-promotion-material.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [intervention-bootstrap-contract.ts](intervention-bootstrap-contract.ts) | Retained intervention metadata and signed disposition inputs. | 0 | History unavailable |
+| [intervention-control-adoption.ts](intervention-control-adoption.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [intervention-control-protected-manifest.ts](intervention-control-protected-manifest.ts) | Builds exact protected-capability manifests shared by ordinary Grant policy. | 0 | History unavailable |
-| [intervention-control-review.ts](intervention-control-review.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [intervention-control-values.ts](intervention-control-values.ts) | Provides shared intervention value checks, signature namespaces and safe verifier calls. | 2 | History unavailable |
 | [intervention-control.ts](intervention-control.ts) | Local intervention contracts and permitted workflow replacement reasons. | 0 | History unavailable |
+| [intervention-record-contract.ts](intervention-record-contract.ts) | Validate retained intervention checkpoints and their signed maintenance grants. | 0 | History unavailable |
 | [maintainer-candidate-contracts.ts](maintainer-candidate-contracts.ts) | Builds canonical candidate bundles, supporting artifacts and check freshness contracts. | 2 | Header changed since confirmation |
 | [maintainer-candidate-dependencies.ts](maintainer-candidate-dependencies.ts) | Canonical candidate dependency projections and required observation contracts. | 0 | History unavailable |
 | [maintainer-candidate-ref-ledger.ts](maintainer-candidate-ref-ledger.ts) | Canonical ref-generation state and prestate rules. | 0 | Header changed since confirmation |

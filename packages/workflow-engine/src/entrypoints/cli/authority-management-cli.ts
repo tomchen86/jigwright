@@ -1,9 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-  interventionControlDependencies,
-  taskDiffCollaborationGrantSelection,
-} from '../../composition-root/cli-authority-production.ts';
+import { taskDiffCollaborationGrantSelection } from '../../composition-root/cli-authority-production.ts';
 import type {
   ApproveAndApplyMaintainerGrantV2Request,
   AuthorityAttestationRequest,
@@ -78,8 +75,10 @@ import {
   issueExecutionBudgetGrant,
   revokeIssuedExecutionBudgetGrant,
 } from './execution-grant-cli.ts';
-import { dispatchBootstrapInterventionCommand } from './intervention-control-bootstrap-cli.ts';
-import { dispatchInterventionControlCommand } from './intervention-control-cli.ts';
+import {
+  assertSupportedBootstrapInterventionCommand,
+  dispatchBootstrapInterventionCommand,
+} from './intervention-control-bootstrap-cli.ts';
 import { dispatchRoleContextSharingGrantCommand } from './role-context-sharing-grant-cli.ts';
 import { parseTaskDiffReviewCliInput } from './task-review-cli-input.ts';
 
@@ -779,13 +778,14 @@ export function createAuthorityCommands(
         };
       }
       case 'intervention':
+        assertSupportedBootstrapInterventionCommand(rest);
         return {
           command,
           ok: true,
           result: dispatchBootstrapInterventionCommand(
             rest,
             cwd,
-            interventionControlDependencies(cwd),
+            createHarnessBootstrapDependencies(cwd),
           ),
         };
       case 'control-plane':
@@ -803,28 +803,14 @@ export function createAuthorityCommands(
         };
       case 'change':
       case 'engine':
-        if (
-          (command === 'change' &&
-            ['intervene', 'revoke-intervention'].includes(rest[0] ?? '')) ||
-          (command === 'engine' &&
-            ['adopt', 'build-artifact'].includes(rest[0] ?? ''))
-        ) {
-          return {
-            command,
-            ok: true,
-            result: dispatchBootstrapInterventionCommand(
-              [command, ...rest],
-              cwd,
-              createHarnessBootstrapDependencies(cwd),
-            ),
-          };
-        }
+        assertSupportedBootstrapInterventionCommand([command, ...rest]);
         return {
           command,
           ok: true,
-          result: dispatchInterventionControlCommand(
+          result: dispatchBootstrapInterventionCommand(
             [command, ...rest],
-            interventionControlDependencies(cwd),
+            cwd,
+            createHarnessBootstrapDependencies(cwd),
           ),
         };
       case 'task': {

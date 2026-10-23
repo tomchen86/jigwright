@@ -13,7 +13,10 @@ import {
   type InterventionControlPersistencePaths,
   PRIVATE_DIRECTORY_MODE,
 } from './intervention-persistence-contracts.ts';
-import { identityFileName } from './intervention-persistence-values.ts';
+import {
+  identityFileName,
+  isPathInside,
+} from './intervention-persistence-values.ts';
 
 export function interventionControlPersistencePaths(
   requestedRoot: string,
@@ -25,7 +28,6 @@ export function interventionControlPersistencePaths(
     interventions: path.join(root, 'interventions'),
     sidecarSessions: path.join(root, 'sidecar-sessions'),
     sidecarHistory: path.join(root, 'sidecar-session-history'),
-    adoptions: path.join(root, 'adoptions'),
     operations: path.join(root, 'operations'),
   };
 }
@@ -50,16 +52,6 @@ export function persistedBootstrapSidecarSessionPath(
   );
 }
 
-export function engineAdoptionRecordPath(
-  storageRoot: string,
-  txId: string,
-): string {
-  return path.join(
-    interventionControlPersistencePaths(storageRoot).adoptions,
-    `${identityFileName('adoption', txId)}.json`,
-  );
-}
-
 export function ensurePersistenceDirectories(storageRoot: string): void {
   const paths = interventionControlPersistencePaths(storageRoot);
   for (const directory of [
@@ -68,7 +60,6 @@ export function ensurePersistenceDirectories(storageRoot: string): void {
     paths.interventions,
     paths.sidecarSessions,
     paths.sidecarHistory,
-    paths.adoptions,
     paths.operations,
   ]) {
     ensurePlainDirectory(directory);
@@ -104,4 +95,35 @@ function assertStorageRoot(requestedRoot: string): string {
     );
   }
   return root;
+}
+export function canonicalAbsolutePath(requestedPath: string): string {
+  if (
+    typeof requestedPath !== 'string' ||
+    !path.isAbsolute(requestedPath) ||
+    path.resolve(requestedPath) !== requestedPath ||
+    requestedPath === path.parse(requestedPath).root
+  ) {
+    throw workflowError(
+      'BOOTSTRAP_PATH_INVALID',
+      'Bootstrap path must be an explicit normalized absolute path.',
+      ExitCode.usage,
+    );
+  }
+  return requestedPath;
+}
+export function assertPersistenceOwnedPath(
+  storageRoot: string,
+  requestedPath: string,
+  code: string,
+): string {
+  const root = interventionControlPersistencePaths(storageRoot).root;
+  const absolute = canonicalAbsolutePath(requestedPath);
+  if (!isPathInside(root, absolute)) {
+    throw workflowError(
+      code,
+      'Bootstrap mutable state must stay inside the persistence root.',
+      ExitCode.guard,
+    );
+  }
+  return absolute;
 }

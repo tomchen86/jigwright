@@ -5,7 +5,6 @@ import type { TaskSessionReference } from '@jigwright/core/workflow-identifiers'
 import type { WorkflowSession } from '../src/modules/lifecycle/workflow-session-contract.ts';
 import type { TaskStrategyTransaction } from '../src/modules/assurance/task-strategy-evidence.ts';
 import type { TaskStrategyGateIdentity } from '../src/modules/assurance/task-strategy-gate.ts';
-import type { HarnessBootstrapParentObservation } from '../src/modules/lifecycle/harness-bootstrap-parent-session.ts';
 import {
   dependencyOwner,
   readRepositoryDependencies,
@@ -46,12 +45,6 @@ type ReferenceContract = [
   Assert<Equal<ReadonlyKeys<GateSession>, never>>,
   Assert<Equal<ReadonlyKeys<GateSession['baseline']>, 'head' | 'tree'>>,
   Assert<Equal<OptionalKeys<GateSession>, never>>,
-  Assert<
-    Equal<
-      HarnessBootstrapParentObservation['candidates'][number]['session'],
-      WorkflowSession
-    >
-  >,
 ];
 
 // Compiled with the actual public declarations. Never execute these mutations.
@@ -113,14 +106,13 @@ function referenceContract(
 }
 void referenceContract;
 
-test('assurance and engine-binding rules have no lifecycle imports and reject value or type back-edges', () => {
+test('assurance rules have no lifecycle imports and reject value or type back-edges', () => {
   const root = path.resolve(import.meta.dirname, '../../..');
   const prefix = 'packages/workflow-engine/src/modules/';
   const resolver = readRepositoryDependencies(root);
   for (const relative of [
     'assurance/task-strategy-gate.ts',
     'assurance/task-strategy-evidence.ts',
-    'authority/harness-bootstrap-parent-contract.ts',
   ]) {
     const check = (extra = '') => {
       const { edges } = resolver.read(path.join(root, prefix, relative), extra);
@@ -133,7 +125,7 @@ test('assurance and engine-binding rules have no lifecycle imports and reject va
     check();
     for (const declaration of [
       "import type { WorkflowSession } from '../lifecycle/workflow-session-contract.ts';",
-      "import { admitHarnessBootstrapParent } from '../lifecycle/harness-bootstrap-parent-session.ts';",
+      "import * as lifecycle from '../lifecycle/workflow-session-contract.ts';",
     ])
       assert.throws(() => check('\n' + declaration), assert.AssertionError);
   }

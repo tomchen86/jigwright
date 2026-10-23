@@ -17,6 +17,7 @@ import {
 } from '../../modules/authority/recovery-quarantine-contract.ts';
 import { type RecoveryOperationalTrustRootRestoreResult } from '../../modules/authority/recovery-trust-root-contract.ts';
 import {
+  assertSupportedBootstrapInterventionCommand,
   bootstrapInterventionStateRoot,
   bootstrapInterventionUsage,
   dispatchBootstrapInterventionCommand,
@@ -84,6 +85,14 @@ export function createHarnessBootstrapCli({
           harnessBootstrapUsage(),
           ExitCode.usage,
         );
+      }
+      if (
+        args.length > 0 &&
+        !['--help', '-h', 'help'].includes(args[0]!) &&
+        !isRecoveryAuthorityCommand(args) &&
+        !isRecoveryQuarantineCommand(args)
+      ) {
+        assertSupportedBootstrapInterventionCommand(args);
       }
       assertHarnessRecoveryQuarantineRouting(args, cwd, (authority) => {
         refusalAuthority = authority;

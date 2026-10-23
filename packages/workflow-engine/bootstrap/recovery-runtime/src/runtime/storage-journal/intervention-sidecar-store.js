@@ -1,171 +1,25 @@
-/**
- * Publishes bootstrap sidecar creation and lifecycle updates under their current workflow binding.
- *
- * Invariants:
- * - Updates validate the current record and publish the next record inside one operation lock.
- * - Artifact readiness, adoption, abandonment, and history preserve exact workflow identity.
- * - Archived sidecar records and new sessions retain their existing replay and publication order.
- */
+/** Read sidecar metadata and append authorized abandonment without altering historical evidence. */
 import fs from 'node:fs';
-import path from 'node:path';
-import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
-import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
-import { readStoredInterventionEngineArtifact } from "./intervention-engine-artifact-store.js";
-import { parseBootstrapSidecarWorkflow, assertSidecarIdentityText, assertSidecarActive, sidecarProjectionConflict, appendBootstrapSidecarEvent, assertSidecarArtifactSource, ensureBootstrapSidecarArtifact, transitionBootstrapMaintenanceWorkflow, createBootstrapMaintenanceWorkflow, sidecarMatchesIntervention, } from "./intervention-sidecar-records.js";
+import { parseBootstrapSidecarWorkflow, sidecarProjectionConflict, appendBootstrapSidecarEvent, transitionBootstrapMaintenanceWorkflow, createBootstrapMaintenanceWorkflow, sidecarMatchesIntervention, } from "./intervention-sidecar-records.js";
 import { readCanonicalRecord, createPrivateFileExclusive, replacePrivateFileAtomic, } from "./intervention-persistence-files.js";
-import { persistedBootstrapSidecarSessionPath, interventionControlPersistencePaths, } from "./intervention-persistence-paths.js";
-import { assertDigest, exactIso, canonicalDigest, withRecordDigest, identityFileName, serializeRecord, } from "./intervention-persistence-values.js";
+import { persistedBootstrapSidecarSessionPath } from "./intervention-persistence-paths.js";
+import { assertDigest, exactIso, canonicalDigest, withRecordDigest, serializeRecord, } from "./intervention-persistence-values.js";
 import { withPersistenceOperation } from "./intervention-persistence-locks.js";
 export function readPersistedBootstrapSidecarWorkflow(storageRoot, parentChangeId) {
     return parseBootstrapSidecarWorkflow(readCanonicalRecord(persistedBootstrapSidecarSessionPath(storageRoot, parentChangeId), 'INTERVENTION_SIDECAR_SESSION_NOT_FOUND'), parentChangeId);
-}
-export function findPersistedBootstrapSidecarSessionForIntervention(storageRoot, interventionChangeId) {
-    assertSidecarIdentityText(interventionChangeId);
-    const directory = interventionControlPersistencePaths(storageRoot).sidecarSessions;
-    const stats = fs.lstatSync(directory, { throwIfNoEntry: false });
-    if (!stats?.isDirectory() || stats.isSymbolicLink()) {
-        throw workflowError('INTERVENTION_SIDECAR_SESSION_NOT_FOUND', 'No durable bootstrap sidecar session exists for the intervention.', ExitCode.conflict);
-    }
-    const matches = fs
-        .readdirSync(directory)
-        .filter((name) => name.endsWith('.json'))
-        .sort()
-        .map((name) => parseBootstrapSidecarWorkflow(readCanonicalRecord(path.join(directory, name), 'INTERVENTION_SIDECAR_SESSION_NOT_FOUND')))
-        .filter((record) => record.identity.interventionChangeId === interventionChangeId &&
-        record.state === 'repair-active');
-    if (matches.length !== 1) {
-        throw workflowError(matches.length === 0
-            ? 'INTERVENTION_SIDECAR_SESSION_NOT_FOUND'
-            : 'INTERVENTION_SIDECAR_SESSION_CONFLICT', matches.length === 0
-            ? 'No active bootstrap sidecar session matches the intervention.'
-            : 'Multiple active bootstrap sidecar sessions match the intervention.', ExitCode.conflict);
-    }
-    return matches[0];
-}
-export function recordBootstrapSidecarWorkspaceMaterialized(storageRoot, input) {
-    assertDigest(input.workspaceId, 'INTERVENTION_SIDECAR_SESSION_INVALID');
-    assertDigest(input.receiptDigest, 'INTERVENTION_SIDECAR_SESSION_INVALID');
-    exactIso(input.materializedAt, 'INTERVENTION_SIDECAR_SESSION_INVALID');
-    return updateBootstrapSidecarSession(storageRoot, input.parentChangeId, (current) => {
-        assertSidecarActive(current);
-        if (current.identity.workspaceId !== input.workspaceId) {
-            throw sidecarProjectionConflict('Materialized workspace differs from the sidecar identity.');
-        }
-        if (current.workspace.state === 'materialized') {
-            if (current.workspace.receiptDigest !== input.receiptDigest ||
-                current.workspace.materializedAt !== input.materializedAt) {
-                throw sidecarProjectionConflict('Sidecar workspace already has different materialization evidence.');
-            }
-            return current;
-        }
-        return appendBootstrapSidecarEvent(current, {
-            workspace: {
-                ...current.workspace,
-                state: 'materialized',
-                receiptDigest: input.receiptDigest,
-                materializedAt: input.materializedAt,
-            },
-        }, {
-            eventKind: 'workspace-materialized',
-            evidenceDigest: input.receiptDigest,
-            recordedAt: input.materializedAt,
-        });
-    });
-}
-export function recordBootstrapSidecarArtifactReady(storageRoot, input) {
-    assertDigest(input.evidenceDigest, 'INTERVENTION_SIDECAR_SESSION_INVALID');
-    exactIso(input.readyAt, 'INTERVENTION_SIDECAR_SESSION_INVALID');
-    return updateBootstrapSidecarSession(storageRoot, input.parentChangeId, (current) => {
-        assertSidecarActive(current);
-        assertSidecarArtifactSource(current, input.artifact);
-        return ensureBootstrapSidecarArtifact(current, {
-            artifact: input.artifact,
-            evidenceDigest: input.evidenceDigest,
-            readyAt: input.readyAt,
-        });
-    });
-}
-export function recordBootstrapSidecarAdopted(storageRoot, input) {
-    assertSidecarIdentityText(input.txId);
-    assertDigest(input.journalDigest, 'INTERVENTION_SIDECAR_SESSION_INVALID');
-    exactIso(input.adoptedAt, 'INTERVENTION_SIDECAR_SESSION_INVALID');
-    const artifactRecord = readStoredInterventionEngineArtifact(storageRoot, input.artifact.artifactId);
-    if (artifactRecord.kind !== 'persisted-intervention-engine-artifact.v2' ||
-        artifactRecord.parentChangeId !== input.parentChangeId ||
-        canonicalJson(artifactRecord.artifact) !== canonicalJson(input.artifact)) {
-        throw sidecarProjectionConflict('Successful adoption must project the exact persisted v2 artifact record.');
-    }
-    return updateBootstrapSidecarSession(storageRoot, input.parentChangeId, (observed) => {
-        assertSidecarArtifactSource(observed, input.artifact);
-        if (observed.state === 'adopted') {
-            if (observed.adoption?.txId !== input.txId ||
-                observed.adoption.artifactId !== input.artifact.artifactId ||
-                observed.adoption.journalDigest !== input.journalDigest ||
-                observed.adoption.adoptedAt !== input.adoptedAt) {
-                throw sidecarProjectionConflict('Adopted workflow differs from the successful adoption replay.');
-            }
-            return observed;
-        }
-        assertSidecarActive(observed);
-        if (artifactRecord.workflowBindingDigest !==
-            observed.workflowBinding.workflowBindingDigest) {
-            throw sidecarProjectionConflict('Persisted artifact record belongs to a different Workflow binding.');
-        }
-        let current = ensureBootstrapSidecarArtifact(observed, {
-            artifact: input.artifact,
-            evidenceDigest: artifactRecord.recordDigest,
-            readyAt: artifactRecord.createdAt,
-        });
-        const adoption = {
-            txId: input.txId,
-            artifactId: input.artifact.artifactId,
-            journalDigest: input.journalDigest,
-            adoptedAt: input.adoptedAt,
-            workflowBindingDigest: current.workflowBinding.workflowBindingDigest,
-            workflowStatus: 'repair-active',
-        };
-        if (current.adoption !== null) {
-            if (canonicalJson(current.adoption) !== canonicalJson(adoption)) {
-                throw sidecarProjectionConflict('Sidecar already belongs to a different successful local adoption.');
-            }
-            return current;
-        }
-        if (current.parentUnblock.state !== 'blocking') {
-            throw sidecarProjectionConflict('Sidecar parent relation was resolved before local adoption.');
-        }
-        current = appendBootstrapSidecarEvent(current, {
-            adoption,
-            state: 'adopted',
-            workflowBinding: transitionBootstrapMaintenanceWorkflow(current.workflowBinding, 'adopted'),
-            parentUnblock: {
-                kind: 'sidecar-unblocks-parent.v1',
-                parentChangeId: current.identity.parentChangeId,
-                state: 'unblocked',
-                resolution: 'local-adoption',
-                resolvedByTxId: input.txId,
-                resolvedAt: input.adoptedAt,
-            },
-        }, {
-            eventKind: 'adopted-by-parent',
-            evidenceDigest: input.journalDigest,
-            recordedAt: input.adoptedAt,
-        });
-        return current;
-    });
 }
 export function recordBootstrapSidecarAbandoned(storageRoot, input) {
     assertDigest(input.evidenceDigest, 'INTERVENTION_SIDECAR_SESSION_INVALID');
     exactIso(input.abandonedAt, 'INTERVENTION_SIDECAR_SESSION_INVALID');
     if (!fs.existsSync(persistedBootstrapSidecarSessionPath(storageRoot, input.parentChangeId))) {
-        ensureBootstrapSidecarSession(storageRoot, input.intervention);
+        createMissingBootstrapSidecar(storageRoot, input.intervention);
     }
     return updateBootstrapSidecarSession(storageRoot, input.parentChangeId, (current) => {
+        if (!sidecarMatchesIntervention(current, input.intervention)) {
+            throw sidecarProjectionConflict('Sidecar identity differs from the intervention being abandoned.');
+        }
         if (current.state === 'abandoned')
             return current;
-        if (current.adoption !== null ||
-            current.parentUnblock.state !== 'blocking') {
-            throw sidecarProjectionConflict('An adopted sidecar cannot be abandoned as a pre-adoption repair.');
-        }
         return appendBootstrapSidecarEvent(current, {
             state: 'abandoned',
             workflowBinding: transitionBootstrapMaintenanceWorkflow(current.workflowBinding, 'abandoned'),
@@ -184,7 +38,7 @@ export function recordBootstrapSidecarAbandoned(storageRoot, input) {
         });
     });
 }
-export function ensureBootstrapSidecarSession(storageRoot, intervention) {
+function createMissingBootstrapSidecar(storageRoot, intervention) {
     const target = persistedBootstrapSidecarSessionPath(storageRoot, intervention.parent.changeId);
     const identity = {
         parentChangeId: intervention.parent.changeId,
@@ -234,30 +88,10 @@ export function ensureBootstrapSidecarSession(storageRoot, intervention) {
         updatedAt: createdAt,
     };
     const record = withRecordDigest(payload);
-    if (fs.existsSync(target)) {
-        const existing = readPersistedBootstrapSidecarWorkflow(storageRoot, intervention.parent.changeId);
-        if (sidecarMatchesIntervention(existing, intervention))
-            return existing;
-        if (existing.state !== 'abandoned') {
-            throw sidecarProjectionConflict('Persisted intervention differs from its active bootstrap sidecar identity.');
-        }
-        const archivePath = path.join(interventionControlPersistencePaths(storageRoot).sidecarHistory, `${identityFileName('sidecar-session-history', existing.sidecarSessionId)}.json`);
-        if (fs.existsSync(archivePath)) {
-            const archived = parseBootstrapSidecarWorkflow(readCanonicalRecord(archivePath, 'INTERVENTION_SIDECAR_SESSION_NOT_FOUND'));
-            if (canonicalJson(archived) !== canonicalJson(existing)) {
-                throw sidecarProjectionConflict('Archived sidecar generation differs from the current tombstone.');
-            }
-        }
-        else {
-            createPrivateFileExclusive(archivePath, serializeRecord(existing));
-        }
-        replacePrivateFileAtomic(target, serializeRecord(record));
-        return record;
-    }
     createPrivateFileExclusive(target, serializeRecord(record));
     return record;
 }
-export function updateBootstrapSidecarSession(storageRoot, parentChangeId, update) {
+function updateBootstrapSidecarSession(storageRoot, parentChangeId, update) {
     return withPersistenceOperation(storageRoot, `sidecar-session:${parentChangeId}`, () => {
         const current = readPersistedBootstrapSidecarWorkflow(storageRoot, parentChangeId);
         const next = update(current);

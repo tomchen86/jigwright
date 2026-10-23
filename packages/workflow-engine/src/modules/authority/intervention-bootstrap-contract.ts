@@ -1,9 +1,8 @@
-/** Canonical intervention bootstrap inputs, parent state and human approval data. */
+/** Retained intervention metadata and signed disposition inputs. */
 import type {
   HarnessMaintenanceOperation,
   HarnessMaintenanceWaiver,
-  ParentChangeState,
-} from './intervention-control-adoption.ts';
+} from './intervention-record-contract.ts';
 import type { Sha256Digest } from './intervention-control-values.ts';
 import type { MaintainerSignerProvider } from './maintainer-signer-port.ts';
 
@@ -13,16 +12,6 @@ export type BootstrapHumanSignatureVerifier = (
   signer: string,
   namespace: string,
 ) => boolean;
-
-export interface BootstrapDependencies {
-  now?: () => Date;
-  verifyHumanSignature?: BootstrapHumanSignatureVerifier;
-  testHooks?: {
-    afterBindingUpdatedBeforeJournal?: () => void;
-    afterWorktreeReceiptPersistedBeforeSidecar?: () => void;
-    afterAdoptionReceiptPersistedBeforeSidecar?: () => void;
-  };
-}
 
 export interface MaintenanceApprovalSummary {
   kind: 'maintenance-approval-summary.v1';
@@ -48,32 +37,15 @@ export interface MaintenanceApprovalSummary {
   maxLocalAdoptions: 1;
   humanReadable: string;
 }
-
-export interface DurableInterventionParentState {
-  parent: ParentChangeState;
-  sessionSnapshotPath: string;
-  pendingIntent: string;
-  policyDigest: Sha256Digest;
-}
-
-export interface BootstrapInterventionCliDependencies extends BootstrapDependencies {
-  resolveParentDurableState?: (input: {
-    parentChangeId: string;
-    repositoryRoot: string;
-    stateRoot: string;
-    reason: string;
-  }) => DurableInterventionParentState;
+export interface BootstrapInterventionCliDependencies {
+  now?: () => Date;
+  verifyHumanSignature?: BootstrapHumanSignatureVerifier;
   maintenanceSigner?: MaintainerSignerProvider;
-  presentMaintenanceSummary?: (summary: MaintenanceApprovalSummary) => void;
   testHooks?: {
-    afterMaintenanceGrantPersisted?: () => void;
-    afterAdoptionStep?: () => void;
     afterAuthorityAuditRecorded?: () => void;
-    afterBindingUpdatedBeforeJournal?: () => void;
     afterAbandonmentIntentPersisted?: () => void;
   };
 }
-
 export interface LocalEngineBinding {
   kind: 'local-parent-session-metadata.v2';
   parentChangeId: string;
