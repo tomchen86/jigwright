@@ -56,7 +56,7 @@ import {
   ExitCode,
 } from '../../foundation/errors/errors.ts';
 
-import type { ExecutionJobInspection } from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
+import type { ExecutionJobInspection } from '../../composition-root/public/execution-job.ts';
 import { watchExecutionJob } from '../../runtime/provider-execution/execution-runtime.ts';
 
 import {
