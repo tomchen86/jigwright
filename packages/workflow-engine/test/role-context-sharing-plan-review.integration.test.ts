@@ -19,7 +19,7 @@ import {
   createRoleContextSharingPlanReviewRequirementV3,
   deriveRoleContextSharingPlanReviewExpectedBinding,
 } from '../src/modules/proposal/role-context-sharing-plan-review.ts';
-import { reserveRoleContextSharingPlanReview } from '../src/application/propose/role-context-sharing-plan-review.ts';
+import { reserveRoleContextSharingPlanReview } from '../src/runtime/proposal/role-context-sharing-plan-review.ts';
 import { completeRoleContextSharingPlanReviewAdmission } from '../src/composition-root/propose-production.ts';
 import { runCli } from '../bootstrap/workflow-engine-host.ts';
 import { productionRoleContextSharingGrantLifecyclePort } from '../src/composition-root/role-context-sharing-grant-lifecycle-production.ts';

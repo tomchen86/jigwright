@@ -37,13 +37,13 @@ import {
   captureGovernanceSource,
 } from './governance-sources-production.ts';
 import { planningDraftWorkspace } from './planning-workspace-production.ts';
-import { createProposeOperations } from '../application/propose/propose-orchestrator.ts';
+import { createProposeOperations } from '../runtime/proposal/propose-operations.ts';
 import {
   productionPlanningAssurance,
   planningAssuranceDependencies,
 } from './planning-assurance-production.ts';
 import { readProviderRetryAccountingEvidence } from '../runtime/storage-journal/provider-retry-accounting-reader.ts';
-import { completeRoleContextSharingPlanReviewAdmission as completeAdmission } from '../application/propose/plan-review-result.ts';
+import { completeRoleContextSharingPlanReviewAdmission as completeAdmission } from '../runtime/proposal/plan-review-result.ts';
 export const productionProposeOperations = createProposeOperations({
   createInteractiveSshSigner,
   withTaskRevisionPlanningOperation,

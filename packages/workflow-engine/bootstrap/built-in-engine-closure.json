@@ -683,7 +683,7 @@
     {
       "path": "src/application/control-plane/execution-replacement.ts",
       "mode": "100644",
-      "digest": "sha256:43065d675f92cb2419bf35ca7cdb0c319f3355cd9d83d76b79f8296b0b99cd95"
+      "digest": "sha256:0b248e66611dc7606cec0ef3afee53af3ac838cb2c4ef46cb0622eca00da0e47"
     },
     {
       "path": "src/application/control-plane/external-effect-grant-context.ts",
@@ -971,164 +971,9 @@
       "digest": "sha256:8bf4590f560c31eedf4268eb35d14a5618ac0632a7d2f53b985e5fd6792c1797"
     },
     {
-      "path": "src/application/propose/plan-review-completion.ts",
-      "mode": "100644",
-      "digest": "sha256:d52994c3f08ab0138db38616a8e7728ca530e00137368f7888504baae81dd454"
-    },
-    {
-      "path": "src/application/propose/plan-review-contracts.ts",
-      "mode": "100644",
-      "digest": "sha256:ca7e5f40fe975251701cac70884616d127f2f572d9673a7a6d716b1140891ac2"
-    },
-    {
-      "path": "src/application/propose/plan-review-grant-authorization.ts",
-      "mode": "100644",
-      "digest": "sha256:0460053b202af307a1b52167270e109ccae86cb292a54b15ccda76945a6f3015"
-    },
-    {
-      "path": "src/application/propose/plan-review-preparation.ts",
-      "mode": "100644",
-      "digest": "sha256:321969c6c7d7c39f84ea5f400f88f6e26f7c97d03ab4530a6ecaa1e45dd810d4"
-    },
-    {
-      "path": "src/application/propose/plan-review-result.ts",
-      "mode": "100644",
-      "digest": "sha256:a6ac9a0acc59179177ad4fbf64abcb84776541a18009c2d91efa59fe78a441fc"
-    },
-    {
-      "path": "src/application/propose/plan-review-retry.ts",
-      "mode": "100644",
-      "digest": "sha256:3c727617e4870da02f8c89fb92bc6ed1ed91ae5dbd3856543f47e8931bad60b3"
-    },
-    {
-      "path": "src/application/propose/plan-review-role-topology.ts",
-      "mode": "100644",
-      "digest": "sha256:173a48004a43ca2913cb195d2eda867b9e1c0e6aa87fe79093b7152fee4fb59e"
-    },
-    {
-      "path": "src/application/propose/plan-review-store.ts",
-      "mode": "100644",
-      "digest": "sha256:6d4f054af38291a6d80be0e858af7b84912c1c999e7cfe014a1f9f909329f57f"
-    },
-    {
       "path": "src/application/propose/planning-execution-epoch.ts",
       "mode": "100644",
       "digest": "sha256:c0e92191cd18158df8816cd35d409cf011b8b6924bb1162417fb750a133ff783"
-    },
-    {
-      "path": "src/application/propose/propose-artifacts.ts",
-      "mode": "100644",
-      "digest": "sha256:a1fd0b1ff8efe420835d303cc99903be6c10375f2545b68efe81ec946baedaa0"
-    },
-    {
-      "path": "src/application/propose/propose-blind-survey-admission.ts",
-      "mode": "100644",
-      "digest": "sha256:043a1d1c75e6b5d707dd26653bfdb9f3bdfdf368252f38d1400ec682637b8a76"
-    },
-    {
-      "path": "src/application/propose/propose-common.ts",
-      "mode": "100644",
-      "digest": "sha256:a1758352971e6a11eb8a9cc62e0092f610fe8abf73127f5efd246fe9b88db3df"
-    },
-    {
-      "path": "src/application/propose/propose-context.ts",
-      "mode": "100644",
-      "digest": "sha256:3af926b9d4718cae80681fed1e2debc198174994711d4d8c147f8fa98751d4fc"
-    },
-    {
-      "path": "src/application/propose/propose-decision-services.ts",
-      "mode": "100644",
-      "digest": "sha256:2b81991ca6c325cf449c8b2102df7a88748750d36dc05056d29f260b7f4f9e25"
-    },
-    {
-      "path": "src/application/propose/propose-evidence.ts",
-      "mode": "100644",
-      "digest": "sha256:6988b0e9a506d7f671f5a93fd59585f207f05bf55393cf5a27231ace90b9ae7f"
-    },
-    {
-      "path": "src/application/propose/propose-investigation-facts.ts",
-      "mode": "100644",
-      "digest": "sha256:428a61eb617dd9c735b20d0d4f8a3cdc7ec264a144b2a23236e71741baa452d1"
-    },
-    {
-      "path": "src/application/propose/propose-investigation-manifest.ts",
-      "mode": "100644",
-      "digest": "sha256:0a393b8105374b006efab0758595dd44217f691c3f2ae5b9216a5b3fda4940cf"
-    },
-    {
-      "path": "src/application/propose/propose-investigation-rebuild.ts",
-      "mode": "100644",
-      "digest": "sha256:0385be1ed63c1b09d87689a9db0f1c97ebc332a5147030e90406af6ae1593f26"
-    },
-    {
-      "path": "src/application/propose/propose-orchestrator.ts",
-      "mode": "100644",
-      "digest": "sha256:274d01ad9b114a673c11842c65a47aff3ea7e60a17f77b06953811746e5a21ff"
-    },
-    {
-      "path": "src/application/propose/propose-output.ts",
-      "mode": "100644",
-      "digest": "sha256:45a0a2ff0bf26fd37bc40d80c7254d6cc61b102748bcbd7b3c3085628257ea27"
-    },
-    {
-      "path": "src/application/propose/propose-planning-materialization.ts",
-      "mode": "100644",
-      "digest": "sha256:3bcf6b1c6bf0427a08b5b42b842aeb329c1af180a00898ab2b6705318a16adb4"
-    },
-    {
-      "path": "src/application/propose/propose-planning-store.ts",
-      "mode": "100644",
-      "digest": "sha256:f7f2bc68cebf95e63dee7c1bcf9d21edb51b357cd86160754f18892f002cc4a7"
-    },
-    {
-      "path": "src/application/propose/propose-provider-lifecycle.ts",
-      "mode": "100644",
-      "digest": "sha256:75c4acd0a83183762d2cb8e3f1e908a836716682893066786ee7e18b82c30a69"
-    },
-    {
-      "path": "src/application/propose/propose-publication.ts",
-      "mode": "100644",
-      "digest": "sha256:ae72c8ddb5d4057b7b9eda7f71be3ef56c8fbfaabd746665b4d892c72773ec01"
-    },
-    {
-      "path": "src/application/propose/propose-request-validation.ts",
-      "mode": "100644",
-      "digest": "sha256:e65c4e0f7758ebfc471fe3d4bbf716899a940db3b22ed28a24d581379bc338cd"
-    },
-    {
-      "path": "src/application/propose/propose-resume.ts",
-      "mode": "100644",
-      "digest": "sha256:cd9a820432bde00f561681e1e5fdd78547a10091f5d3ef9d77c8adbc3284fd2f"
-    },
-    {
-      "path": "src/application/propose/propose-reviewer-reconciliation.ts",
-      "mode": "100644",
-      "digest": "sha256:3ae40d1dedd2b9371c96dc0f4cbb59a0550f01cab76dc8b93751702235b72b64"
-    },
-    {
-      "path": "src/application/propose/propose-reviewer-terms.ts",
-      "mode": "100644",
-      "digest": "sha256:b7d5e8083ced3b74453bb115c08ebbb4e8ed0e5004134d79919b67cebc66c866"
-    },
-    {
-      "path": "src/application/propose/propose-runtime.ts",
-      "mode": "100644",
-      "digest": "sha256:3abdeae15f2e4438614cd67b094bbc412ba7dfec28dd938e7be0bfebcd47ee49"
-    },
-    {
-      "path": "src/application/propose/propose-start.ts",
-      "mode": "100644",
-      "digest": "sha256:925f4f4ca377677e70d08f019abb2ba716b28c5380e27f6aff7534d9287e2419"
-    },
-    {
-      "path": "src/application/propose/propose-status.ts",
-      "mode": "100644",
-      "digest": "sha256:6ecf9fd752c257bc75f3118d18223aeff81a349dd860f5ee06521f649f870677"
-    },
-    {
-      "path": "src/application/propose/role-context-sharing-plan-review.ts",
-      "mode": "100644",
-      "digest": "sha256:04deb8b8f947bb9bd16f6e8e98e7b30c3077f72a7043c0861a7c749a40f2729f"
     },
     {
       "path": "src/application/provider-retry/provider-failure-retry.ts",
@@ -1473,7 +1318,7 @@
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
       "mode": "100644",
-      "digest": "sha256:92c9a944c7aab6f3ed212af3be21650780b7a217792ba6c0b706bcd3bc52b961"
+      "digest": "sha256:18adc446f44738579a9a4ebcbac5ff15ae063b48245f9a3f472e046c2c04fb6f"
     },
     {
       "path": "src/composition-root/handoff-production.ts",
@@ -1628,7 +1473,7 @@
     {
       "path": "src/composition-root/propose-production.ts",
       "mode": "100644",
-      "digest": "sha256:bb594171d17910976d09aac1146fd3b86f92c2ad97978f350284e2468ee60e1f"
+      "digest": "sha256:5e776f3811f24adbbddc975f8191ee1522c023560e4305174bfd5dc944593be0"
     },
     {
       "path": "src/composition-root/protected-base-initialization-production.ts",
@@ -3446,9 +3291,44 @@
       "digest": "sha256:073ee70721b6224a9bedd0e8b3f9707b18379188618c7f93b38c52af51ae83f9"
     },
     {
+      "path": "src/modules/proposal/plan-review-contracts.ts",
+      "mode": "100644",
+      "digest": "sha256:af63ea088e0a337b50f5d0219ad74b5de4751ca7e22d2573595b797fa4c1e9e3"
+    },
+    {
+      "path": "src/modules/proposal/plan-review-grant-authorization.ts",
+      "mode": "100644",
+      "digest": "sha256:ce05d29965633fc8d453facea07e5fa1326a83a861d0285de11bf8078434d637"
+    },
+    {
+      "path": "src/modules/proposal/plan-review-role-topology.ts",
+      "mode": "100644",
+      "digest": "sha256:d53e99605e69d151ffa62d44ecd871e252eb60afa52a408155069b5adb6d8fb2"
+    },
+    {
+      "path": "src/modules/proposal/propose-evidence.ts",
+      "mode": "100644",
+      "digest": "sha256:1e144dd9e233b2ab00886e69df7fcd3672e4741e8ab747aef5bfdea95ee6e23d"
+    },
+    {
       "path": "src/modules/proposal/propose-input.ts",
       "mode": "100644",
       "digest": "sha256:e361b71608b72e5f6134fb700ef674b772b0e4b5f4d874266bfb07a48a39e6e5"
+    },
+    {
+      "path": "src/modules/proposal/propose-investigation-projections.ts",
+      "mode": "100644",
+      "digest": "sha256:94eefedceac4f5fbdd0f3c5f508516f2ee232e4ca4404a7a345d15ba07b60404"
+    },
+    {
+      "path": "src/modules/proposal/propose-output.ts",
+      "mode": "100644",
+      "digest": "sha256:07f8a0551ef8abe599e9fb45d616d0375a37429b1d09f3547b2c4172845dbbd3"
+    },
+    {
+      "path": "src/modules/proposal/propose-reviewer-checkpoint.ts",
+      "mode": "100644",
+      "digest": "sha256:4ef46138d1433b8adc2f0083b9d35c11d9efadf486982f577bd101cb7e2ee6ba"
     },
     {
       "path": "src/modules/proposal/propose-types.ts",
@@ -4124,6 +4004,141 @@
       "path": "src/runtime/process-environment/execution-environment.ts",
       "mode": "100644",
       "digest": "sha256:d666053cdd46ce86a3858e11ec4eacc86a2a5a7864cff7c6b426d3cfa8fd4c94"
+    },
+    {
+      "path": "src/runtime/proposal/plan-review-completion.ts",
+      "mode": "100644",
+      "digest": "sha256:1659200bd00eb5ac3d42f114b0dc95f702e0f2f073b74c8b06d8c835d077b49b"
+    },
+    {
+      "path": "src/runtime/proposal/plan-review-preparation.ts",
+      "mode": "100644",
+      "digest": "sha256:bf7479e74c6b289dcbd161cfdf97c720d8a9d8c44bf932f35159faa656c60934"
+    },
+    {
+      "path": "src/runtime/proposal/plan-review-result.ts",
+      "mode": "100644",
+      "digest": "sha256:77b0a1493de512b209cab0866627bdae82894532d678ffe1ebc762b9abd48e05"
+    },
+    {
+      "path": "src/runtime/proposal/plan-review-retry.ts",
+      "mode": "100644",
+      "digest": "sha256:551d7d18cc2751491816e53c9057722d4fd2dfbd34a3d3474b152919c4220b20"
+    },
+    {
+      "path": "src/runtime/proposal/plan-review-role-topology.ts",
+      "mode": "100644",
+      "digest": "sha256:5525820af15517dead1e3580007255b9dbbef5c2ccc38b7d1c6e85713a8574d2"
+    },
+    {
+      "path": "src/runtime/proposal/plan-review-store.ts",
+      "mode": "100644",
+      "digest": "sha256:33da7cd121cf6f6c184cbac5346be99c602991ab0180a86e3745447e957f84d9"
+    },
+    {
+      "path": "src/runtime/proposal/propose-artifacts.ts",
+      "mode": "100644",
+      "digest": "sha256:6fe400d7a62989f7b509f04186bc4a92a57ac9e4fd6c59655bb8b9d67b9244f9"
+    },
+    {
+      "path": "src/runtime/proposal/propose-blind-survey-admission.ts",
+      "mode": "100644",
+      "digest": "sha256:c7eaffbe678efea44f34cf06995464074e20e87655d6e107f4ef44f8fcfa2e3c"
+    },
+    {
+      "path": "src/runtime/proposal/propose-common.ts",
+      "mode": "100644",
+      "digest": "sha256:dc17dd520a59a0229a5f37d6ee4384374328337ff3140639a5595c35df560431"
+    },
+    {
+      "path": "src/runtime/proposal/propose-context.ts",
+      "mode": "100644",
+      "digest": "sha256:eb3ba18a0d94f50404dede0cd3a8c429ab11e40d0ec63359686b6c54455a2330"
+    },
+    {
+      "path": "src/runtime/proposal/propose-decision-services.ts",
+      "mode": "100644",
+      "digest": "sha256:d1f77b7c4c653a0ed4ffc84689a2587438551ca969081c4e4bdec0a0549deea7"
+    },
+    {
+      "path": "src/runtime/proposal/propose-investigation-facts.ts",
+      "mode": "100644",
+      "digest": "sha256:ef742eb25fbb2849d68b3d7e04703c4c43e8cd26dd9ead226e05b7c6fc30bb98"
+    },
+    {
+      "path": "src/runtime/proposal/propose-investigation-manifest.ts",
+      "mode": "100644",
+      "digest": "sha256:32bc8c3be762a6ee844d151f46673af9f2e6f891907f91866f6d70672006610a"
+    },
+    {
+      "path": "src/runtime/proposal/propose-investigation-rebuild.ts",
+      "mode": "100644",
+      "digest": "sha256:0304099bc904995319b1738a8273b3778cfdf9cbecc913079e7789bda98bcc9f"
+    },
+    {
+      "path": "src/runtime/proposal/propose-operations.ts",
+      "mode": "100644",
+      "digest": "sha256:cac4ca97da48b5b797dbe9dc51cb520fcbccd5335a5586236f83fd338510daa5"
+    },
+    {
+      "path": "src/runtime/proposal/propose-output.ts",
+      "mode": "100644",
+      "digest": "sha256:c2820b958439a4eed328ab2b0c9e8d6bf4bd1c736eca69cb35c8a0ea53739177"
+    },
+    {
+      "path": "src/runtime/proposal/propose-planning-materialization.ts",
+      "mode": "100644",
+      "digest": "sha256:08b70caf657d1aad7cfc2642cfc32ca639d935cbaeff28e9606f51d6eebdc4b9"
+    },
+    {
+      "path": "src/runtime/proposal/propose-planning-store.ts",
+      "mode": "100644",
+      "digest": "sha256:f9864340ddee682c6e729d6c3692f316f7c55e39f5a327a05bd42078ef066abf"
+    },
+    {
+      "path": "src/runtime/proposal/propose-provider-lifecycle.ts",
+      "mode": "100644",
+      "digest": "sha256:9844bd46074a8f1444a667b31d1ea68553add3b709b5c9b93b883278ed5d7b98"
+    },
+    {
+      "path": "src/runtime/proposal/propose-publication.ts",
+      "mode": "100644",
+      "digest": "sha256:882061ecbe18b5b38c7023be2a9fbfe34ebe4752830ef318a257fd2e0acd6536"
+    },
+    {
+      "path": "src/runtime/proposal/propose-request-validation.ts",
+      "mode": "100644",
+      "digest": "sha256:7401aff4d1e9f0355f57e07602120120ba645341c5e68891201cd1f46e9b3d7e"
+    },
+    {
+      "path": "src/runtime/proposal/propose-resume.ts",
+      "mode": "100644",
+      "digest": "sha256:a4a134d9f7e9fb73cb4f74635f69f3f04b593ba8b88c2cd4c09ede72213c6275"
+    },
+    {
+      "path": "src/runtime/proposal/propose-reviewer-reconciliation.ts",
+      "mode": "100644",
+      "digest": "sha256:917635096164c5221bbecdf0ebc053705a0ee8b18372a3c02e7e1733fc44778d"
+    },
+    {
+      "path": "src/runtime/proposal/propose-reviewer-terms.ts",
+      "mode": "100644",
+      "digest": "sha256:cf666a7134fb408579dfe46b3967ff261e34f1e5bfbc0484fb3a961f03093ef6"
+    },
+    {
+      "path": "src/runtime/proposal/propose-start.ts",
+      "mode": "100644",
+      "digest": "sha256:92cbb04136a56771acb886fc6fdb4094ea0c12cb01d0410bf082bc0b35151edc"
+    },
+    {
+      "path": "src/runtime/proposal/propose-status.ts",
+      "mode": "100644",
+      "digest": "sha256:37b360f91b2cf211d152f2d3c1d05559a9f7a7555ba1770ba48df9f0431ec192"
+    },
+    {
+      "path": "src/runtime/proposal/role-context-sharing-plan-review.ts",
+      "mode": "100644",
+      "digest": "sha256:9e4701e823a63e919fad90d33ac043d95a2caefa16e94df8105970f8d7c8261d"
     },
     {
       "path": "src/runtime/provider-execution/agent-provider-config-dry-run.ts",

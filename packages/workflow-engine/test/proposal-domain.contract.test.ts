@@ -44,6 +44,16 @@ import {
   type AgentRolePlanBodyV2,
 } from '../src/modules/provider-orchestration/agent-role-plan.ts';
 import { assertPureDependencyClosure } from './support/pure-dependency-closure.ts';
+import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
+import { ASSURANCE_ASSESSMENT_POLICY_DIGEST } from '../src/modules/assurance/assurance-assessment-chain.ts';
+import { PROPOSE_POLICY_DIGEST } from '../src/modules/provider-orchestration/provider-contracts.ts';
+import { reportProposeAssuranceAssessment } from '../src/modules/proposal/propose-investigation-projections.ts';
+import {
+  readInvestigationManifestAuthorityNode,
+  uniqueNodes,
+} from '../src/modules/proposal/propose-evidence.ts';
+import { mergeReviewerReopenCheckpoint } from '../src/modules/proposal/propose-reviewer-checkpoint.ts';
+import type { RebuiltInvestigation } from '../src/modules/proposal/propose-types.ts';
 
 const digest = (character: string) => character.repeat(64);
 const GRANT_ID = '12345678-1234-4123-8123-123456789abc';
@@ -688,7 +698,203 @@ test('reviewer-term decisions preserve the two automatic reopens and human outco
   }
 });
 
+test('reviewer checkpoint merge reuses only current facts and retains classes and audits', () => {
+  const current = status();
+  const envelope = {
+    schemaVersion: 1 as const,
+    checkpointId: `checkpoint-${digest('1')}`,
+    investigationId: current.investigationId,
+    changeId: current.changeId,
+    expectedRevision: current.revision,
+    baseline: current.baseline,
+    intentDigest: current.intentDigest,
+    blindManifestDigest: current.blindManifestDigest,
+  };
+  const disposition = (id: string) => ({
+    groupId: digest(id),
+    classification: 'load-bearing' as const,
+    rationale: 'This group carries the behavior under review.',
+    author: 'reviewer',
+  });
+  const answer = (id: string) => ({
+    manifestEntryId: digest(id),
+    why: 'The caller depends on this behavior.',
+    protectedInvariant: 'Keep the existing observation and authority order.',
+    reviewerQuestion: 'Does the changed implementation preserve the contract?',
+    answer: 'The unchanged contract is covered by the focused evidence.',
+    semanticAuthor: 'reviewer',
+    readComplete: true as const,
+  });
+  const groups: Extract<
+    InvestigationCheckpointEnvelope,
+    { kind: 'group-dispositions' }
+  > = {
+    ...envelope,
+    kind: 'group-dispositions',
+    payload: { dispositions: [disposition('b'), disposition('f')] },
+  };
+  const why: Extract<InvestigationCheckpointEnvelope, { kind: 'why-answers' }> =
+    {
+      ...envelope,
+      kind: 'why-answers',
+      payload: { answers: [answer('b'), answer('f')] },
+    };
+  // Populate exactly the immutable facts read by this merge, without runtime fixtures.
+  const rebuilt = {
+    v3Domain: { groupFacts: { groups: [{ key: digest('b') }] } },
+    fullBlobManifest: [{ manifestEntryId: digest('b') }],
+    reviewerPriorGroupDispositions: { envelope: groups },
+    reviewerPriorWhyAnswers: { envelope: why },
+  } as unknown as RebuiltInvestigation;
+  const main: Extract<InvestigationCheckpointEnvelope, { kind: 'main-terms' }> =
+    {
+      ...envelope,
+      kind: 'main-terms',
+      payload: { reference: 'existing-main', terms: [] },
+    };
+  assert.equal(mergeReviewerReopenCheckpoint(rebuilt, main), main);
+  for (const extras of [{}, { classes: [], sampleAudits: [] }]) {
+    const input = {
+      ...groups,
+      payload: { ...extras, dispositions: [disposition('a')] },
+    };
+    const merged = mergeReviewerReopenCheckpoint(rebuilt, input);
+    if (merged.kind !== 'group-dispositions')
+      assert.fail('group checkpoint expected');
+    assert.deepEqual(
+      merged.payload.dispositions.map((row) => row.groupId),
+      [digest('a'), digest('b')],
+    );
+    assert.equal(
+      Object.hasOwn(merged.payload, 'classes'),
+      Object.hasOwn(extras, 'classes'),
+    );
+    assert.equal(
+      Object.hasOwn(merged.payload, 'sampleAudits'),
+      Object.hasOwn(extras, 'sampleAudits'),
+    );
+    assert.ok(Object.isFrozen(merged.payload.dispositions));
+    assert.ok(Object.isFrozen(merged.payload.dispositions[0]));
+    assert.notEqual(merged.payload, input.payload);
+    input.payload.dispositions[0]!.rationale =
+      'Changed by the caller after merging.';
+    assert.equal(
+      merged.payload.dispositions[0]!.rationale,
+      disposition('a').rationale,
+    );
+  }
+  assert.throws(
+    () => mergeReviewerReopenCheckpoint(rebuilt, groups),
+    code('INVESTIGATION_REVIEWER_REOPEN_SCOPE_INVALID', ExitCode.guard),
+  );
+  const mergedWhy = mergeReviewerReopenCheckpoint(rebuilt, {
+    ...why,
+    payload: { answers: [answer('a')] },
+  });
+  if (mergedWhy.kind !== 'why-answers') assert.fail('WHY checkpoint expected');
+  assert.deepEqual(
+    mergedWhy.payload.answers.map((row) => row.manifestEntryId),
+    [digest('a'), digest('b')],
+  );
+  assert.ok(Object.isFrozen(mergedWhy.payload.answers));
+  assert.throws(
+    () => mergeReviewerReopenCheckpoint(rebuilt, why),
+    code('INVESTIGATION_REVIEWER_REOPEN_SCOPE_INVALID', ExitCode.guard),
+  );
+});
+
+test('assurance projection keeps canonical node identity and rejects other policies', () => {
+  const node = createEvidenceNode({
+    type: 'assurance-assessment',
+    nodeSchema: 'assurance-assessment.v1',
+    evaluator: 'proposal-domain-test',
+    policyDigest: ASSURANCE_ASSESSMENT_POLICY_DIGEST,
+    exactInputDigests: {},
+    semanticParentResultDigests: {},
+    provenanceParentNodeIds: {},
+    outputSchema: 'assurance-assessment-output.v1',
+    runtimeMetadata: {},
+    output: {
+      schemaVersion: 1,
+      kind: 'assurance-assessment',
+      changeId: 'proposal-domain',
+      nodeId: 'untrusted-output-id',
+      resultDigest: 'untrusted-output-digest',
+    },
+  });
+  const report = reportProposeAssuranceAssessment(node);
+  assert.equal(report.nodeId, node.nodeId);
+  assert.equal(report.resultDigest, node.resultDigest);
+  assert.equal(report.policyDigest, node.policyDigest);
+  assert.ok(Object.isFrozen(report));
+  for (const altered of [
+    { ...node, policyDigest: digest('a') },
+    { ...node, output: null },
+  ])
+    assert.throws(
+      () => reportProposeAssuranceAssessment(altered),
+      code('ASSURANCE_ASSESSMENT_INVALID', ExitCode.staleState),
+    );
+});
+
+test('manifest authority validation and evidence collision checks preserve exact bytes', () => {
+  const binding = {
+    repositoryId: 'proposal-domain',
+    changeId: 'proposal-domain',
+    investigationId: status().investigationId,
+    sessionRevision: 2,
+    sessionSnapshotDigest: digest('a'),
+    manifestDigest: digest('b'),
+    investigationTargetDigest: digest('c'),
+  };
+  const node = createEvidenceNode({
+    type: 'investigation-manifest-authority',
+    nodeSchema: 'investigation.manifest-authority.v1',
+    evaluator: 'workflow-propose.manifest-authority.v1',
+    policyDigest: PROPOSE_POLICY_DIGEST,
+    exactInputDigests: {
+      manifest: binding.manifestDigest,
+      investigationTarget: binding.investigationTargetDigest,
+      sessionSnapshot: binding.sessionSnapshotDigest,
+    },
+    semanticParentResultDigests: {},
+    provenanceParentNodeIds: {},
+    runtimeMetadata: {},
+    outputSchema: 'investigation.manifest-authority-output.v1',
+    output: binding,
+  });
+  assert.deepEqual(readInvestigationManifestAuthorityNode(node), binding);
+  for (const altered of [
+    { ...node, output: { ...binding, unexpected: true } },
+    {
+      ...node,
+      exactInputDigests: { ...node.exactInputDigests, manifest: digest('d') },
+    },
+  ])
+    assert.throws(
+      () => readInvestigationManifestAuthorityNode(altered),
+      code('PLANNING_MATERIALIZATION_STALE', ExitCode.staleState),
+    );
+  assert.deepEqual(uniqueNodes([node, node]), [node]);
+  assert.throws(
+    () =>
+      uniqueNodes([
+        node,
+        { ...node, output: { ...binding, sessionRevision: 3 } },
+      ]),
+    code('INVESTIGATION_EVIDENCE_COLLISION', ExitCode.conflict),
+  );
+});
+
 const pureEntries = [
+  'proposal/plan-review-contracts',
+  'proposal/plan-review-grant-authorization',
+  'proposal/plan-review-role-topology',
+  'proposal/propose-evidence',
+  'proposal/propose-investigation-projections',
+  'proposal/propose-output',
+  'proposal/propose-reviewer-checkpoint',
+
   'lifecycle/investigation-checkpoint-envelope',
   'investigation/domain/reviewer-term-reopen',
   'lifecycle/investigation-status',
