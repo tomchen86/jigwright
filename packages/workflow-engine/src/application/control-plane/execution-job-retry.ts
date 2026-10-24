@@ -30,22 +30,22 @@ import {
   defaultProviderRetryExplanation,
 } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
 import type { ExecutionReplacementProposePort } from './execution-replacement.ts';
-export type ExecutionJobRetryDependencies = ExecutionReplacementProposePort & {
-  readProviderRetryAccountingEvidence: ProviderRetryAccountingReader;
-};
 import {
   assertProviderRetryEnvelope,
   assertPlanReviewRetryEnvelope,
-} from '../propose/propose-input.ts';
+} from '../../modules/proposal/propose-input.ts';
 import type {
   ProviderRetryEnvelope,
   PlanReviewRetryEnvelope,
   ProposeResumeOptions,
-} from '../propose/propose-types.ts';
+} from '../../modules/proposal/propose-types.ts';
 import {
   previewExecutionReplacementRequest,
   requestExecutionReplacement,
 } from './execution-replacement.ts';
+export type ExecutionJobRetryDependencies = ExecutionReplacementProposePort & {
+  readProviderRetryAccountingEvidence: ProviderRetryAccountingReader;
+};
 
 type RetryInput = ProviderRetryEnvelope | PlanReviewRetryEnvelope;
 

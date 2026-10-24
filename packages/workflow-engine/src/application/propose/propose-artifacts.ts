@@ -9,7 +9,6 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -18,18 +17,17 @@ import {
 } from '../../foundation/repository-path/repository-path.ts';
 import { planReviewSnapshotLineCount } from '../../modules/assurance/plan-review.ts';
 import type { PlanReviewTargetSnapshotArtifact } from '../../modules/assurance/plan-review-target-snapshot-record.ts';
-import {
-  projectWorkflowPlanDigest,
-  type WorkflowPlanDigest,
-  type WorkflowPlanDigestTouchedFile,
+import { projectWorkflowPlanDigest } from '../../modules/guidance/renderers/plan-digest.ts';
+import type {
+  WorkflowPlanDigest,
+  WorkflowPlanDigestTouchedFile,
 } from '../../modules/guidance/renderers/plan-digest.ts';
 import {
   isRecord,
   MAX_CALLER_JSON_BYTES,
   planningMaterializationStale,
   sha256,
-} from './propose-common.ts';
-
+} from '../../modules/proposal/propose-values.ts';
 const ATOMIC_TEXT_TEMP_SUFFIX =
   /^([1-9][0-9]*)\.([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.tmp$/;
 

@@ -11,14 +11,9 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { assertPlanReviewSubject } from '../../modules/assurance/plan-review.ts';
 import type { PlanReviewSubject } from '../../modules/assurance/plan-review-subject.ts';
-import {
-  type CollaborationGrantExpectedBinding,
-  type CollaborationGrantRequest,
-} from '../../modules/authority/collaboration-grant-codec.ts';
-import {
-  createProviderInvocationRequest,
-  type ProviderInvocationRequest,
-} from '../../modules/provider-orchestration/provider-contracts.ts';
+import type { CollaborationGrantRequest } from '../../modules/authority/collaboration-grant-codec.ts';
+import { createProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
+import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import type {
   RecordedRoleParticipant,
   RoleParticipant,
@@ -31,29 +26,18 @@ import {
   PLAN_REVIEW_GRANT_REASON,
   planReviewRequestStale,
   sha256,
-} from './propose-common.ts';
+} from '../../modules/proposal/propose-values.ts';
 import type {
   PlanReviewReservation,
   PlanReviewRetryEnvelope,
   ProposeOutput,
-} from './propose-types.ts';
-import {
-  type RoleContextSharingPlanReviewAuthorizationV1,
-  type RoleContextSharingPlanReviewRequirementV3,
-} from './role-context-sharing-plan-review.ts';
-
+} from '../../modules/proposal/propose-types.ts';
+import type { RoleContextSharingPlanReviewRequirementV3 } from '../../modules/proposal/role-context-sharing-plan-review.ts';
 type ProposeLifecycleStatus = NonNullable<ProposeOutput['investigation']>;
+
 type ProviderRetryDecisionBinding = NonNullable<
   PlanReviewReservation['retry']
 >['retryDecision'];
-
-export type ProposeGrantAuthorization =
-  | {
-      grantId: string;
-      transitionDigest: string;
-      expectedBinding: CollaborationGrantExpectedBinding;
-    }
-  | RoleContextSharingPlanReviewAuthorizationV1;
 
 export function blindSurveyGrantRequest(input: {
   changeId: string;

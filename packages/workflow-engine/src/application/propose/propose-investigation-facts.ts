@@ -6,7 +6,6 @@
  * - Class compression preserves the current assurance floor and path-role classification.
  * - Reopened checkpoints retain prior class audits and reuse only exact knowledge bindings.
  */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
@@ -23,22 +22,22 @@ import {
   FLOOR_OVERFLOW_MANDATORY_CONTRIBUTION_RESERVE,
   FLOOR_OVERFLOW_POLICY_DIGEST,
   resolveFloorOverflow,
-  type FloorOverflowDecision,
 } from '../../modules/investigation/domain/floor-overflow-pruning.ts';
-import { type InvestigationChangeClass } from '../../modules/investigation/domain/investigation-applicability.ts';
-import {
-  deriveEngineFloor,
-  type ChangedPathFact,
-  type ReviewedCounterpartFact,
+import type { FloorOverflowDecision } from '../../modules/investigation/domain/floor-overflow-pruning.ts';
+import type { InvestigationChangeClass } from '../../modules/investigation/domain/investigation-applicability.ts';
+import { deriveEngineFloor } from '../../modules/investigation/domain/investigation-floor.ts';
+import type {
+  ChangedPathFact,
+  ReviewedCounterpartFact,
 } from '../../modules/investigation/domain/investigation-floor.ts';
-import { type InvestigationFullBlobFact } from '../../modules/investigation/domain/investigation-full-blob.ts';
-import {
-  deriveClassGroupsWithContextFromFacts,
-  type InvestigationDispositionInput,
-  type InvestigationGroupFacts,
-  type ReviewedPathRelationship,
+import type { InvestigationFullBlobFact } from '../../modules/investigation/domain/investigation-full-blob.ts';
+import { deriveClassGroupsWithContextFromFacts } from '../../modules/investigation/domain/investigation-groups.ts';
+import type {
+  InvestigationDispositionInput,
+  InvestigationGroupFacts,
+  ReviewedPathRelationship,
 } from '../../modules/investigation/domain/investigation-groups.ts';
-import { type InvestigationScanFacts } from '../../modules/investigation/domain/investigation-scan-facts.ts';
+import type { InvestigationScanFacts } from '../../modules/investigation/domain/investigation-scan-facts.ts';
 import { INVESTIGATION_LIMITS } from '../../modules/investigation/domain/investigation-terms.ts';
 import {
   buildInvestigationV3WhyAuthoring,
@@ -46,32 +45,28 @@ import {
   mapInvestigationWhyCheckpointToV3Sources,
 } from '../../modules/investigation/manifest/investigation-why-domain.ts';
 import { deriveDeclaredPathSymbols } from '../../modules/source/declared-path-symbols.ts';
-import {
-  parsePathRoleRegistry,
-  type PathRoleRegistry,
-} from '../../modules/source/path-role-registry.ts';
-import { type ReuseCoverageRecord } from '../../modules/assurance/review-coverage.ts';
-
-import { sha256 } from './propose-common.ts';
+import { parsePathRoleRegistry } from '../../modules/source/path-role-registry.ts';
+import type { PathRoleRegistry } from '../../modules/source/path-role-registry.ts';
+import type { ReuseCoverageRecord } from '../../modules/assurance/review-coverage.ts';
+import { sha256 } from '../../modules/proposal/propose-values.ts';
 import { reportProposeAssuranceAssessment } from './propose-investigation-manifest.ts';
 import {
   reviewerReusableGroupDispositions,
   reviewerReusableWhyAnswers,
 } from './propose-output.ts';
+import type { EvidenceNode } from '@jigwright/core/evidence-node';
 import type {
-  EvidenceNode,
   GroupDispositionsPayload,
   InvestigationCheckpointEnvelope,
   InvestigationSession,
-  ProposeRuntime,
   WhyAnswersPayload,
-} from './propose-runtime.ts';
+} from '../../modules/investigation/domain/investigation-session-types.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
 import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
-import {
-  type ProposeOutput,
-  type RebuiltInvestigation,
-} from './propose-types.ts';
-
+import type {
+  ProposeOutput,
+  RebuiltInvestigation,
+} from '../../modules/proposal/propose-types.ts';
 export function deriveReviewedAssetRelationships(
   services: Pick<ProposeRuntime, 'workspace'>,
   context: ReturnType<

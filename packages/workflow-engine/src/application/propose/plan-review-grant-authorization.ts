@@ -2,25 +2,14 @@
  * Asserts that a plan review or propose Grant authorizes the exact
  * collaboration transition it claims.
  */
-import type { ProposeGrantAuthorization } from './plan-review-contracts.ts';
-/**
- * Builds and validates proposal review grants, requirements, and retry bindings.
- *
- * Invariants:
- * - Stored requirements retain their exact subject, author, baseline, and role bindings.
- * - A retry keeps its deterministic identity and the failed request's semantic inputs.
- */
+import type { ProposeGrantAuthorization } from '../../modules/proposal/propose-types.ts';
 import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  isKnownCollaborationPolicyDigestForPhase,
-  type CollaborationGrantExpectedBinding,
-} from '../../modules/authority/collaboration-grant-codec.ts';
-import {
-  isRoleContextSharingGrantedAssignment,
-  type ProviderInvocationRequest,
-} from '../../modules/provider-orchestration/provider-contracts.ts';
+import { isKnownCollaborationPolicyDigestForPhase } from '../../modules/authority/collaboration-grant-codec.ts';
+import type { CollaborationGrantExpectedBinding } from '../../modules/authority/collaboration-grant-codec.ts';
+import { isRoleContextSharingGrantedAssignment } from '../../modules/provider-orchestration/provider-contracts.ts';
+import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import type { RecordedRoleParticipant } from '../../modules/provider-orchestration/role-assignment.ts';
 import {
   BLIND_SURVEY_GRANT_REASON,
@@ -31,9 +20,8 @@ import {
   planReviewRequestStale,
   proposeAuthorizationInvalid,
   sha256,
-} from './propose-common.ts';
-import { type RoleContextSharingPlanReviewAuthorizationV1 } from './role-context-sharing-plan-review.ts';
-
+} from '../../modules/proposal/propose-values.ts';
+import type { RoleContextSharingPlanReviewAuthorizationV1 } from '../../modules/proposal/role-context-sharing-plan-review.ts';
 export function collaborationTransitionDigest(
   expectedBinding: CollaborationGrantExpectedBinding,
 ): string {

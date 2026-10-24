@@ -7,23 +7,21 @@ import { planningAssuranceDependencies } from '../src/composition-root/planning-
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import test, { type TestContext } from 'node:test';
-
+import test from 'node:test';
+import type { TestContext } from 'node:test';
 import {
   ROLE_CONTEXT_SHARING_DEGRADATION_EFFECT_V1,
   ROLE_CONTEXT_SHARING_GRANT_SIGNATURE_NAMESPACE_V1,
   canonicalRoleContextSharingGrantPayloadV1,
-  type RoleContextSharingGrantEnvelopeV1,
 } from '@jigwright/grants/role-context-sharing-degradation';
-
+import type { RoleContextSharingGrantEnvelopeV1 } from '@jigwright/grants/role-context-sharing-degradation';
 import {
   createRoleContextSharingPlanReviewRequirementV3,
   deriveRoleContextSharingPlanReviewExpectedBinding,
-  reserveRoleContextSharingPlanReview,
-} from '../src/application/propose/role-context-sharing-plan-review.ts';
+} from '../src/modules/proposal/role-context-sharing-plan-review.ts';
+import { reserveRoleContextSharingPlanReview } from '../src/application/propose/role-context-sharing-plan-review.ts';
 import { completeRoleContextSharingPlanReviewAdmission } from '../src/composition-root/propose-production.ts';
 import { runCli } from '../bootstrap/workflow-engine-host.ts';
-
 import { productionRoleContextSharingGrantLifecyclePort } from '../src/composition-root/role-context-sharing-grant-lifecycle-production.ts';
 import {
   assertRoleContextSharingTerminalReceiptUseBijection,
@@ -45,10 +43,8 @@ import {
   createTaskPlanningAssuranceBinding,
   replayCurrentPlanReviewRoleResult,
 } from '../src/modules/assurance/planning-assurance-validator.ts';
-import {
-  agentRolePlanV2Digest,
-  type AgentRolePlanBodyV2,
-} from '../src/modules/provider-orchestration/agent-role-plan.ts';
+import { agentRolePlanV2Digest } from '../src/modules/provider-orchestration/agent-role-plan.ts';
+import type { AgentRolePlanBodyV2 } from '../src/modules/provider-orchestration/agent-role-plan.ts';
 import {
   CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1,
   resolveRoleTopologyV1,
@@ -72,10 +68,12 @@ import {
 } from '../src/runtime/storage-journal/report-store.ts';
 import { createFixtureRepository, isWorkflowError } from './fixture.ts';
 import { createSshSignedFixture } from './support/ssh-signed-fixture.ts';
-
 const GRANT_ID = '12345678-1234-4123-8123-123456789abc';
+
 const APPROVAL_GRANT_ID = '87654321-4321-4321-8321-cba987654321';
+
 const UNLISTED_GRANT_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
 const NOW = new Date('2026-08-21T00:01:00.000Z');
 
 test('R-007 reserve precedes launch and consumed admission replays exactly after policy drift', (t) => {

@@ -150,6 +150,7 @@ const REQUIRED_ROLE_CONTEXT_SHARING_SOURCES = Object.freeze([
   'packages/workflow-engine/src/modules/authority/role-context-sharing-grant-lifecycle-port.ts',
   'packages/workflow-engine/src/modules/authority/role-context-sharing-grant-verifier-port.ts',
   'packages/workflow-engine/src/modules/authority/role-context-sharing-grant.ts',
+  'packages/workflow-engine/src/modules/proposal/role-context-sharing-plan-review.ts',
   'packages/workflow-engine/src/modules/provider-orchestration/agent-role-plan.ts',
   'packages/workflow-engine/src/modules/provider-orchestration/role-admission-contracts.ts',
   'packages/workflow-engine/src/modules/provider-orchestration/role-scheduler.ts',

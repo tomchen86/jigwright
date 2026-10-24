@@ -68,6 +68,7 @@ const ROLE_CONTEXT_SHARING_PROTECTED_SOURCE_PATHS = [
   'packages/workflow-engine/src/modules/authority/role-context-sharing-grant-lifecycle-port.ts',
   'packages/workflow-engine/src/modules/authority/role-context-sharing-grant-verifier-port.ts',
   'packages/workflow-engine/src/modules/authority/role-context-sharing-grant.ts',
+  'packages/workflow-engine/src/modules/proposal/role-context-sharing-plan-review.ts',
   'packages/workflow-engine/src/modules/provider-orchestration/agent-role-plan.ts',
   'packages/workflow-engine/src/modules/provider-orchestration/role-admission-contracts.ts',
   'packages/workflow-engine/src/modules/provider-orchestration/role-scheduler.ts',
@@ -301,20 +302,13 @@ test('reserve and consume are composition-gated while inspect and human-only rev
   }
 });
 
-test('authority-plan and sealed recovery retain an independent repair path', () => {
+test('authority-plan and bootstrap recovery retain an independent repair path', () => {
   for (const filePath of [
     'packages/workflow-engine/src/application/control-plane/authority-plan.ts',
     'packages/workflow-engine/src/application/control-plane/maintainer-recovery.ts',
-    'packages/workflow-engine/src/modules/authority/control-plane-recovery-grant.ts',
-    'packages/workflow-engine/src/modules/authority/control-plane-recovery-grant-values.ts',
-    'packages/workflow-engine/src/modules/authority/control-plane-recovery-grant-records.ts',
-    'packages/workflow-engine/src/runtime/storage-journal/control-plane-recovery-grant.ts',
-    'packages/workflow-engine/src/runtime/storage-journal/control-plane-recovery-grant-storage.ts',
-    'packages/workflow-engine/src/application/control-plane/control-plane-updater-recovery.ts',
     'packages/workflow-engine/src/application/control-plane/harness-bootstrap-production.ts',
     'packages/workflow-engine/src/application/control-plane/harness-bootstrap-recovery-commands.ts',
     'packages/workflow-engine/src/composition-root/harness-bootstrap-production.ts',
-    'packages/workflow-engine/src/application/control-plane/intervention-control-updater.ts',
   ]) {
     const source = fs.readFileSync(
       path.join(sourceRepositoryRoot, filePath),

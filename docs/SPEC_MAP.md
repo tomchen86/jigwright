@@ -13,6 +13,7 @@
 | packages/workflow-engine/src/modules/lifecycle | [Lifecycle](../packages/workflow-engine/src/modules/lifecycle/spec.md) | Local |
 | packages/workflow-engine/src/modules/planning-provider | [Planning provider](../packages/workflow-engine/src/modules/planning-provider/spec.md) | Local |
 | packages/workflow-engine/src/modules/projection | [Projection](../packages/workflow-engine/src/modules/projection/spec.md) | Local |
+| packages/workflow-engine/src/modules/proposal | [Shared workflow contracts](../packages/workflow-engine/spec.md) | Inherited |
 | packages/workflow-engine/src/modules/provider-orchestration | [Provider Orchestration](../packages/workflow-engine/src/modules/provider-orchestration/spec.md) | Local |
 | packages/workflow-engine/src/modules/repository-consumer | [Repository consumer](../packages/workflow-engine/src/modules/repository-consumer/spec.md) | Local |
 | packages/workflow-engine/src/modules/source | [Source](../packages/workflow-engine/src/modules/source/spec.md) | Local |

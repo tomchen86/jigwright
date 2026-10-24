@@ -6,7 +6,6 @@
  * - A replacement preserves semantic Job identity and the immutable target snapshot.
  * - Exact replays resume the reserved replacement and its recorded policy snapshot.
  */
-
 import { defaultProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
@@ -14,15 +13,14 @@ import {
   WorkflowError,
   workflowError,
 } from '../../foundation/errors/errors.ts';
-
 import {
   createReplacementAttempt,
   providerExecutionEnvironmentDigest,
   providerExecutionPolicySnapshot,
 } from '../../modules/provider-orchestration/execution-core.ts';
-import { type ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
+import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
+import type { ProviderExecutionGrantAuthorization } from '../../modules/provider-orchestration/provider-retry-decision.ts';
 import {
-  type ProviderExecutionGrantAuthorization,
   assertProviderExecutionGrantAuthorization,
   authorizeAutomaticProviderRetry,
 } from '../../modules/provider-orchestration/provider-retry-decision.ts';
@@ -37,7 +35,10 @@ import {
   readPlanReviewReservation,
   readTrackedPlanReview,
 } from './plan-review-store.ts';
-import { PLAN_REVIEW_REQUEST_REF, sha256 } from './propose-common.ts';
+import {
+  PLAN_REVIEW_REQUEST_REF,
+  sha256,
+} from '../../modules/proposal/propose-values.ts';
 import {
   assertCurrentExemptionContext,
   getProposeLifecycleStatus,
@@ -48,14 +49,13 @@ import { dispatchPreparedPlanReview } from './propose-provider-lifecycle.ts';
 import type { ProposeRuntime } from './propose-runtime.ts';
 import type { ProviderRetryDecisionBinding } from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
 import { getProposeStatus } from './propose-status.ts';
-import {
-  type PlanReviewReservation,
-  type PlanReviewRetryEnvelope,
-  type ProposeLifecycleStatus,
-  type ProposeOutput,
-  type ProposeResumeOptions,
-} from './propose-types.ts';
-
+import type {
+  PlanReviewReservation,
+  PlanReviewRetryEnvelope,
+  ProposeLifecycleStatus,
+  ProposeOutput,
+  ProposeResumeOptions,
+} from '../../modules/proposal/propose-types.ts';
 export function createPlanReviewRetryEnvelope(
   services: Pick<
     ProposeRuntime,

@@ -6,13 +6,11 @@
  * - Displayed planning and review progress agree with current receipts and reservations.
  * - Scaffold materialization retains held authority and a current investigation revision.
  */
-
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { type WorkflowPlanDigest } from '../../modules/guidance/renderers/plan-digest.ts';
-import { type ReuseCoverageRecord } from '../../modules/assurance/review-coverage.ts';
-
+import type { WorkflowPlanDigest } from '../../modules/guidance/renderers/plan-digest.ts';
+import type { ReuseCoverageRecord } from '../../modules/assurance/review-coverage.ts';
 import {
   readPlanReviewGrantRequirement,
   readPlanReviewReservation,
@@ -26,7 +24,7 @@ import {
 import {
   exemptionPlanningContributionSchema,
   planningContributionSchema,
-} from './propose-input.ts';
+} from '../../modules/proposal/propose-input.ts';
 import { rebuildInvestigation } from './propose-investigation-rebuild.ts';
 import {
   classSampleAuditsFor,
@@ -51,21 +49,18 @@ import {
   inputSchemaForStatus,
   readProposeAuthorization,
 } from './propose-request-validation.ts';
+import type { InvestigationStatus } from '../../modules/lifecycle/investigation-status.ts';
+import type { ProposeExemptionSession } from '../../modules/lifecycle/propose-exemption-session.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
 import type {
-  InvestigationStatus,
-  ProposeExemptionSession,
-  ProposeRuntime,
-} from './propose-runtime.ts';
-import {
-  type CollaborationGrantAccessMode,
-  type ExemptionProposeOutput,
-  type ProposeLifecycleStatus,
-  type ProposeOutput,
-  type ProposeResumeOptions,
-  type ProposeWork,
-  type RebuiltInvestigation,
-} from './propose-types.ts';
-
+  CollaborationGrantAccessMode,
+  ExemptionProposeOutput,
+  ProposeLifecycleStatus,
+  ProposeOutput,
+  ProposeResumeOptions,
+  ProposeWork,
+  RebuiltInvestigation,
+} from '../../modules/proposal/propose-types.ts';
 function exemptionAwaitingPlanningOutput(
   session: ProposeExemptionSession,
   scaffold: ReturnType<typeof prepareExemptionPlanningScaffold>,

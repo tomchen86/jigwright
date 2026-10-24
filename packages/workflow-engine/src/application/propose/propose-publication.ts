@@ -7,13 +7,12 @@
  * - Interrupted publication resumes its recorded identity and preserves failure evidence.
  * - Failure observations clear only after the expected publication is confirmed.
  */
-
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  type InvestigationManifestV3,
-  type InvestigationV3Blocker,
+import type {
+  InvestigationManifestV3,
+  InvestigationV3Blocker,
 } from '../../modules/investigation/manifest/investigation-manifest-types.ts';
 import { createInvestigationV3Blocker } from '../../modules/investigation/manifest/investigation-manifest.ts';
 import { assertPlanningTargetsCompatible } from './propose-artifacts.ts';
@@ -36,15 +35,14 @@ import type {
   InvestigationManifestPublicationLifecycleIdentity,
   InvestigationManifestPublicationPaths,
   InvestigationManifestPublicationSnapshot,
-  InvestigationStatus,
-  ProposeExemptionSession,
-  ProposeRuntime,
-} from './propose-runtime.ts';
-import {
-  type ProposeWork,
-  type RebuiltInvestigation,
-} from './propose-types.ts';
-
+} from '../../modules/investigation/manifest/investigation-publication-contracts.ts';
+import type { InvestigationStatus } from '../../modules/lifecycle/investigation-status.ts';
+import type { ProposeExemptionSession } from '../../modules/lifecycle/propose-exemption-session.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
+import type {
+  ProposeWork,
+  RebuiltInvestigation,
+} from '../../modules/proposal/propose-types.ts';
 export function prepareExemptionPlanningScaffold(
   services: Pick<
     ProposeRuntime,

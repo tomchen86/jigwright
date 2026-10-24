@@ -1,37 +1,35 @@
-import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
-/**
- * Starts ordinary investigations and carries structured exemptions into planning.
- *
- * Invariants:
- * - Repeated starts reuse the exact durable request, actor, intent, and baseline.
- * - Ordinary and exemption branches cannot both own the current change.
- * - Survey dispatch follows durable authorization and session creation.
- */
-
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import {
   createInvestigationApplicability,
   INVESTIGATION_APPLICABILITY_POLICY_DIGEST,
 } from '../../modules/investigation/domain/investigation-applicability.ts';
 import { resolveActorIdentity } from '../../modules/authority/actor-identity.ts';
 import { createProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
-import {
-  scheduleOrdinaryRole,
-  type GrantedSameProviderRoleAssignment,
-  type ProviderRoleAssignment,
-  type RoleParticipant,
+import { scheduleOrdinaryRole } from '../../modules/provider-orchestration/role-assignment.ts';
+import type {
+  GrantedSameProviderRoleAssignment,
+  ProviderRoleAssignment,
+  RoleParticipant,
 } from '../../modules/provider-orchestration/role-assignment.ts';
-import {
-  blindSurveyGrantRequest,
-  type ProposeGrantAuthorization,
-} from './plan-review-contracts.ts';
+import { blindSurveyGrantRequest } from './plan-review-contracts.ts';
+import type {
+  ProposeGrantAuthorization,
+  ExemptionPlanningContributionEnvelope,
+  ExemptionProposeOutput,
+  InvestigationExemptionRequest,
+  OrdinaryProposeOutput,
+  ProposeOptions,
+  ProposeOutput,
+  ProposeResumeOptions,
+} from '../../modules/proposal/propose-types.ts';
 import { collaborationTransitionDigest } from './plan-review-grant-authorization.ts';
 import { readCallerJson } from './propose-artifacts.ts';
-import { createRuntimeId, sha256 } from './propose-common.ts';
+import { createRuntimeId } from './propose-common.ts';
+import { sha256 } from '../../modules/proposal/propose-values.ts';
 import {
   assertCurrentExemptionContext,
   assertCurrentGovernanceSources,
@@ -47,7 +45,7 @@ import { createProposeAuthorizationNode } from './propose-evidence.ts';
 import {
   assertExemptionPlanningBinding,
   isInvestigationExemptionRequest,
-} from './propose-input.ts';
+} from '../../modules/proposal/propose-input.ts';
 import { collaborationGrantRequiredOutput } from './propose-output.ts';
 import { materializeExemptionPlanningContribution } from './propose-planning-materialization.ts';
 import {
@@ -59,7 +57,8 @@ import {
   assertProposeStartInput,
   readProposeAuthorization,
 } from './propose-request-validation.ts';
-import type { InvestigationStatus, ProposeRuntime } from './propose-runtime.ts';
+import type { InvestigationStatus } from '../../modules/lifecycle/investigation-status.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
 import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
 import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
 import {
@@ -67,16 +66,6 @@ import {
   renderExemptionProposeOutput,
   renderProposeOutputWithPlanningAuthority,
 } from './propose-status.ts';
-import {
-  type ExemptionPlanningContributionEnvelope,
-  type ExemptionProposeOutput,
-  type InvestigationExemptionRequest,
-  type OrdinaryProposeOutput,
-  type ProposeOptions,
-  type ProposeOutput,
-  type ProposeResumeOptions,
-} from './propose-types.ts';
-
 export function startPropose(
   services: ProposeRuntime,
   cwd: string,

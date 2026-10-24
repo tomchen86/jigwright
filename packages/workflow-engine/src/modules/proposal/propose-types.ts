@@ -1,89 +1,79 @@
-/**
- * Defines the shared request, result, and reconstructed-state contracts for propose.
- *
- * Invariants:
- * - Envelope discriminants, evidence bindings, and nullable states preserve their exact meaning.
- * - Public result shapes and internal review data remain compatible across propose modules.
- * - These declarations carry no runtime initialization or transition behavior.
- */
-
-import type { ProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
-import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
-import { type AssuranceAssessmentReport } from '../../modules/assurance/assurance-assessment-chain.ts';
-import { type GlobalPlanReviewCoverageRequirement } from '../../modules/assurance/plan-review-coverage.ts';
-import { type PlanReviewDispositionSubmission } from '../../modules/assurance/plan-review.ts';
-import type { PlanReviewSubject } from '../../modules/assurance/plan-review-subject.ts';
-import type { PlanReviewTargetSnapshot } from '../../modules/assurance/plan-review-target-snapshot-record.ts';
-import { type InvestigationFirstPlanningSubject } from '../../modules/assurance/planning-assurance-validator.ts';
-import { type RoleContextSharingGrantLifecyclePortV1 } from '../../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
-import { type TaskMandateOptions } from '../../modules/authority/task-mandate-access-contract.ts';
-import { type WorkflowPlanDigest } from '../../modules/guidance/renderers/plan-digest.ts';
-import { type FloorOverflowDecision } from '../../modules/investigation/domain/floor-overflow-pruning.ts';
-import {
-  type InvestigationChangeClass,
-  type InvestigationExemptionCategory,
-  type InvestigationSemanticAuthor,
-} from '../../modules/investigation/domain/investigation-applicability.ts';
-import { type InvestigationDispositionDecision } from '../../modules/investigation/domain/investigation-domain.ts';
-import { deriveEngineFloor } from '../../modules/investigation/domain/investigation-floor.ts';
-import { type InvestigationFullBlobFact } from '../../modules/investigation/domain/investigation-full-blob.ts';
-import {
-  type InvestigationDispositionInput,
-  type InvestigationGroupFacts,
-  type ReviewedPathRelationship,
-} from '../../modules/investigation/domain/investigation-groups.ts';
-import { type InvestigationScanFacts } from '../../modules/investigation/domain/investigation-scan-facts.ts';
-import {
-  type InvestigationTermContribution,
-  type InvestigationTermRawCounts,
-  type PreviewInvestigationTerm,
-} from '../../modules/investigation/domain/investigation-terms.ts';
-import { type MaterializedEvidenceView } from '../../modules/investigation/manifest/investigation-materializer.ts';
-import { buildInvestigationV3WhyAuthoring } from '../../modules/investigation/manifest/investigation-why-domain.ts';
-import { type ActorSignal } from '../../modules/authority/actor-identity.ts';
-import { type ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
-import { type ProviderExecutionGrantAuthorization } from '../../modules/provider-orchestration/provider-retry-decision.ts';
-import {
-  type AdmittedRoleResult,
-  type ConsumedRoleReplayPort,
-  type ConsumedRoleResultReplayPort,
-} from '../../modules/provider-orchestration/role-admission-contracts.ts';
-
-import {
-  type ProviderRoleAssignment,
-  type RecordedRoleParticipant,
-} from '../../modules/provider-orchestration/role-assignment.ts';
-import {
-  type RoleTopologyResolutionDependencyPortV1,
-  type RoleTopologyResolutionV1,
-} from '../../modules/provider-orchestration/role-topology-resolution.ts';
-import { type ReuseCoverageRecord } from '../../modules/assurance/review-coverage.ts';
-
-import { type ProposeGrantAuthorization } from './plan-review-contracts.ts';
-import { type PlanningTransitionResult } from './planning-transition.ts';
+/** Canonical proposal requests, results and reconstructed planning state. */
+import type { ProviderRetryExplanation } from '../provider-orchestration/provider-retry-explanation.ts';
+import type { ProviderId } from '../provider-orchestration/provider-registry.ts';
+import type { AssuranceAssessmentReport } from '../assurance/assurance-assessment-chain.ts';
+import type { GlobalPlanReviewCoverageRequirement } from '../assurance/plan-review-coverage.ts';
+import type { PlanReviewDispositionSubmission } from '../assurance/plan-review.ts';
+import type { PlanReviewSubject } from '../assurance/plan-review-subject.ts';
+import type { PlanReviewTargetSnapshot } from '../assurance/plan-review-target-snapshot-record.ts';
+import type { InvestigationFirstPlanningSubject } from '../assurance/planning-assurance-validator.ts';
+import type { RoleContextSharingGrantLifecyclePortV1 } from '../authority/role-context-sharing-grant-lifecycle-port.ts';
+import type { TaskMandateOptions } from '../authority/task-mandate-access-contract.ts';
+import type { WorkflowPlanDigest } from '../guidance/renderers/plan-digest.ts';
+import type { FloorOverflowDecision } from '../investigation/domain/floor-overflow-pruning.ts';
 import type {
-  EvidenceNode,
+  InvestigationChangeClass,
+  InvestigationExemptionCategory,
+  InvestigationSemanticAuthor,
+} from '../investigation/domain/investigation-applicability.ts';
+import type { InvestigationDispositionDecision } from '../investigation/domain/investigation-domain.ts';
+import { deriveEngineFloor } from '../investigation/domain/investigation-floor.ts';
+import type { InvestigationFullBlobFact } from '../investigation/domain/investigation-full-blob.ts';
+import type {
+  InvestigationDispositionInput,
+  InvestigationGroupFacts,
+  ReviewedPathRelationship,
+} from '../investigation/domain/investigation-groups.ts';
+import type { InvestigationScanFacts } from '../investigation/domain/investigation-scan-facts.ts';
+import type {
+  InvestigationTermContribution,
+  InvestigationTermRawCounts,
+  PreviewInvestigationTerm,
+} from '../investigation/domain/investigation-terms.ts';
+import type { MaterializedEvidenceView } from '../investigation/manifest/investigation-materializer.ts';
+import { buildInvestigationV3WhyAuthoring } from '../investigation/manifest/investigation-why-domain.ts';
+import type { ActorSignal } from '../authority/actor-identity.ts';
+import type { ProviderInvocationRequest } from '../provider-orchestration/provider-contracts.ts';
+import type { ProviderExecutionGrantAuthorization } from '../provider-orchestration/provider-retry-decision.ts';
+import type {
+  AdmittedRoleResult,
+  ConsumedRoleReplayPort,
+  ConsumedRoleResultReplayPort,
+} from '../provider-orchestration/role-admission-contracts.ts';
+import type {
+  ProviderRoleAssignment,
+  RecordedRoleParticipant,
+} from '../provider-orchestration/role-assignment.ts';
+import type {
+  RoleTopologyResolutionDependencyPortV1,
+  RoleTopologyResolutionV1,
+} from '../provider-orchestration/role-topology-resolution.ts';
+import type { ReuseCoverageRecord } from '../assurance/review-coverage.ts';
+import type { PlanningTransitionResult } from '../lifecycle/planning-transition-result.ts';
+import type { EvidenceNode } from '@jigwright/core/evidence-node';
+import type {
   ExecutionArtifact,
   GuardContract,
+} from '../planning-provider/planning-artifact-types.ts';
+import type {
   InvestigationCheckpointEnvelope,
   InvestigationScanSaturationAcceptanceEnvelope,
   InvestigationSession,
-  InvestigationStatus,
-  MaintainerSignerProvider,
-  ProposeExemptionSession,
-  ProposeRuntime,
   StoredInvestigationCheckpoint,
-} from './propose-runtime.ts';
-import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
-import type { MutationClassPolicy } from '../../modules/source/mutation-class-policy.ts';
-import type { PlanReviewManifest } from '../../modules/assurance/provider-review-manifests.ts';
-import type { ProviderExecutionPolicySnapshotCurrent } from '../../modules/provider-orchestration/provider-execution-policy-snapshot.ts';
-import type { ProviderRetryDecisionBinding } from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
-
+} from '../investigation/domain/investigation-session-types.ts';
+import type { InvestigationStatus } from '../lifecycle/investigation-status.ts';
+import type { MaintainerSignerProvider } from '../authority/maintainer-signer-port.ts';
+import type { ProposeExemptionSession } from '../lifecycle/propose-exemption-session.ts';
+import type { NormalizedChangeIntent } from '../source/change-intent.ts';
+import type { MutationClassPolicy } from '../source/mutation-class-policy.ts';
+import type { PlanReviewManifest } from '../assurance/provider-review-manifests.ts';
+import type { ProviderExecutionPolicySnapshotCurrent } from '../provider-orchestration/provider-execution-policy-snapshot.ts';
+import type { ProviderRetryDecisionBinding } from '../provider-orchestration/provider-invocation-reservations.ts';
+import type { CollaborationGrantExpectedBinding } from '../authority/collaboration-grant-codec.ts';
+import type { RoleContextSharingPlanReviewAuthorizationV1 } from './role-context-sharing-plan-review.ts';
+import type { InvestigationRuntimePaths } from '@jigwright/core/runtime-path-kernel';
 export type ProposeProviderDriver = (input: {
-  paths: ReturnType<
-    ProposeRuntime['workspace']['loadInvestigationRuntimeContext']
-  >['runtime'];
+  paths: InvestigationRuntimePaths;
   request: ProviderInvocationRequest;
 }) => void;
 
@@ -545,3 +535,11 @@ export type PlanReviewReservation = {
     executionPolicySnapshot: ProviderExecutionPolicySnapshotCurrent;
   } | null;
 };
+
+export type ProposeGrantAuthorization =
+  | {
+      grantId: string;
+      transitionDigest: string;
+      expectedBinding: CollaborationGrantExpectedBinding;
+    }
+  | RoleContextSharingPlanReviewAuthorizationV1;

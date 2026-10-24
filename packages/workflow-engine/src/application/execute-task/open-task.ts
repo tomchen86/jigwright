@@ -2,35 +2,24 @@ import type {
   OpenTaskPhase,
   OpenTaskLifecycleStatus,
 } from '../../modules/lifecycle/open-task-status.ts';
-import {
-  type TaskMandatePreparationAuthorization,
-  type TaskMandateActiveBinding,
-  type TaskMandateOptions,
+import type {
+  TaskMandatePreparationAuthorization,
+  TaskMandateActiveBinding,
+  TaskMandateOptions,
 } from '../../modules/authority/task-mandate-access-contract.ts';
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
-
 import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
-import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
-import {
-  type ManagedDocumentOperations,
-  type GeneratedDocumentMutation,
+import type {
+  ManagedDocumentOperations,
+  GeneratedDocumentMutation,
 } from '../../modules/projection/managed-documents.ts';
 import type { ChangeContractReader } from '../../modules/planning-provider/change-contract.ts';
 import type { PlanningDraftWorkspacePort } from '../../modules/planning-provider/planning-workspace.ts';
-/**
- * Opens execution tasks through a recoverable planning and session journal.
- *
- * Invariants:
- * - Opening a task requires the exact registered draft workspace at its
- *   pinned base.
- */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { systemDocumentContext } from '../../modules/source/system-document-context.ts';
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-
 import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
 import type { CiPlanningReplayOperations } from '../../modules/assurance/commit-replay/ci-planning.ts';
 import { isEngineProjectionPathForTransition } from '../../modules/projection/engine-projection-registry.ts';
@@ -55,22 +44,20 @@ import {
 import type { HandoffDocumentOperations } from '../../modules/projection/handoff.ts';
 import { parseManagedTrailers } from '@jigwright/core/managed-transition-trailers';
 import { rollbackGeneratedDocuments } from '../../runtime/managed-documents/validation/managed-documents.ts';
-
 import {
   assertChangeId,
   assertTaskId,
   normalizeChangedPath,
 } from '../../foundation/repository-path/repository-path.ts';
-import {
-  commitPlanningTransitionUnderAuthority,
-  type PlanningTransitionResult,
-} from '../propose/planning-transition.ts';
+import { commitPlanningTransitionUnderAuthority } from '../propose/planning-transition.ts';
+import type { PlanningTransitionResult } from '../../modules/lifecycle/planning-transition-result.ts';
 import {
   reclaimDeadChangeTransitionLock,
   withOpenTaskPlanningAuthority,
 } from '../../runtime/session-workspace/planning-lock.ts';
 import { readPlanningTransitionReport } from '../../runtime/storage-journal/planning-report.ts';
 import {
+  type WorkflowSession,
   assertOwnedLock,
   assertTaskSessionWorktreeRegistration,
   assertTaskSessionIsolationLeasesOwned,
@@ -78,7 +65,6 @@ import {
   readSessionFile,
   runtimePaths,
   withRepositoryLifecycleOperation,
-  type WorkflowSession,
 } from '../../runtime/session-workspace/session-store.ts';
 import {
   startSession,
@@ -87,19 +73,22 @@ import {
   startMandatedSessionUnderLifecycleLock,
   assertProductionChangeRoutingAdmission,
 } from './session.ts';
-
-import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import {
   assertTaskMandateOptional,
   resolveTaskAuthorizationRequirement,
 } from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
-
 const COMMIT_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+
 const SHA256 = /^[0-9a-f]{64}$/;
+
 const SHA256_PREFIX = /^sha256:[0-9a-f]{64}$/;
+
 const MANDATE_TASK_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 const MANDATE_ID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
 const MAX_JOURNAL_BYTES = 128 * 1024;
 
 export type OpenTaskJournal = Readonly<{

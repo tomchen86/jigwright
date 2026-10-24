@@ -7,16 +7,14 @@
  */
 import crypto from 'node:crypto';
 import { isProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
-import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import path from 'node:path';
-
 import type { ActorSignal } from '../../modules/authority/actor-identity.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   readContentRecord,
   writeContentRecord,
-  type ContentRecord,
 } from './content-record-store.ts';
+import type { ContentRecord } from './content-record-store.ts';
 import {
   compareAndSwapEvidenceRefsDocument,
   compareAndSwapEvidenceRef,
@@ -27,58 +25,33 @@ import { readEvidenceNode, writeEvidenceNode } from './evidence-node-store.ts';
 import {
   assertStoredEvidenceNode,
   createEvidenceNode,
-  type EvidenceNode,
 } from '../../foundation/evidence-node/evidence-node.ts';
+import type { EvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  assertInvestigationApplicability,
-  type InvestigationExemption,
-} from '../../modules/investigation/domain/investigation-applicability.ts';
+import { assertInvestigationApplicability } from '../../modules/investigation/domain/investigation-applicability.ts';
+import type { InvestigationExemption } from '../../modules/investigation/domain/investigation-applicability.ts';
 import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
-import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
-import {
-  assertHeldChangeTransitionAuthority,
-  type HeldChangeTransitionAuthority,
-} from '../session-workspace/planning-lock.ts';
+import { assertHeldChangeTransitionAuthority } from '../session-workspace/planning-lock.ts';
+import type { HeldChangeTransitionAuthority } from '../session-workspace/planning-lock.ts';
 import { PROPOSE_EXEMPTION_SESSION_STORE_POLICY_DIGEST } from '../../modules/provider-orchestration/provider-contracts.ts';
 import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
-
 import {
   PROPOSE_EXEMPTION_SESSION_PREFIX as SESSION_PREFIX,
   isProposeExemptionInvestigationId,
 } from '../../modules/investigation/domain/investigation-store-values.ts';
+import type {
+  ProposeExemptionActor,
+  ProposeExemptionSession,
+} from '../../modules/lifecycle/propose-exemption-session.ts';
 export { isProposeExemptionInvestigationId } from '../../modules/investigation/domain/investigation-store-values.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;
+
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+
 const CURRENT_REF = 'propose/exemption-session';
-
-export type ProposeExemptionActor = {
-  providerId: ProviderId;
-  assurance: 'self-declared' | 'runtime-hint' | 'adapter-assigned';
-};
-
-export type ProposeExemptionSession = {
-  schemaVersion: 1;
-  kind: 'propose-exemption-session';
-  investigationId: string;
-  revision: 0;
-  state: 'investigation-exempt';
-  changeId: string;
-  mandateBinding?: TaskMandateBinding;
-  repositoryRoot: string;
-  gitCommonDirectory: string;
-  branch: string | null;
-  baseline: { head: string; tree: string };
-  intentDigest: string;
-  intent: NormalizedChangeIntent;
-  applicability: InvestigationExemption;
-  applicabilityNode: EvidenceNode;
-  actor: ProposeExemptionActor;
-  signals: ActorSignal[];
-  createdAt: string;
-};
 
 type StoredProposeExemptionSession = ContentRecord & {
   kind: 'propose-exemption-session';

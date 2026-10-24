@@ -1,53 +1,31 @@
-import {
-  type TaskMandateProviderAdmission,
-  type TaskMandateActiveBinding,
-} from '../../../modules/authority/task-mandate-access-contract.ts';
-
-import type { HumanResolutionServices } from '../../../modules/investigation/domain/human-resolution-grant-contract.ts';
-
-import {
-  type InvestigationHumanActionBlockerFactory,
-  investigationResolutionStateDigest,
-  type HumanResolutionNode,
-  type InvestigationResolutionState,
-} from '../../../modules/investigation/domain/human-resolution-contract.ts';
-
-type TaskMandateDependencies = Pick<
+import type {
+  TaskMandateProviderAdmission,
   TaskMandateActiveBinding,
-  'assertActiveTaskMandateBindingUnderLifecycleLock'
-> &
-  Pick<
-    TaskMandateProviderAdmission,
-    'authorizeTaskMandateProviderReservationUnderLifecycleLock'
-  >;
-/**
- * Coordinates investigation sessions, authoring checkpoints, provider
- * results and reviewer-driven reopening.
- *
- * Invariants:
- * - Starting a session binds the blind survey request to the current
- *   repository baseline, intent and input manifest.
- */
+} from '../../../modules/authority/task-mandate-access-contract.ts';
+import type { HumanResolutionServices } from '../../../modules/investigation/domain/human-resolution-grant-contract.ts';
+import type {
+  InvestigationHumanActionBlockerFactory,
+  HumanResolutionNode,
+  InvestigationResolutionState,
+} from '../../../modules/investigation/domain/human-resolution-contract.ts';
+import { investigationResolutionStateDigest } from '../../../modules/investigation/domain/human-resolution-contract.ts';
 import type { ProviderRetryAccountingReader } from '../../../modules/provider-orchestration/provider-retry-accounting.ts';
-
 import {
   AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
   loadAiAdapterPolicy,
 } from '../../../runtime/provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
-
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import {
   createReplacementAttempt,
   providerExecutionEnvironmentDigest,
   providerExecutionPolicySnapshot,
-  type RetryMode,
 } from '../../../modules/provider-orchestration/execution-core.ts';
+import type { RetryMode } from '../../../modules/provider-orchestration/execution-core.ts';
 import {
   loadProviderExecutionRepairContext,
   preflightProviderRepairRetry,
 } from '../../../runtime/storage-journal/provider-execution-governance.ts';
-
 import {
   assertInvestigationCheckpointEnvelope,
   checkpointContributionDigest,
@@ -66,34 +44,29 @@ import {
   readHumanResolutionHead,
   readHumanResolutionNode,
 } from '../../../runtime/storage-journal/human-resolution-nodes.ts';
-
 import {
   deriveInvestigationSessionState,
   investigationCheckpointId,
 } from '../../../modules/investigation/domain/investigation-session-contract.ts';
 import { inspectInvestigationResolutionState } from '../../../runtime/storage-journal/human-resolution-state.ts';
-
-import {
-  type GroupDispositionsPayload,
-  type InvestigationCheckpointEnvelope,
-  type InvestigationCheckpointKind,
-  type InvestigationSession,
-  type InvestigationSessionState,
-  type MainTermsPayload,
-  type StoredInvestigationCheckpoint,
-  type WhyAnswersPayload,
+import type {
+  GroupDispositionsPayload,
+  InvestigationCheckpointEnvelope,
+  InvestigationCheckpointKind,
+  InvestigationSession,
+  MainTermsPayload,
+  StoredInvestigationCheckpoint,
+  WhyAnswersPayload,
 } from '../../../modules/investigation/domain/investigation-session-types.ts';
-
 import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../../runtime/repository-observation/investigation-runtime-context.ts';
-
 import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../../modules/investigation/manifest/plan-review-coverage-policy.ts';
 import {
   assertChangeId,
   assertInvestigationId,
 } from '../../../foundation/repository-path/repository-path.ts';
 import {
-  assertHeldChangeTransitionAuthority,
   type HeldChangeTransitionAuthority,
+  assertHeldChangeTransitionAuthority,
   withInvestigationTransitionAuthority,
 } from '../../../runtime/session-workspace/planning-lock.ts';
 import type { ProviderInvocationRequest } from '../../../modules/provider-orchestration/provider-contracts.ts';
@@ -115,64 +88,23 @@ import {
 } from '../../../runtime/storage-journal/provider-invocation-store.ts';
 import type { BlindSurveyManifest } from '../../../modules/investigation/manifest/blind-survey-manifest.ts';
 import type { InvestigationStartReservation } from '../../../modules/provider-orchestration/provider-invocation-reservations.ts';
-import type {
-  ProviderInvocationFailure,
-  ProviderInvocationRecord,
-} from '../../../modules/provider-orchestration/provider-invocation-record.ts';
-import {
-  inspectProviderInvocationActivity,
-  type ProviderInvocationActivity,
-} from '../../../runtime/storage-journal/provider-invocation-activity.ts';
+import type { ProviderInvocationRecord } from '../../../modules/provider-orchestration/provider-invocation-record.ts';
+import { inspectProviderInvocationActivity } from '../../../runtime/storage-journal/provider-invocation-activity.ts';
 import {
   assertProviderExecutionGrantAuthorization,
   authorizeAutomaticProviderRetry,
-  type ProviderExecutionGrantAuthorization,
 } from '../../../modules/provider-orchestration/provider-retry-decision.ts';
-import { type TaskMandateBinding } from '../../../modules/authority/task-mandate-contract.ts';
-export type InvestigationStatus = {
-  kind: 'investigation';
-  investigationId: string;
-  changeId: string;
-  revision: number;
-  semanticRevision: number;
-  lifecycleRevision: number;
-  state: InvestigationSessionState;
-  baseline: {
-    head: string;
-    tree: string;
-  };
-  intentDigest: string;
-  blindManifestDigest: string;
-  providerInvocationId: string;
-  provider: {
-    state: ProviderInvocationRecord['state'];
-    providerId: ProviderInvocationRecord['providerId'];
-    attempt: number;
-    revision: number;
-    leaseGeneration: number;
-    leaseExpiresAt: string | null;
-    failure: ProviderInvocationFailure | null;
-    resultDigest: string | null;
-    activity: ProviderInvocationActivity;
-  };
-  checkpoint: {
-    schemaVersion: 1;
-    kind: InvestigationCheckpointKind;
-    checkpointId: string;
-  } | null;
-  nextAction:
-    | 'submit-main-terms'
-    | 'wait-for-provider'
-    | 'resume-provider-result'
-    | 'expire-provider-lease'
-    | 'retry-provider'
-    | 'reconcile-repository'
-    | 'submit-group-dispositions'
-    | 'submit-why-answers'
-    | 'resolve-actor'
-    | 'human-action'
-    | 'investigation-complete';
-};
+import type { ProviderExecutionGrantAuthorization } from '../../../modules/provider-orchestration/provider-retry-decision.ts';
+import type { TaskMandateBinding } from '../../../modules/authority/task-mandate-contract.ts';
+import type { InvestigationStatus } from '../../../modules/lifecycle/investigation-status.ts';
+type TaskMandateDependencies = Pick<
+  TaskMandateActiveBinding,
+  'assertActiveTaskMandateBindingUnderLifecycleLock'
+> &
+  Pick<
+    TaskMandateProviderAdmission,
+    'authorizeTaskMandateProviderReservationUnderLifecycleLock'
+  >;
 
 export type StartInvestigationSessionInput = {
   changeId: string;
@@ -479,14 +411,17 @@ export function createInvestigationCheckpointEnvelope(
   status: InvestigationStatus,
   payload: MainTermsPayload,
 ): Extract<InvestigationCheckpointEnvelope, { kind: 'main-terms' }>;
+
 export function createInvestigationCheckpointEnvelope(
   status: InvestigationStatus,
   payload: GroupDispositionsPayload,
 ): Extract<InvestigationCheckpointEnvelope, { kind: 'group-dispositions' }>;
+
 export function createInvestigationCheckpointEnvelope(
   status: InvestigationStatus,
   payload: WhyAnswersPayload,
 ): Extract<InvestigationCheckpointEnvelope, { kind: 'why-answers' }>;
+
 export function createInvestigationCheckpointEnvelope(
   status: InvestigationStatus,
   payload: MainTermsPayload | GroupDispositionsPayload | WhyAnswersPayload,

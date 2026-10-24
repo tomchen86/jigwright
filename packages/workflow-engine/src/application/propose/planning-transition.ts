@@ -1,22 +1,16 @@
-import type { ArchiveApplicabilityRecord } from '../../modules/lifecycle/planning-transition-report.ts';
 import type {
   PlanningCarryForwardTaskEvidence,
   PlanningTransitionReport,
 } from '../../modules/lifecycle/planning-transition-report.ts';
 import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
-import type { ManagedDocumentOperations } from '../../modules/projection/managed-documents.ts';
+import type {
+  ManagedDocumentOperations,
+  GeneratedDocumentMutation,
+} from '../../modules/projection/managed-documents.ts';
 import type { ChangeContractReader } from '../../modules/planning-provider/change-contract.ts';
-/**
- * Commits reviewed planning transitions and restores projections after
- * failed publication.
- *
- * Invariants:
- * - An amendment must resolve whether existing execution remains valid.
- */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-
 import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
 import {
   ExitCode,
@@ -57,49 +51,21 @@ import {
 } from '../../runtime/storage-journal/planning-report.ts';
 import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
 import {
-  assertHeldChangeTransitionAuthority,
   type HeldChangeTransitionAuthority,
+  assertHeldChangeTransitionAuthority,
   withPlanningAuthority,
 } from '../../runtime/session-workspace/planning-lock.ts';
-import type { InvestigationFirstPlanningAssuranceSummary } from '../../modules/assurance/planning-assurance-validator.ts';
 import {
   planningAmendmentDecisionDigest,
   readPlanningAmendmentDecision,
-  type PlanningAmendmentDecision,
 } from '../../modules/lifecycle/planning-amendment-decision.ts';
+import type { PlanningAmendmentDecision } from '../../modules/lifecycle/planning-amendment-decision.ts';
 import { committedPlanningGeneration } from '../../runtime/repository-transaction/planning-generation-history.ts';
-
 import { rollbackGeneratedDocuments } from '../../runtime/managed-documents/validation/managed-documents.ts';
-import { type GeneratedDocumentMutation } from '../../modules/projection/managed-documents.ts';
-
+import type { PlanningTransitionResult } from '../../modules/lifecycle/planning-transition-result.ts';
 export type AmendmentRequest = {
   reason: string;
   executionImpact: 'none' | 'required';
-};
-
-export type PlanningTransitionResult = {
-  changeId: string;
-  kind: 'introduction' | 'revision';
-  /** Present when this transition was an amendment rather than a plan. */
-  amendment?: {
-    reason: string;
-    executionImpact: 'none' | 'required';
-    rationale: string;
-    decisionDigest: string;
-    reopenedTasks: string[];
-    planningGeneration: string;
-    amendsPlanningGeneration: string;
-    planReview: string;
-  };
-  subject: string;
-  baselineHead: string;
-  changedPaths: string[];
-  stagedPaths: string[];
-  tree: string;
-  commitHash: string;
-  reportId: string;
-  planningAssurance: InvestigationFirstPlanningAssuranceSummary | null;
-  archiveApplicability: ArchiveApplicabilityRecord;
 };
 
 export type PlanningTransitionTestHooks = {

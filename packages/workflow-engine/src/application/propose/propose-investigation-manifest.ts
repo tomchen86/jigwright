@@ -1,24 +1,13 @@
 import type { InvestigationEvidenceReplayer } from '../../modules/investigation/manifest/investigation-materializer.ts';
-/**
- * Builds v3 investigation manifests from reconstructed planning facts.
- *
- * Invariants:
- * - Manifest authority binds the exact session snapshot and semantic provenance.
- * - Missing semantic decisions block construction instead of inventing evidence.
- * - Role and assurance projections preserve admitted identities and policy digests.
- */
 import type { EvidenceNode } from '@jigwright/core/evidence-node';
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   ExitCode,
   WorkflowError,
   workflowError,
 } from '../../foundation/errors/errors.ts';
-import {
-  ASSURANCE_ASSESSMENT_POLICY_DIGEST,
-  type AssuranceAssessmentReport,
-} from '../../modules/assurance/assurance-assessment-chain.ts';
+import { ASSURANCE_ASSESSMENT_POLICY_DIGEST } from '../../modules/assurance/assurance-assessment-chain.ts';
+import type { AssuranceAssessmentReport } from '../../modules/assurance/assurance-assessment-chain.ts';
 import type { RoleContextSharingGrantOperations } from '../../modules/authority/role-context-sharing-grant.ts';
 import {
   buildInvestigationManifestDraft,
@@ -26,31 +15,29 @@ import {
   sealInvestigationManifestDraft,
   validateForAuthority,
 } from '../../modules/investigation/manifest/investigation-manifest.ts';
-import {
-  type InvestigationAssuranceFacts,
-  type InvestigationManifestV3,
-  type InvestigationV3Blocker,
-  type InvestigationV3RoleResult,
+import type {
+  InvestigationAssuranceFacts,
+  InvestigationManifestV3,
+  InvestigationV3Blocker,
+  InvestigationV3RoleResult,
 } from '../../modules/investigation/manifest/investigation-manifest-types.ts';
-import {
-  buildInvestigationManifestV3,
-  type BuildInvestigationManifestV3Result,
-} from '../../modules/investigation/manifest/investigation-manifest-builder.ts';
+import { buildInvestigationManifestV3 } from '../../modules/investigation/manifest/investigation-manifest-builder.ts';
+import type { BuildInvestigationManifestV3Result } from '../../modules/investigation/manifest/investigation-manifest-builder.ts';
 import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
-
 import { buildImplementationReconciliationRequirement } from '../../modules/why-knowledge/implementation-reconciliation.ts';
-import { isRecord, sha256 } from './propose-common.ts';
+import { isRecord, sha256 } from '../../modules/proposal/propose-values.ts';
 import type {
   ExemptionProposeOutput,
   ProposeAssuranceAssessment,
   RebuiltInvestigation,
-} from './propose-types.ts';
-
+} from '../../modules/proposal/propose-types.ts';
 type InvestigationManifestContext = Readonly<{
   git: Readonly<{ repositoryRoot: string }>;
   config: Readonly<{ repositoryName: string }>;
 }>;
+
 type InvestigationSession = RebuiltInvestigation['session'];
+
 type ProposeExemptionSession = NonNullable<
   ExemptionProposeOutput['investigation']
 >;

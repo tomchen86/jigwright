@@ -7,7 +7,6 @@
  * - Challenge and ordinary progress outputs clear semantic reuse and class audit projections.
  */
 import type { EvidenceNode } from '@jigwright/core/evidence-node';
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { WorkflowError } from '../../foundation/errors/errors.ts';
 import { readPlanReviewNode } from '../../modules/assurance/plan-review.ts';
@@ -16,18 +15,20 @@ import {
   classSampleSeed,
   planClassSampleAudits,
 } from '../../modules/investigation/domain/class-sample-audit.ts';
-import {
-  deriveClassGroupsWithContextFromFacts,
-  type InvestigationDispositionInput,
-} from '../../modules/investigation/domain/investigation-groups.ts';
+import { deriveClassGroupsWithContextFromFacts } from '../../modules/investigation/domain/investigation-groups.ts';
+import type { InvestigationDispositionInput } from '../../modules/investigation/domain/investigation-groups.ts';
 import type { resolveActorIdentity } from '../../modules/authority/actor-identity.ts';
 import type { PlanReviewGrantRequirement } from './plan-review-contracts.ts';
-import { isRecord, isStringArray, sha256 } from './propose-common.ts';
+import {
+  isRecord,
+  isStringArray,
+  sha256,
+} from '../../modules/proposal/propose-values.ts';
 import {
   planReviewDispositionSchema,
   planReviewProgressSchema,
   withEnvelopeTemplate,
-} from './propose-input.ts';
+} from '../../modules/proposal/propose-input.ts';
 import { reportProposeAssuranceAssessment } from './propose-investigation-manifest.ts';
 import type {
   OrdinaryProposeOutput,
@@ -36,9 +37,9 @@ import type {
   ProposePlanReviewStatus,
   ProposeWork,
   RebuiltInvestigation,
-} from './propose-types.ts';
-
+} from '../../modules/proposal/propose-types.ts';
 type InvestigationStatus = NonNullable<OrdinaryProposeOutput['investigation']>;
+
 type WhyAnswersPayload = Extract<
   NonNullable<RebuiltInvestigation['reviewerPriorWhyAnswers']>['envelope'],
   { kind: 'why-answers' }
@@ -64,6 +65,7 @@ type PlanReviewInvocationSnapshot = Readonly<
     requestDigest: string;
   }
 >;
+
 type TrackedPlanReviewSnapshot = Readonly<{
   reviewNode: EvidenceNode;
   dispositionNode: EvidenceNode | null;

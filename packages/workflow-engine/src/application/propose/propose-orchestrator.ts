@@ -16,17 +16,10 @@ import {
   parseExecutionArtifact,
   parseTasks,
 } from '../../modules/planning-provider/planning-artifact-parsers.ts';
-import {
-  type BehaviorContractRef,
-  type ExecutionArtifact,
-  type GuardContract,
-} from '../../modules/planning-provider/planning-artifact-types.ts';
-import { type ChangeContract } from '../../modules/planning-provider/change-contract.ts';
 import { assertTaskMandateOptional } from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
 import {
   assertStoredEvidenceNode,
   createEvidenceNode,
-  type EvidenceNode,
 } from '../../foundation/evidence-node/evidence-node.ts';
 import {
   acknowledgeReviewerTermInputClosureUnderAuthority,
@@ -39,12 +32,10 @@ import {
   resumeInvestigationSessionUnderAuthority,
   retryInvestigationProvider,
   startInvestigationSessionUnderLifecycleLock,
-  type InvestigationStatus,
 } from '../../adapters/planning/investigation/investigation-session.ts';
-import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
 import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
-import { type InvestigationManifestV3 } from '../../modules/investigation/manifest/investigation-manifest-types.ts';
-import { type ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
+import type { InvestigationManifestV3 } from '../../modules/investigation/manifest/investigation-manifest-types.ts';
+import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {
   inspectInvestigationManifestPublication,
   investigationManifestPublicationGitStateDigest,
@@ -58,10 +49,6 @@ import {
   assertInvestigationManifestPublicationFailure,
   investigationManifestPublicationFailureEmissionDigest,
   investigationManifestPublicationNamespace,
-  type InvestigationManifestPublicationFailure,
-  type InvestigationManifestPublicationLifecycleIdentity,
-  type InvestigationManifestPublicationPaths,
-  type InvestigationManifestPublicationSnapshot,
 } from '../../modules/investigation/manifest/investigation-publication-contracts.ts';
 import {
   AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
@@ -78,25 +65,18 @@ import {
   readFileAtCommit,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
-import {
-  readPinnedTrackedTree,
-  type TrackedTreeSnapshot,
-} from '../../runtime/repository-transaction/tracked-tree-reader.ts';
+import { readPinnedTrackedTree } from '../../runtime/repository-transaction/tracked-tree-reader.ts';
 import {
   assertChangeId,
   normalizePolicyPath,
 } from '../../foundation/repository-path/repository-path.ts';
-import {
-  withInvestigationTransitionAuthority,
-  type HeldChangeTransitionAuthority,
-} from '../../runtime/session-workspace/planning-lock.ts';
+import { withInvestigationTransitionAuthority } from '../../runtime/session-workspace/planning-lock.ts';
 import {
   consumeCollaborationGrant,
   consumeCollaborationGrantUnderLifecycleLock,
   readExactConsumedCollaborationGrantUse,
 } from '../../runtime/storage-journal/collaboration-grant-consumption.ts';
 import { reserveCollaborationGrantUnderLifecycleLock } from '../../runtime/storage-journal/collaboration-grant-reservation.ts';
-import { type CollaborationGrantUseProjection } from '../../modules/authority/collaboration-grant-records.ts';
 import {
   compareAndSwapEvidenceRef,
   computeInvestigationEvidenceRefsClosure,
@@ -116,13 +96,9 @@ import {
   readInvestigationSession,
 } from '../../runtime/storage-journal/investigation-session-records.ts';
 import { readHumanResolutionNode } from '../../runtime/storage-journal/human-resolution-nodes.ts';
-import {
-  type GroupDispositionsPayload,
-  type InvestigationCheckpointEnvelope,
-  type InvestigationScanSaturationAcceptanceEnvelope,
-  type InvestigationSession,
-  type StoredInvestigationCheckpoint,
-  type WhyAnswersPayload,
+import type {
+  InvestigationCheckpointEnvelope,
+  InvestigationScanSaturationAcceptanceEnvelope,
 } from '../../modules/investigation/domain/investigation-session-types.ts';
 import {
   clearInvestigationV3FailureObservation,
@@ -135,7 +111,6 @@ import {
   readCurrentProposeExemptionSession,
   readProposeExemptionSession,
   retireCurrentProposeExemptionSession,
-  type ProposeExemptionSession,
 } from '../../runtime/storage-journal/propose-exemption-store.ts';
 import {
   BLIND_SURVEY_OUTPUT_SCHEMA,
@@ -156,12 +131,8 @@ import {
   storeProviderExecutionPolicySnapshot,
   validateProviderExecutionPolicySnapshot,
 } from '../../runtime/storage-journal/provider-invocation-store.ts';
-import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
 import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
-import type { PlanReviewManifest } from '../../modules/assurance/provider-review-manifests.ts';
-import type { ProviderExecutionPolicySnapshotCurrent } from '../../modules/provider-orchestration/provider-execution-policy-snapshot.ts';
-import type { ProviderRetryDecisionBinding } from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
-import { type PlanReviewGrantRequirement } from './plan-review-contracts.ts';
+import type { PlanReviewGrantRequirement } from './plan-review-contracts.ts';
 import {
   completeInterruptedPlanReviewReplacement as completeInterruptedPlanReviewReplacementOperation,
   createPlanReviewRetryEnvelope as createPlanReviewRetryEnvelopeOperation,
@@ -169,7 +140,7 @@ import {
 import { readCurrentRoleContextSharingPlanReviewRequirement as readCurrentRoleContextSharingPlanReviewRequirementOperation } from './plan-review-store.ts';
 import { createProviderRetryEnvelope as createProviderRetryEnvelopeOperation } from './propose-provider-lifecycle.ts';
 import { publishTrackedInvestigationManifestV3 as publishTrackedInvestigationManifestV3Operation } from './propose-publication.ts';
-import { createScanSaturationAcceptanceEnvelope as createScanSaturationAcceptanceEnvelopeOperation } from './propose-request-validation.ts';
+import { createScanSaturationAcceptanceEnvelope as createScanSaturationAcceptanceEnvelopeOperation } from '../../modules/proposal/propose-input.ts';
 import {
   resumeProposeFromFile as resumeProposeFromFileOperation,
   resumePropose as resumeProposeOperation,
@@ -179,28 +150,28 @@ import {
   startPropose as startProposeOperation,
 } from './propose-start.ts';
 import { getProposeStatus as getProposeStatusOperation } from './propose-status.ts';
-import {
-  type ExemptionPlanningContributionEnvelope,
-  type ExemptionProposeOutput,
-  type InvestigationExemptionRequest,
-  type OrdinaryProposeOutput,
-  type PlanningContributionEnvelope,
-  type PlanReviewDispositionsEnvelope,
-  type PlanReviewProgressEnvelope,
-  type PlanReviewRetryEnvelope,
-  type ProposeOptions,
-  type ProposeOutput,
-  type ProposeResumeOptions,
-  type ProviderProgressEnvelope,
-  type ProviderRetryEnvelope,
-} from './propose-types.ts';
-
+import type {
+  ExemptionPlanningContributionEnvelope,
+  ExemptionProposeOutput,
+  InvestigationExemptionRequest,
+  OrdinaryProposeOutput,
+  PlanningContributionEnvelope,
+  PlanReviewDispositionsEnvelope,
+  PlanReviewProgressEnvelope,
+  PlanReviewRetryEnvelope,
+  ProposeOptions,
+  ProposeOutput,
+  ProposeResumeOptions,
+  ProviderProgressEnvelope,
+  ProviderRetryEnvelope,
+} from '../../modules/proposal/propose-types.ts';
 export {
   createPlanningContributionEnvelope,
   createPlanReviewDispositionsEnvelope,
   createPlanReviewProgressEnvelope,
   createProviderProgressEnvelope,
-} from './propose-input.ts';
+} from '../../modules/proposal/propose-input.ts';
+
 export type {
   ExemptionPlanningContributionEnvelope,
   ExemptionProposeOutput,
@@ -227,7 +198,7 @@ export type {
   ProviderProgressEnvelope,
   ProviderRetryEnvelope,
   RebuiltInvestigation,
-} from './propose-types.ts';
+} from '../../modules/proposal/propose-types.ts';
 
 function createProposeRuntime(decisions: ProposeDecisionServices) {
   return {
@@ -383,34 +354,6 @@ function createProposeRuntime(decisions: ProposeDecisionServices) {
 }
 
 export type ProposeRuntimeBindings = ReturnType<typeof createProposeRuntime>;
-export type ProposeRuntimeData = {
-  BehaviorContractRef: BehaviorContractRef;
-  ChangeContract: ChangeContract;
-  ExecutionArtifact: ExecutionArtifact;
-  GuardContract: GuardContract;
-  EvidenceNode: EvidenceNode;
-  InvestigationStatus: InvestigationStatus;
-  MaintainerSignerProvider: MaintainerSignerProvider;
-  InvestigationManifestPublicationFailure: InvestigationManifestPublicationFailure;
-  InvestigationManifestPublicationLifecycleIdentity: InvestigationManifestPublicationLifecycleIdentity;
-  InvestigationManifestPublicationPaths: InvestigationManifestPublicationPaths;
-  InvestigationManifestPublicationSnapshot: InvestigationManifestPublicationSnapshot;
-  TrackedTreeSnapshot: TrackedTreeSnapshot;
-  HeldChangeTransitionAuthority: HeldChangeTransitionAuthority;
-  CollaborationGrantUseProjection: CollaborationGrantUseProjection;
-  GroupDispositionsPayload: GroupDispositionsPayload;
-  InvestigationCheckpointEnvelope: InvestigationCheckpointEnvelope;
-  InvestigationScanSaturationAcceptanceEnvelope: InvestigationScanSaturationAcceptanceEnvelope;
-  InvestigationSession: InvestigationSession;
-  StoredInvestigationCheckpoint: StoredInvestigationCheckpoint;
-  WhyAnswersPayload: WhyAnswersPayload;
-  ProposeExemptionSession: ProposeExemptionSession;
-  BlindSurveyManifest: BlindSurveyManifest;
-  NormalizedChangeIntent: NormalizedChangeIntent;
-  PlanReviewManifest: PlanReviewManifest;
-  ProviderExecutionPolicySnapshotCurrent: ProviderExecutionPolicySnapshotCurrent;
-  ProviderRetryDecisionBinding: ProviderRetryDecisionBinding;
-};
 
 export function createProposeOperations(decisions: ProposeDecisionServices) {
   const proposeRuntime = createProposeRuntime(decisions);
@@ -505,10 +448,7 @@ export function createProposeOperations(decisions: ProposeDecisionServices) {
   function createScanSaturationAcceptanceEnvelope(
     output: ProposeOutput,
   ): InvestigationScanSaturationAcceptanceEnvelope {
-    return createScanSaturationAcceptanceEnvelopeOperation(
-      proposeRuntime,
-      output,
-    );
+    return createScanSaturationAcceptanceEnvelopeOperation(output);
   }
 
   function createProviderRetryEnvelope(

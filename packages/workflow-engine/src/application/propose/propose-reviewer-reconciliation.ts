@@ -6,13 +6,12 @@
  * - Before receipt CAS, each managed artifact contains authenticated old or exact next bytes.
  * - Receipt CAS is the commit point; later failures never roll the live artifacts back.
  */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { readPlanReviewTargetSnapshotNode } from '../../modules/assurance/plan-review.ts';
-import { type InvestigationFirstPlanningSubject } from '../../modules/assurance/planning-assurance-validator.ts';
+import type { InvestigationFirstPlanningSubject } from '../../modules/assurance/planning-assurance-validator.ts';
 import { projectInvestigationManifestLedger } from '../../modules/investigation/domain/investigation-design-ledger.ts';
 import { PROPOSE_POLICY_DIGEST } from '../../modules/provider-orchestration/provider-contracts.ts';
 import { preparePlanReviewInvocation } from './plan-review-preparation.ts';
@@ -30,13 +29,13 @@ import {
   isRecord,
   planningMaterializationStale,
   sha256,
-} from './propose-common.ts';
+} from '../../modules/proposal/propose-values.ts';
 import { withProposeTransitionAuthority } from './propose-context.ts';
 import {
   createInvestigationManifestAuthorityNode,
   readInvestigationManifestAuthorityNode,
 } from './propose-evidence.ts';
-import { assertGuardContribution } from './propose-input.ts';
+import { assertGuardContribution } from '../../modules/proposal/propose-input.ts';
 import { rebuildInvestigation } from './propose-investigation-rebuild.ts';
 import {
   currentPlanningSchemaName,
@@ -49,18 +48,15 @@ import {
   preparePlanningScaffold,
   publishTrackedInvestigationManifestV3,
 } from './propose-publication.ts';
-import type {
-  ChangeContract,
-  InvestigationStatus,
-  ProposeRuntime,
-} from './propose-runtime.ts';
+import type { ChangeContract } from '../../modules/planning-provider/change-contract.ts';
+import type { InvestigationStatus } from '../../modules/lifecycle/investigation-status.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
 import { getProposeStatus } from './propose-status.ts';
-import {
-  type ProposeOutput,
-  type ProposeResumeOptions,
-  type ReviewerReconciliationMaterializationReceipt,
-} from './propose-types.ts';
-
+import type {
+  ProposeOutput,
+  ProposeResumeOptions,
+  ReviewerReconciliationMaterializationReceipt,
+} from '../../modules/proposal/propose-types.ts';
 export function reconcileReviewerTermPlanningRevision(
   services: ProposeRuntime,
   cwd: string,

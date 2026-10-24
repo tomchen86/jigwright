@@ -1,32 +1,23 @@
 import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
-/**
- * Admits blind-survey role evidence with its exact provider assignment and durable grant use.
- *
- * Invariants:
- * - Admission binds author, reviewer, provider output, and content to the same assignment.
- * - Read-only replay verifies an already-consumed grant without mutating its state.
- * - Mutating admission consumes the exact grant before publishing an admitted role result.
- */
-
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type {
   ProviderInvocationRequest,
   ProviderProcessResult,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
-import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
-import { type RecordedRoleParticipant } from '../../modules/provider-orchestration/role-assignment.ts';
+import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+import type { RecordedRoleParticipant } from '../../modules/provider-orchestration/role-assignment.ts';
 import {
   loadMaintainerPolicyAtCommit,
   resolveAuthoritativeCollaborationGrantVerifier,
 } from './propose-context.ts';
 import type { readProposeAuthorization } from './propose-request-validation.ts';
 import type { CollaborationGrantUseProjection } from '../../modules/authority/collaboration-grant-records.ts';
-import type { EvidenceNode, ProposeRuntime } from './propose-runtime.ts';
+import type { EvidenceNode } from '@jigwright/core/evidence-node';
+import type { ProposeRuntime } from './propose-runtime.ts';
 import type {
   CollaborationGrantAccessMode,
   ProposeResumeOptions,
-} from './propose-types.ts';
-
+} from '../../modules/proposal/propose-types.ts';
 export function createBlindSurveyRoleResult(
   services: Pick<
     ProposeRuntime,

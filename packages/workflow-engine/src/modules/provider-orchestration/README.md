@@ -12,11 +12,11 @@ Keep installed provider profiles on the host so repositories select roles withou
 
 Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessment and planned action, then submit the template with `jigwright job retry-request <job-id> --input retry.json --json`. The timeout may stay unchanged. See [retry behavior and single-use budget exceptions](../../../../../docs/features/PROVIDER_RETRY.md).
 
-<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:9541bf85f55627de605abeac5a58913a8cf4a371aff3eb5ddcbfc05227aa1aaf -->
+<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:1072fd31f7b85d4522c30c3f606f8f93e523e00d6b7b05bf88c50efee899f558 -->
 
 <!-- prettier-ignore-start -->
 
-52 files changed in this module since confirmation.
+53 files changed in this module since confirmation.
 
 ## Commands
 
@@ -94,6 +94,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [provider-dispatch.ts](provider-dispatch.ts) | Contracts for observing dispatch admission and launching one exact worker. | 0 | History unavailable |
 | [provider-execution-budget-authority.ts](provider-execution-budget-authority.ts) | Binds a provider timeout exception to its exact request and canonical receipt. | 2 | History unavailable |
 | [provider-execution-policy-snapshot.ts](provider-execution-policy-snapshot.ts) | Canonical provider execution policy snapshot DTOs; field and wire semantics are unchanged. | 0 | History unavailable |
+| [provider-invocation-activity.ts](provider-invocation-activity.ts) | Provider progress projection; publication and observation remain in storage. | 0 | History unavailable |
 | [provider-invocation-failure.ts](provider-invocation-failure.ts) | Classifies caught provider errors into durable failure and retry evidence. | 0 | History unavailable |
 | [provider-invocation-lifecycle.ts](provider-invocation-lifecycle.ts) | Canonical provider invocation lifecycle DTOs; field and wire semantics are unchanged. | 0 | History unavailable |
 | [provider-invocation-record.ts](provider-invocation-record.ts) | Defines invocation identity, lease, and failure facts consumed by execution policy. | 1 | History unavailable |

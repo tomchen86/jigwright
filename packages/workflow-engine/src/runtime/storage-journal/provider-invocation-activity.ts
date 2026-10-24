@@ -16,7 +16,7 @@ import type {
   ProviderInvocationActivityHeartbeat,
 } from '../../modules/provider-orchestration/agent-runtime-port.ts';
 import { assertAgentRuntimeProcessProgress } from '../../modules/provider-orchestration/provider-runtime-evidence.ts';
-import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { providerInvocationDirectory } from './provider-invocation-common.ts';
 import {
   privatePathExists,
@@ -28,7 +28,7 @@ import {
   isRecord,
   isTimestamp,
 } from '../../modules/investigation/domain/investigation-store-values.ts';
-
+import type { ProviderInvocationActivity } from '../../modules/provider-orchestration/provider-invocation-activity.ts';
 /** Long enough to stay cheap over a half-hour run, short enough to answer
  * "is it still running?" without waiting. */
 export const PROVIDER_ACTIVITY_HEARTBEAT_MS = 5_000;
@@ -41,19 +41,6 @@ export type ProviderInvocationActivityPublication = Readonly<{
   workerId: string;
   progress: AgentRuntimeProcessProgressProjection;
   observedAt: string;
-}>;
-
-/**
- * What the current lease has been observed doing. `not-observed` is the honest
- * answer when nothing published: it means unknown, never "never started".
- */
-export type ProviderInvocationActivity = Readonly<{
-  state: 'not-observed' | AgentRuntimeProcessProgressProjection['processState'];
-  observedAt: string | null;
-  staleMs: number | null;
-  eventCount: number;
-  stdoutBytes: number;
-  stderrBytes: number;
 }>;
 
 const NOT_OBSERVED: ProviderInvocationActivity = Object.freeze({

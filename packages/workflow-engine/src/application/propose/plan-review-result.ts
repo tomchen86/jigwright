@@ -1,13 +1,4 @@
 import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
-/**
- * Admits provider review results and incorporates their investigation consequences.
- *
- * Invariants:
- * - Engine-derived review fields and role admission bind the exact reserved subject.
- * - Granted admission preserves the exact consumed collaboration or context-sharing use.
- * - Reviewer terms preserve reopening evidence and invalidate unsupported exemptions.
- */
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -21,20 +12,18 @@ import {
   resolvePlanReviewRepositoryEvidence,
 } from '../../modules/assurance/planning-assurance-validator.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import { type RoleContextSharingGrantLifecyclePortV1 } from '../../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
-import { type InvestigationTermContribution } from '../../modules/investigation/domain/investigation-terms.ts';
+import type { RoleContextSharingGrantLifecyclePortV1 } from '../../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
+import type { InvestigationTermContribution } from '../../modules/investigation/domain/investigation-terms.ts';
 import {
   deriveReviewerTermDelta,
   projectPlanReviewTerms,
 } from '../../modules/assurance/plan-review-terms.ts';
-import {
-  isRoleContextSharingGrantedAssignment,
-  type ProviderProcessResult,
-} from '../../modules/provider-orchestration/provider-contracts.ts';
-import { type AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
-import {
-  type ProviderRoleAssignment,
-  type RecordedRoleParticipant,
+import { isRoleContextSharingGrantedAssignment } from '../../modules/provider-orchestration/provider-contracts.ts';
+import type { ProviderProcessResult } from '../../modules/provider-orchestration/provider-contracts.ts';
+import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+import type {
+  ProviderRoleAssignment,
+  RecordedRoleParticipant,
 } from '../../modules/provider-orchestration/role-assignment.ts';
 import {
   readPlanReviewGrantRequirement,
@@ -50,24 +39,21 @@ import {
 import { createReviewerTermSourceNode } from './propose-evidence.ts';
 import { rebuildInvestigation } from './propose-investigation-rebuild.ts';
 import type { CollaborationGrantUseProjection } from '../../modules/authority/collaboration-grant-records.ts';
+import type { EvidenceNode } from '@jigwright/core/evidence-node';
+import type { HeldChangeTransitionAuthority } from '../../runtime/session-workspace/planning-lock.ts';
+import type { InvestigationStatus } from '../../modules/lifecycle/investigation-status.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
 import type {
-  EvidenceNode,
-  HeldChangeTransitionAuthority,
-  InvestigationStatus,
-  ProposeRuntime,
-} from './propose-runtime.ts';
-import {
-  type PlanReviewReservation,
-  type ProposeLifecycleStatus,
-  type ProposeResumeOptions,
-  type RebuiltInvestigation,
-} from './propose-types.ts';
-import {
-  consumeRoleContextSharingPlanReview,
-  type RoleContextSharingPlanReviewAuthorizationV1,
-  type RoleContextSharingPlanReviewRequirementV3,
-} from './role-context-sharing-plan-review.ts';
-
+  PlanReviewReservation,
+  ProposeLifecycleStatus,
+  ProposeResumeOptions,
+  RebuiltInvestigation,
+} from '../../modules/proposal/propose-types.ts';
+import { consumeRoleContextSharingPlanReview } from './role-context-sharing-plan-review.ts';
+import type {
+  RoleContextSharingPlanReviewAuthorizationV1,
+  RoleContextSharingPlanReviewRequirementV3,
+} from '../../modules/proposal/role-context-sharing-plan-review.ts';
 /**
  * Exact production completion seam for an R-007 PlanReview. The orchestrator
  * calls this only after the fixed provider invocation has succeeded; keeping

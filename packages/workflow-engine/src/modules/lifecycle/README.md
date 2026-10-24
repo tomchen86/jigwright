@@ -8,11 +8,11 @@ Keep repository routing in one controlled source and derive the visible inventor
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:7c34a83d565349020f0ce9294ee4b0b7ba96a88ce10ddcc4b058d78f20262473 -->
+<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:1c47ed5c7845b764bf8a184c60c781cfe08694e5e573740de95522baa40f2034 -->
 
 <!-- prettier-ignore-start -->
 
-29 files changed in this module since confirmation.
+32 files changed in this module since confirmation.
 
 ## Commands
 
@@ -77,6 +77,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [finalization.ts](finalization.ts) | Pure finalization, commit and recovery contracts and admission rules. | 0 | History unavailable |
 | [finalize-cancellation.ts](finalize-cancellation.ts) | Canonical finalize cancellation records, digests and phase preparation. | 0 | History unavailable |
 | [finalize-transaction.ts](finalize-transaction.ts) | Canonical finalize transaction records, digests and phase admission. | 0 | History unavailable |
+| [investigation-status.ts](investigation-status.ts) | Canonical investigation lifecycle status, including provider progress observations. | 0 | History unavailable |
 | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) | Defines shared task strategy, review and authority-plan state names. | 1 | Header changed since confirmation |
 | [mechanical-transformation-evidence.ts](mechanical-transformation-evidence.ts) | Pure mechanical transformation closure, projection and immutable evidence validation. | 0 | History unavailable |
 | [open-task-status.ts](open-task-status.ts) | Durable open-task phase and status values shared by activation and status queries. | 0 | History unavailable |
@@ -84,8 +85,10 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [planning-execution-epoch-observations.ts](planning-execution-epoch-observations.ts) | Required repository observations, invoked at each epoch admission phase. | 0 | History unavailable |
 | [planning-execution-epoch.ts](planning-execution-epoch.ts) | Exact epoch manifests, evidence, and recovery predicates. | 0 | History unavailable |
 | [planning-transition-report.ts](planning-transition-report.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [planning-transition-result.ts](planning-transition-result.ts) | Result data for an exact planning transition; transaction execution has a separate owner. | 0 | History unavailable |
 | [predecessor-reconciliation.ts](predecessor-reconciliation.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [projected-finalization.ts](projected-finalization.ts) | Pure projected-finalization admission, reports, session projection and results. | 0 | History unavailable |
+| [propose-exemption-session.ts](propose-exemption-session.ts) | Canonical durable proposal exemption identity and lifecycle data. | 0 | History unavailable |
 | [repository-hooks.ts](repository-hooks.ts) | Repository hook admission rules over required current observations and checks. | 0 | History unavailable |
 | [repository-specification-policy.ts](repository-specification-policy.ts) | Combines canonical spec ownership with repository-specific lifecycle paths. | 1 | History unavailable |
 | [session-check.ts](session-check.ts) | Data returned by session checks and their caller-supplied execution options. | 0 | History unavailable |

@@ -6,7 +6,6 @@
  * - Only the current reviewer-term schema enters reconstruction.
  * - Replay validates exact consumed role authority without consuming another grant.
  */
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -18,25 +17,23 @@ import { replayCurrentPlanReviewRoleResult } from '../../modules/assurance/plann
 import { normalizeInvestigationTerm } from '../../modules/investigation/domain/investigation-terms.ts';
 import { assertStoredReviewerTermDelta } from '../../modules/assurance/plan-review-terms.ts';
 import { PROPOSE_POLICY_DIGEST } from '../../modules/provider-orchestration/provider-contracts.ts';
-import {
-  type AdmittedRoleResult,
-  type ConsumedRoleReplayPort,
+import type {
+  AdmittedRoleResult,
+  ConsumedRoleReplayPort,
 } from '../../modules/provider-orchestration/role-admission-contracts.ts';
-
 import {
   hasExactKeys,
   isBaseline,
   isRecord,
   sha256,
-} from './propose-common.ts';
+} from '../../modules/proposal/propose-values.ts';
+import type { EvidenceNode } from '@jigwright/core/evidence-node';
 import type {
-  EvidenceNode,
   InvestigationSession,
-  ProposeRuntime,
   StoredInvestigationCheckpoint,
-} from './propose-runtime.ts';
-import { type ReviewerTermSourceRecord } from './propose-types.ts';
-
+} from '../../modules/investigation/domain/investigation-session-types.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
+import type { ReviewerTermSourceRecord } from '../../modules/proposal/propose-types.ts';
 export function readReviewerTermSource(
   services: Pick<
     ProposeRuntime,

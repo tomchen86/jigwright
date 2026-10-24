@@ -37,14 +37,13 @@ import {
   captureGovernanceSource,
 } from './governance-sources-production.ts';
 import { planningDraftWorkspace } from './planning-workspace-production.ts';
-/** Binds proposal workflows to required current planning and retry observations. */
 import { createProposeOperations } from '../application/propose/propose-orchestrator.ts';
 import {
   productionPlanningAssurance,
   planningAssuranceDependencies,
 } from './planning-assurance-production.ts';
 import { readProviderRetryAccountingEvidence } from '../runtime/storage-journal/provider-retry-accounting-reader.ts';
-
+import { completeRoleContextSharingPlanReviewAdmission as completeAdmission } from '../application/propose/plan-review-result.ts';
 export const productionProposeOperations = createProposeOperations({
   createInteractiveSshSigner,
   withTaskRevisionPlanningOperation,
@@ -83,6 +82,7 @@ export const productionProposeOperations = createProposeOperations({
   planningEvidence: planningAssuranceDependencies,
   readProviderRetryAccountingEvidence,
 });
+
 export const {
   startPropose,
   resumePropose,
@@ -96,9 +96,10 @@ export const {
   publishTrackedInvestigationManifestV3,
   readCurrentRoleContextSharingPlanReviewRequirement,
 } = productionProposeOperations;
-export * from '../application/propose/propose-input.ts';
-export type * from '../application/propose/propose-types.ts';
 
-import { completeRoleContextSharingPlanReviewAdmission as completeAdmission } from '../application/propose/plan-review-result.ts';
+export * from '../modules/proposal/propose-input.ts';
+
+export type * from '../modules/proposal/propose-types.ts';
+
 export const completeRoleContextSharingPlanReviewAdmission =
   completeAdmission.bind(undefined, roleResultAdmission);

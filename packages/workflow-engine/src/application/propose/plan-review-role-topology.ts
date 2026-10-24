@@ -6,33 +6,34 @@
  * - Ordinary assignments meet the resolved independence floor before invocation.
  * - Lowered placements require explicit eligibility for their exact role pairs.
  */
-import type { ProposeLifecycleStatus } from './propose-types.ts';
+import type { ProposeLifecycleStatus } from '../../modules/proposal/propose-types.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  scheduleOrdinaryRole,
-  type RoleAssignment,
-  type RoleCandidate,
-  type RoleParticipant,
+import { scheduleOrdinaryRole } from '../../modules/provider-orchestration/role-assignment.ts';
+import type {
+  RoleAssignment,
+  RoleCandidate,
+  RoleParticipant,
+  ProviderRoleAssignment,
+  RecordedRoleParticipant,
 } from '../../modules/provider-orchestration/role-assignment.ts';
 import {
   CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1,
   resolveRoleTopologyV1,
-  type RoleTopologyResolutionDependencyPortV1,
-  type RoleTopologyResolutionSnapshotV1,
-  type RoleTopologyResolutionV1,
 } from '../../modules/provider-orchestration/role-topology-resolution.ts';
-import {
-  createRoleContextSharingPlanReviewRequirementV3,
-  type RoleContextSharingPlanReviewRequirementV3,
-} from './role-context-sharing-plan-review.ts';
+import type {
+  RoleTopologyResolutionDependencyPortV1,
+  RoleTopologyResolutionSnapshotV1,
+  RoleTopologyResolutionV1,
+} from '../../modules/provider-orchestration/role-topology-resolution.ts';
+import { createRoleContextSharingPlanReviewRequirementV3 } from '../../modules/proposal/role-context-sharing-plan-review.ts';
+import type { RoleContextSharingPlanReviewRequirementV3 } from '../../modules/proposal/role-context-sharing-plan-review.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { assertPlanReviewSubject } from '../../modules/assurance/plan-review.ts';
-import { DIGEST, hasExactKeys, isRecord } from './propose-common.ts';
-import type {
-  ProviderRoleAssignment,
-  RecordedRoleParticipant,
-} from '../../modules/provider-orchestration/role-assignment.ts';
-
+import {
+  DIGEST,
+  hasExactKeys,
+  isRecord,
+} from '../../modules/proposal/propose-values.ts';
 export type ResolvePlanReviewRoleTopologyInput = Readonly<{
   repositoryRoot: string;
   changeId: string;

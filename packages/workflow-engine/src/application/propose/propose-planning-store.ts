@@ -6,15 +6,14 @@
  * - Receipt advancement preserves expected current evidence and revision ownership.
  * - Live artifacts and their OpenSpec graph match the receipt before they are reported.
  */
-
 import { extractFileHeader } from '../../modules/source/file-header.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  type WorkflowPlanDigest,
-  type WorkflowPlanDigestTouchedFile,
+import type {
+  WorkflowPlanDigest,
+  WorkflowPlanDigestTouchedFile,
 } from '../../modules/guidance/renderers/plan-digest.ts';
 import { PROPOSE_POLICY_DIGEST } from '../../modules/provider-orchestration/provider-contracts.ts';
 import { loadRepositoryConsumerConfiguration } from '../../runtime/workflow-configuration/repository-consumer.ts';
@@ -31,7 +30,7 @@ import {
   PLANNING_MATERIALIZATION_REF,
   planningMaterializationStale,
   sha256,
-} from './propose-common.ts';
+} from '../../modules/proposal/propose-values.ts';
 import { assertCurrentGovernanceSources } from './propose-context.ts';
 import {
   createExemptionPlanningMaterializationNode,
@@ -43,15 +42,12 @@ import {
   buildProposeInvestigationManifestV3,
   investigationV3BuildFailure,
 } from './propose-investigation-manifest.ts';
-import type {
-  BehaviorContractRef,
-  EvidenceNode,
-  InvestigationStatus,
-  ProposeExemptionSession,
-  ProposeRuntime,
-} from './propose-runtime.ts';
-import { type RebuiltInvestigation } from './propose-types.ts';
-
+import type { BehaviorContractRef } from '../../modules/planning-provider/planning-artifact-types.ts';
+import type { EvidenceNode } from '@jigwright/core/evidence-node';
+import type { InvestigationStatus } from '../../modules/lifecycle/investigation-status.ts';
+import type { ProposeExemptionSession } from '../../modules/lifecycle/propose-exemption-session.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
+import type { RebuiltInvestigation } from '../../modules/proposal/propose-types.ts';
 export function projectOrdinaryPlanDigest(
   services: Pick<ProposeRuntime, 'workspace'>,
   cwd: string,

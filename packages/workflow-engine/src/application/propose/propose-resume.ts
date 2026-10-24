@@ -1,13 +1,4 @@
 import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
-/**
- * Routes typed propose submissions through the current investigation transition.
- *
- * Invariants:
- * - Submissions retain their exact change, revision, baseline, and input bindings.
- * - Published provider progress replays without applying the transition twice.
- * - Scan acceptance names the exact saturated terms of the current pinned scan.
- */
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   ExitCode,
@@ -29,7 +20,8 @@ import {
 import {
   assertPlanningBinding,
   assertProgressBinding,
-} from './propose-input.ts';
+  assertProposeInput,
+} from '../../modules/proposal/propose-input.ts';
 import {
   buildWhyAuthoringFromCheckpoint,
   expandSubmittedDispositions,
@@ -42,35 +34,33 @@ import {
   dispatchPreparedPlanReview,
   resumeProviderRetry,
 } from './propose-provider-lifecycle.ts';
-import { assertProposeInput } from './propose-request-validation.ts';
 import { reconcileReviewerTermPlanningRevision } from './propose-reviewer-reconciliation.ts';
 import type {
   InvestigationCheckpointEnvelope,
   InvestigationScanSaturationAcceptanceEnvelope,
   InvestigationSession,
-  InvestigationStatus,
-  ProposeRuntime,
-} from './propose-runtime.ts';
+} from '../../modules/investigation/domain/investigation-session-types.ts';
+import type { InvestigationStatus } from '../../modules/lifecycle/investigation-status.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
 import { resumeExemptionPlanningContribution } from './propose-start.ts';
 import {
   getProposeStatus,
   renderProposeOutput,
   renderProposeOutputWithPlanningAuthority,
 } from './propose-status.ts';
-import {
-  type ExemptionPlanningContributionEnvelope,
-  type ExemptionProposeOutput,
-  type OrdinaryProposeOutput,
-  type PlanningContributionEnvelope,
-  type PlanReviewDispositionsEnvelope,
-  type PlanReviewProgressEnvelope,
-  type PlanReviewRetryEnvelope,
-  type ProposeOutput,
-  type ProposeResumeOptions,
-  type ProviderProgressEnvelope,
-  type ProviderRetryEnvelope,
-} from './propose-types.ts';
-
+import type {
+  ExemptionPlanningContributionEnvelope,
+  ExemptionProposeOutput,
+  OrdinaryProposeOutput,
+  PlanningContributionEnvelope,
+  PlanReviewDispositionsEnvelope,
+  PlanReviewProgressEnvelope,
+  PlanReviewRetryEnvelope,
+  ProposeOutput,
+  ProposeResumeOptions,
+  ProviderProgressEnvelope,
+  ProviderRetryEnvelope,
+} from '../../modules/proposal/propose-types.ts';
 export function resumePropose(
   planningExecution: PlanningTransitionExecutionServices,
   services: ProposeRuntime,
@@ -124,7 +114,7 @@ export function resumePropose(
   options: ProposeResumeOptions = {},
 ): ProposeOutput {
   const changeId = services.workspace.assertChangeId(requestedChangeId);
-  const input = assertProposeInput(services, inputValue);
+  const input = assertProposeInput(inputValue);
   if (input.changeId !== changeId) {
     throw workflowError(
       'PROPOSE_INPUT_STALE',

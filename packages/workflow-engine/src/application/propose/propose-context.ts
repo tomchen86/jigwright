@@ -6,41 +6,32 @@
  * - Captured Source wording and change-origin references preserve exact identity.
  * - A revising task and its held planning authority remain attached to the change.
  */
-
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  type CollaborationGrantExpectedBinding,
-  type CollaborationGrantRequest,
-  COLLABORATION_GRANT_POLICY_DIGEST,
-} from '../../modules/authority/collaboration-grant-codec.ts';
-import {
-  type AuthoritativeCollaborationGrantVerifier,
-  assertAuthoritativeCollaborationGrantVerifier,
-} from '../../modules/authority/grant-verifier-port.ts';
-import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import {
-  type AuthoritativeRoleContextSharingGrantVerifier,
-  assertAuthoritativeRoleContextSharingGrantVerifier,
-} from '../../modules/authority/role-context-sharing-grant-verifier-port.ts';
-import type { GovernanceSourceV1 } from '@jigwright/core/governance-source';
-
-import { listSessions } from '../../runtime/repository-observation/workflow-session-context.ts';
 import type {
-  HeldChangeTransitionAuthority,
-  InvestigationCheckpointEnvelope,
-  InvestigationStatus,
-  ProposeExemptionSession,
-  ProposeRuntime,
-} from './propose-runtime.ts';
+  CollaborationGrantExpectedBinding,
+  CollaborationGrantRequest,
+} from '../../modules/authority/collaboration-grant-codec.ts';
+import { COLLABORATION_GRANT_POLICY_DIGEST } from '../../modules/authority/collaboration-grant-codec.ts';
+import type { AuthoritativeCollaborationGrantVerifier } from '../../modules/authority/grant-verifier-port.ts';
+import { assertAuthoritativeCollaborationGrantVerifier } from '../../modules/authority/grant-verifier-port.ts';
+import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
+import type { AuthoritativeRoleContextSharingGrantVerifier } from '../../modules/authority/role-context-sharing-grant-verifier-port.ts';
+import { assertAuthoritativeRoleContextSharingGrantVerifier } from '../../modules/authority/role-context-sharing-grant-verifier-port.ts';
+import type { GovernanceSourceV1 } from '@jigwright/core/governance-source';
+import { listSessions } from '../../runtime/repository-observation/workflow-session-context.ts';
+import type { HeldChangeTransitionAuthority } from '../../runtime/session-workspace/planning-lock.ts';
+import type { InvestigationCheckpointEnvelope } from '../../modules/investigation/domain/investigation-session-types.ts';
+import type { InvestigationStatus } from '../../modules/lifecycle/investigation-status.ts';
+import type { ProposeExemptionSession } from '../../modules/lifecycle/propose-exemption-session.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
 import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
-import {
-  type ProposeLifecycleStatus,
-  type ProposeOptions,
-} from './propose-types.ts';
-
+import type {
+  ProposeLifecycleStatus,
+  ProposeOptions,
+} from '../../modules/proposal/propose-types.ts';
 export function deriveCollaborationGrantBinding(
   services: Pick<ProposeRuntime, 'workspace'>,
   repositoryRoot: string,

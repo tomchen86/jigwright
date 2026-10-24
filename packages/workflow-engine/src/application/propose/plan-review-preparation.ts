@@ -1,14 +1,4 @@
-import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
-/**
- * Reserves a reviewer and immutable plan snapshot before preparing provider work.
- *
- * Invariants:
- * - The assignment, topology, grant, and mandate bind the same exact planning subject.
- * - Snapshot bytes match the current materialization before an invocation is created.
- * - Existing reservations and interrupted invocations retain request and policy identity.
- */
-
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -20,22 +10,27 @@ import {
   readPlanReviewTargetSnapshotNode,
 } from '../../modules/assurance/plan-review.ts';
 import type { PlanReviewTargetSnapshot } from '../../modules/assurance/plan-review-target-snapshot-record.ts';
-import { type InvestigationFirstPlanningSubject } from '../../modules/assurance/planning-assurance-validator.ts';
-import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
+import type { InvestigationFirstPlanningSubject } from '../../modules/assurance/planning-assurance-validator.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import { createProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
-import {
-  type GrantedSameProviderRoleAssignment,
-  type ProviderRoleAssignment,
-  type RecordedRoleParticipant,
-  type RoleParticipant,
-  scheduleOrdinaryRole,
+import type {
+  GrantedSameProviderRoleAssignment,
+  ProviderRoleAssignment,
+  RecordedRoleParticipant,
+  RoleParticipant,
 } from '../../modules/provider-orchestration/role-assignment.ts';
-import {
-  type RoleTopologyResolutionDependencyPortV1,
-  type RoleTopologyResolutionV1,
+import { scheduleOrdinaryRole } from '../../modules/provider-orchestration/role-assignment.ts';
+import type {
+  RoleTopologyResolutionDependencyPortV1,
+  RoleTopologyResolutionV1,
 } from '../../modules/provider-orchestration/role-topology-resolution.ts';
+import type {
+  ProposeGrantAuthorization,
+  PlanReviewReservation,
+  ProposeLifecycleStatus,
+  ProposeResumeOptions,
+} from '../../modules/proposal/propose-types.ts';
 import {
-  type ProposeGrantAuthorization,
   createCollaborationPlanReviewRequirementV3,
   planReviewGrantRequest,
 } from './plan-review-contracts.ts';
@@ -54,12 +49,12 @@ import {
 import {
   PLANNING_MATERIALIZATION_REF,
   PLAN_REVIEW_REQUEST_REF,
-  createRuntimeId,
   isDigestRecord,
   isRecord,
   planReviewRequestStale,
   sha256,
-} from './propose-common.ts';
+} from '../../modules/proposal/propose-values.ts';
+import { createRuntimeId } from './propose-common.ts';
 import {
   deriveCollaborationGrantBinding,
   loadMaintainerPolicyAtCommit,
@@ -73,13 +68,7 @@ import {
 import { readProposeAuthorization } from './propose-request-validation.ts';
 import type { ProposeRuntime } from './propose-runtime.ts';
 import type { PlanReviewManifest } from '../../modules/assurance/provider-review-manifests.ts';
-import {
-  type PlanReviewReservation,
-  type ProposeLifecycleStatus,
-  type ProposeResumeOptions,
-} from './propose-types.ts';
 import { reserveRoleContextSharingPlanReview } from './role-context-sharing-plan-review.ts';
-
 export function durablePlanReviewMandateBinding(
   services: Pick<ProposeRuntime, 'taskMandate' | 'investigation'>,
   context: ReturnType<

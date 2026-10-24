@@ -1,11 +1,5 @@
-/**
- * Builds propose input templates and validates caller envelopes and authored payloads.
- *
- * Invariants:
- * - Envelope bindings and exact keys remain unchanged across construction and validation.
- * - Authored Markdown, specification paths, and guard policies keep their existing checks.
- */
-import { parseProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
+/** Pure proposal envelopes and exact binding validation. */
+import { parseProviderRetryExplanation } from '../provider-orchestration/provider-retry-explanation.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -15,7 +9,7 @@ import {
 import type {
   readPlanReviewNode,
   PlanReviewDispositionSubmission,
-} from '../../modules/assurance/plan-review.ts';
+} from '../assurance/plan-review.ts';
 import type {
   ExemptionPlanningContributionEnvelope,
   ExemptionProposeOutput,
@@ -31,6 +25,9 @@ import type {
   ProposeWork,
   ProviderProgressEnvelope,
   ProviderRetryEnvelope,
+  ProposeInput,
+  ProposeLifecycleStatus,
+  PlanReviewReservation as CanonicalPlanReviewReservation,
 } from './propose-types.ts';
 import {
   DIGEST,
@@ -42,31 +39,38 @@ import {
   isStringArray,
   planningContributionInvalid,
   proposeInputInvalid,
-} from './propose-common.ts';
-
-type InvestigationStatus = NonNullable<OrdinaryProposeOutput['investigation']>;
-type ProposeExemptionSession = NonNullable<
-  ExemptionProposeOutput['investigation']
->;
-type ProposeLifecycleStatus = NonNullable<ProposeOutput['investigation']>;
-type GuardContract = PlanningContributionPayload['guard'];
+} from './propose-values.ts';
+import type { InvestigationScanSaturationAcceptanceEnvelope } from '../investigation/domain/investigation-session-types.ts';
+import type { InvestigationStatus } from '../lifecycle/investigation-status.ts';
+import type { ProposeExemptionSession } from '../lifecycle/propose-exemption-session.ts';
+import type { GuardContract } from '../planning-provider/planning-artifact-types.ts';
+import {
+  assertInvestigationCheckpointEnvelope,
+  assertInvestigationScanSaturationAcceptanceEnvelope,
+} from '../investigation/domain/investigation-checkpoint-contract.ts';
 type PlanReviewReservation = {
-  subject: { subjectDigest: string };
-  request: { invocationId: string; requestDigest: string };
+  subject: Pick<CanonicalPlanReviewReservation['subject'], 'subjectDigest'>;
+  request: Pick<
+    CanonicalPlanReviewReservation['request'],
+    'invocationId' | 'requestDigest'
+  >;
 };
 
 export function createPlanningContributionEnvelope(
   output: OrdinaryProposeOutput,
   payload: PlanningContributionPayload,
 ): PlanningContributionEnvelope;
+
 export function createPlanningContributionEnvelope(
   output: ExemptionProposeOutput,
   payload: PlanningContributionPayload,
 ): ExemptionPlanningContributionEnvelope;
+
 export function createPlanningContributionEnvelope(
   output: ProposeOutput,
   payload: PlanningContributionPayload,
 ): PlanningContributionEnvelope | ExemptionPlanningContributionEnvelope;
+
 export function createPlanningContributionEnvelope(
   output: ProposeOutput,
   payload: PlanningContributionPayload,
@@ -938,4 +942,60 @@ function assertRetryOptions(value: Record<string, unknown>): void {
     throw proposeInputInvalid();
   if ('retryExplanation' in value)
     parseProviderRetryExplanation(value.retryExplanation);
+}
+
+export function assertProposeInput(value: unknown): ProposeInput {
+  if (!isRecord(value) || typeof value.kind !== 'string') {
+    throw proposeInputInvalid();
+  }
+  if (value.kind === 'planning-contribution') {
+    return assertPlanningContributionEnvelope(value);
+  }
+  if (value.kind === 'exemption-planning-contribution') {
+    return assertExemptionPlanningContributionEnvelope(value);
+  }
+  if (value.kind === 'scan-saturation-acceptance') {
+    return assertInvestigationScanSaturationAcceptanceEnvelope(value);
+  }
+  if (value.kind === 'provider-progress') {
+    return assertProviderProgressEnvelope(value);
+  }
+  if (value.kind === 'provider-retry') {
+    return assertProviderRetryEnvelope(value);
+  }
+  if (value.kind === 'plan-review-retry') {
+    return assertPlanReviewRetryEnvelope(value);
+  }
+  if (value.kind === 'plan-review-progress') {
+    return assertPlanReviewProgressEnvelope(value);
+  }
+  if (value.kind === 'plan-review-dispositions') {
+    return assertPlanReviewDispositionsEnvelope(value);
+  }
+  return assertInvestigationCheckpointEnvelope(value);
+}
+
+export function createScanSaturationAcceptanceEnvelope(
+  output: ProposeOutput,
+): InvestigationScanSaturationAcceptanceEnvelope {
+  if (
+    output.state !== 'scan-saturation-acceptance-required' ||
+    !isRecord(output.inputSchema) ||
+    output.inputSchema.kind !== 'scan-saturation-acceptance' ||
+    !isRecord(output.inputSchema.binding) ||
+    !Array.isArray(output.inputSchema.saturatedTermIds)
+  ) {
+    throw workflowError(
+      'INVESTIGATION_SCAN_SATURATION_ACCEPTANCE_NOT_AVAILABLE',
+      'The propose wrapper is not waiting for scan saturation acceptance.',
+      ExitCode.guard,
+    );
+  }
+  return assertInvestigationScanSaturationAcceptanceEnvelope({
+    schemaVersion: 1,
+    kind: 'scan-saturation-acceptance',
+    ...output.inputSchema.binding,
+    saturatedTermIds: output.inputSchema.saturatedTermIds,
+    acknowledgeIncompleteScan: true,
+  });
 }
