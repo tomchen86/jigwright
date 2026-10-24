@@ -1,3 +1,7 @@
+import {
+  type DocumentationClosureRecord,
+  encodeDocumentationClosure,
+} from '../../modules/assurance/documentation-closure.ts';
 /**
  * Builds exact planning, archive, route, task, and authority commit messages.
  *
@@ -10,11 +14,8 @@ import {
   type CentralAuthorityCommitProvenance,
   isCentralAuthorityCommitProvenance,
   isCentralAuthorityCommitSubject,
-} from '../../modules/lifecycle/managed-trailers.ts';
-import {
-  type DocumentationClosureRecord,
-  encodeDocumentationClosure,
-} from '../managed-documents/contracts/documentation-closure.ts';
+} from '@jigwright/core/managed-transition-trailers';
+
 import { validateCommitSubject } from './git-transition-values.ts';
 
 export function routeCommitMessage(routingReview: string): string {

@@ -5,8 +5,8 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import type { ExecutionArtifact } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
-import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
+import type { ExecutionArtifact } from '../src/modules/planning-provider/planning-artifact-types.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
 import {
   PLAN_REVIEW_COVERAGE,
   readPlanReviewNode,
@@ -18,13 +18,11 @@ import {
   getProposeStatus,
   resumePropose,
   startPropose,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import type { ProviderWorkerRuntimePort } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
-import type {
-  InvestigationManifestV3,
-  InvestigationPlanReviewCoverageRequirementV3,
-} from '../src/modules/investigation/manifest/investigation-manifest.ts';
+import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
+import type { InvestigationPlanReviewCoverageRequirementV3 } from '../src/modules/investigation/manifest/investigation-requirement-types.ts';
 import { renderPlanningProviderBinding } from '../src/modules/planning-provider/planning-provider-binding.ts';
 import {
   claimProviderInvocation,

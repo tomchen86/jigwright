@@ -6,7 +6,7 @@ import test from 'node:test';
 import {
   parseAgentProviderConfigToml,
   type AgentProviderConfigSnapshot,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
 
 import {
   createCentralRoleProviderDefault,

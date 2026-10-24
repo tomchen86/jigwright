@@ -8,18 +8,18 @@ import {
   canonicalExecutionBudgetGrantSigningBytes,
   createExecutionBudgetGrantEnvelope,
   createExecutionBudgetGrantRequest,
-  storeExecutionBudgetGrant,
-} from '../src/modules/authority/execution-governance.ts';
+} from '../src/modules/authority/execution-governance-grant-contracts.ts';
+import { storeExecutionBudgetGrant } from '../src/runtime/storage-journal/execution-budget-grants.ts';
 import {
   inspectIssuedExecutionBudgetGrant,
   issueExecutionBudgetGrant,
   revokeIssuedExecutionBudgetGrant,
-} from '../src/entrypoints/cli/execution-grant-cli.ts';
+} from '../src/composition-root/execution-budget-grant-production.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { listExecutionJobs } from '../src/runtime/provider-execution/execution-runtime.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
-import { revokeTaskMandate } from '../src/modules/authority/task-mandate.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
+
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
@@ -310,3 +310,6 @@ function executionAuditErrors(
     .events.filter(({ event }) => event.eventType === 'error')
     .map(({ event }) => event.errorCode);
 }
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const { revokeTaskMandate } = taskMandateOperations;

@@ -1,48 +1,40 @@
-/**
- * Reserves a reviewer and immutable plan snapshot before preparing provider work.
- *
- * Invariants:
- * - The assignment, topology, grant, and mandate bind the same exact planning subject.
- * - Snapshot bytes match the current materialization before an invocation is created.
- * - Existing reservations and interrupted invocations retain request and policy identity.
- */
-
+import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
-  type PlanReviewTargetSnapshot,
   PLAN_REVIEW_OUTPUT_SCHEMA,
   createPlanReviewTargetSnapshotNode,
   readPlanReviewTargetSnapshotNode,
 } from '../../modules/assurance/plan-review.ts';
-import { type InvestigationFirstPlanningSubject } from '../../modules/assurance/planning-assurance-validator.ts';
-import {
-  type TaskMandateBinding,
-  assertActiveTaskMandateBindingUnderLifecycleLock,
-  authorizeTaskMandateProviderReservationUnderLifecycleLock,
-} from '../../modules/authority/task-mandate.ts';
+import type { PlanReviewTargetSnapshot } from '../../modules/assurance/plan-review-target-snapshot-record.ts';
+import type { InvestigationFirstPlanningSubject } from '../../modules/assurance/planning-assurance-validator.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import { createProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
-import {
-  type GrantedSameProviderRoleAssignment,
-  type ProviderRoleAssignment,
-  type RecordedRoleParticipant,
-  type RoleParticipant,
-  authorizeGrantedOrdinaryRole,
-  scheduleOrdinaryRole,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
-import {
-  type RoleTopologyResolutionDependencyPortV1,
-  type RoleTopologyResolutionV1,
+import type {
+  GrantedSameProviderRoleAssignment,
+  ProviderRoleAssignment,
+  RecordedRoleParticipant,
+  RoleParticipant,
+} from '../../modules/provider-orchestration/role-assignment.ts';
+import { scheduleOrdinaryRole } from '../../modules/provider-orchestration/role-assignment.ts';
+import type {
+  RoleTopologyResolutionDependencyPortV1,
+  RoleTopologyResolutionV1,
 } from '../../modules/provider-orchestration/role-topology-resolution.ts';
+import type {
+  ProposeGrantAuthorization,
+  PlanReviewReservation,
+  ProposeLifecycleStatus,
+  ProposeResumeOptions,
+} from '../../modules/proposal/propose-types.ts';
 import {
-  type ProposeGrantAuthorization,
-  collaborationTransitionDigest,
   createCollaborationPlanReviewRequirementV3,
   planReviewGrantRequest,
 } from './plan-review-contracts.ts';
+import { collaborationTransitionDigest } from './plan-review-grant-authorization.ts';
 import { preparePlanReviewRoleTopology } from './plan-review-role-topology.ts';
 import {
   persistPlanReviewGrantRequirement,
@@ -57,12 +49,12 @@ import {
 import {
   PLANNING_MATERIALIZATION_REF,
   PLAN_REVIEW_REQUEST_REF,
-  createRuntimeId,
   isDigestRecord,
   isRecord,
   planReviewRequestStale,
   sha256,
-} from './propose-common.ts';
+} from '../../modules/proposal/propose-values.ts';
+import { createRuntimeId } from './propose-common.ts';
 import {
   deriveCollaborationGrantBinding,
   loadMaintainerPolicyAtCommit,
@@ -74,16 +66,11 @@ import {
   createPlanReviewReservationNode,
 } from './propose-evidence.ts';
 import { readProposeAuthorization } from './propose-request-validation.ts';
-import type { PlanReviewManifest, ProposeRuntime } from './propose-runtime.ts';
-import {
-  type PlanReviewReservation,
-  type ProposeLifecycleStatus,
-  type ProposeResumeOptions,
-} from './propose-types.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
+import type { PlanReviewManifest } from '../../modules/assurance/provider-review-manifests.ts';
 import { reserveRoleContextSharingPlanReview } from './role-context-sharing-plan-review.ts';
-
 export function durablePlanReviewMandateBinding(
-  services: Pick<ProposeRuntime, 'investigation'>,
+  services: Pick<ProposeRuntime, 'taskMandate' | 'investigation'>,
   context: ReturnType<
     ProposeRuntime['workspace']['loadInvestigationRuntimeContext']
   >,
@@ -124,6 +111,7 @@ export function durablePlanReviewMandateBinding(
 }
 
 export function authorizePlanReviewReservationMandate(
+  services: Pick<ProposeRuntime, 'taskMandate'>,
   cwd: string,
   binding: TaskMandateBinding | undefined,
   reservation: PlanReviewReservation,
@@ -131,7 +119,7 @@ export function authorizePlanReviewReservationMandate(
   executionGrant?: { grantId: string },
 ): void {
   if (binding === undefined) return;
-  authorizeTaskMandateProviderReservationUnderLifecycleLock(
+  services.taskMandate.authorizeTaskMandateProviderReservationUnderLifecycleLock(
     cwd,
     binding,
     reservation.request.invocationId,
@@ -152,7 +140,14 @@ export function authorizePlanReviewReservationMandate(
 export function preparePlanReviewInvocation(
   services: Pick<
     ProposeRuntime,
-    'evidence' | 'grants' | 'investigation' | 'provider' | 'workspace'
+    | 'taskMandate'
+    | 'evidence'
+    | 'grants'
+    | 'investigation'
+    | 'provider'
+    | 'workspace'
+    | 'roleAdmission'
+    | 'roleContextSharingGrants'
   >,
   cwd: string,
   status: ProposeLifecycleStatus,
@@ -170,7 +165,7 @@ export function preparePlanReviewInvocation(
     status,
   );
   if (mandateBinding) {
-    assertActiveTaskMandateBindingUnderLifecycleLock(
+    services.taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock(
       cwd,
       mandateBinding,
       assertOwned,
@@ -208,6 +203,7 @@ export function preparePlanReviewInvocation(
       );
     }
     authorizePlanReviewReservationMandate(
+      services,
       cwd,
       mandateBinding,
       existing,
@@ -267,17 +263,15 @@ export function preparePlanReviewInvocation(
     durableRoleContextRequirement === null
       ? createRuntimeId('provider-session')
       : durableRoleContextRequirement.requirement.reviewerPlacement.sessionId;
-  const schedulingCandidates = (['codex', 'claude'] as const).map(
-    (providerId) => ({
-      providerId,
-      sessionId:
-        providerId === author.providerId
-          ? `author-${providerSessionId}`
-          : providerSessionId,
-      enabled: policy.policy.providers[providerId].enabled,
-      available: policy.policy.providers[providerId].enabled,
-    }),
-  );
+  const schedulingCandidates = listProviderIds().map((providerId) => ({
+    providerId,
+    sessionId:
+      providerId === author.providerId
+        ? `author-${providerSessionId}`
+        : providerSessionId,
+    enabled: policy.policy.providers[providerId].enabled,
+    available: policy.policy.providers[providerId].enabled,
+  }));
   const scheduled =
     durableRoleContextRequirement === null &&
     roleTopologyResolution === undefined
@@ -289,7 +283,7 @@ export function preparePlanReviewInvocation(
           candidates: schedulingCandidates,
         })
       : null;
-  const callableProviderIds = (['codex', 'claude'] as const).filter(
+  const callableProviderIds = listProviderIds().filter(
     (providerId) => policy.policy.providers[providerId].enabled,
   );
   const grantRequest =
@@ -316,25 +310,28 @@ export function preparePlanReviewInvocation(
     const verifier = resolveAuthoritativeRoleContextSharingGrantVerifier(
       roleContextSharingGrant.verifier,
     );
-    const reserved = reserveRoleContextSharingPlanReview({
-      gitCommonDirectory: context.git.gitCommonDirectory,
-      requirementNodeId: durableRoleContextRequirement.requirementNodeId,
-      requirement,
-      grantId: roleContextSharingGrant.grantId,
-      policy: maintainerPolicy,
-      policyBlob: services.workspace
-        .runGit(context.git.repositoryRoot, [
-          'rev-parse',
-          `${requirement.baseline.head}:workflow/maintainer-policy.json`,
-        ])
-        .trim(),
-      verifier,
-      lifecycle: roleContextSharingGrant.lifecycle,
-      ...(roleContextSharingGrant.now === undefined
-        ? {}
-        : { now: roleContextSharingGrant.now }),
-      assertOwned,
-    });
+    const reserved = reserveRoleContextSharingPlanReview(
+      services.roleContextSharingGrants,
+      {
+        gitCommonDirectory: context.git.gitCommonDirectory,
+        requirementNodeId: durableRoleContextRequirement.requirementNodeId,
+        requirement,
+        grantId: roleContextSharingGrant.grantId,
+        policy: maintainerPolicy,
+        policyBlob: services.workspace
+          .runGit(context.git.repositoryRoot, [
+            'rev-parse',
+            `${requirement.baseline.head}:workflow/maintainer-policy.json`,
+          ])
+          .trim(),
+        verifier,
+        lifecycle: roleContextSharingGrant.lifecycle,
+        ...(roleContextSharingGrant.now === undefined
+          ? {}
+          : { now: roleContextSharingGrant.now }),
+        assertOwned,
+      },
+    );
     assignment = reserved.assignment;
     grantAuthorization = reserved.authorization;
     roleTopology = requirement.roleTopology;
@@ -426,7 +423,7 @@ export function preparePlanReviewInvocation(
         },
         assertOwned,
       );
-    assignment = authorizeGrantedOrdinaryRole({
+    assignment = services.roleAdmission.authorizeGrantedOrdinaryRole({
       role: 'plan-reviewer',
       author,
       targetDigest: planning.subject.subjectDigest,
@@ -571,6 +568,7 @@ export function preparePlanReviewInvocation(
     retry: null,
   };
   authorizePlanReviewReservationMandate(
+    services,
     cwd,
     mandateBinding,
     reservation,
@@ -588,7 +586,7 @@ export function preparePlanReviewInvocation(
 }
 
 function planAuthor(
-  services: Pick<ProposeRuntime, 'evidence' | 'provider'>,
+  services: Pick<ProposeRuntime, 'taskMandate' | 'evidence' | 'provider'>,
   paths: ReturnType<
     ProposeRuntime['workspace']['loadInvestigationRuntimeContext']
   >['runtime'],
@@ -618,7 +616,7 @@ function planAuthor(
 }
 
 export function ensurePlanReviewInvocation(
-  services: Pick<ProposeRuntime, 'provider'>,
+  services: Pick<ProposeRuntime, 'taskMandate' | 'provider'>,
   repositoryRoot: string,
   paths: ReturnType<
     ProposeRuntime['workspace']['loadInvestigationRuntimeContext']
@@ -722,7 +720,7 @@ export function ensurePlanReviewInvocation(
 }
 
 function copyPriorPlanReviewSnapshot(
-  services: Pick<ProposeRuntime, 'provider'>,
+  services: Pick<ProposeRuntime, 'taskMandate' | 'provider'>,
   paths: ReturnType<
     ProposeRuntime['workspace']['loadInvestigationRuntimeContext']
   >['runtime'],
@@ -740,7 +738,7 @@ function copyPriorPlanReviewSnapshot(
 }
 
 export function readPriorPlanReviewSnapshotFiles(
-  services: Pick<ProposeRuntime, 'provider'>,
+  services: Pick<ProposeRuntime, 'taskMandate' | 'provider'>,
   paths: ReturnType<
     ProposeRuntime['workspace']['loadInvestigationRuntimeContext']
   >['runtime'],

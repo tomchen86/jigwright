@@ -7,15 +7,17 @@
  */
 import {
   type CollaborationGrantEnvelope,
-  parseCollaborationGrantEnvelope,
-  canonicalCollaborationGrantEnvelope,
   assertCollaborationGrantId,
   validateCollaborationGrantPayload,
-  verifyCollaborationGrantCapability,
-  validateCollaborationGrantEnvelope,
   bindingFromPayload,
   type CollaborationGrantExpectedBinding,
 } from '../../modules/authority/collaboration-grant-codec.ts';
+import {
+  parseCollaborationGrantEnvelope,
+  canonicalCollaborationGrantEnvelope,
+  verifyCollaborationGrantCapability,
+  validateCollaborationGrantEnvelope,
+} from '../grants/grant-services.ts';
 import { withRepositoryLifecycleOperation } from '../session-workspace/repository-lifecycle-lock.ts';
 import {
   collaborationGrantStorePaths,
@@ -37,14 +39,12 @@ import type {
   CollaborationGrantSelection,
   CollaborationGrantSelectableDegradedForm,
   CollaborationGrantSelectionCoreBinding,
-} from './collaboration-grant-store-types.ts';
+} from '../../modules/authority/collaboration-grant-records.ts';
 import fs from 'node:fs';
 import { assertAuthoritativeCollaborationGrantVerifier } from '../../modules/authority/grant-verifier-port.ts';
-import {
-  executeGrantLifecycleTransitionV1,
-  GRANT_LIFECYCLE_CONTRACT_VERSION_V1,
-  isGrantLifecycleTransitionError,
-} from '../../modules/authority/optional-grants-package.ts';
+import { executeGrantLifecycleTransitionV1 } from '../grants/optional-grants-package.ts';
+import { isGrantLifecycleTransitionError } from '../../modules/authority/grant-errors.ts';
+import { GRANT_LIFECYCLE_CONTRACT_VERSION_V1 } from '@jigwright/core/grant-lifecycle-contracts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
   exactDigest,
@@ -55,7 +55,7 @@ import {
   deepFreeze,
   isRecord,
   hasExactKeys,
-} from './collaboration-grant-store-values.ts';
+} from '../../modules/authority/collaboration-grant-values.ts';
 import {
   readTerminal,
   cleanupNonterminal,
@@ -68,6 +68,12 @@ import {
   parseMaintainerPolicy,
 } from '../../modules/authority/maintainer-policy.ts';
 import crypto from 'node:crypto';
+import {
+  resolveBlobOid,
+  resolveCommitOid,
+  resolveTreeOid,
+} from '../repository-transaction/git-object-ids.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
 
 export function storeAvailableCollaborationGrant(
   gitCommonDirectory: string,
@@ -142,10 +148,10 @@ export function reserveCollaborationGrantUnderLifecycleLock(
     repository.repositoryRoot,
     request.expected.baselineCommit,
   );
-  const baselineTree = runGit(repository.repositoryRoot, [
-    'rev-parse',
-    `${baselineCommit}^{tree}`,
-  ]).trim();
+  const baselineTree = resolveTreeOid(
+    repository.repositoryRoot,
+    baselineCommit,
+  );
   const mergeBase = runGit(repository.repositoryRoot, [
     'merge-base',
     baselineCommit,
@@ -155,10 +161,11 @@ export function reserveCollaborationGrantUnderLifecycleLock(
     throw bindingMismatch();
   }
   const policy = loadPolicyAtCommit(repository.repositoryRoot, baselineCommit);
-  const policyBlob = runGit(repository.repositoryRoot, [
-    'rev-parse',
-    `${baselineCommit}:workflow/maintainer-policy.json`,
-  ]).trim();
+  const policyBlob = resolveBlobOid(
+    repository.repositoryRoot,
+    baselineCommit,
+    'workflow/maintainer-policy.json',
+  );
   const origin = runGit(repository.repositoryRoot, [
     'remote',
     'get-url',
@@ -540,10 +547,7 @@ function loadSelectionValidationContext(
     repositoryRoot,
     expectedCore.baselineCommit,
   );
-  const baselineTree = runGit(repositoryRoot, [
-    'rev-parse',
-    `${baselineCommit}^{tree}`,
-  ]).trim();
+  const baselineTree = resolveTreeOid(repositoryRoot, baselineCommit);
   const head = runGit(repositoryRoot, ['rev-parse', 'HEAD']).trim();
   const mergeBase = runGit(repositoryRoot, [
     'merge-base',
@@ -551,10 +555,11 @@ function loadSelectionValidationContext(
     head,
   ]).trim();
   const policy = loadPolicyAtCommit(repositoryRoot, baselineCommit);
-  const policyBlob = runGit(repositoryRoot, [
-    'rev-parse',
-    `${baselineCommit}:workflow/maintainer-policy.json`,
-  ]).trim();
+  const policyBlob = resolveBlobOid(
+    repositoryRoot,
+    baselineCommit,
+    'workflow/maintainer-policy.json',
+  );
   const origin = runGit(repositoryRoot, ['remote', 'get-url', 'origin']).trim();
   if (
     mergeBase !== baselineCommit ||
@@ -594,10 +599,11 @@ export function loadPolicyAtCommit(
   try {
     return parseMaintainerPolicy(
       JSON.parse(
-        runGit(repositoryRoot, [
-          'show',
-          `${commit}:workflow/maintainer-policy.json`,
-        ]),
+        readFileAtRevision(
+          repositoryRoot,
+          commit,
+          'workflow/maintainer-policy.json',
+        ),
       ),
     );
   } catch (error) {
@@ -619,10 +625,7 @@ export function exactRepositoryCommit(
   if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(requested)) {
     throw bindingMismatch();
   }
-  const resolved = runGit(repositoryRoot, [
-    'rev-parse',
-    `${requested}^{commit}`,
-  ]).trim();
+  const resolved = resolveCommitOid(repositoryRoot, requested);
   if (resolved !== requested) {
     throw bindingMismatch();
   }

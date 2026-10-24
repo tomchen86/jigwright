@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   compareAndSwapEvidenceRefsDocument,
@@ -14,21 +14,19 @@ import {
   readInvestigationEvidenceRefsClosure,
   writeEvidenceNode,
 } from '../src/runtime/storage-journal/evidence-object-store.ts';
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
+import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import {
-  createInvestigationCheckpointEnvelope,
-  getInvestigationStatus,
-} from '../src/adapters/planning/investigation/investigation-session.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
+import { getInvestigationStatus } from '../src/runtime/investigation-lifecycle/investigation-session.ts';
 import {
   createPlanningContributionEnvelope,
   getProposeStatus,
   resumePropose,
   startPropose,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import { productionRoleTopologyResolutionPort } from '../src/composition-root/role-topology-resolution-production.ts';
-import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/investigation-session-store.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   createProviderInvocationRequest,
   type ProviderInvocationRequest,

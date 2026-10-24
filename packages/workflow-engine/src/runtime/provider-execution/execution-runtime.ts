@@ -20,16 +20,18 @@ import {
 import { readExecutionJobState } from '../storage-journal/execution-store.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import { listProviderInvocationLifecycleProjections } from '../storage-journal/provider-invocation-lifecycle.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+import { observeInvestigationRuntimeContext } from '../repository-observation/investigation-runtime-context.ts';
 import {
-  type ProviderOutputSchemaGeneration,
-  type ProviderResidualsGeneration,
-  type ProviderInvocationRecord,
   readProviderInvocationRequest,
   readProviderInvocation,
   providerOutputSchemaGeneration,
   providerResidualsGeneration,
 } from '../storage-journal/provider-invocation-store.ts';
+import type {
+  ProviderOutputSchemaGeneration,
+  ProviderResidualsGeneration,
+} from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {
   type ProviderProjectionEntry,
@@ -101,7 +103,7 @@ export type ProviderReplacementPreview = {
 };
 
 export function listExecutionJobs(cwd: string): ExecutionJobInspection[] {
-  const runtime = loadInvestigationRuntimeContext(cwd).runtime;
+  const runtime = observeInvestigationRuntimeContext(cwd).runtime;
   const entries = readProviderProjectionEntries(cwd);
   const grouped = new Map<string, ProviderProjectionEntry[]>();
   for (const entry of entries) {
@@ -231,7 +233,7 @@ export function inspectProviderExecutionJobSource(
 }
 
 function readProviderProjectionEntries(cwd: string): ProviderProjectionEntry[] {
-  const context = loadInvestigationRuntimeContext(cwd);
+  const context = observeInvestigationRuntimeContext(cwd);
   let records: Array<{
     record: ProviderInvocationRecord;
     request: ProviderInvocationRequest;

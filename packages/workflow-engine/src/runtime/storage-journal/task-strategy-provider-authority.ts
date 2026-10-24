@@ -5,13 +5,13 @@
  * - Evidence reads and validation retain the original order before accepting authority.
  * - Reservations, results, assignments, and exact output digests remain bound to their original subject.
  */
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
-import type { ProviderInvocationRecord } from './provider-invocation-store.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   assertTaskStrategyImplementationOutput,
   TASK_STRATEGY_IMPLEMENTATION_POLICY_DIGEST,
-  type TaskStrategyImplementationSubject,
 } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
+import type { TaskStrategyImplementationSubject } from '../../modules/provider-orchestration/task-strategy-implementation-manifest.ts';
 import { readEvidenceNode } from './evidence-node-store.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import type {
@@ -19,13 +19,13 @@ import type {
   TaskStrategyImplementationResultBinding,
   TaskStrategyCallerImplementationReservation,
   TaskStrategyCallerImplementationBinding,
-} from './task-strategy-provider-record-contract.ts';
+} from '../../modules/assurance/task-strategy-implementation-record.ts';
 import {
   implementationResultStale,
   sha256,
-} from './task-strategy-provider-store-values.ts';
+} from '../../modules/assurance/task-strategy-implementation-values.ts';
 import type { TaskStrategyTransaction } from './task-strategy-store.ts';
-import type { RecordedRoleParticipant } from '../../modules/provider-orchestration/role-scheduler.ts';
+import type { RecordedRoleParticipant } from '../../modules/provider-orchestration/role-assignment.ts';
 
 /**
  * Replay the complete durable provider-result authority chain. Both the live

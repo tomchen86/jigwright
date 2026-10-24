@@ -1,3 +1,37 @@
+import {
+  assertCandidateTransaction,
+  assertExplicitCheckRequestMatches,
+  assertFinalizeTransactionIdentity,
+  createCheckReport,
+  createCompletionReport,
+  createFinishReport,
+  finalizedSession as projectFinalizedSession,
+  sessionHasFinalizeReports,
+  resultFrom,
+} from '../src/modules/lifecycle/projected-finalization.ts';
+import { inspectSession } from '../src/runtime/repository-validation/session-inspection.ts';
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import {
+  productionChangeRoutingInspector,
+  productionChangeContract,
+} from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -7,42 +41,54 @@ import test from 'node:test';
 
 import {
   commitSession,
+  findTaskCommits,
+} from '../src/runtime/finalization/commit.ts';
+import { rollbackCompletion } from './support/session-lifecycle-host.ts';
+import {
   completeTask,
   finalizeTask,
-  findTaskCommits,
   finishSession,
-  rollbackCompletion,
-} from '../src/application/finalize/lifecycle.ts';
+} from './support/session-lifecycle-host.ts';
 import {
-  hasExactTrailers,
   previewExactStaging,
   stageExactPaths,
   updateManagedRef,
 } from '../src/runtime/repository-transaction/git-transitions.ts';
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import {
+  hasExactTrailers,
+  type CommitFacts,
+} from '../src/modules/repository-consumer/commit-facts.ts';
+import {
+  assertPinnedPredecessorContract,
+  assertPredecessorCommit,
+  selectImmediatePredecessor,
+} from '../src/modules/lifecycle/predecessor-reconciliation.ts';
+import type { ChangeContract } from '../src/modules/planning-provider/change-contract.ts';
+import type {
+  ParsedTask,
+  TaskPolicy,
+} from '../src/modules/planning-provider/planning-artifact-types.ts';
+import type { WorkflowSession } from '../src/modules/lifecycle/workflow-session-contract.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { projectTasksCompleted } from '../src/runtime/managed-documents/transaction/task-projection.ts';
 import {
   readImmutableReport,
   writeImmutableReport,
-  type WorkflowReport,
 } from '../src/runtime/storage-journal/report-store.ts';
-import {
-  createFinalizeTransaction,
-  readFinalizeTransaction,
-} from '../src/runtime/repository-transaction/finalize-transaction.ts';
+import type { WorkflowReport } from '../src/modules/lifecycle/workflow-report.ts';
+import { createFinalizeTransaction } from '../src/modules/lifecycle/finalize-transaction.ts';
+import { readFinalizeTransaction } from '../src/runtime/storage-journal/finalize-transaction.ts';
 import { resolveFinalizeCheckPolicy } from '../src/modules/assurance/finalize-check-policy.ts';
 import {
   runtimePaths,
   withSessionOperation,
   writeJsonAtomic,
 } from '../src/runtime/session-workspace/session-store.ts';
-import {
-  abortSession,
-  checkSession,
-  getSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
+import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
+import { abortSession } from '../src/composition-root/task-session-production.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import {
   configureChecks,
   createFixtureRepository as createBareFixtureRepository,
@@ -165,9 +211,20 @@ test(
     try {
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentV3Change(repository, { additionalPendingTask: true });
-      const session = startSession(repository, 'demo-change', '1.1');
+      const session = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
       fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-      checkSession(repository, session.sessionId);
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeContract,
+        repository,
+        session.sessionId,
+      );
 
       execFileSync('/usr/bin/xattr', [
         '-wx',
@@ -206,9 +263,20 @@ test('completion evidence becomes stale after ignored content changes', () => {
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
 
     fs.writeFileSync(ignoredPath, 'after!');
     fs.utimesSync(ignoredPath, stableTime, stableTime);
@@ -227,7 +295,12 @@ test('current report authorizes completion, exact staging, and commit', () => {
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository, { additionalPendingTask: true });
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
 
     assert.throws(
@@ -235,7 +308,13 @@ test('current report authorizes completion, exact staging, and commit', () => {
       (error) => isWorkflowError(error, 'CURRENT_CHECK_REPORT_REQUIRED'),
     );
 
-    const checked = checkSession(repository, session.sessionId);
+    const checked = checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     assert.match(checked.reportId, /^[0-9a-f]{64}$/);
     assert.equal(getSession(repository, session.sessionId).state, 'active');
 
@@ -263,6 +342,7 @@ test('current report authorizes completion, exact staging, and commit', () => {
     assert.equal(git(repository, ['diff', '--name-only']).trim(), '');
 
     const committed = commitSession(
+      productionChangeContract,
       repository,
       session.sessionId,
       'Complete demo task',
@@ -288,7 +368,12 @@ test('current report authorizes completion, exact staging, and commit', () => {
       ),
       [committed.commitHash],
     );
-    const next = startSession(repository, 'demo-change', '1.2');
+    const next = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.2',
+    );
     assert.equal(next.baseline.head, committed.commitHash);
     assert.notEqual(next.baseline.head, session.baseline.head);
     assert.deepEqual(next.planningAssurance, session.planningAssurance);
@@ -312,9 +397,20 @@ test('a held session operation rejects competing completion transitions without 
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository, { additionalPendingTask: true });
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     const runtime = runtimePaths(
       fs.realpathSync(path.join(repository, '.git')),
       'workflow-engine',
@@ -323,10 +419,23 @@ test('a held session operation rejects competing completion transitions without 
     withSessionOperation(runtime, session.sessionId, () => {
       const before = snapshotTaskPreflightState(repository);
       const transitions = [
-        () => checkSession(repository, session.sessionId),
+        () =>
+          checkSession(
+            maintainerManifestOperations,
+            productionTaskStrategyExecutionGate,
+            productionChangeContract,
+            repository,
+            session.sessionId,
+          ),
         () => completeTask(repository, session.sessionId),
         () => finishSession(repository, session.sessionId),
-        () => commitSession(repository, session.sessionId, 'Competing commit'),
+        () =>
+          commitSession(
+            productionChangeContract,
+            repository,
+            session.sessionId,
+            'Competing commit',
+          ),
         () => abortSession(repository, session.sessionId, 'Competing abort'),
       ];
       for (const transition of transitions) {
@@ -350,10 +459,21 @@ test('finish preserves manual staging when current completion evidence exists', 
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository, { additionalPendingTask: true });
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
     git(repository, ['add', '--', 'src/feature.ts']);
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     const completion = completeTask(repository, session.sessionId);
     const indexBefore = git(repository, ['write-tree']).trim();
     const projectionBefore = git(repository, ['diff', 'HEAD', '--binary']);
@@ -384,9 +504,20 @@ test('managed commit refuses a moved branch and its ref CAS preserves the compet
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository, { additionalPendingTask: true });
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     completeTask(repository, session.sessionId);
     const finished = finishSession(repository, session.sessionId);
     const competingCommit = git(repository, [
@@ -406,7 +537,13 @@ test('managed commit refuses a moved branch and its ref CAS preserves the compet
     const before = snapshotTaskPreflightState(repository);
 
     assert.throws(
-      () => commitSession(repository, session.sessionId, 'Complete demo task'),
+      () =>
+        commitSession(
+          productionChangeContract,
+          repository,
+          session.sessionId,
+          'Complete demo task',
+        ),
       (error) => isWorkflowError(error, 'SESSION_HEAD_CHANGED'),
     );
     assert.deepEqual(snapshotTaskPreflightState(repository), before);
@@ -470,7 +607,12 @@ test('projected single-pass finalize checks and stages one exact final tree', ()
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
 
     assert.throws(
@@ -528,7 +670,138 @@ test('projected single-pass finalize checks and stages one exact final tree', ()
       assert.equal(report.candidateTree, finalized.tree);
     }
 
-    commitSession(repository, session.sessionId, 'Complete once');
+    const transaction = readFinalizeTransaction(
+      runtimeRoot(repository),
+      session.sessionId,
+    );
+    assert.ok(transaction);
+    assertCandidateTransaction(transaction);
+    const ruleInspection = inspectSession(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      {
+        projectedTaskIds: [...transaction.completedTaskIds],
+        projectionSourceDigest: transaction.projectionSourceDigest,
+        authorizedTransitionPaths: [...transaction.transitionPaths],
+      },
+    );
+    assert.deepEqual(ruleInspection.changedPaths, transaction.changedPaths);
+    const ruleCheck = createCheckReport(
+      transaction,
+      ruleInspection,
+      checkReport.checks as unknown[],
+    );
+    assert.equal(ruleCheck.checks, checkReport.checks);
+    assert.equal(ruleCheck.baseline, transaction.baseline);
+    assert.equal(ruleCheck.artifactDigests, ruleInspection.artifactDigests);
+    assert.equal(ruleCheck.allowedPaths, ruleInspection.session.allowedPaths);
+    assert.deepEqual(ruleCheck.requiredChecks, transaction.requiredChecks);
+    assert.notEqual(ruleCheck.requiredChecks, transaction.requiredChecks);
+    const ruleCompletion = createCompletionReport(
+      transaction,
+      ruleInspection,
+      null,
+    );
+    assert.equal(ruleCompletion.reconciledTasks, transaction.reconciledTasks);
+    assert.notEqual(
+      ruleCompletion.completedTaskIds,
+      transaction.completedTaskIds,
+    );
+    const ruleFinish = createFinishReport(
+      transaction,
+      ruleInspection,
+      ruleCheck,
+      finalizedSession.completionReportId!,
+    );
+    assert.equal(ruleFinish.checks, ruleCheck.checks);
+    assert.notEqual(ruleFinish.stagedPaths, transaction.changedPaths);
+    const projectedSession = projectFinalizedSession(session, transaction);
+    assert.notEqual(projectedSession, session);
+    assert.equal(projectedSession.baseline, session.baseline);
+    assert.equal(
+      sessionHasFinalizeReports(projectedSession, transaction),
+      true,
+    );
+    const ruleResult = resultFrom(transaction, projectedSession);
+    assert.equal(ruleResult.session, projectedSession);
+    assert.notEqual(ruleResult.requiredChecks, transaction.requiredChecks);
+    assert.deepEqual(ruleResult.stagedPaths, transaction.changedPaths);
+    assert.throws(
+      () => assertCandidateTransaction({ ...transaction, candidateTree: null }),
+      (error) => isWorkflowError(error, 'FINALIZE_TRANSACTION_DIVERGED'),
+    );
+    const reads: string[] = [];
+    const observedSession = {
+      ...session,
+      get requiredChecks() {
+        reads.push('requiredChecks');
+        return session.requiredChecks;
+      },
+    };
+    const observedConfig = {
+      ...ruleInspection.contract.config,
+      get allTasksTerminalChecks() {
+        reads.push('terminalChecks');
+        return [{ checkId: 'projected', subsumes: ['projected'] }];
+      },
+    };
+    assertExplicitCheckRequestMatches(
+      observedSession,
+      observedConfig,
+      transaction,
+      {},
+    );
+    assert.deepEqual([...reads], []);
+    assertExplicitCheckRequestMatches(
+      observedSession,
+      observedConfig,
+      transaction,
+      { fullGate: true },
+    );
+    assert.deepEqual(
+      [...reads],
+      ['terminalChecks', 'requiredChecks', 'terminalChecks'],
+    );
+    assert.throws(
+      () =>
+        assertExplicitCheckRequestMatches(
+          observedSession,
+          observedConfig,
+          { ...transaction, requiredChecks: [] },
+          { fullGate: true },
+        ),
+      (error) => isWorkflowError(error, 'FINALIZE_REQUEST_CHANGED'),
+    );
+    reads.length = 0;
+    const observedGit = {
+      get repositoryRealPath() {
+        reads.push('repositoryRealPath');
+        return ruleInspection.git.repositoryRealPath;
+      },
+      get gitCommonDirectory() {
+        reads.push('gitCommonDirectory');
+        return ruleInspection.git.gitCommonDirectory;
+      },
+    };
+    assert.throws(
+      () =>
+        assertFinalizeTransactionIdentity(session, observedGit, {
+          ...transaction,
+          sessionId: 'different-session',
+        }),
+      (error) => isWorkflowError(error, 'FINALIZE_TRANSACTION_DIVERGED'),
+    );
+    assert.deepEqual([...reads], []);
+    assertFinalizeTransactionIdentity(session, observedGit, transaction);
+    assert.deepEqual([...reads], ['repositoryRealPath', 'gitCommonDirectory']);
+
+    commitSession(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'Complete once',
+    );
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -616,7 +889,12 @@ test('finalize adds terminal policy checks only when its projection closes the t
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
 
-    const first = startSession(repository, 'demo-change', '1.1');
+    const first = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {}\n');
     const firstFinalized = finalizeTask(repository, first.sessionId);
     assert.equal(fs.readFileSync(scopedCounter, 'utf8'), '1');
@@ -627,9 +905,19 @@ test('finalize adds terminal policy checks only when its projection closes the t
     );
     assert.deepEqual(firstTransaction?.requiredChecks, ['workflow-tests']);
     assert.equal(firstTransaction?.checkEscalation, null);
-    commitSession(repository, first.sessionId, 'Complete first task');
+    commitSession(
+      productionChangeContract,
+      repository,
+      first.sessionId,
+      'Complete first task',
+    );
 
-    const second = startSession(repository, 'demo-change', '1.2');
+    const second = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.2',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const complete = true;\n',
@@ -638,7 +926,10 @@ test('finalize adds terminal policy checks only when its projection closes the t
       process.execPath,
       [
         '--experimental-strip-types',
-        path.resolve(import.meta.dirname, '../src/cli.ts'),
+        path.resolve(
+          import.meta.dirname,
+          '../bootstrap/workflow-engine-host.ts',
+        ),
         'finalize',
         second.sessionId,
         '--message',
@@ -665,7 +956,10 @@ test('finalize adds terminal policy checks only when its projection closes the t
       process.execPath,
       [
         '--experimental-strip-types',
-        path.resolve(import.meta.dirname, '../src/cli.ts'),
+        path.resolve(
+          import.meta.dirname,
+          '../bootstrap/workflow-engine-host.ts',
+        ),
         'finalize',
         second.sessionId,
         '--message',
@@ -755,10 +1049,21 @@ test('compatible completion cannot bypass final review or terminal checks', () =
     git(repository, ['commit', '-m', 'Require terminal full gate']);
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {}\n');
 
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     assert.throws(
       () => completeTask(repository, session.sessionId),
       (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_NOT_READY'),
@@ -777,7 +1082,12 @@ test('projected single-pass commit rejects a mismatched frozen candidate tree', 
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
 
     assert.throws(
@@ -811,7 +1121,13 @@ test('projected single-pass commit rejects a mismatched frozen candidate tree', 
     );
 
     assert.throws(
-      () => commitSession(repository, session.sessionId, 'Reject mismatch'),
+      () =>
+        commitSession(
+          productionChangeContract,
+          repository,
+          session.sessionId,
+          'Reject mismatch',
+        ),
       (error) => isWorkflowError(error, 'FINISH_REPORT_STALE'),
     );
     assert.equal(
@@ -869,7 +1185,12 @@ test('projected single-pass failure restores projections and leaves no evidence 
     const beforeHandoff = fs.readFileSync(handoffPath);
     const beforeTaskMode = fs.statSync(tasksPath).mode;
     const beforeHandoffMode = fs.statSync(handoffPath).mode;
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
 
     assert.throws(
@@ -908,7 +1229,12 @@ test('projected single-pass rejects post-check worktree drift and rolls back sta
       'openspec/changes/demo-change/tasks.md',
     );
     const beforeTasks = fs.readFileSync(tasksPath);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
     fs.writeFileSync(
       path.join(repository, '.git/mutate-allowed-status-countdown'),
@@ -1000,9 +1326,20 @@ test('completion rollback restores controlled projections and permits fresh evid
     const handoffPath = path.join(repository, 'docs/CURRENT_AND_NEXT_STEPS.md');
     const baselineTasks = fs.readFileSync(tasksPath, 'utf8');
     const baselineHandoff = fs.readFileSync(handoffPath, 'utf8');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     const completed = completeTask(repository, session.sessionId);
 
     const rolledBack = rollbackCompletion(
@@ -1026,7 +1363,15 @@ test('completion rollback restores controlled projections and permits fresh evid
     assert.equal(reset.state, 'active');
     assert.equal(reset.latestCheckReportId, undefined);
     assert.equal(reset.completionReportId, undefined);
-    assert.doesNotThrow(() => checkSession(repository, session.sessionId));
+    assert.doesNotThrow(() =>
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeContract,
+        repository,
+        session.sessionId,
+      ),
+    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
@@ -1037,9 +1382,20 @@ test('completion rollback rejects empty reasons and finished sessions', () => {
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository, { additionalPendingTask: true });
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     completeTask(repository, session.sessionId);
 
     assert.throws(
@@ -1063,9 +1419,20 @@ test('completion rejects stale and tampered check reports', () => {
     try {
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentV3Change(repository);
-      const session = startSession(repository, 'demo-change', '1.1');
+      const session = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
       fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'before\n');
-      const checked = checkSession(repository, session.sessionId);
+      const checked = checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeContract,
+        repository,
+        session.sessionId,
+      );
 
       if (tamper === 'worktree') {
         fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'after\n');
@@ -1103,9 +1470,20 @@ test('completion rejects a content-addressed report without check evidence', () 
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'before\n');
-    const checked = checkSession(repository, session.sessionId);
+    const checked = checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     const reportsRoot = path.join(runtimeRoot(repository), 'reports');
     const reportPath = path.join(
       reportsRoot,
@@ -1140,20 +1518,277 @@ test('commit rejects a worktree changed after finish', () => {
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository, { additionalPendingTask: true });
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'before\n');
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     completeTask(repository, session.sessionId);
     finishSession(repository, session.sessionId);
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'after\n');
 
     assert.throws(
-      () => commitSession(repository, session.sessionId, 'Complete demo task'),
+      () =>
+        commitSession(
+          productionChangeContract,
+          repository,
+          session.sessionId,
+          'Complete demo task',
+        ),
       (error) => isWorkflowError(error, 'FINISH_REPORT_STALE'),
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
+});
+
+test('predecessor selection preserves task identity and nested getter order', () => {
+  const prior: ParsedTask = { id: '1.1', completed: false, title: 'Prior' };
+  const current: ParsedTask = { id: '1.2', completed: false, title: 'Current' };
+  const completed: ParsedTask = { id: '1.0', completed: true, title: 'Done' };
+  for (const tasks of [[current], [completed, current]]) {
+    assert.equal(
+      selectImmediatePredecessor({ tasks }, { taskId: current.id }),
+      null,
+    );
+  }
+  for (const tasks of [
+    [prior, { ...prior, id: '1.0' }, current],
+    [prior, completed, current],
+  ]) {
+    assert.throws(
+      () => selectImmediatePredecessor({ tasks }, { taskId: current.id }),
+      (error) => isWorkflowError(error, 'PREDECESSOR_NOT_RECONCILABLE'),
+    );
+  }
+  // Preserve the existing findIndex=-1 behavior, including the empty prefix case.
+  assert.equal(
+    selectImmediatePredecessor(
+      { tasks: [completed, current] },
+      { taskId: 'missing' },
+    ),
+    null,
+  );
+  assert.throws(
+    () =>
+      selectImmediatePredecessor(
+        { tasks: [prior, current] },
+        { taskId: 'missing' },
+      ),
+    (error) => isWorkflowError(error, 'PREDECESSOR_NOT_RECONCILABLE'),
+  );
+  const events: string[] = [];
+  const contract: Pick<ChangeContract, 'tasks'> = {
+    get tasks() {
+      events.push('tasks');
+      return [prior, current];
+    },
+  };
+  const session: Pick<WorkflowSession, 'taskId'> = {
+    get taskId() {
+      events.push('taskId');
+      return current.id;
+    },
+  };
+  assert.equal(selectImmediatePredecessor(contract, session), prior);
+  assert.deepEqual(events, ['tasks', 'taskId', 'taskId', 'tasks', 'tasks']);
+});
+
+test('pinned predecessor rules defer current-check getters until each admitted comparison', () => {
+  const events: string[] = [];
+  const definitions: ChangeContract['checks']['checks'] = {
+    first: { command: ['node', 'first.mjs'], destructiveDatabase: false },
+    second: { command: ['node', 'second.mjs'], destructiveDatabase: false },
+  };
+  const contract: Pick<ChangeContract, 'checks'> = {
+    get checks(): ChangeContract['checks'] {
+      events.push('current checks');
+      return {
+        schemaVersion: 1,
+        get checks() {
+          events.push('definitions');
+          return definitions;
+        },
+      };
+    },
+  };
+  const policy: TaskPolicy = {
+    allowedPaths: ['src/**'],
+    requiredChecks: ['first', 'second'],
+  };
+  for (const guard of [
+    { tasks: null },
+    { tasks: { '1.1': { ...policy, allowedPaths: ['elsewhere/**'] } } },
+    {
+      tasks: {
+        '1.1': {
+          requiredChecks: policy.requiredChecks,
+          allowedPaths: policy.allowedPaths,
+        },
+      },
+    },
+  ]) {
+    assert.throws(
+      () =>
+        assertPinnedPredecessorContract(contract, '1.1', policy, guard, {
+          checks: definitions,
+        }),
+      (error) => isWorkflowError(error, 'PREDECESSOR_NOT_RECONCILABLE'),
+    );
+    assert.deepEqual(events, []);
+  }
+  const noChecks: TaskPolicy = { ...policy, requiredChecks: [] };
+  assertPinnedPredecessorContract(
+    contract,
+    '1.1',
+    noChecks,
+    { tasks: { '1.1': noChecks } },
+    { checks: {} },
+  );
+  assert.deepEqual(events, []);
+  assert.throws(
+    () =>
+      assertPinnedPredecessorContract(
+        contract,
+        '1.1',
+        policy,
+        { tasks: { '1.1': policy } },
+        { checks: null },
+      ),
+    (error) => isWorkflowError(error, 'PREDECESSOR_NOT_RECONCILABLE'),
+  );
+  assert.deepEqual(events, []);
+  assertPinnedPredecessorContract(
+    contract,
+    '1.1',
+    policy,
+    { tasks: { '1.1': policy } },
+    { checks: definitions },
+  );
+  assert.deepEqual(events, [
+    'current checks',
+    'definitions',
+    'current checks',
+    'definitions',
+  ]);
+  events.length = 0;
+  assert.throws(
+    () =>
+      assertPinnedPredecessorContract(
+        contract,
+        '1.1',
+        policy,
+        { tasks: { '1.1': policy } },
+        {
+          checks: {
+            ...definitions,
+            first: { ...definitions.first, command: ['node', 'drift.mjs'] },
+          },
+        },
+      ),
+    (error) => isWorkflowError(error, 'PREDECESSOR_NOT_RECONCILABLE'),
+  );
+  assert.deepEqual(events, ['current checks', 'definitions']);
+});
+
+test('predecessor commit admission preserves refusal priority and lazy field reads', () => {
+  const exactMessage = 'Prior\n\nChange: demo-change\nTask: 1.1\n';
+  for (const [parents, paths, message, expectedEvents, accepted] of [
+    [[], ['src/prior.ts'], exactMessage, [], false],
+    [['a', 'b'], ['src/prior.ts'], exactMessage, [], false],
+    [['a'], [], exactMessage, [], false],
+    [
+      ['a'],
+      ['src/prior.ts'],
+      'wrong trailers',
+      ['message', 'changeId', 'id'],
+      false,
+    ],
+    [
+      ['a'],
+      ['other/prior.ts'],
+      exactMessage,
+      ['message', 'changeId', 'id', 'allowedPaths'],
+      false,
+    ],
+    [
+      ['a'],
+      ['src/prior.ts', 'src/next.ts'],
+      exactMessage,
+      ['message', 'changeId', 'id', 'allowedPaths', 'allowedPaths'],
+      true,
+    ],
+  ] as const) {
+    const events: string[] = [];
+    const facts: CommitFacts = {
+      hash: 'a'.repeat(40),
+      tree: 'b'.repeat(40),
+      parents: [...parents],
+      get message() {
+        events.push('message');
+        return message;
+      },
+    };
+    const session: Pick<WorkflowSession, 'changeId'> = {
+      get changeId() {
+        events.push('changeId');
+        return 'demo-change';
+      },
+    };
+    const predecessor: ParsedTask = {
+      get id() {
+        events.push('id');
+        return '1.1';
+      },
+      completed: false,
+      title: 'Prior',
+    };
+    const policy: TaskPolicy = {
+      get allowedPaths() {
+        events.push('allowedPaths');
+        return ['src/**'];
+      },
+      requiredChecks: [],
+    };
+    const admit = () =>
+      assertPredecessorCommit(facts, [...paths], session, predecessor, policy);
+    if (accepted) admit();
+    else
+      assert.throws(admit, (error) =>
+        isWorkflowError(error, 'PREDECESSOR_NOT_RECONCILABLE'),
+      );
+    assert.deepEqual(events, expectedEvents);
+  }
+});
+
+test('exact predecessor trailers preserve newline, whitespace and duplicate boundaries', () => {
+  const message = 'Prior\n\nChange: demo-change\nTask: 1.1';
+  for (const [candidate, expected] of [
+    [message, true],
+    [message + '\n', true],
+    [message + '\n\n', false],
+    [message.replaceAll('\n', '\r\n'), false],
+    [message + ' ', false],
+    [message.replace('\n\n', '\n'), false],
+    [message.replace('Change:', 'change:'), false],
+    ['Change: other\n' + message, false],
+    ['Task: other\n' + message, false],
+    [message.replace('1.1', '1.2'), false],
+  ] as const)
+    assert.equal(
+      hasExactTrailers(candidate, 'demo-change', '1.1'),
+      expected,
+      JSON.stringify(candidate),
+    );
 });
 
 test('completion reconciles the immediate committed predecessor from Git', () => {
@@ -1201,10 +1836,102 @@ test('completion reconciles the immediate committed predecessor from Git', () =>
       'Change: demo-change\nTask: 1.1',
     ]);
 
-    const session = startSession(repository, 'demo-change', '1.2');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.2',
+    );
     fs.writeFileSync(path.join(repository, 'src/current.ts'), 'export {};\n');
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     const result = completeTask(repository, session.sessionId);
+
+    assert.deepEqual(result.completedTaskIds, ['1.1', '1.2']);
+    const tasks = fs.readFileSync(tasksPath, 'utf8');
+    assert.match(tasks, /- \[x\] 1\.1 Prior task/);
+    assert.match(tasks, /- \[x\] 1\.2 Current task/);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('fresh projected finalize reconciles the committed predecessor without prior check evidence', () => {
+  const repository = createFixtureRepository();
+  try {
+    const changeDirectory = path.join(
+      repository,
+      'openspec/changes/demo-change',
+    );
+    const tasksPath = path.join(changeDirectory, 'tasks.md');
+    fs.writeFileSync(
+      tasksPath,
+      [
+        '# Tasks',
+        '',
+        '- [ ] 1.1 Prior task',
+        '- [ ] 1.2 Current task',
+        '- [ ] 1.3 Keep the fixture change open',
+        '',
+      ].join('\n'),
+    );
+    const guardPath = path.join(changeDirectory, 'guard.json');
+    const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8'));
+    guard.tasks['1.2'] = {
+      allowedPaths: ['src/**'],
+      requiredChecks: ['fixture'],
+    };
+    guard.tasks['1.3'] = {
+      allowedPaths: ['src/**'],
+      requiredChecks: ['fixture'],
+    };
+    fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+    git(repository, ['add', tasksPath, guardPath]);
+    git(repository, ['commit', '-m', 'Add current task']);
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentV3Change(repository);
+
+    fs.writeFileSync(path.join(repository, 'src/prior.ts'), 'export {};\n');
+    git(repository, ['add', 'src/prior.ts']);
+    git(repository, [
+      'commit',
+      '-m',
+      'Implement prior task',
+      '-m',
+      'Change: demo-change\nTask: 1.1',
+    ]);
+
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.2',
+    );
+    fs.writeFileSync(path.join(repository, 'src/current.ts'), 'export {};\n');
+    assert.equal(
+      getSession(repository, session.sessionId).latestCheckReportId,
+      undefined,
+    );
+    const result = finalizeTask(repository, session.sessionId);
+    assert.equal(result.assurance, 'projected-single-pass-ordinary-failure');
+    assert.ok(result.stagedPaths.includes('src/current.ts'));
+    assert.equal(result.stagedPaths.includes('src/prior.ts'), false);
+    const completed = getSession(repository, session.sessionId);
+    const report = readImmutableReport(
+      path.join(runtimeRoot(repository), 'reports'),
+      session.sessionId,
+      completed.completionReportId!,
+    );
+    assert.ok(Array.isArray(report.reconciledTasks));
+    assert.equal(report.reconciledTasks.length, 1);
+    assert.equal(report.reconciledTasks[0].taskId, '1.1');
+    assert.equal(report.reconciledTasks[0].commitHash, session.baseline.head);
+    assert.deepEqual(report.reconciledTasks[0].changedPaths, ['src/prior.ts']);
 
     assert.deepEqual(result.completedTaskIds, ['1.1', '1.2']);
     const tasks = fs.readFileSync(tasksPath, 'utf8');
@@ -1255,9 +1982,20 @@ test('predecessor reconciliation fails when its independent check fails', () => 
       '-m',
       'Change: demo-change\nTask: 1.1',
     ]);
-    const session = startSession(repository, 'demo-change', '1.2');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.2',
+    );
     fs.writeFileSync(path.join(repository, 'src/current.ts'), 'export {};\n');
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
 
     assert.throws(
       () => completeTask(repository, session.sessionId),
@@ -1284,13 +2022,25 @@ test('managed commit bypasses hooks and accepts explicit workflow identity', () 
     git(repository, ['config', 'core.hooksPath', '.managed-hooks']);
     git(repository, ['config', '--unset', 'user.name']);
     git(repository, ['config', '--unset', 'user.email']);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     completeTask(repository, session.sessionId);
     finishSession(repository, session.sessionId);
 
     const committed = commitSession(
+      productionChangeContract,
       repository,
       session.sessionId,
       'Complete without hooks',

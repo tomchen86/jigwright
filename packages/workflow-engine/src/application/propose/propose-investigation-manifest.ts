@@ -1,57 +1,49 @@
-/**
- * Builds v3 investigation manifests from reconstructed planning facts.
- *
- * Invariants:
- * - Manifest authority binds the exact session snapshot and semantic provenance.
- * - Missing semantic decisions block construction instead of inventing evidence.
- * - Role and assurance projections preserve admitted identities and policy digests.
- */
+import type { InvestigationEvidenceReplayer } from '../../modules/investigation/manifest/investigation-materializer.ts';
 import type { EvidenceNode } from '@jigwright/core/evidence-node';
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   ExitCode,
   WorkflowError,
   workflowError,
 } from '../../foundation/errors/errors.ts';
-import {
-  ASSURANCE_ASSESSMENT_POLICY_DIGEST,
-  type AssuranceAssessmentReport,
-} from '../../modules/assurance/assurance-assessment-chain.ts';
-import { canonicalRoleContextSharingGrantEnvelopeV1 } from '../../modules/authority/optional-grants-package.ts';
+import { ASSURANCE_ASSESSMENT_POLICY_DIGEST } from '../../modules/assurance/assurance-assessment-chain.ts';
+import type { AssuranceAssessmentReport } from '../../modules/assurance/assurance-assessment-chain.ts';
+import type { RoleContextSharingGrantOperations } from '../../modules/authority/role-context-sharing-grant.ts';
 import {
   buildInvestigationManifestDraft,
   createInvestigationV3Blocker,
   sealInvestigationManifestDraft,
   validateForAuthority,
-  type InvestigationAssuranceFacts,
-  type InvestigationManifestV3,
-  type InvestigationV3Blocker,
-  type InvestigationV3RoleResult,
 } from '../../modules/investigation/manifest/investigation-manifest.ts';
-import {
-  buildInvestigationManifestV3,
-  type BuildInvestigationManifestV3Result,
-} from '../../modules/investigation/manifest/investigation-manifest-builder.ts';
-import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-scheduler.ts';
+import type {
+  InvestigationAssuranceFacts,
+  InvestigationManifestV3,
+  InvestigationV3Blocker,
+  InvestigationV3RoleResult,
+} from '../../modules/investigation/manifest/investigation-manifest-types.ts';
+import { buildInvestigationManifestV3 } from '../../modules/investigation/manifest/investigation-manifest-builder.ts';
+import type { BuildInvestigationManifestV3Result } from '../../modules/investigation/manifest/investigation-manifest-builder.ts';
+import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
 import { buildImplementationReconciliationRequirement } from '../../modules/why-knowledge/implementation-reconciliation.ts';
-import { isRecord, sha256 } from './propose-common.ts';
+import { isRecord, sha256 } from '../../modules/proposal/propose-values.ts';
 import type {
   ExemptionProposeOutput,
   ProposeAssuranceAssessment,
   RebuiltInvestigation,
-} from './propose-types.ts';
-
+} from '../../modules/proposal/propose-types.ts';
 type InvestigationManifestContext = Readonly<{
   git: Readonly<{ repositoryRoot: string }>;
   config: Readonly<{ repositoryName: string }>;
 }>;
+
 type InvestigationSession = RebuiltInvestigation['session'];
+
 type ProposeExemptionSession = NonNullable<
   ExemptionProposeOutput['investigation']
 >;
 
 export function buildProposeExemptionInvestigationManifestV3(
+  materializeInvestigationEvidenceView: InvestigationEvidenceReplayer,
   context: InvestigationManifestContext,
   session: ProposeExemptionSession,
   onBlocked?: (blocker: InvestigationV3Blocker) => never,
@@ -60,32 +52,35 @@ export function buildProposeExemptionInvestigationManifestV3(
     sessionRevision: session.revision,
     sessionSnapshotDigest: investigationV3SessionSnapshotDigest(session),
   };
-  const built = buildInvestigationManifestDraft({
-    repositoryRoot: context.git.repositoryRoot,
-    state: {
-      schemaVersion: 1,
-      applicabilityKind: 'exemption',
-      repositoryId: context.config.repositoryName,
-      changeId: session.changeId,
-      investigationId: session.investigationId,
-      normalizedIntent: session.intent,
-      authoring,
-      exemption: {
-        category: session.applicability.category,
-        baseline: {
-          commitOid: session.baseline.head,
-          treeOid: session.baseline.tree,
+  const built = buildInvestigationManifestDraft(
+    materializeInvestigationEvidenceView,
+    {
+      repositoryRoot: context.git.repositoryRoot,
+      state: {
+        schemaVersion: 1,
+        applicabilityKind: 'exemption',
+        repositoryId: context.config.repositoryName,
+        changeId: session.changeId,
+        investigationId: session.investigationId,
+        normalizedIntent: session.intent,
+        authoring,
+        exemption: {
+          category: session.applicability.category,
+          baseline: {
+            commitOid: session.baseline.head,
+            treeOid: session.baseline.tree,
+          },
+          declaredPaths: session.applicability.declaredPaths,
+          declaredChangeClasses: session.applicability.declaredChangeClasses,
+          rationale: session.applicability.rationale,
+          semanticAuthor: session.applicability.semanticAuthor,
+          nonTrivialBehaviorReliance:
+            session.applicability.nonTrivialBehaviorReliance,
+          researchBudgetMinutes: session.applicability.researchBudgetMinutes,
         },
-        declaredPaths: session.applicability.declaredPaths,
-        declaredChangeClasses: session.applicability.declaredChangeClasses,
-        rationale: session.applicability.rationale,
-        semanticAuthor: session.applicability.semanticAuthor,
-        nonTrivialBehaviorReliance:
-          session.applicability.nonTrivialBehaviorReliance,
-        researchBudgetMinutes: session.applicability.researchBudgetMinutes,
       },
     },
-  });
+  );
   if (built.outcome !== 'built') {
     onBlocked?.(built.blocker);
     throw investigationV3BuildFailure(built.blocker);
@@ -101,7 +96,7 @@ export function buildProposeExemptionInvestigationManifestV3(
     onBlocked?.(sealed.blocker);
     throw investigationV3BuildFailure(sealed.blocker);
   }
-  const verified = validateForAuthority({
+  const verified = validateForAuthority(materializeInvestigationEvidenceView, {
     repositoryRoot: context.git.repositoryRoot,
     manifest: sealed.manifest,
     expected: {
@@ -145,6 +140,11 @@ export function reportProposeAssuranceAssessment(
 }
 
 export function buildProposeInvestigationManifestV3(
+  materializeInvestigationEvidenceView: InvestigationEvidenceReplayer,
+  grants: Pick<
+    RoleContextSharingGrantOperations,
+    'canonicalRoleContextSharingGrantEnvelopeV1'
+  >,
   context: InvestigationManifestContext,
   rebuilt: RebuiltInvestigation,
 ): BuildInvestigationManifestV3Result {
@@ -226,7 +226,7 @@ export function buildProposeInvestigationManifestV3(
       rebuilt.reviewerRoleResult,
     ]
       .filter((role): role is AdmittedRoleResult => role !== null)
-      .map(investigationV3RoleResult);
+      .map((role) => investigationV3RoleResult(grants, role));
     const semanticAuthorIds = [
       ...rebuilt.v3Domain.dispositionInputs.map(({ author }) => author.trim()),
       ...whyCheckpoint.envelope.payload.answers.map(({ semanticAuthor }) =>
@@ -296,7 +296,7 @@ export function buildProposeInvestigationManifestV3(
         whyCheckpoint: whyCheckpoint.envelopeDigest,
       }),
     );
-    return buildInvestigationManifestV3({
+    return buildInvestigationManifestV3(materializeInvestigationEvidenceView, {
       repositoryRoot: context.git.repositoryRoot,
       repositoryId: context.config.repositoryName,
       changeId: rebuilt.session.changeId,
@@ -353,6 +353,10 @@ export function buildProposeInvestigationManifestV3(
 }
 
 function investigationV3RoleResult(
+  grants: Pick<
+    RoleContextSharingGrantOperations,
+    'canonicalRoleContextSharingGrantEnvelopeV1'
+  >,
   role: AdmittedRoleResult,
 ): InvestigationV3RoleResult {
   if (role.role !== 'plan-reviewer') {
@@ -380,7 +384,7 @@ function investigationV3RoleResult(
           kind: 'role-context-sharing-use-identity.v1' as const,
           grantId: roleContextSharing.grantId,
           signedEnvelopeDigest: sha256(
-            canonicalRoleContextSharingGrantEnvelopeV1(
+            grants.canonicalRoleContextSharingGrantEnvelopeV1(
               roleContextSharing.envelope,
             ),
           ),

@@ -8,8 +8,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { ensurePrivateInvestigationDirectory } from './investigation-private-files.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { ensurePrivateInvestigationDirectory } from '../journal-primitives/investigation-private-files.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { providerNativeSessionStorePathsV1 as storePaths } from '../session-workspace/provider-runtime-authority-paths.ts';
 import {
   storeInvalid,

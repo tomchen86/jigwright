@@ -6,8 +6,8 @@ import path from 'node:path';
 import test from 'node:test';
 import { showAuthorityAuditTask } from '../src/runtime/storage-journal/authority-audit-service.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   createPlanningContributionEnvelope,
   createPlanReviewRetryEnvelope,
@@ -15,7 +15,7 @@ import {
   getProposeStatus,
   resumePropose,
   startPropose,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import { readProposeExemptionSession } from '../src/runtime/storage-journal/propose-exemption-store.ts';
 import {
   claimProviderInvocation,
@@ -23,11 +23,7 @@ import {
   readProviderInvocation,
   readProviderRetryReservation,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import {
-  authorizeTaskMandate,
-  inspectTaskMandate,
-  revokeTaskMandate,
-} from '../src/modules/authority/task-mandate.ts';
+
 import {
   git,
   isWorkflowError,
@@ -59,7 +55,7 @@ test('true propose CLI charges the durable Survey reservation once and revoked r
   const changeId = 'mandated-propose';
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/cli.ts',
+    'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
   );
   const intentPath = path.join(inputDirectory, 'intent.json');
   try {
@@ -623,3 +619,7 @@ test('exempt PlanReview inherits the durable mandate and audits one fail-closed 
     fs.rmSync(keyDirectory, { recursive: true, force: true });
   }
 });
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const { authorizeTaskMandate, inspectTaskMandate, revokeTaskMandate } =
+  taskMandateOperations;

@@ -13,11 +13,9 @@ import {
   createPrivateCanonicalJson,
   privatePathExists,
   readPrivateCanonicalJson,
-} from './investigation-private-files.ts';
-import {
-  type InvestigationRuntimePaths,
-  assertInvocationId,
-} from '../session-workspace/paths.ts';
+} from '../journal-primitives/investigation-private-files.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
+import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
 import {
   type ProviderInvocationCancellationBindingV1,
   type ProviderInvocationCancellationRequestV1,
@@ -29,10 +27,10 @@ import {
   assertProviderInvocationCancellationParameters,
 } from '../../modules/authority/provider-invocation-cancellation-grant.ts';
 import {
-  readGrantRecord,
   grantStorePaths,
-  grantRecordDigest,
-} from './grant-store.ts';
+  createFileGrantRecordStore,
+} from '../lifecycle-ledgers/grant-store.ts';
+import { grantRecordDigest } from '../../modules/authority/grant-records.ts';
 import {
   invocationLockInvalid,
   providerCancellationInvalid,
@@ -54,36 +52,44 @@ export {
 } from '../../modules/provider-orchestration/blind-survey-output.ts';
 export type { ProviderInvocationAcceptanceBinding } from '../../modules/provider-orchestration/agent-runtime-port.ts';
 export { PROVIDER_COMPLETION_GRACE_MS } from './provider-invocation-common.ts';
-export {
-  type NormalizedChangeIntent,
-  type BlindSurveyManifest,
-  type PlanReviewManifest,
-  type TaskDiffReviewManifest,
-  type TaskDiffReviewContinuationManifest,
-  type ProviderInvocationManifest,
-  type InvestigationStartReservation,
-  type InvestigationStartReservationSnapshot,
-  type ProviderRetryDecisionBinding,
-  type ProviderRetryReservationV2,
-  type ProviderRetryReplacementBinding,
-  type ProviderRetryReservationV3,
-  type ProviderRetryReservationCurrent,
-  type ProviderInvocationFailure,
-  type ProviderInvocationLease,
-  type ProviderInvocationRecord,
-  type ProviderAttemptBudgetReservation,
-  type ProviderRetryAccountingSnapshot,
-  type ProviderExecutionPolicySnapshotV2,
-  type ProviderExecutionPolicySnapshotV3,
-  type ProviderExecutionPolicySnapshotCurrent,
-  type CreateProviderInvocationInput,
-  type PlanReviewSnapshotRuntime,
-  type ProviderLeaseClaim,
-  type ProviderWorkerLeaseClaim,
-  type ProviderCompletionRecovery,
-  type ProviderOutputSchemaGeneration,
-  type ProviderResidualsGeneration,
-} from './provider-invocation-types.ts';
+export type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
+export type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
+export type {
+  PlanReviewManifest,
+  TaskDiffReviewManifest,
+  TaskDiffReviewContinuationManifest,
+  PlanReviewSnapshotRuntime,
+} from '../../modules/assurance/provider-review-manifests.ts';
+export type {
+  InvestigationStartReservation,
+  InvestigationStartReservationSnapshot,
+  ProviderRetryDecisionBinding,
+  ProviderRetryReservationV2,
+  ProviderRetryReplacementBinding,
+  ProviderRetryReservationV3,
+  ProviderRetryReservationCurrent,
+} from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
+export type {
+  ProviderInvocationFailure,
+  ProviderInvocationLease,
+  ProviderInvocationRecord,
+} from '../../modules/provider-orchestration/provider-invocation-record.ts';
+export type {
+  ProviderAttemptBudgetReservation,
+  ProviderRetryAccountingSnapshot,
+} from '../../modules/provider-orchestration/provider-retry-accounting.ts';
+export type {
+  ProviderExecutionPolicySnapshotV2,
+  ProviderExecutionPolicySnapshotV3,
+  ProviderExecutionPolicySnapshotCurrent,
+} from '../../modules/provider-orchestration/provider-execution-policy-snapshot.ts';
+export type {
+  ProviderLeaseClaim,
+  ProviderWorkerLeaseClaim,
+  ProviderCompletionRecovery,
+  ProviderOutputSchemaGeneration,
+  ProviderResidualsGeneration,
+} from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
 export {
   blindSurveyManifestDigest,
   providerInvocationManifestDigest,
@@ -358,10 +364,9 @@ function assertPreparedProviderCancellationGrant(
   paths: InvestigationRuntimePaths,
   input: Readonly<{ challengeId: string; operationId: string }>,
 ) {
-  const record = readGrantRecord(
+  const record = createFileGrantRecordStore(
     grantStorePaths(path.dirname(paths.root)),
-    input.challengeId,
-  );
+  ).readGrantRecord(input.challengeId);
   if (
     record.state !== 'prepared' ||
     record.operationId !== input.operationId ||

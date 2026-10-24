@@ -169,7 +169,10 @@ test('role-config CLI shows and atomically configures declarative central rules 
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'role-config',
         'simulate',
         '--config',
@@ -227,7 +230,10 @@ test('role-config CLI shows and atomically configures declarative central rules 
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'role-config',
         'show',
         '--json',

@@ -11,7 +11,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { performance } from 'node:perf_hooks';
 
-import { loadAiAdapterPolicy } from './ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   assertReadOnlyProbe,
@@ -20,7 +20,7 @@ import {
 import { readExecutionJobState } from '../storage-journal/execution-store.ts';
 import { WorkflowError } from '../../foundation/errors/errors.ts';
 import { runGitBuffer } from '../repository-transaction/git.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+import { observeInvestigationRuntimeContext } from '../repository-observation/investigation-runtime-context.ts';
 import {
   readProviderInvocation,
   readProviderInvocationRequest,
@@ -35,12 +35,8 @@ export type ProviderReadOnlyProbeContext = Readonly<{
   failureCode: string;
 }>;
 
-export type ProviderReadOnlyProbeExecutionResult = Readonly<{
-  state: 'succeeded' | 'failed';
-  code: string;
-  observationDigest: string;
-  elapsedMs: number;
-}>;
+import type { ProviderReadOnlyProbeExecutionResult } from '../../modules/provider-orchestration/provider-retry-service-port.ts';
+export type { ProviderReadOnlyProbeExecutionResult } from '../../modules/provider-orchestration/provider-retry-service-port.ts';
 
 /**
  * Execute one code-owned read-only probe. No probe kind launches a provider,
@@ -97,7 +93,7 @@ function observeProviderEnvironment(
   request: Readonly<ReadOnlyProbeRequest>,
   probeContext: ProviderReadOnlyProbeContext,
 ): unknown {
-  const context = loadInvestigationRuntimeContext(cwd);
+  const context = observeInvestigationRuntimeContext(cwd);
   switch (request.kind) {
     case 'repository-head':
       return {

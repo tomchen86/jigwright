@@ -6,12 +6,7 @@
  * - Recovery status carries an authority descriptor and an explicit
  *   nullable quarantine marker.
  */
-import type { BootstrapDependencies } from './intervention-control-bootstrap.ts';
-import type {
-  ControlPlaneRecoveryApprovalSummary,
-  ControlPlaneRecoveryExecutorDependencies,
-} from './intervention-control-updater.ts';
-import type { MaintenanceApprovalSummary } from './intervention-maintenance.ts';
+import type { BootstrapHumanSignatureVerifier } from '../../modules/authority/intervention-bootstrap-contract.ts';
 import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
 import type { RecoveryAuthorityDescriptorV1 } from '../../modules/authority/recovery-authority-contract.ts';
 import type {
@@ -34,16 +29,7 @@ export interface HarnessRecoveryRefusalAuthority {
 export interface HarnessBootstrapRuntimeOverrides {
   now?: () => Date;
   maintenanceSigner?: MaintainerSignerProvider;
-  recoverySigner?: MaintainerSignerProvider;
-  verifyHumanSignature?: NonNullable<
-    BootstrapDependencies['verifyHumanSignature']
-  >;
-  presentMaintenanceSummary?: (summary: MaintenanceApprovalSummary) => void;
-  presentRecoverySummary?: (
-    summary: ControlPlaneRecoveryApprovalSummary,
-  ) => void;
-  controlPlaneAuditSink?: ControlPlaneRecoveryExecutorDependencies['auditSink'];
-  recoveryAuditSink?: ControlPlaneRecoveryExecutorDependencies['recoveryAuditSink'];
+  verifyHumanSignature?: BootstrapHumanSignatureVerifier;
   recoveryQuarantineAuditSink?: {
     append(record: RecoveryQuarantineAuditRecord): void;
   };

@@ -27,7 +27,7 @@ import {
   assertProviderNativeSessionHandleV1,
 } from '../../modules/provider-orchestration/provider-native-session.ts';
 import { assertAgentRuntimeCompletionReceipt } from '../../modules/provider-orchestration/provider-runtime-evidence.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   changeRoleAssignmentObjectPathV1,
   changeRoleAssignmentRefPathV1,
@@ -43,7 +43,7 @@ import {
 import {
   assertPrivateInvestigationDirectory,
   readPrivateCanonicalJson,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   hasExactKeys,
   isDigest,
@@ -51,7 +51,7 @@ import {
   isTimestamp,
   providerInvocationUnsafe,
   sha256,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 import {
   type ProviderExecutionAdmissionAuthority,
   assertDurableExecutionAdmissionState,

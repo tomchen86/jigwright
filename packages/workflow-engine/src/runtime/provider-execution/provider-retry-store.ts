@@ -19,9 +19,9 @@ import {
   ensurePrivateInvestigationDirectory,
   createPrivateCanonicalJson,
   writePrivateCanonicalJsonAtomic,
-} from '../storage-journal/investigation-private-files.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
-import { type ProviderInvocationRecord } from '../storage-journal/provider-invocation-store.ts';
+} from '../journal-primitives/investigation-private-files.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   type ProviderAutomaticRetrySchedule,
   type ProviderRetryScheduleReceipt,
@@ -34,7 +34,7 @@ import {
   PROBE_MAX_ATTEMPTS,
   isDigest,
   sha256Text,
-} from './provider-retry-record.ts';
+} from '../../modules/provider-orchestration/provider-retry-schedule.ts';
 
 export function startScheduleReceipt(
   paths: InvestigationRuntimePaths,

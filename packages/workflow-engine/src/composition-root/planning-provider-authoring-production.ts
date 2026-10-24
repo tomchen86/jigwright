@@ -8,18 +8,25 @@
 import crypto from 'node:crypto';
 
 import { createOpenSpecAdapter } from './openspec-adapter-production.ts';
-import { OPENSPEC_ASSET_DEFINITIONS } from '../adapters/planning/openspec/documents/openspec-planning-asset-contract.ts';
+import { generateOpenSpecPlanningAssets as generateOpenSpecPlanningAssetsWithRunner } from '../adapters/planning/openspec/documents/openspec-planning-assets.ts';
+import { resolveCheckRunner } from '../adapters/consumer/repository/work-registry/runner-resolution.ts';
+import {
+  OPENSPEC_ASSET_DEFINITIONS,
+  OPENSPEC_ASSET_MANIFEST_PATH,
+} from '../adapters/planning/openspec/documents/openspec-planning-asset-contract.ts';
+import type { ReviewedGeneratedAssetInventory } from '../modules/source/mutation-class-policy.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import type {
   PlanningProviderAuthoringPort,
   PlanningProviderReviewedAssetMirror,
 } from '../modules/planning-provider/planning-provider-authoring-port.ts';
-import { repositoryPlanningConfiguration } from '../modules/repository-consumer/repository-consumer-config.ts';
+import { loadRepositoryConsumerConfiguration } from '../runtime/workflow-configuration/repository-consumer.ts';
 
 export function createPlanningProviderAuthoringPort(
   repositoryRoot: string,
 ): PlanningProviderAuthoringPort {
-  const planning = repositoryPlanningConfiguration(repositoryRoot);
+  const planning =
+    loadRepositoryConsumerConfiguration(repositoryRoot).configuration.planning;
   if (planning.providerId !== 'openspec') {
     throw workflowError(
       'PLANNING_PROVIDER_UNSUPPORTED',
@@ -59,7 +66,8 @@ export function createPlanningProviderAuthoringPort(
 export function planningProviderReviewedAssetMirrors(
   repositoryRoot: string,
 ): readonly PlanningProviderReviewedAssetMirror[] {
-  const planning = repositoryPlanningConfiguration(repositoryRoot);
+  const planning =
+    loadRepositoryConsumerConfiguration(repositoryRoot).configuration.planning;
   if (planning.providerId !== 'openspec') {
     throw workflowError(
       'PLANNING_PROVIDER_UNSUPPORTED',
@@ -88,3 +96,14 @@ export function planningProviderReviewedAssetMirrors(
 function sha256(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
+
+/** The reviewed generated assets the current planning provider owns. */
+export const reviewedGeneratedAssets: ReviewedGeneratedAssetInventory =
+  Object.freeze({
+    manifestPath: OPENSPEC_ASSET_MANIFEST_PATH,
+    assets: OPENSPEC_ASSET_DEFINITIONS,
+  });
+
+/** The asset generator bound to the reviewed check-runner resolver. */
+export const generateOpenSpecPlanningAssets =
+  generateOpenSpecPlanningAssetsWithRunner.bind(undefined, resolveCheckRunner);

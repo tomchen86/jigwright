@@ -14,25 +14,23 @@ import {
   canonicalEvidenceNodeEnvelope,
   createEvidenceNode,
   type EvidenceNode,
-} from '../src/adapters/planning/investigation/evidence-node.ts';
+} from '../src/foundation/evidence-node/evidence-node.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import {
-  createInvestigationCheckpointEnvelope,
-  getInvestigationStatus,
-} from '../src/adapters/planning/investigation/investigation-session.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
+import { getInvestigationStatus } from '../src/runtime/investigation-lifecycle/investigation-session.ts';
 import {
   createPlanReviewProgressEnvelope,
   getProposeStatus,
   resumePropose,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import { planningInvestigationRoleResultDependency } from '../src/modules/assurance/planning-assurance-validator.ts';
 import { type ProviderRunnerReport } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import {
   compareAndSwapInvestigationSession,
   readInvestigationSession,
-} from '../src/runtime/storage-journal/investigation-session-store.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+} from '../src/runtime/storage-journal/investigation-session-records.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { isWorkflowError } from './fixture.ts';
 import {
   fakeRunnerReport,

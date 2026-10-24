@@ -6,7 +6,24 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import * as durableBindings from '../src/modules/assurance/task-diff-review-binding-codec.ts';
+import {
+  bindingInputs,
+  goldenRecords,
+} from './support/task-diff-review-binding-fixture.ts';
+import {
+  createTaskDiffReviewReservation,
+  createTaskDiffReviewResultBinding,
+  createTaskDiffFinalAssuranceBinding,
+  createTaskDiffReviewLineageSupersession,
+  taskDiffReviewReservationPath,
+  taskDiffReviewResultPath,
+  taskDiffReviewContinuationReservationPath,
+  taskDiffReviewContinuationResultPath,
+  taskDiffFinalAssurancePath,
+  taskDiffReviewLineageSupersessionPath,
+} from '../src/runtime/storage-journal/task-diff-review-store.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   createTaskDiffReviewChallengeResponse,
@@ -26,6 +43,114 @@ import {
   deriveTaskDiffReviewCandidatePlan,
   TASK_DIFF_REVIEW_COVERAGE,
 } from '../src/modules/assurance/task-diff-review.ts';
+
+test('all six actual stores preserve golden wire bytes and canonical pure records', () => {
+  const base = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'task-diff-binding-store-'),
+  );
+  const paths = investigationRuntimePaths(base, 'workflow-engine');
+  const input = bindingInputs();
+  try {
+    const cases = [
+      {
+        name: 'reservation',
+        create: () => createTaskDiffReviewReservation(paths, input.reservation),
+        prepare: () =>
+          durableBindings.prepareTaskDiffReviewReservation(input.reservation),
+        target: taskDiffReviewReservationPath(
+          paths,
+          input.reservation.sessionId,
+          input.reservation.subject.subjectDigest,
+        ),
+      },
+      {
+        name: 'result',
+        create: () => createTaskDiffReviewResultBinding(paths, input.result),
+        prepare: () =>
+          durableBindings.prepareTaskDiffReviewResultBinding(input.result),
+        target: taskDiffReviewResultPath(
+          paths,
+          input.result.sessionId,
+          input.result.subjectDigest,
+        ),
+      },
+      {
+        name: 'continuationReservation',
+        create: () =>
+          createTaskDiffReviewContinuationReservation(
+            paths,
+            input.continuationReservation,
+          ),
+        prepare: () =>
+          durableBindings.prepareTaskDiffReviewContinuationReservation(
+            input.continuationReservation,
+          ),
+        target: taskDiffReviewContinuationReservationPath(
+          paths,
+          input.continuationReservation.sessionId,
+          input.continuationReservation.review.recordDigest,
+        ),
+      },
+      {
+        name: 'continuationResult',
+        create: () =>
+          createTaskDiffReviewContinuationResultBinding(
+            paths,
+            input.continuationResult,
+          ),
+        prepare: () =>
+          durableBindings.prepareTaskDiffReviewContinuationResultBinding(
+            input.continuationResult,
+          ),
+        target: taskDiffReviewContinuationResultPath(
+          paths,
+          input.continuationResult.sessionId,
+          input.continuationResult.reviewRecordDigest,
+        ),
+      },
+      {
+        name: 'finalAssurance',
+        create: () =>
+          createTaskDiffFinalAssuranceBinding(paths, input.finalAssurance),
+        prepare: () =>
+          durableBindings.prepareTaskDiffFinalAssuranceBinding(
+            input.finalAssurance,
+          ),
+        target: taskDiffFinalAssurancePath(
+          paths,
+          input.finalAssurance.subjectDigest,
+        ),
+      },
+      {
+        name: 'supersession',
+        create: () =>
+          createTaskDiffReviewLineageSupersession(paths, input.supersession),
+        prepare: () =>
+          durableBindings.prepareTaskDiffReviewLineageSupersession(
+            input.supersession,
+          ),
+        target: taskDiffReviewLineageSupersessionPath(
+          paths,
+          input.supersession.predecessorReview.recordDigest,
+        ),
+      },
+    ] as const;
+    for (const entry of cases) {
+      const created = entry.create();
+      assert.deepEqual(created, entry.prepare());
+      const bytes = fs.readFileSync(entry.target, 'utf8');
+      assert.deepEqual(JSON.parse(bytes), created);
+      assert.equal(digest(bytes), goldenRecords[entry.name].wireSha256);
+      assert.equal(fs.statSync(entry.target).mode & 0o777, 0o600);
+      const mtimeMs = fs.statSync(entry.target).mtimeMs;
+      assert.deepEqual(entry.create(), created);
+      assert.equal(fs.readFileSync(entry.target, 'utf8'), bytes);
+      assert.equal(fs.statSync(entry.target).mtimeMs, mtimeMs);
+    }
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
+});
 
 test('provider continuation inventory spans sessions and excludes exact global namespaces', () => {
   const base = fs.mkdtempSync(

@@ -8,7 +8,7 @@
 import { executionRetryBudgetChanges } from '../../modules/provider-orchestration/execution-retry.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { createExecutionBudgetGrantRequest } from '../../modules/authority/execution-governance.ts';
+import { createExecutionBudgetGrantRequest } from '../../modules/authority/execution-governance-grant-contracts.ts';
 import {
   type AttemptRecord,
   type JobRecord,
@@ -27,12 +27,13 @@ import {
   projectProviderInvocationExecution,
   requireExecutionJobMandateBinding,
 } from '../../modules/provider-orchestration/execution-core.ts';
-import { type AiAdapterRetryAccounting } from '../provider-execution/ai-adapter-policy.ts';
+import { providerRetryPolicyFromAccounting } from '../../modules/provider-orchestration/provider-retry-accounting.ts';
+export { providerRetryPolicyFromAccounting } from '../../modules/provider-orchestration/provider-retry-accounting.ts';
 import {
   type ProviderRepairLineage,
   readProviderRepairLineage,
-} from '../provider-execution/provider-repair-governance.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+} from './provider-repair-governance.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   type DurableExecutionJobState,
   type ProviderExecutionEntry,
@@ -48,33 +49,7 @@ import {
   normalizeDigest,
   sumAttemptAccounting,
 } from './execution-state-values.ts';
-import { type ProviderRetryAccountingSnapshot } from './provider-invocation-store.ts';
-
-export function providerRetryPolicyFromAccounting(
-  accounting: AiAdapterRetryAccounting,
-  createdAt: string,
-): RetryPolicy {
-  const createdAtMs = Date.parse(createdAt);
-  if (!Number.isFinite(createdAtMs)) {
-    throw executionProjectionConflict(
-      'Provider retry accounting has an invalid Job creation timestamp.',
-    );
-  }
-  return deepFreeze({
-    maxAttempts: accounting.maxAttempts,
-    maxCumulativeRuntimeMs: accounting.maxCumulativeRuntimeMs,
-    maxProviderCostMicros: accounting.maxProviderCostMicros,
-    maxProviderTokens: accounting.maxProviderTokens,
-    maxSameFailureFingerprint: accounting.maxSameFailureFingerprint,
-    maxRepairAttempts: accounting.maxRepairAttempts,
-    deadline: new Date(createdAtMs + accounting.deadlineMs).toISOString(),
-    providerLimits: Object.fromEntries(
-      Object.entries(accounting.providerLimits).sort(([left], [right]) =>
-        left.localeCompare(right),
-      ),
-    ),
-  });
-}
+import type { ProviderRetryAccountingSnapshot } from '../../modules/provider-orchestration/provider-retry-accounting.ts';
 
 export function decideProviderExecutionFailure(input: {
   workflow: WorkflowRecord;

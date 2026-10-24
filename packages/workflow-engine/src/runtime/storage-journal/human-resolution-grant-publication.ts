@@ -8,7 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   humanResolutionGrantPublicationRecoveryPath,
   listHumanResolutionGrantIds,
@@ -25,12 +25,12 @@ import {
   type HumanResolutionGrantPublicationStoreInspection,
   type HumanResolutionGrantPublicationStoreState,
   type QuarantinedHumanResolutionGrantPublication,
-} from './human-resolution-grant-publication-contract.ts';
+} from '../../modules/investigation/domain/human-resolution-grant-publication-contract.ts';
 import {
   ACTIVE_HUMAN_RESOLUTION_JOURNAL,
   readActiveHumanResolutionJournal,
   scanActiveHumanResolutionJournalDirectory,
-} from './human-resolution-journal.ts';
+} from '../lifecycle-ledgers/human-resolution-journal.ts';
 import {
   assertPrivateFile,
   createPrivateRawFile,
@@ -41,19 +41,25 @@ import {
   readPrivateCanonicalJson,
   walkPrivateDirectory,
   writePrivateCanonicalJsonAtomic,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   assertHumanResolutionGrantId,
+  humanResolutionGrantUnsafe,
+  isBoundedResolutionText,
+} from '../../modules/investigation/domain/human-resolution-values.ts';
+import {
   humanResolutionGrantPublicationRecoveryAmbiguous,
   humanResolutionGrantPublicationRecoveryInvalid,
-  humanResolutionGrantPublicationRecoveryStale,
-  humanResolutionGrantUnsafe,
   humanResolutionJournalPath,
-  humanResolutionJournalUnsafe,
   humanResolutionPaths,
-  isBoundedResolutionText,
-} from './investigation-resolution-values.ts';
-import { isDigest, isRecord, sha256 } from './investigation-store-values.ts';
+} from '../journal-primitives/investigation-resolution-values.ts';
+import { humanResolutionGrantPublicationRecoveryStale } from '../../modules/investigation/domain/human-resolution-grant-publication-contract.ts';
+import { humanResolutionJournalUnsafe } from '../../modules/investigation/domain/human-resolution-journal-contract.ts';
+import {
+  isDigest,
+  isRecord,
+  sha256,
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 
 export function inspectInterruptedHumanResolutionGrantPublications(
   paths: InvestigationRuntimePaths,

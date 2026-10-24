@@ -6,7 +6,8 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import type {
   CheckEvidence,
   ObservedCheckFailure,
-} from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
+} from '../src/foundation/check-evidence/check-evidence.ts';
+
 import { prepareTaskStrategyGreenFailureRecord } from '../src/runtime/storage-journal/task-strategy-correction-store.ts';
 import {
   assertTaskStrategyImplementationManifest,

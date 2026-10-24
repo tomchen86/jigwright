@@ -1,0 +1,1 @@
+export const SCAN_HIT_MAX_CONTEXT_BYTES = 512;

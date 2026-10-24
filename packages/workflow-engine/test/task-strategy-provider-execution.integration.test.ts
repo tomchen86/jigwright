@@ -1,3 +1,4 @@
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import { startSession } from '../src/application/execute-task/session.ts';
 import fs from 'node:fs';
@@ -5,11 +6,11 @@ import path from 'node:path';
 import {
   sealTaskStrategyRed,
   inspectTaskStrategyTransaction,
-} from '../src/application/execute-task/task-strategy-execution.ts';
+} from '../src/composition-root/task-strategy-execution-production.ts';
 import {
   beginTaskStrategyImplementation,
   inspectTaskStrategyImplementation,
-} from '../src/application/execute-task/task-strategy-implementation-lifecycle.ts';
+} from '../src/composition-root/task-strategy-production.ts';
 import assert from 'node:assert/strict';
 import {
   runtimeRoot,
@@ -29,10 +30,10 @@ import {
   prepareProviderInvocationAcceptanceBinding,
   completeProviderInvocationFromRunner,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import { readProviderRepairEvidence } from '../src/runtime/provider-execution/provider-execution-governance.ts';
+import { readProviderRepairEvidence } from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import { executionJobStatePath } from '../src/runtime/storage-journal/execution-store.ts';
-import { dispatchPreparedTaskStrategyProvider } from '../src/cli.ts';
-import { beginTaskStrategyRedRevision } from '../src/application/execute-task/task-strategy-red-revision.ts';
+import { dispatchPreparedTaskStrategyProvider } from '../bootstrap/workflow-engine-host.ts';
+import { beginTaskStrategyRedRevision } from '../src/composition-root/task-strategy-red-revision-production.ts';
 import {
   createCrossAgentFixture,
   snapshotPersistentTree,
@@ -48,7 +49,12 @@ import {
 test('cross-agent RED schedules one session-independent implementation reservation before launch', () => {
   const { repository } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.mkdirSync(path.join(repository, 'test'), { recursive: true });
     fs.writeFileSync(
       path.join(repository, 'test/feature.test.mjs'),
@@ -224,7 +230,12 @@ test('provider worker binds task implementation output to the exact sealed subje
   for (const testCase of cases) {
     const { repository } = createCrossAgentFixture('assertion');
     try {
-      const session = startSession(repository, 'demo-change', '1.1');
+      const session = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
       const testPath = path.join(repository, 'test/feature.test.mjs');
       fs.mkdirSync(path.dirname(testPath), { recursive: true });
       fs.writeFileSync(
@@ -282,7 +293,12 @@ test('provider worker binds task implementation output to the exact sealed subje
 test('provider completion rejects a digest-consistent wrong task subject before durable mutation', () => {
   const { repository } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
@@ -388,7 +404,12 @@ test('provider completion rejects a digest-consistent wrong task subject before 
 test('routine status and resume drive one durable cross-agent TDD transaction to engine GREEN', () => {
   const { repository, counterPath } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
@@ -567,7 +588,12 @@ test('routine strategy resume schedules a fresh same-provider implementation ses
     { codex: true, claude: false },
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.mkdirSync(path.join(repository, 'test'), { recursive: true });
     fs.writeFileSync(
       path.join(repository, 'test/feature.test.mjs'),
@@ -632,7 +658,12 @@ test('cross-agent implementation uses the sole provider in a fresh session', () 
     { codex: true, claude: false },
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.mkdirSync(path.join(repository, 'test'), { recursive: true });
     fs.writeFileSync(
       path.join(repository, 'test/feature.test.mjs'),
@@ -680,7 +711,12 @@ test('cross-agent implementation uses the sole provider in a fresh session', () 
 test('provider worker rejects a task implementation whose sealed RED owner has drifted', () => {
   const { repository } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
@@ -719,7 +755,12 @@ test('provider worker rejects a task implementation whose sealed RED owner has d
 test('provider worker cannot terminally succeed after its task implementation owner changes during the runner', () => {
   const { repository } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
@@ -798,7 +839,12 @@ test('provider worker cannot terminally succeed after its task implementation ow
 test('task implementation reservation rejects independently redigested replay metadata', () => {
   const { repository } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.mkdirSync(path.join(repository, 'test'), { recursive: true });
     fs.writeFileSync(
       path.join(repository, 'test/feature.test.mjs'),

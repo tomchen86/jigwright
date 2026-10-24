@@ -1,3 +1,4 @@
+import type { HumanResolutionGrantStoreEntry } from '../../modules/investigation/domain/human-resolution-grant-contract.ts';
 /**
  * Publishes, reserves, reads, and terminalizes human-resolution grants.
  *
@@ -13,7 +14,7 @@ import {
 } from '../../modules/authority/human-revocation-contract.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   assertNoPreparedHumanResolutionGrantPublicationRecovery,
   listHumanResolutionGrantIds,
@@ -29,32 +30,25 @@ import {
   readPrivateCanonicalJson,
   readPrivateFile,
   withPrivateRuntimeLock,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   assertCanonicalResolutionEnvelopeBytes,
-  assertHumanResolutionGrantId,
-  humanResolutionGrantNotFound,
   humanResolutionGrantUnavailable,
-  humanResolutionGrantUnsafe,
   humanResolutionPaths,
+} from '../journal-primitives/investigation-resolution-values.ts';
+import { humanResolutionGrantNotFound } from '../../modules/investigation/domain/human-resolution-values.ts';
+import {
+  assertHumanResolutionGrantId,
+  humanResolutionGrantUnsafe,
   isBoundedResolutionText,
-} from './investigation-resolution-values.ts';
+} from '../../modules/investigation/domain/human-resolution-values.ts';
 import {
   deepFreeze,
   hasExactKeys,
   isDigest,
   isRecord,
   isTimestamp,
-} from './investigation-store-values.ts';
-
-export type HumanResolutionGrantStoreEntry = {
-  grantId: string;
-  state: 'available' | 'reserved' | 'revoked' | 'consumed';
-  envelopeBytes: string;
-  terminalReason: string | null;
-  recordedAt: string | null;
-  revocationAuthorization?: HumanRevocationAuthorization;
-};
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 
 export function storeAvailableHumanResolutionGrant(
   paths: InvestigationRuntimePaths,

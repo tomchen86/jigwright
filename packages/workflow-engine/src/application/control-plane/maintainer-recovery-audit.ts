@@ -1,3 +1,11 @@
+import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
+import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
+import type {
+  MaintainerRecoveryAuditBindings,
+  MaintainerRecoveryAuditBindingsTypes,
+} from './maintainer-recovery.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
 /**
  * Reconstructs portable application and transaction audit receipts during
  * recovery.
@@ -7,10 +15,7 @@
  *   and time.
  */
 // maintainer recovery audit; repository effects remain bound by the public module.
-import type {
-  MaintainerRecoveryAuditBindings,
-  MaintainerRecoveryAuditBindingsTypes,
-} from './maintainer-recovery.ts';
+
 type AuthoritySession =
   MaintainerRecoveryAuditBindingsTypes['AuthoritySession'];
 type AuthorityCommitJournal =
@@ -39,6 +44,8 @@ export function createMaintainerRecoveryAudit(
   bindings: () => MaintainerRecoveryAuditBindings,
 ) {
   function ensurePortableApplicationReceipt(
+    createSigner: MaintainerSignerFactory,
+    authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
     session: AuthoritySession,
     journal: AuthorityCommitJournal,
     auditScope: AuthorityAuditLedgerScope,
@@ -54,8 +61,6 @@ export function createMaintainerRecoveryAudit(
       signedGrantEnvelopeDigest,
       canonicalMaintainerGrantV2Envelope,
       authorityApplicationReceiptTagRef,
-      createInteractiveSshSigner,
-      publishAuthorityApplicationReceipt,
     } = boundServices;
 
     const terminal = readTerminalMaintainerGrant(
@@ -101,10 +106,11 @@ export function createMaintainerRecoveryAudit(
         'Portable authority receipt inputs differ from the exact candidate transaction.',
       );
     }
-    const policyContent = runGit(session.repositoryRoot, [
-      'show',
-      `${session.baseCommit}:workflow/maintainer-policy.json`,
-    ]);
+    const policyContent = readFileAtRevision(
+      session.repositoryRoot,
+      session.baseCommit,
+      'workflow/maintainer-policy.json',
+    );
     const policy = parseMaintainerPolicy(JSON.parse(policyContent));
     const grantTagRef = `${policy.auditTagPrefix}${session.grantId}`;
     const receipt = createAuthorityApplicationReceiptPayload({
@@ -151,10 +157,10 @@ export function createMaintainerRecoveryAudit(
     ).trim();
     let signer = providedSigner;
     if (!alreadyPublished) {
-      signer ??= createInteractiveSshSigner(session.repositoryRoot, policy);
+      signer ??= createSigner(session.repositoryRoot, policy);
       signer.assertHumanPresent();
     }
-    publishAuthorityApplicationReceipt(
+    authorityApplicationReceipts.publishAuthorityApplicationReceipt(
       session.repositoryRoot,
       policy,
       receipt,

@@ -1,5 +1,37 @@
+import { preparePullRequestPreMergeAssurance } from './ci-verification-production.ts';
+import { createArchiveProjectionDependencies } from './planning-archive-projection-production.ts';
+import { loadStableValidatedChangeContract } from './validated-contract-context.ts';
+import { planningTransitionExecution as productionPlanningExecution } from './planning-execution-epoch-production.ts';
+import { archiveEligibilityReplayServices } from './ci-replay-production.ts';
+import { productionPlanningArchiveSourcePolicy } from './planning-archive-projection-production.ts';
+import { collaborationGrantCodec as productionArchiveGrantCodec } from '../runtime/grants/grant-services.ts';
+import { reconcileArchivedWorkItems as productionArchivedWorkItemReconciler } from './work-registry-production.ts';
+import { renderHandoffFromTrackedFacts as productionTrackedHandoffRenderer } from './handoff-production.ts';
+import { commitArchiveTransition as commitArchiveTransitionWithHandoff } from '../application/archive/archive-transition.ts';
+export const commitArchiveTransition = commitArchiveTransitionWithHandoff.bind(
+  undefined,
+  loadStableValidatedChangeContract,
+  productionPlanningExecution,
+  createArchiveProjectionDependencies(),
+  archiveEligibilityReplayServices,
+  productionArchiveGrantCodec,
+  productionTrackedHandoffRenderer,
+  productionArchivedWorkItemReconciler,
+);
+export const preparePostMergeArchivePullRequest =
+  preparePostMergeArchivePullRequestWithHandoff.bind(
+    undefined,
+    loadStableValidatedChangeContract,
+    preparePullRequestPreMergeAssurance,
+    productionPlanningExecution,
+    createArchiveProjectionDependencies(),
+    archiveEligibilityReplayServices,
+    productionArchiveGrantCodec,
+    productionTrackedHandoffRenderer,
+    productionArchivedWorkItemReconciler,
+  );
 /**
- * Assembles archive CLI discovery, preparation, authorization and
+ * Assembles archive transitions, discovery, preparation, authorization and
  * publication dependencies.
  *
  * Invariants:
@@ -8,8 +40,8 @@
 import {
   discoverArchivePullRequestCandidates,
   inspectArchivePublicationPreparation,
-  preparePostMergeArchivePullRequest,
-  publishPostMergeArchivePullRequest,
+  preparePostMergeArchivePullRequest as preparePostMergeArchivePullRequestWithHandoff,
+  publishPostMergeArchivePullRequest as publishWithArchiveGrant,
   type GitHubArchiveAdapterModuleV1,
   type ExactArchiveBranchPublisherPortV1,
 } from '../application/archive/archive-pr-orchestration.ts';
@@ -22,13 +54,12 @@ import {
   createGitHubApiArchiveRulesetObserver,
   createGitExactArchiveBranchPublisher,
 } from './archive-pr-publication-production.ts';
-import { requestArchivePullRequestPublicationGrant } from './grant-production.ts';
 
 export type ArchivePullRequestCliDependencies = Readonly<{
   discover: typeof discoverArchivePullRequestCandidates;
   inspect: typeof inspectArchivePublicationPreparation;
   prepare: typeof preparePostMergeArchivePullRequest;
-  requestGrant: typeof requestArchivePullRequestPublicationGrant;
+  requestGrant: WorkflowGrantServices['requestArchivePullRequestPublicationGrant'];
   publish: typeof publishPostMergeArchivePullRequest;
   loadAdapter(): Promise<GitHubArchiveAdapterModuleV1>;
   createRulesetObserver(
@@ -47,8 +78,10 @@ export type ArchivePullRequestCliDependencies = Readonly<{
   fetch?: typeof globalThis.fetch;
 }>;
 
-export const ARCHIVE_PULL_REQUEST_CLI_DEPENDENCIES: ArchivePullRequestCliDependencies =
-  Object.freeze({
+export function createArchivePullRequestCliDependencies(
+  requestArchivePullRequestPublicationGrant: WorkflowGrantServices['requestArchivePullRequestPublicationGrant'],
+): ArchivePullRequestCliDependencies {
+  return Object.freeze({
     discover: discoverArchivePullRequestCandidates,
     inspect: inspectArchivePublicationPreparation,
     prepare: preparePostMergeArchivePullRequest,
@@ -61,3 +94,11 @@ export const ARCHIVE_PULL_REQUEST_CLI_DEPENDENCIES: ArchivePullRequestCliDepende
     createBranchPublisher: createGitExactArchiveBranchPublisher,
     resolvePublicationTarget: resolveArchivePullRequestPublicationTarget,
   });
+}
+import type { WorkflowGrantServices } from './grant-production.ts';
+
+import { authenticateCompletedArchivePullRequestGrant } from './archive-pr-grant-production.ts';
+export const publishPostMergeArchivePullRequest = publishWithArchiveGrant.bind(
+  undefined,
+  authenticateCompletedArchivePullRequestGrant,
+);

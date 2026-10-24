@@ -1,3 +1,5 @@
+import { planningAssuranceDependencies } from '../src/composition-root/planning-assurance-production.ts';
+import { readCurrentPlanningRoleOverridePolicy } from '../src/runtime/repository-transaction/planning-role-provider-policy-reader.ts';
 import { installFakeOpenSpec } from './fake-openspec-fixture.ts';
 export { installFakeOpenSpec } from './fake-openspec-fixture.ts';
 import { execFileSync } from 'node:child_process';
@@ -6,27 +8,28 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import type { ProviderDefinitionSnapshot } from '@jigwright/agent-runtime';
+import type { ProviderDefinitionSnapshot } from '@jigwright/core/provider-definition-snapshot';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import {
-  loadChangeContract,
-  type ExecutionTask,
-} from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
+import { type ExecutionTask } from '../src/modules/planning-provider/planning-artifact-types.ts';
 import {
   createEvidenceNode,
   type EvidenceNode,
-} from '../src/adapters/planning/investigation/evidence-node.ts';
+} from '../src/foundation/evidence-node/evidence-node.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
+import { sealInvestigationManifestDraft } from '../src/modules/investigation/manifest/investigation-manifest.ts';
 import {
   buildInvestigationManifestDraft,
-  sealInvestigationManifestDraft,
   validateForAuthority,
-  type InvestigationManifestV3,
-} from '../src/modules/investigation/manifest/investigation-manifest.ts';
-import { investigationManifestPublicationNamespace } from '../src/runtime/managed-documents/transaction/investigation-publication.ts';
+} from '../src/composition-root/investigation-production.ts';
+import { type InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
+import { investigationManifestPublicationNamespace } from '../src/modules/investigation/manifest/investigation-publication-contracts.ts';
 import { OPENSPEC_REPOSITORY_REVIEWED_SOURCES } from '../src/adapters/planning/openspec/documents/openspec-planning-asset-contract.ts';
-import { generateOpenSpecPlanningAssets } from '../src/adapters/planning/openspec/documents/openspec-planning-assets.ts';
+import { generateOpenSpecPlanningAssets as generateOpenSpecPlanningAssetsWithRunner } from '../src/adapters/planning/openspec/documents/openspec-planning-assets.ts';
+import { resolveCheckRunner } from '../src/adapters/consumer/repository/work-registry/runner-resolution.ts';
+const generateOpenSpecPlanningAssets =
+  generateOpenSpecPlanningAssetsWithRunner.bind(undefined, resolveCheckRunner);
 import {
   createPlanReviewNode,
   createPlanReviewProviderResultNode,
@@ -35,13 +38,12 @@ import {
   planReviewProviderSubmission,
   PLAN_REVIEW_COVERAGE,
   PLAN_REVIEW_OUTPUT_SCHEMA,
-  type PlanReviewSubject,
-  type PlanReviewSubmission,
 } from '../src/modules/assurance/plan-review.ts';
+import { type PlanReviewSubmission } from '../src/modules/assurance/plan-review-report.ts';
+import type { PlanReviewSubject } from '../src/modules/assurance/plan-review-subject.ts';
 import {
   deriveInvestigationFirstPlanningSubject,
   validateInvestigationFirstPlanningReadiness,
-  type ConsumedPlanReviewReplayPort,
 } from '../src/modules/assurance/planning-assurance-validator.ts';
 import {
   sealAuthoritativeCollaborationGrantVerifier,
@@ -50,8 +52,8 @@ import {
   type ConsumedCollaborationGrantReplayVerifier,
   type GrantVerifierPort,
 } from '../src/modules/authority/grant-verifier-port.ts';
-import { admitRoleResult } from '../src/modules/provider-orchestration/role-scheduler.ts';
-import type { ProviderRoleAssignment } from '../src/modules/provider-orchestration/role-scheduler.ts';
+import { admitRoleResult } from '../src/composition-root/role-admission-production.ts';
+import type { ProviderRoleAssignment } from '../src/modules/provider-orchestration/role-assignment.ts';
 import type { ProviderId } from '../src/modules/provider-orchestration/provider-registry.ts';
 import {
   createProviderInvocationRequest,
@@ -63,7 +65,8 @@ import {
   providerDefinitionExecutableBindingDigest,
   PROVIDER_RUNNER_RESIDUALS,
 } from '../src/modules/provider-orchestration/provider-runtime-evidence.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
+import type { ConsumedRoleReplayPort } from '../src/modules/provider-orchestration/role-admission-contracts.ts';
 
 export const sourceRepositoryRoot = path.resolve(
   import.meta.dirname,
@@ -73,7 +76,7 @@ export const sourceRepositoryRoot = path.resolve(
 let openSpecAssetTemplateRoot: string | undefined;
 
 const TEST_COLLABORATION_GRANT_COMPOSITION_DIGEST = `sha256:${'0'.repeat(64)}`;
-export const ordinaryPlanReviewReplayPortForTest: ConsumedPlanReviewReplayPort =
+export const ordinaryPlanReviewReplayPortForTest: ConsumedRoleReplayPort =
   Object.freeze({
     verify(): never {
       throw new Error(
@@ -856,8 +859,10 @@ export function writeReadyV3ExemptChange(
   });
 
   const subjectContext = deriveInvestigationFirstPlanningSubject(
+    planningAssuranceDependencies,
     repository,
     loadChangeContract(repository, changeId),
+    readCurrentPlanningRoleOverridePolicy(repository, changeId),
   );
   const assignment = {
     role: 'plan-reviewer' as const,
@@ -995,9 +1000,11 @@ export function writeReadyV3ExemptChange(
   });
 
   const planningAssurance = validateInvestigationFirstPlanningReadiness(
+    planningAssuranceDependencies,
     repository,
     loadChangeContract(repository, changeId),
     ordinaryPlanReviewReplayPortForTest,
+    readCurrentPlanningRoleOverridePolicy(repository, changeId),
   ).summary;
   return {
     applicability: subjectContext.applicability,

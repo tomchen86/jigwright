@@ -47,20 +47,22 @@ import {
   gitAuthorityCandidateApplyCommitMessage,
 } from '../runtime/repository-transaction/git-transitions.ts';
 import {
-  grantRecordDigest,
   grantStorePaths,
+  createFileGrantRecordStore,
+} from '../runtime/lifecycle-ledgers/grant-store.ts';
+import {
+  grantRecordDigest,
   parseGrantRecord,
   projectPreparedGrantRecord,
-  readGrantRecord,
   type TerminalGrantRecord,
-} from '../runtime/storage-journal/grant-store.ts';
+} from '../modules/authority/grant-records.ts';
 import {
   assertGitAuthorityCandidateApplyJournal,
   gitAuthorityCandidateApplyJournalObservation,
   readGitAuthorityCandidateApplyJournal,
   type GitAuthorityCandidateApplyJournalV2,
 } from '../runtime/storage-journal/git-authority-candidate-apply-store.ts';
-import { investigationRuntimePaths } from '../runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../runtime/paths/runtime-paths.ts';
 import { runtimePaths } from '../runtime/session-workspace/session-store.ts';
 import { readProductionGitBaseAuthorityContext } from './git-authority-candidate-apply-production.ts';
 
@@ -562,12 +564,11 @@ function readTerminalGrantRecord(
   const runtimeDirectory =
     parameters.baseAuthorityContext.workflowConfig.runtimeDirectory;
   const repository = discoverRepository(repositoryRoot);
-  const record = readGrantRecord(
+  const record = createFileGrantRecordStore(
     grantStorePaths(
       runtimePaths(repository.gitCommonDirectory, runtimeDirectory).root,
     ),
-    challengeId,
-  );
+  ).readGrantRecord(challengeId);
   if (record.state !== 'completed') throw receiptUnavailable();
   if (
     canonicalJson(selectedApplyChoice(record).parameters) !==

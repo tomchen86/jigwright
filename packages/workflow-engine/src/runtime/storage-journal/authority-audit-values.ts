@@ -1,3 +1,11 @@
+import {
+  sha256Digest,
+  invalidScope,
+} from '../../modules/authority/authority-audit-contract.ts';
+export {
+  sha256Digest,
+  invalidScope,
+} from '../../modules/authority/authority-audit-contract.ts';
 /**
  * Shares bounded audit value checks, digest identities, and exact error outcomes.
  *
@@ -10,7 +18,6 @@ import path from 'node:path';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
   MAX_PATH_BYTES,
-  type Sha256Digest,
   SHA256_DIGEST,
   CANONICAL_TIMESTAMP,
 } from './authority-audit-contracts.ts';
@@ -40,10 +47,6 @@ export function assertAbsolutePath(raw: unknown): string {
     throw invalidScope();
   }
   return raw;
-}
-
-export function sha256Digest(content: string): Sha256Digest {
-  return `sha256:${crypto.createHash('sha256').update(content).digest('hex')}`;
 }
 
 export function assertDigest(
@@ -111,14 +114,6 @@ function isWithin(parent: string, child: string): boolean {
   return (
     relative === '' ||
     (!relative.startsWith('..') && !path.isAbsolute(relative))
-  );
-}
-
-export function invalidScope() {
-  return workflowError(
-    'AUTHORITY_AUDIT_SCOPE_INVALID',
-    'Authority audit ledger scope must use explicit canonical absolute paths and a digest repository identity.',
-    ExitCode.usage,
   );
 }
 
@@ -301,3 +296,5 @@ export function destructionTombstoneInvalid() {
 export function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && 'code' in error;
 }
+
+import { type Sha256Digest } from '../../modules/authority/authority-audit-contract.ts';

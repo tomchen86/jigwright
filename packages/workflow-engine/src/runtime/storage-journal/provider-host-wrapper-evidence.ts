@@ -13,19 +13,19 @@ import {
   type ProviderInvocationRequest,
   recreateProviderInvocationRequest,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   assertPrivateFile,
   MAX_HUMAN_RESOLUTION_BYTES,
   sameStablePrivateFile,
   walkPrivateDirectory,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   hasExactKeys,
   isDigest,
   isRecord,
   sha256,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 import {
   PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS,
   providerRetentionArtifact,

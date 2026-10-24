@@ -7,29 +7,28 @@
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import type { EvidenceNode } from '../../adapters/planning/investigation/evidence-node.ts';
+import type { EvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';
 import { assertPlanTarget, type PlanTarget } from './plan-target.ts';
-import {
-  assertPlanningGeneration,
-  type PlanningGeneration,
-} from '../lifecycle/planning-generation.ts';
+import { assertPlanningGeneration } from './planning-generation.ts';
+import type { PlanningGeneration } from './planning-generation-record.ts';
 import {
   assertCurrentPlanReviewProviderResultNode,
   assertPlanReviewSubject,
   assertPlanReviewTargetSnapshot,
   readPlanReviewDispositionNode,
   readPlanReviewNode,
+} from './plan-review.ts';
+import {
   type PlanReviewEvidence,
-  type PlanReviewTargetSnapshot,
-  type PlanReviewSubject,
   type PlanReviewSuggestion,
   type PlanReviewVerdict,
-} from './plan-review.ts';
-import { normalizeExactRepositoryPath } from '../../runtime/session-workspace/paths.ts';
-import type {
-  AdmittedRoleResult,
-  IndependenceDimension,
-} from '../provider-orchestration/role-scheduler.ts';
+} from './plan-review-report.ts';
+import type { PlanReviewTargetSnapshot } from './plan-review-target-snapshot-record.ts';
+import type { PlanReviewSubject } from './plan-review-subject.ts';
+import { normalizeExactRepositoryPath } from '../../foundation/repository-path/repository-path.ts';
+import type { AdmittedRoleResult } from '../provider-orchestration/role-admission-contracts.ts';
+
+import type { IndependenceDimension } from '../provider-orchestration/role-independence.ts';
 const DIGEST_PATTERN = /^[0-9a-f]{64}$/;
 const GIT_OBJECT_ID_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const MAX_RESOLVED_REPOSITORY_LOCATIONS = 16_384;

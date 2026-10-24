@@ -1,3 +1,16 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -7,8 +20,8 @@ import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { runGitWithEnvironment } from '../src/runtime/repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { readProviderInvocationManifest } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
@@ -16,23 +29,21 @@ import { startSession } from '../src/application/execute-task/session.ts';
 import {
   readCurrentTaskStrategyGreenFailure,
   resolveCurrentTaskStrategyCorrection,
-} from '../src/application/execute-task/task-strategy-correction.ts';
+} from '../src/composition-root/task-strategy-correction-production.ts';
 import { readTaskStrategyCorrectionRound } from '../src/runtime/storage-journal/task-strategy-correction-round-store.ts';
 import {
   assertTaskStrategyImplementationProviderOwnerCurrent,
   beginTaskStrategyImplementation,
   inspectTaskStrategyImplementation,
-} from '../src/application/execute-task/task-strategy-implementation-lifecycle.ts';
+} from '../src/composition-root/task-strategy-production.ts';
 import {
   inspectTaskStrategyLifecycle,
   resumeTaskStrategy,
-} from '../src/application/execute-task/task-strategy-lifecycle.ts';
+} from '../src/composition-root/task-strategy-production.ts';
 import { readTaskStrategyImplementationResultBinding } from '../src/runtime/storage-journal/task-strategy-provider-store.ts';
-import { sealTaskStrategyRed } from '../src/application/execute-task/task-strategy-execution.ts';
-import {
-  checkSession,
-  inspectSession,
-} from '../src/application/finalize/verification.ts';
+import { sealTaskStrategyRed } from '../src/composition-root/task-strategy-execution-production.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
+import { inspectSession } from '../src/runtime/repository-validation/session-inspection.ts';
 import {
   configureChecks,
   createFixtureRepository,
@@ -52,7 +63,12 @@ for (const crashCut of [
   test(`cross-agent GREEN correction schedules and imports against the exact failed candidate${crashCut === null ? '' : ` after ${crashCut} recovery`}`, () => {
     const repository = createCorrectionFixture();
     try {
-      const session = startSession(repository, 'demo-change', '1.1');
+      const session = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
       const testPath = path.join(repository, 'test/feature.test.mjs');
       fs.mkdirSync(path.dirname(testPath), { recursive: true });
       fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
@@ -68,7 +84,11 @@ for (const crashCut of [
       assert.equal(initialWaiting.state, 'waiting-for-provider');
       if (initialWaiting.state !== 'waiting-for-provider') return;
       assert.equal(initialWaiting.subject.correction, undefined);
-      const initialInspection = inspectSession(repository, session.sessionId);
+      const initialInspection = inspectSession(
+        productionChangeContract,
+        repository,
+        session.sessionId,
+      );
       const runtime = investigationRuntimePaths(
         initialInspection.git.gitCommonDirectory,
         initialInspection.contract.config.runtimeDirectory,
@@ -126,11 +146,19 @@ for (const crashCut of [
       }
 
       assert.throws(
-        () => checkSession(repository, session.sessionId, { environment: {} }),
+        () =>
+          checkSession(
+            maintainerManifestOperations,
+            productionTaskStrategyExecutionGate,
+            productionChangeContract,
+            repository,
+            session.sessionId,
+            { environment: {} },
+          ),
         hasCode('CHECK_FAILED'),
       );
       const failure = readCurrentTaskStrategyGreenFailure(
-        inspectSession(repository, session.sessionId),
+        inspectSession(productionChangeContract, repository, session.sessionId),
       );
       assert.notEqual(failure, null);
       if (failure === null) return;
@@ -168,7 +196,11 @@ for (const crashCut of [
         correctionProviderReservation.subject.subjectDigest,
         correctionWaiting.subject.subjectDigest,
       );
-      const inspected = inspectSession(repository, session.sessionId);
+      const inspected = inspectSession(
+        productionChangeContract,
+        repository,
+        session.sessionId,
+      );
       const manifest = readProviderInvocationManifest(
         investigationRuntimePaths(
           inspected.git.gitCommonDirectory,
@@ -627,7 +659,7 @@ function assertProjectionRejectsMissingAuthorityArtifact(
     assert.throws(
       () =>
         resolveCurrentTaskStrategyCorrection(
-          inspectSession(repository, sessionId),
+          inspectSession(productionChangeContract, repository, sessionId),
         ),
       hasCode('TASK_STRATEGY_CORRECTION_STATE_STALE'),
     );
@@ -657,7 +689,7 @@ function assertProjectionRejectsTamperedAuthorityBinding(
     assert.throws(
       () =>
         resolveCurrentTaskStrategyCorrection(
-          inspectSession(repository, sessionId),
+          inspectSession(productionChangeContract, repository, sessionId),
         ),
       hasCode('TASK_STRATEGY_CORRECTION_STATE_STALE'),
     );

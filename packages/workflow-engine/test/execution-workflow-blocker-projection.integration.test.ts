@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import {
   listExecutionJobStates,
   readExecutionJobState,
@@ -20,9 +20,9 @@ import {
   failProviderInvocation,
   providerInvocationManifestDigest,
   storeProviderExecutionPolicySnapshot,
-  type BlindSurveyManifest,
-  type ProviderInvocationFailure,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import type { BlindSurveyManifest } from '../src/modules/investigation/manifest/blind-survey-manifest.ts';
+import type { ProviderInvocationFailure } from '../src/modules/provider-orchestration/provider-invocation-record.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 
 const OBSERVED_AT = '2026-08-10T09:05:00.000Z';

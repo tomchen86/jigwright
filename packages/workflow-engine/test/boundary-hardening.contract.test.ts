@@ -1,22 +1,34 @@
+import { productionChangeRoutingInspector } from '../src/composition-root/change-routing-observation-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { runCli } from '../src/cli.ts';
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { runCli } from '../bootstrap/workflow-engine-host.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { ExitCode, WorkflowError } from '../src/foundation/errors/errors.ts';
 import { withChangeTransitionAuthority } from '../src/runtime/session-workspace/planning-lock.ts';
-import { assertCompletionTaskIds } from '../src/runtime/storage-journal/report-validation.ts';
+import {
+  assertCompletionTaskIds,
+  assertProjectionPathClassification,
+  reportTaskIds,
+} from '../src/modules/lifecycle/workflow-report.ts';
 import {
   readImmutableReport,
   writeImmutableReport,
-  type WorkflowReport,
 } from '../src/runtime/storage-journal/report-store.ts';
+import type { WorkflowReport } from '../src/modules/lifecycle/workflow-report.ts';
 import {
   runtimePaths,
   withRepositoryLifecycleOperation,
+  withSessionOperation,
 } from '../src/runtime/session-workspace/session-store.ts';
 import {
   createFixtureRepository,
@@ -187,6 +199,62 @@ test('tracked report and session schemas constrain the exact R-007 assurance tup
     }
   }
 });
+
+for (const breakRepositoryLock of [false, true]) {
+  test(`nested session operation cleanup preserves release precedence (repository release fails: ${breakRepositoryLock})`, () => {
+    const root = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'nested-lock-cleanup-')),
+    );
+    const runtime = runtimePaths(root, 'workflow-engine');
+    const operationError = new Error('operation failed before both cleanups');
+    try {
+      assert.throws(
+        () =>
+          withRepositoryLifecycleOperation(runtime, () =>
+            withSessionOperation(runtime, SESSION_ID, () => {
+              fs.unlinkSync(
+                path.join(runtime.operations, `${SESSION_ID}.lock`),
+              );
+              if (breakRepositoryLock) {
+                fs.unlinkSync(
+                  path.join(runtime.operations, 'repository-lifecycle.lock'),
+                );
+              }
+              throw operationError;
+            }),
+          ),
+        (error) => {
+          if (!breakRepositoryLock)
+            return isWorkflowError(error, 'SESSION_LOCK_INVALID');
+          assert.ok(error instanceof AggregateError);
+          assert.equal(error.errors.length, 2);
+          assert.ok(isWorkflowError(error.errors[0], 'SESSION_LOCK_INVALID'));
+          assert.ok(
+            isWorkflowError(
+              error.errors[1],
+              'REPOSITORY_LIFECYCLE_LOCK_INVALID',
+            ),
+          );
+          assert.strictEqual(error.cause, error.errors[1]);
+          assert.equal(error.errors.includes(operationError), false);
+          return true;
+        },
+      );
+      assert.equal(
+        fs.existsSync(path.join(runtime.operations, `${SESSION_ID}.lock`)),
+        false,
+      );
+      assert.equal(
+        fs.existsSync(
+          path.join(runtime.operations, 'repository-lifecycle.lock'),
+        ),
+        false,
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+}
 
 test('repository lifecycle cleanup preserves operation and release failures', () => {
   const root = fs.realpathSync(
@@ -427,6 +495,47 @@ test('a terminal JSON-looking option value is not consumed as output mode', () =
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
+});
+
+test('workflow report rules validate supplied projection facts without storage', () => {
+  const paths = {
+    taskPaths: ['src/feature.ts'],
+    taskProjectionPaths: ['openspec/changes/demo-change/tasks.md'],
+    engineProjectionPaths: [],
+    changedPaths: ['src/feature.ts', 'openspec/changes/demo-change/tasks.md'],
+  };
+  const completionReport = {
+    ...report(),
+    ...paths,
+    completedTaskIds: ['1.1'],
+  };
+  assert.doesNotThrow(() =>
+    assertProjectionPathClassification(
+      completionReport,
+      paths,
+      'REPORT_PROJECTION_STALE',
+    ),
+  );
+  assert.deepEqual(reportTaskIds(completionReport, 'REPORT_TASK_SCOPE_STALE'), [
+    '1.1',
+  ]);
+  assert.throws(
+    () =>
+      assertProjectionPathClassification(
+        { ...completionReport, changedPaths: ['src/unreviewed.ts'] },
+        paths,
+        'REPORT_PROJECTION_STALE',
+      ),
+    (error) => isWorkflowError(error, 'REPORT_PROJECTION_STALE'),
+  );
+  assert.throws(
+    () =>
+      reportTaskIds(
+        { ...completionReport, completedTaskIds: [1] },
+        'REPORT_TASK_SCOPE_STALE',
+      ),
+    (error) => isWorkflowError(error, 'REPORT_TASK_SCOPE_STALE'),
+  );
 });
 
 test('completion report validation rejects a task absent from the baseline', () => {

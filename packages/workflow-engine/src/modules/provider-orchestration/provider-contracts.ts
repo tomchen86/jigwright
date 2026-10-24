@@ -12,13 +12,11 @@ import {
 } from './provider-retry-explanation.ts';
 import crypto from 'node:crypto';
 
-import type {
-  HostWrapperProviderProfileSnapshot,
-  ProviderDefinitionSnapshot,
-} from '@jigwright/agent-runtime';
-import type { ProviderExecutableIdentity } from '@jigwright/agent-runtime/provider-executable-identity';
+import type { HostWrapperProviderProfileSnapshot } from '@jigwright/core/agent-provider-config';
+import type { ProviderDefinitionSnapshot } from '@jigwright/core/provider-definition-snapshot';
+import type { AgentRuntimeExecutableIdentityV1 as ProviderExecutableIdentity } from '@jigwright/core/agent-runtime-port';
 
-export type { ProviderExecutableIdentity } from '@jigwright/agent-runtime/provider-executable-identity';
+export type { AgentRuntimeExecutableIdentityV1 as ProviderExecutableIdentity } from '@jigwright/core/agent-runtime-port';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
@@ -38,11 +36,9 @@ import type {
   EngineProviderRole,
   ProviderRoleAssignment,
   RoleContextSharingGrantedRoleAssignment,
-} from './role-scheduler.ts';
-import type {
-  ProviderRuntimeProtocolReceipt,
-  ProviderWrapperProtocolReceipt,
-} from './agent-runtime-protocol.ts';
+} from './role-assignment.ts';
+import type { ProviderRuntimeProtocolReceipt } from './agent-runtime-protocol.ts';
+import type { ProviderWrapperProtocolReceipt } from '@jigwright/core/harness-jsonl-v1-contracts';
 import type { AgentRuntimeHostExecutionBindingV1 } from './agent-runtime-host-execution-binding.ts';
 
 const HEX64 = /^[0-9a-f]{64}$/;
@@ -59,15 +55,8 @@ export const PROPOSE_EXEMPTION_SESSION_STORE_POLICY_DIGEST = sha256(
   canonicalJson({ schema: 'workflow-propose-exemption-session-store.v1' }),
 );
 
-/**
- * The code-owned positive maxima for a single provider invocation. Repository
- * policy may lower these but never raise them, and a request may only bind
- * limits within these bounds.
- */
-export const MAX_PROVIDER_LIMITS = Object.freeze({
-  timeoutMs: 3_600_000,
-  aggregateOutputBytes: 1_048_576,
-});
+import { MAX_PROVIDER_LIMITS } from './provider-limits.ts';
+export { MAX_PROVIDER_LIMITS } from './provider-limits.ts';
 
 const ROLE_PURPOSE: Record<EngineProviderRole, CapabilityPurpose> = {
   'plan-reviewer': 'plan-review',
@@ -104,6 +93,41 @@ export type ProviderInvocationPlan = {
   args: string[];
   stdinSource: string;
 };
+
+/**
+ * The bounded probes that prove one reviewed provider executable is the
+ * expected program before any model is invoked.
+ */
+export type ProviderPreflightSpec = {
+  helpProbes: ReadonlyArray<{
+    args: readonly string[];
+    requiredFlags: readonly string[];
+  }>;
+  authArgs: readonly string[];
+};
+
+/** Everything a provider needs to turn one engine-owned request into argv. */
+export type ProviderInvocationOptions = Readonly<{
+  executable: string;
+  repositoryRoot: string;
+  promptPath: string;
+  schemaPath: string;
+  semanticOutputPath: string;
+  semanticOutputSchema: unknown;
+}>;
+
+/**
+ * One reviewed provider's external command shape. Implementations know the
+ * external CLI and belong to adapters; composition binds the catalog.
+ */
+export type BuiltInProviderAdapter = Readonly<{
+  preflight: ProviderPreflightSpec;
+  buildInvocation(options: ProviderInvocationOptions): ProviderInvocationPlan;
+}>;
+
+export type BuiltInProviderAdapterCatalog = Readonly<
+  Record<ProviderId, BuiltInProviderAdapter>
+>;
 
 export type ProviderOutputSchema = {
   id: string;

@@ -7,7 +7,7 @@
  */
 import path from 'node:path';
 import { WorkflowError } from '../../foundation/errors/errors.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   type DurableExecutionJobState,
   assertDurableExecutionJobState,
@@ -24,7 +24,7 @@ import {
   readPrivateCanonicalJson,
   withPrivateRuntimeLock,
   writePrivateCanonicalJsonAtomic,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 
 export function executionStorePaths(paths: InvestigationRuntimePaths) {
   const root = path.join(paths.root, 'execution');

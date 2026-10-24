@@ -18,8 +18,8 @@ import {
   resolveOpenSpecInstallation,
   type OpenSpecInstallation,
 } from './openspec-executor.ts';
-import { assertChangeId } from '../../../../runtime/session-workspace/paths.ts';
-import { repositoryPlanningConfiguration } from '../../../../modules/repository-consumer/repository-consumer-config.ts';
+import { assertChangeId } from '../../../../foundation/repository-path/repository-path.ts';
+import { loadRepositoryConsumerConfiguration } from '../../../../runtime/workflow-configuration/repository-consumer.ts';
 import { parseDoctor, type OpenSpecDoctor } from './openspec-doctor-payload.ts';
 import {
   parseChangeList,
@@ -82,7 +82,8 @@ export function createOpenSpecAdapter(
   const openspec = createOpenSpecProcess(installation, options);
   const repositoryPolicy =
     options.schemaPolicy === undefined
-      ? repositoryPlanningConfiguration(installation.repositoryRoot)
+      ? loadRepositoryConsumerConfiguration(installation.repositoryRoot)
+          .configuration.planning
       : undefined;
   const schemaPolicy = validateSchemaPolicy(
     options.schemaPolicy ?? {

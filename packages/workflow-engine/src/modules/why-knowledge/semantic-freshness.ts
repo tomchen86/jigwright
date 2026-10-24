@@ -6,12 +6,28 @@
  * - Unknown dependency state requires revalidation when the entry declares
  *   dependencies.
  */
-import type { LedgerEntry } from './semantic-ledger.ts';
+import {
+  semanticFileSubjectId,
+  type LedgerEntry,
+  type SemanticDependency,
+} from './semantic-ledger.ts';
 import {
   readImportDependencies,
   sourceDigest,
 } from '../source/import-dependencies.ts';
 import type { SystemDescriptionSnapshot } from '../source/spec-ownership.ts';
+
+/** Bind snapshot import facts to the ledger's subject identity and relation. */
+export function readSemanticImportDependencies(
+  snapshot: SystemDescriptionSnapshot,
+  subjectPath: string,
+): readonly SemanticDependency[] {
+  return readImportDependencies(snapshot, subjectPath).map((dependency) => ({
+    relation: 'imports',
+    subjectId: semanticFileSubjectId(dependency.path),
+    ...dependency,
+  }));
+}
 
 export function observeLedgerSource(
   entry: LedgerEntry,
@@ -21,10 +37,9 @@ export function observeLedgerSource(
   const source = snapshot.readText(entry.subject.path);
   const digest = source === undefined ? undefined : sourceDigest(source);
   const imports = new Map(
-    readImportDependencies(snapshot, entry.subject.path).map((dependency) => [
-      dependency.subjectId,
-      dependency.sourceDigest,
-    ]),
+    readSemanticImportDependencies(snapshot, entry.subject.path).map(
+      (dependency) => [dependency.subjectId, dependency.sourceDigest],
+    ),
   );
   return {
     present: source !== undefined,

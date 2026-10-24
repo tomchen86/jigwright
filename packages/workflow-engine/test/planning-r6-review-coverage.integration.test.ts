@@ -1,30 +1,50 @@
+import { readAndValidateTaskRevisionApproval } from '../src/composition-root/task-revision-approval-production.ts';
+import { blockInvestigationForPlanReviewRetryUnderAuthority } from '../src/composition-root/investigation-retry-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { readPlanReviewCoverageTarget } from '../src/runtime/repository-observation/plan-review-coverage.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
+const resumeTask = resumeTaskWithContractReader.bind(
+  undefined,
+  productionChangeContract,
+  productionPlanningExecution,
+  managedDocuments,
+  productionChangeContractReader,
+  readAndValidateTaskRevisionApproval,
+);
 import assert from 'node:assert/strict';
 
-import {
-  blockInvestigationForPlanReviewRetryUnderAuthority,
-  getInvestigationStatus,
-} from '../src/adapters/planning/investigation/investigation-session.ts';
-import { readInvestigationSession } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import { getInvestigationStatus } from '../src/runtime/investigation-lifecycle/investigation-session.ts';
+import { readInvestigationSession } from '../src/runtime/storage-journal/investigation-session-records.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import type { EvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
+import type { EvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   PLAN_REVIEW_COVERAGE,
-  type PlanReviewReport,
-  type PlanReviewSubmission,
   planReviewProviderSubmission,
 } from '../src/modules/assurance/plan-review.ts';
+import {
+  type PlanReviewReport,
+  type PlanReviewSubmission,
+} from '../src/modules/assurance/plan-review-report.ts';
+
 import { assertInvestigationPlanReviewCoverageRequirementSatisfied } from '../src/modules/assurance/plan-review-coverage.ts';
-import type {
-  InvestigationManifestV3,
-  InvestigationPlanReviewCoverageRequirementV3,
-} from '../src/modules/investigation/manifest/investigation-manifest.ts';
+import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
+import type { InvestigationPlanReviewCoverageRequirementV3 } from '../src/modules/investigation/manifest/investigation-requirement-types.ts';
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { PROPOSE_POLICY_DIGEST } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
@@ -32,11 +52,11 @@ import {
   type ProviderRunnerReport,
 } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { readLedgerIndex } from '../src/runtime/storage-journal/semantic-ledger-store.ts';
-import { validateCiPlanningCommit } from '../src/entrypoints/ci/ci-planning.ts';
+import { validateCiPlanningCommit } from '../src/composition-root/ci-replay-production.ts';
 import { planPlanningSemanticLedger } from '../src/runtime/managed-documents/transaction/semantic-ledger-projection.ts';
-import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
 
 test('planning commits and replays the exact semantic binding projection', () => {
   const prepared = prepareCoverageReview('r6-ledger-plan-projection', {
@@ -91,10 +111,10 @@ import {
   createPlanReviewProgressEnvelope,
   getProposeStatus,
   resumePropose,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
-  resumeTask,
+  resumeTask as resumeTaskWithContractReader,
   reviseTask,
 } from '../src/application/revise/task-revision.ts';
 import {
@@ -380,12 +400,23 @@ test('a revising task regenerates ordinary investigation and PlanReview before s
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
 
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const implementation = `${TARGET_CONTENT}export const revised = true;\n`;
     fs.writeFileSync(path.join(repository, TARGET), implementation);
-    reviseTask(repository, session.sessionId, 'regenerate-reviewed-plan', {
-      now: () => startedAt,
-    });
+    reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'regenerate-reviewed-plan',
+      {
+        now: () => startedAt,
+      },
+    );
     const preRevisionHead = git(repository, ['rev-parse', 'HEAD']).trim();
 
     const fixture = driveProposeToDispositions('demo-change', {
@@ -520,20 +551,23 @@ test('coverage replay detects a carried target digest change and requires delta 
 
     assert.throws(
       () =>
-        assertInvestigationPlanReviewCoverageRequirementSatisfied({
-          repositoryRoot: prepared.repository,
-          requirement,
-          review: noChallengeSubmission(
-            'covered-target',
-            coverageTargetPaths(prepared),
-          ) as unknown as PlanReviewReport,
-          expectedInvestigationId: requirement.coverage.investigationId,
-          expectedChangeId: prepared.changeId,
-          expectedBaseline: {
-            head: requirement.coverage.baselineCommit,
-            tree: requirement.coverage.baselineTree,
+        assertInvestigationPlanReviewCoverageRequirementSatisfied(
+          readPlanReviewCoverageTarget,
+          {
+            repositoryRoot: prepared.repository,
+            requirement,
+            review: noChallengeSubmission(
+              'covered-target',
+              coverageTargetPaths(prepared),
+            ) as unknown as PlanReviewReport,
+            expectedInvestigationId: requirement.coverage.investigationId,
+            expectedChangeId: prepared.changeId,
+            expectedBaseline: {
+              head: requirement.coverage.baselineCommit,
+              tree: requirement.coverage.baselineTree,
+            },
           },
-        }),
+        ),
       (error) => isWorkflowError(error, 'REVIEW_DELTA_REQUIRED'),
     );
   } finally {

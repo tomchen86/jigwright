@@ -8,7 +8,7 @@ import {
   buildSingleJigwrightPackage,
   type SingleJigwrightPackageArtifactV1,
 } from './build-single-jigwright-package.ts';
-import { loadWorkflowConformanceVectorsV2 } from '../packages/core/src/conformance-vectors.ts';
+import { loadWorkflowConformanceVectorsV2 } from '../packages/workflow-engine/src/runtime/repository-transaction/conformance-vectors.ts';
 
 type JsonRecord = Record<string, unknown>;
 type Sha256Digest = `sha256:${string}`;

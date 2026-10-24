@@ -6,8 +6,18 @@
  * - Unsupported output generations and mismatched host evidence remain rejected.
  */
 
+import {
+  providerOutputSchemaGeneration,
+  providerOutputValidator,
+} from '../../modules/assurance/provider-output-contract.ts';
+export {
+  providerOutputSchemaGeneration,
+  matchesPersistedProviderOutputSchema,
+  blindSurveyOutputValidator,
+  providerOutputValidator,
+} from '../../modules/assurance/provider-output-contract.ts';
+
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
   type ProviderInvocationRequest,
   type ProviderProcessResult,
@@ -24,30 +34,9 @@ import {
   providerDefinitionDigest,
   assertProviderRuntimeObservation,
 } from '../../modules/provider-orchestration/provider-runtime-evidence.ts';
-import {
-  BLIND_SURVEY_OUTPUT_SCHEMA,
-  validateBlindSurveyOutput,
-} from '../../modules/provider-orchestration/blind-survey-output.ts';
-import {
-  PLAN_REVIEW_OUTPUT_SCHEMA,
-  PLAN_REVIEW_OUTPUT_VALIDATOR,
-} from '../../modules/assurance/plan-review.ts';
-import {
-  TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA,
-  TASK_DIFF_REVIEW_OUTPUT_SCHEMA,
-  TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_VALIDATOR,
-  TASK_DIFF_REVIEW_OUTPUT_VALIDATOR,
-} from '../../modules/assurance/task-diff-review-artifact.ts';
-import {
-  TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
-  TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR,
-} from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
-import {
-  type ProviderOutputSchemaGeneration,
-  type ProviderResidualsGeneration,
-  type ProviderInvocationRecord,
-  type ProviderInvocationManifest,
-} from './provider-invocation-types.ts';
+import type { ProviderResidualsGeneration } from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
+import type { ProviderInvocationManifest } from './provider-invocation-manifest-validation.ts';
 import {
   resultInvalid,
   deepFreeze,
@@ -55,75 +44,6 @@ import {
   sha256,
   invocationInvalid,
 } from './provider-invocation-common.ts';
-
-function providerOutputSchemaUnsupported() {
-  return workflowError(
-    'PROVIDER_OUTPUT_SCHEMA_UNSUPPORTED',
-    'Provider invocation does not reference a code-owned output schema.',
-    ExitCode.verification,
-  );
-}
-
-function codeOwnedProviderOutputSchema(request: ProviderInvocationRequest) {
-  if (request.purpose === 'survey') {
-    return BLIND_SURVEY_OUTPUT_SCHEMA;
-  }
-  if (request.purpose === 'plan-review') {
-    return PLAN_REVIEW_OUTPUT_SCHEMA;
-  }
-  if (request.purpose === 'task-diff-review') {
-    if (
-      request.outputSchema.id === TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA.id
-    ) {
-      return TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA;
-    }
-    return TASK_DIFF_REVIEW_OUTPUT_SCHEMA;
-  }
-  if (request.purpose === 'task-implementation') {
-    return TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA;
-  }
-  throw providerOutputSchemaUnsupported();
-}
-
-export function providerOutputSchemaGeneration(
-  request: ProviderInvocationRequest,
-): ProviderOutputSchemaGeneration {
-  const codeOwned = codeOwnedProviderOutputSchema(request);
-  if (
-    request.outputSchema.id !== codeOwned.id ||
-    request.outputSchema.version !== codeOwned.version ||
-    request.outputSchema.digest !== codeOwned.digest
-  ) {
-    throw providerOutputSchemaUnsupported();
-  }
-  return 'code-owned';
-}
-
-export function matchesPersistedProviderOutputSchema(
-  observed: ProviderInvocationRequest['outputSchema'],
-  current: Readonly<{ id: string; version: number; digest: string }>,
-): boolean {
-  return (
-    observed.id === current.id &&
-    observed.version === current.version &&
-    observed.digest === current.digest
-  );
-}
-
-export function blindSurveyOutputValidator(request: ProviderInvocationRequest) {
-  if (
-    request.purpose !== 'survey' ||
-    providerOutputSchemaGeneration(request) !== 'code-owned'
-  ) {
-    throw providerOutputSchemaUnsupported();
-  }
-  return {
-    ...BLIND_SURVEY_OUTPUT_SCHEMA,
-    validate(value: unknown): boolean {
-      return validateBlindSurveyOutput(value, request.invocationId);
-    },
-  };
-}
 
 function classifyProviderResiduals(
   value: unknown,
@@ -276,35 +196,6 @@ export function providerResultFromRunnerReport(
     ),
     runtimeObservation,
   });
-}
-
-export function providerOutputValidator(request: ProviderInvocationRequest) {
-  if (providerOutputSchemaGeneration(request) !== 'code-owned') {
-    throw providerOutputSchemaUnsupported();
-  }
-  if (request.purpose === 'survey') {
-    return blindSurveyOutputValidator(request);
-  }
-  if (request.purpose === 'plan-review') {
-    return PLAN_REVIEW_OUTPUT_VALIDATOR;
-  }
-  if (request.purpose === 'task-diff-review') {
-    if (
-      request.outputSchema.id ===
-        TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA.id &&
-      request.outputSchema.version ===
-        TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA.version &&
-      request.outputSchema.digest ===
-        TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA.digest
-    ) {
-      return TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_VALIDATOR;
-    }
-    return TASK_DIFF_REVIEW_OUTPUT_VALIDATOR;
-  }
-  if (request.purpose === 'task-implementation') {
-    return TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR;
-  }
-  throw providerOutputSchemaUnsupported();
 }
 
 export function assertProviderResultManifestBinding(

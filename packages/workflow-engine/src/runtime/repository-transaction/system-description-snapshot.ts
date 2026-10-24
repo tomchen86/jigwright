@@ -8,7 +8,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { normalizeExactRepositoryPath } from '../session-workspace/paths.ts';
+import { normalizeExactRepositoryPath } from '../../foundation/repository-path/repository-path.ts';
 import type { SystemDescriptionSnapshot } from '../../modules/source/spec-ownership.ts';
 import { runGit } from './git.ts';
 import { readPinnedTrackedTree } from './tracked-tree-reader.ts';

@@ -11,30 +11,28 @@ import {
   type LoadedAiAdapterPolicy,
   parseAiAdapterPolicyDocument,
   type AiAdapterRetryAccounting,
-} from '../provider-execution/ai-adapter-policy.ts';
+} from '../provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   privatePathExists,
   createPrivateCanonicalJson,
   readPrivateCanonicalJson,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   type ProviderExecutionGrantAuthorityInput,
   createProviderExecutionBudgetAuthority,
   validateProviderExecutionBudgetAuthority,
-  type ProviderExecutionBudgetAuthority,
   assertDurableProviderExecutionBudgetAuthority as assertStoredProviderExecutionBudgetAuthority,
-} from '../provider-execution/provider-execution-policy-authority.ts';
+} from './provider-execution-policy-authority.ts';
+import type { ProviderExecutionBudgetAuthority } from '../../modules/provider-orchestration/provider-execution-budget-authority.ts';
 import { type ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
-import {
-  type InvestigationRuntimePaths,
-  assertInvocationId,
-} from '../session-workspace/paths.ts';
-import {
-  type ProviderExecutionPolicySnapshotCurrent,
-  type ProviderAttemptBudgetReservation,
-  type ProviderRetryAccountingSnapshot,
-} from './provider-invocation-types.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
+import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
+import type { ProviderExecutionPolicySnapshotCurrent } from '../../modules/provider-orchestration/provider-execution-policy-snapshot.ts';
+import type {
+  ProviderAttemptBudgetReservation,
+  ProviderRetryAccountingSnapshot,
+} from '../../modules/provider-orchestration/provider-retry-accounting.ts';
 import { assertProviderRequest } from './provider-invocation-validation.ts';
 import {
   providerExecutionPolicySnapshotUnsafe,

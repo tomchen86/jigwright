@@ -1,26 +1,29 @@
+import {
+  ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_TAG_PREFIX_V1,
+  ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_SIGNATURE_NAMESPACE_V1,
+} from '../src/modules/authority/role-context-sharing-grant-lifecycle-port.ts';
+import { bindingFromRoleContextSharingGrantPayloadV1 } from '../src/runtime/grants/optional-grants-package.ts';
+import { planningAssuranceDependencies } from '../src/composition-root/planning-assurance-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import test, { type TestContext } from 'node:test';
-
+import test from 'node:test';
+import type { TestContext } from 'node:test';
 import {
   ROLE_CONTEXT_SHARING_DEGRADATION_EFFECT_V1,
   ROLE_CONTEXT_SHARING_GRANT_SIGNATURE_NAMESPACE_V1,
   canonicalRoleContextSharingGrantPayloadV1,
-  type RoleContextSharingGrantEnvelopeV1,
 } from '@jigwright/grants/role-context-sharing-degradation';
-
+import type { RoleContextSharingGrantEnvelopeV1 } from '@jigwright/grants/role-context-sharing-degradation';
 import {
   createRoleContextSharingPlanReviewRequirementV3,
   deriveRoleContextSharingPlanReviewExpectedBinding,
-  reserveRoleContextSharingPlanReview,
-} from '../src/application/propose/role-context-sharing-plan-review.ts';
-import { completeRoleContextSharingPlanReviewAdmission } from '../src/application/propose/propose-orchestrator.ts';
-import { runCli } from '../src/cli.ts';
+} from '../src/modules/proposal/role-context-sharing-plan-review.ts';
+import { reserveRoleContextSharingPlanReview } from '../src/application/propose/role-context-sharing-plan-review.ts';
+import { completeRoleContextSharingPlanReviewAdmission } from '../src/composition-root/propose-production.ts';
+import { runCli } from '../bootstrap/workflow-engine-host.ts';
 import { productionRoleContextSharingGrantLifecyclePort } from '../src/composition-root/role-context-sharing-grant-lifecycle-production.ts';
 import {
-  ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_TAG_PREFIX_V1,
-  ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_SIGNATURE_NAMESPACE_V1,
   assertRoleContextSharingTerminalReceiptUseBijection,
   canonicalRoleContextSharingTerminalReceiptEnvelopeV1,
   canonicalRoleContextSharingTerminalReceiptPayloadV1,
@@ -33,17 +36,15 @@ import { approveAndStoreRoleContextSharingGrantForCurrentRequirement } from '../
 import { ExitCode } from '../src/foundation/errors/errors.ts';
 import { sealAuthoritativeRoleContextSharingGrantVerifier } from '../src/modules/authority/role-context-sharing-grant-verifier-port.ts';
 import { ROLE_CONTEXT_SHARING_POLICY_DIGEST } from '../src/modules/authority/role-context-sharing-grant.ts';
-import { createMaintainerAuditTag } from '../src/modules/authority/maintainer-grant.ts';
-import { verifyBaseAuthorityAttestations } from '../src/entrypoints/ci/ci-attestation.ts';
+import { createMaintainerAuditTag } from '../src/runtime/repository-transaction/maintainer-audit-tag.ts';
+import { verifyBaseAuthorityAttestations } from '../src/composition-root/ci-verification-production.ts';
 import { parseMaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
 import {
   createTaskPlanningAssuranceBinding,
   replayCurrentPlanReviewRoleResult,
 } from '../src/modules/assurance/planning-assurance-validator.ts';
-import {
-  agentRolePlanV2Digest,
-  type AgentRolePlanBodyV2,
-} from '../src/modules/provider-orchestration/agent-role-plan.ts';
+import { agentRolePlanV2Digest } from '../src/modules/provider-orchestration/agent-role-plan.ts';
+import type { AgentRolePlanBodyV2 } from '../src/modules/provider-orchestration/agent-role-plan.ts';
 import {
   CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1,
   resolveRoleTopologyV1,
@@ -51,7 +52,7 @@ import {
 import {
   admitConsumedRoleContextSharingResultReplay,
   admitRoleContextSharingResult,
-} from '../src/modules/provider-orchestration/role-scheduler.ts';
+} from '../src/composition-root/role-admission-production.ts';
 import {
   discoverRepository,
   runGit,
@@ -67,10 +68,12 @@ import {
 } from '../src/runtime/storage-journal/report-store.ts';
 import { createFixtureRepository, isWorkflowError } from './fixture.ts';
 import { createSshSignedFixture } from './support/ssh-signed-fixture.ts';
-
 const GRANT_ID = '12345678-1234-4123-8123-123456789abc';
+
 const APPROVAL_GRANT_ID = '87654321-4321-4321-8321-cba987654321';
+
 const UNLISTED_GRANT_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
 const NOW = new Date('2026-08-21T00:01:00.000Z');
 
 test('R-007 reserve precedes launch and consumed admission replays exactly after policy drift', (t) => {
@@ -95,33 +98,39 @@ test('R-007 reserve precedes launch and consumed admission replays exactly after
   );
   assert.throws(
     () =>
-      reserveRoleContextSharingPlanReview({
-        gitCommonDirectory: repository.gitCommonDirectory,
-        requirementNodeId: '8'.repeat(64),
-        requirement,
-        grantId: UNLISTED_GRANT_ID,
-        policy,
-        policyBlob,
-        verifier,
-        lifecycle: productionRoleContextSharingGrantLifecyclePort,
-        now: NOW,
-        assertOwned() {},
-      }),
+      reserveRoleContextSharingPlanReview(
+        { bindingFromRoleContextSharingGrantPayloadV1 },
+        {
+          gitCommonDirectory: repository.gitCommonDirectory,
+          requirementNodeId: '8'.repeat(64),
+          requirement,
+          grantId: UNLISTED_GRANT_ID,
+          policy,
+          policyBlob,
+          verifier,
+          lifecycle: productionRoleContextSharingGrantLifecyclePort,
+          now: NOW,
+          assertOwned() {},
+        },
+      ),
     (error) => isWorkflowError(error, 'ROLE_CONTEXT_SHARING_GRANT_INELIGIBLE'),
   );
   const events: string[] = [];
-  const reserved = reserveRoleContextSharingPlanReview({
-    gitCommonDirectory: repository.gitCommonDirectory,
-    requirementNodeId: '8'.repeat(64),
-    requirement,
-    grantId: GRANT_ID,
-    policy,
-    policyBlob,
-    verifier,
-    lifecycle: productionRoleContextSharingGrantLifecyclePort,
-    now: NOW,
-    assertOwned() {},
-  });
+  const reserved = reserveRoleContextSharingPlanReview(
+    { bindingFromRoleContextSharingGrantPayloadV1 },
+    {
+      gitCommonDirectory: repository.gitCommonDirectory,
+      requirementNodeId: '8'.repeat(64),
+      requirement,
+      grantId: GRANT_ID,
+      policy,
+      policyBlob,
+      verifier,
+      lifecycle: productionRoleContextSharingGrantLifecyclePort,
+      now: NOW,
+      assertOwned() {},
+    },
+  );
   events.push('reserved');
   const launch = () => {
     assert.equal(
@@ -297,6 +306,7 @@ test('R-007 reserve precedes launch and consumed admission replays exactly after
   assert.throws(
     () =>
       replayCurrentPlanReviewRoleResult(
+        planningAssuranceDependencies,
         terminalRoleResult,
         replayContext,
         productionConsumedPlanReviewReplayPort,
@@ -557,6 +567,7 @@ test('R-007 signed terminal receipts preserve exact portable PlanReview and CI a
   assert.equal(publishedReceipt.target, repository.head);
   assert.equal(
     replayCurrentPlanReviewRoleResult(
+      planningAssuranceDependencies,
       terminalRoleResult,
       replayContext,
       productionConsumedPlanReviewReplayPort,
@@ -564,6 +575,7 @@ test('R-007 signed terminal receipts preserve exact portable PlanReview and CI a
     terminalRoleResult.resultDigest,
   );
   const planningAssurance = createTaskPlanningAssuranceBinding(
+    planningAssuranceDependencies.grantCodec,
     {
       planReview: { roleResults: [terminalRoleResult] },
     } as never,
@@ -1138,18 +1150,21 @@ function createConsumedRoleContextSharingFixture(t: TestContext) {
     expected,
     verifier,
   } = fixture;
-  const reserved = reserveRoleContextSharingPlanReview({
-    gitCommonDirectory: repository.gitCommonDirectory,
-    requirementNodeId: '8'.repeat(64),
-    requirement,
-    grantId: GRANT_ID,
-    policy,
-    policyBlob,
-    verifier,
-    lifecycle: productionRoleContextSharingGrantLifecyclePort,
-    now: NOW,
-    assertOwned() {},
-  });
+  const reserved = reserveRoleContextSharingPlanReview(
+    { bindingFromRoleContextSharingGrantPayloadV1 },
+    {
+      gitCommonDirectory: repository.gitCommonDirectory,
+      requirementNodeId: '8'.repeat(64),
+      requirement,
+      grantId: GRANT_ID,
+      policy,
+      policyBlob,
+      verifier,
+      lifecycle: productionRoleContextSharingGrantLifecyclePort,
+      now: NOW,
+      assertOwned() {},
+    },
+  );
   const content = {
     kind: 'plan-review' as const,
     nodeId: 'b'.repeat(64),

@@ -4,13 +4,15 @@ import {
   inspectInvestigationManifestPublication,
   resumeInvestigationManifestPublication,
   readInvestigationPublicationRefState,
+  publishInvestigationManifestV3,
+} from '../src/runtime/managed-documents/transaction/investigation-publication.ts';
+import {
   investigationManifestPublicationNamespace,
   type InvestigationManifestPublicationPaths,
   type InvestigationManifestPublicationLifecycleIdentity,
   type InvestigationManifestPublicationSnapshot,
   type InvestigationManifestPublicationPhase,
-  publishInvestigationManifestV3,
-} from '../src/runtime/managed-documents/transaction/investigation-publication.ts';
+} from '../src/modules/investigation/manifest/investigation-publication-contracts.ts';
 import fs from 'node:fs';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import path from 'node:path';
@@ -19,14 +21,12 @@ import {
   writeInvestigationV3FailureObservation,
   investigationV3FailureObservationPath,
 } from '../src/runtime/storage-journal/investigation-v3-failure-store.ts';
-import {
-  createInvestigationV3Blocker,
-  type InvestigationManifestV3,
-} from '../src/modules/investigation/manifest/investigation-manifest.ts';
+import { createInvestigationV3Blocker } from '../src/modules/investigation/manifest/investigation-manifest.ts';
+import { type InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
 import { createFixtureRepository, git } from './fixture.ts';
-import { buildInvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-builder.ts';
+import { buildInvestigationManifestV3 } from '../src/composition-root/investigation-production.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
-import { publishTrackedInvestigationManifestV3 } from '../src/application/propose/propose-orchestrator.ts';
+import { publishTrackedInvestigationManifestV3 } from '../src/composition-root/propose-production.ts';
 import {
   digest,
   directBuilderInput,

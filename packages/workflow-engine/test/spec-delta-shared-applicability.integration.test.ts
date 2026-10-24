@@ -1,3 +1,7 @@
+import {
+  assertSpecDeltaScenarioPreservation,
+  verifyArchiveDeltaOutcomes,
+} from '../src/composition-root/planning-archive-projection-production.ts';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -5,10 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import {
-  assertSpecDeltaScenarioPreservation,
-  verifyArchiveDeltaOutcomes,
-} from '../src/runtime/repository-transaction/archive-delta-verifier.ts';
+import {} from '../src/runtime/repository-transaction/archive-delta-verifier.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 
 function git(repository: string, args: string[]): string {

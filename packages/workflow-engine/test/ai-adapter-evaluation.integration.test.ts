@@ -1,4 +1,5 @@
 /** Diagnostic adapter policy and immutable host-snapshot evaluation without launch. */
+import { builtInProviderAdapters } from '../src/composition-root/built-in-provider-adapter-production.ts';
 import test from 'node:test';
 import {
   createFixtureRepository,
@@ -33,7 +34,11 @@ test('AI adapter evaluation denies launch on every platform without side effects
     process.env.AI_ADAPTER_TEST_SECRET = marker;
 
     for (const platform of ['darwin', 'linux', 'win32'] as const) {
-      const result = evaluateAiAdapter(repository, platform);
+      const result = evaluateAiAdapter(
+        builtInProviderAdapters,
+        repository,
+        platform,
+      );
       assert.equal(result.schemaVersion, 3);
       assert.equal(result.mode, 'managed-read-only');
       assert.equal(result.decision, 'deny');
@@ -243,7 +248,7 @@ test('AI adapter policy changes fail closed instead of enabling a launcher', () 
     for (const policy of invalidPolicies) {
       writePolicy(repository, policy);
       assert.throws(
-        () => evaluateAiAdapter(repository, 'linux'),
+        () => evaluateAiAdapter(builtInProviderAdapters, repository, 'linux'),
         (error) => isWorkflowError(error, 'AI_ADAPTER_POLICY_INVALID'),
       );
     }
@@ -268,7 +273,11 @@ test('AI adapter policy may only disable built-ins and lower positive limits', (
       },
     });
 
-    const result = evaluateAiAdapter(repository, 'linux');
+    const result = evaluateAiAdapter(
+      builtInProviderAdapters,
+      repository,
+      'linux',
+    );
     assert.deepEqual(
       result.providers.map(({ id, enabled, resolver }) => ({
         id,
@@ -295,7 +304,7 @@ test('AI adapter policy may only disable built-ins and lower positive limits', (
     ]) {
       writePolicy(repository, { ...validPolicy(), limits });
       assert.throws(
-        () => evaluateAiAdapter(repository, 'linux'),
+        () => evaluateAiAdapter(builtInProviderAdapters, repository, 'linux'),
         (error) => isWorkflowError(error, 'AI_ADAPTER_POLICY_INVALID'),
       );
     }
@@ -305,7 +314,11 @@ test('AI adapter policy may only disable built-ins and lower positive limits', (
 });
 
 test('tracked adapter policy and schema publish the same strict v4 bounds', () => {
-  const result = evaluateAiAdapter(sourceRepositoryRoot, 'linux');
+  const result = evaluateAiAdapter(
+    builtInProviderAdapters,
+    sourceRepositoryRoot,
+    'linux',
+  );
   assert.equal(result.schemaVersion, 3);
   assert.deepEqual(result.limits, limitsPolicy());
   assert.deepEqual(
@@ -375,7 +388,12 @@ test(
       fs.symlinkSync('../external-policy.json', policyPath);
 
       assert.throws(
-        () => evaluateAiAdapter(repository, process.platform),
+        () =>
+          evaluateAiAdapter(
+            builtInProviderAdapters,
+            repository,
+            process.platform,
+          ),
         (error) => isWorkflowError(error, 'AI_ADAPTER_POLICY_INVALID'),
       );
     } finally {

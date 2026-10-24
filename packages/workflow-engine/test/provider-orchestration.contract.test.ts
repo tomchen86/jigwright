@@ -8,13 +8,13 @@ import assert from 'node:assert/strict';
 import {
   listBuiltInProviderFamilies,
   listBuiltInProviderCapabilityDescriptors,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/built-in-provider-definition';
 import fs from 'node:fs';
-import { resolveActorIdentity } from '../src/modules/provider-orchestration/actor-identity.ts';
+import { resolveActorIdentity } from '../src/modules/authority/actor-identity.ts';
 import {
   assessRoleIndependence,
   scheduleOrdinaryRole,
-} from '../src/modules/provider-orchestration/role-scheduler.ts';
+} from '../src/modules/provider-orchestration/role-assignment.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   isWorkflowError,
@@ -93,7 +93,10 @@ test('built-in provider registry is exact, immutable, and capability-scoped', ()
     ),
     'utf8',
   );
-  assert.match(registrySource, /from '@jigwright\/agent-runtime';/u);
+  assert.match(
+    registrySource,
+    /from '@jigwright\/core\/built-in-provider-catalog';/u,
+  );
   assert.doesNotMatch(
     registrySource,
     /export type ProviderId\s*=\s*['"]codex['"]\s*\|\s*['"]claude['"]/u,

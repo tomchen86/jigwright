@@ -6,7 +6,7 @@
  * - Stored record bytes remain canonical and bounded before entering the ledger chain.
  */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
-import { APPEND_INPUT_KEYS, AUTHORITY_AUDIT_EVENT_TYPES, AUTHORITY_AUDIT_RESULTS, RECORD_KEYS, } from "./authority-audit-contracts.js";
+import { APPEND_INPUT_KEYS, RECORD_KEYS, } from "./authority-audit-contracts.js";
 import { isPlainRecord, hasExactKeys, invalidRecord, includes, isCanonicalTimestamp, assertDigest, assertNullableDigest, invalidLedger, } from "./authority-audit-values.js";
 export function assertAppendInput(raw) {
     if (!isPlainRecord(raw) || !hasExactKeys(raw, APPEND_INPUT_KEYS)) {
@@ -93,3 +93,4 @@ export function freezeRecord(record) {
 export function freezeEntry(entry) {
     return Object.freeze(entry);
 }
+import { AUTHORITY_AUDIT_EVENT_TYPES, AUTHORITY_AUDIT_RESULTS, } from "../../modules/authority/authority-audit-contract.js";

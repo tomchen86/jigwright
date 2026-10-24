@@ -7,8 +7,11 @@
  *   reasoning effort and an empty strict MCP configuration.
  */
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
-import type { ProviderInvocationPlan } from '../../../modules/provider-orchestration/provider-contracts.ts';
-export { CLAUDE_EXECUTABLE_CANDIDATES } from '../built-in-provider-definition.ts';
+import type {
+  BuiltInProviderAdapter,
+  ProviderInvocationPlan,
+} from '../../../modules/provider-orchestration/provider-contracts.ts';
+export { CLAUDE_EXECUTABLE_CANDIDATES } from '@jigwright/core/built-in-provider-definition';
 
 /**
  * The reviewed help flags a resolved Claude executable must advertise before the
@@ -84,3 +87,17 @@ export function buildClaudeProviderInvocation(
   Object.freeze(plan);
   return plan;
 }
+
+/** This provider's external command shape, for the composed catalog. */
+export const claudeProviderAdapter: BuiltInProviderAdapter = Object.freeze({
+  preflight: Object.freeze({
+    helpProbes: Object.freeze([
+      Object.freeze({
+        args: Object.freeze(['--help']),
+        requiredFlags: CLAUDE_REQUIRED_HELP_FLAGS,
+      }),
+    ]),
+    authArgs: Object.freeze(['auth', 'status']),
+  }),
+  buildInvocation: buildClaudeProviderInvocation,
+});

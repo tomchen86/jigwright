@@ -1,3 +1,4 @@
+import { readCurrentImplementationReconciliationRequirement } from '../src/application/reconciliation/investigation-reconciliation.ts';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -7,11 +8,10 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import type { CurrentInvestigationManifest } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import type { CurrentInvestigationManifest } from '../src/modules/planning-provider/change-contract.ts';
 import {
   buildImplementationReconciliationRequirement,
   IMPLEMENTATION_RECONCILIATION_POLICY_DIGEST,
-  readCurrentImplementationReconciliationRequirement,
 } from '../src/modules/why-knowledge/implementation-reconciliation.ts';
 import { semanticFileSubjectId } from '../src/modules/why-knowledge/semantic-ledger.ts';
 import { projectReconciledInvestigationManifestWhyToLedger } from '../src/runtime/managed-documents/transaction/semantic-ledger-projection.ts';

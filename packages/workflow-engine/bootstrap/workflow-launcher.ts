@@ -1,9 +1,12 @@
+import { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST } from './built-in-engine-closure-pin.ts';
+import { WORKFLOW_BOOTSTRAP_HOST_MANIFEST_DIGEST } from './workflow-bootstrap-host-pin.ts';
+import { verifyWorkflowBootstrapHost } from './workflow-bootstrap-host.ts';
 /**
- * Selects and runs the engine a repository command is entitled to, before any engine code loads.
+ * Verifies and runs this package host for every ordinary repository command.
  *
  * Invariants:
  * - The built-in closure is verified against its pin, so a changed or indirect engine never launches.
- * - Read-only inspection and session status are recognised ahead of provisioning, so looking never provisions.
+ * - Ordinary commands never provision a repository-default engine.
  * - The child process exit code is passed through unchanged; the launcher never reports success for a failed run.
  */
 import childProcess from 'node:child_process';
@@ -13,16 +16,11 @@ import path from 'node:path';
 import {
   assertParentInterventionFenceCleared,
   bootstrapInterventionStateRoot,
-  initializeBuiltInControlPlaneSupervisor,
-  resolveControlPlaneEngineSelection,
-  resolveLocalEngineSelection,
   resolveParentInterventionFence,
   resolveRecoveryOperationalTrustRootFence,
   resolveRecoveryQuarantineMarker,
-  verifyBootstrapRepositoryIdentity,
   verifyBuiltInEngineClosure,
 } from './control-plane-trust.ts';
-import { canonicalJson } from './canonical-json.ts';
 
 const ENGINE_PACKAGE_ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -32,7 +30,6 @@ try {
     repository.gitCommonDirectory,
   );
   const argv = process.argv.slice(2);
-  let local: ReturnType<typeof resolveLocalEngineSelection> = null;
   let invocation: { executable: string; argv: string[] };
   const quarantine = resolveRecoveryQuarantineMarker(
     repository.gitCommonDirectory,
@@ -60,69 +57,16 @@ try {
     invocation = sealedInterventionInvocation(argv);
   } else {
     const fence = resolveParentInterventionFence(stateRoot, repository);
-    if (isInitialControlPlaneProvisioning(argv)) {
-      assertParentInterventionFenceCleared(fence, null);
-      if (
-        resolveRecoveryQuarantineMarker(repository.gitCommonDirectory) !== null
-      ) {
-        throw launcherError(
-          'WORKFLOW_RECOVERY_QUARANTINED',
-          'Workflow execution became Recovery Quarantined before control-plane initialization.',
-        );
-      }
-      const supervisor = initializeBuiltInControlPlaneSupervisor(
-        stateRoot,
-        ENGINE_PACKAGE_ROOT,
-        repository,
-      );
-      process.stdout.write(
-        `${canonicalJson({
-          kind: 'control-plane-initialization.v1',
-          supervisor,
-        })}\n`,
-      );
-      process.exit(0);
-    }
-    const readOnlyInspection = isReadOnlyRepositoryInspectionInvocation(argv);
-    let localAdoptionIncomplete = false;
     if (fence !== null && isSealedInterventionInvocation(argv)) {
       invocation = sealedInterventionInvocation(argv);
     } else {
-      try {
-        local = resolveLocalEngineSelection(stateRoot, repository);
-      } catch (error) {
-        if (
-          !readOnlyInspection ||
-          errorCode(error) !== 'WORKFLOW_LOCAL_ADOPTION_INCOMPLETE'
-        ) {
-          throw error;
-        }
-        localAdoptionIncomplete = true;
-      }
       if (
         !isReadOnlyHelpInvocation(argv) &&
-        (!readOnlyInspection ||
-          (fence !== null &&
-            !localAdoptionIncomplete &&
-            !isBoundedSessionStatusInvocation(argv)))
+        !isReadOnlyRepositoryInspectionInvocation(argv)
       ) {
-        assertParentInterventionFenceCleared(fence, local);
+        assertParentInterventionFenceCleared(fence);
       }
-      const global =
-        local === null
-          ? resolveGlobalEngineSelection(stateRoot, repository)
-          : null;
-      invocation = local
-        ? {
-            executable: local.executablePath,
-            argv,
-          }
-        : global === null
-          ? builtInInvocation(argv)
-          : {
-              executable: global.activeArtifact.executablePath,
-              argv,
-            };
+      invocation = builtInInvocation(argv);
     }
   }
   const quarantineAtLaunch = resolveRecoveryQuarantineMarker(
@@ -154,7 +98,7 @@ try {
     invocation.argv,
     {
       cwd: process.cwd(),
-      env: launchEnvironment(local?.resumeBinding ?? null),
+      env: launchEnvironment(),
       stdio: 'inherit',
       windowsHide: true,
     },
@@ -176,27 +120,6 @@ try {
     })}\n`,
   );
   process.exit(errorExitCode(error));
-}
-
-function isInitialControlPlaneProvisioning(argv: readonly string[]): boolean {
-  return (
-    argv.length === 3 &&
-    argv[0] === 'control-plane' &&
-    argv[1] === 'initialize' &&
-    argv[2] === '--json'
-  );
-}
-
-function resolveGlobalEngineSelection(
-  stateRoot: string,
-  repository: ReturnType<typeof discoverRepositoryIdentity>,
-) {
-  const supervisorPath = path.join(stateRoot, 'control-plane-supervisor.json');
-  if (fs.lstatSync(supervisorPath, { throwIfNoEntry: false }) === undefined) {
-    return resolveControlPlaneEngineSelection(stateRoot);
-  }
-  const repositoryId = verifyBootstrapRepositoryIdentity(repository);
-  return resolveControlPlaneEngineSelection(stateRoot, repositoryId);
 }
 
 function isReadOnlyRepositoryInspectionInvocation(
@@ -226,14 +149,6 @@ function isReadOnlySessionStatusInvocation(argv: readonly string[]): boolean {
     !argv[1].startsWith('-') &&
     !argv[1].includes('\0') &&
     !argv[1].includes('\n')
-  );
-}
-
-function isBoundedSessionStatusInvocation(argv: readonly string[]): boolean {
-  return (
-    (argv.length === 2 || (argv.length === 3 && argv[2] === '--json')) &&
-    argv[0] === 'status' &&
-    isBoundedNonOptionArgument(argv[1])
   );
 }
 
@@ -277,12 +192,8 @@ function isReadOnlyHelpInvocation(argv: readonly string[]): boolean {
 
 function isSealedInterventionInvocation(argv: readonly string[]): boolean {
   return (
-    (argv[0] === 'intervention' &&
-      (argv[1] === 'status' || argv[1] === 'recover')) ||
-    (argv[0] === 'change' &&
-      (argv[1] === 'intervene' || argv[1] === 'revoke-intervention')) ||
-    (argv[0] === 'engine' &&
-      (argv[1] === 'build-artifact' || argv[1] === 'adopt'))
+    (argv[0] === 'intervention' && argv[1] === 'status') ||
+    (argv[0] === 'change' && argv[1] === 'revoke-intervention')
   );
 }
 
@@ -290,7 +201,6 @@ function isSealedRecoveryInvocation(argv: readonly string[]): boolean {
   const args = exactRecoveryArguments(argv);
   if (args === null) return false;
   return (
-    isExactControlPlaneRollback(args) ||
     (args.length === 5 &&
       args[0] === 'recovery-authority' &&
       args[1] === 'import' &&
@@ -314,8 +224,7 @@ function isQuarantinePermittedRecoveryInvocation(
   const args = exactRecoveryArguments(argv);
   return (
     args !== null &&
-    (isExactControlPlaneRollback(args) ||
-      isExactRecoveryAuthorityRestore(args) ||
+    (isExactRecoveryAuthorityRestore(args) ||
       isExactQuarantineOperation(args, 'release'))
   );
 }
@@ -337,15 +246,6 @@ function exactRecoveryArguments(
     return null;
   }
   return json ? argv.slice(0, -1) : argv;
-}
-
-function isExactControlPlaneRollback(argv: readonly string[]): boolean {
-  return (
-    argv.length === 3 &&
-    argv[0] === 'control-plane' &&
-    argv[1] === 'rollback' &&
-    isExactLauncherIdentifier(argv[2])
-  );
 }
 
 function isExactRecoveryAuthorityRestore(argv: readonly string[]): boolean {
@@ -381,19 +281,6 @@ function isExactAbsoluteLauncherPath(value: unknown): value is string {
   );
 }
 
-function isExactLauncherIdentifier(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    value.length > 0 &&
-    value.length <= 255 &&
-    value.trim() === value &&
-    !value.startsWith('-') &&
-    !value.includes('\0') &&
-    !value.includes('\n') &&
-    !value.includes('\r')
-  );
-}
-
 function sealedInterventionInvocation(argv: string[]): {
   executable: string;
   argv: string[];
@@ -416,7 +303,12 @@ function builtInInvocation(argv: string[]): {
   executable: string;
   argv: string[];
 } {
-  const builtInEngine = verifyBuiltInEngineClosure(ENGINE_PACKAGE_ROOT);
+  verifyBuiltInEngineClosure(ENGINE_PACKAGE_ROOT);
+  const builtInEngine = verifyWorkflowBootstrapHost(
+    ENGINE_PACKAGE_ROOT,
+    WORKFLOW_BOOTSTRAP_HOST_MANIFEST_DIGEST,
+    BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST,
+  );
   return {
     executable: process.execPath,
     argv: ['--experimental-strip-types', builtInEngine, ...argv],
@@ -526,22 +418,11 @@ function exactGitDirectory(
   return fs.realpathSync(candidate);
 }
 
-function launchEnvironment(
-  resumeBinding: {
-    kind: 'local-engine-resume-binding.v1';
-    parentChangeId: string;
-    checkpointId: string;
-    engineDigest: string;
-  } | null,
-): NodeJS.ProcessEnv {
+function launchEnvironment(): NodeJS.ProcessEnv {
   const environment = { ...process.env };
   delete environment.WORKFLOW_LOCAL_ENGINE_RESUME_BINDING;
   delete environment.WORKFLOW_LOCAL_ENGINE_TX_ID;
   delete environment.WORKFLOW_LOCAL_ENGINE_CHILD_WORKTREE;
-  if (resumeBinding !== null) {
-    environment.WORKFLOW_LOCAL_ENGINE_RESUME_BINDING =
-      canonicalJson(resumeBinding);
-  }
   return environment;
 }
 

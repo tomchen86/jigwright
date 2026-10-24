@@ -17,3 +17,18 @@ export type MaintainerSignerProvider = {
     namespace?: string,
   ): void;
 };
+
+/** Verifies exact bytes against the selected pinned maintainer public key. */
+export type MaintainerDataSignatureVerifier = (
+  payload: string,
+  signature: string,
+  signer: import('./maintainer-policy.ts').TrustedMaintainerSigner,
+  namespace: string,
+  errorCode: string,
+) => void;
+
+/** Creates the canonical signer used by maintainer operations. */
+export type MaintainerSignerFactory = (
+  repositoryRoot: string,
+  policy: import('./maintainer-policy.ts').MaintainerPolicy,
+) => MaintainerSignerProvider;

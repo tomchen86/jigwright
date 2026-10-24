@@ -10,39 +10,40 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import { WorkflowError } from '../../foundation/errors/errors.ts';
 import {
   PROPOSE_POLICY_DIGEST,
-  type ProviderInvocationRequest,
   recreateProviderInvocationRequest,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
-import { type InvestigationEvidenceRefsClosure } from './evidence-ref-closure.ts';
+import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
+import type { InvestigationEvidenceRefsClosure } from './evidence-ref-closure.ts';
 import { readEvidenceNode } from './evidence-node-store.ts';
 import {
   MAX_HUMAN_RESOLUTION_BYTES,
   privatePathExists,
   readPrivateCanonicalJson,
   readPrivateFile,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   humanResolutionStateInvalid,
   investigationStartReservationPath,
+} from '../journal-primitives/investigation-resolution-values.ts';
+import {
   isBoundedResolutionText,
   isEmptyRecord,
-} from './investigation-resolution-values.ts';
+} from '../../modules/investigation/domain/human-resolution-values.ts';
 import { readInvestigationSession } from './investigation-session-records.ts';
-import { type InvestigationSession } from './investigation-session-types.ts';
+import type { InvestigationSession } from '../../modules/investigation/domain/investigation-session-types.ts';
 import {
   hasExactKeys,
   isDigest,
   isRecord,
   isTimestamp,
   sha256,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 import {
   isProposeExemptionInvestigationId,
-  type ProposeExemptionSession,
   readProposeExemptionSession,
 } from './propose-exemption-store.ts';
-
+import type { ProposeExemptionSession } from '../../modules/lifecycle/propose-exemption-session.ts';
 export function assertEvidenceClosureTargetBinding(
   paths: InvestigationRuntimePaths,
   targetSession: InvestigationSession,

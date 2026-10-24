@@ -1,3 +1,22 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import {
+  productionChangeRoutingInspector,
+  productionChangeContract,
+} from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -7,12 +26,12 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { loadWorkflowConfig } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../src/runtime/workflow-configuration/workflow-configuration.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
@@ -22,18 +41,16 @@ import {
   beginTaskDiffReview,
   inspectTaskDiffReviewStatus,
   reconcileTaskDiffReview,
-} from '../src/application/finalize/task-diff-review-lifecycle.ts';
+} from '../src/composition-root/task-diff-review-production.ts';
 import { parseTaskDiffReviewChallengeResponseInput } from '../src/modules/assurance/task-diff-review-input.ts';
 import { readTaskDiffFinalAssuranceBinding } from '../src/runtime/storage-journal/task-diff-review-store.ts';
-import {
-  TASK_DIFF_REVIEW_COVERAGE,
-  type TaskDiffReviewSubject,
-} from '../src/modules/assurance/task-diff-review.ts';
-import {
-  taskDiffReviewProviderSubmission,
-  type TaskDiffReviewContinuationSubmission,
-  type TaskDiffReviewSubmission,
-} from '../src/modules/assurance/task-diff-review-artifact.ts';
+import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
+import type { TaskDiffReviewSubject } from '../src/modules/assurance/task-diff-review-record.ts';
+import { taskDiffReviewProviderSubmission } from '../src/modules/assurance/task-diff-review-artifact.ts';
+import type {
+  TaskDiffReviewContinuationSubmission,
+  TaskDiffReviewSubmission,
+} from '../src/modules/assurance/task-diff-review-artifact-record.ts';
 import {
   configureChecks,
   createFixtureRepository,
@@ -81,7 +98,12 @@ test('review-diff publicly journals and resumes authenticated provider challenge
     path.join(os.tmpdir(), 'task-diff-review-continuation-input-'),
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -479,7 +501,7 @@ function runCli(
     process.execPath,
     [
       '--experimental-strip-types',
-      path.resolve(import.meta.dirname, '../src/cli.ts'),
+      path.resolve(import.meta.dirname, '../bootstrap/workflow-engine-host.ts'),
       ...args,
     ],
     {

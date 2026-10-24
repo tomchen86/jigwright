@@ -7,13 +7,13 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   type HumanResolutionGrantPublicationQuarantineReceipt,
   assertHumanResolutionGrantPublicationQuarantineReceipt,
   HUMAN_RESOLUTION_GRANT_FILE,
   HUMAN_RESOLUTION_GRANT_TEMPORARY,
-} from './human-resolution-grant-publication-contract.ts';
+} from '../../modules/investigation/domain/human-resolution-grant-publication-contract.ts';
 import {
   assertPrivateFile,
   fsyncDirectory,
@@ -21,13 +21,15 @@ import {
   readPrivateCanonicalJson,
   walkPrivateDirectory,
   withPrivateRuntimeLock,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   assertHumanResolutionGrantId,
-  humanResolutionGrantPublicationRecoveryRequired,
   humanResolutionGrantUnsafe,
+} from '../../modules/investigation/domain/human-resolution-values.ts';
+import {
+  humanResolutionGrantPublicationRecoveryRequired,
   humanResolutionPaths,
-} from './investigation-resolution-values.ts';
+} from '../journal-primitives/investigation-resolution-values.ts';
 
 export function humanResolutionGrantPublicationRecoveryPath(
   stores: ReturnType<typeof humanResolutionPaths>,

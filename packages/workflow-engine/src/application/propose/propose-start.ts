@@ -1,40 +1,35 @@
-/**
- * Starts ordinary investigations and carries structured exemptions into planning.
- *
- * Invariants:
- * - Repeated starts reuse the exact durable request, actor, intent, and baseline.
- * - Ordinary and exemption branches cannot both own the current change.
- * - Survey dispatch follows durable authorization and session creation.
- */
-
+import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  assertActiveTaskMandateBindingUnderLifecycleLock,
-  authorizeTaskMandateOperation,
-  type TaskMandateBinding,
-} from '../../modules/authority/task-mandate.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import {
   createInvestigationApplicability,
   INVESTIGATION_APPLICABILITY_POLICY_DIGEST,
 } from '../../modules/investigation/domain/investigation-applicability.ts';
-import { resolveActorIdentity } from '../../modules/provider-orchestration/actor-identity.ts';
+import { resolveActorIdentity } from '../../modules/authority/actor-identity.ts';
 import { createProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
-import {
-  authorizeGrantedOrdinaryRole,
-  scheduleOrdinaryRole,
-  type GrantedSameProviderRoleAssignment,
-  type ProviderRoleAssignment,
-  type RoleParticipant,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
-import {
-  blindSurveyGrantRequest,
-  collaborationTransitionDigest,
-  type ProposeGrantAuthorization,
-} from './plan-review-contracts.ts';
+import { scheduleOrdinaryRole } from '../../modules/provider-orchestration/role-assignment.ts';
+import type {
+  GrantedSameProviderRoleAssignment,
+  ProviderRoleAssignment,
+  RoleParticipant,
+} from '../../modules/provider-orchestration/role-assignment.ts';
+import { blindSurveyGrantRequest } from './plan-review-contracts.ts';
+import type {
+  ProposeGrantAuthorization,
+  ExemptionPlanningContributionEnvelope,
+  ExemptionProposeOutput,
+  InvestigationExemptionRequest,
+  OrdinaryProposeOutput,
+  ProposeOptions,
+  ProposeOutput,
+  ProposeResumeOptions,
+} from '../../modules/proposal/propose-types.ts';
+import { collaborationTransitionDigest } from './plan-review-grant-authorization.ts';
 import { readCallerJson } from './propose-artifacts.ts';
-import { createRuntimeId, sha256 } from './propose-common.ts';
+import { createRuntimeId } from './propose-common.ts';
+import { sha256 } from '../../modules/proposal/propose-values.ts';
 import {
   assertCurrentExemptionContext,
   assertCurrentGovernanceSources,
@@ -50,7 +45,7 @@ import { createProposeAuthorizationNode } from './propose-evidence.ts';
 import {
   assertExemptionPlanningBinding,
   isInvestigationExemptionRequest,
-} from './propose-input.ts';
+} from '../../modules/proposal/propose-input.ts';
 import { collaborationGrantRequiredOutput } from './propose-output.ts';
 import { materializeExemptionPlanningContribution } from './propose-planning-materialization.ts';
 import {
@@ -62,27 +57,15 @@ import {
   assertProposeStartInput,
   readProposeAuthorization,
 } from './propose-request-validation.ts';
-import type {
-  BlindSurveyManifest,
-  InvestigationStatus,
-  NormalizedChangeIntent,
-  ProposeRuntime,
-} from './propose-runtime.ts';
+import type { InvestigationStatus } from '../../modules/lifecycle/investigation-status.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
+import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
+import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
 import {
   getExemptionProposeStatus,
   renderExemptionProposeOutput,
   renderProposeOutputWithPlanningAuthority,
 } from './propose-status.ts';
-import {
-  type ExemptionPlanningContributionEnvelope,
-  type ExemptionProposeOutput,
-  type InvestigationExemptionRequest,
-  type OrdinaryProposeOutput,
-  type ProposeOptions,
-  type ProposeOutput,
-  type ProposeResumeOptions,
-} from './propose-types.ts';
-
 export function startPropose(
   services: ProposeRuntime,
   cwd: string,
@@ -139,7 +122,7 @@ export function startPropose(
       inputSchema: {
         schemaVersion: 1,
         kind: 'actor-selection',
-        allowedProviders: ['claude', 'codex'],
+        allowedProviders: [...listProviderIds()],
       },
       work: null,
       materializedArtifacts: null,
@@ -152,8 +135,13 @@ export function startPropose(
   }
 
   const repository = services.workspace.discoverRepository(cwd);
-  assertCurrentGovernanceSources(repository.repositoryRoot, intent.sourceRefs);
+  assertCurrentGovernanceSources(
+    services,
+    repository.repositoryRoot,
+    intent.sourceRefs,
+  );
   const immediateSource = resolveImmediateSource(
+    services,
     repository.repositoryRoot,
     changeId,
     intent,
@@ -176,7 +164,7 @@ export function startPropose(
   );
 
   const mandateAuthorization = options.taskMandateId
-    ? authorizeTaskMandateOperation(
+    ? services.taskMandate.authorizeTaskMandateOperation(
         cwd,
         options.taskMandateId,
         { kind: 'candidate-or-design-artifact' },
@@ -227,7 +215,7 @@ export function startPropose(
     identityAssurance: actorResolution.actor.assurance,
     engineSpawned: false,
   };
-  const candidates = (['codex', 'claude'] as const).map((providerId) => ({
+  const candidates = listProviderIds().map((providerId) => ({
     providerId,
     sessionId:
       providerId === actorResolution.actor.providerId
@@ -451,7 +439,7 @@ export function startPropose(
             },
             assertOwned,
           );
-        assignment = authorizeGrantedOrdinaryRole({
+        assignment = services.roleAdmission.authorizeGrantedOrdinaryRole({
           role: 'plan-reviewer',
           author,
           targetDigest: intentDigest,
@@ -572,7 +560,16 @@ export function startPropose(
 function startExemptionPropose(
   services: Pick<
     ProposeRuntime,
-    'evidence' | 'investigation' | 'provider' | 'publication' | 'workspace'
+    | 'taskMandate'
+    | 'evidence'
+    | 'investigation'
+    | 'provider'
+    | 'publication'
+    | 'workspace'
+    | 'planningEvidence'
+    | 'roleContextSharingGrants'
+    | 'roleAdmission'
+    | 'withTaskRevisionPlanningOperation'
   >,
   cwd: string,
   changeId: string,
@@ -595,7 +592,7 @@ function startExemptionPropose(
         services.workspace.loadInvestigationRuntimeContext(cwd);
       assertProposeStartContextStable(context, lockedContext);
       if (mandateBinding) {
-        assertActiveTaskMandateBindingUnderLifecycleLock(
+        services.taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock(
           cwd,
           mandateBinding,
           assertOwned,

@@ -6,6 +6,8 @@
  * - This replacement path excludes task implementation and task diff review
  *   invocations.
  */
+import type { TaskMandateActiveBinding } from '../../modules/authority/task-mandate-access-contract.ts';
+
 import { executionReplacementBudgetChanges } from './execution-replacement-budget.ts';
 import {
   parseProviderRetryExplanation,
@@ -17,18 +19,20 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { loadAiAdapterPolicy } from '../../runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../../runtime/provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { requireExecutionJobMandateBinding } from '../../modules/provider-orchestration/execution-core.ts';
 import {
   canonicalExecutionBudgetGrantRequest,
-  consumeExecutionBudgetGrant,
   createExecutionBudgetGrantRequest,
-  inspectExecutionBudgetGrantAuthorization,
   parseExecutionBudgetGrantRequest,
   type ExecutionBudgetConsumeReceipt,
   type ExecutionBudgetGrantRequest,
-} from '../../modules/authority/execution-governance.ts';
+} from '../../modules/authority/execution-governance-grant-contracts.ts';
+import {
+  consumeExecutionBudgetGrant,
+  inspectExecutionBudgetGrantAuthorization,
+} from '../../runtime/storage-journal/execution-budget-grants.ts';
 import {
   inspectExecutionJob,
   inspectProviderExecutionJobSource,
@@ -42,17 +46,24 @@ import {
   privatePathExists,
   readPrivateCanonicalJson,
   writePrivateCanonicalJsonAtomic,
-} from '../../runtime/storage-journal/investigation-session-store.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+} from '../../runtime/journal-primitives/investigation-private-files.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import type { InvestigationRuntimePaths } from '../../runtime/session-workspace/paths.ts';
-import {
-  completeInterruptedPlanReviewReplacement,
-  createPlanReviewRetryEnvelope,
-  createProviderRetryEnvelope,
-  getProposeStatus,
-  resumePropose,
-} from '../propose/propose-orchestrator.ts';
+import type { InvestigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';
+import type { ProposeOperations } from '../propose/propose-orchestrator.ts';
+export type ExecutionReplacementProposePort = Pick<
+  ProposeOperations,
+  | 'completeInterruptedPlanReviewReplacement'
+  | 'createPlanReviewRetryEnvelope'
+  | 'createProviderRetryEnvelope'
+  | 'getProposeStatus'
+  | 'resumePropose'
+> & {
+  taskMandate: Pick<
+    TaskMandateActiveBinding,
+    'assertActiveTaskMandateBindingUnderLifecycleLock'
+  >;
+};
 import {
   MAX_PROVIDER_LIMITS,
   createProviderInvocationRequest,
@@ -64,8 +75,7 @@ import {
   readProviderInvocationRequest,
 } from '../../runtime/storage-journal/provider-invocation-store.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
-import { assertActiveTaskMandateBindingUnderLifecycleLock } from '../../modules/authority/task-mandate.ts';
-import type { ConsumedPlanReviewReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
+import type { ConsumedRoleReplayPort } from '../../modules/provider-orchestration/role-admission-contracts.ts';
 
 export type ExecutionRetryRequestResult = Readonly<{
   schemaVersion: 1;
@@ -175,7 +185,7 @@ export type ExecutionReplacementTransaction = Readonly<{
 export type ExecuteGrantedReplacementOptions = {
   now?: Date;
   providerDispatcher?: (cwd: string, invocationId: string) => unknown;
-  consumedRoleResultReplay?: ConsumedPlanReviewReplayPort;
+  consumedRoleResultReplay?: ConsumedRoleReplayPort;
   simulateCrashAfter?:
     | 'prepared'
     | 'grant-consume-before-journal'
@@ -199,10 +209,14 @@ export class SimulatedExecutionReplacementCrash extends Error {
 
 /** Read-only view of the exact exception; publication remains in retry-request. */
 export function previewExecutionReplacementRequest(
+  propose: ExecutionReplacementProposePort,
   cwd: string,
   jobId: string,
   input: { timeoutMs: number; retryExplanation?: ProviderRetryExplanation },
 ): ExecutionBudgetGrantRequest {
+  const { requestExecutionReplacementBytes } =
+    createReplacementPublication(propose);
+
   assertTimeout(input.timeoutMs);
   if (input.retryExplanation !== undefined)
     parseProviderRetryExplanation(input.retryExplanation);
@@ -231,10 +245,14 @@ export function previewExecutionReplacementRequest(
 }
 
 export function requestExecutionReplacement(
+  propose: ExecutionReplacementProposePort,
   cwd: string,
   requestedJobId: string,
   input: { timeoutMs: number; retryExplanation?: ProviderRetryExplanation },
 ): ExecutionRetryRequestResult {
+  const { requestExecutionReplacementBytes } =
+    createReplacementPublication(propose);
+
   assertTimeout(input.timeoutMs);
   if (input.retryExplanation !== undefined)
     parseProviderRetryExplanation(input.retryExplanation);
@@ -354,11 +372,20 @@ export function requestExecutionReplacement(
 }
 
 export function executeGrantedReplacement(
+  propose: ExecutionReplacementProposePort,
   cwd: string,
   requestedJobId: string,
   grantId: string,
   options: ExecuteGrantedReplacementOptions = {},
 ): ExecutionReplacementTransaction {
+  const {
+    recoverReceipt,
+    publishReplacement,
+    assertPublishedReplacement,
+    requestExecutionReplacementBytes,
+    assertCurrentTransactionLineage,
+  } = createReplacementPublication(propose);
+
   const context = loadInvestigationRuntimeContext(cwd);
   const grant = inspectExecutionBudgetGrantAuthorization(
     context.lifecycleRuntime.root,
@@ -897,7 +924,7 @@ const {
 
 export type ExecutionReplacementPublicationBindings = {
   inspectExecutionBudgetGrantAuthorization: typeof inspectExecutionBudgetGrantAuthorization;
-  assertActiveTaskMandateBindingUnderLifecycleLock: typeof assertActiveTaskMandateBindingUnderLifecycleLock;
+  assertActiveTaskMandateBindingUnderLifecycleLock: TaskMandateActiveBinding['assertActiveTaskMandateBindingUnderLifecycleLock'];
   parseMaintainerPolicy: typeof parseMaintainerPolicy;
   runGit: typeof runGit;
   consumeExecutionBudgetGrant: typeof consumeExecutionBudgetGrant;
@@ -909,11 +936,11 @@ export type ExecutionReplacementPublicationBindings = {
   loadInvestigationRuntimeContext: typeof loadInvestigationRuntimeContext;
   readProviderInvocation: typeof readProviderInvocation;
   replacementNotGrantable: typeof replacementNotGrantable;
-  completeInterruptedPlanReviewReplacement: typeof completeInterruptedPlanReviewReplacement;
-  getProposeStatus: typeof getProposeStatus;
-  createProviderRetryEnvelope: typeof createProviderRetryEnvelope;
-  createPlanReviewRetryEnvelope: typeof createPlanReviewRetryEnvelope;
-  resumePropose: typeof resumePropose;
+  completeInterruptedPlanReviewReplacement: ProposeOperations['completeInterruptedPlanReviewReplacement'];
+  getProposeStatus: ProposeOperations['getProposeStatus'];
+  createProviderRetryEnvelope: ProposeOperations['createProviderRetryEnvelope'];
+  createPlanReviewRetryEnvelope: ProposeOperations['createPlanReviewRetryEnvelope'];
+  resumePropose: ProposeOperations['resumePropose'];
   providerInvocationExists: typeof providerInvocationExists;
   replacementStale: typeof replacementStale;
   readProviderInvocationRequest: typeof readProviderInvocationRequest;
@@ -938,54 +965,48 @@ export type ExecutionReplacementPublicationBindingsTypes = {
   InvestigationRuntimePaths: InvestigationRuntimePaths;
   ExecutionReplacementTransaction: ExecutionReplacementTransaction;
   ExecuteGrantedReplacementOptions: ExecuteGrantedReplacementOptions;
-  ConsumedPlanReviewReplayPort: ConsumedPlanReviewReplayPort;
+  ConsumedRoleReplayPort: ConsumedRoleReplayPort;
   ExecutionBudgetGrantRequest: ExecutionBudgetGrantRequest;
   inspectExecutionJob: typeof inspectExecutionJob;
 };
 
-const {
-  recoverReceipt,
-  publishReplacement,
-  assertPublishedReplacement,
-  requestExecutionReplacementBytes,
-  assertCurrentTransactionLineage,
-  assertCompleteReplacementDelta,
-} = createExecutionReplacementPublication(() => ({
-  inspectExecutionBudgetGrantAuthorization,
-  assertActiveTaskMandateBindingUnderLifecycleLock,
-  parseMaintainerPolicy,
-  runGit,
-  consumeExecutionBudgetGrant,
-  SimulatedExecutionReplacementCrash,
-  assertReceipt,
-  createTransaction,
-  writeTransaction,
-  replacementTransactionPath,
-  loadInvestigationRuntimeContext,
-  readProviderInvocation,
-  replacementNotGrantable,
-  completeInterruptedPlanReviewReplacement,
-  getProposeStatus,
-  createProviderRetryEnvelope,
-  createPlanReviewRetryEnvelope,
-  resumePropose,
-  providerInvocationExists,
-  replacementStale,
-  readProviderInvocationRequest,
-  canonicalJson,
-  mergeExactChanges,
-  createExecutionBudgetGrantRequest,
-  deterministicUuid,
-  requireExecutionJobMandateBinding,
-  replacementRationale,
-  canonicalExecutionBudgetGrantRequest,
-  inspectExecutionJob,
-  readPersistedRequest,
-  readRequestBinding,
-  loadAiAdapterPolicy,
-  replacementTimeout,
-  createProviderInvocationRequest,
-  digestCanonical,
-  digestText,
-  grantMismatch,
-}));
+function createReplacementPublication(
+  propose: ExecutionReplacementProposePort,
+) {
+  return createExecutionReplacementPublication(() => ({
+    ...propose,
+    inspectExecutionBudgetGrantAuthorization,
+    assertActiveTaskMandateBindingUnderLifecycleLock:
+      propose.taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock,
+    parseMaintainerPolicy,
+    runGit,
+    consumeExecutionBudgetGrant,
+    SimulatedExecutionReplacementCrash,
+    assertReceipt,
+    createTransaction,
+    writeTransaction,
+    replacementTransactionPath,
+    loadInvestigationRuntimeContext,
+    readProviderInvocation,
+    replacementNotGrantable,
+    providerInvocationExists,
+    replacementStale,
+    readProviderInvocationRequest,
+    canonicalJson,
+    mergeExactChanges,
+    createExecutionBudgetGrantRequest,
+    deterministicUuid,
+    requireExecutionJobMandateBinding,
+    replacementRationale,
+    canonicalExecutionBudgetGrantRequest,
+    inspectExecutionJob,
+    readPersistedRequest,
+    readRequestBinding,
+    loadAiAdapterPolicy,
+    replacementTimeout,
+    createProviderInvocationRequest,
+    digestCanonical,
+    digestText,
+    grantMismatch,
+  }));
+}

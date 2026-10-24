@@ -1,15 +1,15 @@
+import { parseGovernanceSourceAliases } from '../src/modules/governance-intake/source-aliases.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { captureGovernanceSource } from '../src/modules/governance-intake/governance-intake.ts';
+import { captureGovernanceSource } from '../src/composition-root/governance-sources-production.ts';
 import {
   readGovernanceSourceAliases,
   resolveGovernanceSourceAlias,
-  parseGovernanceSourceAliases,
-} from '../src/modules/governance-intake/source-aliases.ts';
+} from '../src/composition-root/governance-sources-production.ts';
 
 test('Source aliases resolve canonical wording without copying it into the alias record', (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jigwright-aliases-'));

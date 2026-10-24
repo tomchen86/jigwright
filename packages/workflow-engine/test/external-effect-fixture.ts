@@ -12,12 +12,8 @@ import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maint
 import {
   publishArtifactDigest,
   publishPrestateDigest,
-} from '../src/adapters/remote/github/publish-executor.ts';
-import {
-  authorizeTaskMandate,
-  inspectActiveTaskMandateBinding,
-  type TaskMandateBinding,
-} from '../src/modules/authority/task-mandate.ts';
+} from '../src/modules/authority/publish-grant.ts';
+import { type TaskMandateBinding } from '../src/modules/authority/task-mandate-contract.ts';
 import {
   createFixtureRepository,
   git,
@@ -172,3 +168,7 @@ export function publishGrantRequest(fixture: {
 function sha256(value: string): `sha256:${string}` {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const { authorizeTaskMandate, inspectActiveTaskMandateBinding } =
+  taskMandateOperations;

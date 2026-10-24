@@ -8,11 +8,11 @@ Keep repository routing in one controlled source and derive the visible inventor
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:eeca8dba68cbafba42e18b986ebaefb534783e7c4699857e157c908e5167780d -->
+<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:b74eab4cdbe68ab9e8a92625603b1d50fa2921df3c764f68255561d800dcdab8 -->
 
 <!-- prettier-ignore-start -->
 
-12 files changed in this module since confirmation.
+33 files changed in this module since confirmation.
 
 ## Commands
 
@@ -44,8 +44,14 @@ Keep repository routing in one controlled source and derive the visible inventor
 | Type | Values | Source |
 | --- | --- | --- |
 | ChangeRoutingState | primary, concurrent, ready, blocked, resume-available, parked, completed-awaiting-archive, archived, revising, recovery-required | [change-routing.ts](change-routing.ts) |
+| ChangeRoutingRuntimeState | revising, recovery-required, null | [change-routing.ts](change-routing.ts) |
+| FinalizeCancellationPhase | requested, projection-restored, completed | [finalize-cancellation.ts](finalize-cancellation.ts) |
+| FinalizeTransactionPhase | projection-prepared, candidate-prepared, checks-running, checked, staged, reports-persisted, completed | [finalize-transaction.ts](finalize-transaction.ts) |
 | ManagedTaskStrategyState | not-required, session-terminal, transformation-required, transformation-produced, red-authoring, implementation-required, ready, reservation-persisted, collaboration-grant-required, waiting-for-provider, provider-succeeded-awaiting-import, provider-failed, correction-required, correction-exhausted, caller-supplied-awaiting-import, patch-imported | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
 | ManagedTaskDiffReviewState | not-required, ready, collaboration-grant-required, external-grant-resume-required, direct-human-attestation-required, external-reconciliation-required, satisfied, challenge-response-required, challenge-closure-required, changes-required, waiting-for-provider, provider-succeeded-awaiting-reconciliation, provider-failed | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
+| TaskMechanicalTransformLifecycleState | transformation-required, transformation-produced | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
+| OpenTaskPhase | prepared, plan-committed, session-active, completed | [open-task-status.ts](open-task-status.ts) |
+| TaskDiffReviewReplayMode | inspect, governing | [task-diff-review-contracts.ts](task-diff-review-contracts.ts) |
 
 ## Contracts
 
@@ -65,14 +71,32 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [change-routing-grant-contract.ts](change-routing-grant-contract.ts) | Defines the stable identity and schema bindings of routing continuation Grants. | 1 | History unavailable |
 | [change-routing-grant.ts](change-routing-grant.ts) | Defines and requests authorization to continue a parked or manually blocked change. | 1 | History unavailable |
 | [change-routing-transaction.ts](change-routing-transaction.ts) | Builds and validates reports binding a routing review to its lifecycle Source update. | 1 | History unavailable |
-| [change-routing.ts](change-routing.ts) | Reviews and applies change routing, dependencies, blockers, and protected continuations. | 1 | History unavailable |
-| [context-manifest-contract.ts](context-manifest-contract.ts) | Declares the context manifest binding an execution epoch to its planned inputs. | 1 | History unavailable |
+| [change-routing.ts](change-routing.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [completion-rollback.ts](completion-rollback.ts) | Pure admission and state reset for reversing an unfinished completion projection. | 0 | History unavailable |
 | [contract-digests.ts](contract-digests.ts) | Computes identities for the required registered check definitions. | 1 | History unavailable |
-| [managed-trailers.ts](managed-trailers.ts) | Exposes the shared managed commit trailer grammar to lifecycle callers. | 1 | Header changed since confirmation |
+| [finalization.ts](finalization.ts) | Pure finalization, commit and recovery contracts and admission rules. | 0 | History unavailable |
+| [finalize-cancellation.ts](finalize-cancellation.ts) | Canonical finalize cancellation records, digests and phase preparation. | 0 | History unavailable |
+| [finalize-transaction.ts](finalize-transaction.ts) | Canonical finalize transaction records, digests and phase admission. | 0 | History unavailable |
+| [investigation-checkpoint-envelope.ts](investigation-checkpoint-envelope.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [investigation-status.ts](investigation-status.ts) | Canonical investigation lifecycle status, including provider progress observations. | 0 | History unavailable |
 | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) | Defines shared task strategy, review and authority-plan state names. | 1 | Header changed since confirmation |
+| [mechanical-transformation-evidence.ts](mechanical-transformation-evidence.ts) | Pure mechanical transformation closure, projection and immutable evidence validation. | 0 | History unavailable |
+| [open-task-status.ts](open-task-status.ts) | Durable open-task phase and status values shared by activation and status queries. | 0 | History unavailable |
 | [planning-amendment-decision.ts](planning-amendment-decision.ts) | Creates, reads and replaces canonical amendment decisions embedded in proposal markers. | 1 | History unavailable |
-| [planning-execution-epoch.ts](planning-execution-epoch.ts) | Advances and recovers execution epochs across planning amendments. | 1 | History unavailable |
-| [planning-generation.ts](planning-generation.ts) | Creates canonical planning generations from targets, investigation evidence, and policies. | 1 | History unavailable |
+| [planning-execution-epoch-observations.ts](planning-execution-epoch-observations.ts) | Required repository observations, invoked at each epoch admission phase. | 0 | History unavailable |
+| [planning-execution-epoch.ts](planning-execution-epoch.ts) | Exact epoch manifests, evidence, and recovery predicates. | 0 | History unavailable |
+| [planning-transition-report.ts](planning-transition-report.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [planning-transition-result.ts](planning-transition-result.ts) | Result data for an exact planning transition; transaction execution has a separate owner. | 0 | History unavailable |
+| [predecessor-reconciliation.ts](predecessor-reconciliation.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [projected-finalization.ts](projected-finalization.ts) | Pure projected-finalization admission, reports, session projection and results. | 0 | History unavailable |
+| [propose-exemption-session.ts](propose-exemption-session.ts) | Canonical durable proposal exemption identity and lifecycle data. | 0 | History unavailable |
+| [repository-hooks.ts](repository-hooks.ts) | Repository hook admission rules over required current observations and checks. | 0 | History unavailable |
+| [repository-specification-policy.ts](repository-specification-policy.ts) | Combines canonical spec ownership with repository-specific lifecycle paths. | 1 | History unavailable |
+| [session-check.ts](session-check.ts) | Data returned by session checks and their caller-supplied execution options. | 0 | History unavailable |
+| [session-inspection.ts](session-inspection.ts) | Observed session facts consumed by lifecycle rules and report validation. | 0 | History unavailable |
+| [task-diff-review-contracts.ts](task-diff-review-contracts.ts) | Defines shared task diff review command, status, and replay contracts. | 1 | History unavailable |
+| [workflow-report.ts](workflow-report.ts) | Workflow report contract and validation rules shared by lifecycle policy and durable storage. | 0 | History unavailable |
+| [workflow-session-contract.ts](workflow-session-contract.ts) | Current durable workflow session data shared by lifecycle rules and storage. | 0 | History unavailable |
 
 <!-- prettier-ignore-end -->
 

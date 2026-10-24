@@ -928,12 +928,12 @@ test('production snapshot refuses cross-file role policy drift', () => {
 
 test('production CLI injects the topology snapshot port into start, resume, and immediate intake', () => {
   const source = fs.readFileSync(
-    new URL('../src/cli.ts', import.meta.url),
+    new URL('../src/entrypoints/cli/workflow-cli.ts', import.meta.url),
     'utf8',
   );
   assert.match(
     source,
-    /import \{ productionRoleTopologyResolutionPort \} from '\.\/composition-root\/role-topology-resolution-production\.ts';/u,
+    /import \{ productionRoleTopologyResolutionPort \} from '\.\.\/\.\.\/composition-root\/role-topology-resolution-production\.ts';/u,
   );
   assert.equal(
     [

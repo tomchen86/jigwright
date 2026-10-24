@@ -1,15 +1,16 @@
-/**
- * Publishes and verifies portable receipts for terminal role context
- * sharing uses.
- *
- * Invariants:
- * - Verified receipt identities must correspond exactly to the supplied
- *   terminal uses.
- */
+import { type RoleContextSharingJournalRecord } from '../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
+import {
+  ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_SIGNATURE_NAMESPACE_V1,
+  ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_TAG_PREFIX_V1,
+} from '../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
+import type {
+  RoleContextSharingTerminalReceiptPayloadV1,
+  RoleContextSharingTerminalReceiptEnvelopeV1,
+  VerifiedRoleContextSharingTerminalReceiptV1,
+  RoleContextSharingTerminalUseIdentityV1,
+} from '../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
 import crypto from 'node:crypto';
-
-import { canonicalRoleContextSharingGrantEnvelopeV1 } from '../modules/authority/optional-grants-package.ts';
-
+import { canonicalRoleContextSharingGrantEnvelopeV1 } from '../runtime/grants/optional-grants-package.ts';
 import { authorityTagPublishCommand } from '../adapters/remote/github/authority-relay-command.ts';
 import {
   assertInteractiveSignerContext,
@@ -20,7 +21,7 @@ import {
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
-import { createMaintainerAuditTag } from '../modules/authority/maintainer-grant.ts';
+import { createMaintainerAuditTag } from '../runtime/repository-transaction/maintainer-audit-tag.ts';
 import type { MaintainerSignerProvider } from '../modules/authority/maintainer-signer-port.ts';
 import {
   parseMaintainerPolicy,
@@ -34,14 +35,22 @@ import {
 import {
   parseRoleContextSharingJournalRecord,
   readRoleContextSharingRecord,
-  type RoleContextSharingJournalRecord,
 } from '../runtime/storage-journal/role-context-sharing-store.ts';
+import { resolveBlobOid } from '../runtime/repository-transaction/git-object-ids.ts';
+import {
+  readFileAtRevision,
+  readTagObject,
+} from '../runtime/repository-transaction/git-command.ts';
 
-export const ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_SIGNATURE_NAMESPACE_V1 =
-  'workflow.role-context-sharing-terminal-receipt.v1' as const;
+/**
+ * Publishes and verifies portable receipts for terminal role context
+ * sharing uses.
+ *
+ * Invariants:
+ * - Verified receipt identities must correspond exactly to the supplied
+ *   terminal uses.
+ */
 
-export const ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_TAG_PREFIX_V1 =
-  'refs/tags/workflow-grant/role-context-sharing-use-' as const;
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const DIGEST = /^[0-9a-f]{64}$/u;
@@ -74,53 +83,6 @@ const PAYLOAD_KEYS = [
   'transitionDigest',
   'useProjectionDigest',
 ] as const;
-
-export type RoleContextSharingTerminalReceiptPayloadV1 = Readonly<{
-  schemaVersion: 1;
-  kind: 'role-context-sharing-terminal-receipt.v1';
-  signatureNamespace: typeof ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_SIGNATURE_NAMESPACE_V1;
-  grantId: string;
-  repositoryId: string;
-  repositoryOrigin: string;
-  policyBlob: string;
-  baselineCommit: string;
-  grantEnvelopeDigest: string;
-  expectedBindingDigest: string;
-  transitionDigest: string;
-  fromState: 'reserved';
-  toState: 'consumed';
-  terminalState: 'consumed';
-  reservationReceiptDigest: string;
-  terminalReceiptDigest: string;
-  terminalRecordDigest: string;
-  useProjectionDigest: string;
-  admissionDigest: string;
-  consumedAt: string;
-  attestedAt: string;
-  signer: string;
-  terminalRecord: RoleContextSharingJournalRecord;
-}>;
-
-export type RoleContextSharingTerminalReceiptEnvelopeV1 = Readonly<{
-  payload: RoleContextSharingTerminalReceiptPayloadV1;
-  signature: string;
-}>;
-
-export type VerifiedRoleContextSharingTerminalReceiptV1 = Readonly<{
-  tagRef: string;
-  tagObject: string;
-  target: string;
-  envelope: RoleContextSharingTerminalReceiptEnvelopeV1;
-  policy: MaintainerPolicy;
-}>;
-
-export type RoleContextSharingTerminalUseIdentityV1 = Readonly<{
-  grantId: string;
-  signedEnvelopeDigest: string;
-  transitionDigest: string;
-  useProjectionDigest: string;
-  admissionDigest: string;
-}>;
 
 export type PublishRoleContextSharingTerminalReceiptOptions = Readonly<{
   now?: Date;
@@ -453,7 +415,7 @@ function readAndVerifyReceiptTag(
 ): VerifiedRoleContextSharingTerminalReceiptV1 {
   try {
     if (!TAG_REF.test(ref)) throw new Error('invalid ref');
-    const raw = runGit(repositoryRoot, ['cat-file', 'tag', ref]);
+    const raw = readTagObject(repositoryRoot, ref);
     const separator = raw.indexOf('\n\n');
     if (separator === -1) throw new Error('tag body missing');
     const envelope = parseRoleContextSharingTerminalReceiptEnvelopeV1(
@@ -598,15 +560,17 @@ function loadHistoricalPolicy(
   baselineCommit: string,
 ): Readonly<{ policy: MaintainerPolicy; policyBlob: string }> {
   if (!OBJECT_ID.test(baselineCommit)) throw receiptInvalid();
-  const raw = runGit(repositoryRoot, [
-    'show',
-    `${baselineCommit}:workflow/maintainer-policy.json`,
-  ]);
+  const raw = readFileAtRevision(
+    repositoryRoot,
+    baselineCommit,
+    'workflow/maintainer-policy.json',
+  );
   const policy = parseMaintainerPolicy(JSON.parse(raw));
-  const policyBlob = runGit(repositoryRoot, [
-    'rev-parse',
-    `${baselineCommit}:workflow/maintainer-policy.json`,
-  ]).trim();
+  const policyBlob = resolveBlobOid(
+    repositoryRoot,
+    baselineCommit,
+    'workflow/maintainer-policy.json',
+  );
   if (!OBJECT_ID.test(policyBlob)) throw receiptInvalid();
   return Object.freeze({ policy, policyBlob });
 }

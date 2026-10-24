@@ -14,13 +14,13 @@ import {
 import { inspectExecutionJob } from '../src/runtime/provider-execution/execution-runtime.ts';
 import { readExecutionJobState } from '../src/runtime/storage-journal/execution-store.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
 import {
   readProviderInvocation,
   readProviderInvocationRequest,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import { readProviderAutomaticRetrySchedule } from '../src/runtime/provider-execution/provider-retry-scheduler.ts';
+import { readProviderAutomaticRetrySchedule } from '../src/composition-root/provider-retry-production.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 

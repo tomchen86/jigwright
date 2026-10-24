@@ -7,7 +7,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import type { ProviderWrapperSessionProtocolBinding } from '@jigwright/agent-runtime';
+import type { ProviderWrapperSessionProtocolBinding } from '@jigwright/core/harness-jsonl-v2-contracts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   type ProviderNativeSessionContinuationAuthorityV1,
@@ -41,13 +41,13 @@ import {
   readPrivateCanonicalJson,
   withPrivateRuntimeLock,
   assertPrivateInvestigationDirectory,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   assertProviderExecutionAdmissionAuthority,
   providerExecutionAdmissionAuthorityPath,
   MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES,
 } from './provider-execution-admission-authority.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   providerNativeSessionStorePathsV1 as storePaths,
   providerNativeSessionClaimRefPathV1 as claimRefPath,

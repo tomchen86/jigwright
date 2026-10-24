@@ -1,32 +1,11 @@
-/**
- * Resolve named owner requirements to their canonical Source records.
- *
- * Invariants:
- * - Alias records contain titles and references; wording lives in Sources.
- */
-import fs from 'node:fs';
-import path from 'node:path';
-
+/** Parse named Source aliases; wording remains in immutable Source records. */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { readGovernanceSource } from './governance-intake.ts';
-
 export const GOVERNANCE_SOURCE_ALIASES_PATH =
   'workflow/source-ledger/aliases.json';
 export type GovernanceSourceAlias = Readonly<{
   title: string;
   sourceRefs: readonly string[];
 }>;
-
-export function readGovernanceSourceAliases(
-  repositoryRoot: string,
-): Readonly<Record<string, GovernanceSourceAlias>> {
-  const target = path.join(repositoryRoot, GOVERNANCE_SOURCE_ALIASES_PATH);
-  return parseGovernanceSourceAliases(
-    fs.existsSync(target) ? fs.readFileSync(target, 'utf8') : undefined,
-  );
-}
-
-/** Read aliases from the same immutable snapshot as their consuming documents. */
 export function parseGovernanceSourceAliases(
   text: string | undefined,
 ): Readonly<Record<string, GovernanceSourceAlias>> {
@@ -61,31 +40,25 @@ export function parseGovernanceSourceAliases(
   }
   return Object.fromEntries(aliases);
 }
-
-export function resolveGovernanceSourceAlias(
-  repositoryRoot: string,
-  alias: string,
-) {
-  const aliases = readGovernanceSourceAliases(repositoryRoot);
-  if (!Object.hasOwn(aliases, alias))
-    throw workflowError(
-      'GOVERNANCE_SOURCE_ALIAS_UNKNOWN',
-      `Unknown Source alias: ${alias}.`,
-      ExitCode.usage,
-    );
-  return aliases[alias]!.sourceRefs.map((ref) =>
-    readGovernanceSource(repositoryRoot, ref),
-  );
-}
-
 function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
-
 function invalid() {
   return workflowError(
     'GOVERNANCE_SOURCE_ALIASES_INVALID',
     `${GOVERNANCE_SOURCE_ALIASES_PATH} is invalid.`,
     ExitCode.verification,
   );
+}
+export function sourceAliasReferences(
+  aliases: Readonly<Record<string, GovernanceSourceAlias>>,
+  alias: string,
+): readonly string[] {
+  if (!Object.hasOwn(aliases, alias))
+    throw workflowError(
+      'GOVERNANCE_SOURCE_ALIAS_UNKNOWN',
+      `Unknown Source alias: ${alias}.`,
+      ExitCode.usage,
+    );
+  return aliases[alias]!.sourceRefs;
 }

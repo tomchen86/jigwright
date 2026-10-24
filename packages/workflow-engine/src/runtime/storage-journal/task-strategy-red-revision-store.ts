@@ -5,17 +5,15 @@
  * - Request, predecessor, and phase checks retain their original order before publication.
  * - Journal compare-and-swap and exact replay preserve immutable prior state and current-ref authority.
  */
-import {
-  type InvestigationRuntimePaths,
-  assertSessionId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
+import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import {
   createPrivateCanonicalJson,
   privatePathExists,
   readPrivateCanonicalJson,
   assertPrivateInvestigationDirectory,
   writePrivateCanonicalJsonAtomic,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   type TaskStrategyRedRevisionRequest,
   type TaskStrategyRedRevisionRequestSnapshot,
@@ -28,7 +26,7 @@ import {
   type ActiveTaskStrategyRedRevision,
   sameJournalState,
   assertNextJournalState,
-} from './task-strategy-red-revision-contract.ts';
+} from '../../modules/assurance/task-strategy-red-revision-contract.ts';
 import {
   revisionRequestInvalid,
   revisionStateCorrupt,
@@ -36,7 +34,7 @@ import {
   revisionPhaseInvalid,
   isRevisionId,
   DIGEST,
-} from './task-strategy-red-revision-values.ts';
+} from '../../modules/assurance/task-strategy-red-revision-values.ts';
 import path from 'node:path';
 import fs from 'node:fs';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
@@ -47,7 +45,7 @@ import { readTaskStrategyCurrentRef } from './task-strategy-current-ref.ts';
 export {
   TASK_STRATEGY_RED_REVISION_PHASES,
   type TaskStrategyRedRevisionPhase,
-} from './task-strategy-red-revision-values.ts';
+} from '../../modules/assurance/task-strategy-red-revision-values.ts';
 export {
   type TaskStrategyRedRevisionRequest,
   type TaskStrategyRedRevisionRequestSnapshot,
@@ -59,7 +57,7 @@ export {
   taskStrategyRedRevisionId,
   taskStrategyRedRevisionSnapshotDigest,
   parseTaskStrategyRedRevisionJournal,
-} from './task-strategy-red-revision-contract.ts';
+} from '../../modules/assurance/task-strategy-red-revision-contract.ts';
 export {
   type TaskStrategyCurrentRef,
   type TaskStrategyCurrentRefInput,

@@ -1,3 +1,22 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';
+import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
+import { collaborationGrantCodec as productionArchiveGrantCodec } from '../src/runtime/grants/grant-services.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanAmendment = commitPlanAmendmentWithContractReader.bind(
+  undefined,
+  productionPlanningExecution,
+  managedDocuments,
+  productionChangeContractReader,
+);
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -9,16 +28,16 @@ import {
   writeContentRecord,
 } from '../src/runtime/storage-journal/content-record-store.ts';
 import {
-  commitPlanAmendment,
-  commitPlanningTransition,
-} from '../src/application/propose/planning-transition.ts';
-import { validateCiPlanningCommit } from '../src/entrypoints/ci/ci-planning.ts';
-import { validateOpenSpecPlanning } from '../src/adapters/planning/openspec/documents/planning-contract.ts';
+  commitPlanAmendment as commitPlanAmendmentWithContractReader,
+  commitPlanningTransition as commitPlanningTransitionWithContractReader,
+} from '../src/runtime/planning-transition/planning-transition.ts';
+import { validateCiPlanningCommit } from '../src/composition-root/ci-replay-production.ts';
+import { validatePlanningTransition as validateOpenSpecPlanning } from '../src/composition-root/planning-provider-production.ts';
 import { readPlanningTransitionReport } from '../src/runtime/storage-journal/planning-report.ts';
-import { loadWorkflowConfig } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../src/runtime/workflow-configuration/workflow-configuration.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { committedPlanningGeneration } from '../src/runtime/repository-transaction/planning-generation-history.ts';
-import { inspectPlanningExecutionEpoch } from '../src/modules/lifecycle/planning-execution-epoch.ts';
+
 import { withArchiveEligibility } from '../src/application/archive/archive-eligibility.ts';
 import {
   createPlanningAmendmentDecision,
@@ -98,7 +117,11 @@ test('amend-plan admits a completed generation with exact task-commit evidence',
         ],
       },
     });
-    const epoch = inspectPlanningExecutionEpoch(repository, 'demo-change');
+    const epoch =
+      productionPlanningExecution.planningExecutionEpoch.inspectPlanningExecutionEpoch(
+        repository,
+        'demo-change',
+      );
     assert.equal(epoch.context.workflow.currentEpoch, 2);
     assert.equal(epoch.context.workflow.checkpoint, 'execution-complete');
     assert.deepEqual(
@@ -426,7 +449,11 @@ test('required-impact amendment may reopen every task only after the prior gener
       kind: 'reopened',
       taskIds: ['1.1'],
     });
-    const epoch = inspectPlanningExecutionEpoch(repository, 'demo-change');
+    const epoch =
+      productionPlanningExecution.planningExecutionEpoch.inspectPlanningExecutionEpoch(
+        repository,
+        'demo-change',
+      );
     assert.equal(epoch.context.workflow.currentEpoch, 2);
     assert.equal(
       epoch.context.workflow.checkpoint,
@@ -502,7 +529,11 @@ test('successive no-impact amendments advance one continuous execution epoch', (
       executionImpact: 'none',
     });
 
-    const epoch = inspectPlanningExecutionEpoch(repository, 'demo-change');
+    const epoch =
+      productionPlanningExecution.planningExecutionEpoch.inspectPlanningExecutionEpoch(
+        repository,
+        'demo-change',
+      );
     assert.equal(epoch.context.workflow.currentEpoch, 3);
     assert.equal(epoch.context.transitionReceipts.length, 2);
     assert.equal(epoch.context.workflow.checkpoint, 'execution-complete');
@@ -542,12 +573,20 @@ test('archive admission projects completed required-impact execution into the cu
     syncOriginMain(repository);
 
     withArchiveEligibility(
+      loadStableValidatedChangeContract,
+      productionPlanningExecution,
+      archiveEligibilityReplayServices,
+      productionArchiveGrantCodec,
       repository,
       'demo-change',
       (eligibility) => eligibility,
     );
 
-    const epoch = inspectPlanningExecutionEpoch(repository, 'demo-change');
+    const epoch =
+      productionPlanningExecution.planningExecutionEpoch.inspectPlanningExecutionEpoch(
+        repository,
+        'demo-change',
+      );
     assert.equal(epoch.context.workflow.currentEpoch, 3);
     assert.equal(epoch.context.workflow.checkpoint, 'execution-complete');
     assert.deepEqual(
@@ -588,12 +627,20 @@ test('archive admission recovers an amendment committed before its epoch publica
     syncOriginMain(repository);
 
     withArchiveEligibility(
+      loadStableValidatedChangeContract,
+      productionPlanningExecution,
+      archiveEligibilityReplayServices,
+      productionArchiveGrantCodec,
       repository,
       'demo-change',
       (eligibility) => eligibility,
     );
 
-    const epoch = inspectPlanningExecutionEpoch(repository, 'demo-change');
+    const epoch =
+      productionPlanningExecution.planningExecutionEpoch.inspectPlanningExecutionEpoch(
+        repository,
+        'demo-change',
+      );
     assert.equal(epoch.context.workflow.currentEpoch, 2);
     assert.equal(epoch.context.workflow.checkpoint, 'execution-complete');
     assert.deepEqual(
@@ -662,7 +709,10 @@ test('amend-plan CLI exposes the completed-generation transition with exact prov
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'amend-plan',
         '--change',
         'demo-change',

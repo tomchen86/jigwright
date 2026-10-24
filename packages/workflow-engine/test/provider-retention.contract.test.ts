@@ -1,13 +1,21 @@
+import { planningAssuranceDependencies } from '../src/composition-root/planning-assurance-production.ts';
+import { readCurrentPlanningRoleOverridePolicy } from '../src/runtime/repository-transaction/planning-role-provider-policy-reader.ts';
 import test from 'node:test';
 import {
-  inspectProviderRetentionMetrics,
-  pruneProviderRuntime,
+  inspectProviderRetentionMetrics as inspectWithRuntime,
+  pruneProviderRuntime as pruneWithRuntime,
+} from '../src/runtime/provider-execution/provider-retention.ts';
+import {
   readProviderRetentionReceipt,
   providerRetentionReceiptPath,
   PROVIDER_RETENTION_MAX_RECEIPT_BYTES,
-  classifyProviderRetentionEligibility,
   PROVIDER_RETENTION_MAX_LIMIT,
 } from '../src/runtime/provider-execution/provider-retention.ts';
+import { classifyProviderRetentionEligibility } from '../src/modules/provider-orchestration/provider-retention.ts';
+import {
+  inspectProviderRetentionMetrics,
+  pruneProviderRuntime,
+} from '../src/composition-root/retention-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -43,26 +51,26 @@ import {
   claimProviderInvocation,
   failProviderInvocation,
   readProviderInvocation,
-  type PlanReviewManifest,
   providerInvocationManifestDigest,
-  type BlindSurveyManifest,
   blindSurveyIntentDigest,
   BLIND_SURVEY_OUTPUT_SCHEMA,
   completeProviderInvocationFromRunner,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
-import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import type { PlanReviewManifest } from '../src/modules/assurance/provider-review-manifests.ts';
+import type { BlindSurveyManifest } from '../src/modules/investigation/manifest/blind-survey-manifest.ts';
+import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
+import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
 import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
 import {
   createPlanReviewTargetSnapshotNode,
   readPlanReviewTargetSnapshotNode,
   PLAN_REVIEW_OUTPUT_SCHEMA,
-  type PlanReviewSubject,
 } from '../src/modules/assurance/plan-review.ts';
+import type { PlanReviewSubject } from '../src/modules/assurance/plan-review-subject.ts';
 import { writeEvidenceNode } from '../src/runtime/storage-journal/evidence-object-store.ts';
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
-import { type InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
+import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
+import { type InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import {
   PROVIDER_RUNNER_RESIDUALS,
   providerDefinitionExecutableBindingDigest,
@@ -74,11 +82,13 @@ import {
 } from '../src/modules/provider-orchestration/agent-runtime-host-execution-binding.ts';
 import {
   type HostWrapperProviderProfileSnapshot,
-  type ProviderWrapperSessionProtocolBinding,
-  createProviderWrapperSessionProtocolParser,
-  renderProviderWrapperSessionFrame,
   parseAgentProviderConfigToml,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
+import {
+  type ProviderWrapperSessionProtocolBinding,
+  renderProviderWrapperSessionFrame,
+} from '@jigwright/core/harness-jsonl-v2-contracts';
+import { createProviderWrapperSessionProtocolParser } from '@jigwright/agent-runtime';
 import {
   createCentralRoleProviderDefault,
   renderCentralRoleProviderDefault,
@@ -1420,7 +1430,12 @@ function createPlanReviewRolloverHistory(name: string) {
   const contract = loadChangeContract(repository, CHANGE_ID);
   assert.ok(contract.investigation);
   const investigationManifest = contract.investigation.manifest;
-  const context = deriveInvestigationFirstPlanningSubject(repository, contract);
+  const context = deriveInvestigationFirstPlanningSubject(
+    planningAssuranceDependencies,
+    repository,
+    contract,
+    readCurrentPlanningRoleOverridePolicy(repository, contract.changeId),
+  );
   const investigationId = investigationManifest.investigationId;
   const assignment = {
     role: 'plan-reviewer' as const,
@@ -2429,7 +2444,10 @@ function runWorkflowCli(
     process.execPath,
     [
       '--experimental-strip-types',
-      path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+      path.join(
+        sourceRepositoryRoot,
+        'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+      ),
       ...args,
     ],
     {
@@ -2443,3 +2461,67 @@ function runWorkflowCli(
 function sha256(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
+
+test('physical retention resolves runtime lazily after its own validation and preserves resolver errors', () => {
+  const sentinel = new Error('runtime resolution reached');
+  let calls = 0;
+  const resolve = (cwd: string): never => {
+    assert.equal(cwd, '/memory');
+    calls++;
+    throw sentinel;
+  };
+  const now = '2026-09-01T12:00:00.000Z';
+  for (const [invoke, code] of [
+    [
+      () =>
+        pruneWithRuntime(resolve, '/memory', {
+          limit: 0,
+          ttlDays: 0,
+          now: 'invalid',
+        }),
+      'PROVIDER_RETENTION_LIMIT_INVALID',
+    ],
+    [
+      () =>
+        pruneWithRuntime(resolve, '/memory', {
+          limit: 1,
+          ttlDays: 0,
+          now: 'invalid',
+        }),
+      'PROVIDER_RETENTION_TTL_INVALID',
+    ],
+    [
+      () =>
+        pruneWithRuntime(resolve, '/memory', {
+          limit: 1,
+          ttlDays: 1,
+          now: 'invalid',
+        }),
+      'PROVIDER_RETENTION_NOW_INVALID',
+    ],
+    [
+      () =>
+        inspectWithRuntime(resolve, '/memory', { ttlDays: 0, now: 'invalid' }),
+      'PROVIDER_RETENTION_TTL_INVALID',
+    ],
+    [
+      () =>
+        inspectWithRuntime(resolve, '/memory', { ttlDays: 1, now: 'invalid' }),
+      'PROVIDER_RETENTION_NOW_INVALID',
+    ],
+  ] as const) {
+    assert.throws(invoke, (error) => isWorkflowError(error, code));
+    assert.equal(calls, 0);
+  }
+  for (const invoke of [
+    () => inspectWithRuntime(resolve, '/memory', { now }),
+    () => pruneWithRuntime(resolve, '/memory', { limit: 1, now }),
+  ]) {
+    calls = 0;
+    assert.throws(invoke, (error) => {
+      assert.strictEqual(error, sentinel);
+      return true;
+    });
+    assert.equal(calls, 1);
+  }
+});

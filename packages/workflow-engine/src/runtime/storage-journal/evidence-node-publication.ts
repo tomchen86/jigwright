@@ -16,7 +16,7 @@ import {
   isNodeError,
   objectCollision,
   objectUnsafe,
-} from './evidence-store-values.ts';
+} from '../journal-primitives/evidence-store-values.ts';
 
 const EVIDENCE_PUBLICATION_TEMP_SUFFIX =
   /^([1-9][0-9]*)\.([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.publish\.tmp$/;

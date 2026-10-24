@@ -3,7 +3,7 @@ import { executionReplacementBudgetChanges } from '../src/application/control-pl
 import {
   previewExecutionJobRetry,
   requestExecutionJobRetry,
-} from '../src/application/control-plane/execution-job-retry.ts';
+} from '../src/composition-root/execution-retry-production.ts';
 import { spawn, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -11,7 +11,7 @@ import path from 'node:path';
 import test, { type TestContext } from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import {
   readEvidenceNode,
   readInvestigationEvidenceRefsClosure,
@@ -20,22 +20,24 @@ import {
   executeGrantedReplacement,
   requestExecutionReplacement,
   SimulatedExecutionReplacementCrash,
-} from '../src/application/control-plane/execution-replacement.ts';
+} from '../src/composition-root/execution-retry-production.ts';
 import {
   canonicalExecutionBudgetGrantRequest,
   createExecutionBudgetGrantEnvelope,
   createExecutionBudgetGrantRequest,
+  type ExecutionBudgetConsumeReceipt,
+} from '../src/modules/authority/execution-governance-grant-contracts.ts';
+import {
   inspectExecutionBudgetGrant,
   storeExecutionBudgetGrant,
-  type ExecutionBudgetConsumeReceipt,
-} from '../src/modules/authority/execution-governance.ts';
-import { issueExecutionBudgetGrant } from '../src/entrypoints/cli/execution-grant-cli.ts';
+} from '../src/runtime/storage-journal/execution-budget-grants.ts';
+import { issueExecutionBudgetGrant } from '../src/composition-root/execution-budget-grant-production.ts';
 import { listExecutionJobs } from '../src/runtime/provider-execution/execution-runtime.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/investigation-session-store.ts';
-import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
+import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   createPlanningContributionEnvelope,
   createPlanReviewRetryEnvelope,
@@ -43,7 +45,7 @@ import {
   getProposeStatus,
   resumePropose,
   startPropose,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   claimProviderInvocation,
@@ -1287,7 +1289,10 @@ function runWorkflowCli(repository: string, args: string[]) {
     process.execPath,
     [
       '--experimental-strip-types',
-      path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+      path.join(
+        sourceRepositoryRoot,
+        'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+      ),
       ...args,
     ],
     {
@@ -1310,7 +1315,10 @@ function runWorkflowCliAsync(
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         ...args,
       ],
       {

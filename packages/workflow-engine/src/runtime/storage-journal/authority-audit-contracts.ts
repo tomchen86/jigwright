@@ -1,3 +1,5 @@
+import { MAX_REPOSITORY_ID_BYTES } from '../../modules/authority/authority-audit-contract.ts';
+export { MAX_REPOSITORY_ID_BYTES } from '../../modules/authority/authority-audit-contract.ts';
 /**
  * Defines authority audit schemas, policy constants, and immutable evidence types.
  *
@@ -29,8 +31,6 @@ export const PRIVATE_PUBLICATION_NAME =
   /^\.(.+)\.([0-9a-f]{64})\.([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.publish\.tmp$/;
 
 export const MAX_PATH_BYTES = 4_096;
-
-export const MAX_REPOSITORY_ID_BYTES = 512;
 
 export const MAX_RECORD_BYTES = 4_096;
 
@@ -209,59 +209,6 @@ export const LOCK_KEYS = [
   'schemaVersion',
 ] as const;
 
-export const AUTHORITY_AUDIT_EVENT_TYPES = Object.freeze([
-  'abort',
-  'apply-grant',
-  'branch-update',
-  'candidate-bundle',
-  'cas',
-  'command',
-  'control-plane-grant',
-  'error',
-  'escalation-request',
-  'external-effect',
-  'file-change',
-  'grant-consume',
-  'poststate',
-  'provider-invocation',
-  'recovery',
-  'revoke',
-  'rollback',
-  'supersede',
-  'task-mandate',
-] as const);
-
-export const AUTHORITY_AUDIT_RESULTS = Object.freeze([
-  'aborted',
-  'failed',
-  'recorded',
-  'revoked',
-  'rolled-back',
-  'succeeded',
-  'superseded',
-] as const);
-
-export type Sha256Digest = `sha256:${string}`;
-
-export type AuthorityAuditProfile = 'development' | 'protected';
-
-export type AuthorityAuditEventType =
-  (typeof AUTHORITY_AUDIT_EVENT_TYPES)[number];
-
-export type AuthorityAuditResult = (typeof AUTHORITY_AUDIT_RESULTS)[number];
-
-export type AuthorityAuditLedgerScope = Readonly<{
-  /**
-   * A dedicated absolute directory outside repositoryRoot. There is no
-   * repository-local or environment-variable fallback.
-   */
-  externalAuditRoot: string;
-  repositoryRoot: string;
-  repositoryId: Sha256Digest;
-  /** Defaults to development, then becomes immutable for this repository ID. */
-  profile?: AuthorityAuditProfile;
-}>;
-
 export const AUTHORITY_AUDIT_PROFILE_POLICIES = deepFreeze({
   development: {
     schemaVersion: 1 as const,
@@ -296,38 +243,6 @@ export type AuthorityAuditAppendInput = Readonly<{
   resultDigest: Sha256Digest;
 }>;
 
-export type AuthorityAuditRecord = Readonly<{
-  schemaVersion: 1;
-  kind: 'authority-audit-record.v1';
-  repositoryId: Sha256Digest;
-  sequence: number;
-  occurredAt: string;
-  eventType: AuthorityAuditEventType;
-  idempotencyKey: Sha256Digest;
-  previousRecordDigest: Sha256Digest | null;
-  grantDigest: Sha256Digest | null;
-  candidateBundleDigest: Sha256Digest | null;
-  prestateDigest: Sha256Digest | null;
-  poststateDigest: Sha256Digest | null;
-  result: AuthorityAuditResult;
-  resultDigest: Sha256Digest;
-}>;
-
-export type AuthorityAuditLedgerEntry = Readonly<{
-  recordDigest: Sha256Digest;
-  record: AuthorityAuditRecord;
-}>;
-
-export type AuthorityAuditLedgerScan = Readonly<{
-  repositoryId: Sha256Digest;
-  profile: AuthorityAuditProfile;
-  recordCount: number;
-  prunedRecordCount: number;
-  headSequence: number;
-  headRecordDigest: Sha256Digest | null;
-  records: readonly AuthorityAuditLedgerEntry[];
-}>;
-
 export type AuthorityAuditLedgerPaths = Readonly<{
   externalAuditRoot: string;
   repositories: string;
@@ -353,97 +268,6 @@ export type AuthorityAuditAppendOptions = Readonly<{
   now?: () => Date;
 }>;
 
-export type AuthorityAuditMaintenanceHooks = Readonly<{
-  testAfterJournalPreparation?: () => void;
-  testAfterTombstonePreparation?: () => void;
-  testAfterTombstonePublication?: () => void;
-  testAfterCheckpointPreparation?: () => void;
-  testAfterCheckpointPublication?: () => void;
-  testAfterEntryRemoval?: () => void;
-}>;
-
-export type AuthorityAuditCompactionResult = Readonly<{
-  schemaVersion: 1;
-  kind: 'authority-audit-compaction.v1';
-  profile: AuthorityAuditProfile;
-  pruned: number;
-  retained: number;
-  prunedThroughSequence: number;
-  prunedThroughRecordDigest: Sha256Digest | null;
-  checkpointDigest: Sha256Digest | null;
-}>;
-
-export type AuthorityAuditAnchorBackend = Readonly<{
-  backendId: string;
-  /** Publish to the real remote tag/WORM backend selected by the caller. */
-  publish: (canonicalPayload: string) => string;
-  /** Independently validates the backend's opaque receipt. */
-  verify: (canonicalPayload: string, backendReceipt: string) => boolean;
-}>;
-
-export type AuthorityAuditAnchorReceipt = Readonly<{
-  schemaVersion: 1;
-  kind: 'authority-audit-anchor-receipt.v1';
-  repositoryId: Sha256Digest;
-  profile: 'protected';
-  policyDigest: Sha256Digest;
-  headSequence: number;
-  headRecordDigest: Sha256Digest;
-  anchoredAt: string;
-  backendId: string;
-  backendReceipt: string;
-}>;
-
-export type AuthorityAuditAnchorPublication = Readonly<{
-  receiptDigest: Sha256Digest;
-  receiptPath: string;
-  receipt: AuthorityAuditAnchorReceipt;
-}>;
-
-export type AuthorityAuditAnchorVerification = Readonly<{
-  schemaVersion: 1;
-  kind: 'authority-audit-anchor-verification.v1';
-  repositoryId: Sha256Digest;
-  ok: true;
-  currentHeadAnchored: boolean;
-  receipts: readonly AuthorityAuditAnchorPublication[];
-}>;
-
-export type AuditDestructionGrantPayload = Readonly<{
-  schemaVersion: 1;
-  kind: 'audit-destruction-grant.v1';
-  domain: 'HARNESS_AUDIT_DESTRUCTION_GRANT_V1';
-  grantId: string;
-  repositoryId: Sha256Digest;
-  profile: 'protected';
-  expectedHeadSequence: number;
-  expectedHeadRecordDigest: Sha256Digest;
-  throughSequence: number;
-  throughRecordDigest: Sha256Digest;
-  issuedAt: string;
-  expiresAt: string;
-  uses: 1;
-  signerIdentity: string;
-  reasonDigest: Sha256Digest;
-  remoteAnchorDisposition: 'retain' | 'deletion-authorized';
-}>;
-
-export type AuditDestructionGrantEnvelope = Readonly<{
-  schemaVersion: 1;
-  kind: 'audit-destruction-grant-envelope.v1';
-  payload: AuditDestructionGrantPayload;
-  signature: string;
-}>;
-
-export type AuditDestructionSignatureVerifier = (
-  input: Readonly<{
-    domain: 'HARNESS_AUDIT_DESTRUCTION_GRANT_V1';
-    payload: string;
-    signerIdentity: string;
-    signature: string;
-  }>,
-) => boolean;
-
 export type AuthorityAuditProfileState = Readonly<{
   schemaVersion: 1;
   kind: 'authority-audit-profile.v1';
@@ -451,17 +275,6 @@ export type AuthorityAuditProfileState = Readonly<{
   profile: AuthorityAuditProfile;
   policyVersion: 1;
   policyDigest: Sha256Digest;
-}>;
-
-export type AuthorityAuditProtectedConfiguration = Readonly<{
-  schemaVersion: 1;
-  kind: 'authority-audit-protected-configuration.v1';
-  repositoryId: Sha256Digest;
-  backendId: 'filesystem-worm.v1';
-  backendRoot: string;
-  destructionPublicKeyPem: string;
-  destructionPublicKeyDigest: Sha256Digest;
-  configurationDigest: Sha256Digest;
 }>;
 
 export type AuthorityAuditRetentionCheckpoint = Readonly<{
@@ -515,3 +328,53 @@ export function deepFreeze<T>(value: T): T {
   }
   return value;
 }
+
+import {
+  AUTHORITY_AUDIT_EVENT_TYPES,
+  AUTHORITY_AUDIT_RESULTS,
+  type Sha256Digest,
+  type AuthorityAuditProfile,
+  type AuthorityAuditEventType,
+  type AuthorityAuditResult,
+  type AuthorityAuditLedgerScope,
+  type AuthorityAuditRecord,
+  type AuthorityAuditLedgerEntry,
+} from '../../modules/authority/authority-audit-contract.ts';
+export {
+  AUTHORITY_AUDIT_EVENT_TYPES,
+  AUTHORITY_AUDIT_RESULTS,
+  type Sha256Digest,
+  type AuthorityAuditProfile,
+  type AuthorityAuditEventType,
+  type AuthorityAuditResult,
+  type AuthorityAuditLedgerScope,
+  type AuthorityAuditRecord,
+  type AuthorityAuditLedgerEntry,
+} from '../../modules/authority/authority-audit-contract.ts';
+
+import type {
+  AuthorityAuditLedgerScan,
+  AuthorityAuditMaintenanceHooks,
+  AuthorityAuditCompactionResult,
+  AuthorityAuditAnchorBackend,
+  AuthorityAuditAnchorReceipt,
+  AuthorityAuditAnchorPublication,
+  AuthorityAuditAnchorVerification,
+  AuditDestructionGrantPayload,
+  AuditDestructionGrantEnvelope,
+  AuditDestructionSignatureVerifier,
+  AuthorityAuditProtectedConfiguration,
+} from '../../modules/authority/authority-audit-contract.ts';
+export type {
+  AuthorityAuditLedgerScan,
+  AuthorityAuditMaintenanceHooks,
+  AuthorityAuditCompactionResult,
+  AuthorityAuditAnchorBackend,
+  AuthorityAuditAnchorReceipt,
+  AuthorityAuditAnchorPublication,
+  AuthorityAuditAnchorVerification,
+  AuditDestructionGrantPayload,
+  AuditDestructionGrantEnvelope,
+  AuditDestructionSignatureVerifier,
+  AuthorityAuditProtectedConfiguration,
+} from '../../modules/authority/authority-audit-contract.ts';

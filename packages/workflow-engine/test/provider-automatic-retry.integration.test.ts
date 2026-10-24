@@ -1,17 +1,20 @@
+import { observeInvestigationRuntimeContext } from '../src/runtime/repository-observation/investigation-runtime-context.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
+import { deriveAuthorityAuditRepositoryId } from '../src/modules/authority/authority-audit-contract.ts';
+import { showAuthorityAuditTask } from '../src/runtime/storage-journal/authority-audit-service.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { projectProviderInvocationExecution } from '../src/modules/provider-orchestration/execution-core.ts';
 import { inspectExecutionJob } from '../src/runtime/provider-execution/execution-runtime.ts';
 import { readExecutionJobState } from '../src/runtime/storage-journal/execution-store.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
 import {
   readProviderInvocation,
   readProviderInvocationRequest,
@@ -22,11 +25,9 @@ import {
   pumpProviderRetrySchedules,
   readProviderAutomaticRetrySchedule,
   type ProviderAutomaticRetrySchedule,
-} from '../src/runtime/provider-execution/provider-retry-scheduler.ts';
-import {
-  listProviderWorkerMaintenanceWarnings,
-  runProviderWorker,
-} from '../src/entrypoints/worker/provider-worker.ts';
+} from '../src/composition-root/provider-retry-production.ts';
+import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
+import { listProviderWorkerMaintenanceWarnings } from '../src/runtime/storage-journal/provider-worker-maintenance.ts';
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
 import {
   builtInProviderDefinitionSnapshotForTest,
@@ -180,6 +181,7 @@ test('replacement role-assignment Fail-Grant reaches the caller and resumes the 
   try {
     const now = '2030-08-29T02:00:00.000Z';
     let gatedInvocationId: string | null = null;
+    let retentionCalls = 0;
     assert.throws(
       () =>
         runProviderWorker(fixture.repository, fixture.invocationId, {
@@ -205,6 +207,10 @@ test('replacement role-assignment Fail-Grant reaches the caller and resumes the 
             },
           },
           schedulePump: { enabled: false },
+          retentionMaintenance() {
+            retentionCalls++;
+            assert.fail('retry Grant must skip retention');
+          },
         }),
       (error: unknown) =>
         error instanceof Error &&
@@ -212,6 +218,16 @@ test('replacement role-assignment Fail-Grant reaches the caller and resumes the 
         error.code === 'AGENT_RUNTIME_GRANT_REQUIRED',
     );
 
+    assert.equal(retentionCalls, 0);
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          fixture.runtime.locks,
+          `${fixture.invocationId}.worker-active`,
+        ),
+      ),
+      false,
+    );
     const schedule = requiredSchedule(fixture.repository, fixture.invocationId);
     assert.equal(gatedInvocationId, schedule.replacementInvocationId);
     assert.equal(schedule.state, 'scheduled');
@@ -232,7 +248,9 @@ test('replacement role-assignment Fail-Grant reaches the caller and resumes the 
       'started',
     );
     assert.deepEqual(
-      listProviderWorkerMaintenanceWarnings(fixture.repository),
+      listProviderWorkerMaintenanceWarnings(
+        observeInvestigationRuntimeContext(fixture.repository).runtime,
+      ),
       [],
     );
 
@@ -255,6 +273,97 @@ test('replacement role-assignment Fail-Grant reaches the caller and resumes the 
         schedule.scheduleId,
       )[0]?.state,
       'dispatch-issued',
+    );
+  } finally {
+    fixture.dispose();
+  }
+});
+
+test('terminal schedule pump Grant skips retention and releases the original worker fence', () => {
+  const fixture = startWorkerFixture('worker-pump-role-grant');
+  try {
+    const grant = workflowError(
+      'AGENT_RUNTIME_GRANT_REQUIRED',
+      'The due replacement requires its exact role Grant.',
+      ExitCode.verification,
+    );
+    const fencePath = path.join(
+      fixture.runtime.locks,
+      `${fixture.invocationId}.worker-active`,
+    );
+    const dispatched: string[] = [];
+    let fenceDuringPump: boolean | undefined;
+    let retentionCalls = 0;
+    assert.throws(
+      () =>
+        runProviderWorker(fixture.repository, fixture.invocationId, {
+          runner() {
+            throw workflowError(
+              'PROVIDER_RATE_LIMIT',
+              'Retry after one second.',
+              ExitCode.verification,
+              { details: { retryAfterMs: 1_000 } },
+            );
+          },
+          automaticRetry: {
+            enabled: true,
+            get now() {
+              return readProviderInvocation(
+                fixture.runtime,
+                fixture.invocationId,
+              ).updatedAt;
+            },
+            dispatcher() {
+              assert.fail('retry must leave future work for the pump');
+            },
+          },
+          schedulePump: {
+            enabled: true,
+            limit: 1,
+            get now() {
+              return requiredSchedule(fixture.repository, fixture.invocationId)
+                .notBefore;
+            },
+            dispatcher(_cwd, invocationId) {
+              dispatched.push(invocationId);
+              fenceDuringPump = fs.existsSync(fencePath);
+              throw grant;
+            },
+          },
+          retentionMaintenance() {
+            retentionCalls++;
+            assert.fail('pump Grant must skip retention');
+          },
+        }),
+      (error) => error === grant,
+    );
+    const schedule = requiredSchedule(fixture.repository, fixture.invocationId);
+    assert.deepEqual(dispatched, [schedule.replacementInvocationId]);
+    assert.equal(fenceDuringPump, true);
+    assert.equal(retentionCalls, 0);
+    assert.equal(fs.existsSync(fencePath), false);
+    const terminal = readProviderInvocation(
+      fixture.runtime,
+      fixture.invocationId,
+    );
+    assert.equal(terminal.state, 'failed');
+    assert.equal(terminal.failure?.code, 'PROVIDER_RATE_LIMIT');
+    assert.equal(
+      readProviderInvocation(fixture.runtime, schedule.replacementInvocationId)
+        .state,
+      'prepared',
+    );
+    assert.equal(schedule.state, 'scheduled');
+    assert.equal(
+      listProviderRetryScheduleReceipts(
+        fixture.repository,
+        schedule.scheduleId,
+      )[0]?.state,
+      'started',
+    );
+    assert.deepEqual(
+      listProviderWorkerMaintenanceWarnings(fixture.runtime),
+      [],
     );
   } finally {
     fixture.dispose();
@@ -869,10 +978,34 @@ test('exhausted automatic budget exposes a scoped GrantRequest and executes noth
       record: original,
       request,
     }).job.jobId;
+    assert.ok(original.mandateBinding);
+    assert.deepEqual(original.mandateBinding, mandate.binding);
+    assert.equal(original.state, 'prepared');
+    const fencePath = path.join(runtime.locks, `${invocationId}.worker-active`);
+    const auditScope = {
+      repositoryRoot: fs.realpathSync(repository),
+      repositoryId: deriveAuthorityAuditRepositoryId(
+        mandate.repositoryIdentity,
+      ),
+      externalAuditRoot: mandate.externalAuditRoot,
+    };
+    const taskId = mandate.taskId;
+    const atExecution: Array<{
+      record: ReturnType<typeof readProviderInvocation>;
+      fencePresent: boolean;
+      audit: ReturnType<typeof showAuthorityAuditTask>;
+    }> = [];
+    let runnerCalls = 0;
     const dispatched: string[] = [];
 
-    runProviderWorker(repository, invocationId, {
+    const result = runProviderWorker(repository, invocationId, {
       runner() {
+        runnerCalls += 1;
+        atExecution.push({
+          record: readProviderInvocation(runtime, invocationId),
+          fencePresent: fs.existsSync(fencePath),
+          audit: showAuthorityAuditTask(auditScope, taskId),
+        });
         throw workflowError(
           'NETWORK_TRANSIENT',
           'Network is temporarily unavailable.',
@@ -886,6 +1019,42 @@ test('exhausted automatic budget exposes a scoped GrantRequest and executes noth
         },
       },
     });
+
+    // Assertions stay outside the runner: worker failure handling must not
+    // turn a failed assertion into the controlled network failure below.
+    assert.equal(atExecution.length, 1, canonicalJson({ runnerCalls, result }));
+    assert.equal(runnerCalls, 1);
+    const executed = atExecution[0]!;
+    assert.equal(executed.record.state, 'leased');
+    assert.ok(executed.record.lease);
+    assert.deepEqual(executed.record.mandateBinding, mandate.binding);
+    assert.equal(executed.fencePresent, true);
+    assert.equal(executed.audit.ok, true);
+    const invocationEvents = executed.audit.events.filter(
+      ({ event }) =>
+        event.eventType === 'provider-invocation' &&
+        event.providerInvocation?.invocationId === invocationId,
+    );
+    assert.equal(invocationEvents.length, 1);
+    const invocationEvent = invocationEvents[0]!.event;
+    assert.equal(invocationEvent.taskId, mandate.taskId);
+    assert.equal(invocationEvent.changeId, changeId);
+    assert.equal(
+      invocationEvent.grantDigest,
+      `sha256:${mandate.binding.mandateDigest}`,
+    );
+    assert.equal(invocationEvent.occurredAt, original.createdAt);
+    assert.deepEqual(invocationEvent.providerInvocation, {
+      providerId: request.providerId,
+      invocationId,
+      requestDigest: `sha256:${request.requestDigest}`,
+    });
+    assert.equal(result.state, 'failed');
+    const failed = readProviderInvocation(runtime, invocationId);
+    assert.equal(failed.state, 'failed');
+    assert.equal(failed.failure?.code, 'NETWORK_TRANSIENT');
+    assert.deepEqual(failed.mandateBinding, mandate.binding);
+    assert.equal(fs.existsSync(fencePath), false);
 
     assert.equal(
       readProviderAutomaticRetrySchedule(repository, invocationId),
@@ -937,7 +1106,9 @@ test('terminal retention failure is journaled without overwriting the durable ou
       readProviderInvocation(fixture.runtime, fixture.invocationId).state,
       'succeeded',
     );
-    const warnings = listProviderWorkerMaintenanceWarnings(fixture.repository);
+    const warnings = listProviderWorkerMaintenanceWarnings(
+      observeInvestigationRuntimeContext(fixture.repository).runtime,
+    );
     assert.equal(warnings.length, 1);
     assert.equal(warnings[0]?.operation, 'retention-maintenance');
     assert.equal(warnings[0]?.errorCode, 'RETENTION_FIXTURE_FAILURE');
@@ -954,7 +1125,9 @@ test('terminal retention failure is journaled without overwriting the durable ou
       },
     });
     assert.equal(
-      listProviderWorkerMaintenanceWarnings(fixture.repository).length,
+      listProviderWorkerMaintenanceWarnings(
+        observeInvestigationRuntimeContext(fixture.repository).runtime,
+      ).length,
       1,
     );
   } finally {
@@ -1030,7 +1203,11 @@ function requiredSchedule(
   const schedule = readProviderAutomaticRetrySchedule(repository, invocationId);
   assert.ok(
     schedule,
-    canonicalJson(listProviderWorkerMaintenanceWarnings(repository)),
+    canonicalJson(
+      listProviderWorkerMaintenanceWarnings(
+        observeInvestigationRuntimeContext(repository).runtime,
+      ),
+    ),
   );
   if (
     schedule.route === 'provider-replacement' &&

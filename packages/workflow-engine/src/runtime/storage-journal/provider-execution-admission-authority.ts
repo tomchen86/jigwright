@@ -22,7 +22,7 @@ import {
 } from '../../modules/provider-orchestration/execution-core.ts';
 import type { ProviderInvocationAcceptanceBinding } from '../../modules/provider-orchestration/agent-runtime-port.ts';
 import { assertProviderInvocationAcceptanceBinding } from '../../modules/provider-orchestration/provider-runtime-evidence.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 
 const IDENTIFIER = /^[a-z0-9][a-z0-9._:-]{0,255}$/u;
 const PREFIXED_DIGEST = /^sha256:[0-9a-f]{64}$/u;

@@ -1,6 +1,6 @@
 /**
- * Extracts Markdown lines and headings while tracking source offsets and
- * fenced examples.
+ * Extracts Markdown lines and headings and splices located regions while
+ * preserving source offsets and fenced examples.
  *
  * Invariants:
  * - Headings inside fenced code are ignored, and fence delimiter lines are
@@ -24,6 +24,47 @@ export type MarkdownLine = {
   raw: string;
   fenced: boolean;
 };
+
+/** Region offsets use JavaScript string code units, like MarkdownLine.start. */
+export type MarkdownRegion = Readonly<{ start: number; end: number }>;
+
+export class MarkdownRegionBoundsError extends RangeError {
+  constructor() {
+    super('Invalid projection region offsets.');
+    this.name = 'MarkdownRegionBoundsError';
+  }
+}
+
+export function spliceMarkdownRegion(
+  current: string,
+  region: MarkdownRegion,
+  replacement: string,
+): string {
+  if (
+    !Number.isInteger(region.start) ||
+    !Number.isInteger(region.end) ||
+    region.start < 0 ||
+    region.end < region.start ||
+    region.end > current.length
+  ) {
+    throw new MarkdownRegionBoundsError();
+  }
+  return (
+    current.slice(0, region.start) + replacement + current.slice(region.end)
+  );
+}
+
+/** Re-locate the candidate; locator failures belong to the caller's format. */
+export function hasExactMarkdownRegion(
+  current: string,
+  expected: string,
+  locate: (current: string) => MarkdownRegion | null,
+): boolean {
+  const region = locate(current);
+  return Boolean(
+    region && current.slice(region.start, region.end) === expected,
+  );
+}
 
 export function markdownLines(markdown: string): MarkdownLine[] {
   const lines: MarkdownLine[] = [];

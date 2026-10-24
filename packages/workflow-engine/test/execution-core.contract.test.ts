@@ -32,7 +32,7 @@ import {
   type WorkflowRecord,
 } from '../src/modules/provider-orchestration/execution-core.ts';
 import { ExitCode, WorkflowError } from '../src/foundation/errors/errors.ts';
-import type { ProviderInvocationRecord } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import type { ProviderInvocationRecord } from '../src/modules/provider-orchestration/provider-invocation-record.ts';
 
 const digest = (character: string): string => `sha256:${character.repeat(64)}`;
 

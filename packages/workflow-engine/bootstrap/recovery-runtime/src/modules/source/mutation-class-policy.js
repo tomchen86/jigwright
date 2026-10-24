@@ -25,13 +25,6 @@ export const MUTATION_CLASSES = [
 ];
 const MUTATION_CLASS_SET = new Set(MUTATION_CLASSES);
 const POLICY_SCHEMA = 'mutation-class-policy.v1';
-/**
- * Validate a reviewed mutation-class rule set and bind it to a stable digest.
- * Rules are a semantic set: each is strictly validated with exact keys,
- * canonically sorted by rule ID, and hashed in canonical order, so input order
- * never changes identity. A malformed rule, an unknown class, a duplicate rule
- * ID, a non-canonical raw selector, or a hidden extra key fails closed.
- */
 export function createMutationClassPolicy(input) {
     if (typeof input !== 'object' ||
         input === null ||

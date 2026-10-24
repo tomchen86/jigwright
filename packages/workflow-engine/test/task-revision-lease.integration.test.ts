@@ -1,3 +1,34 @@
+import { readAndValidateTaskRevisionApproval } from '../src/composition-root/task-revision-approval-production.ts';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const resumeTask = resumeTaskWithContractReader.bind(
+  undefined,
+  productionChangeContract,
+  productionPlanningExecution,
+  managedDocuments,
+  productionChangeContractReader,
+  readAndValidateTaskRevisionApproval,
+);
+const resumeTaskWithoutApproval = resumeTaskWithContractReader.bind(
+  undefined,
+  productionChangeContract,
+  productionPlanningExecution,
+  managedDocuments,
+  productionChangeContractReader,
+  () => assert.fail('No-op or narrowing must not read an approval'),
+);
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -10,26 +41,24 @@ import { listChangedPaths } from '../src/runtime/repository-transaction/git.ts';
 import {
   inspectTaskRevisionStatus,
   prepareTaskRevisionApprovalBinding,
-  resumeTask,
+  resumeTask as resumeTaskWithContractReader,
   reviseTask,
 } from '../src/application/revise/task-revision.ts';
-import {
-  issueTaskRevisionApproval,
-  taskRevisionApprovalTargetDigest,
-} from '../src/modules/authority/task-revision-approval.ts';
-import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
+import { issueTaskRevisionApproval } from '../src/composition-root/task-revision-approval-production.ts';
+import { taskRevisionApprovalTargetDigest } from '../src/modules/authority/task-revision-approval-contracts.ts';
+import type { MaintainerSignerProvider } from '../src/modules/authority/maintainer-signer-port.ts';
 import { commitChangedPaths } from '../src/runtime/repository-transaction/git-transitions.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import { completeTask } from '../src/application/finalize/lifecycle.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
+import { completeTask } from './support/session-lifecycle-host.ts';
 import { readImmutableReport } from '../src/runtime/storage-journal/report-store.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
 import {
-  abortSession,
-  checkSession,
   getSession,
   listSessions,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+} from '../src/runtime/repository-observation/workflow-session-context.ts';
+import { abortSession } from '../src/composition-root/task-session-production.ts';
 import {
   createFixtureRepository,
   git,
@@ -44,15 +73,32 @@ test('revise-task durably suspends execution and no-op resume restores the same 
   const repository = revisionFixture();
   try {
     const implementationPath = path.join(repository, 'src/feature.ts');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(implementationPath, 'export const value = 1;\n');
-    const checked = checkSession(repository, session.sessionId);
+    const checked = checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     assert.match(checked.reportId, /^[0-9a-f]{64}$/);
     const before = fs.readFileSync(implementationPath);
 
-    const revising = reviseTask(repository, session.sessionId, 'correct-plan', {
-      now: () => STARTED_AT,
-    });
+    const revising = reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'correct-plan',
+      {
+        now: () => STARTED_AT,
+      },
+    );
 
     assert.equal(revising.session.sessionId, session.sessionId);
     assert.equal(revising.session.state, 'revising');
@@ -66,11 +112,18 @@ test('revise-task durably suspends execution and no-op resume restores the same 
       [session.sessionId],
     );
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeContract,
+          repository,
+          session.sessionId,
+        ),
       (error) => workflowCode(error) === 'SESSION_NOT_ACTIVE',
     );
 
-    const resumed = resumeTask(repository, session.sessionId, {
+    const resumed = resumeTaskWithoutApproval(repository, session.sessionId, {
       now: () => new Date('2026-08-11T01:05:00.000Z'),
     });
     assert.equal(resumed.session.sessionId, session.sessionId);
@@ -78,7 +131,16 @@ test('revise-task durably suspends execution and no-op resume restores the same 
     assert.equal(resumed.session.revisionLeaseId, undefined);
     assert.equal(resumed.lease.phase, 'completed');
     assert.deepEqual(fs.readFileSync(implementationPath), before);
-    assert.equal(checkSession(repository, session.sessionId).passed, true);
+    assert.equal(
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeContract,
+        repository,
+        session.sessionId,
+      ).passed,
+      true,
+    );
 
     const status = inspectTaskRevisionStatus(repository, session.sessionId);
     assert.equal(status?.phase, 'completed');
@@ -93,11 +155,22 @@ test('resume-task detects implementation drift and abort preserves every byte', 
   const repository = revisionFixture();
   try {
     const implementationPath = path.join(repository, 'src/feature.ts');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(implementationPath, 'export const value = 1;\n');
-    reviseTask(repository, session.sessionId, 'correct-plan', {
-      now: () => STARTED_AT,
-    });
+    reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'correct-plan',
+      {
+        now: () => STARTED_AT,
+      },
+    );
 
     const drifted = 'export const value = 2;\n';
     fs.writeFileSync(implementationPath, drifted);
@@ -134,11 +207,22 @@ test('resume refuses unreviewed planning edits without consuming the revision le
       repository,
       'openspec/changes/demo-change/proposal.md',
     );
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(implementationPath, 'export const value = 1;\n');
-    reviseTask(repository, session.sessionId, 'correct-plan', {
-      now: () => STARTED_AT,
-    });
+    reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'correct-plan',
+      {
+        now: () => STARTED_AT,
+      },
+    );
 
     fs.appendFileSync(proposalPath, '\nA reviewed correction is required.\n');
     assert.throws(
@@ -170,13 +254,24 @@ test('propose reuses the exact revising task authority without touching implemen
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     const implementation = 'export const value = 1;\n';
     fs.writeFileSync(implementationPath, implementation);
-    reviseTask(repository, session.sessionId, 'regenerate-reviewed-plan', {
-      now: () => STARTED_AT,
-    });
+    reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'regenerate-reviewed-plan',
+      {
+        now: () => STARTED_AT,
+      },
+    );
 
     const proposed = startPropose(
       repository,
@@ -208,12 +303,23 @@ test('revision-bound propose rejects implementation drift before planning mutati
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.writeFileSync(implementationPath, 'export const value = 1;\n');
-    reviseTask(repository, session.sessionId, 'regenerate-reviewed-plan', {
-      now: () => STARTED_AT,
-    });
+    reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'regenerate-reviewed-plan',
+      {
+        now: () => STARTED_AT,
+      },
+    );
     fs.writeFileSync(implementationPath, 'export const value = 2;\n');
 
     assert.throws(
@@ -246,11 +352,22 @@ test('resume-task commits only a freshly reviewed plan and rebinds the same sess
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     const implementation = 'export const value = 1;\n';
     fs.writeFileSync(implementationPath, implementation);
-    const checked = checkSession(repository, session.sessionId);
+    const checked = checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     const reportDirectory = path.join(runtimeRoot(repository), 'reports');
     const oldReport = readImmutableReport(
       reportDirectory,
@@ -265,9 +382,15 @@ test('resume-task commits only a freshly reviewed plan and rebinds the same sess
       () => commitPlanningTransition(repository, 'demo-change'),
       (error) => workflowCode(error) === 'ACTIVE_SESSION_CONFLICT',
     );
-    const revising = reviseTask(repository, session.sessionId, 'correct-plan', {
-      now: () => STARTED_AT,
-    });
+    const revising = reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'correct-plan',
+      {
+        now: () => STARTED_AT,
+      },
+    );
     assert.equal(revising.session.state, 'revising');
     assert.equal(revising.session.latestCheckReportId, undefined);
     assert.deepEqual(
@@ -275,7 +398,14 @@ test('resume-task commits only a freshly reviewed plan and rebinds the same sess
       [],
     );
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeContract,
+          repository,
+          session.sessionId,
+        ),
       (error) => workflowCode(error) === 'SESSION_NOT_ACTIVE',
     );
     const parent = git(repository, ['rev-parse', 'HEAD']).trim();
@@ -326,7 +456,13 @@ test('resume-task commits only a freshly reviewed plan and rebinds the same sess
       ),
       false,
     );
-    const rechecked = checkSession(repository, session.sessionId);
+    const rechecked = checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     assert.equal(rechecked.passed, true);
     assert.notEqual(rechecked.reportId, checked.reportId);
     assert.deepEqual(
@@ -348,13 +484,24 @@ test('resume-task recovers the exact plan commit after a ref-CAS crash', () => {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     const implementation = 'export const value = 1;\n';
     fs.writeFileSync(implementationPath, implementation);
-    reviseTask(repository, session.sessionId, 'correct-plan', {
-      now: () => STARTED_AT,
-    });
+    reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'correct-plan',
+      {
+        now: () => STARTED_AT,
+      },
+    );
     const parent = git(repository, ['rev-parse', 'HEAD']).trim();
     fs.appendFileSync(
       path.join(repository, 'openspec/changes/demo-change/proposal.md'),
@@ -394,13 +541,24 @@ test('resume-task applies one exact prepared plan commit after a pre-CAS crash',
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     const implementation = 'export const value = 1;\n';
     fs.writeFileSync(implementationPath, implementation);
-    reviseTask(repository, session.sessionId, 'correct-plan', {
-      now: () => STARTED_AT,
-    });
+    reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'correct-plan',
+      {
+        now: () => STARTED_AT,
+      },
+    );
     const parent = git(repository, ['rev-parse', 'HEAD']).trim();
     fs.appendFileSync(
       path.join(repository, 'openspec/changes/demo-change/proposal.md'),
@@ -447,13 +605,24 @@ test('resume-task rebinds the same session after a post-commit pre-session crash
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     const implementation = 'export const value = 1;\n';
     fs.writeFileSync(implementationPath, implementation);
-    reviseTask(repository, session.sessionId, 'correct-plan', {
-      now: () => STARTED_AT,
-    });
+    reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'correct-plan',
+      {
+        now: () => STARTED_AT,
+      },
+    );
     fs.appendFileSync(
       path.join(repository, 'openspec/changes/demo-change/proposal.md'),
       '\nThe reviewed session remains the same.\n',
@@ -493,18 +662,29 @@ test('a reviewed path narrowing resumes without external widening authority', ()
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const value = 1;\n',
     );
-    reviseTask(repository, session.sessionId, 'narrow-task-scope', {
-      now: () => STARTED_AT,
-    });
+    reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'narrow-task-scope',
+      {
+        now: () => STARTED_AT,
+      },
+    );
     writeTaskAllowedPaths(repository, ['src/feature.ts']);
     writeReadyV3ExemptChange(repository);
 
-    const resumed = resumeTask(repository, session.sessionId, {
+    const resumed = resumeTaskWithoutApproval(repository, session.sessionId, {
       now: () => new Date('2026-08-11T01:05:00.000Z'),
     });
     assert.equal(resumed.session.state, 'active');
@@ -538,18 +718,30 @@ test('weakening required checks needs one exact external widening approval', () 
     git(repository, ['commit', '-m', 'Add task revision approval policy']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const value = 1;\n',
     );
-    reviseTask(repository, session.sessionId, 'weaken-required-checks', {
-      now: () => STARTED_AT,
-    });
+    reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'weaken-required-checks',
+      {
+        now: () => STARTED_AT,
+      },
+    );
     writeTaskRequiredChecks(repository, ['fixture']);
     writeReadyV3ExemptChange(repository);
 
     const binding = prepareTaskRevisionApprovalBinding(
+      productionChangeContract,
       repository,
       session.sessionId,
       { now: () => new Date('2026-08-11T01:03:00.000Z') },
@@ -588,14 +780,25 @@ test('a revision cannot complete the task that owns its preserved implementation
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const value = 1;\n',
     );
-    reviseTask(repository, session.sessionId, 'complete-revising-task', {
-      now: () => STARTED_AT,
-    });
+    reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'complete-revising-task',
+      {
+        now: () => STARTED_AT,
+      },
+    );
     const tasksPath = path.join(
       repository,
       'openspec/changes/demo-change/tasks.md',
@@ -627,14 +830,25 @@ test('a reviewed authority widening requires an external decision before the pla
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const value = 1;\n',
     );
-    reviseTask(repository, session.sessionId, 'widen-task-scope', {
-      now: () => STARTED_AT,
-    });
+    reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'widen-task-scope',
+      {
+        now: () => STARTED_AT,
+      },
+    );
     const parent = git(repository, ['rev-parse', 'HEAD']).trim();
     writeTaskAllowedPaths(repository, ['src/**', 'test/**']);
     writeReadyV3ExemptChange(repository);
@@ -659,16 +873,27 @@ test('a widening approval cannot launder implementation bytes outside the origin
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const unauthorizedPath = path.join(repository, 'test/unauthorized.ts');
     fs.mkdirSync(path.dirname(unauthorizedPath), { recursive: true });
     fs.writeFileSync(unauthorizedPath, 'export const unauthorized = true;\n');
 
     assert.throws(
       () =>
-        reviseTask(repository, session.sessionId, 'retroactive-widening', {
-          now: () => STARTED_AT,
-        }),
+        reviseTask(
+          productionChangeContract,
+          repository,
+          session.sessionId,
+          'retroactive-widening',
+          {
+            now: () => STARTED_AT,
+          },
+        ),
       (error) => workflowCode(error) === 'OUT_OF_SCOPE_PATHS',
     );
     assert.equal(getSession(repository, session.sessionId).state, 'active');
@@ -694,14 +919,25 @@ test('an unverified approval reference cannot authorize a reviewed widening', ()
     git(repository, ['commit', '-m', 'Add task revision approval policy']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const value = 1;\n',
     );
-    reviseTask(repository, session.sessionId, 'widen-task-scope', {
-      now: () => STARTED_AT,
-    });
+    reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'widen-task-scope',
+      {
+        now: () => STARTED_AT,
+      },
+    );
     writeTaskAllowedPaths(repository, ['src/**', 'test/**']);
     writeReadyV3ExemptChange(repository);
 
@@ -981,7 +1217,10 @@ test('task-revision approval CLI reaches the controlling-terminal boundary witho
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'maintainer',
         'revision-approval',
         session.sessionId,
@@ -1017,14 +1256,25 @@ test('resume-task persists exact staging intent before mutating the index', () =
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const value = 1;\n',
     );
-    reviseTask(repository, session.sessionId, 'prepare-plan-staging', {
-      now: () => STARTED_AT,
-    });
+    reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'prepare-plan-staging',
+      {
+        now: () => STARTED_AT,
+      },
+    );
     const parent = git(repository, ['rev-parse', 'HEAD']).trim();
     fs.appendFileSync(
       path.join(repository, 'openspec/changes/demo-change/proposal.md'),
@@ -1068,17 +1318,28 @@ test('revise-task crash windows replay one exact durable lease', () => {
   for (const crashPoint of ['lease-prepared', 'session-revising'] as const) {
     const repository = revisionFixture();
     try {
-      const session = startSession(repository, 'demo-change', '1.1');
+      const session = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
       fs.writeFileSync(
         path.join(repository, 'src/feature.ts'),
         'export const value = 1;\n',
       );
       assert.throws(
         () =>
-          reviseTask(repository, session.sessionId, 'correct-plan', {
-            now: () => STARTED_AT,
-            testCrashAfter: crashPoint,
-          }),
+          reviseTask(
+            productionChangeContract,
+            repository,
+            session.sessionId,
+            'correct-plan',
+            {
+              now: () => STARTED_AT,
+              testCrashAfter: crashPoint,
+            },
+          ),
         /simulated task revision crash/,
       );
       const interrupted = inspectTaskRevisionStatus(
@@ -1091,6 +1352,7 @@ test('revise-task crash windows replay one exact durable lease', () => {
       );
 
       const recovered = reviseTask(
+        productionChangeContract,
         repository,
         session.sessionId,
         'correct-plan',
@@ -1108,17 +1370,28 @@ test('revise-task crash windows replay one exact durable lease', () => {
 test('revision reader rejects a null required check digest record without rewriting durable state', () => {
   const repository = revisionFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const value = 1;\n',
     );
     assert.throws(
       () =>
-        reviseTask(repository, session.sessionId, 'correct-plan', {
-          now: () => STARTED_AT,
-          testCrashAfter: 'lease-prepared',
-        }),
+        reviseTask(
+          productionChangeContract,
+          repository,
+          session.sessionId,
+          'correct-plan',
+          {
+            now: () => STARTED_AT,
+            testCrashAfter: 'lease-prepared',
+          },
+        ),
       /simulated task revision crash/,
     );
     const interrupted = inspectTaskRevisionStatus(
@@ -1154,9 +1427,15 @@ test('revision reader rejects a null required check digest record without rewrit
 
     assert.throws(
       () =>
-        reviseTask(repository, session.sessionId, 'correct-plan', {
-          now: () => new Date('2026-08-11T01:01:00.000Z'),
-        }),
+        reviseTask(
+          productionChangeContract,
+          repository,
+          session.sessionId,
+          'correct-plan',
+          {
+            now: () => new Date('2026-08-11T01:01:00.000Z'),
+          },
+        ),
       (error) => workflowCode(error) === 'REVISION_STATE_CORRUPT',
     );
     assert.equal(fs.readFileSync(journalPath, 'utf8'), poisonedJournalBytes);
@@ -1170,17 +1449,28 @@ test('revision reader rejects a null required check digest record without rewrit
 test('revision reader rejects a missing planning assurance binding without rewriting durable state', () => {
   const repository = revisionFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const value = 1;\n',
     );
     assert.throws(
       () =>
-        reviseTask(repository, session.sessionId, 'correct-plan', {
-          now: () => STARTED_AT,
-          testCrashAfter: 'session-revising',
-        }),
+        reviseTask(
+          productionChangeContract,
+          repository,
+          session.sessionId,
+          'correct-plan',
+          {
+            now: () => STARTED_AT,
+            testCrashAfter: 'session-revising',
+          },
+        ),
       /simulated task revision crash/,
     );
     const interrupted = inspectTaskRevisionStatus(
@@ -1239,14 +1529,25 @@ test('revision reader rejects a missing planning assurance binding without rewri
 test('resume-task crash after session activation completes idempotently', () => {
   const repository = revisionFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const value = 1;\n',
     );
-    reviseTask(repository, session.sessionId, 'correct-plan', {
-      now: () => STARTED_AT,
-    });
+    reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'correct-plan',
+      {
+        now: () => STARTED_AT,
+      },
+    );
 
     assert.throws(
       () =>
@@ -1275,10 +1576,21 @@ test('resume-task crash after session activation completes idempotently', () => 
 test('an expired revision lease stays fail closed but remains abortable', () => {
   const repository = revisionFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
-    reviseTask(repository, session.sessionId, 'correct-plan', {
-      now: () => STARTED_AT,
-    });
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
+    reviseTask(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      'correct-plan',
+      {
+        now: () => STARTED_AT,
+      },
+    );
     assert.throws(
       () =>
         resumeTask(repository, session.sessionId, {
@@ -1298,7 +1610,12 @@ test('an expired revision lease stays fail closed but remains abortable', () => 
 test('revision commands and status expose the exact durable lease', () => {
   const repository = revisionFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const value = 1;\n',
@@ -1410,17 +1727,29 @@ function approvedWideningFixture(startedAt = STARTED_AT) {
   git(repository, ['commit', '-m', 'Add task revision approval policy']);
   writeReadyV3ExemptChange(repository);
   commitPlanningTransition(repository, 'demo-change');
-  const session = startSession(repository, 'demo-change', '1.1');
+  const session = startSession(
+    productionChangeContract,
+    repository,
+    'demo-change',
+    '1.1',
+  );
   fs.writeFileSync(
     path.join(repository, 'src/feature.ts'),
     'export const value = 1;\n',
   );
-  reviseTask(repository, session.sessionId, 'widen-task-scope', {
-    now: () => startedAt,
-  });
+  reviseTask(
+    productionChangeContract,
+    repository,
+    session.sessionId,
+    'widen-task-scope',
+    {
+      now: () => startedAt,
+    },
+  );
   writeTaskAllowedPaths(repository, ['src/**', 'test/**']);
   writeReadyV3ExemptChange(repository);
   const binding = prepareTaskRevisionApprovalBinding(
+    productionChangeContract,
     repository,
     session.sessionId,
     { now: () => new Date(startedAt.getTime() + 3 * 60_000) },
@@ -1474,7 +1803,10 @@ function runWorkflowCli(
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         ...args,
         '--json',
       ],

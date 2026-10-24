@@ -1,3 +1,12 @@
+import { createProductionSessionCheckService } from '../src/composition-root/session-check-production.ts';
+import { createFinalizationService } from '../src/runtime/finalization/finalization-service.ts';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
+import { createProductionProtectedTaskApplyGrantPort as createProtectedApplyPort } from '../src/composition-root/protected-task-apply-grant-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { taskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { assertCurrentImplementationReconciliation } from '../src/composition-root/implementation-reconciliation-production.ts';
 import { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -7,26 +16,26 @@ import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   grantStorePaths,
-  readGrantRecord,
-} from '../src/runtime/storage-journal/grant-store.ts';
+  createFileGrantRecordStore,
+} from '../src/runtime/lifecycle-ledgers/grant-store.ts';
 import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
-import { loadGrantPolicyV2 } from '../src/modules/authority/grant-policy.ts';
+import { loadGrantPolicyV2 } from '../src/runtime/repository-observation/grant-policy-reader.ts';
 import { protectedTaskApplyGrantTransitionDefinitions } from '../src/modules/authority/protected-task-apply-grant.ts';
-import { createProductionProtectedTaskApplyGrantPort } from '../src/composition-root/protected-task-apply-grant-production.ts';
+import { createProductionProtectedTaskApplyGrantPort } from './support/session-lifecycle-host.ts';
 import { issueProductionCollaborationGrant } from '../src/composition-root/collaboration-grant-production.ts';
 import {
   runtimePaths,
   withRepositoryLifecycleOperationAsync,
 } from '../src/runtime/session-workspace/session-store.ts';
-import { readFinalizeTransaction } from '../src/runtime/repository-transaction/finalize-transaction.ts';
-import { beginTaskDiffReview } from '../src/application/finalize/task-diff-review-lifecycle.ts';
-import { assertPreparedProtectedTaskApplyAuthorization } from '../src/application/finalize/protected-task-apply-authorization.ts';
+import { readFinalizeTransaction } from '../src/runtime/storage-journal/finalize-transaction.ts';
+import { beginTaskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
+import { assertPreparedProtectedTaskApplyAuthorization } from '../src/runtime/repository-validation/protected-task-apply-authorization.ts';
 import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import { getSession } from '../src/application/execute-task/session.ts';
+import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
 import {
   authoritativeCollaborationGrantVerifierForTest,
   git,
@@ -237,10 +246,9 @@ describe('protected finalize and recovery route through exact Central Fail-Grant
         undefined,
       );
 
-      const grant = readGrantRecord(
+      const grant = createFileGrantRecordStore(
         grantStorePaths(runtimeRoot(protectedRepository)),
-        protectedGrant.result.grant.challengeId,
-      );
+      ).readGrantRecord(protectedGrant.result.grant.challengeId);
 
       assert.equal(grant.state, 'pending');
 
@@ -385,7 +393,11 @@ describe('protected finalize and recovery route through exact Central Fail-Grant
       );
 
       const coordinator = createGrantCoordinatorKernel({
-        paths: grantStorePaths(lifecycleRuntime.root),
+        now: () => new Date(),
+        randomUUID: () => crypto.randomUUID(),
+        store: createFileGrantRecordStore(
+          grantStorePaths(lifecycleRuntime.root),
+        ),
         registry: createTransitionRegistry(
           protectedTaskApplyGrantTransitionDefinitions(
             createProductionProtectedTaskApplyGrantPort(protectedRepository),
@@ -437,10 +449,9 @@ describe('protected finalize and recovery route through exact Central Fail-Grant
           error.code === 'TASK_DIFF_REVIEW_REQUIRED',
       );
 
-      const prepared = readGrantRecord(
+      const prepared = createFileGrantRecordStore(
         grantStorePaths(lifecycleRuntime.root),
-        protectedGrant.result.grant.challengeId,
-      );
+      ).readGrantRecord(protectedGrant.result.grant.challengeId);
 
       assert.equal(prepared.state, 'prepared');
 
@@ -568,4 +579,129 @@ describe('protected finalize and recovery route through exact Central Fail-Grant
       cleanup();
     }
   });
+});
+
+test('prepared protected apply reaches the injected document service after real Grant admission and before projection', async () => {
+  const { protectedRepository, cleanup, output, protectedGrant } =
+    await createPendingProtectedApplyFixture();
+  try {
+    const repositoryState = discoverRepository(protectedRepository);
+    const lifecycleRuntime = runtimePaths(
+      repositoryState.gitCommonDirectory,
+      'workflow-engine',
+    );
+    const failure = new Error('memory protected document refusal');
+    let calls = 0;
+    let lookups = 0;
+    const documents = {
+      get assertSystemDocumentDispositions() {
+        lookups += 1;
+        return function (this: unknown, cwd: string, sessionId: string): void {
+          assert.equal(this, documents);
+          assert.equal(cwd, repositoryState.repositoryRoot);
+          assert.equal(sessionId, output.session.sessionId);
+          calls += 1;
+          throw failure;
+        };
+      },
+    };
+    const service = createFinalizationService(
+      reviewedGeneratedAssets,
+      createProductionSessionCheckService(),
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      taskDiffReview,
+      managedDocuments,
+      assertCurrentImplementationReconciliation,
+      documents,
+    );
+    assert.equal(lookups, 0);
+    const beforeSession = getSession(
+      protectedRepository,
+      output.session.sessionId,
+    );
+    const beforeStatus = git(protectedRepository, ['status', '--porcelain']);
+    const coordinator = createGrantCoordinatorKernel({
+      now: () => new Date(),
+      randomUUID: () => crypto.randomUUID(),
+      store: createFileGrantRecordStore(grantStorePaths(lifecycleRuntime.root)),
+      registry: createTransitionRegistry(
+        protectedTaskApplyGrantTransitionDefinitions(
+          createProtectedApplyPort(
+            service.finalizeProtectedTaskApplyUnderGrant,
+            protectedRepository,
+          ),
+        ),
+      ),
+      policy: loadGrantPolicyV2(protectedRepository).policy,
+      openApprovalSession(presentation) {
+        return {
+          async collectDecision() {
+            return {
+              choiceId: presentation.choices[0]!.choiceId,
+              approvalMethod: 'human-presence' as const,
+              reasonCode: 'approve-exact-protected-task-apply',
+              reason:
+                'Approve only the exact protected task finalization bound by this challenge.',
+              sessionNonce: 'nonce-55555555555555555555555555555555',
+            };
+          },
+          async authenticate(subject) {
+            return [
+              {
+                moduleId: 'human-gate-macos',
+                version: '1',
+                claims: ['fresh-local-device-owner'] as const,
+                approvalSubjectDigest: subject.approvalSubjectDigest,
+                proofDigest: `sha256:${'a'.repeat(64)}` as const,
+                verifiedAt: new Date().toISOString(),
+                identity: null,
+                portableEvidence: null,
+              },
+            ];
+          },
+          async close() {},
+        };
+      },
+      async withLifecycleOperation(challengeId, operation) {
+        return withRepositoryLifecycleOperationAsync(
+          lifecycleRuntime,
+          operation,
+          { allowGrantChallengeIds: [challengeId] },
+        );
+      },
+    });
+    await assert.rejects(
+      coordinator.resolveChallenge(protectedGrant.result.grant.challengeId),
+      (error) => error === failure,
+    );
+    assert.equal(
+      calls,
+      1,
+      'protected apply bypasses the ordinary preliminary gate',
+    );
+    assert.equal(lookups, 1);
+    const prepared = createFileGrantRecordStore(
+      grantStorePaths(lifecycleRuntime.root),
+    ).readGrantRecord(protectedGrant.result.grant.challengeId);
+    assert.equal(prepared.state, 'prepared');
+    assert.equal(
+      readFinalizeTransaction(lifecycleRuntime.root, output.session.sessionId),
+      null,
+    );
+    assert.deepEqual(
+      getSession(protectedRepository, output.session.sessionId),
+      beforeSession,
+    );
+    assert.equal(
+      git(protectedRepository, ['status', '--porcelain']),
+      beforeStatus,
+    );
+    assert.equal(
+      git(protectedRepository, ['diff', '--cached', '--name-only']),
+      '',
+    );
+  } finally {
+    cleanup();
+  }
 });

@@ -1,31 +1,43 @@
+import { spawnSync } from 'node:child_process';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
+import {
+  createDocumentationClosureRecord,
+  encodeDocumentationClosure,
+} from '../src/modules/assurance/documentation-closure.ts';
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { verifyPullRequest } from '../src/entrypoints/ci/ci.ts';
-import {
-  loadHistoricalTaskAuthority,
-  canonicalCheckDefinition,
-} from '../src/entrypoints/ci/ci-historical-contract.ts';
-import {
-  startSession,
-  checkSession,
-  abortSession,
-} from '../src/application/execute-task/session.ts';
+import { verifyPullRequest } from '../src/composition-root/ci-verification-production.ts';
+import { loadHistoricalTaskAuthority } from '../src/composition-root/ci-replay-production.ts';
+import { canonicalCheckDefinition } from '../src/modules/assurance/commit-replay/ci-historical-contract.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
+import { abortSession } from '../src/composition-root/task-session-production.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import {
-  createDocumentationClosureRecord,
-  encodeDocumentationClosure,
-} from '../src/runtime/managed-documents/contracts/documentation-closure.ts';
+
 import {
   createTaskDiffDocumentationClosureRequirement,
   createTaskDiffReviewSubject,
   TASK_DIFF_REVIEW_COVERAGE,
 } from '../src/modules/assurance/task-diff-review.ts';
 import { createTaskDiffReviewRecord } from '../src/modules/assurance/task-diff-review-artifact.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import {
   configureChecks,
   createFixtureRepository as createLegacyFixtureRepository,
@@ -151,13 +163,25 @@ test('ordinary required-check edits fail at check time and CI replay', () => {
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
     const base = git(repository, ['rev-parse', 'HEAD']).trim();
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const registryPath = path.join(repository, 'workflow/checks.json');
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
     registry.checks.fixture.command.push('ordinary-definition-drift');
     fs.writeFileSync(registryPath, `${JSON.stringify(registry, null, 2)}\n`);
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeContract,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'ARTIFACTS_CHANGED'),
     );
     abortSession(
@@ -799,7 +823,7 @@ test('workflow assurance CI is read-only and policy paths have owners', () => {
   );
   assert.match(
     workflow,
-    /\.\.\/trusted-base\/packages\/workflow-engine\/src\/cli\.ts ci/,
+    /\.\.\/trusted-base\/packages\/workflow-engine\/bootstrap\/workflow-engine-host\.ts ci/,
   );
   assert.doesNotMatch(workflow, /secrets\.|pnpm workflow ci/);
   const actionRefs = [...workflow.matchAll(/uses: [^@\s]+@([^\s]+)/g)].map(
@@ -1114,3 +1138,39 @@ function writeCurrentPlanningChange(
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+test('trusted workflow assurance entrypoint actually dispatches CI instead of exiting silently', () => {
+  const workflow = fs.readFileSync(
+    path.join(sourceRepositoryRoot, '.github/workflows/workflow-assurance.yml'),
+    'utf8',
+  );
+  const entrypoint = workflow.match(/\.\.\/trusted-base\/(\S+)\s+ci/u)?.[1];
+  assert.ok(
+    entrypoint,
+    'trusted CI command must identify its executable entrypoint',
+  );
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--experimental-strip-types',
+      path.join(sourceRepositoryRoot, entrypoint),
+      'ci',
+      '--base',
+      'invalid',
+      '--head',
+      'invalid',
+      '--json',
+    ],
+    {
+      cwd: path.parse(sourceRepositoryRoot).root,
+      encoding: 'utf8',
+      env: { ...process.env, NODE_NO_WARNINGS: '1' },
+    },
+  );
+  assert.notEqual(
+    result.status,
+    0,
+    'CI must execute and reject invalid inputs',
+  );
+  assert.equal(JSON.parse(result.stderr).ok, false);
+});

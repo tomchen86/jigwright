@@ -3,7 +3,7 @@ import type {
   ProviderInvocationRequest,
   ProviderProcessOutcome,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -15,7 +15,7 @@ import type { ProviderRunnerReport } from '../src/runtime/provider-execution/pro
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { builtInProviderDefinitionSnapshotForTest } from './fixture.ts';
 import crypto from 'node:crypto';
-import type { RoleParticipant } from '../src/modules/provider-orchestration/role-scheduler.ts';
+import type { RoleParticipant } from '../src/modules/provider-orchestration/role-assignment.ts';
 import {
   CONTENT_NODE_ID,
   CONTENT_RESULT_DIGEST,

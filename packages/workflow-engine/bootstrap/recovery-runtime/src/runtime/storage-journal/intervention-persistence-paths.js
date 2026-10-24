@@ -7,10 +7,10 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
+import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { ensurePlainDirectory } from "../repository-transaction/filesystem-safety.js";
 import { PRIVATE_DIRECTORY_MODE, } from "./intervention-persistence-contracts.js";
-import { identityFileName } from "./intervention-persistence-values.js";
+import { identityFileName, isPathInside, } from "./intervention-persistence-values.js";
 export function interventionControlPersistencePaths(requestedRoot) {
     const root = assertStorageRoot(requestedRoot);
     return {
@@ -18,10 +18,6 @@ export function interventionControlPersistencePaths(requestedRoot) {
         checkpoints: path.join(root, 'checkpoints'),
         interventions: path.join(root, 'interventions'),
         sidecarSessions: path.join(root, 'sidecar-sessions'),
-        sidecarHistory: path.join(root, 'sidecar-session-history'),
-        sidecarPromotionPins: path.join(root, 'sidecar-promotion-pins'),
-        adoptions: path.join(root, 'adoptions'),
-        controlUpdates: path.join(root, 'control-updates'),
         operations: path.join(root, 'operations'),
     };
 }
@@ -31,15 +27,6 @@ export function interventionRecordPath(storageRoot, parentChangeId) {
 export function persistedBootstrapSidecarSessionPath(storageRoot, parentChangeId) {
     return path.join(interventionControlPersistencePaths(storageRoot).sidecarSessions, `${identityFileName('sidecar-session', parentChangeId)}.json`);
 }
-export function engineAdoptionRecordPath(storageRoot, txId) {
-    return path.join(interventionControlPersistencePaths(storageRoot).adoptions, `${identityFileName('adoption', txId)}.json`);
-}
-export function bootstrapSidecarPromotionPinPath(storageRoot, txId) {
-    return path.join(interventionControlPersistencePaths(storageRoot).sidecarPromotionPins, `${identityFileName('sidecar-promotion-pin', txId)}.json`);
-}
-export function controlPlaneUpdateRecordPath(storageRoot, grantId) {
-    return path.join(interventionControlPersistencePaths(storageRoot).controlUpdates, `${identityFileName('control-update', grantId)}.json`);
-}
 export function ensurePersistenceDirectories(storageRoot) {
     const paths = interventionControlPersistencePaths(storageRoot);
     for (const directory of [
@@ -47,10 +34,6 @@ export function ensurePersistenceDirectories(storageRoot) {
         paths.checkpoints,
         paths.interventions,
         paths.sidecarSessions,
-        paths.sidecarHistory,
-        paths.sidecarPromotionPins,
-        paths.adoptions,
-        paths.controlUpdates,
         paths.operations,
     ]) {
         ensurePlainDirectory(directory);
@@ -74,4 +57,21 @@ function assertStorageRoot(requestedRoot) {
         throw workflowError('INTERVENTION_PERSISTENCE_ROOT_INVALID', 'Filesystem root cannot be used as intervention persistence.', ExitCode.guard);
     }
     return root;
+}
+export function canonicalAbsolutePath(requestedPath) {
+    if (typeof requestedPath !== 'string' ||
+        !path.isAbsolute(requestedPath) ||
+        path.resolve(requestedPath) !== requestedPath ||
+        requestedPath === path.parse(requestedPath).root) {
+        throw workflowError('BOOTSTRAP_PATH_INVALID', 'Bootstrap path must be an explicit normalized absolute path.', ExitCode.usage);
+    }
+    return requestedPath;
+}
+export function assertPersistenceOwnedPath(storageRoot, requestedPath, code) {
+    const root = interventionControlPersistencePaths(storageRoot).root;
+    const absolute = canonicalAbsolutePath(requestedPath);
+    if (!isPathInside(root, absolute)) {
+        throw workflowError(code, 'Bootstrap mutable state must stay inside the persistence root.', ExitCode.guard);
+    }
+    return absolute;
 }

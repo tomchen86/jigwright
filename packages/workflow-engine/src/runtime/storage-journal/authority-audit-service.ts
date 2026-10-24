@@ -13,13 +13,7 @@ import {
   appendAuthorityAuditRecord,
   authorityAuditLedgerPaths,
   scanAuthorityAuditLedger,
-  type AuthorityAuditEventType,
-  type AuthorityAuditLedgerEntry,
-  type AuthorityAuditLedgerScope,
   type AuthorityAuditAppendInput,
-  type AuthorityAuditProfile,
-  type AuthorityAuditResult,
-  type Sha256Digest,
 } from './authority-audit-ledger.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -53,98 +47,6 @@ const EVENT_KEYS = [
   'workflowId',
 ] as const;
 
-export type AuthorityAuditActor = Readonly<{
-  kind: 'agent' | 'engine' | 'human';
-  identity: string;
-}>;
-
-export type AuthorityAuditCommand = Readonly<{
-  name: string;
-  argvDigest: Sha256Digest;
-}>;
-
-export type AuthorityAuditProviderInvocation = Readonly<{
-  providerId: string;
-  invocationId: string;
-  requestDigest: Sha256Digest;
-}>;
-
-export type AuthorityAuditExternalEffect = Readonly<{
-  kind: string;
-  targetDigest: Sha256Digest;
-  idempotencyKey: Sha256Digest;
-}>;
-
-export type AuthorityAuditEventInput = Readonly<{
-  eventType: AuthorityAuditEventType;
-  occurredAt: string;
-  idempotencyKey: Sha256Digest;
-  actor: AuthorityAuditActor;
-  taskId: string | null;
-  changeId: string | null;
-  workflowId: string | null;
-  grantDigest: Sha256Digest | null;
-  candidateBundleDigest: Sha256Digest | null;
-  prestateDigest: Sha256Digest | null;
-  poststateDigest: Sha256Digest | null;
-  command: AuthorityAuditCommand | null;
-  providerInvocation: AuthorityAuditProviderInvocation | null;
-  externalEffect: AuthorityAuditExternalEffect | null;
-  result: AuthorityAuditResult;
-  outcomeDigest: Sha256Digest;
-  errorCode: string | null;
-}>;
-
-export type AuthorityAuditEvent = Readonly<{
-  schemaVersion: 1;
-  kind: 'authority-audit-event.v1';
-  eventId: Sha256Digest;
-  repositoryId: Sha256Digest;
-  eventType: AuthorityAuditEventType;
-  occurredAt: string;
-  idempotencyKey: Sha256Digest;
-  actor: AuthorityAuditActor;
-  taskId: string | null;
-  changeId: string | null;
-  workflowId: string | null;
-  grantDigest: Sha256Digest | null;
-  candidateBundleDigest: Sha256Digest | null;
-  prestateDigest: Sha256Digest | null;
-  poststateDigest: Sha256Digest | null;
-  command: AuthorityAuditCommand | null;
-  providerInvocation: AuthorityAuditProviderInvocation | null;
-  externalEffect: AuthorityAuditExternalEffect | null;
-  result: AuthorityAuditResult;
-  outcomeDigest: Sha256Digest;
-  errorCode: string | null;
-}>;
-
-export type AuthorityAuditRecordedEvent = Readonly<{
-  eventDigest: Sha256Digest;
-  eventPath: string;
-  event: AuthorityAuditEvent;
-  ledger: AuthorityAuditLedgerEntry;
-}>;
-
-export type AuthorityAuditVerification = Readonly<{
-  repositoryId: Sha256Digest;
-  profile: AuthorityAuditProfile;
-  ok: boolean;
-  recordCount: number;
-  projectedEventCount: number;
-  legacyUnprojectedCount: number;
-  headSequence: number;
-  headRecordDigest: Sha256Digest | null;
-  events: readonly AuthorityAuditRecordedEvent[];
-}>;
-
-export type AuthorityAuditServiceHooks = Readonly<{
-  testAfterLedgerAppend?: () => void;
-  testAfterEventPreparation?: () => void;
-  /** Injectable engine clock; production callers omit it. */
-  now?: () => Date;
-}>;
-
 export function recordAuthorityAuditEvent(
   scope: AuthorityAuditLedgerScope,
   rawInput: AuthorityAuditEventInput,
@@ -164,9 +66,9 @@ export function recordAuthorityAuditEvent(
   return deepFreeze({ eventDigest, eventPath, event, ledger });
 }
 
-export function verifyAuthorityAuditEvents(
-  scope: AuthorityAuditLedgerScope,
-): AuthorityAuditVerification {
+export const verifyAuthorityAuditEvents: VerifyAuthorityAuditEvents = (
+  scope,
+) => {
   const scan = scanAuthorityAuditLedger(scope);
   const paths = authorityAuditServicePaths(scope);
   assertEventDirectoryClosure(
@@ -208,19 +110,19 @@ export function verifyAuthorityAuditEvents(
     headRecordDigest: scan.headRecordDigest,
     events,
   });
-}
+};
 
-export function showAuthorityAuditTask(
-  scope: AuthorityAuditLedgerScope,
-  requestedTaskId: string,
-): AuthorityAuditVerification {
+export const showAuthorityAuditTask: ShowAuthorityAuditTask = (
+  scope,
+  requestedTaskId,
+) => {
   const taskId = assertSubject(requestedTaskId, 'task ID');
   const verified = verifyAuthorityAuditEvents(scope);
   return deepFreeze({
     ...verified,
     events: verified.events.filter((entry) => entry.event.taskId === taskId),
   });
-}
+};
 
 export function canonicalAuthorityAuditEvent(
   event: AuthorityAuditEvent,
@@ -751,3 +653,41 @@ function deepFreeze<T>(value: T): T {
   }
   return value;
 }
+
+import {
+  type AuthorityAuditActor,
+  type AuthorityAuditCommand,
+  type AuthorityAuditProviderInvocation,
+  type AuthorityAuditExternalEffect,
+  type AuthorityAuditEventInput,
+  type AuthorityAuditEvent,
+  type AuthorityAuditRecordedEvent,
+  type AuthorityAuditServiceHooks,
+} from '../../modules/authority/authority-audit-contract.ts';
+export {
+  type AuthorityAuditActor,
+  type AuthorityAuditCommand,
+  type AuthorityAuditProviderInvocation,
+  type AuthorityAuditExternalEffect,
+  type AuthorityAuditEventInput,
+  type AuthorityAuditEvent,
+  type AuthorityAuditRecordedEvent,
+  type AuthorityAuditServiceHooks,
+} from '../../modules/authority/authority-audit-contract.ts';
+
+import {
+  type AuthorityAuditEventType,
+  type AuthorityAuditLedgerEntry,
+  type AuthorityAuditLedgerScope,
+  type AuthorityAuditProfile,
+  type AuthorityAuditResult,
+  type Sha256Digest,
+} from '../../modules/authority/authority-audit-contract.ts';
+
+import type { AuthorityAuditVerification } from '../../modules/authority/authority-audit-contract.ts';
+export type { AuthorityAuditVerification } from '../../modules/authority/authority-audit-contract.ts';
+
+import type {
+  ShowAuthorityAuditTask,
+  VerifyAuthorityAuditEvents,
+} from '../../modules/authority/authority-audit-contract.ts';

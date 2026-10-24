@@ -20,20 +20,20 @@ import {
   type ProviderInvocationRequest,
   recreateProviderInvocationRequest,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   MAX_HUMAN_RESOLUTION_BYTES,
   readPrivateBuffer,
   readPrivateFile,
   walkPrivateDirectory,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   hasExactKeys,
   isDigest,
   isRecord,
   isTimestamp,
   sha256,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 import {
   HOST_WRAPPER_DIRECTORIES,
   digestHostWrapperRuntimeEntries,

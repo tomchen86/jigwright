@@ -1,24 +1,21 @@
+import { productionChangeContract } from '../../src/composition-root/change-routing-observation-production.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
 import { canonicalJson } from '../../src/foundation/canonical-json/canonical-json.ts';
-import {
-  commitSession,
-  finalizeTask,
-} from '../../src/application/finalize/lifecycle.ts';
+import { commitSession } from '../../src/runtime/finalization/commit.ts';
+import { finalizeTask } from './session-lifecycle-host.ts';
 import { startSession } from '../../src/application/execute-task/session.ts';
 import {
   beginTaskDiffReview,
   reconcileTaskDiffReview,
-} from '../../src/application/finalize/task-diff-review-lifecycle.ts';
+} from '../../src/composition-root/task-diff-review-production.ts';
 import { runProviderWorker } from '../../src/entrypoints/worker/provider-worker.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../../src/modules/assurance/task-diff-review.ts';
-import {
-  taskDiffReviewProviderSubmission,
-  type TaskDiffReviewSubmission,
-} from '../../src/modules/assurance/task-diff-review-artifact.ts';
+import { taskDiffReviewProviderSubmission } from '../../src/modules/assurance/task-diff-review-artifact.ts';
+import type { TaskDiffReviewSubmission } from '../../src/modules/assurance/task-diff-review-artifact-record.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../../src/runtime/provider-execution/provider-runner.ts';
 import {
   builtInProviderDefinitionSnapshotForTest,
@@ -40,7 +37,12 @@ export function commitCurrentFixtureTask(
   const changeId = options.changeId ?? 'demo-change';
   const taskId = options.taskId ?? '1.1';
   const implementationPath = options.implementationPath ?? 'src/feature.ts';
-  const session = startSession(repository, changeId, taskId);
+  const session = startSession(
+    productionChangeContract,
+    repository,
+    changeId,
+    taskId,
+  );
   const target = path.join(repository, implementationPath);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   const sourceRevision = git(repository, [
@@ -64,6 +66,7 @@ export function commitCurrentFixtureTask(
   );
   finalizeTask(repository, session.sessionId);
   return commitSession(
+    productionChangeContract,
     repository,
     session.sessionId,
     options.message ?? 'Complete demo execution',

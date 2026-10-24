@@ -11,33 +11,35 @@ import {
   startPropose,
   createPlanningContributionEnvelope,
   resumePropose,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import assert from 'node:assert/strict';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import {
   authorizeGrantedOrdinaryRole,
-  scheduleOrdinaryRole,
   admitRoleResult,
-} from '../src/modules/provider-orchestration/role-scheduler.ts';
-import type { RoleParticipant } from '../src/modules/provider-orchestration/role-scheduler.ts';
+} from '../src/composition-root/role-admission-production.ts';
+import { scheduleOrdinaryRole } from '../src/modules/provider-orchestration/role-assignment.ts';
+import type { RoleParticipant } from '../src/modules/provider-orchestration/role-assignment.ts';
 import {
   DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE,
+  COLLABORATION_GRANT_RETAINED_OBLIGATIONS,
+} from '../src/modules/authority/collaboration-grant-codec.ts';
+import {
   canonicalDirectHumanReviewPayload,
   canonicalDirectHumanReviewAttestation,
   parseDirectHumanReviewAttestation,
-  createDirectHumanReviewAttestation,
-  COLLABORATION_GRANT_AUTHORIZED_EFFECT,
   directHumanReviewAttestationDigest,
   assertUniqueCollaborationGrantUses,
-  COLLABORATION_GRANT_RETAINED_OBLIGATIONS,
-} from '../src/modules/authority/collaboration-grant.ts';
+} from '../src/runtime/grants/grant-services.ts';
+import { createDirectHumanReviewAttestation } from '../src/composition-root/collaboration-grant-issuance-production.ts';
+import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../src/modules/authority/collaboration-grant-codec.ts';
+import { consumeCollaborationGrant } from '../src/runtime/storage-journal/collaboration-grant-consumption.ts';
 import {
-  consumeCollaborationGrant,
   validateCollaborationGrantUseProjection,
-  inspectCollaborationGrants,
   validateCollaborationGrantUseSet,
-} from '../src/runtime/storage-journal/collaboration-grant-store.ts';
+} from '../src/runtime/grants/grant-services.ts';
+import { inspectCollaborationGrants } from '../src/runtime/storage-journal/collaboration-grant-records.ts';
 import { assertUniqueGrantUseClaimsV1 } from '@jigwright/grants/grant-lifecycle';
 import {
   collaborationFixture,

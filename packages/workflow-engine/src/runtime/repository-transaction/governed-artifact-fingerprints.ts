@@ -18,7 +18,7 @@ import {
   updateFramed,
   updateFramedFile,
 } from './git-projection-files.ts';
-import { type GovernedRuntimeInput } from './governed-provider-projection.ts';
+import type { GovernedRuntimeInput } from './governed-provider-projection.ts';
 
 export function digestPlanningArtifactsProjection(
   repositoryRoot: string,

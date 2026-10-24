@@ -5,29 +5,29 @@
  * - Retries retain the root semantic subject and exact predecessor invocation chain.
  * - Attempt selection and retry schema checks preserve existing rejection and replay order.
  */
-import {
-  type InvestigationRuntimePaths,
-  assertInvocationId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
+import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
 import {
   readProviderInvocation,
   readProviderRetryReservation,
   providerInvocationExists,
   readProviderInvocationEvidence,
   providerInvocationManifestDigest,
-  type ProviderRetryReservationV2,
-  type ProviderRetryReservationV3,
   readProviderInvocationRequest,
 } from './provider-invocation-store.ts';
 import type {
+  ProviderRetryReservationV2,
+  ProviderRetryReservationV3,
+} from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
+import type {
   TaskStrategyImplementationReservation,
   TaskStrategyImplementationProviderAttempt,
-} from './task-strategy-provider-record-contract.ts';
+} from '../../modules/assurance/task-strategy-implementation-record.ts';
 import {
   stateCorrupt,
   deepFreeze,
   sha256,
-} from './task-strategy-provider-store-values.ts';
+} from '../../modules/assurance/task-strategy-implementation-values.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   resolveTaskStrategyImplementationInvocationOwner,
@@ -98,26 +98,10 @@ export function readCurrentTaskStrategyImplementationProviderAttempt(
   }
 }
 
-export function taskStrategyImplementationReservationForAttempt(
-  attempt: TaskStrategyImplementationProviderAttempt,
-): TaskStrategyImplementationReservation {
-  return deepFreeze({
-    ...attempt.root,
-    assignment: attempt.assignment,
-    request: attempt.request,
-    authorizationNodeId: attempt.authorizationNodeId,
-    reservationNodeId: attempt.reservationNodeId,
-    createdAt: attempt.createdAt,
-  });
-}
-
-export function taskStrategyImplementationProviderAttemptReservationDigest(
-  attempt: TaskStrategyImplementationProviderAttempt,
-): string {
-  return attempt.retryReservation === null
-    ? attempt.root.recordDigest
-    : sha256(canonicalJson(attempt.retryReservation));
-}
+export {
+  taskStrategyImplementationReservationForAttempt,
+  taskStrategyImplementationProviderAttemptReservationDigest,
+} from '../../modules/assurance/task-strategy-implementation-attempt.ts';
 
 function rootProviderAttempt(
   root: TaskStrategyImplementationReservation,

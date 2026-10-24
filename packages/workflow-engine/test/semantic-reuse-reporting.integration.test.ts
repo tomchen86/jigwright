@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 

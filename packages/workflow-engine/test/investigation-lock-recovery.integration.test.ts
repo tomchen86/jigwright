@@ -1,3 +1,14 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -15,22 +26,18 @@ import { discoverRepository } from '../src/runtime/repository-transaction/git.ts
 import {
   publishProviderResultToInvestigation,
   resumeInvestigationSession,
-} from '../src/adapters/planning/investigation/investigation-session.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import {
-  readHumanResolutionJournal,
-  withHumanResolutionGrantExecution,
-} from '../src/runtime/storage-journal/investigation-session-store.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+} from '../src/runtime/investigation-lifecycle/investigation-session.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
+import { readHumanResolutionJournal } from '../src/runtime/lifecycle-ledgers/human-resolution-journal.ts';
+import { withHumanResolutionGrantExecution } from '../src/runtime/storage-journal/human-resolution-grant-store.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   withChangeTransitionAuthority,
   withHumanResolutionTransitionAuthority,
   withInvestigationTransitionAuthority,
 } from '../src/runtime/session-workspace/planning-lock.ts';
-import {
-  abortSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
+import { abortSession } from '../src/composition-root/task-session-production.ts';
 import {
   createFixtureRepository,
   git,
@@ -49,7 +56,7 @@ import {
   FIRST_INSTANT,
   SESSION_STORE_MODULE_URL,
   PLANNING_LOCK_MODULE_URL,
-  INVESTIGATION_STORE_MODULE_URL,
+  HUMAN_RESOLUTION_GRANT_STORE_MODULE_URL,
   EVIDENCE_STORE_MODULE_URL,
   FILESYSTEM_SAFETY_MODULE_URL,
   PATHS_MODULE_URL,
@@ -69,7 +76,12 @@ test('an active change does not hold investigation, human-resolution, plan, or a
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const active = startSession(repository, 'demo-change', '1.1');
+    const active = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const discovered = discoverRepository(repository);
     const runtime = workflowRuntimePaths(
       discovered.gitCommonDirectory,
@@ -113,7 +125,12 @@ test('every transition entrance remains fail-closed for the active change', () =
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const active = startSession(repository, 'demo-change', '1.1');
+    const active = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const discovered = discoverRepository(repository);
     const runtime = workflowRuntimePaths(
       discovered.gitCommonDirectory,
@@ -463,7 +480,7 @@ test('lock publishers recover before-link and post-link process crashes', () => 
           const { investigationRuntimePaths } =
             await import(${JSON.stringify(PATHS_MODULE_URL)});
           const { withHumanResolutionGrantExecution } =
-            await import(${JSON.stringify(INVESTIGATION_STORE_MODULE_URL)});
+            await import(${JSON.stringify(HUMAN_RESOLUTION_GRANT_STORE_MODULE_URL)});
           const paths = investigationRuntimePaths(
             ${JSON.stringify(repositoryState.gitCommonDirectory)},
             'workflow-engine',
@@ -760,7 +777,10 @@ test('managed task start recovers its shared change lock crash windows', () => {
         `
           const { startSession } =
             await import(${JSON.stringify(SESSION_MODULE_URL)});
+          const { productionChangeContract } =
+            await import(${JSON.stringify(new URL('../src/composition-root/change-routing-observation-production.ts', import.meta.url).href)});
           startSession(
+            productionChangeContract,
             ${JSON.stringify(repository)},
             'demo-change',
             '1.1',
@@ -775,7 +795,12 @@ test('managed task start recovers its shared change lock crash windows', () => {
       if (phase === 'write') {
         assert.equal(fs.existsSync(lockPath), false);
       }
-      const started = startSession(repository, 'demo-change', '1.1');
+      const started = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
       assert.equal(started.changeId, 'demo-change');
       assert.equal(fs.lstatSync(lockPath).nlink, 1);
       if (temporary !== null) {
@@ -798,7 +823,12 @@ test('managed task start reclaims dead locks bound to terminal sessions', () => 
       git(repository, ['checkout', '-b', 'work/demo-change']);
       writeReadyV3ExemptChange(repository);
       commitPlanningTransition(repository, 'demo-change');
-      const started = startSession(repository, 'demo-change', '1.1');
+      const started = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
       const repositoryState = discoverRepository(repository);
       const runtime = workflowRuntimePaths(
         repositoryState.gitCommonDirectory,
@@ -845,7 +875,12 @@ test('managed task start reclaims dead locks bound to terminal sessions', () => 
         'utf8',
       );
 
-      const successor = startSession(repository, 'demo-change', '1.1');
+      const successor = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
       assert.notEqual(successor.sessionId, started.sessionId, state);
       assert.equal(successor.state, 'active', state);
       const successorMarker = fs.readFileSync(lockPath, 'utf8');
@@ -863,7 +898,12 @@ test('managed session locks reject unversioned markers without releasing them', 
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const started = startSession(repository, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const repositoryState = discoverRepository(repository);
     const runtime = workflowRuntimePaths(
       repositoryState.gitCommonDirectory,
@@ -911,7 +951,12 @@ test('managed lock release claim fences a concurrent successor start', () => {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const started = startSession(repository, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const repositoryState = discoverRepository(repository);
     const runtime = workflowRuntimePaths(
       repositoryState.gitCommonDirectory,
@@ -956,6 +1001,8 @@ test('managed lock release claim fences a concurrent successor start', () => {
           const fs = (await import('node:fs')).default;
           const { startSession } =
             await import(${JSON.stringify(SESSION_MODULE_URL)});
+          const { productionChangeContract } =
+            await import(${JSON.stringify(new URL('../src/composition-root/change-routing-observation-production.ts', import.meta.url).href)});
           const { releaseOwnedLock } =
             await import(${JSON.stringify(SESSION_STORE_MODULE_URL)});
           const originalRead = fs.readFileSync.bind(fs);
@@ -967,6 +1014,7 @@ test('managed lock release claim fences a concurrent successor start', () => {
               interleaved = true;
               try {
                 startSession(
+                  productionChangeContract,
                   ${JSON.stringify(repository)},
                   'demo-change',
                   '1.1',
@@ -994,7 +1042,12 @@ test('managed lock release claim fences a concurrent successor start', () => {
     assert.equal(child.stdout, 'ACTIVE_SESSION_CONFLICT');
     assert.equal(fs.existsSync(lockPath), false);
 
-    const successor = startSession(repository, 'demo-change', '1.1');
+    const successor = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     assert.notEqual(successor.sessionId, started.sessionId);
     assert.equal(fs.existsSync(lockPath), true);
   } finally {
@@ -1008,7 +1061,12 @@ test('managed lock release treats a winning reclaimer as already released', () =
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
-    const started = startSession(repository, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const repositoryState = discoverRepository(repository);
     const runtime = workflowRuntimePaths(
       repositoryState.gitCommonDirectory,

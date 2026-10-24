@@ -1,73 +1,72 @@
-/**
- * Checks task strategy authority and sealed evidence before GREEN
- * execution.
- *
- * Invariants:
- * - TDD GREEN checks require exact engine-sealed RED evidence.
- */
+import type { TaskSessionReference } from '@jigwright/core/workflow-identifiers';
+import type { ValidatedChangeContract } from './validated-change-contract.ts';
+/** Pure task-strategy evidence predicates. Repository observations are supplied at their original operation boundaries. */
 import crypto from 'node:crypto';
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
+import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import { matchesAllowedPath } from '../../foundation/repository-path/repository-path.ts';
 import type {
   CrossAgentTddExecution,
   TddSingleAgentExecution,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
-import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { previewExactStaging } from '../../runtime/repository-transaction/git-transitions.ts';
-import { runGit } from '../../runtime/repository-transaction/git.ts';
-import { investigationRuntimePaths } from '@jigwright/core/runtime-path-kernel';
-import { matchesAllowedPath } from '../../runtime/session-workspace/paths.ts';
-import { resolveCurrentTaskStrategyCorrection } from '../../application/execute-task/task-strategy-correction.ts';
-import { readTaskStrategyGreenFailureRecord } from '../../runtime/storage-journal/task-strategy-correction-store.ts';
-import {
-  readTaskStrategyPatchCurrentBinding,
-  readTaskStrategyPatchImportReceipt,
-  readTaskStrategyPatchRecord,
-  readTaskStrategyPatchReservation,
-} from '../../runtime/storage-journal/task-strategy-patch-store.ts';
-import {
-  readTaskStrategyTransaction,
-  type TaskStrategyFrozenFile,
-} from '../../runtime/storage-journal/task-strategy-store.ts';
-import {
-  createTaskStrategyCorrectionSubject,
-  createTaskStrategyImplementationSubject,
-} from '../provider-orchestration/task-strategy-provider-contract.ts';
-import {
-  readTaskStrategyCallerImplementationBinding,
-  readTaskStrategyImplementationResultBinding,
-} from '../../runtime/storage-journal/task-strategy-provider-store.ts';
-import { assertTaskMechanicalTransformationEvidence } from '../../application/execute-task/task-mechanical-transform.ts';
-import type { SessionInspection } from '../../application/finalize/verification.ts';
-
-/**
- * Shared check/finalize predicate for strategy-specific execution evidence.
- * It does not interpret review findings or close challenges; TaskDiff Final
- * Assurance remains the only challenge-closure authority.
- */
-export function assertTaskStrategyExecutionGate(
-  inspection: SessionInspection,
-  _environment: NodeJS.ProcessEnv,
-): void {
-  const task = inspection.contract.execution?.tasks[inspection.session.taskId];
-  if (task?.strategy === 'mechanical-transform') {
-    assertTaskMechanicalTransformationEvidence(inspection);
-    return;
-  }
-  if (
-    task?.strategy !== 'cross-agent-tdd' &&
-    task?.strategy !== 'tdd-single-agent'
-  ) {
-    return;
-  }
-  const runtime = investigationRuntimePaths(
-    inspection.git.gitCommonDirectory,
-    inspection.contract.config.runtimeDirectory,
-  );
-  const transaction = readTaskStrategyTransaction(
-    runtime,
-    inspection.session.sessionId,
-  );
+} from '../planning-provider/planning-artifact-types.ts';
+import type {
+  TaskStrategyTransaction,
+  TaskStrategyFrozenFile,
+  TaskStrategyPatchRecord,
+  TaskStrategyPatchImportReceipt,
+  TaskStrategyPatchReservation,
+  TaskStrategyPatchCurrentBinding,
+  TaskStrategyImplementationResultBinding,
+  TaskStrategyCallerImplementationBinding,
+} from './task-strategy-evidence.ts';
+import type { TaskStrategyGreenFailureRecord } from '../provider-orchestration/task-strategy-correction-record.ts';
+import type {
+  CheckEvidence,
+  ObservedCheckFailure,
+} from '../../foundation/check-evidence/check-evidence.ts';
+export type TaskStrategyGateTask =
+  CrossAgentTddExecution | TddSingleAgentExecution;
+export type TaskStrategyGateIdentity = {
+  session: Omit<TaskSessionReference, 'baseline'> & {
+    baseline: Readonly<TaskSessionReference['baseline']>;
+  };
+};
+export type TaskStrategyPatchEvidence = {
+  binding: TaskStrategyPatchCurrentBinding | null;
+  record: TaskStrategyPatchRecord | null;
+  receipt: TaskStrategyPatchImportReceipt | null;
+  reservation: TaskStrategyPatchReservation | null;
+};
+export type TaskStrategyImplementationAuthorityEvidence = {
+  implementationResult: TaskStrategyImplementationResultBinding | null;
+  callerImplementationResult: TaskStrategyCallerImplementationBinding | null;
+};
+export type TaskStrategyGateObservations = {
+  readTransaction(): TaskStrategyTransaction | null;
+  previewTree(
+    baselineHead: string,
+    changedPaths: readonly string[],
+  ): { tree: string };
+  readFrozenFiles(
+    tree: string,
+    paths: readonly string[],
+  ): TaskStrategyFrozenFile[];
+  readPatchEvidence(
+    sourceTree: string,
+    patchDigest: string,
+  ): TaskStrategyPatchEvidence;
+  readCorrectionFailure(
+    sourceTree: string,
+  ): TaskStrategyGreenFailureRecord | null;
+  readImplementationAuthority(
+    subjectDigest: string,
+  ): TaskStrategyImplementationAuthorityEvidence;
+};
+export function assertTaskStrategyRedTransactionCurrent(
+  inspection: TaskStrategyGateIdentity,
+  task: TaskStrategyGateTask,
+  transaction: TaskStrategyTransaction | null,
+): asserts transaction is TaskStrategyTransaction {
   if (transaction === null) {
     throw workflowError(
       'TASK_STRATEGY_RED_REQUIRED',
@@ -89,46 +88,14 @@ export function assertTaskStrategyExecutionGate(
   ) {
     throw redStale();
   }
-  const preview = previewExactStaging(
-    inspection.git.repositoryRoot,
-    inspection.session.baseline.head,
-    [...inspection.changedPaths],
-  );
-  const currentRedPaths = classifyCurrentRedPaths(
-    inspection.changedPaths,
-    task,
-  );
-  if (
-    canonicalJson(currentRedPaths.testPaths) !==
-      canonicalJson(transaction.red.testPaths) ||
-    canonicalJson(currentRedPaths.fixturePaths) !==
-      canonicalJson(transaction.red.fixturePaths) ||
-    canonicalJson(
-      readFrozenFiles(
-        inspection.git.repositoryRoot,
-        preview.tree,
-        transaction.red.files.map(({ path }) => path),
-      ),
-    ) !== canonicalJson(transaction.red.files)
-  ) {
-    throw redStale();
-  }
-  const initialImplementationSubject = createTaskStrategyImplementationSubject({
-    sessionId: transaction.sessionId,
-    changeId: transaction.changeId,
-    taskId: transaction.taskId,
-    strategy: transaction.strategy,
-    transactionDigest: transaction.recordDigest,
-    taskContractDigest: transaction.taskContractDigest,
-    sourceTree: transaction.red.candidateTree,
-    failureFingerprint: transaction.red.failureFingerprint,
-    redEvidenceNodeId: transaction.red.evidenceNodeId,
-    redEvidenceResultDigest: transaction.red.evidenceResultDigest,
-    testPaths: transaction.red.testPaths,
-    fixturePaths: transaction.red.fixturePaths,
-    frozenFiles: transaction.red.files,
-  });
-  const correction = resolveCurrentTaskStrategyCorrection(inspection);
+}
+export function assertTaskStrategyCorrectionCurrent(
+  transaction: TaskStrategyTransaction,
+  correction: {
+    transaction: { recordDigest: string };
+    failure: TaskStrategyGreenFailureRecord | null;
+  },
+): void {
   if (correction.transaction.recordDigest !== transaction.recordDigest) {
     throw redStale();
   }
@@ -142,7 +109,10 @@ export function assertTaskStrategyExecutionGate(
       },
     );
   }
-  const head = correction.head;
+}
+export function requireTaskStrategyPatchHead<T>(
+  head: T | null,
+): asserts head is T {
   if (head === null) {
     throw workflowError(
       'TASK_STRATEGY_PATCH_REQUIRED',
@@ -154,52 +124,23 @@ export function assertTaskStrategyExecutionGate(
       },
     );
   }
-  const sourceTree = head.record.sourceTree;
-  const binding = readTaskStrategyPatchCurrentBinding(
-    runtime,
-    inspection.session.sessionId,
-    sourceTree,
-  );
-  const record = readTaskStrategyPatchRecord(
-    runtime,
-    inspection.session.sessionId,
-    head.record.patchDigest,
-    sourceTree,
-  );
-  const receipt = readTaskStrategyPatchImportReceipt(
-    runtime,
-    inspection.session.sessionId,
-    head.record.patchDigest,
-    sourceTree,
-  );
-  const reservation = readTaskStrategyPatchReservation(
-    runtime,
-    inspection.session.sessionId,
-    sourceTree,
-  );
-  const implementationSubject =
-    correction.completedCorrectionRounds === 0
-      ? initialImplementationSubject
-      : createTaskStrategyCorrectionSubject({
-          subject: initialImplementationSubject,
-          round: correction.completedCorrectionRounds,
-          greenFailureRecord: requireCorrectionFailureRecord(
-            runtime,
-            inspection.session.sessionId,
-            sourceTree,
-          ),
-        });
-  const implementationResult = readTaskStrategyImplementationResultBinding(
-    runtime,
-    inspection.session.sessionId,
-    implementationSubject.subjectDigest,
-  );
-  const callerImplementationResult =
-    readTaskStrategyCallerImplementationBinding(
-      runtime,
-      inspection.session.sessionId,
-      implementationSubject.subjectDigest,
-    );
+}
+export function assertCurrentTaskStrategyPatch(
+  inspection: TaskStrategyGateIdentity,
+  task: TaskStrategyGateTask,
+  transaction: TaskStrategyTransaction,
+  preview: { tree: string },
+  head: {
+    binding: TaskStrategyPatchCurrentBinding;
+    record: TaskStrategyPatchRecord;
+    receipt: TaskStrategyPatchImportReceipt;
+  },
+  sourceTree: string,
+  evidence: TaskStrategyPatchEvidence,
+  authority: TaskStrategyImplementationAuthorityEvidence,
+): void {
+  const { binding, record, receipt, reservation } = evidence;
+  const { implementationResult, callerImplementationResult } = authority;
   const {
     sameProviderDegradationCurrent,
     ordinarySessionIndependenceCurrent,
@@ -256,7 +197,7 @@ export function assertTaskStrategyExecutionGate(
   }
 }
 
-function classifyCurrentRedPaths(
+export function classifyCurrentRedPaths(
   changedPaths: readonly string[],
   task: CrossAgentTddExecution | TddSingleAgentExecution,
 ): { testPaths: string[]; fixturePaths: string[] } {
@@ -279,76 +220,22 @@ function classifyCurrentRedPaths(
   }
   return { testPaths: testPaths.sort(), fixturePaths: fixturePaths.sort() };
 }
-
-function readFrozenFiles(
-  repositoryRoot: string,
-  tree: string,
-  paths: readonly string[],
-): TaskStrategyFrozenFile[] {
-  return paths.map((candidatePath) => {
-    const output = runGit(repositoryRoot, [
-      'ls-tree',
-      '-z',
-      tree,
-      '--',
-      `:(literal)${candidatePath}`,
-    ]);
-    const match =
-      /^(100644|100755) blob ([0-9a-f]{40}|[0-9a-f]{64})\t([^\0]+)\0$/.exec(
-        output,
-      );
-    if (!match || match[3] !== candidatePath) throw redStale();
-    return {
-      path: candidatePath,
-      mode: match[1] as TaskStrategyFrozenFile['mode'],
-      objectId: match[2]!,
-    };
-  });
-}
-
-function requireCorrectionFailureRecord(
-  runtime: ReturnType<typeof investigationRuntimePaths>,
-  sessionId: string,
-  candidateTree: string,
-) {
-  const failure = readTaskStrategyGreenFailureRecord(
-    runtime,
-    sessionId,
-    candidateTree,
-  );
-  if (failure === null) {
-    throw workflowError(
-      'TASK_STRATEGY_PATCH_STALE',
-      'The latest correction patch is not bound to its exact preceding engine-observed GREEN failure.',
-      ExitCode.staleState,
-    );
-  }
-  return failure;
-}
-
-function redStale() {
+export function redStale() {
   return workflowError(
     'TASK_STRATEGY_RED_STALE',
     'The sealed RED transaction no longer matches the exact task or frozen test and fixture bytes.',
     ExitCode.staleState,
   );
 }
-
-function sha256(value: string): string {
+export function sha256(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
-
-/** Match observed implementation identities to their ordinary or exact granted authority. */
-function currentImplementationAuthorityBindings(input: {
-  record: ReturnType<typeof readTaskStrategyPatchRecord>;
-  implementationResult: ReturnType<
-    typeof readTaskStrategyImplementationResultBinding
-  >;
-  callerImplementationResult: ReturnType<
-    typeof readTaskStrategyCallerImplementationBinding
-  >;
+export function currentImplementationAuthorityBindings(input: {
+  record: TaskStrategyPatchRecord | null;
+  implementationResult: TaskStrategyImplementationResultBinding | null;
+  callerImplementationResult: TaskStrategyCallerImplementationBinding | null;
   sourceTree: string;
-  transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>;
+  transaction: TaskStrategyTransaction;
 }): {
   sameProviderDegradationCurrent: boolean;
   ordinarySessionIndependenceCurrent: boolean;
@@ -433,3 +320,79 @@ function currentImplementationAuthorityBindings(input: {
     callerDegradationCurrent,
   };
 }
+export function assertCurrentRedPaths(
+  currentRedPaths: { testPaths: string[]; fixturePaths: string[] },
+  transaction: TaskStrategyTransaction,
+): void {
+  if (
+    canonicalJson(currentRedPaths.testPaths) !==
+      canonicalJson(transaction.red.testPaths) ||
+    canonicalJson(currentRedPaths.fixturePaths) !==
+      canonicalJson(transaction.red.fixturePaths)
+  )
+    throw redStale();
+}
+export function assertCurrentFrozenFiles(
+  files: readonly TaskStrategyFrozenFile[],
+  transaction: TaskStrategyTransaction,
+): void {
+  if (canonicalJson(files) !== canonicalJson(transaction.red.files))
+    throw redStale();
+}
+export function parseTaskStrategyFrozenFile(
+  candidatePath: string,
+  output: string,
+): TaskStrategyFrozenFile {
+  const match =
+    /^(100644|100755) blob ([0-9a-f]{40}|[0-9a-f]{64})\t([^\0]+)\0$/.exec(
+      output,
+    );
+  if (!match || match[3] !== candidatePath) throw redStale();
+  return {
+    path: candidatePath,
+    mode: match[1] as TaskStrategyFrozenFile['mode'],
+    objectId: match[2]!,
+  };
+}
+export function requireCorrectionFailureRecord(
+  failure: TaskStrategyGreenFailureRecord | null,
+): TaskStrategyGreenFailureRecord {
+  if (failure === null) {
+    throw workflowError(
+      'TASK_STRATEGY_PATCH_STALE',
+      'The latest correction patch is not bound to its exact preceding engine-observed GREEN failure.',
+      ExitCode.staleState,
+    );
+  }
+  return failure;
+}
+
+export type TaskStrategyGateInspection = TaskStrategyGateIdentity & {
+  contract: Pick<ValidatedChangeContract, 'execution'>;
+  changedPaths: readonly string[];
+};
+/**
+ * Finalize's port into task-strategy evidence: admission before required
+ * checks run, and the GREEN failure ledger entry written when one fails.
+ */
+export type TaskStrategyExecutionGate<Inspection> = Readonly<{
+  assertExecutionAdmitted(
+    inspection: Inspection,
+    environment: NodeJS.ProcessEnv,
+  ): void;
+  recordGreenFailure(
+    inspection: Inspection,
+    passedChecks: readonly CheckEvidence[],
+    failingCheck: ObservedCheckFailure,
+  ): TaskStrategyGreenFailureRecord | null;
+}>;
+export type TaskStrategyGateCorrectionEvidence = {
+  transaction: TaskStrategyTransaction;
+  head: {
+    binding: TaskStrategyPatchCurrentBinding;
+    record: TaskStrategyPatchRecord;
+    receipt: TaskStrategyPatchImportReceipt;
+  } | null;
+  failure: TaskStrategyGreenFailureRecord | null;
+  completedCorrectionRounds: number;
+};

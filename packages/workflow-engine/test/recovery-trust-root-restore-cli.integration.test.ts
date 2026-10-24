@@ -14,35 +14,39 @@ import {
 import { deriveAuthorityAuditRepositoryId } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import { verifyAuthorityAuditEvents } from '../src/runtime/storage-journal/authority-audit-service.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { runHarnessBootstrapCli } from '../src/harness-bootstrap.ts';
+import { runHarnessBootstrapCli } from '../bootstrap/harness-bootstrap-host.ts';
 import {
   recoveryAuthorityDescriptorDigest,
   recoveryAuthorityRepositoryIdentityDigest,
   type RecoveryAuthorityDescriptorPayloadV1,
   type RecoveryAuthorityExpectations,
-} from '../src/recovery-authority.ts';
+} from '../src/modules/authority/recovery-authority-contract.ts';
 import {
   RECOVERY_QUARANTINE_ENTER_NAMESPACE,
   RECOVERY_QUARANTINE_RELEASE_NAMESPACE,
   canonicalRecoveryQuarantineGrantPayload,
   createRecoveryQuarantineEnterGrantPayload,
   createRecoveryQuarantineReleaseGrantPayload,
-  readRecoveryQuarantineMarker,
   type RecoveryQuarantineAuditRecord,
   type RecoveryQuarantineGrantPayload,
-} from '../src/recovery-quarantine.ts';
+} from '../src/modules/authority/recovery-quarantine-contract.ts';
+import { readRecoveryQuarantineMarker } from '../src/runtime/recovery/recovery-quarantine.ts';
 import {
   RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE,
   RECOVERY_TRUST_ROOT_RESTORE_TTL_MS,
+} from '../src/modules/authority/recovery-trust-root-values.ts';
+import {
   canonicalRecoveryOperationalTrustRootRestoreStatement,
-  readRecoveryOperationalTrustRootActive,
-  recoveryOperationalTrustRootDigest,
   recoveryOperationalTrustRootRestoreGrantId,
-  type RecoveryOperationalTrustRoot,
-  type RecoveryOperationalTrustRootPayload,
   type RecoveryOperationalTrustRootRestoreAuditRecord,
   type RecoveryOperationalTrustRootRestoreGrantPayload,
-} from '../src/recovery-trust-root-restore.ts';
+} from '../src/modules/authority/recovery-trust-root-contract.ts';
+import { readRecoveryOperationalTrustRootActive } from '../src/runtime/recovery/recovery-trust-root-restore.ts';
+import {
+  recoveryOperationalTrustRootDigest,
+  type RecoveryOperationalTrustRoot,
+  type RecoveryOperationalTrustRootPayload,
+} from '../src/modules/authority/recovery-operational-trust-root.ts';
 import { verifySshSignatureWithPublicKey } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 

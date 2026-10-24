@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { builtInProviderAdapters } from '../src/composition-root/built-in-provider-adapter-production.ts';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -6,8 +7,8 @@ import test from 'node:test';
 import {
   previewExecutionJobRetry,
   requestExecutionJobRetry,
-} from '../src/application/control-plane/execution-job-retry.ts';
-import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+} from '../src/composition-root/execution-retry-production.ts';
+import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { projectProviderInvocationExecution } from '../src/modules/provider-orchestration/execution-core.ts';
 import { readExecutionJobState } from '../src/runtime/storage-journal/execution-store.ts';
@@ -17,21 +18,21 @@ import {
   publishProviderResultToInvestigation,
   resumeInvestigationSession,
   retryInvestigationProvider,
-} from '../src/adapters/planning/investigation/investigation-session.ts';
+} from '../src/composition-root/investigation-retry-production.ts';
 import {
   createProviderRetryEnvelope,
   getProposeStatus,
   resumePropose,
   startPropose,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import { createProviderRunnerForTesting } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import {
   inspectInvestigationQuarantineState,
   inspectInvestigationResolutionState,
-  readInvestigationSession,
-} from '../src/runtime/storage-journal/investigation-session-store.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+} from '../src/runtime/storage-journal/human-resolution-state.ts';
+import { readInvestigationSession } from '../src/runtime/storage-journal/investigation-session-records.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   claimProviderInvocation,
@@ -779,6 +780,7 @@ test('malformed native output creates bounded durable repair evidence and replac
         platform: 'darwin',
         runner(input) {
           return createProviderRunnerForTesting(
+            builtInProviderAdapters,
             malformedClaudeRunnerHost(malformed),
           ).run(input, { platform: 'darwin' });
         },

@@ -6,7 +6,6 @@
  * - Retry inputs bind the failed attempt, prior request, session revision, and baseline.
  * - Exact retries reuse the recorded replacement and preserve provider mandate observations.
  */
-
 import { defaultProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
@@ -15,27 +14,25 @@ import {
   workflowError,
   WorkflowError,
 } from '../../foundation/errors/errors.ts';
-import {
-  recordTaskMandateProviderInvocationUnderLifecycleLock,
-  withActiveTaskMandateBinding,
-  type TaskMandateBinding,
-} from '../../modules/authority/task-mandate.ts';
-import {
-  createProviderInvocationRequest,
-  type ProviderInvocationRequest,
-} from '../../modules/provider-orchestration/provider-contracts.ts';
-import { createRuntimeId, sha256 } from './propose-common.ts';
-import type { InvestigationStatus, ProposeRuntime } from './propose-runtime.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
+import { createProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
+import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
+import { createRuntimeId } from './propose-common.ts';
+import { sha256 } from '../../modules/proposal/propose-values.ts';
+import type { InvestigationStatus } from '../../modules/lifecycle/investigation-status.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
 import { getProposeStatus } from './propose-status.ts';
-import {
-  type ProposeOutput,
-  type ProposeProviderDispatcher,
-  type ProposeResumeOptions,
-  type ProviderRetryEnvelope,
-} from './propose-types.ts';
-
+import type {
+  ProposeOutput,
+  ProposeProviderDispatcher,
+  ProposeResumeOptions,
+  ProviderRetryEnvelope,
+} from '../../modules/proposal/propose-types.ts';
 export function createProviderRetryEnvelope(
-  services: Pick<ProposeRuntime, 'investigation' | 'provider' | 'workspace'>,
+  services: Pick<
+    ProposeRuntime,
+    'taskMandate' | 'investigation' | 'provider' | 'workspace'
+  >,
   cwd: string,
   output: ProposeOutput,
   acknowledgement: { acknowledgeProviderCost: true },
@@ -92,7 +89,10 @@ export function createProviderRetryEnvelope(
 }
 
 export function dispatchMandatedProviderInvocation(
-  services: Pick<ProposeRuntime, 'investigation' | 'provider' | 'workspace'>,
+  services: Pick<
+    ProposeRuntime,
+    'taskMandate' | 'investigation' | 'provider' | 'workspace'
+  >,
   cwd: string,
   invocationId: string,
   dispatch: (
@@ -134,7 +134,7 @@ export function dispatchMandatedProviderInvocation(
     );
     return;
   }
-  withActiveTaskMandateBinding(
+  services.taskMandate.withActiveTaskMandateBinding(
     cwd,
     ownerBinding.mandateTaskId,
     {},
@@ -174,7 +174,7 @@ export function dispatchMandatedProviderInvocation(
         context.runtime,
         invocationId,
       );
-      recordTaskMandateProviderInvocationUnderLifecycleLock(
+      services.taskMandate.recordTaskMandateProviderInvocationUnderLifecycleLock(
         cwd,
         activeBinding,
         {
@@ -193,7 +193,7 @@ export function dispatchMandatedProviderInvocation(
 }
 
 function durableProviderOwnerMandateBinding(
-  services: Pick<ProposeRuntime, 'investigation'>,
+  services: Pick<ProposeRuntime, 'taskMandate' | 'investigation'>,
   context: ReturnType<
     ProposeRuntime['workspace']['loadInvestigationRuntimeContext']
   >,
@@ -222,7 +222,10 @@ function durableProviderOwnerMandateBinding(
 }
 
 export function dispatchPreparedInvocation(
-  services: Pick<ProposeRuntime, 'investigation' | 'provider' | 'workspace'>,
+  services: Pick<
+    ProposeRuntime,
+    'taskMandate' | 'investigation' | 'provider' | 'workspace'
+  >,
   cwd: string,
   status: InvestigationStatus,
   dispatcher: ProposeProviderDispatcher | undefined,
@@ -346,7 +349,10 @@ export function resumeProviderRetry(
 }
 
 function readExactProviderRetryReplay(
-  services: Pick<ProposeRuntime, 'investigation' | 'provider' | 'workspace'>,
+  services: Pick<
+    ProposeRuntime,
+    'taskMandate' | 'investigation' | 'provider' | 'workspace'
+  >,
   cwd: string,
   input: ProviderRetryEnvelope,
   failed: ReturnType<ProposeRuntime['provider']['readProviderInvocation']>,
@@ -388,7 +394,10 @@ function readExactProviderRetryReplay(
 }
 
 function dispatchPreparedRetryInvocation(
-  services: Pick<ProposeRuntime, 'investigation' | 'provider' | 'workspace'>,
+  services: Pick<
+    ProposeRuntime,
+    'taskMandate' | 'investigation' | 'provider' | 'workspace'
+  >,
   cwd: string,
   status: InvestigationStatus,
   options: ProposeResumeOptions,
@@ -460,7 +469,10 @@ function providerRetryInputStale() {
 }
 
 export function dispatchPreparedPlanReview(
-  services: Pick<ProposeRuntime, 'investigation' | 'provider' | 'workspace'>,
+  services: Pick<
+    ProposeRuntime,
+    'taskMandate' | 'investigation' | 'provider' | 'workspace'
+  >,
   cwd: string,
   output: ProposeOutput,
   options: ProposeResumeOptions,

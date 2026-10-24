@@ -5,7 +5,7 @@ import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   claimProviderInvocationForWorker,
@@ -17,7 +17,7 @@ import {
   releaseProviderInvocationWorkerFence,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
 import {
   builtInProviderDefinitionSnapshotForTest,
   createFixtureRepository,

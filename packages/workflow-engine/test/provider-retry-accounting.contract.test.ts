@@ -8,22 +8,24 @@
  * Depends on: invocation storage modules, adapter policy, execution projection, and fixture repositories.
  * Failure modes: retries undercharge work, exceed budgets, or accept retired policy state.
  */
+import { readProviderRetryAccountingEvidence } from '../src/runtime/storage-journal/provider-retry-accounting-reader.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import type { ProviderRetryAccountingEvidence } from '../src/modules/provider-orchestration/provider-retry-accounting.ts';
 
 import {
   AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
   DEFAULT_AI_ADAPTER_RETRY_ACCOUNTING,
   loadAiAdapterPolicy,
-} from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+} from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { projectProviderInvocationExecution } from '../src/modules/provider-orchestration/execution-core.ts';
 import { readExecutionJobState } from '../src/runtime/storage-journal/execution-store.ts';
-import { preflightProviderRepairRetry } from '../src/runtime/provider-execution/provider-execution-governance.ts';
+import { preflightProviderRepairRetry } from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
-import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import {
   createProviderInvocationRequest,
   recreateProviderInvocationRequest,
@@ -43,8 +45,8 @@ import {
   readProviderExecutionPolicySnapshot,
   readProviderRetryReservation,
   storeProviderExecutionPolicySnapshot,
-  type BlindSurveyManifest,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import type { BlindSurveyManifest } from '../src/modules/investigation/manifest/blind-survey-manifest.ts';
 import { authorizeAutomaticProviderRetry } from '../src/modules/provider-orchestration/provider-retry-decision.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
@@ -107,7 +109,7 @@ test('provider policy and retry readers contain no V1 cleanup parsers', () => {
     .join('\n');
   const adapterPolicy = fs.readFileSync(
     new URL(
-      '../src/runtime/provider-execution/ai-adapter-policy.ts',
+      '../src/runtime/provider-policy/ai-adapter-policy.ts',
       import.meta.url,
     ),
     'utf8',
@@ -201,19 +203,22 @@ test('v4 policy snapshots conservative retry accounting and rebuilds one charge 
     let throwingParserCalls = 0;
     assert.throws(
       () =>
-        authorizeAutomaticProviderRetry(runtime, {
-          failed,
-          failedRequest: request,
-          replacementRequest,
-          replacementExecutionPolicy: policy,
-          dataAuthorizationPolicyPort: {
-            parseCurrentDocument() {
-              throwingParserCalls += 1;
-              throw new Error('fixture parser refusal');
+        authorizeAutomaticProviderRetry(
+          readProviderRetryAccountingEvidence(runtime, failed, request),
+          {
+            failed,
+            failedRequest: request,
+            replacementRequest,
+            replacementExecutionPolicy: policy,
+            dataAuthorizationPolicyPort: {
+              parseCurrentDocument() {
+                throwingParserCalls += 1;
+                throw new Error('fixture parser refusal');
+              },
             },
+            now: '2026-08-03T09:00:02.000Z',
           },
-          now: '2026-08-03T09:00:02.000Z',
-        }),
+        ),
       (error) => isWorkflowError(error, 'PROVIDER_RETRY_ACCOUNTING_STALE'),
     );
     assert.equal(throwingParserCalls, 1);
@@ -221,31 +226,160 @@ test('v4 policy snapshots conservative retry accounting and rebuilds one charge 
     let mismatchedParserCalls = 0;
     assert.throws(
       () =>
-        authorizeAutomaticProviderRetry(runtime, {
-          failed,
-          failedRequest: request,
-          replacementRequest,
-          replacementExecutionPolicy: policy,
-          dataAuthorizationPolicyPort: {
-            parseCurrentDocument() {
-              mismatchedParserCalls += 1;
-              return { ...policy, digest: '0'.repeat(64) };
+        authorizeAutomaticProviderRetry(
+          readProviderRetryAccountingEvidence(runtime, failed, request),
+          {
+            failed,
+            failedRequest: request,
+            replacementRequest,
+            replacementExecutionPolicy: policy,
+            dataAuthorizationPolicyPort: {
+              parseCurrentDocument() {
+                mismatchedParserCalls += 1;
+                return { ...policy, digest: '0'.repeat(64) };
+              },
             },
+            now: '2026-08-03T09:00:02.000Z',
           },
-          now: '2026-08-03T09:00:02.000Z',
-        }),
+        ),
       (error) => isWorkflowError(error, 'PROVIDER_RETRY_ACCOUNTING_STALE'),
     );
     assert.equal(mismatchedParserCalls, 1);
 
-    const authorization = authorizeAutomaticProviderRetry(runtime, {
+    const authorization = authorizeAutomaticProviderRetry(
+      readProviderRetryAccountingEvidence(runtime, failed, request),
+      {
+        failed,
+        failedRequest: request,
+        replacementRequest,
+        replacementExecutionPolicy: policy,
+        dataAuthorizationPolicyPort: AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
+        now: '2026-08-03T09:00:02.000Z',
+      },
+    );
+    const collected = readProviderRetryAccountingEvidence(
+      runtime,
+      failed,
+      request,
+    );
+    const pureInput = {
       failed,
       failedRequest: request,
       replacementRequest,
       replacementExecutionPolicy: policy,
       dataAuthorizationPolicyPort: AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
       now: '2026-08-03T09:00:02.000Z',
-    });
+    };
+    const originalOpen = fs.openSync;
+    fs.openSync = () => {
+      throw new Error('Pure retry decision attempted filesystem I/O.');
+    };
+    try {
+      assert.deepEqual(
+        authorizeAutomaticProviderRetry(collected, pureInput),
+        authorization,
+      );
+      assert.deepEqual(
+        authorizeAutomaticProviderRetry(collected, pureInput),
+        authorization,
+      );
+      assert.equal(
+        authorizeAutomaticProviderRetry(collected, {
+          ...pureInput,
+          now: CREATED_AT,
+        }).evaluatedAt,
+        failed.updatedAt,
+      );
+      assert.throws(
+        () =>
+          authorizeAutomaticProviderRetry(collected, {
+            ...pureInput,
+            now: undefined!,
+          }),
+        (error) => isWorkflowError(error, 'PROVIDER_RETRY_ACCOUNTING_STALE'),
+      );
+      const cases: Array<
+        [
+          string,
+          (
+            value: ProviderRetryAccountingEvidence,
+          ) => ProviderRetryAccountingEvidence,
+          string,
+        ]
+      > = [
+        [
+          'absent Job',
+          (value) => ({ ...value, state: null }),
+          'PROVIDER_RETRY_ACCOUNTING_REQUIRED',
+        ],
+        [
+          'incomplete history',
+          (value) => {
+            value.state!.invocationProjection.completeHistory = false;
+            return value;
+          },
+          'PROVIDER_RETRY_ACCOUNTING_REQUIRED',
+        ],
+        [
+          'missing accounting',
+          (value) => ({ ...value, invocations: [] }),
+          'PROVIDER_RETRY_ACCOUNTING_REQUIRED',
+        ],
+        [
+          'missing snapshot accounting',
+          (value) => ({
+            ...value,
+            invocations: [{ ...value.invocations[0]!, accounting: null }],
+          }),
+          'PROVIDER_RETRY_ACCOUNTING_REQUIRED',
+        ],
+        [
+          'stale invocation revision',
+          (value) => {
+            value.state!.invocationProjection.invocations[0]!.invocationRevision += 1;
+            return value;
+          },
+          'PROVIDER_RETRY_ACCOUNTING_STALE',
+        ],
+        [
+          'foreign invocation request',
+          (value) => {
+            value.invocations[0]!.request.invocationId = 'invocation-other';
+            return value;
+          },
+          'PROVIDER_RETRY_ACCOUNTING_STALE',
+        ],
+        [
+          'inconsistent attempt charge',
+          (value) => {
+            value.state!.attempts[0]!.providerTokens += 1;
+            return value;
+          },
+          'PROVIDER_RETRY_ACCOUNTING_STALE',
+        ],
+        [
+          'inconsistent Job total',
+          (value) => {
+            value.state!.job.providerTokens += 1;
+            return value;
+          },
+          'PROVIDER_RETRY_ACCOUNTING_STALE',
+        ],
+      ];
+      for (const [label, mutate, code] of cases) {
+        assert.throws(
+          () =>
+            authorizeAutomaticProviderRetry(
+              mutate(structuredClone(collected)),
+              pureInput,
+            ),
+          (error) => isWorkflowError(error, code),
+          label,
+        );
+      }
+    } finally {
+      fs.openSync = originalOpen;
+    }
     assert.equal(authorization.decision.automatic, true);
     assert.equal(authorization.sameFingerprintCount, 1);
     assert.equal(authorization.providerAttemptCount, 1);

@@ -1,48 +1,40 @@
-/**
- * Persists and validates review artifacts, reservations, and exact grant requirements.
- *
- * Invariants:
- * - Stored reviews replay their admitted role result and selected disposition.
- * - Reservations bind the subject, snapshots, request, grant, and retry lineage.
- * - Current requirement references advance only to the corresponding immutable evidence.
- */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   assertPlanReviewSubject,
-  type PlanReviewSubject,
-  type PlanReviewTargetSnapshot,
   readPlanReviewDispositionNode,
   readPlanReviewNode,
   readPlanReviewTargetSnapshotNode,
 } from '../../modules/assurance/plan-review.ts';
-import {
-  type ConsumedPlanReviewReplayPort,
-  type InvestigationFirstPlanningSubject,
-  replayCurrentPlanReviewRoleResult,
-} from '../../modules/assurance/planning-assurance-validator.ts';
-import {
-  PROPOSE_POLICY_DIGEST,
-  type ProviderInvocationRequest,
-} from '../../modules/provider-orchestration/provider-contracts.ts';
-import {
-  type AdmittedRoleResult,
-  assertAdmittedRoleResultRecord,
-  type ProviderRoleAssignment,
-  type RecordedRoleParticipant,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+import type { PlanReviewSubject } from '../../modules/assurance/plan-review-subject.ts';
+import type { PlanReviewTargetSnapshot } from '../../modules/assurance/plan-review-target-snapshot-record.ts';
+import type { InvestigationFirstPlanningSubject } from '../../modules/assurance/planning-assurance-validator.ts';
+import { replayCurrentPlanReviewRoleResult } from '../../modules/assurance/planning-assurance-validator.ts';
+import { PROPOSE_POLICY_DIGEST } from '../../modules/provider-orchestration/provider-contracts.ts';
+import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
+import type {
+  AdmittedRoleResult,
+  ConsumedRoleReplayPort,
+} from '../../modules/provider-orchestration/role-admission-contracts.ts';
+import type {
+  ProviderRoleAssignment,
+  RecordedRoleParticipant,
+} from '../../modules/provider-orchestration/role-assignment.ts';
 import {
   assertDurableCollaborationPlanReviewRequirement,
+  assertPlanReviewRetryDecisionBinding,
+} from './plan-review-contracts.ts';
+import type {
+  DurablePlanReviewGrantRequirementV3,
+  PlanReviewGrantRequirement,
+} from './plan-review-contracts.ts';
+import {
   assertDurablePlanReviewRoleTopology,
   assertDurableRoleContextSharingPlanReviewRequirement,
-  assertPlanReviewGrantAuthorization,
-  assertPlanReviewRetryDecisionBinding,
-  type DurablePlanReviewGrantRequirementV3,
-  type PlanReviewGrantRequirement,
-} from './plan-review-contracts.ts';
+} from './plan-review-role-topology.ts';
+import { assertPlanReviewGrantAuthorization } from './plan-review-grant-authorization.ts';
 import {
   DIGEST,
   hasExactKeys,
@@ -52,21 +44,18 @@ import {
   PLANNING_MATERIALIZATION_REF,
   planReviewRequestStale,
   sha256,
-} from './propose-common.ts';
+} from '../../modules/proposal/propose-values.ts';
 import { uniqueNodes } from './propose-evidence.ts';
+import type { EvidenceNode } from '@jigwright/core/evidence-node';
+import type { ProposeRuntime } from './propose-runtime.ts';
+import type { PlanReviewManifest } from '../../modules/assurance/provider-review-manifests.ts';
+import type { ProviderExecutionPolicySnapshotCurrent } from '../../modules/provider-orchestration/provider-execution-policy-snapshot.ts';
 import type {
-  EvidenceNode,
-  PlanReviewManifest,
-  ProposeRuntime,
-  ProviderExecutionPolicySnapshotCurrent,
-} from './propose-runtime.ts';
-import {
-  type PlanReviewReservation,
-  type PlanReviewRetryEnvelope,
-  type ProposeLifecycleStatus,
-} from './propose-types.ts';
-import { type RoleContextSharingPlanReviewRequirementV3 } from './role-context-sharing-plan-review.ts';
-
+  PlanReviewReservation,
+  PlanReviewRetryEnvelope,
+  ProposeLifecycleStatus,
+} from '../../modules/proposal/propose-types.ts';
+import type { RoleContextSharingPlanReviewRequirementV3 } from '../../modules/proposal/role-context-sharing-plan-review.ts';
 export function writeTrackedPlanReview(
   services: Pick<ProposeRuntime, 'workspace'>,
   repositoryRoot: string,
@@ -128,12 +117,15 @@ export function writeTrackedPlanReview(
 }
 
 export function readTrackedPlanReview(
-  services: Pick<ProposeRuntime, 'workspace'>,
+  services: Pick<
+    ProposeRuntime,
+    'workspace' | 'roleAdmission' | 'planningEvidence'
+  >,
   repositoryRoot: string,
   changeId: string,
   replay?: Readonly<{
     subject: PlanReviewSubject;
-    consumedPlanReviewReplay?: ConsumedPlanReviewReplayPort;
+    consumedPlanReviewReplay?: ConsumedRoleReplayPort;
   }>,
 ): {
   nodes: EvidenceNode[];
@@ -181,8 +173,9 @@ export function readTrackedPlanReview(
   try {
     roleResult =
       replay === undefined
-        ? assertAdmittedRoleResultRecord(roleResults[0])
+        ? services.roleAdmission.assertAdmittedRoleResultRecord(roleResults[0])
         : replayCurrentPlanReviewRoleResult(
+            services.planningEvidence,
             roleResults[0],
             {
               repositoryRoot,
@@ -340,7 +333,10 @@ export function readPlanReviewGrantRequirement(
 }
 
 export function readCurrentRoleContextSharingPlanReviewRequirement(
-  services: Pick<ProposeRuntime, 'evidence' | 'investigation' | 'workspace'>,
+  services: Pick<
+    ProposeRuntime,
+    'evidence' | 'investigation' | 'planningEvidence' | 'workspace'
+  >,
   cwd: string,
   requirementNodeId: string,
 ): Extract<PlanReviewGrantRequirement, { kind: 'role-context-sharing' }> {

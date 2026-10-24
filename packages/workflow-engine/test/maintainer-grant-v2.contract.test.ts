@@ -1,30 +1,32 @@
+import { preflightMaintainerGrantV2 } from '../bootstrap/maintainer-authority-production.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as maintainerGrant from '../src/modules/authority/maintainer-grant.ts';
+import * as maintainerGrant from '../src/modules/authority/maintainer-grant-contracts.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { sourceRepositoryRoot, isWorkflowError, git } from './fixture.ts';
 import * as maintainerGrantV2 from '../src/modules/authority/maintainer-grant-v2.ts';
 import {
-  issueMaintainerGrantV2,
   canonicalMaintainerGrantV2Payload,
   canonicalMaintainerGrantV2Envelope,
   parseMaintainerGrantV2Envelope,
   type MaintainerGrantV2Envelope,
-  preflightMaintainerGrantV2,
   MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
+} from '../src/modules/authority/maintainer-grant-v2-codec.ts';
+import {
+  issueMaintainerGrantV2,
   validateMaintainerGrantV2AuthorityBinding,
-} from '../src/modules/authority/maintainer-grant-v2.ts';
+} from '../bootstrap/maintainer-authority-production.ts';
 import {
   inspectMaintainerGrants,
   reserveMaintainerGrant,
   terminallyRevokeMaintainerReservation,
   maintainerGrantStorePaths,
 } from '../src/runtime/storage-journal/maintainer-store.ts';
-import { validateCiAuthorityCommit } from '../src/entrypoints/ci/ci-authority.ts';
+import { validateCiAuthorityCommit } from '../src/composition-root/ci-replay-production.ts';
 import { type MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
-import { startAuthoritySession } from '../src/application/control-plane/maintainer-session.ts';
+import { startAuthoritySession } from '../bootstrap/maintainer-authority-production.ts';
 import { parseMaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
 import { spawnSync } from 'node:child_process';
 import {
@@ -51,7 +53,7 @@ test('retired V1 Apply Grant exports are absent from the current authority surfa
   const authoritySource = fs.readFileSync(
     path.join(
       sourceRepositoryRoot,
-      'packages/workflow-engine/src/modules/authority/maintainer-grant.ts',
+      'packages/workflow-engine/src/modules/authority/maintainer-grant-contracts.ts',
     ),
     'utf8',
   );
@@ -79,7 +81,7 @@ test('current V2 authority has no post-cutoff discriminator or persisted-field f
     'packages/workflow-engine/src/application/control-plane/maintainer-approve.ts',
     'packages/workflow-engine/src/application/control-plane/maintainer-recovery.ts',
     'packages/workflow-engine/src/application/control-plane/maintainer-session.ts',
-    'packages/workflow-engine/src/entrypoints/ci/ci-authority.ts',
+    'packages/workflow-engine/src/runtime/repository-validation/commit-replay/ci-authority.ts',
   ]) {
     const source = fs.readFileSync(
       path.join(sourceRepositoryRoot, relativePath),
@@ -706,7 +708,7 @@ test('v2 preflight CLI exposes the manifest without signing or writing grant sta
   const repository = prepareCandidate();
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/cli.ts',
+    'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
   );
   try {
     const result = spawnSync(

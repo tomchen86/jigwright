@@ -3,30 +3,38 @@
  *
  * Invariants:
  * - Eligibility checks, catalog cursors, hooks, and transaction ordering stay exact.
- * - Public retention APIs and receipt exports remain compatible.
+ * - Runtime resolution stays lazy; receipt exports retain their original behavior.
  */
 
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { type AttemptRecord } from '../../modules/provider-orchestration/execution-core.ts';
-import {
-  type EvidenceRetentionRecord,
-  readDurableEvidence,
-} from '../../modules/authority/execution-governance.ts';
-import { providerRuntimeEvidenceId } from './provider-execution-governance.ts';
+import { type EvidenceRetentionRecord } from '../../modules/authority/execution-governance-retention.ts';
+import { readDurableEvidence } from '../storage-journal/execution-governance-evidence-store.ts';
+import { providerRuntimeEvidenceId } from '../storage-journal/provider-execution-governance.ts';
 import {
   WorkflowError,
   workflowError,
   ExitCode,
 } from '../../foundation/errors/errors.ts';
 import { listProviderInvocationLifecycleProjections } from '../storage-journal/provider-invocation-lifecycle.ts';
-import { privatePathExists } from '../storage-journal/investigation-private-files.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
-import {
-  type ProviderInvocationRecord,
-  readProviderInvocation,
-} from '../storage-journal/provider-invocation-store.ts';
+import { privatePathExists } from '../journal-primitives/investigation-private-files.ts';
+import type { InvestigationRuntimePaths } from '@jigwright/core/runtime-path-kernel';
+import type { SessionRuntimeLayoutV1 } from '@jigwright/core/session-runtime-layout-port';
+import { classifyProviderRetentionEligibility } from '../../modules/provider-orchestration/provider-retention.ts';
+import type {
+  ProviderRetentionDenyReason,
+  ProviderRetentionPassResult,
+  ProviderRetentionOptions,
+  ProviderRetentionHooks,
+  ProviderRetentionMetrics,
+} from '../../modules/provider-orchestration/provider-retention.ts';
+
+export type ProviderRetentionRuntimeResolver = (cwd: string) => {
+  runtime: InvestigationRuntimePaths;
+  lifecycleRuntime: SessionRuntimeLayoutV1;
+};
+import { readProviderInvocation } from '../storage-journal/provider-invocation-store.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   readProviderRetentionReceipt,
   providerRetentionReceiptPath,
@@ -50,7 +58,6 @@ import {
   humanPinResolver,
   readInvocationBinding,
   assertReceiptBinding,
-  classifyProviderRetentionEligibility,
   type InvocationBinding,
   decideCandidate,
 } from './provider-retention-observation.ts';
@@ -74,95 +81,6 @@ export {
   PROVIDER_RETENTION_MAX_TTL_DAYS,
   PROVIDER_RETENTION_MAX_LIMIT,
 } from './provider-retention-values.ts';
-export { classifyProviderRetentionEligibility } from './provider-retention-observation.ts';
-
-export type ProviderRetentionDenyReason =
-  | 'accepted-result-current'
-  | 'active-invocation'
-  | 'active-retention'
-  | 'already-pruned'
-  | 'current-attempt'
-  | 'consumed-repair-evidence-unproven'
-  | 'nothing-prunable'
-  | 'pinned'
-  | 'schema-currentness-unknown'
-  | 'schema-history-incomplete'
-  | 'ttl-not-expired'
-  | 'unsafe-artifact';
-
-export type ProviderRetentionPassResult = Readonly<{
-  schemaVersion: 1;
-  kind: 'provider-runtime-prune-pass';
-  policy: {
-    schemaVersion: 1;
-    ttlDays: number;
-    maxTtlDays: number;
-    cutoffAt: string;
-    limit: number;
-  };
-  examined: number;
-  recovered: string[];
-  pruned: Array<{
-    invocationId: string;
-    receiptId: string;
-    receiptPath: string;
-    artifactCount: number;
-    bytes: number;
-  }>;
-  deniedCount: number;
-  denied: Array<{
-    invocationId: string;
-    reason: ProviderRetentionDenyReason;
-  }>;
-  deniedTruncated: boolean;
-}>;
-
-export type ProviderRetentionOptions = Readonly<{
-  limit: number;
-  now?: string;
-  ttlDays?: number;
-}>;
-
-export type ProviderRetentionHooks = Readonly<{
-  afterArtifactStaged?: (count: number, invocationId: string) => void;
-  afterReceiptCompleted?: (invocationId: string) => void;
-}>;
-
-export type ProviderRetentionEligibilityInput = Readonly<{
-  invocationState: ProviderInvocationRecord['state'];
-  historyComplete: boolean;
-  attemptEpoch: number;
-  currentEpoch: number;
-  retention: AttemptRecord['retention'];
-  acceptedAttempt: boolean;
-  latestUnacceptedAttempt: boolean;
-  terminalAt: string;
-  cutoffAt: string;
-  /**
-   * A human pin recorded in the durable governance catalog. An Attempt's own
-   * retention is projected from its provider invocation and never carries a pin,
-   * so the catalog is the only place a maintainer's decision can be read from.
-   */
-  humanPinned?: boolean;
-}>;
-
-export type ProviderRetentionMetrics = Readonly<{
-  schemaVersion: 1;
-  kind: 'provider-retention-metrics';
-  measuredAt: string;
-  ttlDays: number;
-  rawEvidenceBytesByRetentionClass: Readonly<{
-    active: number;
-    debug: number;
-    pinned: number;
-  }>;
-  expiredPendingDeletion: Readonly<{
-    count: number;
-    bytes: number;
-  }>;
-  pinnedCount: number;
-  receiptCount: number;
-}>;
 
 /**
  * Derive storage metrics from the same strict invocation, Attempt, context,
@@ -170,6 +88,7 @@ export type ProviderRetentionMetrics = Readonly<{
  * unprovable lineage fails closed instead of reporting a reassuring estimate.
  */
 export function inspectProviderRetentionMetrics(
+  resolveRuntime: ProviderRetentionRuntimeResolver,
   cwd: string,
   options: { now?: string; ttlDays?: number } = {},
 ): ProviderRetentionMetrics {
@@ -178,7 +97,7 @@ export function inspectProviderRetentionMetrics(
   );
   const now = parseTimestamp(options.now ?? new Date().toISOString());
   const cutoffAt = new Date(now.getTime() - ttlDays * 86_400_000).toISOString();
-  const context = loadInvestigationRuntimeContext(cwd);
+  const context = resolveRuntime(cwd);
   return withRepositoryLifecycleOperation(
     context.lifecycleRuntime,
     (assertOwned) => {
@@ -387,6 +306,7 @@ export function assertProviderRuntimeEvidencePinnableUnderLifecycleLock(
  * current, epoch, and pin status is retained with an explicit deny reason.
  */
 export function pruneProviderRuntime(
+  resolveRuntime: ProviderRetentionRuntimeResolver,
   cwd: string,
   options: ProviderRetentionOptions,
   hooks: ProviderRetentionHooks = {},
@@ -397,7 +317,7 @@ export function pruneProviderRuntime(
   );
   const now = parseTimestamp(options.now ?? new Date().toISOString());
   const cutoffAt = new Date(now.getTime() - ttlDays * 86_400_000).toISOString();
-  const context = loadInvestigationRuntimeContext(cwd);
+  const context = resolveRuntime(cwd);
 
   return withRepositoryLifecycleOperation(
     context.lifecycleRuntime,

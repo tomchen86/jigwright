@@ -42,6 +42,9 @@ importers:
       '@jigwright/core':
         specifier: workspace:*
         version: link:../core
+      '@jigwright/repository-runtime':
+        specifier: workspace:*
+        version: link:../repository-runtime
     devDependencies:
       '@types/node':
         specifier: ^24.13.3
@@ -73,6 +76,16 @@ importers:
         specifier: ^24.13.3
         version: 24.13.3
 
+  packages/repository-runtime:
+    dependencies:
+      '@jigwright/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.3
+
   packages/workflow-engine:
     dependencies:
       '@jigwright/agent-runtime':
@@ -84,6 +97,9 @@ importers:
       '@jigwright/openspec-adapter':
         specifier: workspace:*
         version: link:../openspec-adapter
+      '@jigwright/repository-runtime':
+        specifier: workspace:*
+        version: link:../repository-runtime
     devDependencies:
       '@types/node':
         specifier: ^24.13.3

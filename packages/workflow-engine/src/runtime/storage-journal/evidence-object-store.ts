@@ -35,4 +35,4 @@ export {
   resolveTaskDiffReviewInvocationOwner,
   resolveTaskStrategyImplementationInvocationOwner,
 } from './evidence-task-invocation-ownership.ts';
-export { exactUnsafePathObservationDigest } from './evidence-unsafe-observation.ts';
+export { exactUnsafePathObservationDigest } from '../journal-primitives/evidence-unsafe-observation.ts';

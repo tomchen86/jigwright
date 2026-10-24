@@ -4,6 +4,8 @@ import test from 'node:test';
 import type { CentralGrantCompletedAuthorityRefV1 } from '@jigwright/core/central-grant-port';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import { listProviderIds } from '../src/modules/provider-orchestration/provider-registry.ts';
+import { PROVIDER_IDS } from '../src/modules/authority/role-independence-continuation-contracts.ts';
 import {
   assertRoleIndependenceContinuationObservation,
   assertRoleIndependenceContinuationParameters,
@@ -21,6 +23,14 @@ import {
 } from '../src/modules/authority/role-independence-continuation-grant.ts';
 import { createGrantParentBindingV1 } from '../src/modules/authority/grant-parent-binding.ts';
 import { grantSha256 } from '../src/modules/authority/grant-primitives.ts';
+
+test('the frozen digest ordering still covers every reviewed provider', () => {
+  assert.deepEqual(
+    [...PROVIDER_IDS].sort(),
+    [...listProviderIds()].sort(),
+    'PROVIDER_IDS keeps its own order for digest stability, but it must still cover the registry.',
+  );
+});
 
 test('strict parameters preserve every source-specific owner binding', () => {
   for (const owner of owners()) {

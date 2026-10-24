@@ -12,30 +12,38 @@ import {
   assemblePromptFromManifest,
   assessAttemptResultEligibility,
   buildContextManifest,
-  buildRepairContext,
-  canonicalExecutionBudgetGrantRequest,
-  canonicalExecutionBudgetGrantSigningBytes,
-  compactEpochTransitionReceipts,
-  consumeExecutionBudgetGrant,
-  consumeRepairBudget,
-  createExecutionBudgetGrantEnvelope,
-  createExecutionBudgetGrantRequest,
-  createRepairBudget,
-  DEFAULT_RETENTION_POLICY,
-  EXECUTION_BUDGET_GRANT_SIGNATURE_NAMESPACE,
-  inspectExecutionBudgetGrant,
-  markEpochEvidenceExpiring,
   parseContextManifest,
   parseEpochTransitionReceipt,
-  parseExecutionBudgetGrantRequest,
   performEpochRollover,
+  type EpochTransitionReceipt,
+} from '../src/modules/authority/execution-governance-context.ts';
+import {
+  buildRepairContext,
+  consumeRepairBudget,
+  createRepairBudget,
+} from '../src/modules/authority/execution-governance-repair.ts';
+import {
+  canonicalExecutionBudgetGrantRequest,
+  canonicalExecutionBudgetGrantSigningBytes,
+  createExecutionBudgetGrantEnvelope,
+  createExecutionBudgetGrantRequest,
+  EXECUTION_BUDGET_GRANT_SIGNATURE_NAMESPACE,
+  parseExecutionBudgetGrantRequest,
+} from '../src/modules/authority/execution-governance-grant-contracts.ts';
+import {
+  compactEpochTransitionReceipts,
+  DEFAULT_RETENTION_POLICY,
+  markEpochEvidenceExpiring,
   pinEvidence,
   planEvidencePruning,
+  type EvidenceRetentionRecord,
+} from '../src/modules/authority/execution-governance-retention.ts';
+import {
+  consumeExecutionBudgetGrant,
+  inspectExecutionBudgetGrant,
   revokeExecutionBudgetGrant,
   storeExecutionBudgetGrant,
-  type EvidenceRetentionRecord,
-  type EpochTransitionReceipt,
-} from '../src/modules/authority/execution-governance.ts';
+} from '../src/runtime/storage-journal/execution-budget-grants.ts';
 import { isWorkflowError } from './fixture.ts';
 
 const NOW = new Date('2026-08-03T09:00:00.000Z');
@@ -334,7 +342,7 @@ test('two runners racing one use produce exactly one durable grant receipt', asy
       })();
     `;
     const moduleUrl = new URL(
-      '../src/modules/authority/execution-governance.ts',
+      '../src/runtime/storage-journal/execution-budget-grants.ts',
       import.meta.url,
     ).href;
     const workers = ['attempt-race-a', 'attempt-race-b'].map(

@@ -9,7 +9,7 @@ import {
   applyDocumentRefresh,
   proposeDocumentRefresh,
   reviewDocumentRefresh,
-} from '../src/runtime/managed-documents/transaction/document-refresh.ts';
+} from '../src/composition-root/document-refresh-production.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
 test('approved refresh replaces exactly one reviewed document section', () => {
@@ -270,6 +270,123 @@ test('reviewers can inspect proposals and an active target lock blocks apply', (
       (error) => isWorkflowError(error, 'DOCUMENT_REFRESH_CONFLICT'),
     );
   } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('refresh preserves file mode and syncs and closes the replacement before rename under the target lock', (t) => {
+  const repository = createFixtureRepository();
+  try {
+    const target = 'docs/features/atomic.md';
+    const targetPath = path.join(fs.realpathSync(repository), target);
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(targetPath, '## Scope\n\nOld.\n');
+    fs.chmodSync(targetPath, 0o640);
+    const proposal = proposeDocumentRefresh(
+      repository,
+      target,
+      '## Scope',
+      '## Scope\n\nNew.\n',
+    );
+    const review = reviewDocumentRefresh(
+      repository,
+      proposal.proposalId,
+      'approve',
+      'reviewer',
+    );
+    const lockPath = path.join(
+      repository,
+      '.git/workflow-engine/document-refresh-locks',
+      `${crypto.createHash('sha256').update(target).digest('hex')}.lock`,
+    );
+    const events: string[] = [];
+    const sync = fs.fsyncSync;
+    const close = fs.closeSync;
+    const rename = fs.renameSync;
+    t.mock.method(fs, 'fsyncSync', (fd: number) => {
+      events.push(`sync:${fd}`);
+      sync(fd);
+    });
+    t.mock.method(fs, 'closeSync', (fd: number) => {
+      events.push(`close:${fd}`);
+      close(fd);
+    });
+    t.mock.method(fs, 'renameSync', (from: fs.PathLike, to: fs.PathLike) => {
+      if (to === targetPath) {
+        assert.equal(fs.existsSync(lockPath), true);
+        assert.match(String(from), /\.tmp$/);
+        const [syncEvent, closeEvent] = events.slice(-2);
+        assert.match(syncEvent!, /^sync:/);
+        assert.equal(closeEvent, syncEvent!.replace('sync:', 'close:'));
+        events.push('rename');
+      }
+      rename(from, to);
+    });
+    applyDocumentRefresh(repository, proposal.proposalId, review.reviewId);
+    assert.equal(events.at(-1), 'rename');
+    assert.equal(fs.statSync(targetPath).mode & 0o777, 0o640);
+    assert.equal(fs.existsSync(lockPath), false);
+    assert.deepEqual(fs.readdirSync(path.dirname(targetPath)), ['atomic.md']);
+  } finally {
+    t.mock.restoreAll();
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('refresh rejects changed record bytes and cleans up failed atomic replacement', (t) => {
+  const repository = createFixtureRepository();
+  try {
+    const target = 'docs/features/atomic.md';
+    const targetPath = path.join(fs.realpathSync(repository), target);
+    const original = '## Scope\n\nOld.\n';
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(targetPath, original);
+    const proposal = proposeDocumentRefresh(
+      repository,
+      target,
+      '## Scope',
+      '## Scope\n\nNew.\n',
+    );
+    const review = reviewDocumentRefresh(
+      repository,
+      proposal.proposalId,
+      'approve',
+      'reviewer',
+    );
+    const recordPath = path.join(
+      repository,
+      '.git/workflow-engine/document-reviews',
+      `${review.reviewId}.json`,
+    );
+    const record = fs.readFileSync(recordPath, 'utf8');
+    fs.appendFileSync(recordPath, '\n');
+    assert.throws(
+      () =>
+        applyDocumentRefresh(repository, proposal.proposalId, review.reviewId),
+      (error) => isWorkflowError(error, 'CONTENT_RECORD_DIGEST_MISMATCH'),
+    );
+    fs.writeFileSync(recordPath, record);
+    const rename = fs.renameSync;
+    const failure = new Error('injected rename failure');
+    t.mock.method(fs, 'renameSync', (from: fs.PathLike, to: fs.PathLike) => {
+      if (to === targetPath) throw failure;
+      rename(from, to);
+    });
+    assert.throws(
+      () =>
+        applyDocumentRefresh(repository, proposal.proposalId, review.reviewId),
+      (error) => error === failure,
+    );
+    assert.equal(fs.readFileSync(targetPath, 'utf8'), original);
+    assert.deepEqual(fs.readdirSync(path.dirname(targetPath)), ['atomic.md']);
+    assert.deepEqual(
+      fs.readdirSync(
+        path.join(repository, '.git/workflow-engine/document-refresh-locks'),
+      ),
+      [],
+    );
+  } finally {
+    t.mock.restoreAll();
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });

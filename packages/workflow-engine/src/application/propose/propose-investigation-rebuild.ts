@@ -6,58 +6,49 @@
  * - Engine-floor terms and exact scan acceptance survive contribution and budget handling.
  * - Semantic reuse remains visible in review coverage with its current policy provenance.
  */
-
 import { extractFileHeader } from '../../modules/source/file-header.ts';
+import { deriveReviewedMutationClassPolicy } from '../../modules/source/reviewed-mutation-policy.ts';
 import { snapshotFromTrackedTree } from '../../modules/source/system-description-snapshot.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  type GlobalPlanReviewCoverageTargetInput,
-  buildGlobalPlanReviewCoverageRequirement,
-} from '../../modules/assurance/plan-review-coverage.ts';
-import { type FloorOverflowDecision } from '../../modules/investigation/domain/floor-overflow-pruning.ts';
-import { type InvestigationDispositionDecision } from '../../modules/investigation/domain/investigation-domain.ts';
+import type { GlobalPlanReviewCoverageTargetInput } from '../../modules/assurance/plan-review-coverage.ts';
+import { buildGlobalPlanReviewCoverageRequirement } from '../../modules/assurance/plan-review-coverage.ts';
+import type { FloorOverflowDecision } from '../../modules/investigation/domain/floor-overflow-pruning.ts';
+import type { InvestigationDispositionDecision } from '../../modules/investigation/domain/investigation-domain.ts';
 import {
   deriveEngineFloor,
   derivePinnedDiffPathFacts,
 } from '../../modules/investigation/domain/investigation-floor.ts';
-import {
-  type InvestigationFullBlobFact,
-  deriveInvestigationFullBlobFacts,
-} from '../../modules/investigation/domain/investigation-full-blob.ts';
-import {
-  type InvestigationDispositionInput,
-  deriveInvestigationGroupFacts,
-} from '../../modules/investigation/domain/investigation-groups.ts';
-import { scanInvestigationTreeFacts } from '../../modules/investigation/domain/investigation-scanner.ts';
-import {
-  type InvestigationTermContribution,
-  type InvestigationTermRawCounts,
-  previewInvestigationTermUnion,
+import type { InvestigationFullBlobFact } from '../../modules/investigation/domain/investigation-full-blob.ts';
+import { deriveInvestigationFullBlobFacts } from '../../modules/investigation/domain/investigation-full-blob.ts';
+import type { InvestigationDispositionInput } from '../../modules/investigation/domain/investigation-groups.ts';
+import { deriveInvestigationGroupFacts } from '../../modules/investigation/domain/investigation-groups.ts';
+import type {
+  InvestigationTermContribution,
+  InvestigationTermRawCounts,
 } from '../../modules/investigation/domain/investigation-terms.ts';
-import { type InvestigationWhyOverlayV3 } from '../../modules/investigation/manifest/investigation-manifest.ts';
-import {
-  type MaterializedEvidenceView,
-  materializeInvestigationEvidenceViewFromFacts,
-} from '../../modules/investigation/manifest/investigation-materializer.ts';
+import { previewInvestigationTermUnion } from '../../modules/investigation/domain/investigation-terms.ts';
+import type { InvestigationWhyOverlayV3 } from '../../modules/investigation/manifest/investigation-manifest-types.ts';
+import type { MaterializedEvidenceView } from '../../modules/investigation/manifest/investigation-materializer.ts';
+import { materializeInvestigationEvidenceViewFromFacts } from '../../modules/investigation/manifest/investigation-materializer.ts';
 import {
   buildInvestigationV3WhyAuthoring,
   deriveInvestigationV3WhyRequirements,
   mapInvestigationWhyCheckpointToV3Sources,
 } from '../../modules/investigation/manifest/investigation-why-domain.ts';
 import { PROPOSE_POLICY_DIGEST } from '../../modules/provider-orchestration/provider-contracts.ts';
+import type { ReuseCoverageRecord } from '../../modules/assurance/review-coverage.ts';
 import {
-  type ReuseCoverageRecord,
   applyLedgerToFullBlobManifest,
   recordReuseCoverage,
 } from '../../modules/why-knowledge/semantic-manifest-reuse.ts';
-import { sha256 } from './propose-common.ts';
+import { sha256 } from '../../modules/proposal/propose-values.ts';
 import {
   createProviderResultNode,
   createTermContributionNode,
   createTermUnionNode,
 } from './propose-evidence.ts';
-import { assertBlindOutput } from './propose-input.ts';
+import { assertBlindOutput } from '../../modules/proposal/propose-input.ts';
 import {
   createProposeAssuranceAssessmentNode,
   declaredPathSymbolsFromPinnedTree,
@@ -73,19 +64,16 @@ import {
   createBlindSurveyRoleResult,
   readReviewerTermSource,
 } from './propose-reviewer-terms.ts';
+import type { EvidenceNode } from '@jigwright/core/evidence-node';
+import type { InvestigationSession } from '../../modules/investigation/domain/investigation-session-types.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
+import type { TrackedTreeSnapshot } from '../../runtime/repository-transaction/tracked-tree-reader.ts';
+import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
 import type {
-  EvidenceNode,
-  InvestigationSession,
-  NormalizedChangeIntent,
-  ProposeRuntime,
-  TrackedTreeSnapshot,
-} from './propose-runtime.ts';
-import {
-  type CollaborationGrantAccessMode,
-  type ProposeResumeOptions,
-  type RebuiltInvestigation,
-} from './propose-types.ts';
-
+  CollaborationGrantAccessMode,
+  ProposeResumeOptions,
+  RebuiltInvestigation,
+} from '../../modules/proposal/propose-types.ts';
 /** Fixed when the investigation ID is created, before any review population. */
 function planReviewCoverageSeed(investigationId: string): string {
   return sha256(
@@ -254,7 +242,13 @@ function isDegradedCoveragePath(targetPath: string): boolean {
 export function rebuildInvestigation(
   services: Pick<
     ProposeRuntime,
-    'evidence' | 'grants' | 'investigation' | 'provider' | 'workspace'
+    | 'evidence'
+    | 'grants'
+    | 'investigation'
+    | 'provider'
+    | 'workspace'
+    | 'planningEvidence'
+    | 'roleAdmission'
   >,
   cwd: string,
   investigationId: string,
@@ -286,11 +280,14 @@ export function rebuildInvestigation(
     session.currentBlindInvocationId,
   );
   const intent = manifest.normalizedIntent;
-  const changedPaths = derivePinnedDiffPathFacts({
-    repositoryRoot: context.git.repositoryRoot,
-    baseCommit: authorization.protectedBase.commit,
-    targetCommit: session.baseline.head,
-  });
+  const changedPaths = derivePinnedDiffPathFacts(
+    services.workspace.readPinnedPathDiff,
+    {
+      repositoryRoot: context.git.repositoryRoot,
+      baseCommit: authorization.protectedBase.commit,
+      targetCommit: session.baseline.head,
+    },
+  );
   const reviewedRelationships = deriveReviewedAssetRelationships(
     services,
     context,
@@ -361,8 +358,10 @@ export function rebuildInvestigation(
     repositoryRoot: context.git.repositoryRoot,
     treeOid: session.baseline.tree,
   });
-  const mutationPolicy =
-    services.workspace.deriveReviewedMutationClassPolicy(snapshot);
+  const mutationPolicy = deriveReviewedMutationClassPolicy(
+    services.workspace.reviewedGeneratedAssets,
+    snapshot,
+  );
 
   const invocation = services.provider.readProviderInvocation(
     context.runtime,
@@ -463,7 +462,7 @@ export function rebuildInvestigation(
     grantValidation,
     assertOwned,
   );
-  const scanFactsResult = scanInvestigationTreeFacts({
+  const scanFactsResult = services.workspace.scanInvestigationTreeFacts({
     repositoryRoot: context.git.repositoryRoot,
     treeOid: session.baseline.tree,
     terms: preview.terms,
@@ -472,7 +471,7 @@ export function rebuildInvestigation(
       session.scanSaturationAcceptance !== undefined,
   });
   if (scanFactsResult.outcome !== 'ready') {
-    const acceptedScan = scanInvestigationTreeFacts({
+    const acceptedScan = services.workspace.scanInvestigationTreeFacts({
       repositoryRoot: context.git.repositoryRoot,
       treeOid: session.baseline.tree,
       terms: preview.terms,
@@ -591,6 +590,7 @@ export function rebuildInvestigation(
   // Everything it carries keeps its group and its disposition; what it loses is
   // the obligation to be explained again by someone with nothing new to say.
   const manifestReuse = applyLedgerToFullBlobManifest(
+    services.workspace,
     context.git.repositoryRoot,
     derivedFullBlobManifest,
     // Naming the policy that judges this propose is what makes a raised policy

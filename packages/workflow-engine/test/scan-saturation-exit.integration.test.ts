@@ -6,10 +6,8 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { INVESTIGATION_LIMITS } from '../src/modules/investigation/domain/investigation-terms.ts';
-import {
-  scanInvestigationTreeFacts,
-  type ScanInvestigationTerm,
-} from '../src/modules/investigation/domain/investigation-scanner.ts';
+import { scanInvestigationTreeFacts } from '../src/composition-root/investigation-production.ts';
+import { type ScanInvestigationTerm } from '../src/modules/investigation/domain/investigation-scan-facts.ts';
 import { normalizeInvestigationTerm } from '../src/modules/investigation/domain/investigation-terms.ts';
 
 function repository(): string {

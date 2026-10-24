@@ -16,12 +16,12 @@ export {
   approvalMethodsForPolicy,
   approvalProfileForMethod,
   codeOwnedApprovalModuleRegistry,
-  loadGrantPolicyV2,
   parseGrantPolicyV2,
   parseGrantPolicyV2Document,
   type CodeOwnedApprovalModuleRegistry,
   type LoadedGrantPolicyV2,
 } from '../../modules/authority/grant-policy.ts';
+export { loadGrantPolicyV2 } from '../../runtime/repository-observation/grant-policy-reader.ts';
 export * from '../../modules/authority/grant-transition-registry.ts';
 export * from '../../adapters/human/macos/human-gate-macos.ts';
 export * from '../../adapters/signing/ssh/grant-proof-ssh.ts';

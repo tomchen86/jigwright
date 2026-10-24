@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
-import { parsePlanReviewArtifact } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
+import { parsePlanReviewArtifact } from '../src/composition-root/plan-review-artifact-production.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   assertCurrentPlanReviewProviderResultNode,

@@ -73,6 +73,6 @@ jobs:
           GITHUB_TOKEN: ''
         run: >-
           node --experimental-strip-types
-          ../trusted-base/packages/workflow-engine/src/cli.ts ci
+          ../trusted-base/packages/workflow-engine/bootstrap/workflow-engine-host.ts ci
           --base "${{ github.event.pull_request.base.sha }}"
           --head "${{ github.event.pull_request.head.sha }}"

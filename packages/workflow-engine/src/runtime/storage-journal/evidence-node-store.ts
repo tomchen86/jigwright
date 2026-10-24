@@ -12,7 +12,7 @@ import {
   assertStoredEvidenceNode,
   canonicalEvidenceNodeEnvelope,
 } from '../../foundation/evidence-node/evidence-node.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   assertExactEvidenceObjectFinal,
   assertExactEvidencePublicationAlias,
@@ -34,7 +34,7 @@ import {
   isNodeError,
   objectInvalid,
   objectUnsafe,
-} from './evidence-store-values.ts';
+} from '../journal-primitives/evidence-store-values.ts';
 
 export function writeEvidenceNode(
   paths: InvestigationRuntimePaths,

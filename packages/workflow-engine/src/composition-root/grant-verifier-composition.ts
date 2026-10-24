@@ -9,16 +9,16 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-
 import {
   COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1,
   COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
-  GRANT_ENVELOPE_VERIFIER_CONTRACT_VERSION_V1,
+} from '@jigwright/core/collaboration-grant-envelope-codec';
+import { GRANT_ENVELOPE_VERIFIER_CONTRACT_VERSION_V1 } from '@jigwright/core/grant-envelope-contracts';
+import {
   ROLE_CONTEXT_SHARING_DEGRADATION_EFFECT_V1,
   ROLE_CONTEXT_SHARING_GRANT_READER_CONTRACT_VERSION_V1,
   ROLE_CONTEXT_SHARING_GRANT_SIGNATURE_NAMESPACE_V1,
-} from '../modules/authority/optional-grants-package.ts';
-
+} from '@jigwright/core/role-context-sharing-grant-codec';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { verifySshSignatureWithPublicKey } from '../adapters/signing/ssh/maintainer-signer.ts';
@@ -38,24 +38,25 @@ import {
   COLLABORATION_GRANT_POLICY_DIGEST,
   DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE,
   TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST,
-} from '../modules/authority/collaboration-grant.ts';
+} from '../modules/authority/collaboration-grant-codec.ts';
 import {
   parseMaintainerPolicy,
   type MaintainerPolicy,
 } from '../modules/authority/maintainer-policy.ts';
 import { ROLE_CONTEXT_SHARING_POLICY_DIGEST } from '../modules/authority/role-context-sharing-grant.ts';
-import type {
-  ConsumedPlanReviewReplayPort,
-  ConsumedRoleResultReplayPort,
-} from '../modules/assurance/planning-assurance-validator.ts';
-import { runGit } from '../runtime/repository-transaction/git.ts';
-import { verifyExactConsumedCollaborationGrantCrashReplay } from '../runtime/storage-journal/collaboration-grant-store.ts';
-import { verifyConsumedRoleContextSharingReplay } from '../modules/authority/role-context-sharing-consumed-replay.ts';
+import { verifyExactConsumedCollaborationGrantCrashReplay } from '../runtime/storage-journal/collaboration-grant-consumption.ts';
+import { verifyConsumedRoleContextSharingReplay } from '../runtime/grants/grant-services.ts';
 import { readVerifiedRoleContextSharingTerminalReceipt } from './role-context-sharing-terminal-receipt-production.ts';
 import {
   loadProtectedCapabilitiesFromWorktree,
   type CollaborationGrantVerifierCompositionV1,
-} from '../adapters/consumer/repository/work-registry/protected-capabilities.ts';
+} from '../runtime/repository-validation/protected-capabilities.ts';
+import type {
+  ConsumedRoleReplayPort,
+  ConsumedRoleResultReplayPort,
+} from '../modules/provider-orchestration/role-admission-contracts.ts';
+import { resolveBlobOid } from '../runtime/repository-transaction/git-object-ids.ts';
+import { readFileAtRevision } from '../runtime/repository-transaction/git-command.ts';
 
 const COLLABORATION_EFFECT = 'role-independence-degradation-only' as const;
 const REQUIRED_PACKAGE_EXPORTS = Object.freeze({
@@ -65,13 +66,38 @@ const REQUIRED_PACKAGE_EXPORTS = Object.freeze({
   './grant-lifecycle': './src/grant-lifecycle.ts',
 } as const);
 const REQUIRED_COMPOSITION_SOURCES = Object.freeze([
+  'packages/core/src/collaboration-grant-envelope-codec.ts',
+  'packages/core/src/grant-envelope-contracts.ts',
+  'packages/core/src/grant-lifecycle-contracts.ts',
+  'packages/core/src/role-context-sharing-grant-codec.ts',
+  'packages/core/src/signed-attestation-envelope-codec.ts',
   'packages/grants/package.json',
   'packages/grants/src/collaboration-grant-envelope-reader.ts',
   'packages/grants/src/grant-envelope-verifier.ts',
   'packages/grants/src/grant-lifecycle.ts',
+  'packages/grants/src/role-context-sharing-degradation.ts',
+  'packages/grants/src/signed-attestation-envelope-reader.ts',
+  'packages/workflow-engine/src/application/control-plane/collaboration-grant-revocation.ts',
+  'packages/workflow-engine/src/composition-root/collaboration-grant-issuance-production.ts',
+  'packages/workflow-engine/src/composition-root/collaboration-grant-production.ts',
   'packages/workflow-engine/src/composition-root/grant-verifier-composition.ts',
-  'packages/workflow-engine/src/modules/authority/collaboration-grant.ts',
-  'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-store.ts',
+  'packages/workflow-engine/src/modules/authority/collaboration-grant-codec.ts',
+  'packages/workflow-engine/src/modules/authority/collaboration-grant-records.ts',
+  'packages/workflow-engine/src/modules/authority/collaboration-grant-use.ts',
+  'packages/workflow-engine/src/modules/authority/grant-errors.ts',
+  'packages/workflow-engine/src/modules/authority/grant-revocation-contract.ts',
+  'packages/workflow-engine/src/modules/investigation/domain/human-resolution-grant-contract.ts',
+  'packages/workflow-engine/src/modules/authority/role-context-sharing-consumed-replay.ts',
+  'packages/workflow-engine/src/modules/authority/role-context-sharing-grant-lifecycle-port.ts',
+  'packages/workflow-engine/src/modules/authority/role-context-sharing-grant.ts',
+  'packages/workflow-engine/src/runtime/grants/collaboration-grant-issuance.ts',
+  'packages/workflow-engine/src/runtime/grants/grant-services.ts',
+  'packages/workflow-engine/src/runtime/grants/optional-grants-package.ts',
+  'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-consumption.ts',
+  'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-private-files.ts',
+  'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-records.ts',
+  'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-reservation.ts',
+  'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-revocation-store.ts',
 ] as const);
 const ROLE_CONTEXT_SHARING_PACKAGE_EXPORT =
   './role-context-sharing-degradation' as const;
@@ -83,35 +109,55 @@ const REQUIRED_ROLE_CONTEXT_SHARING_SOURCES = Object.freeze([
   'packages/agent-runtime/src/index.ts',
   'packages/agent-runtime/src/provider-definition-snapshot.ts',
   'packages/core/package.json',
+  'packages/core/src/built-in-provider-definition.ts',
   'packages/core/src/canonical-json.ts',
+  'packages/core/src/collaboration-grant-envelope-codec.ts',
+  'packages/core/src/grant-envelope-contracts.ts',
+  'packages/core/src/grant-lifecycle-contracts.ts',
+  'packages/core/src/role-context-sharing-grant-codec.ts',
+  'packages/core/src/signed-attestation-envelope-codec.ts',
   'packages/grants/package.json',
+  'packages/grants/src/collaboration-grant-envelope-reader.ts',
   'packages/grants/src/grant-envelope-verifier.ts',
   'packages/grants/src/grant-lifecycle.ts',
   'packages/grants/src/role-context-sharing-degradation.ts',
+  'packages/grants/src/signed-attestation-envelope-reader.ts',
   'packages/workflow-engine/src/adapters/planning/openspec/documents/managed-change-contract.ts',
-  'packages/workflow-engine/src/adapters/providers/built-in-provider-definition.ts',
   'packages/workflow-engine/src/adapters/signing/ssh/maintainer-signer.ts',
   'packages/workflow-engine/src/application/propose/plan-review-role-topology.ts',
   'packages/workflow-engine/src/application/propose/role-context-sharing-plan-review.ts',
+  'packages/workflow-engine/src/composition-root/collaboration-grant-issuance-production.ts',
   'packages/workflow-engine/src/composition-root/grant-verifier-composition.ts',
+  'packages/workflow-engine/src/composition-root/role-admission-production.ts',
   'packages/workflow-engine/src/composition-root/role-context-sharing-grant-approval-production.ts',
   'packages/workflow-engine/src/composition-root/role-context-sharing-grant-lifecycle-production.ts',
   'packages/workflow-engine/src/composition-root/role-context-sharing-terminal-receipt-production.ts',
   'packages/workflow-engine/src/composition-root/role-topology-resolution-production.ts',
   'packages/workflow-engine/src/composition-root/validated-contract-context.ts',
-  'packages/workflow-engine/src/entrypoints/ci/ci-attestation.ts',
-  'packages/workflow-engine/src/entrypoints/ci/ci-planning.ts',
-  'packages/workflow-engine/src/entrypoints/ci/ci.ts',
+  'packages/workflow-engine/src/application/assurance/base-authority-attestation.ts',
+  'packages/workflow-engine/src/modules/assurance/commit-replay/ci-planning.ts',
+  'packages/workflow-engine/src/runtime/repository-validation/commit-replay/ci-planning.ts',
+  'packages/workflow-engine/src/runtime/repository-validation/commit-replay/services.ts',
+  'packages/workflow-engine/src/composition-root/ci-replay-production.ts',
+  'packages/workflow-engine/src/application/assurance/pull-request-verification.ts',
   'packages/workflow-engine/src/entrypoints/cli/role-context-sharing-grant-cli.ts',
   'packages/workflow-engine/src/modules/assurance/planning-assurance-validator.ts',
-  'packages/workflow-engine/src/modules/authority/collaboration-grant.ts',
+  'packages/workflow-engine/src/modules/authority/collaboration-grant-codec.ts',
+  'packages/workflow-engine/src/modules/authority/collaboration-grant-records.ts',
+  'packages/workflow-engine/src/modules/authority/collaboration-grant-use.ts',
+  'packages/workflow-engine/src/modules/authority/grant-errors.ts',
   'packages/workflow-engine/src/modules/authority/role-context-sharing-consumed-replay.ts',
   'packages/workflow-engine/src/modules/authority/role-context-sharing-grant-lifecycle-port.ts',
   'packages/workflow-engine/src/modules/authority/role-context-sharing-grant-verifier-port.ts',
   'packages/workflow-engine/src/modules/authority/role-context-sharing-grant.ts',
+  'packages/workflow-engine/src/modules/proposal/role-context-sharing-plan-review.ts',
   'packages/workflow-engine/src/modules/provider-orchestration/agent-role-plan.ts',
+  'packages/workflow-engine/src/modules/provider-orchestration/role-admission-contracts.ts',
   'packages/workflow-engine/src/modules/provider-orchestration/role-scheduler.ts',
   'packages/workflow-engine/src/modules/provider-orchestration/role-topology-resolution.ts',
+  'packages/workflow-engine/src/runtime/grants/collaboration-grant-issuance.ts',
+  'packages/workflow-engine/src/runtime/grants/grant-services.ts',
+  'packages/workflow-engine/src/runtime/grants/optional-grants-package.ts',
   'packages/workflow-engine/src/runtime/repository-transaction/agent-role-plan-store.ts',
   'packages/workflow-engine/src/runtime/storage-journal/role-context-sharing-store.ts',
 ] as const);
@@ -258,10 +304,11 @@ export const productionConsumedRoleResultReplayPort: ConsumedRoleResultReplayPor
       try {
         policy = parseMaintainerPolicy(
           JSON.parse(
-            runGit(input.repositoryRoot, [
-              'show',
-              `${input.expectedBinding.baselineCommit}:workflow/maintainer-policy.json`,
-            ]),
+            readFileAtRevision(
+              input.repositoryRoot,
+              input.expectedBinding.baselineCommit,
+              'workflow/maintainer-policy.json',
+            ),
           ),
         );
       } catch {
@@ -302,7 +349,7 @@ export const productionConsumedRoleResultReplayPort: ConsumedRoleResultReplayPor
     },
   });
 
-export const productionConsumedPlanReviewReplayPort: ConsumedPlanReviewReplayPort =
+export const productionConsumedPlanReviewReplayPort: ConsumedRoleReplayPort =
   Object.freeze({
     verify(input) {
       return productionConsumedRoleResultReplayPort.verify(input);
@@ -313,16 +360,18 @@ export const productionConsumedPlanReviewReplayPort: ConsumedPlanReviewReplayPor
       try {
         policy = parseMaintainerPolicy(
           JSON.parse(
-            runGit(input.repositoryRoot, [
-              'show',
-              `${input.evidence.expectedBinding.baselineCommit}:workflow/maintainer-policy.json`,
-            ]),
+            readFileAtRevision(
+              input.repositoryRoot,
+              input.evidence.expectedBinding.baselineCommit,
+              'workflow/maintainer-policy.json',
+            ),
           ),
         );
-        policyBlob = runGit(input.repositoryRoot, [
-          'rev-parse',
-          `${input.evidence.expectedBinding.baselineCommit}:workflow/maintainer-policy.json`,
-        ]).trim();
+        policyBlob = resolveBlobOid(
+          input.repositoryRoot,
+          input.evidence.expectedBinding.baselineCommit,
+          'workflow/maintainer-policy.json',
+        );
       } catch {
         throw roleContextSharingConsumedReplayUnavailable();
       }

@@ -5,6 +5,7 @@
  * - Workflow, job, attempts, and result records retain exact cross-record identity checks.
  * - Canonical state and receipt digests preserve the same fields and byte encoding.
  */
+import type { ProviderRetryJobState } from '../../modules/provider-orchestration/provider-retry-accounting.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   type AttemptRecord,
@@ -29,10 +30,8 @@ import {
   isRecord,
   MAX_PROVIDER_ATTEMPTS,
 } from './execution-state-values.ts';
-import {
-  type ProviderInvocationRecord,
-  type ProviderRetryAccountingSnapshot,
-} from './provider-invocation-store.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
+import type { ProviderRetryAccountingSnapshot } from '../../modules/provider-orchestration/provider-retry-accounting.ts';
 
 export type ProviderExecutionEntry = Readonly<{
   record: ProviderInvocationRecord;
@@ -49,24 +48,12 @@ export type ProviderExecutionEntry = Readonly<{
   }> | null;
 }>;
 
-export type DurableExecutionJobState = Readonly<{
-  schemaVersion: 1;
-  revision: number;
-  workflow: WorkflowRecord;
-  job: JobRecord;
-  attempts: AttemptRecord[];
-  results: AttemptResult[];
-  reconciliationReceipts: ExecutionReconciliationReceipt[];
-  invocationProjection: {
-    kind: 'provider-invocation-projection.v1';
-    completeHistory: boolean;
-    invocations: Array<{
-      invocationId: string;
-      invocationRevision: number;
-      attemptId: string;
-    }>;
-  };
-}>;
+export type DurableExecutionJobState = ProviderRetryJobState &
+  Readonly<{
+    schemaVersion: 1;
+    results: AttemptResult[];
+    reconciliationReceipts: ExecutionReconciliationReceipt[];
+  }>;
 
 export type ExecutionReconciliationReceipt = Readonly<{
   schemaVersion: 1;

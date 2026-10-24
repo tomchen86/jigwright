@@ -19,6 +19,7 @@ type AuthoritativeVerifier = Readonly<{
 }>;
 
 type CompositionModule = Readonly<{
+  createCurrentAuthoritativeRoleContextSharingGrantVerifier: typeof import('../src/composition-root/grant-verifier-composition.ts').createCurrentAuthoritativeRoleContextSharingGrantVerifier;
   createAuthoritativeCollaborationGrantVerifier(
     policy: Readonly<{
       trustedSigners: readonly Readonly<{
@@ -145,6 +146,20 @@ after(() => {
   SSH_SIGNING.dispose();
   REPLACEMENT_SSH_SIGNING.dispose();
 });
+const RETIRED_COLLABORATION_STORE_OWNERS = [
+  'packages/workflow-engine/src/application/control-plane/collaboration-grant-revocation.ts',
+  'packages/workflow-engine/src/composition-root/collaboration-grant-production.ts',
+  'packages/workflow-engine/src/modules/authority/collaboration-grant-records.ts',
+  'packages/workflow-engine/src/modules/authority/grant-revocation-contract.ts',
+  'packages/workflow-engine/src/modules/investigation/domain/human-resolution-grant-contract.ts',
+  'packages/workflow-engine/src/runtime/grants/grant-services.ts',
+  'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-consumption.ts',
+  'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-private-files.ts',
+  'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-records.ts',
+  'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-reservation.ts',
+  'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-revocation-store.ts',
+] as const;
+
 const NOW = new Date('2026-08-21T00:00:00.000Z');
 const TARGET_DIGEST = '1'.repeat(64);
 const CONTENT_NODE_ID = '2'.repeat(64);
@@ -173,7 +188,7 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
   const retryScheduler = fs.readFileSync(
     path.join(
       sourceRepositoryRoot,
-      'packages/workflow-engine/src/runtime/provider-execution/provider-retry-scheduler.ts',
+      'packages/workflow-engine/src/application/provider-retry/provider-failure-retry.ts',
     ),
     'utf8',
   );
@@ -199,7 +214,10 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
     'utf8',
   );
   const cli = fs.readFileSync(
-    path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+    path.join(
+      sourceRepositoryRoot,
+      'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+    ),
     'utf8',
   );
   const providerOperationsCli = fs.readFileSync(
@@ -210,17 +228,43 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
     'utf8',
   );
 
+  const retryContract = fs.readFileSync(
+    path.join(
+      sourceRepositoryRoot,
+      'packages/workflow-engine/src/modules/provider-orchestration/provider-retry-service-port.ts',
+    ),
+    'utf8',
+  );
   assert.match(
-    retryScheduler,
-    /ProcessProviderFailureRetryOptions[\s\S]*?consumedRoleResultReplay\?: ConsumedPlanReviewReplayPort/,
+    retryContract,
+    /ProcessProviderFailureRetryOptions[\s\S]*?consumedRoleResultReplay\?: ConsumedRoleReplayPort/,
   );
   assert.match(
     retryScheduler,
-    /publishReplacement\(\s*cwd,\s*failed,\s*options\.consumedRoleResultReplay,?\s*\)/,
+    /publishReplacement\(\s*ports\.publication,\s*failed,\s*options\.consumedRoleResultReplay,?\s*\)/,
+  );
+  const retryProduction = fs.readFileSync(
+    path.join(
+      sourceRepositoryRoot,
+      'packages/workflow-engine/src/composition-root/provider-retry-production.ts',
+    ),
+    'utf8',
+  );
+  assert.match(
+    retryProduction,
+    /consumedRoleResultReplay,\s*consumedPlanReviewReplay: consumedRoleResultReplay/,
+  );
+  assert.match(
+    retryProduction,
+    /getProposeStatus\(\s*cwd,\s*failed\.investigationId,\s*collaborationGrantValidation,?\s*\)/,
+  );
+  assert.match(
+    retryProduction,
+    /resumePropose\([\s\S]*?collaborationGrantValidation === undefined\s*\? \{\}\s*: \{ collaborationGrantValidation \}/,
   );
   assert.match(
     executionReplacement,
-    /ExecuteGrantedReplacementOptions[\s\S]*?consumedRoleResultReplay\?: ConsumedPlanReviewReplayPort/,
+    /ExecuteGrantedReplacementOptions[\s\S]*?consumedRoleResultReplay\?: ConsumedRoleReplayPort/,
   );
   assert.match(
     executionReplacement,
@@ -228,7 +272,7 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
   );
   assert.match(
     executionReplacement,
-    /createExecutionReplacementPublication\(\(\)\s*=>\s*\(\{[\s\S]*?\bgetProposeStatus,/,
+    /function createReplacementPublication\(\s*propose: ExecutionReplacementProposePort,?\s*\)[\s\S]*?createExecutionReplacementPublication\(\(\)\s*=>\s*\(\{\s*\.\.\.propose,/,
   );
   const replacementStatusCalls = [
     ...executionReplacementPublication.matchAll(
@@ -248,11 +292,30 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
   );
   assert.match(
     cli,
-    /import\s*\{[^}]*\bdispatchExecutionJobCommand,?[^}]*\}\s*from '\.\/entrypoints\/cli\/provider-operations-cli\.ts'/,
+    /import\s*\{(?:[^}]*,\s*)?\s*providerOperationsServices\s*(?:,[^}]*)?\}\s*from '\.\.\/\.\.\/composition-root\/provider-operations-cli-production\.ts'/,
   );
   assert.match(
     cli,
     /case 'job':\s*return dispatchExecutionJobCommand\(rest,\s*cwd\);/,
+  );
+  assert.match(
+    cli,
+    /const\s*\{[^}]*dispatchExecutionJobCommand[^}]*\}\s*=\s*createProviderOperationsCommands\(\{\s*\.\.\.providerOperationsServices,\s*providerDispatcher:\s*dispatchProviderWorker,?\s*\}\)/,
+  );
+  const providerOperationsProduction = fs.readFileSync(
+    path.join(
+      sourceRepositoryRoot,
+      'packages/workflow-engine/src/composition-root/provider-operations-cli-production.ts',
+    ),
+    'utf8',
+  );
+  assert.match(
+    providerOperationsProduction,
+    /export const providerOperationsServices = \{[\s\S]*?consumedPlanReviewReplay:\s*productionConsumedPlanReviewReplayPort/,
+  );
+  assert.match(
+    providerOperationsCli,
+    /consumedPlanReviewReplay:\s*productionConsumedPlanReviewReplayPort/,
   );
   const replacementCall = providerOperationsCli.match(
     /executeGrantedReplacement\([^)]*\)/,
@@ -274,14 +337,72 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
         clone.importModule<CompositionModule>(
           'packages/workflow-engine/src/composition-root/grant-verifier-composition.ts',
         ),
-        clone.importModule<CollaborationGrantModule>(
-          'packages/workflow-engine/src/modules/authority/collaboration-grant.ts',
-        ),
-        clone.importModule<CollaborationGrantStoreModule>(
-          'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-store.ts',
+        Promise.all([
+          clone.importModule<
+            Pick<CollaborationGrantModule, 'issueCollaborationGrant'>
+          >(
+            'packages/workflow-engine/src/composition-root/collaboration-grant-issuance-production.ts',
+          ),
+          clone.importModule<
+            Pick<
+              CollaborationGrantModule,
+              | 'COLLABORATION_GRANT_POLICY_DIGEST'
+              | 'TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST'
+            >
+          >(
+            'packages/workflow-engine/src/modules/authority/collaboration-grant-codec.ts',
+          ),
+        ]).then(([issuance, codec]) => ({ ...issuance, ...codec })),
+        Promise.all([
+          clone.importModule<
+            Pick<CollaborationGrantStoreModule, 'collaborationGrantStorePaths'>
+          >(
+            'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-private-files.ts',
+          ),
+          clone.importModule<
+            Pick<
+              CollaborationGrantStoreModule,
+              'reserveCollaborationGrant' | 'readReservedCollaborationGrant'
+            >
+          >(
+            'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-reservation.ts',
+          ),
+          clone.importModule<
+            Pick<CollaborationGrantStoreModule, 'consumeCollaborationGrant'>
+          >(
+            'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-consumption.ts',
+          ),
+          clone.importModule<
+            Pick<
+              CollaborationGrantStoreModule,
+              'readCollaborationGrantInspection'
+            >
+          >(
+            'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-records.ts',
+          ),
+          clone.importModule<
+            Pick<CollaborationGrantStoreModule, 'revokeCollaborationGrant'>
+          >(
+            'packages/workflow-engine/src/composition-root/collaboration-grant-production.ts',
+          ),
+        ]).then(
+          ([
+            { collaborationGrantStorePaths },
+            { reserveCollaborationGrant, readReservedCollaborationGrant },
+            { consumeCollaborationGrant },
+            { readCollaborationGrantInspection },
+            { revokeCollaborationGrant },
+          ]) => ({
+            collaborationGrantStorePaths,
+            reserveCollaborationGrant,
+            readReservedCollaborationGrant,
+            consumeCollaborationGrant,
+            readCollaborationGrantInspection,
+            revokeCollaborationGrant,
+          }),
         ),
         clone.importModule<RoleSchedulerModule>(
-          'packages/workflow-engine/src/modules/provider-orchestration/role-scheduler.ts',
+          'packages/workflow-engine/src/composition-root/role-admission-production.ts',
         ),
         clone.importModule<CollaborationGrantCliModule>(
           'packages/workflow-engine/src/entrypoints/cli/collaboration-grant-cli.ts',
@@ -311,6 +432,76 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
       SSH_SIGNING.trustedSigner.identity,
       namespace,
     );
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          clone.repositoryRoot,
+          'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-store.ts',
+        ),
+      ),
+      false,
+      'the retired barrel must not be required to mint authority',
+    );
+    for (const owner of RETIRED_COLLABORATION_STORE_OWNERS) {
+      const sourcePath = path.join(clone.repositoryRoot, owner);
+      const originalBytes = fs.readFileSync(sourcePath);
+      fs.unlinkSync(sourcePath);
+      try {
+        assert.throws(
+          () =>
+            composition.createAuthoritativeCollaborationGrantVerifier(
+              mutableVerifierPolicy,
+              {
+                collaborationPolicyDigest:
+                  collaborationGrant.COLLABORATION_GRANT_POLICY_DIGEST,
+                taskDiffReviewPolicyDigest:
+                  collaborationGrant.TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST,
+              },
+            ),
+          (error) =>
+            hasWorkflowErrorCode(
+              error,
+              'COLLABORATION_GRANT_VERIFIER_COMPOSITION_UNAVAILABLE',
+            ),
+          `new authority must reject a missing ${owner}`,
+        );
+        assert.throws(
+          () =>
+            verifier.verify(
+              payload,
+              SSH_SIGNING.sign(payload, namespace),
+              SSH_SIGNING.trustedSigner.identity,
+              namespace,
+            ),
+          (error) =>
+            hasWorkflowErrorCode(
+              error,
+              'COLLABORATION_GRANT_VERIFIER_COMPOSITION_UNAVAILABLE',
+            ),
+          `existing authority must reobserve a missing ${owner}`,
+        );
+        assert.throws(
+          () =>
+            composition.createCurrentAuthoritativeRoleContextSharingGrantVerifier(
+              mutableVerifierPolicy,
+            ),
+          (error) =>
+            hasWorkflowErrorCode(
+              error,
+              'ROLE_CONTEXT_SHARING_GRANT_VERIFIER_COMPOSITION_UNAVAILABLE',
+            ),
+          `role-context authority must reject a missing ${owner}`,
+        );
+      } finally {
+        fs.writeFileSync(sourcePath, originalBytes);
+      }
+      verifier.verify(
+        payload,
+        SSH_SIGNING.sign(payload, namespace),
+        SSH_SIGNING.trustedSigner.identity,
+        namespace,
+      );
+    }
     Object.assign(
       mutableVerifierPolicy.trustedSigners[0]!,
       REPLACEMENT_SSH_SIGNING.trustedSigner,

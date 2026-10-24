@@ -97,7 +97,8 @@ are author, builder, and reviewer, assigned by `workflow/role-provider-default.j
 The workspace holds one distribution package and its internal packages:
 
 - `packages/workflow-engine` — the engine and the `jigwright` CLI.
-- `packages/core` — ports and canonical JSON; it imports no feature implementation.
+- `packages/core` — public contracts, identifiers, immutable provider metadata, and pure validation; it performs no repository I/O.
+- `packages/repository-runtime` — shared filesystem containment and canonical path inspection, used by the engine and fixture adapter.
 - `packages/agent-runtime` — provider processes, protocol frames, and built-in provider definitions.
 - `packages/grants` — optional grant envelope readers and verifiers.
 - `packages/openspec-adapter`, `packages/github-adapter`, `packages/fixture-adapter` — planning, remote, and test-fixture adapters.

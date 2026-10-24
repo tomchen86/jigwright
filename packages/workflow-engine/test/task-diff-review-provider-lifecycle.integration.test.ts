@@ -1,9 +1,10 @@
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
 import {
   claimProviderInvocation,
   completeProviderInvocation,
@@ -20,7 +21,7 @@ import {
   beginTaskDiffReview,
   inspectTaskDiffReviewStatus,
   reconcileTaskDiffReview,
-} from '../src/application/finalize/task-diff-review-lifecycle.ts';
+} from '../src/composition-root/task-diff-review-production.ts';
 import { taskDiffReviewProviderSubmission } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import {
   git,
@@ -41,7 +42,12 @@ import {
 test('review-diff lifecycle binds a fresh provider reviewer to the exact WorkflowSession and adopts only its fixed-runner result', () => {
   const { repository, counterPath } = createReviewFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -165,7 +171,12 @@ test('review-diff lifecycle binds a fresh provider reviewer to the exact Workflo
 test('review-diff refuses an evaluator-only result without a fixed-runner observation', () => {
   const { repository } = createReviewFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -228,7 +239,12 @@ test('review-diff refuses an evaluator-only result without a fixed-runner observ
 test('review-diff provider worker refuses a candidate that changed after reservation before claiming it', () => {
   const { repository } = createReviewFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -276,7 +292,12 @@ test('review-diff provider worker refuses a candidate that changed after reserva
 test('finalize pauses before staging for a required review and resumes without rerunning checks after the exact result is adopted', () => {
   const { repository, counterPath } = createReviewFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -362,7 +383,12 @@ test('finalize pauses before staging for a required review and resumes without r
 test('a corrected candidate receives a distinct immutable TaskDiffReview generation in the same WorkflowSession', () => {
   const { repository, counterPath } = createReviewFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -416,7 +442,12 @@ test('review-diff uses a fresh same-provider Reviewer session without a grant', 
     },
   });
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',

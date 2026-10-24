@@ -6,6 +6,7 @@
  * - Optional grant requirements preserve their existing target and policy constraints.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
+import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import { type EvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';
 import { assertPlanReviewSubject } from '../../modules/assurance/plan-review.ts';
 import {
@@ -24,7 +25,7 @@ import {
   isPlainRecord,
   refInvalid,
   sha256,
-} from './evidence-store-values.ts';
+} from '../journal-primitives/evidence-store-values.ts';
 
 export function assertPlanReviewAuthorizationGrantOwnership(input: {
   changeId: string;
@@ -219,7 +220,7 @@ export function assertPlanReviewAuthorizationGrantOwnership(input: {
 }
 
 type PlanReviewRecordedParticipantOwnership = Readonly<{
-  providerId: 'codex' | 'claude' | null;
+  providerId: ProviderId | null;
   sessionId: string | null;
   principalId: string | null;
   identityAssurance:

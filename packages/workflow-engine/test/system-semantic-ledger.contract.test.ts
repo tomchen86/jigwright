@@ -13,6 +13,7 @@ import {
 import {
   assessSemanticFreshness,
   observeLedgerSource,
+  readSemanticImportDependencies,
 } from '../src/modules/why-knowledge/semantic-freshness.ts';
 import { planSemanticReuse } from '../src/modules/why-knowledge/semantic-reuse.ts';
 
@@ -148,6 +149,26 @@ test('missing dependencies stay stale and changes propagate through reverse impo
   }
 });
 
+test('source import facts stay independent of ledger identity, including absent targets', () => {
+  const files = snapshot({
+    'src/a.ts': "import './b.ts'; import './missing.ts';",
+    'src/b.ts': 'export const value = 1;',
+  });
+  const facts = [
+    { path: 'src/b.ts', sourceDigest: sourceDigest('export const value = 1;') },
+    { path: 'src/missing.ts', sourceDigest: null },
+  ];
+  assert.deepEqual(readImportDependencies(files, 'src/a.ts'), facts);
+  assert.deepEqual(
+    readSemanticImportDependencies(files, 'src/a.ts'),
+    facts.map((fact) => ({
+      relation: 'imports',
+      subjectId: semanticFileSubjectId(fact.path),
+      ...fact,
+    })),
+  );
+});
+
 test('import options, division, and export condition order retain the actual dependency', () => {
   for (const source of [
     "import('./dep.ts', { with: { type: 'json' } });",
@@ -174,7 +195,7 @@ test('import options, division, and export condition order retain the actual dep
     'packages/core/import.ts': 'export const value = 2;',
   };
   const before = snapshot(files);
-  const dependencies = readImportDependencies(before, 'src/a.ts');
+  const dependencies = readSemanticImportDependencies(before, 'src/a.ts');
   assert.deepEqual(
     dependencies.map(({ path }) => path),
     ['packages/core/node.ts'],

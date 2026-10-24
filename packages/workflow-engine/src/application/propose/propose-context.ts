@@ -6,49 +6,32 @@
  * - Captured Source wording and change-origin references preserve exact identity.
  * - A revising task and its held planning authority remain attached to the change.
  */
-
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  type CollaborationGrantExpectedBinding,
-  type CollaborationGrantRequest,
-  COLLABORATION_GRANT_POLICY_DIGEST,
-} from '../../modules/authority/collaboration-grant.ts';
-import {
-  type AuthoritativeCollaborationGrantVerifier,
-  assertAuthoritativeCollaborationGrantVerifier,
-} from '../../modules/authority/grant-verifier-port.ts';
-import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import {
-  type AuthoritativeRoleContextSharingGrantVerifier,
-  assertAuthoritativeRoleContextSharingGrantVerifier,
-} from '../../modules/authority/role-context-sharing-grant-verifier-port.ts';
-import {
-  captureGovernanceSource,
-  readGovernanceSource,
-} from '../../modules/governance-intake/governance-intake.ts';
-import {
-  ensureWorkItemPromotionChangeDirectory,
-  linkSourceToChange,
-  readCurrentChangeOrigin,
-} from '../../modules/governance-intake/work-registry.ts';
-import { listSessions } from '../execute-task/session.ts';
-import { withTaskRevisionPlanningOperation } from '../revise/task-revision.ts';
 import type {
-  HeldChangeTransitionAuthority,
-  InvestigationCheckpointEnvelope,
-  InvestigationStatus,
-  NormalizedChangeIntent,
-  ProposeExemptionSession,
-  ProposeRuntime,
-} from './propose-runtime.ts';
-import {
-  type ProposeLifecycleStatus,
-  type ProposeOptions,
-} from './propose-types.ts';
-
+  CollaborationGrantExpectedBinding,
+  CollaborationGrantRequest,
+} from '../../modules/authority/collaboration-grant-codec.ts';
+import { COLLABORATION_GRANT_POLICY_DIGEST } from '../../modules/authority/collaboration-grant-codec.ts';
+import type { AuthoritativeCollaborationGrantVerifier } from '../../modules/authority/grant-verifier-port.ts';
+import { assertAuthoritativeCollaborationGrantVerifier } from '../../modules/authority/grant-verifier-port.ts';
+import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
+import type { AuthoritativeRoleContextSharingGrantVerifier } from '../../modules/authority/role-context-sharing-grant-verifier-port.ts';
+import { assertAuthoritativeRoleContextSharingGrantVerifier } from '../../modules/authority/role-context-sharing-grant-verifier-port.ts';
+import type { GovernanceSourceV1 } from '@jigwright/core/governance-source';
+import { listSessions } from '../../runtime/repository-observation/workflow-session-context.ts';
+import type { HeldChangeTransitionAuthority } from '../../runtime/session-workspace/planning-lock.ts';
+import type { InvestigationCheckpointEnvelope } from '../../modules/investigation/domain/investigation-session-types.ts';
+import type { InvestigationStatus } from '../../modules/lifecycle/investigation-status.ts';
+import type { ProposeExemptionSession } from '../../modules/lifecycle/propose-exemption-session.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
+import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
+import type {
+  ProposeLifecycleStatus,
+  ProposeOptions,
+} from '../../modules/proposal/propose-types.ts';
 export function deriveCollaborationGrantBinding(
   services: Pick<ProposeRuntime, 'workspace'>,
   repositoryRoot: string,
@@ -162,7 +145,10 @@ export function currentRevisingTaskSession(cwd: string, changeId: string) {
 }
 
 export function withProposeTransitionAuthority<T>(
-  services: Pick<ProposeRuntime, 'workspace'>,
+  services: Pick<
+    ProposeRuntime,
+    'workspace' | 'withTaskRevisionPlanningOperation'
+  >,
   cwd: string,
   lifecycleRuntime: Parameters<
     ProposeRuntime['workspace']['withInvestigationTransitionAuthority']
@@ -178,7 +164,7 @@ export function withProposeTransitionAuthority<T>(
       operation,
     );
   }
-  return withTaskRevisionPlanningOperation(
+  return services.withTaskRevisionPlanningOperation(
     revising.repositoryRoot,
     revising.sessionId,
     operation,
@@ -186,7 +172,10 @@ export function withProposeTransitionAuthority<T>(
 }
 
 export function resumeInvestigationForPropose(
-  services: Pick<ProposeRuntime, 'investigation' | 'workspace'>,
+  services: Pick<
+    ProposeRuntime,
+    'investigation' | 'workspace' | 'withTaskRevisionPlanningOperation'
+  >,
   cwd: string,
   changeId: string,
   investigationId: string,
@@ -293,7 +282,7 @@ export function resolveProposePlanningWorkspace(
   cwd: string,
   changeId: string,
   mode: 'start' | 'resume' | 'status',
-  immediateSource: ReturnType<typeof readGovernanceSource> | null = null,
+  immediateSource: GovernanceSourceV1 | null = null,
 ): string {
   const repository = services.workspace.discoverRepository(cwd);
   const revising = currentRevisingTaskSession(cwd, changeId);
@@ -317,6 +306,7 @@ export function resolveProposePlanningWorkspace(
     }
     if (immediateSource !== null) {
       materializeImmediateSource(
+        services,
         record.worktreePath,
         changeId,
         immediateSource,
@@ -340,6 +330,7 @@ export function resolveProposePlanningWorkspace(
     }
     if (immediateSource !== null) {
       materializeImmediateSource(
+        services,
         repository.repositoryRealPath,
         changeId,
         immediateSource,
@@ -366,6 +357,7 @@ export function resolveProposePlanningWorkspace(
   );
   if (immediateSource !== null) {
     materializeImmediateSource(
+      services,
       prepared.worktreePath,
       changeId,
       immediateSource,
@@ -375,11 +367,12 @@ export function resolveProposePlanningWorkspace(
 }
 
 export function resolveImmediateSource(
+  services: Pick<ProposeRuntime, 'workspace'>,
   repositoryRoot: string,
   changeId: string,
   intent: NormalizedChangeIntent,
   binding: ProposeOptions['immediateSource'],
-): ReturnType<typeof readGovernanceSource> | null {
+): GovernanceSourceV1 | null {
   if (binding === undefined) return null;
   if (
     !/^SRC-[0-9a-f]{64}$/.test(binding.sourceId) ||
@@ -394,7 +387,10 @@ export function resolveImmediateSource(
       ExitCode.usage,
     );
   }
-  const source = readGovernanceSource(repositoryRoot, binding.sourceId);
+  const source = services.workspace.readGovernanceSource(
+    repositoryRoot,
+    binding.sourceId,
+  );
   if (source.text !== binding.exactText || source.supersedes !== null) {
     throw workflowError(
       'PROPOSE_INTENT_INVALID',
@@ -406,15 +402,20 @@ export function resolveImmediateSource(
 }
 
 function materializeImmediateSource(
+  services: Pick<ProposeRuntime, 'workspace'>,
   repositoryRoot: string,
   changeId: string,
-  source: ReturnType<typeof readGovernanceSource>,
+  source: GovernanceSourceV1,
 ): void {
-  const changeDirectory = ensureWorkItemPromotionChangeDirectory(
+  const changeDirectory =
+    services.workspace.ensureWorkItemPromotionChangeDirectory(
+      repositoryRoot,
+      changeId,
+    );
+  const existingOrigin = services.workspace.readCurrentChangeOrigin(
     repositoryRoot,
     changeId,
   );
-  const existingOrigin = readCurrentChangeOrigin(repositoryRoot, changeId);
   if (existingOrigin !== null) {
     if (
       canonicalJson(existingOrigin) !==
@@ -431,8 +432,9 @@ function materializeImmediateSource(
       );
     }
     if (
-      canonicalJson(readGovernanceSource(repositoryRoot, source.id)) !==
-      canonicalJson(source)
+      canonicalJson(
+        services.workspace.readGovernanceSource(repositoryRoot, source.id),
+      ) !== canonicalJson(source)
     ) {
       throw workflowError(
         'PROPOSE_INPUT_STALE',
@@ -442,7 +444,7 @@ function materializeImmediateSource(
     }
     return;
   }
-  const captured = captureGovernanceSource(repositoryRoot, {
+  const captured = services.workspace.captureGovernanceSource(repositoryRoot, {
     semanticAuthor: source.semanticAuthor,
     capturedBy: source.capturedBy,
     capturedAt: source.capturedAt,
@@ -457,8 +459,11 @@ function materializeImmediateSource(
       ExitCode.staleState,
     );
   }
-  linkSourceToChange(repositoryRoot, source.id, changeId);
-  const publishedOrigin = readCurrentChangeOrigin(repositoryRoot, changeId);
+  services.workspace.linkSourceToChange(repositoryRoot, source.id, changeId);
+  const publishedOrigin = services.workspace.readCurrentChangeOrigin(
+    repositoryRoot,
+    changeId,
+  );
   if (
     publishedOrigin === null ||
     canonicalJson(publishedOrigin) !==
@@ -477,11 +482,12 @@ function materializeImmediateSource(
 }
 
 export function assertCurrentGovernanceSources(
+  services: Pick<ProposeRuntime, 'workspace'>,
   repositoryRoot: string,
   sourceRefs: readonly `SRC-${string}`[],
 ): void {
   for (const sourceRef of sourceRefs) {
-    readGovernanceSource(repositoryRoot, sourceRef);
+    services.workspace.readGovernanceSource(repositoryRoot, sourceRef);
   }
 }
 

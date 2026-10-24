@@ -6,7 +6,7 @@ import test from 'node:test';
 import {
   previewExecutionJobRetry,
   requestExecutionJobRetry,
-} from '../src/application/control-plane/execution-job-retry.ts';
+} from '../src/composition-root/execution-retry-production.ts';
 import { projectProviderInvocationExecution } from '../src/modules/provider-orchestration/execution-core.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
@@ -15,14 +15,14 @@ import {
   readInvestigationEvidenceRefsClosure,
   writeEvidenceNode,
 } from '../src/runtime/storage-journal/evidence-object-store.ts';
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
+import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import {
   createPlanReviewRetryEnvelope,
   getProposeStatus,
   resumePropose,
-} from '../src/application/propose/propose-orchestrator.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+} from '../src/composition-root/propose-production.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   createProviderInvocationRequest,
   type ProviderInvocationRequest,

@@ -8,12 +8,10 @@
  */
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
-import { cancelProtectedTaskApplyRecoveryUnderGrant } from '../application/finalize/lifecycle.ts';
-import { readProtectedFinalizeCancellation } from '../application/finalize/finalize-cancellation.ts';
-import {
-  abortSessionAfterProtectedTaskApplyRecoveryUnderGrant,
-  getSession,
-} from '../application/execute-task/session.ts';
+import { cancelProtectedTaskApplyRecoveryUnderGrant } from './finalization-production.ts';
+import { readProtectedFinalizeCancellation } from '../runtime/storage-journal/finalize-cancellation.ts';
+import { abortSessionAfterProtectedTaskApplyRecoveryUnderGrant } from '../application/execute-task/session-abort.ts';
+import { getSession } from '../runtime/repository-observation/workflow-session-context.ts';
 import {
   approvalSubjectDigest,
   type GrantChallenge,
@@ -34,22 +32,20 @@ import {
 } from '../modules/authority/protected-task-apply-grant.ts';
 import { grantSha256 } from '../modules/authority/grant-primitives.ts';
 import { parseMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
-import { loadWorkflowConfig } from '../adapters/consumer/repository/work-registry/contracts.ts';
-import {
-  discoverRepository,
-  runGit,
-} from '../runtime/repository-transaction/git.ts';
-import {
-  readFinalizeTransaction,
-  type FinalizeTransaction,
-} from '../runtime/repository-transaction/finalize-transaction.ts';
+import { loadWorkflowConfig } from '../runtime/workflow-configuration/workflow-configuration.ts';
+import { discoverRepository } from '../runtime/repository-transaction/git.ts';
+import { readFinalizeTransaction } from '../runtime/storage-journal/finalize-transaction.ts';
+import { type FinalizeTransaction } from '../modules/lifecycle/finalize-transaction.ts';
 import {
   grantStorePaths,
-  readGrantRecord,
+  createFileGrantRecordStore,
+} from '../runtime/lifecycle-ledgers/grant-store.ts';
+import {
   type GrantRecord,
   type PreparedGrantRecord,
-} from '../runtime/storage-journal/grant-store.ts';
+} from '../modules/authority/grant-records.ts';
 import { runtimePaths } from '../runtime/session-workspace/session-store.ts';
+import { readFileAtRevision } from '../runtime/repository-transaction/git-command.ts';
 
 export function createProductionProtectedTaskApplyRecoveryGrantPort(
   cwd: string,
@@ -128,10 +124,9 @@ export function observeCurrentProtectedTaskApplyRecovery(
   const git = discoverRepository(cwd);
   const config = loadWorkflowConfig(git.repositoryRoot);
   const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
-  const parent = readGrantRecord(
+  const parent = createFileGrantRecordStore(
     grantStorePaths(runtime.root),
-    parameters.parentChallengeId,
-  );
+  ).readGrantRecord(parameters.parentChallengeId);
   assertExactPreparedParent(git.repositoryRoot, parent, parameters);
   const session = getSession(git.repositoryRoot, parameters.sessionId);
   if (
@@ -201,10 +196,9 @@ export function observeCurrentProtectedTaskApplyRecoveryRequest(
   const git = discoverRepository(cwd);
   const config = loadWorkflowConfig(git.repositoryRoot);
   const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
-  const parent = readGrantRecord(
+  const parent = createFileGrantRecordStore(
     grantStorePaths(runtime.root),
-    details.parentChallengeId,
-  );
+  ).readGrantRecord(details.parentChallengeId);
   if (
     parent.state !== 'prepared' ||
     parent.operationId !== details.parentOperationId ||
@@ -486,7 +480,9 @@ function readRepositoryGrantRecord(
   const git = discoverRepository(repositoryRoot);
   const config = loadWorkflowConfig(git.repositoryRoot);
   const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
-  return readGrantRecord(grantStorePaths(runtime.root), challengeId);
+  return createFileGrantRecordStore(
+    grantStorePaths(runtime.root),
+  ).readGrantRecord(challengeId);
 }
 
 function repositoryIdAtBaseline(
@@ -496,10 +492,11 @@ function repositoryIdAtBaseline(
   let value: unknown;
   try {
     value = JSON.parse(
-      runGit(repositoryRoot, [
-        'show',
-        `${baselineHead}:workflow/maintainer-policy.json`,
-      ]),
+      readFileAtRevision(
+        repositoryRoot,
+        baselineHead,
+        'workflow/maintainer-policy.json',
+      ),
     );
   } catch {
     throw recoveryStateChanged(

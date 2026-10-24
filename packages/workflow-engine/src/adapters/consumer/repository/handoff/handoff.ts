@@ -1,3 +1,13 @@
+import type { ChangeRoutingInspector } from '../../../../modules/lifecycle/change-routing.ts';
+import type {
+  HandoffChange,
+  HandoffReadContext,
+} from '../../../../modules/projection/handoff.ts';
+export type {
+  HandoffChange,
+  HandoffReadContext,
+} from '../../../../modules/projection/handoff.ts';
+import type { ChangeContractReader } from '../../../../modules/planning-provider/change-contract.ts';
 /**
  * Projects and validates the handoff document from controlled workflow and
  * routing facts.
@@ -13,30 +23,27 @@ import {
   AtomicTextSafetyError,
   replaceTextAtomic,
 } from '../../../../runtime/repository-transaction/atomic-text.ts';
-import {
-  loadChangeContract,
-  loadWorkflowConfig,
-  parseTasks,
-  type ParsedTask,
-} from '../work-registry/contracts.ts';
+
+import { parseTasks } from '../../../../modules/planning-provider/planning-artifact-parsers.ts';
+import { loadWorkflowConfig } from '../../../../runtime/workflow-configuration/workflow-configuration.ts';
+import { type ParsedTask } from '../../../../modules/planning-provider/planning-artifact-types.ts';
 import {
   ExitCode,
   workflowError,
 } from '../../../../foundation/errors/errors.ts';
-import { assertChangeId } from '../../../../runtime/session-workspace/paths.ts';
+import { assertChangeId } from '../../../../foundation/repository-path/repository-path.ts';
 import {
   changeLifecycleRelativePath,
-  inspectChangeRouting,
   parseChangeLifecycleSource,
   type ChangeRoutingAuthorityPort,
   type ChangeRoutingInspection,
   type ChangeRoutingObservation,
 } from '../../../../modules/lifecycle/change-routing.ts';
+
 import {
   repositoryConsumerPath,
-  repositoryDocumentConfiguration,
-  repositoryWorkRegistryConfiguration,
-} from '../../../../modules/repository-consumer/repository-consumer-config.ts';
+  loadRepositoryConsumerConfiguration,
+} from '../../../../runtime/workflow-configuration/repository-consumer.ts';
 
 const LEGACY_SECTIONS = [
   'Current Change',
@@ -59,23 +66,20 @@ const ROUTING_SECTIONS = [
   'References',
 ];
 
-export type HandoffChange = {
-  changeId: string;
-  tasks: ParsedTask[];
-};
-
 type RepositoryTextReader = (relativePath: string) => string | undefined;
 
-export type HandoffReadContext = Readonly<{
-  contracts: readonly HandoffChange[];
-  readText: RepositoryTextReader;
-}>;
-
 export function renderHandoff(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   authorityPort?: ChangeRoutingAuthorityPort,
 ): string {
-  const rendered = projectHandoff(repositoryRoot, authorityPort);
+  const rendered = projectHandoff(
+    routingInspector,
+    loadChangeContract,
+    repositoryRoot,
+    authorityPort,
+  );
   writeTextAtomic(handoffPath(repositoryRoot), rendered);
   return rendered;
 }
@@ -84,21 +88,36 @@ export function renderHandoff(
  * Render from tracked repository facts only. Durable transition and CI replay
  * callers use this projection so Git-common task runtime cannot change bytes.
  */
-export function renderHandoffFromTrackedFacts(repositoryRoot: string): string {
-  const rendered = buildHandoff(repositoryRoot, undefined, undefined, {
-    contracts: liveContracts(repositoryRoot),
-    readText: (relativePath) =>
-      readTrackedHandoffSource(repositoryRoot, relativePath),
-  });
+export function renderHandoffFromTrackedFacts(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
+  repositoryRoot: string,
+): string {
+  const rendered = buildHandoff(
+    routingInspector,
+    loadChangeContract,
+    repositoryRoot,
+    undefined,
+    undefined,
+    {
+      contracts: liveContracts(loadChangeContract, repositoryRoot),
+      readText: (relativePath) =>
+        readTrackedHandoffSource(repositoryRoot, relativePath),
+    },
+  );
   writeTextAtomic(handoffPath(repositoryRoot), rendered);
   return rendered;
 }
 
 export function projectHandoff(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   authorityPort?: ChangeRoutingAuthorityPort,
 ): string {
   return buildHandoff(
+    routingInspector,
+    loadChangeContract,
     repositoryRoot,
     undefined,
     undefined,
@@ -109,15 +128,23 @@ export function projectHandoff(
 
 /** Build completion handoff bytes from an exact prospective tasks projection. */
 export function projectHandoffForTaskProjection(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   requestedChangeId: string,
   projectedTasks: string,
 ): string {
   const changeId = assertChangeId(requestedChangeId);
-  return buildHandoff(repositoryRoot, undefined, {
-    changeId,
-    tasks: parseTasks(projectedTasks),
-  });
+  return buildHandoff(
+    routingInspector,
+    loadChangeContract,
+    repositoryRoot,
+    undefined,
+    {
+      changeId,
+      tasks: parseTasks(projectedTasks),
+    },
+  );
 }
 
 /**
@@ -126,16 +153,25 @@ export function projectHandoffForTaskProjection(
  * authority input for the transition that replaces it.
  */
 export function renderHandoffForChange(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   requestedChangeId: string,
 ): string {
   const changeId = assertChangeId(requestedChangeId);
-  const rendered = buildHandoff(repositoryRoot, changeId);
+  const rendered = buildHandoff(
+    routingInspector,
+    loadChangeContract,
+    repositoryRoot,
+    changeId,
+  );
   writeTextAtomic(handoffPath(repositoryRoot), rendered);
   return rendered;
 }
 
 function buildHandoff(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   selectedChangeId?: string,
   projectedChange?: HandoffChange,
@@ -153,6 +189,7 @@ function buildHandoff(
       : readContext.readText(changeLifecycleRelativePath);
   if (routedSource !== undefined) {
     return buildRoutingHandoff(
+      routingInspector,
       repositoryRoot,
       readContext,
       routedSource,
@@ -162,6 +199,7 @@ function buildHandoff(
     );
   }
   const contract = selectChange(
+    loadChangeContract,
     repositoryRoot,
     selectedChangeId,
     projectedChange,
@@ -220,13 +258,14 @@ function buildHandoff(
     '- [Roadmap](ROADMAP.md)',
     '- [Change records](../openspec/changes/)',
     `- [Base specifications](${handoffSpecificationsLink(repositoryRoot, readContext)})`,
-    `- [Work backlog](${handoffLink(repositoryRoot, repositoryWorkRegistryConfiguration(repositoryRoot).backlogPath)})`,
+    `- [Work backlog](${handoffLink(repositoryRoot, loadRepositoryConsumerConfiguration(repositoryRoot).configuration.workRegistry.backlogPath)})`,
     '- [System architecture](architecture/ARCHITECTURE.md)',
     '',
   ].join('\n');
 }
 
 function buildRoutingHandoff(
+  routingInspector: ChangeRoutingInspector,
   repositoryRoot: string,
   readContext: HandoffReadContext | undefined,
   sourceBytes: string,
@@ -236,7 +275,7 @@ function buildRoutingHandoff(
 ): string {
   const observedInspection =
     readContext === undefined
-      ? inspectChangeRouting(repositoryRoot, authorityPort)
+      ? routingInspector(repositoryRoot, authorityPort)
       : inspectCommittedRouting(readContext, sourceBytes);
   const inspection = projectRoutingInspection(
     observedInspection,
@@ -314,7 +353,7 @@ function buildRoutingHandoff(
     '- [Change lifecycle](../openspec/change-lifecycle.json)',
     '- [Change records](../openspec/changes/)',
     `- [Base specifications](${handoffSpecificationsLink(repositoryRoot, readContext)})`,
-    `- [Work backlog](${handoffLink(repositoryRoot, repositoryWorkRegistryConfiguration(repositoryRoot).backlogPath)})`,
+    `- [Work backlog](${handoffLink(repositoryRoot, loadRepositoryConsumerConfiguration(repositoryRoot).configuration.workRegistry.backlogPath)})`,
     '',
   ].join('\n');
 }
@@ -502,10 +541,14 @@ function stateLabel(change: ChangeRoutingObservation): string {
 }
 
 export function validateHandoff(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   readContext?: HandoffReadContext,
 ): void {
   const expected = buildHandoff(
+    routingInspector,
+    loadChangeContract,
     repositoryRoot,
     undefined,
     undefined,
@@ -515,11 +558,18 @@ export function validateHandoff(
 }
 
 export function validateHandoffForChange(
+  routingInspector: ChangeRoutingInspector,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   requestedChangeId: string,
 ): void {
   const changeId = assertChangeId(requestedChangeId);
-  const expected = buildHandoff(repositoryRoot, changeId);
+  const expected = buildHandoff(
+    routingInspector,
+    loadChangeContract,
+    repositoryRoot,
+    changeId,
+  );
   assertHandoffBytes(repositoryRoot, expected);
 }
 
@@ -531,7 +581,10 @@ function assertHandoffBytes(
   let actual: string;
   try {
     const source = readText
-      ? readText(repositoryDocumentConfiguration(repositoryRoot).handoffPath)
+      ? readText(
+          loadRepositoryConsumerConfiguration(repositoryRoot).configuration
+            .documents.handoffPath,
+        )
       : fs.readFileSync(handoffPath(repositoryRoot), 'utf8');
     if (source === undefined) throw new Error('handoff is missing');
     actual = source;
@@ -558,6 +611,7 @@ function assertHandoffBytes(
 }
 
 function selectChange(
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   explicitChangeId?: string,
   projectedChange?: HandoffChange,
@@ -568,7 +622,7 @@ function selectChange(
         changeId: contract.changeId,
         tasks: contract.tasks.map((task) => ({ ...task })),
       }))
-    : liveContracts(repositoryRoot);
+    : liveContracts(loadChangeContract, repositoryRoot);
   if (projectedChange) {
     const projectedIndex = contracts.findIndex(
       ({ changeId }) => changeId === projectedChange.changeId,
@@ -609,7 +663,10 @@ function selectChange(
   );
 }
 
-function liveContracts(repositoryRoot: string): HandoffChange[] {
+function liveContracts(
+  loadChangeContract: ChangeContractReader,
+  repositoryRoot: string,
+): HandoffChange[] {
   const config = loadWorkflowConfig(repositoryRoot);
   const root = path.join(repositoryRoot, config.changeRoot);
   return fs
@@ -658,7 +715,9 @@ function readWorkRegistryInventory(
   repositoryRoot: string,
   readText?: RepositoryTextReader,
 ): WorkRegistryHandoffInventory | null {
-  const workRegistry = repositoryWorkRegistryConfiguration(repositoryRoot);
+  const workRegistry =
+    loadRepositoryConsumerConfiguration(repositoryRoot).configuration
+      .workRegistry;
   const inventoryPath = workRegistry.inventoryPath;
   const source = readText
     ? readText(inventoryPath)
@@ -744,12 +803,15 @@ function writeTextAtomic(filePath: string, content: string): void {
 function handoffPath(repositoryRoot: string): string {
   return repositoryConsumerPath(
     repositoryRoot,
-    repositoryDocumentConfiguration(repositoryRoot).handoffPath,
+    loadRepositoryConsumerConfiguration(repositoryRoot).configuration.documents
+      .handoffPath,
   );
 }
 
 function handoffLink(repositoryRoot: string, targetPath: string): string {
-  const handoff = repositoryDocumentConfiguration(repositoryRoot).handoffPath;
+  const handoff =
+    loadRepositoryConsumerConfiguration(repositoryRoot).configuration.documents
+      .handoffPath;
   return path.posix.relative(path.posix.dirname(handoff), targetPath);
 }
 

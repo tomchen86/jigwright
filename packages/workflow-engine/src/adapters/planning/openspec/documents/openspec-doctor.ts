@@ -8,7 +8,7 @@
  */
 import path from 'node:path';
 
-import { repositoryPlanningConfiguration } from '../../../../modules/repository-consumer/repository-consumer-config.ts';
+import { loadRepositoryConsumerConfiguration } from '../../../../runtime/workflow-configuration/repository-consumer.ts';
 import { WorkflowError } from '../../../../foundation/errors/errors.ts';
 import { assertOpenSpecSchemaDirectory } from './openspec-adapter.ts';
 import {
@@ -17,59 +17,17 @@ import {
   resolveOpenSpecInstallation,
   type OpenSpecInstallation,
 } from './openspec-executor.ts';
-import {
-  parseDoctor,
-  type OpenSpecDiagnostic,
-} from './openspec-doctor-payload.ts';
+import { parseDoctor } from './openspec-doctor-payload.ts';
+import type {
+  OpenSpecDiagnostic,
+  OpenSpecDiagnosticReport,
+  SchemaDiagnostic,
+} from '../../../../modules/planning-provider/openspec-diagnostics.ts';
 import {
   parseSchemaResolution,
   parseSchemaValidation,
 } from './openspec-payloads.ts';
 import { OPENSPEC_PACKAGE_NAME } from './openspec-provenance.ts';
-
-type InstallationDiagnostic = {
-  ok: boolean;
-  packageName: typeof OPENSPEC_PACKAGE_NAME;
-  declaredVersion: '1.6.0';
-  lockfileVersion: string | null;
-  lockedVersion: string | null;
-  integrity: string | null;
-  buildScriptsAllowed: boolean | null;
-  installedVersion: string | null;
-  packageDirectory: string | null;
-  binPath: string | null;
-};
-
-type RuntimeDiagnostic = {
-  ok: boolean;
-  version: string | null;
-};
-
-type RootDiagnostic = {
-  ok: boolean;
-  path: string | null;
-  source: 'nearest' | null;
-  healthy: boolean | null;
-  storeActive: boolean | null;
-};
-
-type SchemaDiagnostic = {
-  name: string;
-  expectedSource: 'package' | 'project';
-  ok: boolean;
-  resolution: { source: 'package' | 'project'; path: string } | null;
-  validation: { valid: boolean; issueCount: number } | null;
-};
-
-export type OpenSpecDiagnosticReport = {
-  expectedVersion: '1.6.0';
-  healthy: boolean;
-  installation: InstallationDiagnostic;
-  runtime: RuntimeDiagnostic;
-  root: RootDiagnostic;
-  schemas: SchemaDiagnostic[];
-  diagnostics: OpenSpecDiagnostic[];
-};
 
 export function diagnoseOpenSpec(
   repositoryRoot: string,
@@ -164,7 +122,8 @@ export function diagnoseOpenSpec(
 function configuredSchemaDiagnostics(
   repositoryRoot: string,
 ): SchemaDiagnostic[] {
-  const planning = repositoryPlanningConfiguration(repositoryRoot);
+  const planning =
+    loadRepositoryConsumerConfiguration(repositoryRoot).configuration.planning;
   const packageSchemas = new Set(planning.packageSchemaNames);
   return planning.supportedSchemaNames.map((name) => ({
     name,

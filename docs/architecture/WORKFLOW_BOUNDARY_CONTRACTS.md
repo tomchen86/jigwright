@@ -1,0 +1,9 @@
+# Workflow boundary contracts
+
+New workflow records use a neutral, versioned `workflow.<kind>.vN` schema and carry the repository's `consumerNamespace` separately. Signed records are verified only under their record-owned, explicitly supported signature namespace. The implementation and contract tests live in `packages/core/src/workflow-namespace.ts` and `packages/core/test/workflow-namespace.contract.test.ts`; the engine's live writer identities and package source are checked by `packages/workflow-engine/test/workflow-namespace.contract.test.ts`.
+
+`jigwright boundary vectors --check --json` authenticates the public, language-neutral corpus shipped at `packages/core/conformance/workflow-conformance-v2.json`. Its digest protects the corpus bytes and its nine protocol domains: canonical JSON, digest identity, managed trailers, journal records, Manifest/PlanReview binding, Central Grant, current Collaboration Grant envelopes, agent protocol frames, and planning bindings. `packages/core/src/conformance-vectors.ts` owns validation; the engine's storage reader preserves plain-file bounds.
+
+`jigwright boundary remap --input <request.json> --json` proves an exact mechanical move using adjacent pinned commits, blob and mode identity, and path-role continuity. It projects the authority remap manifest and required policy/bootstrap mutations without applying or signing them. `packages/workflow-engine/src/composition-root/authority-remap.ts` owns these proofs. Identity or role-continuity failure preserves the ordinary risk floor; required-check migration is a definition transition, never a suspension.
+
+The command registry owns the vector and remap routes and their help/guide usage. Architecture acceptance checks current dependency direction, module ownership and behavior directly; it does not require an extraction-era source-count manifest.

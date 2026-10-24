@@ -7,13 +7,15 @@
  */
 
 import crypto from 'node:crypto';
+import { resolveTreeOid } from '../repository-transaction/git-object-ids.ts';
+import { listProviderIds } from '../../modules/provider-orchestration/provider-registry.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
   type AiAdapterProviderReservation,
   loadAiAdapterPolicy,
   parseAiAdapterPolicyDocument,
-} from './ai-adapter-policy.ts';
+} from '../provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import {
@@ -21,18 +23,18 @@ import {
   workflowError,
   ExitCode,
 } from '../../foundation/errors/errors.ts';
-import { runGit } from '../repository-transaction/git.ts';
-import { normalizeExactRepositoryPath } from '../session-workspace/paths.ts';
+import { normalizeExactRepositoryPath } from '../../foundation/repository-path/repository-path.ts';
 import {
   type ProviderInvocationRequest,
   type ProviderRunnerReport,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
 import { type ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import type { ProviderResolution } from './provider-runner.ts';
-import {
-  type ProviderAvailabilityPilotObservation,
-  type ProviderAvailabilityPilotRecord,
+import type {
+  ProviderAvailabilityPilotObservation,
+  ProviderAvailabilityPilotRecord,
 } from './provider-availability-pilot.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
 
 const SHA256 = /^[0-9a-f]{64}$/u;
 
@@ -41,7 +43,7 @@ const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
 const PILOT_RECORD_PATH =
   /^workflow\/provider-availability-pilots\/[a-z0-9][a-z0-9-]{0,127}\.json$/u;
 
-export const PROVIDERS = Object.freeze(['codex', 'claude'] as const);
+export const PROVIDERS = listProviderIds();
 
 export function successfulObservation(
   providerId: ProviderId,
@@ -272,20 +274,19 @@ export function assertProviderAvailabilityPilotRecord(
   ) {
     throw pilotInvalid();
   }
-  const policyContent = runGit(repositoryRoot, [
-    'show',
-    `${value.baseCommit}:workflow/ai-adapter-policy.json`,
-  ]);
+  const policyContent = readFileAtRevision(
+    repositoryRoot,
+    value.baseCommit,
+    'workflow/ai-adapter-policy.json',
+  );
   const loadedPolicy = parseAiAdapterPolicyDocument(policyContent);
-  const baseTree = runGit(repositoryRoot, [
-    'rev-parse',
-    `${value.baseCommit}^{tree}`,
-  ]).trim();
+  const baseTree = resolveTreeOid(repositoryRoot, value.baseCommit);
   const config = JSON.parse(
-    runGit(repositoryRoot, [
-      'show',
-      `${value.baseCommit}:workflow/config.json`,
-    ]),
+    readFileAtRevision(
+      repositoryRoot,
+      value.baseCommit,
+      'workflow/config.json',
+    ),
   ) as unknown;
   if (
     loadedPolicy.digest !== value.policyDigest ||

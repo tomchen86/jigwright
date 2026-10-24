@@ -1,3 +1,4 @@
+import { taskMandateOperations } from './task-mandate-production.ts';
 /**
  * Issues Collaboration Grants with protected-task continuation context when
  * one is required.
@@ -9,17 +10,17 @@
 import {
   issueCollaborationGrant,
   prepareCollaborationGrantIssue,
+} from './collaboration-grant-issuance-production.ts';
+import {
   type CollaborationGrantIssueOptions,
   type CollaborationGrantRequest,
-} from '../modules/authority/collaboration-grant.ts';
+} from '../modules/authority/collaboration-grant-codec.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
-import { deriveProtectedTaskApplyTaskDiffGrantContinuation } from '../application/finalize/task-diff-review-lifecycle.ts';
+import { deriveProtectedTaskApplyTaskDiffGrantContinuation } from './task-diff-review-production.ts';
 import { discoverRepository } from '../runtime/repository-transaction/git.ts';
-import {
-  collaborationGrantStorePaths,
-  storeAvailableCollaborationGrantUnderLifecycleLock,
-} from '../runtime/storage-journal/collaboration-grant-store.ts';
+import { collaborationGrantStorePaths } from '../runtime/storage-journal/collaboration-grant-private-files.ts';
+import { storeAvailableCollaborationGrantUnderLifecycleLock } from '../runtime/storage-journal/collaboration-grant-reservation.ts';
 import { withRepositoryLifecycleOperation } from '../runtime/session-workspace/session-store.ts';
 
 export function issueProductionCollaborationGrant(
@@ -61,3 +62,16 @@ export function issueProductionCollaborationGrant(
   );
   return { ...prepared, availableEnvelopePath };
 }
+
+import { createCollaborationGrantRevoker } from '../application/control-plane/collaboration-grant-revocation.ts';
+import { authorizeHumanRevocation } from './human-revocation-production.ts';
+import { collaborationGrantCodec } from '../runtime/grants/grant-services.ts';
+import { withCollaborationRevocationStore } from '../runtime/storage-journal/collaboration-grant-revocation-store.ts';
+export const revokeCollaborationGrant = createCollaborationGrantRevoker({
+  now: () => new Date(),
+  discoverRepository,
+  taskMandate: taskMandateOperations,
+  authorizeHumanRevocation,
+  collaborationGrants: collaborationGrantCodec,
+  withStoreLock: withCollaborationRevocationStore,
+});

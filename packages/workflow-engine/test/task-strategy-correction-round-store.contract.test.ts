@@ -6,12 +6,12 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import type { ObservedCheckFailure } from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
-import {
-  createTaskStrategyGreenFailureRecord,
-  type TaskStrategyGreenFailureRecord,
-  type TaskStrategyPatchHead,
-} from '../src/runtime/storage-journal/task-strategy-correction-store.ts';
+import type { ObservedCheckFailure } from '../src/foundation/check-evidence/check-evidence.ts';
+import { createTaskStrategyGreenFailureRecord } from '../src/runtime/storage-journal/task-strategy-correction-store.ts';
+import type {
+  TaskStrategyGreenFailureRecord,
+  TaskStrategyPatchHead,
+} from '../src/modules/provider-orchestration/task-strategy-correction-record.ts';
 import {
   deriveTaskStrategyCorrectionState,
   listTaskStrategyCorrectionRounds,
@@ -24,7 +24,7 @@ import {
   createTaskStrategyCorrectionSubject,
   createTaskStrategyImplementationSubject,
 } from '../src/modules/provider-orchestration/task-strategy-provider-contract.ts';
-import type { InvestigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 
 const SESSION_ID = 'session-correction-round-store';
 const RED_TRANSACTION_DIGEST = digest('red-transaction');

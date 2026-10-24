@@ -9,7 +9,6 @@ import path from 'node:path';
 
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
-import { runGitBuffer } from '../../../runtime/repository-transaction/git.ts';
 import {
   normalizeInvestigationTerm,
   type InvestigationTermKind,
@@ -179,6 +178,15 @@ export function validateEngineFloor(
   return floor;
 }
 
+export type PinnedPathDiffRequest = {
+  repositoryRoot: string;
+  baseCommit: string;
+  targetCommit: string;
+};
+
+/** Exact pinned name-status bytes; validation and interpretation remain in the domain. */
+export type ReadPinnedPathDiff = (request: PinnedPathDiffRequest) => Buffer;
+
 /**
  * Derive rename and removal path facts from an exact pinned commit range using a
  * NUL-safe, binary-safe name-status diff. Only full commit object IDs are
@@ -186,11 +194,10 @@ export function validateEngineFloor(
  * path records fail closed rather than silently replacing bytes. The current
  * worktree and any commit beyond the target are never consulted.
  */
-export function derivePinnedDiffPathFacts(request: {
-  repositoryRoot: string;
-  baseCommit: string;
-  targetCommit: string;
-}): ChangedPathFact[] {
+export function derivePinnedDiffPathFacts(
+  readPinnedPathDiff: ReadPinnedPathDiff,
+  request: PinnedPathDiffRequest,
+): ChangedPathFact[] {
   const { repositoryRoot, baseCommit, targetCommit } = request;
   if (
     !OBJECT_ID_PATTERN.test(baseCommit) ||
@@ -201,19 +208,11 @@ export function derivePinnedDiffPathFacts(request: {
     );
   }
 
-  const output = runGitBuffer(repositoryRoot, [
-    'diff',
-    '--name-status',
-    '--find-renames=50%',
-    '-l0',
-    '--diff-algorithm=myers',
-    '--no-indent-heuristic',
-    '--diff-filter=RD',
-    '-z',
+  const output = readPinnedPathDiff({
+    repositoryRoot,
     baseCommit,
     targetCommit,
-    '--',
-  ]);
+  });
   if (output.length > 0 && output[output.length - 1] !== 0x00) {
     throw diffInvalid('Pinned diff output is not NUL-terminated.');
   }

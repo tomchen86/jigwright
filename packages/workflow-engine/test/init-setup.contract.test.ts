@@ -162,7 +162,7 @@ test('init rejects invalid input before creating config', () => {
 
 test('interactive setup asks provider, confirms targets, then remaining settings and skips answered questions', async () => {
   const { initializeJigwrightConsumer } =
-    await import('../src/modules/adoption/setup-questions.ts');
+    await import('../src/entrypoints/cli/consumer-setup-cli.ts');
   const temporary = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-init-interactive-'),
   );
@@ -203,7 +203,7 @@ test('interactive setup asks provider, confirms targets, then remaining settings
 
 test('host provider selection is persistent runtime input without copying provider configuration into the repo', async () => {
   const { initializeJigwrightConsumer, configuredJigwrightEnvironment } =
-    await import('../src/modules/adoption/setup-questions.ts');
+    await import('../src/entrypoints/cli/consumer-setup-cli.ts');
   const temporary = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-init-provider-'),
   );
@@ -296,7 +296,7 @@ test('init preflights conflicting identity before writing confirmed guidance', (
 
 test('init accepts Markdown extension and emits valid disposable-database consumer config', async () => {
   const { parseRepositoryConsumerConfiguration } =
-    await import('../src/modules/repository-consumer/repository-consumer-config.ts');
+    await import('../src/modules/repository-consumer/repository-consumer-policy.ts');
   const temporary = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-init-markdown-'),
   );
@@ -411,7 +411,7 @@ test('fresh provider setup creates host TOML once without launching provider pro
 
 test('interactive new provider setup adds one provider question before guidance', async () => {
   const { initializeJigwrightConsumer } =
-    await import('../src/modules/adoption/setup-questions.ts');
+    await import('../src/entrypoints/cli/consumer-setup-cli.ts');
   const temporary = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-init-new-provider-prompt-'),
   );
@@ -598,7 +598,7 @@ test('dangling provider destination is rejected before guidance or setup writes'
 
 test('bootstrap finds saved provider config from an unborn repository subdirectory', async () => {
   const { initializeJigwrightConsumer } =
-    await import('../src/modules/adoption/setup-questions.ts');
+    await import('../src/entrypoints/cli/consumer-setup-cli.ts');
   const temporary = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-init-subdirectory-'),
   );

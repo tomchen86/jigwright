@@ -1,40 +1,28 @@
-/**
- * Admits blind-survey role evidence with its exact provider assignment and durable grant use.
- *
- * Invariants:
- * - Admission binds author, reviewer, provider output, and content to the same assignment.
- * - Read-only replay verifies an already-consumed grant without mutating its state.
- * - Mutating admission consumes the exact grant before publishing an admitted role result.
- */
-
+import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type {
   ProviderInvocationRequest,
   ProviderProcessResult,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
-import {
-  type AdmittedRoleResult,
-  type RecordedRoleParticipant,
-  admitConsumedRoleResultReplay,
-  admitRoleResult,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+import type { RecordedRoleParticipant } from '../../modules/provider-orchestration/role-assignment.ts';
 import {
   loadMaintainerPolicyAtCommit,
   resolveAuthoritativeCollaborationGrantVerifier,
 } from './propose-context.ts';
 import type { readProposeAuthorization } from './propose-request-validation.ts';
-import type {
-  CollaborationGrantUseProjection,
-  EvidenceNode,
-  ProposeRuntime,
-} from './propose-runtime.ts';
+import type { CollaborationGrantUseProjection } from '../../modules/authority/collaboration-grant-records.ts';
+import type { EvidenceNode } from '@jigwright/core/evidence-node';
+import type { ProposeRuntime } from './propose-runtime.ts';
 import type {
   CollaborationGrantAccessMode,
   ProposeResumeOptions,
-} from './propose-types.ts';
-
+} from '../../modules/proposal/propose-types.ts';
 export function createBlindSurveyRoleResult(
-  services: Pick<ProposeRuntime, 'grants' | 'provider' | 'workspace'>,
+  services: Pick<
+    ProposeRuntime,
+    'grants' | 'provider' | 'workspace' | 'roleAdmission'
+  >,
   context: ReturnType<
     ProposeRuntime['workspace']['loadInvestigationRuntimeContext']
   >,
@@ -85,7 +73,7 @@ export function createBlindSurveyRoleResult(
   };
   let grantUse: CollaborationGrantUseProjection | null = null;
   let grantAdmission: NonNullable<
-    Parameters<typeof admitRoleResult>[0]['grantValidation']
+    Parameters<RoleAdmissionServices['admitRoleResult']>[0]['grantValidation']
   > | null = null;
   if ('grantId' in request.roleAssignment) {
     if (
@@ -138,7 +126,7 @@ export function createBlindSurveyRoleResult(
         content,
         directHumanReviewAttestation: null,
       });
-      return admitConsumedRoleResultReplay({
+      return services.roleAdmission.admitConsumedRoleResultReplay({
         assignment: request.roleAssignment,
         author,
         participant,
@@ -194,7 +182,7 @@ export function createBlindSurveyRoleResult(
       ExitCode.staleState,
     );
   }
-  return admitRoleResult({
+  return services.roleAdmission.admitRoleResult({
     assignment: request.roleAssignment,
     author,
     participant,

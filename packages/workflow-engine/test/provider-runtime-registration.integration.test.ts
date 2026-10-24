@@ -2,16 +2,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-import { inspectDurableRetentionCatalog } from '../src/modules/authority/execution-governance.ts';
+import { inspectDurableRetentionCatalog } from '../src/runtime/storage-journal/execution-governance-evidence-store.ts';
 import { listExecutionJobStates } from '../src/runtime/storage-journal/execution-store.ts';
-import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
-import { inspectProviderPromptContextRetentionBinding } from '../src/runtime/provider-execution/provider-execution-governance.ts';
-import {
-  inspectProviderRetentionMetrics,
-  providerRuntimeEvidenceId,
-} from '../src/runtime/provider-execution/provider-retention.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
+import { inspectProviderPromptContextRetentionBinding } from '../src/runtime/storage-journal/provider-execution-governance.ts';
+import { providerRuntimeEvidenceId } from '../src/runtime/provider-execution/provider-retention.ts';
+import { inspectProviderRetentionMetrics } from '../src/composition-root/retention-production.ts';
 import {
   readProviderInvocation,
   readProviderInvocationManifest,
@@ -20,7 +18,7 @@ import {
 import {
   pinWorkflowEvidence,
   runEvidenceRetentionMaintenance,
-} from '../src/runtime/provider-execution/retention-control.ts';
+} from '../src/composition-root/retention-production.ts';
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 

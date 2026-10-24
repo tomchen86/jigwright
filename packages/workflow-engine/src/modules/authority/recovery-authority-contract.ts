@@ -627,3 +627,19 @@ export function isNodeCode(error: unknown, code: string): boolean {
     error.code === code
   );
 }
+
+/** Required descriptor publication capability; authority remains externally pinned. */
+export type RecoveryAuthorityDescriptorImporter = (
+  externalDescriptorPath: string,
+  privateStoreRoot: string,
+  expected: RecoveryAuthorityExpectations,
+  boundary: RecoveryAuthorityImportBoundary,
+  hooks?: RecoveryAuthorityImportHooks,
+) => RecoveryAuthorityDescriptorV1;
+
+/** Read the private descriptor against the caller's exact external expectations. */
+export type RecoveryAuthorityDescriptorReader = (
+  privateStoreRoot: string,
+  expected: RecoveryAuthorityExpectations,
+  boundary: RecoveryAuthorityImportBoundary,
+) => RecoveryAuthorityDescriptorV1;

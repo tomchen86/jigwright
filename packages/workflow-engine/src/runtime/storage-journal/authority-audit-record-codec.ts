@@ -9,11 +9,7 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import {
   type AuthorityAuditAppendInput,
   APPEND_INPUT_KEYS,
-  AUTHORITY_AUDIT_EVENT_TYPES,
-  AUTHORITY_AUDIT_RESULTS,
-  type AuthorityAuditRecord,
   RECORD_KEYS,
-  type AuthorityAuditLedgerEntry,
 } from './authority-audit-contracts.ts';
 import {
   isPlainRecord,
@@ -137,3 +133,10 @@ export function freezeEntry(
 ): AuthorityAuditLedgerEntry {
   return Object.freeze(entry);
 }
+
+import {
+  AUTHORITY_AUDIT_EVENT_TYPES,
+  AUTHORITY_AUDIT_RESULTS,
+  type AuthorityAuditRecord,
+  type AuthorityAuditLedgerEntry,
+} from '../../modules/authority/authority-audit-contract.ts';

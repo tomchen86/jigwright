@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { builtInProviderAdapters } from '../src/composition-root/built-in-provider-adapter-production.ts';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,14 +9,14 @@ import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { type ProviderInvocationAcceptanceBinding } from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { createProviderRunnerForTesting } from '../src/runtime/provider-execution/provider-runner.ts';
 import { spawnBoundedProviderProcess } from '../src/runtime/provider-execution/bounded-provider-process.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import { createBuiltInAgentRuntimeV1Bridge } from '../src/composition-root/agent-runtime-v1-production.ts';
 import { runHostWrapperProviderThroughAgentRuntimeV1 } from '../src/composition-root/agent-runtime-host-wrapper-production.ts';
 import { productionAgentRuntime } from '../src/composition-root/agent-runtime-production.ts';
-import { type HostWrapperProviderProfileSnapshot } from '@jigwright/agent-runtime';
+import { type HostWrapperProviderProfileSnapshot } from '@jigwright/core/agent-provider-config';
 import type { AgentRuntimeNativeSessionTurnControllerV1 } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
 import { createAgentRuntimeAssignmentBindingV1 } from '../src/modules/provider-orchestration/agent-runtime-assignment-binding.ts';
 import {
@@ -40,8 +41,8 @@ import {
 import {
   assertProviderRuntimeProtocolReceipt,
   type ProviderRuntimeProtocolReceipt,
-  type ProviderWrapperProtocolReceipt,
 } from '../src/modules/provider-orchestration/agent-runtime-protocol.ts';
+import { type ProviderWrapperProtocolReceipt } from '@jigwright/core/harness-jsonl-v1-contracts';
 import { sourceRepositoryRoot } from './fixture.ts';
 import {
   PROVIDER_SCHEMA,
@@ -326,7 +327,10 @@ test('async runner consumes harness-jsonl-v1 only after explicit adapter opt-in'
       });
     };
 
-    const report = await createProviderRunnerForTesting(host).runAsync(input, {
+    const report = await createProviderRunnerForTesting(
+      builtInProviderAdapters,
+      host,
+    ).runAsync(input, {
       platform: 'darwin',
     });
 
@@ -1002,21 +1006,24 @@ for (const fixtureMode of ['error', 'cancel-ack', 'cancel-ignore'] as const) {
         });
 
       await assert.rejects(
-        createProviderRunnerForTesting(host).runAsync(input, {
-          platform: 'darwin',
-          ...(fixtureMode === 'error' ? {} : { signal: controller.signal }),
-          onProtocolReceipt(receipt) {
-            if (receipt.kind !== 'provider-wrapper-protocol-receipt') {
-              assert.fail(
-                'harness-jsonl-v1 emitted a session protocol receipt',
-              );
-            }
-            observed.push(receipt);
-            if (fixtureMode === 'error') {
-              throw new Error('receipt observer must be non-authoritative');
-            }
+        createProviderRunnerForTesting(builtInProviderAdapters, host).runAsync(
+          input,
+          {
+            platform: 'darwin',
+            ...(fixtureMode === 'error' ? {} : { signal: controller.signal }),
+            onProtocolReceipt(receipt) {
+              if (receipt.kind !== 'provider-wrapper-protocol-receipt') {
+                assert.fail(
+                  'harness-jsonl-v1 emitted a session protocol receipt',
+                );
+              }
+              observed.push(receipt);
+              if (fixtureMode === 'error') {
+                throw new Error('receipt observer must be non-authoritative');
+              }
+            },
           },
-        }),
+        ),
         (error: unknown) =>
           error instanceof WorkflowError &&
           error.code ===
@@ -1057,9 +1064,12 @@ test('async runner releases its concurrency slot after execution rejects', async
     };
 
     await assert.rejects(
-      createProviderRunnerForTesting(host).runAsync(fixture.input, {
-        platform: 'darwin',
-      }),
+      createProviderRunnerForTesting(builtInProviderAdapters, host).runAsync(
+        fixture.input,
+        {
+          platform: 'darwin',
+        },
+      ),
       expected,
     );
     assert.deepEqual(

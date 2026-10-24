@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { captureGovernanceSource } from '../src/modules/governance-intake/governance-intake.ts';
+import { captureGovernanceSource } from '../src/composition-root/governance-sources-production.ts';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
@@ -20,7 +20,7 @@ import {
   validateWorkRegistry,
   validateWorkRegistryProjections,
   workItemDigest,
-} from '../src/modules/governance-intake/work-registry.ts';
+} from '../src/composition-root/work-registry-production.ts';
 import {
   snapshotPlainTree,
   runGitForTest,

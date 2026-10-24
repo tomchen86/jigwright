@@ -1,3 +1,27 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import {
+  productionChangeRoutingInspector,
+  productionChangeContract,
+} from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
+const validateHandoff = validateHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -5,22 +29,22 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
-  renderHandoff,
-  validateHandoff,
+  renderHandoff as renderHandoffWithContractReader,
+  validateHandoff as validateHandoffWithContractReader,
 } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { validateRepositoryStateAtCommit } from '../src/composition-root/repository-validation.ts';
-import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
 import { readSystemDescriptionSnapshot } from '../src/runtime/repository-transaction/system-description-snapshot.ts';
-import { validateManagedDocuments } from '../src/runtime/managed-documents/validation/managed-documents.ts';
-import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { validateManagedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
   applyWorkItemReview,
   createWorkItem,
   renderWorkRegistry,
   workItemDigest,
-} from '../src/modules/governance-intake/work-registry.ts';
+} from '../src/composition-root/work-registry-production.ts';
 import {
   createFixtureRepository as createBareFixtureRepository,
   git,
@@ -37,7 +61,7 @@ import {
 
 const cliPath = path.join(
   sourceRepositoryRoot,
-  'packages/workflow-engine/src/cli.ts',
+  'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
 );
 
 function createFixtureRepository(): string {
@@ -481,7 +505,12 @@ test('completion projection refreshes the handoff to no active change', () => {
     git(repository, ['commit', '-m', 'Enable generated handoff']);
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
     assert.throws(
       () => finalizeTask(repository, session.sessionId),
@@ -534,7 +563,12 @@ test('final completion renders an explicit no-active-change handoff', () => {
     git(repository, ['commit', '-m', 'Add completed change and handoff']);
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
 
     assert.throws(

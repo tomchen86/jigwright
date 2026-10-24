@@ -6,16 +6,17 @@ import os from 'node:os';
 import path from 'node:path';
 import { deriveAuthorityAuditRepositoryId } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import {
   TASK_MANDATE_SIGNATURE_NAMESPACE_V2,
   type TaskMandateRequest,
-} from '../src/modules/authority/task-mandate.ts';
+} from '../src/modules/authority/task-mandate-values.ts';
+
 import {
   computeProtectedCapabilityEntryDigestsFromWorktree,
   REQUIRED_PROTECTED_CAPABILITIES,
-} from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+} from '../src/runtime/repository-validation/protected-capabilities.ts';
 import {
   createFixtureRepository,
   git,
@@ -128,7 +129,7 @@ export function enableConditionalTaskAuthorization(
     'utf8',
   );
   const loaderPath =
-    'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+    'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts';
   const manifestPath = 'workflow/protected-capabilities.json';
   const loaderTarget = path.join(repository, loaderPath);
   fs.mkdirSync(path.dirname(loaderTarget), { recursive: true });

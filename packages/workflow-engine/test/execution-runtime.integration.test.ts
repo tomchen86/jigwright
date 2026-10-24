@@ -4,15 +4,15 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
-import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import {
   inspectExecutionJob,
   listExecutionJobs,
   prepareProviderReplacement,
   watchExecutionJob,
 } from '../src/runtime/provider-execution/execution-runtime.ts';
-import { requestExecutionReplacement } from '../src/application/control-plane/execution-replacement.ts';
-import { canonicalExecutionBudgetGrantRequest } from '../src/modules/authority/execution-governance.ts';
+import { requestExecutionReplacement } from '../src/composition-root/execution-retry-production.ts';
+import { canonicalExecutionBudgetGrantRequest } from '../src/modules/authority/execution-governance-grant-contracts.ts';
 import {
   executionJobStatePath,
   readExecutionJobState,
@@ -33,9 +33,9 @@ import {
   prepareProviderInvocationAcceptanceBinding,
   providerInvocationManifestDigest,
   storeProviderExecutionPolicySnapshot,
-  type BlindSurveyManifest,
-  type ProviderInvocationFailure,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import type { BlindSurveyManifest } from '../src/modules/investigation/manifest/blind-survey-manifest.ts';
+import type { ProviderInvocationFailure } from '../src/modules/provider-orchestration/provider-invocation-record.ts';
 import {
   createFixtureRepository,
   git,
@@ -829,7 +829,10 @@ function runWorkflowCli(repository: string, args: string[]) {
     process.execPath,
     [
       '--experimental-strip-types',
-      path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+      path.join(
+        sourceRepositoryRoot,
+        'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+      ),
       ...args,
     ],
     { cwd: repository, encoding: 'utf8' },

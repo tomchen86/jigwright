@@ -5,6 +5,132 @@ capabilities: [bootstrap-task-evidence, collaboration-continuation-grant, engine
 
 Define the contracts shared by planning, investigation evidence, managed execution, concurrent workspaces, archive, and their independent replay paths.
 ## Requirements
+### Requirement: Ordinary Commands Keep the Package Runner Fixed
+sources: [SRC-1a21225e5d3b38e35e098a8e17c41226edb73545fa027957d480930d37332004]
+
+Every ordinary invocation SHALL verify and execute the host and engine closure
+shipped with the invoked Jigwright package. Installed and source invocations
+SHALL follow the same rule. Consumer repository engine-selection records,
+local adoption bindings, promotion records, and resume-binding environment
+values MUST NOT replace that runner or cause a candidate engine probe during
+ordinary execution or candidate dependency observation.
+
+A task MAY edit and test a candidate Jigwright version as its workload. The
+candidate becomes the runner only when the user invokes that installed version
+for a subsequent task. Ordinary check, completion, persistence, locking, report
+freshness, and Grant Core requirements SHALL remain in force. Active parent WIP,
+Recovery Quarantine, and operational trust fences SHALL retain their recovery
+protections. Existing intervention fences SHALL clear only through signed
+metadata disposition; stored WIP, checkpoints, snapshots, child workspaces and
+refs SHALL remain unchanged.
+
+The package SHALL reject `control-plane produce`, `control-plane approve-and-apply`,
+`control-plane recover`, `control-plane initialize`, `control-plane status`,
+`control-plane classify`, and `harness-bootstrap control-plane rollback` without creating,
+advancing, signing, or probing consumer self-update state.
+
+The package SHALL also reject local `change intervene`, `engine build-artifact`,
+`engine adopt`, `intervention recover`, and `intervention status --tx`, including
+aliases and caller-supplied request forms. Their specialized WIP capture/restore,
+child creation, artifact building and engine switching machinery SHALL be absent.
+Ordinary task and Git recovery SHALL remain independent of these retired paths.
+
+Existing `intervention status` SHALL remain read-only. Existing
+`change revoke-intervention` SHALL use the current HEAD trusted human revocation,
+original signed grant binding, audit and durable abandonment replay. It MAY dispose
+active or adopted parent metadata without completing an engine rollback. It SHALL
+preserve existing sidecar evidence and append the abandonment event. An expired
+maintenance record MAY become revoked solely for this metadata disposition;
+its original `expiredAt` SHALL be preserved and equal the envelope expiry. A
+revocation signed before expiry SHALL retain its original `revokedAt` when replayed
+after expiry. Neither transition grants new work or restores workspace bytes.
+Disposition SHALL match the grant's parent, intervention and checkpoint before
+signing or replay, and recheck that target under the parent operation lock before
+writing an abandonment intent. A different valid checkpoint MUST NOT be disposed
+using an earlier checkpoint's authority.
+
+#### Scenario: Retired self-update commands cannot activate consumer state
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/retired-self-update-cli.integration.test.ts#retired self-update commands leave empty and prepared consumer state and Git unchanged
+
+- **GIVEN** either an empty consumer store or a retained prepared update record
+- **WHEN** a retired self-update command is invoked
+- **THEN** the command fails as unsupported before authority assembly or repository observation
+- **AND** consumer files, Git HEAD, and index bytes remain unchanged
+
+#### Scenario: Local self-update routes are retired before observation
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/retired-self-update-cli.integration.test.ts#retired local self-update routes reject before repository and signer access
+
+- **WHEN** any retired local self-update route or alias is invoked
+- **THEN** it fails before repository observation or signer construction
+
+#### Scenario: Prepared revocation retains its signed time across expiry
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/intervention-metadata-disposition.integration.test.ts#prepared pre-expiry revocation replays after expiry without rewriting signed time
+
+- **GIVEN** revocation was signed before expiry and interrupted before disposition
+- **WHEN** the same authorization is replayed after the record has expired
+- **THEN** both original timestamps remain and only authorized metadata is disposed
+- **AND** WIP, HEAD, index, snapshots, child data, refs and candidate bytes are unchanged
+
+#### Scenario: Adopted sidecar metadata can be disposed without candidate execution
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/intervention-metadata-disposition.integration.test.ts#signed disposal preserves adopted sidecar evidence and appends one abandonment event
+
+- **GIVEN** an existing adopted sidecar and a probe-capable candidate
+- **WHEN** the current trusted human authorizes metadata disposition
+- **THEN** the original adoption history remains with one abandonment event
+- **AND** replay does not execute the candidate or alter retained workspace data
+
+#### Scenario: Existing authority cannot dispose another valid checkpoint
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/intervention-metadata-disposition.integration.test.ts#metadata disposition rejects a different valid checkpoint before signing or replay
+
+- **GIVEN** retained authority belongs to one checkpoint and current intervention metadata belongs to another valid checkpoint
+- **WHEN** disposition is requested with available, expired or already revoked authority
+- **THEN** it rejects the target mismatch before signing or changing stored bytes
+
+#### Scenario: Installed runner encounters an inert retired consumer state
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/single-package-release.contract.test.ts#single Jigwright tarball installs the complete CLI and public surfaces
+
+- **GIVEN** a complete Jigwright tarball is installed and the consumer has inert retired engine-selection state
+- **WHEN** the installed CLI executes ordinary commands
+- **THEN** its package host produces the results without running the candidate or its probe
+- **AND** the consumer selection and Git HEAD remain unchanged
+
+#### Scenario: Source invocation encounters an inert retired candidate
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/fixed-package-launcher.integration.test.ts#trusted workflow launcher keeps its package E1 with retired E2 state and preserves argv and exit status
+
+- **WHEN** the source launcher runs with a different inert retired consumer state
+- **THEN** it executes its own verified package host and preserves arguments and exit status
+
+#### Scenario: Dependency evidence identifies the executing package
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/installed-engine-identity.test.ts#candidate dependency snapshots use the package identity without probing an inert retired consumer state
+
+- **WHEN** the production candidate dependency snapshot observes a consumer with an inert retired candidate
+- **THEN** the harness engine digest identifies the executing package closure
+- **AND** observation neither probes the candidate nor changes its selection
+
+#### Scenario: Ordinary session checks and completion require no adoption binding
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/fixed-runner-session.integration.test.ts#ordinary check and completion ignore consumer engine selection; binding=absent
+
+- **GIVEN** a task has persisted consumer selection state and no engine resume binding
+- **WHEN** ordinary check and completion run with their normal prerequisites
+- **THEN** they publish current evidence and complete the task without adopting a different engine
+
+#### Scenario: Check metadata remains bound to trusted freshness policy
+covers: #Requirement: Ordinary Commands Keep the Package Runner Fixed
+test: packages/workflow-engine/test/session-check-metadata.integration.test.ts#ordinary checks retain trusted external-state metadata and rerun required checks
+
+- **WHEN** ordinary checks use trusted external-state snapshots and freshness declarations
+- **THEN** missing snapshots still fail and published evidence retains the trusted completion time, snapshot digest, and maximum age
+- **AND** each ordinary check invocation executes its required checks
+
 ### Requirement: Collaboration Grants Are Human-Issued and Exactly Bound
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-5cdc4849e2c39d2af2dce4a96fd95b92fac190f87813f6ac59779ece7ab8aafb]
 

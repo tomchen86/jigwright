@@ -1,37 +1,29 @@
-/**
- * Coordinates human approval, application, and revocation of v2 Apply
- * Grants.
- *
- * Invariants:
- * - The published candidate summary must match its frozen digest.
- */
+import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
+import type {
+  CandidateChecksAttestationV3,
+  CandidateExternalEffect,
+  CandidateProviderInvocation,
+  ImmutableCandidateBundleV2,
+} from '../../modules/authority/maintainer-candidate-contracts.ts';
+import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
+import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
 import { createMaintainerApplyChecks } from './maintainer-apply-checks.ts';
 import { createMaintainerApplyAudit } from './maintainer-apply-audit.ts';
 import { createMaintainerApplyReissue } from './maintainer-apply-reissue.ts';
 import crypto from 'node:crypto';
-
 import {
   deriveAuthorityAuditRepositoryId,
   scanAuthorityAuditLedger,
-  type AuthorityAuditLedgerScope,
-  type Sha256Digest,
 } from '../../runtime/storage-journal/authority-audit-ledger.ts';
-import {
-  recordAuthorityAuditEvent,
-  type AuthorityAuditServiceHooks,
-} from '../../runtime/storage-journal/authority-audit-service.ts';
-import {
-  authorityRefusalDigest,
-  withAuthorityRefusalAudit,
-  type AuthorityRefusalAuditBinding,
-} from '../../modules/authority/authority-refusal-audit.ts';
+import { recordAuthorityAuditEvent } from '../../runtime/storage-journal/authority-audit-service.ts';
+import { authorityRefusalDigest } from '../../modules/authority/authority-refusal-audit.ts';
 import { authorityApplicationReceiptTagRef } from '../../modules/authority/authority-application-receipt.ts';
 import {
   pinCheckRunner,
   runCheck,
 } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import type { CheckDefinition } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import type { CheckDefinition } from '../../modules/source/check-command.ts';
 import {
   assertDisposableDatabaseForRepository,
   createCheckEnvironmentForRepository,
@@ -58,22 +50,10 @@ import {
   validateCommitSubject,
 } from '../../runtime/repository-transaction/git-transitions.ts';
 import {
-  assertStoredCandidateSupportingArtifacts,
   buildCandidateExternalEffectsManifest,
   buildImmutableCandidateBundleV2,
-  ensureDurableRefGenerationLedger,
-  storeCandidateHumanReadableSummary,
-  storeCandidateSupportingArtifacts,
-  storeImmutableCandidateBundle,
-  type CandidateChecksAttestationV3,
-  type CandidateExternalEffect,
-  type CandidateProviderInvocation,
-  type ImmutableCandidateBundleV2,
-} from '../../modules/authority/maintainer-candidate.ts';
-import {
-  resolveCandidateHarnessEngineDigest,
-  sealedCandidateDependencySnapshot,
-} from './maintainer-candidate-dependencies.ts';
+} from '../../modules/authority/maintainer-candidate-contracts.ts';
+import { sealedCandidateDependencySnapshot } from '../../modules/authority/maintainer-candidate-dependencies.ts';
 import {
   appendMaintainerCheckEvidence,
   completeMaintainerCheckJournal,
@@ -85,21 +65,15 @@ import {
   MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
   canonicalMaintainerGrantV2Envelope,
   canonicalMaintainerGrantV2Payload,
-  issueMaintainerGrantV2,
   maintainerChecksEnvironmentDigest,
-  preflightMaintainerGrantV2,
   validateMaintainerEvidenceWaivers,
   type MaintainerChecksAttestationV2,
   type MaintainerEvidenceWaiver,
   type MaintainerGrantV2Envelope,
-  type MaintainerGrantV2PreflightResult,
-} from '../../modules/authority/maintainer-grant-v2.ts';
-import { loadCapabilityProfileFromTrustBase } from '../../modules/authority/maintainer-manifest.ts';
+} from '../../modules/authority/maintainer-grant-v2-codec.ts';
+import { type MaintainerGrantV2PreflightResult } from '../../modules/authority/maintainer-grant-v2.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import {
-  createInteractiveSshSigner,
-  type MaintainerSignerProvider,
-} from '../../adapters/signing/ssh/maintainer-signer.ts';
+import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
 import { startAuthoritySession } from './maintainer-session.ts';
 import {
   maintainerGrantStorePaths,
@@ -109,18 +83,32 @@ import {
   terminallyFailMaintainerReservationUnderLifecycleLock,
   terminallyRevokeAvailableMaintainerGrantV2UnderLifecycleLock,
 } from '../../runtime/storage-journal/maintainer-store.ts';
-import { listProviderInvocationLifecycleProjections } from '../../runtime/storage-journal/investigation-session-store.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+import { listProviderInvocationLifecycleProjections } from '../../runtime/storage-journal/provider-invocation-lifecycle.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 import { readProviderInvocation } from '../../runtime/storage-journal/provider-invocation-store.ts';
 import {
   listConflictingActiveWorkflowSessionIds,
   withRepositoryLifecycleOperation,
 } from '../../runtime/session-workspace/session-store.ts';
+import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import {
-  inspectActiveTaskMandateBinding,
-  type TaskMandateBinding,
-} from '../../modules/authority/task-mandate.ts';
-import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
+  type AuthorityAuditLedgerScope,
+  type Sha256Digest,
+  type AuthorityAuditServiceHooks,
+  type AuthorityRefusalAuditBinding,
+  type WithAuthorityRefusalAudit,
+} from '../../modules/authority/authority-audit-contract.ts';
+import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
+/**
+ * Coordinates human approval, application, and revocation of v2 Apply
+ * Grants.
+ *
+ * Invariants:
+ * - The published candidate summary must match its frozen digest.
+ */
 
 export type ApproveAndApplyMaintainerGrantV2Request = {
   changeId: string;
@@ -149,7 +137,7 @@ export type ApproveAndApplyMaintainerGrantV2Options = {
   testBeforeCandidateCommitSigning?: () => void;
   /** Test-only interruption point after the signed grant is durable. */
   testAfterGrantIssued?: (
-    grant: ReturnType<typeof issueMaintainerGrantV2>,
+    grant: import('../../modules/authority/maintainer-grant-v2.ts').MaintainerGrantV2IssueResult,
   ) => void;
   /** Test-only deterministic seam; production always uses the code-owned cap. */
   testPostApprovalBudget?: PostApprovalBudgetTestOptions;
@@ -191,6 +179,12 @@ export type PrepareMaintainerGrantV2ChecksOptions = {
 };
 
 export function approveAndApplyMaintainerGrantV2(
+  createSigner: MaintainerSignerFactory,
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
+  grantServices: MaintainerGrantExecutionServices,
+  authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
+  manifestOperations: MaintainerManifestOperations,
+  taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
   request: ApproveAndApplyMaintainerGrantV2Request,
   options: ApproveAndApplyMaintainerGrantV2Options = {},
@@ -199,7 +193,7 @@ export function approveAndApplyMaintainerGrantV2(
     options.testPostApprovalBudget,
   );
   return withPostApprovalAdmissionDeadline(deadline, () => {
-    const mandateBinding = inspectActiveTaskMandateBinding(
+    const mandateBinding = taskMandate.inspectActiveTaskMandateBinding(
       cwd,
       request.taskId,
       {
@@ -216,6 +210,12 @@ export function approveAndApplyMaintainerGrantV2(
       },
       () =>
         approveAndApplyMaintainerGrantV2WithBinding(
+          createSigner,
+          withAuthorityRefusalAudit,
+          grantServices,
+          authorityApplicationReceipts,
+          manifestOperations,
+          taskMandate,
           cwd,
           request,
           options,
@@ -227,6 +227,12 @@ export function approveAndApplyMaintainerGrantV2(
 }
 
 function approveAndApplyMaintainerGrantV2WithBinding(
+  createSigner: MaintainerSignerFactory,
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
+  grantServices: MaintainerGrantExecutionServices,
+  authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
+  manifestOperations: MaintainerManifestOperations,
+  taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
   request: ApproveAndApplyMaintainerGrantV2Request,
   options: ApproveAndApplyMaintainerGrantV2Options,
@@ -239,10 +245,15 @@ function approveAndApplyMaintainerGrantV2WithBinding(
     mandateBinding,
     externalEffects: request.externalEffects,
   });
-  const preflight = preflightMaintainerGrantV2(cwd, {
-    profileId: request.profileId,
-  });
+  const preflight = grantServices.preflightMaintainerGrantV2(
+    manifestOperations,
+    cwd,
+    {
+      profileId: request.profileId,
+    },
+  );
   assertApproveAndApplyPreconditions(
+    grantServices,
     cwd,
     request,
     preflight,
@@ -251,7 +262,7 @@ function approveAndApplyMaintainerGrantV2WithBinding(
   const frozenRepository = discoverRepository(cwd);
   const grantId = crypto.randomUUID();
   const targetRef = `refs/heads/${frozenRepository.branch!}`;
-  const refLedger = ensureDurableRefGenerationLedger(
+  const refLedger = grantServices.ensureDurableRefGenerationLedger(
     frozenRepository.gitCommonDirectory,
     targetRef,
     frozenRepository.head,
@@ -262,6 +273,8 @@ function approveAndApplyMaintainerGrantV2WithBinding(
     preflight.manifest.files.map(({ path: filePath }) => filePath),
   );
   const checksAttestation = prepareMaintainerGrantV2Checks(
+    grantServices,
+    manifestOperations,
     cwd,
     preflight,
     options.environment ?? process.env,
@@ -290,15 +303,15 @@ function approveAndApplyMaintainerGrantV2WithBinding(
   const repository = discoverRepository(cwd);
   const policy = parseMaintainerPolicy(
     JSON.parse(
-      runGit(repository.repositoryRoot, [
-        'show',
-        `${preflight.trustBaseCommit}:workflow/maintainer-policy.json`,
-      ]),
+      readFileAtRevision(
+        repository.repositoryRoot,
+        preflight.trustBaseCommit,
+        'workflow/maintainer-policy.json',
+      ),
     ),
   );
   const signer =
-    options.signer ??
-    createInteractiveSshSigner(repository.repositoryRoot, policy);
+    options.signer ?? createSigner(repository.repositoryRoot, policy);
   const auditScope = maintainerAuditScope(
     repository.repositoryRealPath,
     policy.repository.id,
@@ -349,7 +362,7 @@ function approveAndApplyMaintainerGrantV2WithBinding(
     cwd,
     request.changeId,
   );
-  const supportingArtifacts = storeCandidateSupportingArtifacts(
+  const supportingArtifacts = grantServices.storeCandidateSupportingArtifacts(
     repository.gitCommonDirectory,
     {
       effectsManifest,
@@ -394,10 +407,11 @@ function approveAndApplyMaintainerGrantV2WithBinding(
       recoveryPlanDigest: supportingArtifacts.recoveryPlanDigest,
       createdAt: (options.now ?? new Date()).toISOString(),
     });
-  const { humanReadableSummaryDigest } = storeCandidateHumanReadableSummary(
-    repository.gitCommonDirectory,
-    humanReadableSummary,
-  );
+  const { humanReadableSummaryDigest } =
+    grantServices.storeCandidateHumanReadableSummary(
+      repository.gitCommonDirectory,
+      humanReadableSummary,
+    );
   if (
     humanReadableSummaryDigest !== candidateBundle.humanReadableSummaryDigest
   ) {
@@ -407,17 +421,19 @@ function approveAndApplyMaintainerGrantV2WithBinding(
       ExitCode.guard,
     );
   }
-  assertStoredCandidateSupportingArtifacts(
+  grantServices.assertStoredCandidateSupportingArtifacts(
     repository.gitCommonDirectory,
     request.changeId,
     candidateBundle,
   );
-  const candidateStorePath = storeImmutableCandidateBundle(
+  const candidateStorePath = grantServices.storeImmutableCandidateBundle(
     repository.gitCommonDirectory,
     candidateBundle,
   );
   appendCandidateBundleAudit(auditScope, candidateBundle, request.changeId);
-  const grant = issueMaintainerGrantV2(
+  const grant = grantServices.issueMaintainerGrantV2(
+    manifestOperations,
+    taskMandate,
     cwd,
     {
       changeId: request.changeId,
@@ -461,16 +477,31 @@ function approveAndApplyMaintainerGrantV2WithBinding(
     deadline,
     options.now,
     () =>
-      startAuthoritySession(cwd, request.changeId, grant.grantId, {
-        now: options.now,
-        signer: confirmedSigner,
-        environment: options.environment,
-        externalStateDigests: options.externalStateDigests,
-        allowSignedV2Candidate: true,
-        postApprovalDeadline: deadline,
-      }),
+      startAuthoritySession(
+        withAuthorityRefusalAudit,
+        grantServices,
+        manifestOperations,
+        taskMandate,
+        cwd,
+        request.changeId,
+        grant.grantId,
+        {
+          now: options.now,
+          signer: confirmedSigner,
+          environment: options.environment,
+          externalStateDigests: options.externalStateDigests,
+          allowSignedV2Candidate: true,
+          postApprovalDeadline: deadline,
+        },
+      ),
   );
   const committed = commitAuthoritySession(
+    createSigner,
+    withAuthorityRefusalAudit,
+    grantServices,
+    authorityApplicationReceipts,
+    manifestOperations,
+    taskMandate,
     cwd,
     session.sessionId,
     request.message,
@@ -510,6 +541,8 @@ function approveAndApplyMaintainerGrantV2WithBinding(
 }
 
 export function revokeMaintainerGrantV2(
+  createSigner: MaintainerSignerFactory,
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
   cwd: string,
   request: RevokeMaintainerGrantV2Request,
   options: RevokeMaintainerGrantV2Options = {},
@@ -529,6 +562,7 @@ export function revokeMaintainerGrantV2(
   );
   const envelope = initial.envelope;
   const trusted = verifyHistoricalApplyGrantTrust(
+    createSigner,
     repository,
     envelope,
     options.signer,
@@ -741,7 +775,7 @@ export type MaintainerApplyChecksBindings = {
   workflowError: typeof workflowError;
   ExitCode: typeof ExitCode;
   discoverRepository: typeof discoverRepository;
-  preflightMaintainerGrantV2: typeof preflightMaintainerGrantV2;
+
   canonicalJson: typeof canonicalJson;
   pinCheckRunner: typeof pinCheckRunner;
   assertDisposableDatabaseForRepository: typeof assertDisposableDatabaseForRepository;
@@ -749,8 +783,7 @@ export type MaintainerApplyChecksBindings = {
   maintainerChecksEnvironmentDigest: typeof maintainerChecksEnvironmentDigest;
   parseMaintainerPolicy: typeof parseMaintainerPolicy;
   runGit: typeof runGit;
-  loadCapabilityProfileFromTrustBase: typeof loadCapabilityProfileFromTrustBase;
-  resolveCandidateHarnessEngineDigest: typeof resolveCandidateHarnessEngineDigest;
+
   digest: typeof digest;
   maintainerGrantStorePaths: typeof maintainerGrantStorePaths;
   withRepositoryLifecycleOperation: typeof withRepositoryLifecycleOperation;
@@ -761,7 +794,6 @@ export type MaintainerApplyChecksBindings = {
   completeMaintainerCheckJournal: typeof completeMaintainerCheckJournal;
   validateCommitSubject: typeof validateCommitSubject;
   validateMaintainerEvidenceWaivers: typeof validateMaintainerEvidenceWaivers;
-  loadStableValidatedChangeContract: typeof loadStableValidatedChangeContract;
   listConflictingActiveWorkflowSessionIds: typeof listConflictingActiveWorkflowSessionIds;
   resolveCommitIdentity: typeof resolveCommitIdentity;
 };
@@ -783,7 +815,7 @@ const {
   workflowError,
   ExitCode,
   discoverRepository,
-  preflightMaintainerGrantV2,
+
   canonicalJson,
   pinCheckRunner,
   assertDisposableDatabaseForRepository,
@@ -791,8 +823,7 @@ const {
   maintainerChecksEnvironmentDigest,
   parseMaintainerPolicy,
   runGit,
-  loadCapabilityProfileFromTrustBase,
-  resolveCandidateHarnessEngineDigest,
+
   digest,
   maintainerGrantStorePaths,
   withRepositoryLifecycleOperation,
@@ -803,7 +834,6 @@ const {
   completeMaintainerCheckJournal,
   validateCommitSubject,
   validateMaintainerEvidenceWaivers,
-  loadStableValidatedChangeContract,
   listConflictingActiveWorkflowSessionIds,
   resolveCommitIdentity,
 }));
@@ -870,13 +900,12 @@ export type MaintainerApplyReissueBindings = {
   withPostApprovalAdmissionDeadline: typeof withPostApprovalAdmissionDeadline;
   discoverRepository: typeof discoverRepository;
   readTerminalMaintainerGrant: typeof readTerminalMaintainerGrant;
-  withAuthorityRefusalAudit: typeof withAuthorityRefusalAudit;
   applyGrantRefusalBinding: typeof applyGrantRefusalBinding;
   authorityRefusalDigest: typeof authorityRefusalDigest;
   workflowError: typeof workflowError;
   ExitCode: typeof ExitCode;
   authorityCandidateCommitMessage: typeof authorityCandidateCommitMessage;
-  issueMaintainerGrantV2: typeof issueMaintainerGrantV2;
+
   armPostApprovalAdmissionDeadline: typeof armPostApprovalAdmissionDeadline;
   appendApplyGrantAudit: typeof appendApplyGrantAudit;
   assertPostApprovalAdmissionDeadline: typeof assertPostApprovalAdmissionDeadline;
@@ -887,7 +916,6 @@ export type MaintainerApplyReissueBindings = {
   authorityApplicationReceiptTagRef: typeof authorityApplicationReceiptTagRef;
   parseMaintainerPolicy: typeof parseMaintainerPolicy;
   runGit: typeof runGit;
-  createInteractiveSshSigner: typeof createInteractiveSshSigner;
   canonicalMaintainerGrantV2Payload: typeof canonicalMaintainerGrantV2Payload;
   MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE: typeof MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE;
   maintainerAuditScope: typeof maintainerAuditScope;
@@ -908,13 +936,12 @@ const { reissueAndApplyMaintainerGrantV2, verifyHistoricalApplyGrantTrust } =
     withPostApprovalAdmissionDeadline,
     discoverRepository,
     readTerminalMaintainerGrant,
-    withAuthorityRefusalAudit,
     applyGrantRefusalBinding,
     authorityRefusalDigest,
     workflowError,
     ExitCode,
     authorityCandidateCommitMessage,
-    issueMaintainerGrantV2,
+
     armPostApprovalAdmissionDeadline,
     appendApplyGrantAudit,
     assertPostApprovalAdmissionDeadline,
@@ -925,7 +952,7 @@ const { reissueAndApplyMaintainerGrantV2, verifyHistoricalApplyGrantTrust } =
     authorityApplicationReceiptTagRef,
     parseMaintainerPolicy,
     runGit,
-    createInteractiveSshSigner,
+
     canonicalMaintainerGrantV2Payload,
     MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
     maintainerAuditScope,

@@ -8,21 +8,25 @@ import test from 'node:test';
 import {
   assembleCurrentPromptFromStore,
   assessStoredAttemptResultEligibility,
-  buildContextManifest,
   initializeDurableEpochContextStore,
   inspectDurableEpochContextStore,
+  rolloverDurableEpochContextStore,
+  withCurrentDurableEpochContextStore,
+} from '../src/runtime/storage-journal/execution-governance-epoch-store.ts';
+import {
+  buildContextManifest,
+  type WorkflowContextState,
+} from '../src/modules/authority/execution-governance-context.ts';
+import {
   inspectDurableRetentionCatalog,
   listDurablePruneReceipts,
   pinDurableEvidence,
   pruneDurableEvidence,
   readDurableEvidence,
-  rolloverDurableEpochContextStore,
   storeDurableEvidence,
-  withCurrentDurableEpochContextStore,
-  type ContextManifest,
-  type EvidenceRetentionRecord,
-  type WorkflowContextState,
-} from '../src/modules/authority/execution-governance.ts';
+} from '../src/runtime/storage-journal/execution-governance-evidence-store.ts';
+import { type ContextManifest } from '../src/modules/authority/execution-governance-context.ts';
+import { type EvidenceRetentionRecord } from '../src/modules/authority/execution-governance-retention.ts';
 import { isWorkflowError } from './fixture.ts';
 
 const NOW = new Date('2026-08-03T09:00:00.000Z');

@@ -9,7 +9,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ExitCode, workflowError, WorkflowError, } from "../../foundation/errors/errors.js";
-import { normalizeChangedPath } from "../session-workspace/paths.js";
+import { normalizeChangedPath } from "../../foundation/repository-path/repository-path.js";
 import { runGit } from "./git-command.js";
 import { fingerprintIgnoredEntry, fingerprintStats, fingerprintTrackedEntry, updateFramed, } from "./git-projection-files.js";
 import { hasHiddenIndexFlag, listControlledUntrackedPaths, listRepositoryIgnoredPaths, listTrackedPaths, listTrackedPathsAtCommit, splitNull, } from "./git-tracked-paths.js";

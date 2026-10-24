@@ -11,7 +11,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { WorkflowError } from '../../foundation/errors/errors.ts';
-import { runGit } from '../repository-transaction/git.ts';
 import { type ProviderExecutableIdentity } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {
   sha256,
@@ -20,16 +19,18 @@ import {
   nativeOutputInvalid,
   nativeOutputRepair,
 } from './provider-runner-values.ts';
+import { readFileAtRevision } from '../repository-transaction/git-command.ts';
 
 export function fileDigestAtBaseline(
   repositoryRoot: string,
   baseCommit: string,
   repositoryPath: string,
 ): string {
-  const committed = runGit(repositoryRoot, [
-    'show',
-    `${baseCommit}:${repositoryPath}`,
-  ]);
+  const committed = readFileAtRevision(
+    repositoryRoot,
+    baseCommit,
+    `${repositoryPath}`,
+  );
   return sha256(committed);
 }
 

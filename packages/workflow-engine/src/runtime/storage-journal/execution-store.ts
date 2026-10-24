@@ -22,7 +22,7 @@ import {
   type JobRecord,
   type WorkflowRecord,
 } from '../../modules/provider-orchestration/execution-core.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   buildProviderExecutionState,
   prepareProviderEntries,
@@ -67,7 +67,7 @@ import {
   assertPrivateInvestigationDirectory,
   createPrivateCanonicalJson,
   readPrivateCanonicalJson,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES,
   assertProviderExecutionAdmissionAuthority,

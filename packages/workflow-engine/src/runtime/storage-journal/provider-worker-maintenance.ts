@@ -20,28 +20,42 @@ import {
   createPrivateCanonicalJson,
   ensurePrivateInvestigationDirectory,
   readPrivateCanonicalJson,
-} from './investigation-session-store.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
-import type { ProviderInvocationRecord } from './provider-invocation-store.ts';
+} from '../journal-primitives/investigation-private-files.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
+
+import type { ProviderWorkerMaintenanceWarning } from '../../modules/provider-orchestration/provider-worker-maintenance.ts';
+export type { ProviderWorkerMaintenanceWarning } from '../../modules/provider-orchestration/provider-worker-maintenance.ts';
 
 const WARNING_FILE = /^[0-9a-f]{64}\.json$/;
 
-export type ProviderWorkerMaintenanceWarning = Readonly<{
-  schemaVersion: 1;
-  kind: 'provider-worker-maintenance-warning';
-  warningId: string;
-  operation:
-    'automatic-retry' | 'retry-schedule-pump' | 'retention-maintenance';
-  invocationId: string;
-  terminalRevision: number;
-  terminalState: 'succeeded' | 'failed';
-  errorCode: string;
-  message: string;
-  occurredAt: string;
-}>;
+export function recordProviderWorkerTerminalWarning(
+  observeRuntime: (cwd: string) => InvestigationRuntimePaths,
+  cwd: string,
+  terminal: ProviderInvocationRecord,
+  operation: ProviderWorkerMaintenanceWarning['operation'],
+  error: unknown,
+): void {
+  try {
+    recordProviderWorkerMaintenanceWarning(
+      observeRuntime(cwd),
+      terminal,
+      operation,
+      error,
+    );
+  } catch (warningError) {
+    process.emitWarning(
+      `Provider worker ${operation} failed after durable ${terminal.state}; its warning journal also failed (${warningError instanceof WorkflowError ? warningError.code : 'PROVIDER_WORKER_MAINTENANCE_WARNING_UNSAFE'}).`,
+      {
+        code: 'PROVIDER_WORKER_MAINTENANCE_WARNING_UNSAFE',
+        type: 'ProviderWorkerMaintenanceWarning',
+      },
+    );
+  }
+}
 
 export function recordProviderWorkerMaintenanceWarning(
-  cwd: string,
+  runtime: InvestigationRuntimePaths,
   record: ProviderInvocationRecord,
   operation: ProviderWorkerMaintenanceWarning['operation'],
   error: unknown,
@@ -73,21 +87,20 @@ export function recordProviderWorkerMaintenanceWarning(
     message: `Provider worker ${operation} failed after the terminal outcome was durable (${errorCode}).`,
     occurredAt: record.updatedAt,
   });
-  const context = loadInvestigationRuntimeContext(cwd);
-  const root = warningRoot(context.runtime.root);
+  const root = warningRoot(runtime.root);
   ensurePrivateInvestigationDirectory(
-    context.runtime,
+    runtime,
     root,
     providerWorkerMaintenanceUnsafe,
   );
   createPrivateCanonicalJson(
-    context.runtime,
+    runtime,
     path.join(root, `${warning.warningId.slice('sha256:'.length)}.json`),
     warning,
     providerWorkerMaintenanceUnsafe,
     'PROVIDER_WORKER_MAINTENANCE_WARNING_CONFLICT',
   );
-  const durable = listProviderWorkerMaintenanceWarnings(cwd).find(
+  const durable = listProviderWorkerMaintenanceWarnings(runtime).find(
     ({ warningId }) => warningId === warning.warningId,
   );
   if (
@@ -100,14 +113,13 @@ export function recordProviderWorkerMaintenanceWarning(
 }
 
 export function listProviderWorkerMaintenanceWarnings(
-  cwd: string,
+  runtime: InvestigationRuntimePaths,
 ): ProviderWorkerMaintenanceWarning[] {
-  const context = loadInvestigationRuntimeContext(cwd);
-  const root = warningRoot(context.runtime.root);
+  const root = warningRoot(runtime.root);
   const stats = fs.lstatSync(root, { throwIfNoEntry: false });
   if (stats === undefined) return [];
   assertPrivateInvestigationDirectory(
-    context.runtime,
+    runtime,
     root,
     providerWorkerMaintenanceUnsafe,
   );
@@ -124,7 +136,7 @@ export function listProviderWorkerMaintenanceWarnings(
       }
       const warning = assertProviderWorkerMaintenanceWarning(
         readPrivateCanonicalJson(
-          context.runtime,
+          runtime,
           path.join(root, entry.name),
           providerWorkerMaintenanceUnsafe,
         ),

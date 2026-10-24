@@ -6,21 +6,21 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import {
-  buildInvestigationManifestDraft,
-  sealInvestigationManifestDraft,
-  type ExemptionInvestigationAuthoringState,
-} from '../src/modules/investigation/manifest/investigation-manifest.ts';
+import { sealInvestigationManifestDraft } from '../src/modules/investigation/manifest/investigation-manifest.ts';
+import { buildInvestigationManifestDraft } from '../src/composition-root/investigation-production.ts';
+import { type ExemptionInvestigationAuthoringState } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
 import {
   inspectInvestigationManifestPublication,
-  investigationManifestPublicationNamespace,
-  investigationManifestPublicationSourceMatchesLifecycle,
   observeInvestigationManifestPublicationState,
   publishInvestigationManifestV3,
   readBoundInvestigationManifestPublicationRef,
   readInvestigationPublicationRefState,
   resumeInvestigationManifestPublication,
 } from '../src/runtime/managed-documents/transaction/investigation-publication.ts';
+import {
+  investigationManifestPublicationNamespace,
+  investigationManifestPublicationSourceMatchesLifecycle,
+} from '../src/modules/investigation/manifest/investigation-publication-contracts.ts';
 import { git } from './fixture.ts';
 
 test('minimal durable publication installs its same-directory candidate by rename', () => {

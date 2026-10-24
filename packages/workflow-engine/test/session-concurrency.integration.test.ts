@@ -1,3 +1,14 @@
+import { inspectSession } from '../src/runtime/repository-validation/session-inspection.ts';
+import {
+  productionChangeRoutingInspector,
+  productionChangeContract,
+} from '../src/composition-root/change-routing-observation-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
 import test from 'node:test';
 import {
   createFixtureRepository,
@@ -7,10 +18,8 @@ import {
   sourceRepositoryRoot,
   configureChecks,
 } from './fixture.ts';
-import {
-  startSession,
-  abortSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
+import { abortSession } from '../src/composition-root/task-session-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,11 +28,9 @@ import {
   applyChangeRoutingReview,
 } from '../src/composition-root/change-routing-production.ts';
 import { spawnSync } from 'node:child_process';
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import {
-  finalizeTask,
-  commitSession,
-} from '../src/application/finalize/lifecycle.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { commitSession } from '../src/runtime/finalization/commit.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
@@ -61,8 +68,54 @@ test('two declared disjoint changes own durable isolated writers and an undeclar
     );
     fixtures.push(first, second, third);
 
-    const firstSession = startSession(first.worktree, 'demo-change', '1.1');
-    const secondSession = startSession(second.worktree, 'second-change', '1.1');
+    let admissionReads = 0;
+    const firstSession = startSession(
+      {
+        ...productionChangeContract,
+        admissionReader: (root, changeId) => {
+          admissionReads += 1;
+          return productionChangeContract.admissionReader(root, changeId);
+        },
+      },
+      first.worktree,
+      'demo-change',
+      '1.1',
+    );
+    assert.equal(
+      admissionReads,
+      2,
+      'start observes admission before and inside the lifecycle lock',
+    );
+    const routingChanged = new Error('injected fresh routing observation');
+    let verificationReads = 0;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      assert.throws(
+        () =>
+          inspectSession(
+            {
+              ...productionChangeContract,
+              admissionReader: () => {
+                verificationReads += 1;
+                throw routingChanged;
+              },
+            },
+            first.worktree,
+            firstSession.sessionId,
+          ),
+        (error) => error === routingChanged,
+      );
+    }
+    assert.equal(
+      verificationReads,
+      2,
+      'verification never caches a previous routing admission',
+    );
+    const secondSession = startSession(
+      productionChangeContract,
+      second.worktree,
+      'second-change',
+      '1.1',
+    );
 
     assert.notEqual(firstSession.repositoryRoot, secondSession.repositoryRoot);
     assert.notEqual(firstSession.branch, secondSession.branch);
@@ -87,7 +140,13 @@ test('two declared disjoint changes own durable isolated writers and an undeclar
       (error) => isWorkflowError(error, 'CHANGE_ROUTING_WORKSET_BUSY'),
     );
     assert.throws(
-      () => startSession(third.worktree, 'third-change', '1.1'),
+      () =>
+        startSession(
+          productionChangeContract,
+          third.worktree,
+          'third-change',
+          '1.1',
+        ),
       (error) => isWorkflowError(error, 'CHANGE_ROUTING_REQUIRED'),
     );
 
@@ -152,8 +211,14 @@ test('status inspects each concurrent active session in its own durable worktree
     );
     fixtures.push(primary, concurrent);
 
-    const primarySession = startSession(primary.worktree, 'demo-change', '1.1');
+    const primarySession = startSession(
+      productionChangeContract,
+      primary.worktree,
+      'demo-change',
+      '1.1',
+    );
     const concurrentSession = startSession(
+      productionChangeContract,
       concurrent.worktree,
       'second-change',
       '1.1',
@@ -165,7 +230,10 @@ test('status inspects each concurrent active session in its own durable worktree
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'status',
         concurrentSession.sessionId,
         '--json',
@@ -194,7 +262,10 @@ test('status inspects each concurrent active session in its own durable worktree
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'status',
         '--json',
       ],
@@ -287,7 +358,12 @@ test('a routed writer keeps its source workset through completion projection and
       'src/task/**',
     );
     const worktree = fixture.worktree;
-    const session = startSession(worktree, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      worktree,
+      'demo-change',
+      '1.1',
+    );
     fs.mkdirSync(path.join(worktree, 'src/task'), { recursive: true });
     fs.writeFileSync(
       path.join(worktree, 'src/task/feature.ts'),
@@ -306,6 +382,7 @@ test('a routed writer keeps its source workset through completion projection and
     const finalized = finalizeTask(worktree, session.sessionId);
     assert.equal(finalized.session.finishReportId !== undefined, true);
     const committed = commitSession(
+      productionChangeContract,
       worktree,
       session.sessionId,
       'Complete routed fixture task',
@@ -339,9 +416,20 @@ test('a second task writer is rejected when its declared write scope overlaps', 
     );
     fixtures.push(first, second);
 
-    startSession(first.worktree, 'demo-change', '1.1');
+    startSession(
+      productionChangeContract,
+      first.worktree,
+      'demo-change',
+      '1.1',
+    );
     assert.throws(
-      () => startSession(second.worktree, 'second-change', '1.1'),
+      () =>
+        startSession(
+          productionChangeContract,
+          second.worktree,
+          'second-change',
+          '1.1',
+        ),
       (error) =>
         isWorkflowError(error, 'TASK_SESSION_SCOPE_CONFLICT') &&
         (error as WorkflowError).details?.conflictingChangeId === 'demo-change',
@@ -374,9 +462,20 @@ test('concurrent writers reject distinct paths in the same serialized policy cla
     );
     fixtures.push(first, second);
 
-    startSession(first.worktree, 'demo-change', '1.1');
+    startSession(
+      productionChangeContract,
+      first.worktree,
+      'demo-change',
+      '1.1',
+    );
     assert.throws(
-      () => startSession(second.worktree, 'second-change', '1.1'),
+      () =>
+        startSession(
+          productionChangeContract,
+          second.worktree,
+          'second-change',
+          '1.1',
+        ),
       (error) =>
         isWorkflowError(error, 'TASK_SESSION_SERIALIZED_SCOPE_CONFLICT'),
     );
@@ -434,12 +533,24 @@ test('concurrent destructive checks require distinct disposable database leases 
       TEST_DATABASE_URL: 'postgresql://localhost:5432/concurrent_test',
     };
 
-    startSession(first.worktree, 'demo-change', '1.1', { environment });
+    startSession(
+      productionChangeContract,
+      first.worktree,
+      'demo-change',
+      '1.1',
+      { environment },
+    );
     assert.throws(
       () =>
-        startSession(second.worktree, 'second-change', '1.1', {
-          environment,
-        }),
+        startSession(
+          productionChangeContract,
+          second.worktree,
+          'second-change',
+          '1.1',
+          {
+            environment,
+          },
+        ),
       (error) => isWorkflowError(error, 'TASK_SESSION_RESOURCE_CONFLICT'),
     );
   } finally {
@@ -472,9 +583,20 @@ test('concurrent writers reject a shared guard-declared exclusive resource', () 
     );
     fixtures.push(first, second);
 
-    startSession(first.worktree, 'demo-change', '1.1');
+    startSession(
+      productionChangeContract,
+      first.worktree,
+      'demo-change',
+      '1.1',
+    );
     assert.throws(
-      () => startSession(second.worktree, 'second-change', '1.1'),
+      () =>
+        startSession(
+          productionChangeContract,
+          second.worktree,
+          'second-change',
+          '1.1',
+        ),
       (error) => isWorkflowError(error, 'TASK_SESSION_RESOURCE_CONFLICT'),
     );
   } finally {

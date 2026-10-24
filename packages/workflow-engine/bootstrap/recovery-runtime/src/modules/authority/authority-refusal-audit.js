@@ -1,26 +1,9 @@
-/**
- * Records durable authority refusals while preserving the original
- * operation error.
- *
- * Invariants:
- * - The refusal idempotency key is derived from an identity object that
- *   omits wall-clock time, so a retried audit reuses the first durable
- *   occurrence's timestamp instead of a fresh clock read.
- * - withAuthorityRefusalAudit always rethrows the underlying error and
- *   skips auditing errors whose code starts with AUTHORITY_AUDIT_.
- */
-import crypto from 'node:crypto';
-import { scanAuthorityAuditLedger, } from "../../runtime/storage-journal/authority-audit-ledger.js";
-import { recordAuthorityAuditEvent, } from "../../runtime/storage-journal/authority-audit-service.js";
+/** Pure refusal identity/event construction and original-error preservation. */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { WorkflowError } from "../../foundation/errors/errors.js";
-/**
- * Audit one refusal only after a caller has independently verified the
- * durable authority binding used to construct `binding`. The idempotency key
- * excludes wall-clock time; retry after an audit-only crash recovers the first
- * durable occurrence and reproduces the exact event bytes.
- */
-export function recordAuthorityRefusal(binding, error, options = {}) {
+import { sha256Digest, } from "./authority-audit-contract.js";
+/** Retain this identity across the durable occurrence lookup; it omits time. */
+export function createAuthorityRefusalIdentity(binding, error) {
     const identity = {
         schemaVersion: 1,
         kind: 'authority-refusal-audit-identity.v1',
@@ -36,17 +19,18 @@ export function recordAuthorityRefusal(binding, error, options = {}) {
         refusalIdentity: binding.refusalIdentity,
         errorCode: error.code,
     };
-    const idempotencyKey = digest(canonicalJson(identity));
-    const durableOccurrence = scanAuthorityAuditLedger(binding.scope).records.find(({ record }) => record.idempotencyKey === idempotencyKey)
-        ?.record.occurredAt;
-    const occurredAt = durableOccurrence ?? exactDate(options.now ?? new Date()).toISOString();
-    const outcomeDigest = digest(canonicalJson({
+    const idempotencyKey = sha256Digest(canonicalJson(identity));
+    return { identity, idempotencyKey };
+}
+/** Build event bytes only after the persistence owner selects occurredAt. */
+export function createAuthorityRefusalEventInput(binding, error, { identity, idempotencyKey, }, occurredAt) {
+    const outcomeDigest = sha256Digest(canonicalJson({
         schemaVersion: 1,
         kind: 'authority-refusal-audit-outcome.v1',
         identity,
         result: 'failed',
     }));
-    const entry = recordAuthorityAuditEvent(binding.scope, {
+    return {
         eventType: 'error',
         occurredAt,
         idempotencyKey,
@@ -60,7 +44,7 @@ export function recordAuthorityRefusal(binding, error, options = {}) {
         poststateDigest: null,
         command: {
             name: binding.operation,
-            argvDigest: digest(canonicalJson({
+            argvDigest: sha256Digest(canonicalJson({
                 family: binding.family,
                 operation: binding.operation,
                 subjectId: binding.subjectId,
@@ -72,17 +56,9 @@ export function recordAuthorityRefusal(binding, error, options = {}) {
         result: 'failed',
         outcomeDigest,
         errorCode: error.code,
-    }, 
-    // The refusal is stamped with the caller's clock, so the ledger has to
-    // judge it against the same one; reading a different clock would make it
-    // reject the record as implausibly dated and lose the refusal evidence.
-    options.serviceHooks?.now !== undefined || options.now === undefined
-        ? options.serviceHooks
-        : { ...options.serviceHooks, now: () => exactDate(options.now) });
-    options.onRecord?.(entry);
-    return entry;
+    };
 }
-export function withAuthorityRefusalAudit(binding, options, operation) {
+export function withAuthorityRefusalAudit(recordAuthorityRefusal, binding, options, operation) {
     try {
         return operation();
     }
@@ -119,15 +95,5 @@ function attachAuthorityAuditFailure(refusal, auditError) {
     }
 }
 export function authorityRefusalDigest(value) {
-    return digest(canonicalJson(value));
-}
-function digest(value) {
-    return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
-}
-function exactDate(value) {
-    const date = new Date(value);
-    if (!Number.isFinite(date.getTime())) {
-        throw new TypeError('Authority refusal audit time is invalid.');
-    }
-    return date;
+    return sha256Digest(canonicalJson(value));
 }

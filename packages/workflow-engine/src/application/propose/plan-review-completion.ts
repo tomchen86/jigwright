@@ -1,12 +1,4 @@
-/**
- * Completes admitted PlanReview findings and commits the resulting planning transition.
- *
- * Invariants:
- * - Progress and dispositions bind the current reserved request and admitted review.
- * - Challenge closure retains its exact author and authorization evidence.
- * - Planning completion retains held authority and required class-sample audit evidence.
- */
-
+import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -14,8 +6,10 @@ import {
   createAuthorizedPlanReviewDispositionNode,
   createPlanReviewDispositionNode,
   readPlanReviewNode,
-  type AuthorizedPlanReviewDispositionEntry,
-  type PlanReviewDispositionEntry,
+} from '../../modules/assurance/plan-review.ts';
+import type {
+  AuthorizedPlanReviewDispositionEntry,
+  PlanReviewDispositionEntry,
 } from '../../modules/assurance/plan-review.ts';
 import {
   assertClassSampleAuditsComplete,
@@ -27,7 +21,7 @@ import {
   readTrackedPlanReview,
   writeTrackedPlanReview,
 } from './plan-review-store.ts';
-import { commitPlanningTransitionUnderAuthority } from './planning-transition.ts';
+import { commitPlanningTransitionUnderAuthority } from '../../runtime/planning-transition/planning-transition.ts';
 import {
   assertCurrentExemptionContext,
   currentRevisingTaskSession,
@@ -36,24 +30,22 @@ import {
   withProposeTransitionAuthority,
 } from './propose-context.ts';
 import { dispatchMandatedProviderInvocation } from './propose-provider-lifecycle.ts';
-import type {
-  HeldChangeTransitionAuthority,
-  ProposeRuntime,
-} from './propose-runtime.ts';
+import type { HeldChangeTransitionAuthority } from '../../runtime/session-workspace/planning-lock.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
 import {
   getProposeStatus,
   getProposeStatusInternal,
   renderProposeOutputWithPlanningAuthority,
 } from './propose-status.ts';
-import {
-  type PlanReviewDispositionsEnvelope,
-  type PlanReviewProgressEnvelope,
-  type ProposeLifecycleStatus,
-  type ProposeOutput,
-  type ProposeResumeOptions,
-} from './propose-types.ts';
-
+import type {
+  PlanReviewDispositionsEnvelope,
+  PlanReviewProgressEnvelope,
+  ProposeLifecycleStatus,
+  ProposeOutput,
+  ProposeResumeOptions,
+} from '../../modules/proposal/propose-types.ts';
 export function resumePlanReview(
+  planningExecution: PlanningTransitionExecutionServices,
   services: ProposeRuntime,
   cwd: string,
   input: PlanReviewProgressEnvelope,
@@ -198,6 +190,7 @@ export function resumePlanReview(
       return {
         outcome: 'complete' as const,
         output: commitCompletedPlanningUnderAuthority(
+          planningExecution,
           services,
           cwd,
           lockedStatus,
@@ -244,6 +237,7 @@ export function resumePlanReview(
 }
 
 export function completePlanReviewDispositions(
+  planningExecution: PlanningTransitionExecutionServices,
   services: ProposeRuntime,
   cwd: string,
   input: PlanReviewDispositionsEnvelope,
@@ -361,12 +355,15 @@ export function completePlanReviewDispositions(
                   options.challengeDispositionAuthority?.now ?? new Date(),
                 signer,
               });
-              assertAuthorizedPlanReviewChallengeClosure({
-                dispositionNode: node,
-                reviewNode: tracked.reviewNode,
-                expected: binding,
-                policy,
-              });
+              assertAuthorizedPlanReviewChallengeClosure(
+                services.planningEvidence.verifyChallengeClosureSignature,
+                {
+                  dispositionNode: node,
+                  reviewNode: tracked.reviewNode,
+                  expected: binding,
+                  policy,
+                },
+              );
               return node;
             })()
           : createPlanReviewDispositionNode({
@@ -393,6 +390,7 @@ export function completePlanReviewDispositions(
       );
       assertOwned();
       return commitCompletedPlanningUnderAuthority(
+        planningExecution,
         services,
         cwd,
         status,
@@ -434,6 +432,7 @@ function assertClassSamplesAudited(
 }
 
 function commitCompletedPlanningUnderAuthority(
+  planningExecution: PlanningTransitionExecutionServices,
   services: ProposeRuntime,
   cwd: string,
   status: ProposeLifecycleStatus,
@@ -471,6 +470,9 @@ function commitCompletedPlanningUnderAuthority(
     };
   }
   const planningTransition = commitPlanningTransitionUnderAuthority(
+    planningExecution,
+    services.managedDocuments,
+    services.loadChangeContract,
     cwd,
     status.changeId,
     assertOwned,

@@ -12,8 +12,8 @@ import {
   assertPrivateInvestigationDirectory,
   readPrivateCanonicalJson,
   privatePathExists,
-} from './investigation-private-files.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+} from '../journal-primitives/investigation-private-files.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   type PrepareTaskDiffExternalReviewReservationInput,
   type TaskDiffExternalReviewReservation,
@@ -31,7 +31,7 @@ import {
   type PrepareTaskDiffExternalClosureSubmissionInput,
   type TaskDiffExternalClosureSubmission,
   assertDigest,
-} from './task-diff-external-store-contracts.ts';
+} from '../../modules/assurance/task-diff-external-record.ts';
 import { assertTaskDiffExternalReviewStoreInventory } from './task-diff-external-store-inventory.ts';
 import {
   prepareTaskDiffExternalReviewReservation,
@@ -44,7 +44,7 @@ import {
   parseTaskDiffExternalReviewBinding,
   parseTaskDiffExternalContinuationReservation,
   parseTaskDiffExternalContinuationBinding,
-} from './task-diff-external-authority-records.ts';
+} from '../../modules/assurance/task-diff-external-authority.ts';
 import {
   taskDiffExternalReviewReservationPath,
   taskDiffExternalReviewBindingPath,
@@ -65,38 +65,7 @@ import {
   parseTaskDiffExternalChallengeResponse,
   parseTaskDiffExternalReviewSubmission,
   parseTaskDiffExternalClosureSubmission,
-} from './task-diff-external-content-records.ts';
-
-export {
-  type TaskDiffExternalDegradedForm,
-  type TaskDiffExternalGrantReference,
-  type TaskDiffExternalReviewReservation,
-  type TaskDiffExternalReviewBinding,
-  type TaskDiffExternalContinuationReservation,
-  type TaskDiffExternalContinuationBinding,
-  type TaskDiffExternalChallengeResponse,
-  type TaskDiffExternalReviewSubmission,
-  type TaskDiffExternalClosureSubmission,
-  type PrepareTaskDiffExternalReviewReservationInput,
-  type PrepareTaskDiffExternalReviewBindingInput,
-  type PrepareTaskDiffExternalContinuationReservationInput,
-  type PrepareTaskDiffExternalContinuationBindingInput,
-  type PrepareTaskDiffExternalChallengeResponseInput,
-  type PrepareTaskDiffExternalReviewSubmissionInput,
-  type PrepareTaskDiffExternalClosureSubmissionInput,
-} from './task-diff-external-store-contracts.ts';
-
-export {
-  taskDiffExternalContinuationTargetDigest,
-  prepareTaskDiffExternalReviewReservation,
-  prepareTaskDiffExternalReviewBinding,
-  prepareTaskDiffExternalContinuationReservation,
-  prepareTaskDiffExternalContinuationBinding,
-  parseTaskDiffExternalReviewReservation,
-  parseTaskDiffExternalReviewBinding,
-  parseTaskDiffExternalContinuationReservation,
-  parseTaskDiffExternalContinuationBinding,
-} from './task-diff-external-authority-records.ts';
+} from '../../modules/assurance/task-diff-external-content.ts';
 
 export {
   taskDiffExternalReviewReservationPath,
@@ -107,15 +76,6 @@ export {
   taskDiffExternalReviewSubmissionPath,
   taskDiffExternalClosureSubmissionPath,
 } from './task-diff-external-store-paths.ts';
-
-export {
-  prepareTaskDiffExternalChallengeResponse,
-  prepareTaskDiffExternalReviewSubmission,
-  prepareTaskDiffExternalClosureSubmission,
-  parseTaskDiffExternalChallengeResponse,
-  parseTaskDiffExternalReviewSubmission,
-  parseTaskDiffExternalClosureSubmission,
-} from './task-diff-external-content-records.ts';
 
 export { assertTaskDiffExternalReviewStoreInventory } from './task-diff-external-store-inventory.ts';
 

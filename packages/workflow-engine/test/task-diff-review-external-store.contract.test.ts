@@ -1,12 +1,11 @@
 import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   assertTaskDiffExternalReviewStoreInventory,
   createTaskDiffExternalChallengeResponse,
@@ -19,13 +18,6 @@ import {
   createTaskDiffExternalContinuationReservation,
   createTaskDiffExternalReviewBinding,
   createTaskDiffExternalReviewReservation,
-  prepareTaskDiffExternalContinuationBinding,
-  prepareTaskDiffExternalContinuationReservation,
-  prepareTaskDiffExternalReviewBinding,
-  prepareTaskDiffExternalReviewReservation,
-  prepareTaskDiffExternalChallengeResponse,
-  prepareTaskDiffExternalClosureSubmission,
-  prepareTaskDiffExternalReviewSubmission,
   readTaskDiffExternalChallengeResponse,
   readTaskDiffExternalClosureSubmission,
   readTaskDiffExternalReviewSubmission,
@@ -35,23 +27,35 @@ import {
   readTaskDiffExternalReviewReservation,
   taskDiffExternalContinuationBindingPath,
   taskDiffExternalContinuationReservationPath,
-  taskDiffExternalContinuationTargetDigest,
   taskDiffExternalChallengeResponsePath,
   taskDiffExternalClosureSubmissionPath,
   taskDiffExternalReviewSubmissionPath,
   taskDiffExternalReviewBindingPath,
   taskDiffExternalReviewReservationPath,
 } from '../src/runtime/storage-journal/task-diff-review-external-store.ts';
-import type {
-  TaskDiffReviewChallengeResponseRecord,
-  TaskDiffReviewContinuationSubmission,
-  TaskDiffReviewSubmission,
-} from '../src/modules/assurance/task-diff-review-artifact.ts';
 import {
-  createTaskDiffReviewSubject,
-  deriveTaskDiffReviewCandidatePlan,
-  type TaskDiffReviewSubject,
-} from '../src/modules/assurance/task-diff-review.ts';
+  prepareTaskDiffExternalContinuationBinding,
+  prepareTaskDiffExternalContinuationReservation,
+  prepareTaskDiffExternalReviewBinding,
+  prepareTaskDiffExternalReviewReservation,
+  taskDiffExternalContinuationTargetDigest,
+} from '../src/modules/assurance/task-diff-external-authority.ts';
+import {
+  prepareTaskDiffExternalChallengeResponse,
+  prepareTaskDiffExternalClosureSubmission,
+  prepareTaskDiffExternalReviewSubmission,
+} from '../src/modules/assurance/task-diff-external-content.ts';
+import type { TaskDiffReviewContinuationSubmission } from '../src/modules/assurance/task-diff-review-artifact-record.ts';
+import { deriveTaskDiffReviewCandidatePlan } from '../src/modules/assurance/task-diff-review.ts';
+import {
+  reviewSubject,
+  challengeResponse,
+  reviewSubmission,
+  grantReference,
+  implementationActor,
+  digest,
+  hasCode,
+} from './support/task-diff-external-record-fixture.ts';
 
 test('external review reservation and binding are session-free exact authority references', () => {
   for (const degradedForm of [
@@ -84,25 +88,6 @@ test('external review reservation and binding are session-free exact authority r
       };
       const prepared =
         prepareTaskDiffExternalReviewReservation(reservationInput);
-      assert.equal(prepared.targetDigest, subject.subjectDigest);
-      assert.equal(prepared.subjectDigest, subject.subjectDigest);
-      assert.equal('sessionId' in prepared, false);
-      assert.equal('createdAt' in prepared, false);
-      assert.equal('expiresAt' in prepared, false);
-      assert.equal('generation' in prepared, false);
-      assert.equal('providerId' in prepared, false);
-      assert.throws(
-        () =>
-          prepareTaskDiffExternalReviewReservation({
-            ...reservationInput,
-            grant: {
-              ...reservationInput.grant,
-              grantTargetDigest: digest('wrong-review-target'),
-            },
-          }),
-        hasCode('TASK_DIFF_EXTERNAL_REVIEW_STATE_INVALID'),
-      );
-
       const stored = createTaskDiffExternalReviewReservation(
         fixture.paths,
         reservationInput,
@@ -177,14 +162,6 @@ test('external review reservation and binding are session-free exact authority r
       };
       const preparedBinding =
         prepareTaskDiffExternalReviewBinding(bindingInput);
-      assert.equal(
-        preparedBinding.admittedRoleResultDigest,
-        bindingInput.admittedRoleResultDigest,
-      );
-      assert.equal(
-        preparedBinding.directHumanReviewAttestationDigest,
-        bindingInput.directHumanReviewAttestationDigest,
-      );
       const binding = createTaskDiffExternalReviewBinding(
         fixture.paths,
         bindingInput,
@@ -209,28 +186,6 @@ test('external review reservation and binding are session-free exact authority r
           }),
         hasCode('TASK_DIFF_EXTERNAL_REVIEW_BINDING_CONFLICT'),
       );
-
-      if (degradedForm === 'direct-human-review') {
-        assert.throws(
-          () =>
-            prepareTaskDiffExternalReviewBinding({
-              ...bindingInput,
-              directHumanReviewAttestationDigest: null,
-            }),
-          hasCode('TASK_DIFF_EXTERNAL_REVIEW_STATE_INVALID'),
-        );
-      } else {
-        assert.throws(
-          () =>
-            prepareTaskDiffExternalReviewBinding({
-              ...bindingInput,
-              directHumanReviewAttestationDigest: digest(
-                'caller-cannot-claim-attestation',
-              ),
-            }),
-          hasCode('TASK_DIFF_EXTERNAL_REVIEW_STATE_INVALID'),
-        );
-      }
     } finally {
       fixture.dispose();
     }
@@ -248,16 +203,6 @@ test('challenge continuation uses a second subject/review/response target withou
       reviewRecordDigest,
       responseDigest,
     });
-    assert.notEqual(targetDigest, subject.subjectDigest);
-    assert.notEqual(
-      targetDigest,
-      taskDiffExternalContinuationTargetDigest({
-        subjectDigest: subject.subjectDigest,
-        reviewRecordDigest,
-        responseDigest: digest('changed-response'),
-      }),
-    );
-
     const inputDigest = digest('continuation-advisory-input');
     createTaskDiffExternalClosureSubmission(fixture.paths, {
       subject,
@@ -340,11 +285,6 @@ test('challenge continuation uses a second subject/review/response target withou
       readTaskDiffExternalContinuationBinding(fixture.paths, targetDigest),
       binding,
     );
-
-    const semanticKeys = Object.keys(binding).join(' ').toLowerCase();
-    for (const forbidden of ['verdict', 'disposition', 'accepted', 'closed']) {
-      assert.equal(semanticKeys.includes(forbidden), false);
-    }
   } finally {
     fixture.dispose();
   }
@@ -359,24 +299,6 @@ test('external challenge responses are immutable complete content keyed by exact
     const prepared = prepareTaskDiffExternalChallengeResponse(input);
 
     assert.equal(fs.existsSync(fixture.paths.root), false);
-    assert.equal(prepared.subjectDigest, subject.subjectDigest);
-    assert.equal(prepared.reviewRecordDigest, response.reviewRecordDigest);
-    assert.equal(prepared.responseDigest, response.responseDigest);
-    assert.deepEqual(prepared.response, response);
-    for (const forbidden of [
-      'grant',
-      'provider',
-      'session',
-      'createdat',
-      'closure',
-      'disposition',
-    ]) {
-      assert.equal(
-        Object.keys(prepared).join(' ').toLowerCase().includes(forbidden),
-        false,
-      );
-    }
-
     const stored = createTaskDiffExternalChallengeResponse(
       fixture.paths,
       input,
@@ -432,15 +354,6 @@ test('external challenge responses are immutable complete content keyed by exact
         ),
       hasCode('TASK_DIFF_EXTERNAL_REVIEW_STATE_INVALID'),
     );
-    assert.throws(
-      () =>
-        prepareTaskDiffExternalChallengeResponse({
-          subject: reviewSubject('wrong-subject'),
-          response,
-        }),
-      hasCode('TASK_DIFF_EXTERNAL_REVIEW_STATE_INVALID'),
-    );
-
     fs.writeFileSync(
       taskDiffExternalChallengeResponsePath(
         fixture.paths,
@@ -486,23 +399,6 @@ test('external closure submissions persist exact advisory content without author
     const inputDigest = digest('closure-input');
     const input = { subject, submission, inputDigest };
     const prepared = prepareTaskDiffExternalClosureSubmission(input);
-
-    assert.equal(prepared.targetDigest, targetDigest);
-    assert.equal(prepared.inputDigest, inputDigest);
-    assert.deepEqual(prepared.submission, submission);
-    for (const forbidden of [
-      'grant',
-      'participant',
-      'provider',
-      'session',
-      'createdat',
-      'authority',
-    ]) {
-      assert.equal(
-        Object.keys(prepared).join(' ').toLowerCase().includes(forbidden),
-        false,
-      );
-    }
 
     const stored = createTaskDiffExternalClosureSubmission(
       fixture.paths,
@@ -870,132 +766,4 @@ function createStoreFixture() {
       fs.rmSync(base, { recursive: true, force: true });
     },
   };
-}
-
-function reviewSubject(seed: string): TaskDiffReviewSubject {
-  return createTaskDiffReviewSubject({
-    repositoryId: 'github:tomchen86/expense-app',
-    changeId: 'external-review-store',
-    taskId: '2.4',
-    baseCommit: '1'.repeat(40),
-    baseTree: '2'.repeat(40),
-    candidateTree: digest(`${seed}:candidate-tree`),
-    transitions: [
-      {
-        path: `src/${seed}.ts`,
-        before: null,
-        after: { mode: '100644', objectId: digest(`${seed}:after`) },
-      },
-    ],
-    taskContractDigest: digest('task-contract'),
-    requiredCheckPolicyDigest: digest('check-policy'),
-    checkEvidenceDigest: digest(`${seed}:check-evidence`),
-    planningGenerationId: digest('planning-generation'),
-    planTargetDigest: digest('plan-target'),
-    planReviewNodeId: digest('plan-review-node'),
-    planningAssuranceDigest: digest('planning-assurance'),
-    reviewRequirement: {
-      required: true,
-      basis: 'explicit',
-      riskPaths: [],
-    },
-  });
-}
-
-function challengeResponse(
-  subject: TaskDiffReviewSubject,
-  seed: string,
-  options: { reviewRecordDigest?: string } = {},
-): TaskDiffReviewChallengeResponseRecord {
-  const body = {
-    schemaVersion: 1 as const,
-    kind: 'task-diff-review-challenge-response.v1' as const,
-    reviewRecordDigest:
-      options.reviewRecordDigest ?? digest(`${seed}:review-record`),
-    subjectDigest: subject.subjectDigest,
-    responses: [
-      {
-        challengeId: digest(`${seed}:challenge`),
-        rationale: `Exact response for ${seed}.`,
-        evidence: [
-          {
-            kind: 'planning-node' as const,
-            nodeId: digest(`${seed}:node`),
-            resultDigest: digest(`${seed}:result`),
-            observation: `Bound evidence for ${seed}.`,
-          },
-        ],
-      },
-    ],
-  };
-  return { ...body, responseDigest: digest(body) };
-}
-
-function reviewSubmission(
-  subject: TaskDiffReviewSubject,
-): TaskDiffReviewSubmission {
-  return {
-    schemaVersion: 1,
-    verdict: 'advisory-approve',
-    coverage: [...subject.coverage],
-    scopeAssessment: {
-      kind: 'no-challenge',
-      evidence: [
-        {
-          kind: 'repository-location',
-          path: subject.changedPaths[0]!,
-          line: 1,
-          blobObjectId: subject.transitions[0]!.after!.objectId,
-          observation: 'The exact candidate preserves the reviewed contract.',
-        },
-      ],
-    },
-    findings: [],
-    suggestions: [],
-    riskPathDispositions: [],
-    residualRisk: 'No release-blocking residual risk was identified.',
-    uncertainty: 'Review is limited to the exact bound subject and scope.',
-  };
-}
-
-function grantReference(
-  degradedForm: 'caller-supplied' | 'direct-human-review',
-  seed: string,
-  grantTargetDigest: string,
-) {
-  return {
-    degradedForm,
-    grantId:
-      degradedForm === 'caller-supplied'
-        ? '00000000-0000-4000-8000-000000000001'
-        : '00000000-0000-4000-8000-000000000002',
-    grantEnvelopeDigest: digest(`${seed}:grant-envelope`),
-    grantTransitionDigest: digest(`${seed}:grant-transition`),
-    grantTargetDigest,
-  } as const;
-}
-
-function implementationActor() {
-  return {
-    providerId: 'codex' as const,
-    sessionId: 'task-diff-session',
-    principalId: 'provider:codex',
-    identityAssurance: 'self-declared' as const,
-    engineSpawned: false,
-  };
-}
-
-function digest(value: unknown): string {
-  return crypto
-    .createHash('sha256')
-    .update(typeof value === 'string' ? value : canonicalJson(value))
-    .digest('hex');
-}
-
-function hasCode(code: string): (error: unknown) => boolean {
-  return (error) =>
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code: unknown }).code === code;
 }

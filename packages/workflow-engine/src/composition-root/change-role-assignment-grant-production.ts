@@ -5,7 +5,7 @@
  * Invariants:
  * - An existing activation must match the exact challenge and operation.
  */
-import { loadChangeContract } from '../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadChangeContract } from './consumer-contract-production.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import {

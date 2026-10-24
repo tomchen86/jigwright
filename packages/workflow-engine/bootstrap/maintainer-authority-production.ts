@@ -1,0 +1,37 @@
+/** Instantiate required maintainer services in the trusted host process. */
+import { pinCheckRunner } from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
+import { createMaintainerAuthorityProduction } from '../src/composition-root/maintainer-authority-production.ts';
+import { createMaintainerGrantV2Production } from '../src/composition-root/maintainer-grant-v2-production.ts';
+import { createCandidateDependencyObservations } from '../src/runtime/repository-observation/maintainer-candidate-dependencies.ts';
+import { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST } from './built-in-engine-closure-pin.ts';
+
+export const maintainerGrantExecutionServices =
+  createMaintainerGrantV2Production(
+    createCandidateDependencyObservations({
+      pinCheckRunner,
+      resolveCandidateHarnessEngineDigest: () =>
+        BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST.slice('sha256:'.length),
+      currentEnvironment: () => process.env,
+    }),
+  );
+export const maintainerAuthorityOperations =
+  createMaintainerAuthorityProduction(maintainerGrantExecutionServices);
+export const {
+  issueMaintainerGrantV2,
+  validateMaintainerGrantV2AuthorityBinding,
+  approveAndApplyMaintainerGrantV2,
+  reissueAndApplyMaintainerGrantV2,
+  recoverAuthorityCommit,
+  startAuthoritySession,
+  inspectActiveAuthoritySession,
+  checkAuthoritySession,
+  commitAuthoritySession,
+  approveAndApplyAuthorityPlan,
+  preflightMaintainerGrantV2,
+  prepareMaintainerGrantV2Checks,
+  createAuthorityPlan,
+  projectAuthorityAttestationRelay,
+  issueAuthorityAttestation,
+  resumeAuthorityPlan,
+  attestAuthorityPlan,
+} = maintainerAuthorityOperations;

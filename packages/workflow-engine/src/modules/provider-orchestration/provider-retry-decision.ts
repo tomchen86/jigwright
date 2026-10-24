@@ -21,21 +21,17 @@ import {
   canonicalExecutionBudgetGrantRequest,
   type ExecutionBudgetConsumeReceipt,
   type GrantRequest,
-} from '../authority/execution-governance.ts';
+} from '../authority/execution-governance-grant-contracts.ts';
 import {
   providerRetryPolicyFromAccounting,
-  readExecutionJobState,
-} from '../../runtime/storage-journal/execution-store.ts';
-import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import type { InvestigationRuntimePaths } from '@jigwright/core/runtime-path-kernel';
-import type { ProviderInvocationRequest } from './provider-contracts.ts';
-import {
-  readProviderExecutionPolicySnapshot,
-  readProviderInvocationRequest,
   type ProviderAttemptBudgetReservation,
-  type ProviderInvocationRecord,
-} from '../../runtime/storage-journal/provider-invocation-store.ts';
-import { createProviderExecutionBudgetAuthority } from '../../runtime/provider-execution/provider-execution-policy-authority.ts';
+  type ProviderRetryAccountingEvidence,
+  type ProviderRetryJobState,
+} from './provider-retry-accounting.ts';
+import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import type { ProviderInvocationRequest } from './provider-contracts.ts';
+import type { ProviderInvocationRecord } from './provider-invocation-record.ts';
+import { createProviderExecutionBudgetAuthority } from './provider-execution-budget-authority.ts';
 import type {
   DataAuthorizationPolicyPort,
   LoadedDataAuthorizationPolicyV4,
@@ -104,7 +100,7 @@ export function assertProviderExecutionGrantAuthorization(
  * authorize new automatic provider work.
  */
 export function authorizeAutomaticProviderRetry(
-  paths: InvestigationRuntimePaths,
+  evidence: ProviderRetryAccountingEvidence,
   input: {
     failed: ProviderInvocationRecord;
     failedRequest: ProviderInvocationRequest;
@@ -113,41 +109,19 @@ export function authorizeAutomaticProviderRetry(
     dataAuthorizationPolicyPort: DataAuthorizationPolicyParser;
     boundedGrantRequest?: GrantRequest;
     executionGrantAuthorization?: ProviderExecutionGrantAuthorization;
-    now?: string;
+    now: string;
   },
 ): AuthorizedProviderRetry {
-  const projection = projectProviderInvocationExecution({
-    record: input.failed,
-    request: input.failedRequest,
-  });
-  const state = readExecutionJobState(paths, projection.job.jobId);
+  if (evidence === undefined) throw retryAccountingRequired();
+  const { state, failedAttempt, failure } = assertProviderRetrySource(
+    evidence.state,
+    input,
+  );
   if (
-    state === null ||
-    !state.invocationProjection.completeHistory ||
-    state.attempts.length !== state.invocationProjection.invocations.length
+    evidence.invocations.length !==
+    state.invocationProjection.invocations.length
   ) {
     throw retryAccountingRequired();
-  }
-  const failedSource = state.invocationProjection.invocations.find(
-    ({ invocationId }) => invocationId === input.failed.invocationId,
-  );
-  const failedAttempt = state.attempts.find(
-    ({ attemptId }) => attemptId === projection.attempt.attemptId,
-  );
-  if (
-    failedSource === undefined ||
-    failedSource.invocationRevision !== input.failed.revision ||
-    failedSource.attemptId !== projection.attempt.attemptId ||
-    failedAttempt === undefined ||
-    failedAttempt.failure === null ||
-    failedAttempt.providerInvocation?.invocationId !==
-      input.failed.invocationId ||
-    failedAttempt.providerInvocation.invocationRevision !==
-      input.failed.revision ||
-    state.job.jobId !== projection.job.jobId ||
-    state.workflow.workflowId !== projection.workflow.workflowId
-  ) {
-    throw retryAccountingStale();
   }
 
   let cumulativeRuntimeMs = 0;
@@ -165,9 +139,8 @@ export function authorizeAutomaticProviderRetry(
     index,
     source,
   ] of state.invocationProjection.invocations.entries()) {
-    const request = readProviderInvocationRequest(paths, source.invocationId);
-    const snapshot = readProviderExecutionPolicySnapshot(paths, request);
-    if (snapshot.accounting === null) {
+    const snapshot = evidence.invocations[index];
+    if (snapshot === undefined || snapshot.accounting === null) {
       throw retryAccountingRequired();
     }
     const attempt = state.attempts.find(
@@ -175,6 +148,8 @@ export function authorizeAutomaticProviderRetry(
     );
     if (
       attempt === undefined ||
+      snapshot.invocationId !== source.invocationId ||
+      snapshot.request.invocationId !== source.invocationId ||
       attempt.providerInvocation?.invocationId !== source.invocationId ||
       attempt.providerInvocation.invocationRevision !==
         source.invocationRevision ||
@@ -248,7 +223,7 @@ export function authorizeAutomaticProviderRetry(
     workflow: state.workflow,
     job: state.job,
     attempt: failedAttempt,
-    failure: failedAttempt.failure,
+    failure,
     sameFingerprintCount,
     currentExecutionPolicy: providerExecutionPolicySnapshot(
       input.replacementRequest,
@@ -313,6 +288,54 @@ export function authorizeAutomaticProviderRetry(
   });
 }
 
+/** Validate source selection before collection and again before pure decision. */
+export function assertProviderRetrySource(
+  state: ProviderRetryJobState | null,
+  input: {
+    failed: ProviderInvocationRecord;
+    failedRequest: ProviderInvocationRequest;
+  },
+): {
+  state: ProviderRetryJobState;
+  failedAttempt: AttemptRecord;
+  failure: NonNullable<AttemptRecord['failure']>;
+} {
+  const projection = projectProviderInvocationExecution({
+    record: input.failed,
+    request: input.failedRequest,
+  });
+  if (
+    state === null ||
+    !state.invocationProjection.completeHistory ||
+    state.attempts.length !== state.invocationProjection.invocations.length
+  ) {
+    throw retryAccountingRequired();
+  }
+  const failedSource = state.invocationProjection.invocations.find(
+    ({ invocationId }) => invocationId === input.failed.invocationId,
+  );
+  const failedAttempt = state.attempts.find(
+    ({ attemptId }) => attemptId === projection.attempt.attemptId,
+  );
+  if (
+    failedSource === undefined ||
+    failedSource.invocationRevision !== input.failed.revision ||
+    failedSource.attemptId !== projection.attempt.attemptId ||
+    failedAttempt === undefined ||
+    failedAttempt.failure === null ||
+    failedAttempt.providerInvocation?.invocationId !==
+      input.failed.invocationId ||
+    failedAttempt.providerInvocation.invocationRevision !==
+      input.failed.revision ||
+    state.job.jobId !== projection.job.jobId ||
+    state.workflow.workflowId !== projection.workflow.workflowId
+  ) {
+    throw retryAccountingStale();
+  }
+
+  return { state, failedAttempt, failure: failedAttempt.failure };
+}
+
 function validateReplacementPolicy(input: {
   replacementRequest: ProviderInvocationRequest;
   replacementExecutionPolicy: ProviderDataAuthorizationPolicy;
@@ -352,12 +375,8 @@ function validateReplacementPolicy(input: {
   return loaded;
 }
 
-function normalizeEvaluationTime(
-  requested: string | undefined,
-  failedAt: string,
-): string {
-  const now = requested ?? new Date().toISOString();
-  const nowMs = Date.parse(now);
+function normalizeEvaluationTime(requested: string, failedAt: string): string {
+  const nowMs = Date.parse(requested);
   const failedMs = Date.parse(failedAt);
   if (!Number.isFinite(nowMs) || !Number.isFinite(failedMs)) {
     throw retryAccountingStale();

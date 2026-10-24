@@ -6,60 +6,69 @@ import test from 'node:test';
 
 import { ExitCode, WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
+  assertPolicyPathInsideRepository,
+  investigationRuntimePaths,
+} from '../src/runtime/paths/runtime-paths.ts';
+import {
   assertChangeId,
   assertInvestigationId,
   assertInvocationId,
-  assertPolicyPathInsideRepository,
   assertSessionId,
   assertTaskId,
-  investigationRuntimePaths,
-} from '../src/runtime/session-workspace/paths.ts';
+} from '../src/foundation/repository-path/repository-path.ts';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
 
-test('runtime path kernel is public and module consumers no longer depend on session runtime', () => {
+test('repository filesystem paths depend on pure core contracts', () => {
   const coreManifest = readJson('packages/core/package.json') as {
     exports?: Record<string, string>;
   };
-  const fixtureManifest = readJson('packages/fixture-adapter/package.json') as {
+  const runtimeManifest = readJson(
+    'packages/repository-runtime/package.json',
+  ) as {
+    dependencies?: Record<string, string>;
     exports?: Record<string, string>;
+  };
+  const fixtureManifest = readJson('packages/fixture-adapter/package.json') as {
+    dependencies?: Record<string, string>;
   };
   assert.equal(
     coreManifest.exports?.['./runtime-path-kernel'],
     './src/runtime-path-kernel.ts',
   );
   assert.equal(
-    fixtureManifest.exports?.['./runtime-paths'],
-    './src/fixture-runtime-paths.ts',
+    coreManifest.exports?.['./workflow-identifiers'],
+    './src/workflow-identifiers.ts',
   );
-
+  assert.equal(runtimeManifest.exports?.['./paths'], './src/paths.ts');
+  assert.deepEqual(runtimeManifest.dependencies, {
+    '@jigwright/core': 'workspace:*',
+  });
+  assert.equal(
+    fixtureManifest.dependencies?.['@jigwright/repository-runtime'],
+    'workspace:*',
+  );
+  const core = readSource('packages/core/src/runtime-path-kernel.ts');
+  assert.doesNotMatch(core, /from 'node:fs'|@jigwright\/repository-runtime/);
   const facade = readSource(
-    'packages/workflow-engine/src/runtime/session-workspace/paths.ts',
+    'packages/workflow-engine/src/runtime/paths/runtime-paths.ts',
   );
-  assert.match(facade, /@jigwright\/core\/runtime-path-kernel/);
+  assert.match(facade, /@jigwright\/repository-runtime\/paths/);
+  const identifiers = readSource(
+    'packages/workflow-engine/src/foundation/repository-path/repository-path.ts',
+  );
+  assert.match(facade, /foundation\/repository-path\/repository-path\.ts/);
+  assert.match(identifiers, /@jigwright\/core\/workflow-identifiers/);
   assert.doesNotMatch(
     facade,
     /CHANGE_ID_PATTERN|TASK_ID_PATTERN|SESSION_ID_PATTERN|INVESTIGATION_ID_PATTERN|INVOCATION_ID_PATTERN/,
   );
-  assert.doesNotMatch(facade, /from 'node:(?:fs|path)'/);
-
-  for (const file of [
-    'packages/workflow-engine/src/modules/provider-orchestration/provider-retry-decision.ts',
-  ]) {
-    const source = readSource(file);
-    assert.match(source, /@jigwright\/core\/runtime-path-kernel/, file);
-    assert.doesNotMatch(source, /runtime\/session-workspace\/paths\.ts/, file);
-  }
-
-  const mixedConsumer = readSource(
-    'packages/workflow-engine/src/modules/assurance/task-strategy-gate.ts',
-  );
-  assert.match(mixedConsumer, /@jigwright\/core\/runtime-path-kernel/);
-  assert.match(mixedConsumer, /runtime\/session-workspace\/paths\.ts/);
   assert.doesNotMatch(
-    mixedConsumer,
-    /import\s*\{[^}]*investigationRuntimePaths[^}]*\}\s*from\s*['"][^'"]*runtime\/session-workspace\/paths\.ts['"]/s,
+    identifiers,
+    /CHANGE_ID_PATTERN|TASK_ID_PATTERN|SESSION_ID_PATTERN|INVESTIGATION_ID_PATTERN|INVOCATION_ID_PATTERN/,
   );
+  assert.doesNotMatch(identifiers, /from 'node:(?:fs|path)'/);
+  assert.doesNotMatch(facade, /from 'node:(?:fs|path)'/);
 });
 
 test('workflow facade preserves exact identifier errors', () => {

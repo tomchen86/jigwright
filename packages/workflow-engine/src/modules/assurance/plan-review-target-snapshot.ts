@@ -18,7 +18,7 @@ import {
   type EvidenceNode,
 } from '../../foundation/evidence-node/evidence-node.ts';
 import { normalizeExactRepositoryPath } from '../../foundation/repository-path/repository-path.ts';
-import type { PlanReviewSubject } from './plan-review.ts';
+import type { PlanReviewSubject } from './plan-review-subject.ts';
 import {
   deepFreeze,
   hasExactKeys,
@@ -33,48 +33,6 @@ const TARGET_SNAPSHOT_OUTPUT_SCHEMA =
   'workflow.plan-review-target-snapshot-output.v1';
 const TARGET_SNAPSHOT_FILE = /^\d{4}\.artifact$/;
 const MAX_TARGET_SNAPSHOT_ARTIFACTS = 4_096;
-
-export type PlanningArtifactMutability =
-  'preserved-byte-identical' | 'replaceable-on-replanning' | 'engine-managed';
-
-export type PlanReviewTargetSnapshotArtifact = {
-  path: string;
-  sha256: string;
-  byteLength: number;
-  lineCount: number;
-  mode: '100644';
-  snapshotFile: string;
-  mutability: PlanningArtifactMutability;
-};
-
-export type PlanReviewMigrationContract = {
-  legacyMigration: false;
-  preservedPaths: string[];
-  replaceablePaths: string[];
-  engineManagedPaths: string[];
-  guardSemanticDigest: null;
-};
-
-export type PlanReviewTargetSnapshot = {
-  schemaVersion: 1;
-  snapshotDigest: string;
-  changeId: string;
-  subjectDigest: string;
-  planningGenerationId: string;
-  planTargetDigest: string;
-  materializationNodeId: string;
-  materializationResultDigest: string;
-  artifacts: PlanReviewTargetSnapshotArtifact[];
-  migration: PlanReviewMigrationContract;
-};
-
-export type CreatePlanReviewTargetSnapshotInput = {
-  changeId: string;
-  changePrefix: string;
-  subject: PlanReviewSubject;
-  materializationNode: EvidenceNode;
-  artifacts: Map<string, Buffer>;
-};
 
 export function createPlanReviewTargetSnapshotForSubject(
   input: CreatePlanReviewTargetSnapshotInput,
@@ -399,3 +357,18 @@ function targetSnapshotInvalid(): WorkflowError {
     ExitCode.verification,
   );
 }
+
+import type {
+  PlanningArtifactMutability,
+  PlanReviewTargetSnapshotArtifact,
+  PlanReviewMigrationContract,
+  PlanReviewTargetSnapshot,
+  CreatePlanReviewTargetSnapshotInput,
+} from './plan-review-target-snapshot-record.ts';
+export type {
+  PlanningArtifactMutability,
+  PlanReviewTargetSnapshotArtifact,
+  PlanReviewMigrationContract,
+  PlanReviewTargetSnapshot,
+  CreatePlanReviewTargetSnapshotInput,
+} from './plan-review-target-snapshot-record.ts';

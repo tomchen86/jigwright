@@ -14,25 +14,25 @@ import type {
 import type { ExecutionJobInspection } from '../src/runtime/provider-execution/execution-runtime.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
-  collectEngineMetrics,
   computeEngineMetrics,
   inspectEngineSupersedeReason,
   type EngineMetricsSnapshot,
 } from '../src/application/control-plane/engine-metrics.ts';
+import { collectEngineMetrics } from '../src/composition-root/provider-operations-cli-production.ts';
 import {
   canonicalExecutionBudgetGrantRequest,
   createExecutionBudgetGrantEnvelope,
   createExecutionBudgetGrantRequest,
-  storeExecutionBudgetGrant,
-} from '../src/modules/authority/execution-governance.ts';
+} from '../src/modules/authority/execution-governance-grant-contracts.ts';
+import { storeExecutionBudgetGrant } from '../src/runtime/storage-journal/execution-budget-grants.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import {
   compareAndSwapHumanResolutionHead,
-  createHumanResolutionNode,
   writeHumanResolutionNode,
-} from '../src/runtime/storage-journal/investigation-session-store.ts';
-import type { ProviderRetentionMetrics } from '../src/runtime/provider-execution/provider-retention.ts';
-import type { TaskMandateBinding } from '../src/modules/authority/task-mandate.ts';
+} from '../src/runtime/storage-journal/human-resolution-nodes.ts';
+import { createHumanResolutionNode } from '../src/modules/investigation/domain/human-resolution-contract.ts';
+import type { ProviderRetentionMetrics } from '../src/modules/provider-orchestration/provider-retention.ts';
+import type { TaskMandateBinding } from '../src/modules/authority/task-mandate-contract.ts';
 import { createFixtureRepository, sourceRepositoryRoot } from './fixture.ts';
 
 const NOW = '2026-08-03T10:00:00.000Z';
@@ -474,7 +474,7 @@ test('metrics show exposes a zero-sample production snapshot', () => {
           '--experimental-strip-types',
           path.join(
             sourceRepositoryRoot,
-            'packages/workflow-engine/src/cli.ts',
+            'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
           ),
           'metrics',
           'show',

@@ -19,18 +19,17 @@ import {
 import {
   assertProviderRuntimeTerminalAuthorityPreflight,
   assertProviderRuntimeDurableAuthorities,
-} from './investigation-session-store.ts';
+} from './provider-runtime-authority.ts';
 import {
   privatePathExists,
   withPrivateRuntimeLock,
   writePrivateCanonicalJsonAtomic,
   createPrivateCanonicalJson,
   readPrivateCanonicalJson,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   type ProviderProcessOutcome,
   evaluateProviderProcess,
-  type ProviderRunnerReport,
   type ProviderInvocationRequest,
   type ProviderProcessResult,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
@@ -48,10 +47,8 @@ import {
   assertAgentRuntimeCompletionReceipt,
   assertAgentRuntimeProcessProgress,
 } from '../../modules/provider-orchestration/provider-runtime-evidence.ts';
-import {
-  type InvestigationRuntimePaths,
-  assertInvocationId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
+import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
 import { publishProviderNativeSessionContinuationAuthorityV1 } from './provider-native-session-store.ts';
 import {
   providerNativeSessionContinuationAuthorityObjectPathV1,
@@ -59,15 +56,17 @@ import {
 } from '../session-workspace/provider-runtime-authority-paths.ts';
 import {
   withCurrentProviderPromptContext,
-  type ProviderRepairFailureInput,
   persistProviderRepairEvidence,
-} from '../provider-execution/provider-execution-governance.ts';
-import {
-  type ProviderInvocationRecord,
-  type ProviderCompletionRecovery,
-  type ProviderCompletionCandidate,
-  type ProviderInvocationFailure,
-} from './provider-invocation-types.ts';
+} from './provider-execution-governance.ts';
+import type {
+  ProviderInvocationRecord,
+  ProviderInvocationFailureInput,
+} from '../../modules/provider-orchestration/provider-invocation-record.ts';
+import type {
+  ProviderInvocationCompletionInput,
+  ProviderCompletionRecovery,
+  ProviderCompletionCandidate,
+} from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
 import {
   readProviderInvocation,
   prepareProviderInvocationAcceptanceBinding,
@@ -222,17 +221,7 @@ export function completeProviderInvocation(
 export function completeProviderInvocationFromRunner(
   paths: InvestigationRuntimePaths,
   requestedInvocationId: string,
-  input: {
-    expectedRevision: number;
-    leaseGeneration: number;
-    leaseToken: string;
-    report: ProviderRunnerReport;
-    acceptanceBinding: ProviderInvocationAcceptanceBinding;
-    runtimeProgress?: AgentRuntimeProcessProgressProjection;
-    now?: string;
-    simulateCrashAfterExecutionAcceptance?: boolean;
-    simulateCrashAfterProviderStateWriteBeforeContinuationAuthority?: boolean;
-  },
+  input: ProviderInvocationCompletionInput,
 ): ProviderInvocationRecord {
   return withProviderWorkerLifecycle(paths, (assertOwned) =>
     completeProviderInvocationFromRunnerUnderLifecycleLock(
@@ -247,7 +236,7 @@ export function completeProviderInvocationFromRunner(
 export function completeProviderInvocationFromRunnerForWorkerClaim(
   paths: InvestigationRuntimePaths,
   requestedInvocationId: string,
-  input: Parameters<typeof completeProviderInvocationFromRunner>[2] &
+  input: ProviderInvocationCompletionInput &
     Readonly<{ workerFenceToken: string }>,
 ): ProviderInvocationRecord {
   const invocationId = assertInvocationId(requestedInvocationId);
@@ -272,17 +261,7 @@ export function completeProviderInvocationFromRunnerForWorkerClaim(
 export function completeProviderInvocationFromRunnerUnderLifecycleLock(
   paths: InvestigationRuntimePaths,
   requestedInvocationId: string,
-  input: {
-    expectedRevision: number;
-    leaseGeneration: number;
-    leaseToken: string;
-    report: ProviderRunnerReport;
-    acceptanceBinding: ProviderInvocationAcceptanceBinding;
-    runtimeProgress?: AgentRuntimeProcessProgressProjection;
-    now?: string;
-    simulateCrashAfterExecutionAcceptance?: boolean;
-    simulateCrashAfterProviderStateWriteBeforeContinuationAuthority?: boolean;
-  },
+  input: ProviderInvocationCompletionInput,
   assertOwned: () => void,
 ): ProviderInvocationRecord {
   const invocationId = assertInvocationId(requestedInvocationId);
@@ -884,20 +863,7 @@ function readProviderCompletionCandidate(
 export function failProviderInvocation(
   paths: InvestigationRuntimePaths,
   requestedInvocationId: string,
-  input: {
-    expectedRevision: number;
-    leaseGeneration: number;
-    leaseToken: string;
-    failure: ProviderInvocationFailure;
-    runtimeEvidence?: Readonly<{
-      acceptanceBinding: ProviderInvocationAcceptanceBinding;
-      progress: AgentRuntimeProcessProgressProjection;
-      protocolReceipt?: ProviderRuntimeProtocolReceipt;
-      hostExecutionBinding?: AgentRuntimeHostExecutionBindingV1;
-    }>;
-    repair?: ProviderRepairFailureInput;
-    now?: string;
-  },
+  input: ProviderInvocationFailureInput,
 ): ProviderInvocationRecord {
   return withProviderWorkerLifecycle(paths, (assertOwned) =>
     failProviderInvocationUnderLifecycleLock(
@@ -932,20 +898,7 @@ export function failProviderInvocationForWorkerClaim(
 export function failProviderInvocationUnderLifecycleLock(
   paths: InvestigationRuntimePaths,
   requestedInvocationId: string,
-  input: {
-    expectedRevision: number;
-    leaseGeneration: number;
-    leaseToken: string;
-    failure: ProviderInvocationFailure;
-    runtimeEvidence?: Readonly<{
-      acceptanceBinding: ProviderInvocationAcceptanceBinding;
-      progress: AgentRuntimeProcessProgressProjection;
-      protocolReceipt?: ProviderRuntimeProtocolReceipt;
-      hostExecutionBinding?: AgentRuntimeHostExecutionBindingV1;
-    }>;
-    repair?: ProviderRepairFailureInput;
-    now?: string;
-  },
+  input: ProviderInvocationFailureInput,
   assertOwned: () => void,
 ): ProviderInvocationRecord {
   const invocationId = assertInvocationId(requestedInvocationId);

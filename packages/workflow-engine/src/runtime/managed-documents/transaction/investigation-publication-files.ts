@@ -12,7 +12,7 @@ import {
   publicationFailure,
   UUID_V4,
   PublicationFailure,
-} from './investigation-publication-values.ts';
+} from '../../../modules/investigation/manifest/investigation-publication-values.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';

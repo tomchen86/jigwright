@@ -1,3 +1,22 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import {
+  productionChangeRoutingInspector,
+  productionChangeContract,
+} from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -9,15 +28,15 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   createDirectHumanReviewAttestation,
   issueCollaborationGrant,
-} from '../src/modules/authority/collaboration-grant.ts';
+} from '../src/composition-root/collaboration-grant-issuance-production.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
 import {
   verifySshSignatureWithPublicKey,
   type MaintainerSignerProvider,
 } from '../src/adapters/signing/ssh/maintainer-signer.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
   inspectTaskDiffReviewStatus,
@@ -25,16 +44,12 @@ import {
   resumeDirectHumanTaskDiffReview,
   submitExternalTaskDiffReview,
   submitExternalTaskDiffReviewContinuation,
-} from '../src/application/finalize/task-diff-review-lifecycle.ts';
-import {
-  createTaskDiffReviewChallengeResponse,
-  type TaskDiffReviewSubmission,
-} from '../src/modules/assurance/task-diff-review-artifact.ts';
-import { taskDiffExternalContinuationTargetDigest } from '../src/runtime/storage-journal/task-diff-review-external-store.ts';
-import {
-  TASK_DIFF_REVIEW_COVERAGE,
-  type TaskDiffReviewSubject,
-} from '../src/modules/assurance/task-diff-review.ts';
+} from '../src/composition-root/task-diff-review-production.ts';
+import { createTaskDiffReviewChallengeResponse } from '../src/modules/assurance/task-diff-review-artifact.ts';
+import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact-record.ts';
+import { taskDiffExternalContinuationTargetDigest } from '../src/modules/assurance/task-diff-external-authority.ts';
+import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
+import type { TaskDiffReviewSubject } from '../src/modules/assurance/task-diff-review-record.ts';
 import { productionConsumedRoleResultReplayPort } from '../src/composition-root/grant-verifier-composition.ts';
 import {
   authoritativeCollaborationGrantVerifierForTest,
@@ -56,7 +71,12 @@ test('human-only TaskDiffReview resume signs only an exact durable pause and rec
   const consumedReplayVerifier =
     consumedCollaborationGrantReplayVerifierForTest(repository, signing.signer);
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -614,7 +634,7 @@ function runCli(
     process.execPath,
     [
       '--experimental-strip-types',
-      path.resolve(import.meta.dirname, '../src/cli.ts'),
+      path.resolve(import.meta.dirname, '../bootstrap/workflow-engine-host.ts'),
       ...args,
     ],
     {

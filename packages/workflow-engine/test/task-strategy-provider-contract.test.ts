@@ -6,14 +6,17 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import { parseCollaborationGrantArguments } from '../src/entrypoints/cli/collaboration-grant-cli.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { providerOutputSchemaGeneration } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { providerInvocationManifestDigest } from '../src/runtime/storage-journal/provider-invocation-manifest-validation.ts';
+import { prepareTaskStrategyGreenFailureRecord } from '../src/modules/provider-orchestration/task-strategy-correction-record.ts';
 import { runGit } from '../src/runtime/repository-transaction/git.ts';
-import { scheduleOrdinaryRole } from '../src/modules/provider-orchestration/role-scheduler.ts';
+import { scheduleOrdinaryRole } from '../src/modules/provider-orchestration/role-assignment.ts';
 import {
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR,
   assertTaskStrategyImplementationManifest,
   createTaskStrategyImplementationManifest,
   createTaskStrategyImplementationSubject,
+  createTaskStrategyCorrectionSubject,
   taskStrategyImplementationOutputValidator,
 } from '../src/modules/provider-orchestration/task-strategy-provider-contract.ts';
 
@@ -94,6 +97,10 @@ test('task implementation assignment binds one exact RED subject and provider re
     policyDigest: '5'.repeat(64),
     limits: { timeoutMs: 60_000, aggregateOutputBytes: 65_536 },
   });
+  assert.equal(
+    request.inputManifestDigest,
+    providerInvocationManifestDigest(manifest),
+  );
   assert.equal(request.roleAssignment.role, 'task-implementer');
   assert.equal(request.targetDigest, subject.subjectDigest);
   assert.equal(providerOutputSchemaGeneration(request), 'code-owned');
@@ -370,6 +377,119 @@ test('task implementation shortage reuses the typed collaboration grant vocabula
     conflictingRole: 'task-implementer',
   });
   assert.equal(request.degradedForm, 'caller-supplied');
+});
+
+test('local manifest digest matches the generic validator for detached ordinary and correction builder results', () => {
+  const initial = subjectFixture();
+  const failureBody = {
+    checkId: 'unit',
+    outcome: 'failed' as const,
+    exitCode: 1,
+    runner: 'node',
+    runnerDigest: sha256('runner'),
+    stdoutDigest: sha256('failed'),
+    stderrDigest: sha256(''),
+    stdoutExcerpt: 'failed',
+    stderrExcerpt: '',
+    stdoutTruncated: false,
+    stderrTruncated: false,
+  };
+  const failure = prepareTaskStrategyGreenFailureRecord({
+    sessionId: initial.sessionId,
+    currentRedTransactionDigest: initial.transactionDigest,
+    currentPatchHead: {
+      bindingDigest: sha256('binding'),
+      recordDigest: sha256('record'),
+      patchDigest: sha256('patch'),
+      receiptDigest: sha256('receipt'),
+    },
+    candidateTree: '3'.repeat(40),
+    checkDefinitions: [
+      {
+        checkId: 'unit',
+        definition: {
+          command: ['node', 'unit.mjs'],
+          destructiveDatabase: false,
+        },
+        runner: 'node',
+        runnerDigest: failureBody.runnerDigest,
+      },
+    ],
+    passedChecks: [],
+    failingCheck: {
+      ...failureBody,
+      failureFingerprint: sha256(canonicalJson(failureBody)),
+    },
+    createdAt: '2026-09-23T01:00:00.000Z',
+  });
+  for (const correction of [false, true]) {
+    const subject = correction
+      ? createTaskStrategyCorrectionSubject({
+          subject: initial,
+          round: 1,
+          greenFailureRecord: failure,
+        })
+      : initial;
+    const input = {
+      repositoryId: 'fixture',
+      baseCommit: OID,
+      baseTree: TREE,
+      subject: structuredClone(subject),
+      behaviorContractRefs: [
+        {
+          specPath: 'specs/demo/spec.md',
+          requirement: 'Demo behavior',
+          scenario: null,
+        },
+      ],
+      implementationPathScopes: ['src/**'],
+      ...(correction ? { greenFailureRecord: structuredClone(failure) } : {}),
+    };
+    const manifest = createTaskStrategyImplementationManifest(input);
+    if (correction) {
+      const { greenFailureRecord: ignored, ...missingFailure } = input;
+      assertManifestInvalid(() =>
+        createTaskStrategyImplementationManifest(missingFailure),
+      );
+      assertManifestInvalid(() =>
+        createTaskStrategyImplementationManifest({
+          ...input,
+          greenFailureRecord: prepareTaskStrategyGreenFailureRecord({
+            ...failure,
+            candidateTree: '9'.repeat(40),
+          }),
+        }),
+      );
+    } else {
+      assertManifestInvalid(() =>
+        createTaskStrategyImplementationManifest({
+          ...input,
+          greenFailureRecord: failure,
+        }),
+      );
+    }
+    const expected = providerInvocationManifestDigest(manifest);
+    assert.equal(sha256(canonicalJson(manifest)), expected);
+    assert.ok(Object.isFrozen(manifest));
+    assert.ok(Object.isFrozen(manifest.subject.frozenFiles));
+    assert.notStrictEqual(manifest.subject, input.subject);
+    input.behaviorContractRefs[0]!.requirement = 'mutated later';
+    input.implementationPathScopes.push('unrelated/**');
+    Object.assign(input.subject, { sourceTree: '9'.repeat(40) });
+    if (input.greenFailureRecord)
+      Object.assign(input.greenFailureRecord, {
+        candidateTree: '9'.repeat(40),
+      });
+    assert.equal(sha256(canonicalJson(manifest)), expected);
+    assert.equal(providerInvocationManifestDigest(manifest), expected);
+    assertManifestInvalid(() =>
+      createTaskStrategyImplementationManifest({
+        ...input,
+        subject,
+        baseCommit: 'invalid-commit',
+      }),
+    );
+  }
 });
 
 function subjectFixture(

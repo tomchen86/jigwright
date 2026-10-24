@@ -12,13 +12,11 @@ import type {
   InvestigationGroupRef,
 } from '../domain/investigation-domain.ts';
 import type { InvestigationSemanticAuthor } from '../domain/investigation-applicability.ts';
-import type {
-  InvestigationScanSaturationDecision,
-  MaterializedEvidenceView,
-} from './investigation-materializer.ts';
+import type { InvestigationScanSaturationDecision } from './investigation-replay-input.ts';
+import type { MaterializedEvidenceView } from './investigation-materializer.ts';
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import type { FloorOverflowDecision } from '../domain/floor-overflow-pruning.ts';
-import { SEMANTIC_ASSURANCE } from './investigation-manifest-values.ts';
+import { SEMANTIC_ASSURANCE } from '../domain/investigation-schema.ts';
 import type {
   PersistedDisposition,
   InvestigationV3RoleResult,
@@ -27,7 +25,7 @@ import type {
   InvestigationKnowledgeReuseDecision,
   InvestigationSemanticException,
   InvestigationSourceAnchor,
-} from './investigation-manifest.ts';
+} from './investigation-manifest-types.ts';
 import {
   unrepresentable,
   assertRecord,

@@ -4,17 +4,17 @@ import {
   startPropose,
   resumePropose,
   getProposeStatus,
-} from '../src/application/propose/propose-orchestrator.ts';
-import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
+} from '../src/composition-root/propose-production.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
 import { readEvidenceNode } from '../src/runtime/storage-journal/evidence-node-store.ts';
 import { PROPOSE_POLICY_DIGEST } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   readProviderInvocationRequest,
   readProviderInvocation,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import assert from 'node:assert/strict';
 import {
   type ProviderWorkerRuntimePort,
@@ -24,19 +24,19 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import path from 'node:path';
 import fs from 'node:fs';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import { runProviderWorkerAsync } from '../src/entrypoints/worker/provider-worker.ts';
-import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import {
   type ProviderWrapperProtocolReceipt,
-  createProviderWrapperProtocolParser,
   renderProviderWrapperFrame,
-} from '../src/modules/provider-orchestration/agent-runtime-protocol.ts';
+} from '@jigwright/core/harness-jsonl-v1-contracts';
+import { createProviderWrapperProtocolParser } from '@jigwright/agent-runtime/harness-jsonl-v1';
 import {
   type ProviderWrapperSessionProtocolReceipt,
-  createProviderWrapperSessionProtocolParser,
   renderProviderWrapperSessionFrame,
-} from '@jigwright/agent-runtime/harness-jsonl-v2';
+} from '@jigwright/core/harness-jsonl-v2-contracts';
+import { createProviderWrapperSessionProtocolParser } from '@jigwright/agent-runtime/harness-jsonl-v2';
 import {
   providerDefinitionExecutableBindingDigest,
   createAgentRuntimeHostProbeEvidenceV1,

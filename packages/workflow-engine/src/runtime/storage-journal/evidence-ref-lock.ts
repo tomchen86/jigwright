@@ -13,7 +13,7 @@ import {
   publishPreparedExclusiveLock,
   reclaimDeadPreparedLock,
 } from '../repository-transaction/filesystem-safety.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   ensureNoFollowDirectory,
   fsyncDirectory,
@@ -26,7 +26,7 @@ import {
   refLocked,
   refLockInvalid,
   refUnsafe,
-} from './evidence-store-values.ts';
+} from '../journal-primitives/evidence-store-values.ts';
 
 export function withRefLock<T>(
   paths: InvestigationRuntimePaths,

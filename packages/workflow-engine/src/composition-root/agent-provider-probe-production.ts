@@ -5,6 +5,7 @@
  * Invariants:
  * - Built-in probe preflight must observe the exact selected executable.
  */
+import { builtInProviderAdapters } from './built-in-provider-adapter-production.ts';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -24,7 +25,7 @@ import {
   type AgentProviderProfileSnapshot,
   type BuiltInReviewedProviderProfileSnapshot,
   type HostWrapperProviderProfileSnapshot,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
 import {
   assertProviderExecutableObservationCurrent,
   inspectProviderExecutable,
@@ -40,9 +41,9 @@ import {
   assertAgentProviderConfigFileCurrent,
   loadAgentProviderConfigFile,
 } from '../runtime/provider-execution/agent-provider-config-file.ts';
-import { loadAiAdapterPolicy } from '../runtime/provider-execution/ai-adapter-policy.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../runtime/provider-execution/built-in-provider-definition.ts';
-import { createProviderExecutionEnvironment } from '../runtime/provider-execution/execution-environment.ts';
+import { loadAiAdapterPolicy } from '../runtime/provider-policy/ai-adapter-policy.ts';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
+import { createProviderExecutionEnvironment } from '../runtime/process-environment/execution-environment.ts';
 import {
   projectBuiltInProviderDefinitionIdentity,
   projectBuiltInProviderResolutionEvidence,
@@ -157,12 +158,16 @@ function probeBuiltInProviderProfileEvidence(
   )
     throw new AgentProviderConfigError();
   const executableObservation = inspectProviderExecutable(profile.executable);
-  const resolution = preflightBuiltInProviderProfile(profile, {
-    platform: context.platform,
-    enabled: profile.enabled,
-    sourceEnvironment: context.sourceEnvironment,
-    temporaryDirectory: context.temporaryDirectory,
-  });
+  const resolution = preflightBuiltInProviderProfile(
+    builtInProviderAdapters,
+    profile,
+    {
+      platform: context.platform,
+      enabled: profile.enabled,
+      sourceEnvironment: context.sourceEnvironment,
+      temporaryDirectory: context.temporaryDirectory,
+    },
+  );
   assertProviderExecutableObservationCurrent(executableObservation);
   if (
     resolution.executable !== undefined &&

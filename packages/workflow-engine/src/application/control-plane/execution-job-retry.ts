@@ -5,6 +5,7 @@
  * - Preview never reserves or dispatches provider work.
  * - Submit rechecks the same admission and retains native replay bindings.
  */
+import type { ProviderRetryAccountingReader } from '../../modules/provider-orchestration/provider-retry-accounting.ts';
 import crypto from 'node:crypto';
 import { readProviderInvocationRequest } from '../../runtime/storage-journal/provider-invocation-store.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
@@ -13,11 +14,11 @@ import {
   WorkflowError,
   workflowError,
 } from '../../foundation/errors/errors.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 import {
   loadAiAdapterPolicy,
   AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
-} from '../../runtime/provider-execution/ai-adapter-policy.ts';
+} from '../../runtime/provider-policy/ai-adapter-policy.ts';
 import {
   inspectExecutionJob,
   inspectProviderExecutionJobSource,
@@ -28,29 +29,28 @@ import {
   parseProviderRetryExplanation,
   defaultProviderRetryExplanation,
 } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
-import {
-  createProviderRetryEnvelope,
-  createPlanReviewRetryEnvelope,
-  getProposeStatus,
-  resumePropose,
-} from '../propose/propose-orchestrator.ts';
+import type { ExecutionReplacementProposePort } from './execution-replacement.ts';
 import {
   assertProviderRetryEnvelope,
   assertPlanReviewRetryEnvelope,
-} from '../propose/propose-input.ts';
+} from '../../modules/proposal/propose-input.ts';
 import type {
   ProviderRetryEnvelope,
   PlanReviewRetryEnvelope,
   ProposeResumeOptions,
-} from '../propose/propose-types.ts';
+} from '../../modules/proposal/propose-types.ts';
 import {
   previewExecutionReplacementRequest,
   requestExecutionReplacement,
 } from './execution-replacement.ts';
+export type ExecutionJobRetryDependencies = ExecutionReplacementProposePort & {
+  readProviderRetryAccountingEvidence: ProviderRetryAccountingReader;
+};
 
 type RetryInput = ProviderRetryEnvelope | PlanReviewRetryEnvelope;
 
 export function previewExecutionJobRetry(
+  dependencies: ExecutionJobRetryDependencies,
   cwd: string,
   jobId: string,
   options: {
@@ -82,17 +82,17 @@ export function previewExecutionJobRetry(
   }
   let template: RetryInput;
   try {
-    const status = getProposeStatus(
+    const status = dependencies.getProposeStatus(
       cwd,
       source.record.investigationId,
       options.collaborationGrantValidation,
     );
     template =
       source.record.purpose === 'survey'
-        ? createProviderRetryEnvelope(cwd, status, {
+        ? dependencies.createProviderRetryEnvelope(cwd, status, {
             acknowledgeProviderCost: true,
           })
-        : createPlanReviewRetryEnvelope(cwd, status, {
+        : dependencies.createPlanReviewRetryEnvelope(cwd, status, {
             acknowledgeProviderCost: true,
           });
   } catch (error) {
@@ -153,23 +153,36 @@ export function previewExecutionJobRetry(
     },
     retryExplanation: defaultProviderRetryExplanation(source.record.failure),
   });
-  const authorization = authorizeAutomaticProviderRetry(context.runtime, {
-    failed: source.record,
-    failedRequest: source.request,
-    replacementRequest: candidate,
-    replacementExecutionPolicy: policy,
-    dataAuthorizationPolicyPort: AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
-    boundedGrantRequest: inspection.latestFailure?.decision.requiredGrant,
-  });
+  const authorization = authorizeAutomaticProviderRetry(
+    dependencies.readProviderRetryAccountingEvidence(
+      context.runtime,
+      source.record,
+      source.request,
+    ),
+    {
+      failed: source.record,
+      failedRequest: source.request,
+      replacementRequest: candidate,
+      replacementExecutionPolicy: policy,
+      dataAuthorizationPolicyPort: AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
+      boundedGrantRequest: inspection.latestFailure?.decision.requiredGrant,
+      now: new Date().toISOString(),
+    },
+  );
   const decision = authorization.decision;
   if (decision.requiredGrant !== undefined) {
     return {
       status: 'grant-required' as const,
       reasonCode: decision.reasonCode,
       inputTemplate,
-      grantRequest: previewExecutionReplacementRequest(cwd, jobId, {
-        timeoutMs,
-      }),
+      grantRequest: previewExecutionReplacementRequest(
+        dependencies,
+        cwd,
+        jobId,
+        {
+          timeoutMs,
+        },
+      ),
     };
   }
   if (timeoutMs > policy.policy.limits.timeoutMs) {
@@ -190,6 +203,7 @@ export function previewExecutionJobRetry(
 }
 
 export function requestExecutionJobRetry(
+  dependencies: ExecutionJobRetryDependencies,
   cwd: string,
   jobId: string,
   value: unknown,
@@ -223,10 +237,10 @@ export function requestExecutionJobRetry(
   if (source.record.invocationId !== input.failedInvocation.invocationId) {
     return {
       status: 'retried' as const,
-      result: resumePropose(cwd, input.changeId, input, options),
+      result: dependencies.resumePropose(cwd, input.changeId, input, options),
     };
   }
-  const preview = previewExecutionJobRetry(cwd, jobId, {
+  const preview = previewExecutionJobRetry(dependencies, cwd, jobId, {
     timeoutMs: input.timeoutMs,
     collaborationGrantValidation: options.collaborationGrantValidation,
   });
@@ -243,7 +257,7 @@ export function requestExecutionJobRetry(
   if (preview.status === 'grant-required') {
     return {
       status: 'grant-required' as const,
-      ...requestExecutionReplacement(cwd, jobId, {
+      ...requestExecutionReplacement(dependencies, cwd, jobId, {
         timeoutMs: input.timeoutMs ?? source.request.limits.timeoutMs,
         retryExplanation: input.retryExplanation,
       }),
@@ -258,7 +272,7 @@ export function requestExecutionJobRetry(
   }
   return {
     status: 'retried' as const,
-    result: resumePropose(cwd, input.changeId, input, options),
+    result: dependencies.resumePropose(cwd, input.changeId, input, options),
   };
 }
 

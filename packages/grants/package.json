@@ -27,5 +27,8 @@
   },
   "devDependencies": {
     "@types/node": "^24.13.3"
+  },
+  "architecture": {
+    "role": "domain-library"
   }
 }

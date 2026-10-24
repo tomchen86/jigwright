@@ -26,13 +26,13 @@ import {
 import {
   createProductionWorkflowGrantCoordinator,
   requestProtectedBaseInitializationGrant,
-} from '../src/composition-root/grant-production.ts';
+} from '../bootstrap/session-lifecycle-production.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
   grantStorePaths,
-  readGrantRecord,
-} from '../src/runtime/storage-journal/grant-store.ts';
-import { createProposeProtectedBaseFailGrantResult } from '../src/cli.ts';
+  createFileGrantRecordStore,
+} from '../src/runtime/lifecycle-ledgers/grant-store.ts';
+import { createProposeProtectedBaseFailGrantResult } from '../bootstrap/workflow-engine-host.ts';
 import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
@@ -191,10 +191,9 @@ test('a completed Human Presence grant publishes one exact create-only protected
       git(repository, ['show-ref', '--verify', 'refs/remotes/origin/main']),
     );
 
-    const record = readGrantRecord(
+    const record = createFileGrantRecordStore(
       grantStorePaths(runtimeRoot),
-      challenge.challengeId,
-    );
+    ).readGrantRecord(challenge.challengeId);
     assert.equal(record.state, 'completed');
     if (record.state !== 'completed') assert.fail('expected completed grant');
     assert.deepEqual(record.outcome, {
@@ -404,7 +403,7 @@ function createCoordinator(
   port: ReturnType<typeof createGitProtectedBaseInitializationPort>,
 ) {
   return createGrantCoordinatorKernel({
-    paths: grantStorePaths(runtimeRoot),
+    store: createFileGrantRecordStore(grantStorePaths(runtimeRoot)),
     registry: createTransitionRegistry(
       protectedBaseInitializationGrantTransitionDefinitions(port),
     ),

@@ -1,3 +1,7 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -8,16 +12,17 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   inspectImplementationReconciliation,
   recordImplementationReconciliation,
-} from '../src/modules/why-knowledge/implementation-reconciliation.ts';
+} from '../src/composition-root/implementation-reconciliation-production.ts';
 import {
   completeTask,
   finalizeTask,
-} from '../src/application/finalize/lifecycle.ts';
+} from './support/session-lifecycle-host.ts';
 import {
   PLAN_REVIEW_COVERAGE,
-  type PlanReviewSubmission,
   planReviewProviderSubmission,
 } from '../src/modules/assurance/plan-review.ts';
+import { type PlanReviewSubmission } from '../src/modules/assurance/plan-review-report.ts';
+
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   PROVIDER_RUNNER_RESIDUALS,
@@ -29,16 +34,14 @@ import {
   createPlanReviewProgressEnvelope,
   getProposeStatus,
   resumePropose,
-} from '../src/application/propose/propose-orchestrator.ts';
+} from '../src/composition-root/propose-production.ts';
 import {
   ledgerIndexPath,
   readLedgerEntry,
   readLedgerIndex,
 } from '../src/runtime/storage-journal/semantic-ledger-store.ts';
-import {
-  checkSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
 import {
   applyChangeRoutingReview,
   prepareChangeRoutingReview,
@@ -61,7 +64,12 @@ const TARGET_CONTENT =
 test('all task-finalization paths require and replay exact implementation reconciliation', () => {
   const repository = createReconciliationFixture();
   try {
-    const session = startSession(repository, CHANGE_ID, '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      CHANGE_ID,
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, TARGET),
       "export const reconciledValue = 'UpdatedReconciledValue';\n",
@@ -135,7 +143,12 @@ test('all task-finalization paths require and replay exact implementation reconc
 test('projected single-pass finalize consumes the same immutable reconciliation record', () => {
   const repository = createReconciliationFixture();
   try {
-    const session = startSession(repository, CHANGE_ID, '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      CHANGE_ID,
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, TARGET),
       "export const reconciledValue = 'ProjectedReconciledValue';\n",
@@ -173,7 +186,12 @@ test('projected single-pass finalize consumes the same immutable reconciliation 
 test('unaccounted ranges and post-record source drift fail closed', () => {
   const repository = createReconciliationFixture();
   try {
-    const session = startSession(repository, CHANGE_ID, '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      CHANGE_ID,
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, TARGET),
       "export const reconciledValue = 'DriftReconciledValue';\n",
@@ -204,7 +222,13 @@ test('unaccounted ranges and post-record source drift fail closed', () => {
       (error) =>
         isWorkflowError(error, 'IMPLEMENTATION_TERM_ESCALATION_REQUIRED'),
     );
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     assert.throws(
       () => completeTask(repository, session.sessionId),
       (error) => isWorkflowError(error, 'IMPLEMENTATION_RECONCILIATION_STALE'),

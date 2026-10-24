@@ -6,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { ExitCode } from '../src/foundation/errors/errors.ts';
-import { runCli, runCliAsync } from '../src/cli.ts';
+import { runCli, runCliAsync } from '../bootstrap/workflow-engine-host.ts';
 import type { ExecutionJobInspection } from '../src/runtime/provider-execution/execution-runtime.ts';
 import { createFixtureRepository, sourceRepositoryRoot } from './fixture.ts';
 
@@ -79,7 +79,10 @@ test('main CLI routes human intervention through the durable bootstrap surface',
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'change',
         'intervene',
         'demo-change',
@@ -123,7 +126,10 @@ test('main CLI routes engine artifact builds through persisted intervention stat
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'engine',
         'build-artifact',
         path.join(repository, 'packages/workflow-engine/dist/engine'),
@@ -158,7 +164,10 @@ test('main CLI accepts the family-neutral audited grant revoke surface', () => {
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'grant',
         'revoke',
         '77777777-7777-4777-8777-777777777777',
@@ -183,7 +192,7 @@ test('human-resolution revoke requires an explicit reason', () => {
   const repository = createFixtureRepository();
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/cli.ts',
+    'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
   );
   try {
     for (const command of [['maintainer', 'resolution-revoke']]) {
@@ -214,7 +223,7 @@ test('main CLI exposes the bounded provider retry pump and durable schedule quer
   const repository = createFixtureRepository();
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/cli.ts',
+    'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
   );
   try {
     const pump = spawnSync(
@@ -315,7 +324,10 @@ test('job watch is async-only, streams one terminal envelope, and is advertised 
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'help',
         '--json',
       ],

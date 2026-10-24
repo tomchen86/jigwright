@@ -1,14 +1,15 @@
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
 import {
   readFinalizeTransaction,
   removeFinalizeTransaction,
-} from '../src/runtime/repository-transaction/finalize-transaction.ts';
-import { restoreFinalizeTransactionProjection } from '../src/application/finalize/projected-finalization.ts';
+} from '../src/runtime/storage-journal/finalize-transaction.ts';
+import { restoreFinalizeTransactionProjection } from '../src/runtime/finalization/projected-finalization.ts';
 import {
   readProviderInvocation,
   readProviderInvocationManifest,
@@ -22,7 +23,7 @@ import {
   inspectTaskDiffReviewStatus,
   inspectTaskDiffReviewSubject,
   reconcileTaskDiffReview,
-} from '../src/application/finalize/task-diff-review-lifecycle.ts';
+} from '../src/composition-root/task-diff-review-production.ts';
 import {
   createTaskDiffReviewRecord,
   taskDiffReviewProviderSubmission,
@@ -55,7 +56,12 @@ test('a corrected ordinary candidate recovers one exact common supersession afte
     },
   });
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -372,7 +378,12 @@ test('a corrected ordinary candidate recovers one exact common supersession afte
 test('an unchanged candidate reuses its review across fresh check evidence without another provider ceremony', () => {
   const { repository, counterPath } = createReviewFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -497,7 +508,12 @@ test('an unchanged candidate reuses its review across fresh check evidence witho
 test('review-diff CLI resumes the durable happy path from ready through fixed-runner reconciliation', () => {
   const { repository, counterPath } = createReviewFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',

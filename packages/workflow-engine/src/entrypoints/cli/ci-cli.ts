@@ -12,8 +12,8 @@ import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
   preparePullRequestPreMergeAssurance,
   completePreparedPullRequestPreMergeAssurance,
-} from '../ci/pre-merge-assurance-git.ts';
-import type { IntegrationDeltaReviewSubmission } from '../../composition-root/cli-operational-services.ts';
+} from '../../composition-root/ci-verification-production.ts';
+import type { IntegrationDeltaReviewSubmission } from '../../modules/assurance/pre-merge-assurance.ts';
 
 function readPreMergeSubmission(
   cwd: string,

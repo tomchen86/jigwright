@@ -6,18 +6,20 @@
  * - Authorization evidence binds actor, assignment, grant, baseline, and protected base.
  * - Generated scan acceptance identifies the current investigation and saturated terms.
  */
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
+import { isProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
+import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { type ActorSignal } from '../../modules/provider-orchestration/actor-identity.ts';
-import {
-  type ProviderInvocationRequest,
-  PROPOSE_POLICY_DIGEST,
-} from '../../modules/provider-orchestration/provider-contracts.ts';
-import {
-  type ProposeGrantAuthorization,
-  assertProposeGrantAuthorization,
-} from './plan-review-contracts.ts';
+import type { ActorSignal } from '../../modules/authority/actor-identity.ts';
+import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
+import { PROPOSE_POLICY_DIGEST } from '../../modules/provider-orchestration/provider-contracts.ts';
+import type {
+  ProposeGrantAuthorization,
+  InvestigationExemptionRequest,
+  ProposeStartInput,
+  ProposeWork,
+} from '../../modules/proposal/propose-types.ts';
+import { assertProposeGrantAuthorization } from './plan-review-grant-authorization.ts';
 import {
   hasExactKeys,
   isBaseline,
@@ -28,63 +30,17 @@ import {
   proposeAuthorizationInvalid,
   proposeInputInvalid,
   sha256,
-} from './propose-common.ts';
+} from '../../modules/proposal/propose-values.ts';
 import {
-  assertExemptionPlanningContributionEnvelope,
-  assertPlanningContributionEnvelope,
-  assertPlanReviewDispositionsEnvelope,
-  assertPlanReviewProgressEnvelope,
-  assertPlanReviewRetryEnvelope,
-  assertProviderProgressEnvelope,
-  assertProviderRetryEnvelope,
   checkpointPayloadTemplate,
   createProviderProgressEnvelope,
   isCanonicalSourceReferenceArray,
   withEnvelopeTemplate,
-} from './propose-input.ts';
-import type {
-  BlindSurveyManifest,
-  InvestigationScanSaturationAcceptanceEnvelope,
-  InvestigationStatus,
-  NormalizedChangeIntent,
-  ProposeRuntime,
-} from './propose-runtime.ts';
-import {
-  type InvestigationExemptionRequest,
-  type ProposeInput,
-  type ProposeOutput,
-  type ProposeStartInput,
-  type ProposeWork,
-} from './propose-types.ts';
-
-export function createScanSaturationAcceptanceEnvelope(
-  services: Pick<ProposeRuntime, 'investigation'>,
-  output: ProposeOutput,
-): InvestigationScanSaturationAcceptanceEnvelope {
-  if (
-    output.state !== 'scan-saturation-acceptance-required' ||
-    !isRecord(output.inputSchema) ||
-    output.inputSchema.kind !== 'scan-saturation-acceptance' ||
-    !isRecord(output.inputSchema.binding) ||
-    !Array.isArray(output.inputSchema.saturatedTermIds)
-  ) {
-    throw workflowError(
-      'INVESTIGATION_SCAN_SATURATION_ACCEPTANCE_NOT_AVAILABLE',
-      'The propose wrapper is not waiting for scan saturation acceptance.',
-      ExitCode.guard,
-    );
-  }
-  return services.investigation.assertInvestigationScanSaturationAcceptanceEnvelope(
-    {
-      schemaVersion: 1,
-      kind: 'scan-saturation-acceptance',
-      ...output.inputSchema.binding,
-      saturatedTermIds: output.inputSchema.saturatedTermIds,
-      acknowledgeIncompleteScan: true,
-    },
-  );
-}
-
+} from '../../modules/proposal/propose-input.ts';
+import type { InvestigationStatus } from '../../modules/lifecycle/investigation-status.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
+import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
+import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
 export function inputSchemaForStatus(
   services: Pick<ProposeRuntime, 'provider' | 'workspace'>,
   cwd: string,
@@ -161,42 +117,6 @@ export function inputSchemaForStatus(
     });
   }
   return null;
-}
-
-export function assertProposeInput(
-  services: Pick<ProposeRuntime, 'investigation'>,
-  value: unknown,
-): ProposeInput {
-  if (!isRecord(value) || typeof value.kind !== 'string') {
-    throw proposeInputInvalid();
-  }
-  if (value.kind === 'planning-contribution') {
-    return assertPlanningContributionEnvelope(value);
-  }
-  if (value.kind === 'exemption-planning-contribution') {
-    return assertExemptionPlanningContributionEnvelope(value);
-  }
-  if (value.kind === 'scan-saturation-acceptance') {
-    return services.investigation.assertInvestigationScanSaturationAcceptanceEnvelope(
-      value,
-    );
-  }
-  if (value.kind === 'provider-progress') {
-    return assertProviderProgressEnvelope(value);
-  }
-  if (value.kind === 'provider-retry') {
-    return assertProviderRetryEnvelope(value);
-  }
-  if (value.kind === 'plan-review-retry') {
-    return assertPlanReviewRetryEnvelope(value);
-  }
-  if (value.kind === 'plan-review-progress') {
-    return assertPlanReviewProgressEnvelope(value);
-  }
-  if (value.kind === 'plan-review-dispositions') {
-    return assertPlanReviewDispositionsEnvelope(value);
-  }
-  return services.investigation.assertInvestigationCheckpointEnvelope(value);
 }
 
 function assertNormalizedIntent(
@@ -321,7 +241,7 @@ export function readProposeAuthorization(
   request: ProviderInvocationRequest,
 ): {
   actor: {
-    providerId: 'codex' | 'claude';
+    providerId: ProviderId;
     assurance: 'self-declared' | 'runtime-hint' | 'adapter-assigned';
   };
   signals: ActorSignal[];
@@ -354,7 +274,7 @@ export function readProposeAuthorization(
     ]) ||
     !isRecord(output.actor) ||
     !hasExactKeys(output.actor, ['providerId', 'assurance']) ||
-    !['codex', 'claude'].includes(output.actor.providerId as string) ||
+    !isProviderId(output.actor.providerId) ||
     !['self-declared', 'runtime-hint', 'adapter-assigned'].includes(
       output.actor.assurance as string,
     ) ||
@@ -376,7 +296,7 @@ export function readProposeAuthorization(
     throw proposeAuthorizationInvalid();
   }
   const actor = output.actor as {
-    providerId: 'codex' | 'claude';
+    providerId: ProviderId;
     assurance: 'self-declared' | 'runtime-hint' | 'adapter-assigned';
   };
   const signals = output.signals.map((signal) => {

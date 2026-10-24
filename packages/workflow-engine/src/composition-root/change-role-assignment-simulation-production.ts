@@ -11,7 +11,7 @@ import crypto from 'node:crypto';
 import {
   assertAgentProviderConfigSnapshot,
   type AgentProviderConfigSnapshot,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
 
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import {
@@ -22,7 +22,7 @@ import {
   isProviderId,
   listBuiltInProviders,
 } from '../modules/provider-orchestration/provider-registry.ts';
-import { loadAiAdapterPolicy } from '../runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../runtime/provider-policy/ai-adapter-policy.ts';
 import { readCurrentCentralRoleProviderDefault } from '../runtime/repository-transaction/central-role-provider-default-store.ts';
 
 export type CentralRoleProviderDefaultSimulationReport = Readonly<{

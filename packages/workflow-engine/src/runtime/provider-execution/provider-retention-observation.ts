@@ -1,3 +1,5 @@
+import { classifyProviderRetentionEligibility } from '../../modules/provider-orchestration/provider-retention.ts';
+import type { WorkflowRetentionBinding } from '../../modules/authority/execution-governance-retention.ts';
 /**
  * Resolve durable provider retention bindings and classify exact pruning eligibility.
  *
@@ -17,28 +19,30 @@ import {
   type DurableExecutionJobState,
   readExecutionJobState,
 } from '../storage-journal/execution-store.ts';
-import {
-  type EvidenceRetentionRecord,
-  inspectDurableRetentionCatalog,
-} from '../../modules/authority/execution-governance.ts';
+import { type EvidenceRetentionRecord } from '../../modules/authority/execution-governance-retention.ts';
+import { inspectDurableRetentionCatalog } from '../storage-journal/execution-governance-evidence-store.ts';
 import {
   type ProviderPromptContextRetentionBinding,
   providerRuntimeEvidenceId,
   inspectProviderPromptContextRetentionBinding,
-} from './provider-execution-governance.ts';
+} from '../storage-journal/provider-execution-governance.ts';
 import { WorkflowError } from '../../foundation/errors/errors.ts';
-import { readProviderInvocationLifecycleProjection } from '../storage-journal/provider-invocation-lifecycle.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import {
-  type ProviderInvocationRecord,
+  readProviderInvocationLifecycleProjection,
+  listProviderInvocationLifecycleProjections,
+} from '../storage-journal/provider-invocation-lifecycle.ts';
+import type { InvestigationRuntimePaths } from '@jigwright/core/runtime-path-kernel';
+import {
+  readProviderInvocation,
   readProviderInvocationRequest,
   readProviderInvocationManifest,
 } from '../storage-journal/provider-invocation-store.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import { type ProviderRetentionReceipt } from '../storage-journal/provider-retention-receipt.ts';
-import {
-  type ProviderRetentionEligibilityInput,
-  type ProviderRetentionDenyReason,
-} from './provider-retention.ts';
+import type {
+  ProviderRetentionEligibilityInput,
+  ProviderRetentionDenyReason,
+} from '../../modules/provider-orchestration/provider-retention.ts';
 import {
   type PhysicalArtifact,
   collectPhysicalArtifacts,
@@ -93,43 +97,6 @@ export function humanPinResolver(
 }
 
 /** Pure policy projection used by the physical pass and contract tests. */
-export function classifyProviderRetentionEligibility(
-  input: ProviderRetentionEligibilityInput,
-): ProviderRetentionDenyReason | null {
-  if (
-    input.invocationState === 'prepared' ||
-    input.invocationState === 'leased'
-  ) {
-    return 'active-invocation';
-  }
-  if (!input.historyComplete) return 'schema-history-incomplete';
-  if (input.retention === 'pinned' || input.humanPinned === true) {
-    return 'pinned';
-  }
-  if (input.acceptedAttempt && input.attemptEpoch === input.currentEpoch) {
-    return 'accepted-result-current';
-  }
-  if (
-    !input.acceptedAttempt &&
-    input.latestUnacceptedAttempt &&
-    input.attemptEpoch === input.currentEpoch
-  ) {
-    return 'current-attempt';
-  }
-  // An old epoch is no longer current even if an invocation projection still calls
-  // its retention "active". The accepted Result/core stays durable, while its
-  // private raw runtime becomes TTL-eligible rather than permanent by accident.
-  if (
-    input.retention === 'active' &&
-    input.attemptEpoch === input.currentEpoch
-  ) {
-    return 'active-retention';
-  }
-  if (Date.parse(input.terminalAt) > Date.parse(input.cutoffAt)) {
-    return 'ttl-not-expired';
-  }
-  return null;
-}
 
 export type InvocationBinding = Readonly<{
   state: DurableExecutionJobState;
@@ -301,5 +268,36 @@ export function readInvocationBinding(
       throw error;
     }
     return undefined;
+  }
+}
+
+/** Observe one invocation at a time so a conflicting binding stops later reads. */
+export function* observeRetentionWorkflowBindings(
+  runtime: InvestigationRuntimePaths,
+): Iterable<WorkflowRetentionBinding> {
+  for (const projection of listProviderInvocationLifecycleProjections(
+    runtime,
+  )) {
+    const record = readProviderInvocation(runtime, projection.invocationId);
+    const request = readProviderInvocationRequest(
+      runtime,
+      projection.invocationId,
+    );
+    const manifest = readProviderInvocationManifest(
+      runtime,
+      projection.invocationId,
+    );
+    const context = inspectProviderPromptContextRetentionBinding(
+      runtime.root,
+      request,
+      manifest,
+      projection.ownerInvestigationId,
+      record.createdAt,
+    );
+    if (context === null) continue;
+    const execution = projectProviderInvocationExecution({ record, request });
+    const mandateBinding = execution.job.mandateBinding;
+    if (mandateBinding === undefined) continue;
+    yield { workflowId: context.workflowId, mandateBinding };
   }
 }

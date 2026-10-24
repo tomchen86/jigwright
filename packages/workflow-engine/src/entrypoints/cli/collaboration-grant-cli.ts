@@ -6,27 +6,29 @@
  * - A request must select exactly one provider, caller or direct-human
  *   actor form.
  */
-import {
-  type CollaborationAvailableActor,
-  type CollaborationDegradedForm,
-  type CollaborationGrantRequest,
-  type CollaborationLifecyclePhase,
-  type CollaborationRolePair,
-} from '../../modules/authority/collaboration-grant.ts';
+import type {
+  CollaborationAvailableActor,
+  CollaborationGrantRequest,
+  CollaborationLifecyclePhase,
+  CollaborationRolePair,
+  CollaborationDegradedForm,
+} from '../../modules/authority/collaboration-grant-codec.ts';
 import { issueProductionCollaborationGrant } from '../../composition-root/collaboration-grant-production.ts';
 import {
   listCollaborationGrantInspections,
   readCollaborationGrantInspection,
-  revokeCollaborationGrant,
-} from '../../runtime/storage-journal/collaboration-grant-store.ts';
-import type { ActorAssurance } from '../../modules/provider-orchestration/actor-identity.ts';
+} from '../../runtime/storage-journal/collaboration-grant-records.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  discoverRepository,
-  runGit,
-} from '../../runtime/repository-transaction/git.ts';
+import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
 import { isProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
 import { assertOptionalGrantsPackageAvailable } from '../../composition-root/optional-grants-package-production.ts';
+import { revokeCollaborationGrant } from '../../composition-root/collaboration-grant-production.ts';
+import { resolveTreeOid } from '../../runtime/repository-transaction/git-object-ids.ts';
+
+type ActorAssurance = Extract<
+  CollaborationAvailableActor,
+  { kind: 'provider' }
+>['assurance'];
 
 type CollaborationGrantCommandResult = Record<string, unknown>;
 const GIT_OBJECT_ID_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
@@ -163,10 +165,10 @@ export function parseCollaborationGrantArguments(
 
   const actor = parseAvailableActor(single, degradedForm);
   const repository = discoverRepository(cwd);
-  const baselineTree = runGit(repository.repositoryRoot, [
-    'rev-parse',
-    `${baselineCommit}^{tree}`,
-  ]).trim();
+  const baselineTree = resolveTreeOid(
+    repository.repositoryRoot,
+    baselineCommit,
+  );
   const ttl = single.get('--ttl');
   const uses = single.get('--uses');
   if (

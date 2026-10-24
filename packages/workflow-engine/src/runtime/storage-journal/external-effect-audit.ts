@@ -10,12 +10,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 
 import { deriveAuthorityAuditRepositoryId } from './authority-audit-ledger.ts';
-import {
-  recordAuthorityAuditEvent,
-  type AuthorityAuditEventInput,
-  type AuthorityAuditRecordedEvent,
-  type AuthorityAuditServiceHooks,
-} from './authority-audit-service.ts';
+import { recordAuthorityAuditEvent } from './authority-audit-service.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type {
@@ -23,13 +18,8 @@ import type {
   Sha256Digest,
 } from '../../modules/authority/external-effect-grant.ts';
 
-export type ExternalEffectAuthorityAuditOptions = {
-  serviceHooks?: AuthorityAuditServiceHooks;
-  onRecord?: (
-    event: ExternalEffectAuditEvent,
-    entry: AuthorityAuditRecordedEvent,
-  ) => void;
-};
+import type { ExternalEffectAuthorityAuditOptions } from '../../modules/authority/external-effect-grant.ts';
+export type { ExternalEffectAuthorityAuditOptions } from '../../modules/authority/external-effect-grant.ts';
 
 /**
  * Production bridge from one task-correlated External Effect event to the
@@ -187,3 +177,9 @@ function assertAbsolute(value: string): string {
 function digest(value: string): Sha256Digest {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
+
+import {
+  type AuthorityAuditEventInput,
+  type AuthorityAuditRecordedEvent,
+  type AuthorityAuditServiceHooks,
+} from '../../modules/authority/authority-audit-contract.ts';

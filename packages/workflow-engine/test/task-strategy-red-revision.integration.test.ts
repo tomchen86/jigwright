@@ -1,3 +1,7 @@
+import { productionTaskStrategyCorrection } from '../src/composition-root/task-strategy-correction-production.ts';
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import { startSession } from '../src/application/execute-task/session.ts';
 import path from 'node:path';
@@ -6,14 +10,14 @@ import assert from 'node:assert/strict';
 import {
   inspectTaskStrategyTransaction,
   sealTaskStrategyRed,
-} from '../src/application/execute-task/task-strategy-execution.ts';
+} from '../src/composition-root/task-strategy-execution-production.ts';
 import {
   adoptCurrentTaskStrategyImplementation,
   adoptCurrentTaskStrategyCorrection,
-} from '../src/application/execute-task/task-strategy-patch.ts';
-import { beginTaskStrategyRedRevision } from '../src/application/execute-task/task-strategy-red-revision.ts';
+} from '../src/composition-root/task-strategy-patch-production.ts';
+import { beginTaskStrategyRedRevision } from '../src/composition-root/task-strategy-red-revision-production.ts';
 import { parseTaskStrategyRedRevisionRequest } from '../src/runtime/storage-journal/task-strategy-red-revision-store.ts';
-import { checkSession } from '../src/application/finalize/verification.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import {
   createCrossAgentFixture,
   runWorkflowCli,
@@ -27,7 +31,12 @@ test('routine resume revises an in-scope sealed RED without a planning revision'
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
@@ -115,7 +124,12 @@ test('ordinary resume discovers every RED revision crash before current-ref publ
       'tdd-single-agent',
     );
     try {
-      const session = startSession(repository, 'demo-change', '1.1');
+      const session = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
       const testPath = path.join(repository, 'test/feature.test.mjs');
       fs.mkdirSync(path.dirname(testPath), { recursive: true });
       fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
@@ -196,7 +210,12 @@ test('a rejected RED revision preflight cannot poison the next exact request', (
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
@@ -246,7 +265,12 @@ test('RED revision removes only the exact imported implementation and never acce
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
@@ -306,7 +330,12 @@ test('RED revision preserves out-of-scope bytes while refusing to reseal them', 
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
@@ -368,7 +397,12 @@ test('RED revision restores every authenticated correction head in reverse order
     true,
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
@@ -383,7 +417,15 @@ test('RED revision restores every authenticated correction head in reverse order
       adoptCurrentTaskStrategyImplementation(repository, session.sessionId),
     );
     assert.throws(
-      () => checkSession(repository, session.sessionId, { environment: {} }),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeContract,
+          repository,
+          session.sessionId,
+          { environment: {} },
+        ),
       hasCode('CHECK_FAILED'),
     );
     fs.writeFileSync(implementationPath, 'export const corrected = true;\n');
@@ -408,3 +450,299 @@ test('RED revision restores every authenticated correction head in reverse order
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
+
+import { taskStrategyRedRevisionOperations } from '../src/composition-root/task-strategy-red-revision-production.ts';
+import { createTaskStrategyRedRevisionService } from '../src/application/execute-task/task-strategy-red-revision.ts';
+import type { TaskStrategyRedRevisionOperations } from '../src/application/execute-task/task-strategy-red-revision-operations.ts';
+import { assertCurrentImplementationReconciliation } from '../src/composition-root/implementation-reconciliation-production.ts';
+import { observeInvestigationRuntimeContext } from '../src/runtime/repository-observation/investigation-runtime-context.ts';
+import {
+  readSessionFile,
+  writeJsonAtomic,
+} from '../src/runtime/session-workspace/session-store.ts';
+import {
+  readTaskStrategyRedRevisionJournal,
+  readTaskStrategyCurrentRef,
+  taskStrategyRedRevisionId,
+  readActiveTaskStrategyRedRevision,
+} from '../src/runtime/storage-journal/task-strategy-red-revision-store.ts';
+import { readTaskStrategyTransactionByDigest } from '../src/runtime/storage-journal/task-strategy-store.ts';
+import { readEvidenceNode } from '../src/runtime/storage-journal/evidence-object-store.ts';
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+
+// Every decorator invokes its actual producer, then throws. Each replaced
+// nested object is cloned; the exported production singleton is never mutated.
+function crashAfter(
+  effect: string,
+  crash: Error,
+): TaskStrategyRedRevisionOperations {
+  const base = taskStrategyRedRevisionOperations;
+  const after = <T>(name: string, value: T): T => {
+    if (name === effect) throw crash;
+    return value;
+  };
+  return {
+    ...base,
+    prepareSuccessor: (...args) =>
+      after('prepare', base.prepareSuccessor(...args)),
+    observeJournal(cwd) {
+      const j = base.observeJournal(cwd);
+      return {
+        ...j,
+        revision: {
+          ...j.revision,
+          persistRequest: (r) => after('request', j.revision.persistRequest(r)),
+          create: (s) => after('prepared', j.revision.create(s)),
+          update: (input) => after(input.next.phase, j.revision.update(input)),
+        },
+        currentRef: {
+          ...j.currentRef,
+          compareAndSwap: (input) =>
+            after(input.next.state, j.currentRef.compareAndSwap(input)),
+        },
+        session: {
+          ...j.session,
+          write: (id, value) =>
+            after('session-write', j.session.write(id, value)),
+        },
+        evidence: {
+          ...j.evidence,
+          write: (node) => after('evidence', j.evidence.write(node)),
+        },
+        transaction: {
+          ...j.transaction,
+          persist: (tx) => after('transaction', j.transaction.persist(tx)),
+        },
+      };
+    },
+  };
+}
+const durableCuts = [
+  ['C01', 'request', 'begin', null],
+  ['C05', 'red-authoring', 'begin', 'implementation-restored'],
+  ['C06', 'current-authoring', 'begin', 'current-authoring'],
+  ['C07', 'session-write', 'begin', 'current-authoring'],
+  ['C08', 'session-evidence-cleared', 'begin', 'session-evidence-cleared'],
+  ['C09', 'prepare', 'continue', 'session-evidence-cleared'],
+  ['C10', 'reseal-prepared', 'continue', 'reseal-prepared'],
+  ['C11', 'evidence', 'continue', 'reseal-prepared'],
+  ['C12', 'transaction', 'continue', 'reseal-prepared'],
+  ['C13', 'successor-persisted', 'continue', 'successor-persisted'],
+  ['C14', 'red-sealed', 'continue', 'successor-persisted'],
+  ['C15', 'current-sealed', 'continue', 'current-sealed'],
+  ['C16', 'completed', 'continue', 'completed'],
+] as const;
+for (const [id, effect, operation, phase] of durableCuts)
+  test(`durable RED ${id} resumes ordinary CLI after real ${effect} publication throws`, () => {
+    const { repository, counterPath } = createCrossAgentFixture(
+      'assertion',
+      'tdd-single-agent',
+    );
+    try {
+      const session = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
+      const testPath = path.join(repository, 'test/feature.test.mjs');
+      fs.mkdirSync(path.dirname(testPath), { recursive: true });
+      fs.writeFileSync(testPath, "throw new Error('original expectation');\n");
+      const predecessor = sealTaskStrategyRed(repository, session.sessionId, {
+        explicitActor: 'codex',
+        environment: {},
+      });
+      const context = observeInvestigationRuntimeContext(repository);
+      const sessionPath = path.join(
+        context.lifecycleRuntime.sessions,
+        `${session.sessionId}.json`,
+      );
+      // A stale check pointer makes the real session-evidence write observable.
+      writeJsonAtomic(sessionPath, {
+        ...readSessionFile(sessionPath),
+        latestCheckReportId: 'a'.repeat(64),
+      });
+      const before = readSessionFile(sessionPath);
+      const request = {
+        schemaVersion: 1 as const,
+        kind: 'task-strategy-red-revision-request' as const,
+        sessionId: session.sessionId,
+        expectedTransactionDigest: predecessor.recordDigest,
+        reason: `Recover actual ${id} durable cut`,
+      };
+      if (operation === 'continue') {
+        beginTaskStrategyRedRevision(repository, request);
+        fs.writeFileSync(
+          testPath,
+          "throw new Error('corrected expectation');\n",
+        );
+      }
+      const failure = new Error(`crash ${id}`);
+      const decorated = crashAfter(effect, failure);
+      const svc = createTaskStrategyRedRevisionService(
+        decorated,
+        assertCurrentImplementationReconciliation,
+      );
+      assert.notEqual(decorated, taskStrategyRedRevisionOperations);
+      assert.throws(
+        () =>
+          operation === 'begin'
+            ? svc.beginTaskStrategyRedRevision(repository, request)
+            : svc.continueTaskStrategyRedRevision(
+                repository,
+                session.sessionId,
+                {},
+              ),
+        (e) => e === failure,
+      );
+      const revisionId = taskStrategyRedRevisionId(request);
+      const paused = readTaskStrategyRedRevisionJournal(
+        context.runtime,
+        session.sessionId,
+        revisionId,
+      );
+      assert.equal(paused?.phase ?? null, phase);
+      assert.equal(
+        readSessionFile(sessionPath).latestCheckReportId,
+        operation === 'continue' || id === 'C07' || id === 'C08'
+          ? undefined
+          : before.latestCheckReportId,
+      );
+      const pinned = paused?.successorTransaction ?? null;
+      const ref = readTaskStrategyCurrentRef(
+        context.runtime,
+        session.sessionId,
+      )!;
+      assert.equal(
+        ref.state,
+        ['C14', 'C15', 'C16'].includes(id)
+          ? 'red-sealed'
+          : id === 'C01'
+            ? 'red-sealed'
+            : 'red-authoring',
+      );
+      assert.equal(
+        inspectTaskStrategyTransaction(repository, session.sessionId)
+          ?.recordDigest ?? null,
+        ['C14', 'C15', 'C16'].includes(id)
+          ? pinned!.recordDigest
+          : id === 'C01'
+            ? predecessor.recordDigest
+            : null,
+      );
+      assert.deepEqual(
+        readTaskStrategyTransactionByDigest(
+          context.runtime,
+          session.sessionId,
+          predecessor.recordDigest,
+        ),
+        predecessor,
+      );
+      if (['C11', 'C12', 'C13', 'C14', 'C15', 'C16'].includes(id))
+        assert.deepEqual(
+          readEvidenceNode(context.runtime, pinned!.red.evidenceNodeId),
+          pinned!.red.evidenceNode,
+        );
+      if (['C12', 'C13', 'C14', 'C15', 'C16'].includes(id))
+        assert.deepEqual(
+          readTaskStrategyTransactionByDigest(
+            context.runtime,
+            session.sessionId,
+            pinned!.recordDigest,
+          ),
+          pinned,
+        );
+      else if (pinned)
+        assert.equal(
+          readTaskStrategyTransactionByDigest(
+            context.runtime,
+            session.sessionId,
+            pinned.recordDigest,
+          ),
+          null,
+        );
+      assert.equal(
+        fs.readFileSync(counterPath, 'utf8'),
+        operation === 'begin' ? '1' : '2',
+      );
+      const resume = () =>
+        runWorkflowCli(repository, ['resume', session.sessionId, '--json'], {
+          AGENT: 'codex',
+          WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH: '1',
+        });
+      if (operation === 'begin') {
+        const opening = resume();
+        assert.notEqual(opening.status, 0);
+        assert.match(opening.stderr, /TASK_STRATEGY_RED_REVISION_NO_CHANGE/);
+        assert.equal(
+          readTaskStrategyRedRevisionJournal(
+            context.runtime,
+            session.sessionId,
+            revisionId,
+          )!.phase,
+          'session-evidence-cleared',
+        );
+        assert.equal(
+          inspectTaskStrategyTransaction(repository, session.sessionId),
+          null,
+        );
+        fs.writeFileSync(
+          testPath,
+          "throw new Error('corrected expectation');\n",
+        );
+      }
+      const recovered = resume();
+      assert.equal(recovered.status, 0, recovered.stderr);
+      const completed = readTaskStrategyRedRevisionJournal(
+        context.runtime,
+        session.sessionId,
+        revisionId,
+      )!;
+      assert.equal(completed.phase, 'completed');
+      assert.equal(
+        readActiveTaskStrategyRedRevision(context.runtime, session.sessionId),
+        null,
+      );
+      const successor = inspectTaskStrategyTransaction(
+        repository,
+        session.sessionId,
+      )!;
+      assert.equal(
+        successor.recordDigest,
+        completed.successorTransaction!.recordDigest,
+      );
+      assert.notEqual(successor.recordDigest, predecessor.recordDigest);
+      assert.notEqual(
+        successor.red.candidateTree,
+        predecessor.red.candidateTree,
+      );
+      assert.equal(
+        canonicalJson(readSessionFile(sessionPath)),
+        canonicalJson(completed.sessionTransition.after),
+      );
+      assert.equal(readSessionFile(sessionPath).latestCheckReportId, undefined);
+      assert.notEqual(
+        canonicalJson(completed.sessionTransition.before),
+        canonicalJson(completed.sessionTransition.after),
+      );
+      assert.deepEqual(
+        readTaskStrategyCurrentRef(context.runtime, session.sessionId),
+        completed.successorRef,
+      );
+      if (pinned) {
+        assert.equal(canonicalJson(successor), canonicalJson(pinned));
+        assert.equal(successor.createdAt, pinned.createdAt);
+      }
+      assert.equal(
+        fs.readFileSync(counterPath, 'utf8'),
+        operation === 'begin' || id === 'C09' ? '3' : '2',
+        'RED may rerun before successor pinning, never after pinning',
+      );
+      assert.equal(
+        beginTaskStrategyRedRevision(repository, request).phase,
+        'completed',
+      );
+    } finally {
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
+  });

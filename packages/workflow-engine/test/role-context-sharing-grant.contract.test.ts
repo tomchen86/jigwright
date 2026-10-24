@@ -12,10 +12,12 @@ import {
 import {
   ROLE_CONTEXT_SHARING_ELIGIBILITY_CONTRACT_VERSION_V1,
   ROLE_CONTEXT_SHARING_POLICY_DIGEST,
-  executeRoleContextSharingGrantTransitionV1,
-  verifyRoleContextSharingGrantCapability,
   type RoleContextSharingEligibilityPortV1,
 } from '../src/modules/authority/role-context-sharing-grant.ts';
+import {
+  executeRoleContextSharingGrantTransitionV1,
+  verifyRoleContextSharingGrantCapability,
+} from '../src/runtime/grants/grant-services.ts';
 import {
   sealAuthoritativeRoleContextSharingGrantVerifier,
   type AuthoritativeRoleContextSharingGrantVerifier,

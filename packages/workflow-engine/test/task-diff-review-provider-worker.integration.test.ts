@@ -1,3 +1,26 @@
+import { parseDocumentationClosureFromCommitMessage } from '../src/modules/assurance/documentation-closure.ts';
+import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import {
+  productionChangeRoutingInspector,
+  productionChangeContract,
+} from '../src/composition-root/change-routing-observation-production.ts';
+import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
+import { collaborationGrantCodec as productionArchiveGrantCodec } from '../src/runtime/grants/grant-services.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -6,56 +29,56 @@ import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { withArchiveEligibility } from '../src/application/archive/archive-eligibility.ts';
-import { verifyPullRequest } from '../src/entrypoints/ci/ci.ts';
-import {
-  assertDocumentationClosureCommitCurrent,
-  parseDocumentationClosureFromCommitMessage,
-} from '../src/runtime/managed-documents/contracts/documentation-closure.ts';
+import { verifyPullRequest } from '../src/composition-root/ci-verification-production.ts';
+import { assertDocumentationClosureCommitCurrent } from '../src/runtime/managed-documents/contracts/documentation-closure.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { commitFacts } from '../src/runtime/repository-transaction/git-transitions.ts';
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { loadActiveSessionContext } from '../src/composition-root/lifecycle-context.ts';
 import {
   cancelFinalizeRecovery,
+  inspectFinalizeRecoveryStatus,
+} from '../src/composition-root/finalization-production.ts';
+import {
   finalizeSession,
   finalizeTask,
-  inspectFinalizeRecoveryStatus,
-} from '../src/application/finalize/lifecycle.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+} from './support/session-lifecycle-host.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import {
   readProviderInvocation,
   readProviderInvocationManifest,
   readProviderInvocationRequest,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
-import { readProviderAutomaticRetrySchedule } from '../src/runtime/provider-execution/provider-retry-scheduler.ts';
+import { readProviderAutomaticRetrySchedule } from '../src/composition-root/provider-retry-production.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { listProviderWorkerMaintenanceWarnings } from '../src/runtime/storage-journal/provider-worker-maintenance.ts';
+import { observeInvestigationRuntimeContext } from '../src/runtime/repository-observation/investigation-runtime-context.ts';
 import {
   preparePullRequestPreMergeAssurance,
   verifyPullRequestWithPreMergeAssurance,
-} from '../src/entrypoints/ci/pre-merge-assurance-git.ts';
-import { runCli } from '../src/cli.ts';
-import {
-  abortSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+} from '../src/composition-root/ci-verification-production.ts';
+import { runCli } from '../bootstrap/workflow-engine-host.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
+import { abortSession } from '../src/composition-root/task-session-production.ts';
 import {
   TASK_DIFF_REVIEW_OUTPUT_SCHEMA,
-  type TaskDiffReviewContinuationSubmission,
-  type TaskDiffReviewSubmission,
   taskDiffReviewProviderSubmission,
 } from '../src/modules/assurance/task-diff-review-artifact.ts';
+import type {
+  TaskDiffReviewContinuationSubmission,
+  TaskDiffReviewSubmission,
+} from '../src/modules/assurance/task-diff-review-artifact-record.ts';
 import {
   beginTaskDiffReview,
   beginTaskDiffReviewContinuationFromInput,
   reconcileTaskDiffReview,
   reconcileTaskDiffReviewContinuation,
-} from '../src/application/finalize/task-diff-review-lifecycle.ts';
+} from '../src/composition-root/task-diff-review-production.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
-import { inspectSession } from '../src/application/finalize/verification.ts';
+import { inspectSession } from '../src/runtime/repository-validation/session-inspection.ts';
 import {
   configureChecks,
   createFixtureRepository,
@@ -215,6 +238,10 @@ test('activated final task review binds documentation closure into commit and CI
     runFixtureGit(fixture.repository, ['checkout', '-b', 'work/archive-demo']);
     assert.equal(
       withArchiveEligibility(
+        loadStableValidatedChangeContract,
+        productionPlanningExecution,
+        archiveEligibilityReplayServices,
+        productionArchiveGrantCodec,
         fixture.repository,
         'demo-change',
         (eligibility) => eligibility.taskCommits[0]?.hash,
@@ -333,14 +360,23 @@ test('documentation review opens exact remediation scope and requires a fresh fi
       '# Roadmap\n\nThe reviewed feature is documented.\n',
     );
     assert.doesNotThrow(() =>
-      inspectSession(fixture.repository, fixture.sessionId),
+      inspectSession(
+        productionChangeContract,
+        fixture.repository,
+        fixture.sessionId,
+      ),
     );
     fs.writeFileSync(
       `${fixture.repository}/docs/UNREQUESTED.md`,
       '# Unrequested\n',
     );
     assert.throws(
-      () => inspectSession(fixture.repository, fixture.sessionId),
+      () =>
+        inspectSession(
+          productionChangeContract,
+          fixture.repository,
+          fixture.sessionId,
+        ),
       hasCode('OUT_OF_SCOPE_PATHS'),
     );
     fs.rmSync(`${fixture.repository}/docs/UNREQUESTED.md`);
@@ -595,7 +631,9 @@ test('TaskDiffReview provider failure cannot enter the legacy survey or plan-rev
       null,
     );
     assert.deepEqual(
-      listProviderWorkerMaintenanceWarnings(fixture.repository),
+      listProviderWorkerMaintenanceWarnings(
+        observeInvestigationRuntimeContext(fixture.repository).runtime,
+      ),
       [],
     );
   } finally {
@@ -663,7 +701,12 @@ function createTaskDiffWorkerFixture(
     0o700,
   );
   commitPlanningTransition(repository, 'demo-change');
-  const session = startSession(repository, 'demo-change', '1.1');
+  const session = startSession(
+    productionChangeContract,
+    repository,
+    'demo-change',
+    '1.1',
+  );
   fs.writeFileSync(
     `${repository}/src/feature.ts`,
     `export const reviewed = ${JSON.stringify(suffix)};\n`,

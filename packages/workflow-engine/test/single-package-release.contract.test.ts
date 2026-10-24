@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 import { buildSingleJigwrightPackage } from '../../../scripts/build-single-jigwright-package.ts';
+import { setupFixedRunnerFixture } from './fixed-runner-fixture.ts';
 
 test('installed runtime descriptors are exact embedded-only records', () => {
   const scratch = fs.mkdtempSync(
@@ -182,7 +183,7 @@ test('single Jigwright tarball exposes only read-only durable Job observation', 
   }
 });
 
-test('single Jigwright tarball installs the complete CLI and public surfaces', () => {
+test('single Jigwright tarball installs the complete CLI and public surfaces', async () => {
   const workspaceManifest = JSON.parse(
     fs.readFileSync(path.resolve('package.json'), 'utf8'),
   ) as { scripts: Record<string, string> };
@@ -299,6 +300,23 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
       entrypoint: './bin/jigwright.mjs',
     });
 
+    const initBootstrap = run('tar', [
+      '-xOzf',
+      tarballPath,
+      'package/bootstrap/jigwright-init.mjs',
+    ]);
+    assert.ok(
+      initBootstrap.includes(
+        '../dist/runtime/entrypoints/cli/consumer-setup-cli.js',
+      ),
+    );
+    assert.ok(
+      initBootstrap.includes(
+        '../dist/runtime/entrypoints/cli/human-command-output.js',
+      ),
+    );
+    assert.ok(!initBootstrap.includes('../src/'));
+
     const inventory = run('tar', ['-tzf', tarballPath]);
     const topLevel = [
       ...new Set(
@@ -326,6 +344,7 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
       'package/bootstrap/installed-runtime.json',
       'package/bootstrap/installed-runtime-sources/jigwright-agent-runtime/src/index.ts',
       'package/bootstrap/installed-runtime-sources/jigwright-core/src/canonical-json.ts',
+      'package/bootstrap/installed-runtime-sources/jigwright-core/conformance/workflow-conformance-v2.json',
       'package/bootstrap/installed-runtime-sources/jigwright-grants/src/central-grant-contracts.ts',
       'package/bootstrap/installed-runtime-sources/jigwright-github-adapter/src/archive-pull-request.ts',
       'package/bootstrap/installed-runtime-sources/jigwright-openspec-adapter/src/index.ts',
@@ -333,7 +352,7 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
       'package/dist/internal/core/conformance/workflow-conformance-v2.json',
       'package/dist/runtime/composition-root/public/manifest-v3.js',
       'package/runtime/composition-root/public/manifest-v3.ts',
-      'package/src/cli.ts',
+      'package/src/entrypoints/cli/workflow-cli.ts',
     ]) {
       assert.match(inventory, new RegExp(`^${escapeRegExp(expected)}$`, 'mu'));
     }
@@ -421,6 +440,55 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
       consumerRoot,
     );
     const installedRoot = path.join(consumerRoot, 'node_modules', 'jigwright');
+    const initRoot = path.join(scratch, 'init-consumer');
+    fs.mkdirSync(initRoot);
+    const initEnvironment: NodeJS.ProcessEnv = {
+      ...process.env,
+      JIGWRIGHT_SETUP_HOME: path.join(scratch, 'init-host'),
+    };
+    delete initEnvironment.JIGWRIGHT_AGENT_PROVIDER_CONFIG;
+    let initializedProfile: string | undefined;
+    for (const expectedStatus of ['initialized', 'unchanged']) {
+      const initialized = spawnSync(
+        process.execPath,
+        [path.join(installedRoot, 'bin', 'jigwright.mjs'), 'init', '--json'],
+        {
+          cwd: initRoot,
+          encoding: 'utf8',
+          env: initEnvironment,
+        },
+      );
+      assert.equal(initialized.status, 0, initialized.stderr);
+      const result = JSON.parse(initialized.stdout);
+      assert.equal(result.ok, true);
+      assert.equal(result.result.kind, 'jigwright-init-result.v1');
+      assert.equal(result.result.status, expectedStatus);
+      assert.equal(result.result.path, 'workflow/jigwright-profile.json');
+      const profile = fs.readFileSync(
+        path.join(initRoot, 'workflow', 'jigwright-profile.json'),
+        'utf8',
+      );
+      if (expectedStatus === 'initialized') initializedProfile = profile;
+      else assert.equal(profile, initializedProfile);
+    }
+    const initHelp = spawnSync(
+      process.execPath,
+      [
+        path.join(installedRoot, 'bin', 'jigwright.mjs'),
+        'init',
+        '--help',
+        '--non-interactive',
+      ],
+      {
+        cwd: initRoot,
+        encoding: 'utf8',
+        env: initEnvironment,
+      },
+    );
+    assert.equal(initHelp.status, 0, initHelp.stderr);
+    assert.match(initHelp.stdout, /^Init\n/u);
+    assert.match(initHelp.stdout, /jigwright init \[--answers <json-file>\]/u);
+
     const repositoryRoot = path.join(scratch, 'repository');
     fs.mkdirSync(repositoryRoot);
     run('git', ['init', '--quiet'], repositoryRoot);
@@ -432,6 +500,102 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
       ),
     );
     assert.equal(guidance.guide.kind, 'workflow-command-guide.v1');
+    const conformance = JSON.parse(
+      run(
+        process.execPath,
+        [
+          path.join(installedRoot, 'bin', 'jigwright.mjs'),
+          'boundary',
+          'vectors',
+          '--check',
+          '--json',
+        ],
+        repositoryRoot,
+      ),
+    );
+    assert.deepEqual(conformance.result, {
+      kind: 'jigwright.conformance-vectors-check.v1',
+      status: 'current',
+      domainCount: 9,
+      vectorSetDigest:
+        'sha256:b2113b55d86f6fd83cac7a1f3c62cea5df3b27a9feb0e5df5be011de694b089a',
+    });
+
+    const candidateMarker = path.join(scratch, 'consumer-candidate-executed');
+    const candidate = await setupFixedRunnerFixture({
+      candidateExecutableFactory: (closureDigest) =>
+        Buffer.from(`#!/usr/bin/env node
+import('node:fs').then(({ appendFileSync }) => {
+appendFileSync(${JSON.stringify(candidateMarker)}, process.argv.slice(2).join(' ') + '\\n');
+const probe = process.argv[2] === '--control-plane-restart-probe';
+process.stdout.write(JSON.stringify(probe
+  ? {kind:'control-plane-restart.v1',ready:true,closureDigest:${JSON.stringify(closureDigest)}}
+  : {kind:'control-plane-self-test.v1',healthy:true,closureDigest:${JSON.stringify(closureDigest)}}) + '\\n');
+});
+`),
+    });
+    try {
+      const positiveControl = spawnSync(
+        process.execPath,
+        [
+          candidate.retiredSelection.activeArtifact.executablePath,
+          '--control-plane-self-test',
+        ],
+        { encoding: 'utf8' },
+      );
+      assert.equal(positiveControl.status, 0, positiveControl.stderr);
+      assert.equal(candidate.retiredUpdate.transaction.state, 'FINALIZED');
+      assert.ok(
+        fs
+          .readFileSync(candidateMarker, 'utf8')
+          .includes('--control-plane-self-test'),
+      );
+      fs.unlinkSync(candidateMarker);
+      const supervisorPath = path.join(
+        candidate.stateRoot,
+        'control-plane-supervisor.json',
+      );
+      const selectionBefore = fs.readFileSync(supervisorPath);
+      const headBefore = run(
+        'git',
+        ['rev-parse', 'HEAD'],
+        candidate.repository,
+      );
+      const fixedGuidance = JSON.parse(
+        run(
+          process.execPath,
+          [path.join(installedRoot, 'bin', 'jigwright.mjs'), 'guide', '--json'],
+          candidate.repository,
+        ),
+      );
+      assert.deepEqual(fixedGuidance, guidance);
+      const fixedConformance = JSON.parse(
+        run(
+          process.execPath,
+          [
+            path.join(installedRoot, 'bin', 'jigwright.mjs'),
+            'boundary',
+            'vectors',
+            '--check',
+            '--json',
+          ],
+          candidate.repository,
+        ),
+      );
+      assert.deepEqual(fixedConformance, conformance);
+      assert.equal(
+        fs.existsSync(candidateMarker),
+        false,
+        'ordinary invocation must not execute a candidate or its probe',
+      );
+      assert.deepEqual(fs.readFileSync(supervisorPath), selectionBefore);
+      assert.equal(
+        run('git', ['rev-parse', 'HEAD'], candidate.repository),
+        headBefore,
+      );
+    } finally {
+      candidate.cleanup();
+    }
 
     const runtimeStateRoot = path.join(
       repositoryRoot,

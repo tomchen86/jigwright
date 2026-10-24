@@ -1,12 +1,4 @@
-/**
- * Admits provider review results and incorporates their investigation consequences.
- *
- * Invariants:
- * - Engine-derived review fields and role admission bind the exact reserved subject.
- * - Granted admission preserves the exact consumed collaboration or context-sharing use.
- * - Reviewer terms preserve reopening evidence and invalidate unsupported exemptions.
- */
-
+import type { RoleAdmissionServices } from '../../modules/provider-orchestration/role-scheduler.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -20,24 +12,19 @@ import {
   resolvePlanReviewRepositoryEvidence,
 } from '../../modules/assurance/planning-assurance-validator.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import { type RoleContextSharingGrantLifecyclePortV1 } from '../../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
-import { type InvestigationTermContribution } from '../../modules/investigation/domain/investigation-terms.ts';
+import type { RoleContextSharingGrantLifecyclePortV1 } from '../../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
+import type { InvestigationTermContribution } from '../../modules/investigation/domain/investigation-terms.ts';
 import {
   deriveReviewerTermDelta,
   projectPlanReviewTerms,
-} from '../../modules/projection/investigation-term-projection.ts';
-import {
-  isRoleContextSharingGrantedAssignment,
-  type ProviderProcessResult,
-} from '../../modules/provider-orchestration/provider-contracts.ts';
-import {
-  admitRoleContextSharingResult,
-  admitRoleResult,
-  type AdmittedRoleResult,
-  normalizeRoleContextSharingResultAdmissionBinding,
-  type ProviderRoleAssignment,
-  type RecordedRoleParticipant,
-} from '../../modules/provider-orchestration/role-scheduler.ts';
+} from '../../modules/assurance/plan-review-terms.ts';
+import { isRoleContextSharingGrantedAssignment } from '../../modules/provider-orchestration/provider-contracts.ts';
+import type { ProviderProcessResult } from '../../modules/provider-orchestration/provider-contracts.ts';
+import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+import type {
+  ProviderRoleAssignment,
+  RecordedRoleParticipant,
+} from '../../modules/provider-orchestration/role-assignment.ts';
 import {
   readPlanReviewGrantRequirement,
   readTrackedPlanReview,
@@ -51,47 +38,49 @@ import {
 } from './propose-context.ts';
 import { createReviewerTermSourceNode } from './propose-evidence.ts';
 import { rebuildInvestigation } from './propose-investigation-rebuild.ts';
+import type { CollaborationGrantUseProjection } from '../../modules/authority/collaboration-grant-records.ts';
+import type { EvidenceNode } from '@jigwright/core/evidence-node';
+import type { HeldChangeTransitionAuthority } from '../../runtime/session-workspace/planning-lock.ts';
+import type { InvestigationStatus } from '../../modules/lifecycle/investigation-status.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
 import type {
-  CollaborationGrantUseProjection,
-  EvidenceNode,
-  HeldChangeTransitionAuthority,
-  InvestigationStatus,
-  ProposeRuntime,
-} from './propose-runtime.ts';
-import {
-  type PlanReviewReservation,
-  type ProposeLifecycleStatus,
-  type ProposeResumeOptions,
-  type RebuiltInvestigation,
-} from './propose-types.ts';
-import {
-  consumeRoleContextSharingPlanReview,
-  type RoleContextSharingPlanReviewAuthorizationV1,
-  type RoleContextSharingPlanReviewRequirementV3,
-} from './role-context-sharing-plan-review.ts';
-
+  PlanReviewReservation,
+  ProposeLifecycleStatus,
+  ProposeResumeOptions,
+  RebuiltInvestigation,
+} from '../../modules/proposal/propose-types.ts';
+import { consumeRoleContextSharingPlanReview } from './role-context-sharing-plan-review.ts';
+import type {
+  RoleContextSharingPlanReviewAuthorizationV1,
+  RoleContextSharingPlanReviewRequirementV3,
+} from '../../modules/proposal/role-context-sharing-plan-review.ts';
 /**
  * Exact production completion seam for an R-007 PlanReview. The orchestrator
  * calls this only after the fixed provider invocation has succeeded; keeping
  * consume and admission in one operation makes crash replay exercise the same
  * one-use transition instead of a test-only lifecycle helper.
  */
-export function completeRoleContextSharingPlanReviewAdmission(input: {
-  gitCommonDirectory: string;
-  requirement: RoleContextSharingPlanReviewRequirementV3;
-  authorization: RoleContextSharingPlanReviewAuthorizationV1;
-  assignment: ProviderRoleAssignment;
-  author: RecordedRoleParticipant;
-  content: Parameters<typeof admitRoleContextSharingResult>[0]['content'];
-  providerInvocation: Parameters<
-    typeof admitRoleContextSharingResult
-  >[0]['providerInvocation'];
-  policy: ReturnType<typeof parseMaintainerPolicy>;
-  verifier: unknown;
-  lifecycle: RoleContextSharingGrantLifecyclePortV1;
-  now?: Date;
-  assertOwned: () => void;
-}): Readonly<{
+export function completeRoleContextSharingPlanReviewAdmission(
+  roleAdmission: RoleAdmissionServices,
+  input: {
+    gitCommonDirectory: string;
+    requirement: RoleContextSharingPlanReviewRequirementV3;
+    authorization: RoleContextSharingPlanReviewAuthorizationV1;
+    assignment: ProviderRoleAssignment;
+    author: RecordedRoleParticipant;
+    content: Parameters<
+      RoleAdmissionServices['admitRoleContextSharingResult']
+    >[0]['content'];
+    providerInvocation: Parameters<
+      RoleAdmissionServices['admitRoleContextSharingResult']
+    >[0]['providerInvocation'];
+    policy: ReturnType<typeof parseMaintainerPolicy>;
+    verifier: unknown;
+    lifecycle: RoleContextSharingGrantLifecyclePortV1;
+    now?: Date;
+    assertOwned: () => void;
+  },
+): Readonly<{
   roleResult: AdmittedRoleResult;
   consumed: ReturnType<typeof consumeRoleContextSharingPlanReview>;
 }> {
@@ -117,13 +106,14 @@ export function completeRoleContextSharingPlanReviewAdmission(input: {
     identityAssurance: 'adapter-assigned' as const,
     engineSpawned: true,
   });
-  const admissionBinding = normalizeRoleContextSharingResultAdmissionBinding({
-    assignment: input.assignment,
-    author: input.author,
-    participant,
-    content: input.content,
-    providerInvocation: input.providerInvocation,
-  });
+  const admissionBinding =
+    roleAdmission.normalizeRoleContextSharingResultAdmissionBinding({
+      assignment: input.assignment,
+      author: input.author,
+      participant,
+      content: input.content,
+      providerInvocation: input.providerInvocation,
+    });
   if (
     canonicalJson(admissionBinding.author) !==
     canonicalJson(input.requirement.author)
@@ -134,7 +124,7 @@ export function completeRoleContextSharingPlanReviewAdmission(input: {
       ExitCode.guard,
     );
   }
-  const consumed = consumeRoleContextSharingPlanReview({
+  const consumed = consumeRoleContextSharingPlanReview(roleAdmission, {
     gitCommonDirectory: input.gitCommonDirectory,
     requirement: input.requirement,
     authorization: input.authorization,
@@ -153,7 +143,7 @@ export function completeRoleContextSharingPlanReviewAdmission(input: {
   });
   return Object.freeze({
     consumed,
-    roleResult: admitRoleContextSharingResult({
+    roleResult: roleAdmission.admitRoleContextSharingResult({
       assignment: admissionBinding.assignment,
       author: admissionBinding.author,
       participant: admissionBinding.participant,
@@ -167,7 +157,13 @@ export function completeRoleContextSharingPlanReviewAdmission(input: {
 export function materializePlanReviewResult(
   services: Pick<
     ProposeRuntime,
-    'evidence' | 'grants' | 'investigation' | 'provider' | 'workspace'
+    | 'evidence'
+    | 'grants'
+    | 'investigation'
+    | 'provider'
+    | 'workspace'
+    | 'roleAdmission'
+    | 'planningEvidence'
   >,
   cwd: string,
   status: ProposeLifecycleStatus,
@@ -297,7 +293,7 @@ export function materializePlanReviewResult(
   };
   let grantUse: CollaborationGrantUseProjection | null = null;
   let grantAdmission: NonNullable<
-    Parameters<typeof admitRoleResult>[0]['grantValidation']
+    Parameters<RoleAdmissionServices['admitRoleResult']>[0]['grantValidation']
   > | null = null;
   const providerInvocation = {
     invocationId: reservation.request.invocationId,
@@ -366,6 +362,7 @@ export function materializePlanReviewResult(
       authorization.expectedBinding.baselineCommit,
     );
     roleContextSharingAdmission = completeRoleContextSharingPlanReviewAdmission(
+      services.roleAdmission,
       {
         gitCommonDirectory: context.git.gitCommonDirectory,
         requirement: durableRequirement.requirement,
@@ -443,7 +440,7 @@ export function materializePlanReviewResult(
     roleContextSharingAssignment !== null &&
     roleContextSharingAdmission !== null
       ? roleContextSharingAdmission.roleResult
-      : admitRoleResult({
+      : services.roleAdmission.admitRoleResult({
           assignment: reservation.assignment,
           author: reservation.author,
           participant:
@@ -507,6 +504,7 @@ export function materializePlanReviewResult(
           roleResult,
         },
         repositoryEvidence: resolvePlanReviewRepositoryEvidence(
+          services.planningEvidence,
           context.git.repositoryRoot,
           reservation.planning.generation.investigationBaseline.tree,
           reviewNode,
@@ -514,6 +512,7 @@ export function materializePlanReviewResult(
         ),
         planningTarget: reservation.manifest.planningTarget,
         planningEvidence: resolvePlanReviewPlanningEvidence(
+          services.planningEvidence,
           context.git.repositoryRoot,
           reservation.manifest.planningTarget,
           reviewNode,

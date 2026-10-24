@@ -11,7 +11,7 @@ import path from 'node:path';
 import {
   AgentProviderConfigError,
   type AgentProviderConfigSnapshot,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
 
 import {
   configureCentralRoleProviderDefault,

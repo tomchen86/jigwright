@@ -9,15 +9,13 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
-
 import type {
   AgentProviderConfigSnapshot,
   AgentProviderProfileSnapshot,
-  ProviderDefinitionSnapshot,
-} from '@jigwright/agent-runtime';
-
-import { loadChangeContract } from '../adapters/consumer/repository/work-registry/contracts.ts';
-import { parseTaskAuthorizationPolicyFromWorkflowConfig } from '../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
+} from '@jigwright/core/agent-provider-config';
+import type { ProviderDefinitionSnapshot } from '@jigwright/core/provider-definition-snapshot';
+import { loadChangeContract } from './consumer-contract-production.ts';
+import { parseTaskAuthorizationPolicyFromWorkflowConfig } from '../modules/repository-consumer/task-authorization-policy.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import {
@@ -39,6 +37,7 @@ import { parsePathRoleRegistry } from '../modules/source/path-role-registry.ts';
 import type {
   AgentRuntimeAssignmentBindingV1,
   AgentRuntimeNativeSessionTurnControllerV1,
+  CurrentAgentRuntimeAssignmentV1,
 } from '../modules/provider-orchestration/agent-runtime-port.ts';
 import { projectAgentRuntimeAssignmentBindingV1 } from '../modules/provider-orchestration/agent-runtime-durable-authority.ts';
 import type { ProviderInvocationRequest } from '../modules/provider-orchestration/provider-contracts.ts';
@@ -53,8 +52,8 @@ import {
   loadAgentProviderConfigFile,
   type LoadedAgentProviderConfigFile,
 } from '../runtime/provider-execution/agent-provider-config-file.ts';
-import { loadAiAdapterPolicy } from '../runtime/provider-execution/ai-adapter-policy.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../runtime/provider-execution/built-in-provider-definition.ts';
+import { loadAiAdapterPolicy } from '../runtime/provider-policy/ai-adapter-policy.ts';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import {
   assertPinnedAgentRolePlanV2Snapshot,
   readPinnedAgentRolePlanV2Snapshot,
@@ -78,7 +77,8 @@ import {
   completeProviderNativeSessionTurnV1,
   readProviderNativeSessionChainV1,
 } from '../runtime/storage-journal/provider-native-session-store.ts';
-import type { InvestigationRuntimePaths } from '../runtime/session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../runtime/paths/runtime-paths.ts';
+import { readBlobBytes } from '../runtime/repository-transaction/git-command.ts';
 
 const ROLE_BY_PURPOSE = Object.freeze({
   survey: 'author',
@@ -100,12 +100,6 @@ export type CurrentAgentRuntimeAssignmentInputV1 = Readonly<{
   request: ProviderInvocationRequest;
   configFilePath: string;
   platform: NodeJS.Platform;
-}>;
-
-export type CurrentAgentRuntimeAssignmentV1 = Readonly<{
-  record: ChangeRoleAssignmentRecordV1;
-  binding: AgentRuntimeAssignmentBindingV1;
-  nativeSessionTurn: AgentRuntimeNativeSessionTurnControllerV1 | null;
 }>;
 
 type CurrentManifestFacts = Readonly<{
@@ -400,7 +394,7 @@ function readPinnedPolicyBlob(
   if (entry === null || entry[3] !== policyPath) {
     throw pinnedPathRoleInvalid();
   }
-  return runGitBuffer(repositoryRoot, ['cat-file', 'blob', entry[2]!]);
+  return readBlobBytes(repositoryRoot, entry[2]!);
 }
 
 function pinnedPathRoleInvalid() {

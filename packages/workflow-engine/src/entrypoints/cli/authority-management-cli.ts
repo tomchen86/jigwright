@@ -1,3 +1,94 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { taskDiffCollaborationGrantSelection } from '../../composition-root/cli-authority-production.ts';
+import type {
+  ApproveAndApplyMaintainerGrantV2Request,
+  AuthorityAttestationRequest,
+  AuthorityPlanIntent,
+  CandidateExternalEffect,
+  ExternalEffectGrantRequest,
+  ExternalEffectKind,
+  ExternalEffectReconciliationRequest,
+  ExternalEffectRollbackPlan,
+  ExternalEffectTarget,
+  MaintainerEvidenceWaiver,
+  MaintainerGrantV2PreflightRequest,
+  ReissueAndApplyMaintainerGrantV2Request,
+} from '../../composition-root/cli-command-services.ts';
+import {
+  EXTERNAL_EFFECT_MAX_TTL_SECONDS,
+  assertInteractiveSignerContext,
+  assertMaintainerGrantId,
+  discoverRepository,
+  externalEffectStorePaths,
+  inspectAuthorityPlan,
+  inspectInvestigationQuarantineState,
+  inspectMaintainerGrants,
+  loadWorkflowConfig,
+  maintainerGrantStorePaths,
+  parseExecutionBudgetGrantRequest,
+  parseMaintainerEvidenceWaivers,
+  parseMaintainerPolicy,
+  parseTaskMandateRequest,
+  prepareTaskRevisionApprovalBinding,
+  revokeMaintainerGrantV2,
+  runtimePaths,
+} from '../../composition-root/cli-command-services.ts';
+import {
+  executePublishGrant,
+  inspectExternalEffectGrant,
+  issueExternalEffectGrant,
+  reconcileExternalEffectGrant,
+  revokeExternalEffectGrant,
+} from '../../composition-root/external-effect-production.ts';
+import { productionConsumedRoleResultReplayPort } from '../../composition-root/grant-verifier-composition.ts';
+import {
+  discardHumanResolutionGrantPublication,
+  inspectHumanResolutionGrantPublicationRecoveries,
+  inspectHumanResolutionGrants,
+  revokeHumanResolutionGrant,
+} from '../../composition-root/human-resolution-grant-production.ts';
+import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+import type { MaintainerAuthorityOperations } from '../../composition-root/maintainer-authority-production.ts';
+import { resumeDirectHumanTaskDiffReview } from '../../composition-root/task-diff-review-production.ts';
+import { taskMandateOperations } from '../../composition-root/task-mandate-production.ts';
+import { issueTaskRevisionApproval } from '../../composition-root/task-revision-approval-production.ts';
+import {
+  ExitCode,
+  WorkflowError,
+  workflowError,
+} from '../../foundation/errors/errors.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+import { dispatchAuthorityAuditCommand } from './authority-audit-cli.ts';
+import {
+  requireArgumentCount,
+  usage,
+  usageText,
+  type CommandResult,
+} from './cli-input.ts';
+import {
+  dispatchCollaborationGrantCommand,
+  isCollaborationGrantCommand,
+} from './collaboration-grant-cli.ts';
+import {
+  inspectIssuedExecutionBudgetGrant,
+  issueExecutionBudgetGrant,
+  revokeIssuedExecutionBudgetGrant,
+} from '../../composition-root/execution-budget-grant-production.ts';
+import {
+  assertSupportedBootstrapInterventionCommand,
+  dispatchBootstrapInterventionCommand,
+} from './intervention-control-bootstrap-cli.ts';
+import { dispatchRoleContextSharingGrantCommand } from './role-context-sharing-grant-cli.ts';
+import { parseTaskDiffReviewCliInput } from './task-review-cli-input.ts';
+
+const {
+  inspectActiveTaskMandateBinding,
+  authorizeTaskMandate,
+  inspectTaskMandate,
+  revokeTaskMandate,
+} = taskMandateOperations;
+
 /**
  * Parses and dispatches authority, maintainer, mandate, and external-effect
  * commands.
@@ -6,112 +97,6 @@
  * - Task Mandate requests must be readable JSON manifests accepted by the
  *   contract parser.
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import {
-  createAuthorityPlan,
-  inspectAuthorityPlan,
-  resumeAuthorityPlan,
-  approveAndApplyAuthorityPlan,
-  attestAuthorityPlan,
-  loadWorkflowConfig,
-  parseExecutionBudgetGrantRequest,
-  externalEffectStorePaths,
-  revokeExternalEffectGrant,
-  EXTERNAL_EFFECT_MAX_TTL_SECONDS,
-  issueExternalEffectGrant,
-  inspectExternalEffectGrant,
-  reconcileExternalEffectGrant,
-  executePublishGrant,
-  discoverRepository,
-  runGit,
-  assertMaintainerGrantId,
-  parseMaintainerEvidenceWaivers,
-  preflightMaintainerGrantV2,
-  issueAuthorityAttestation,
-  projectAuthorityAttestationRelay,
-  maintainerGrantStorePaths,
-  inspectMaintainerGrants,
-  assertInteractiveSignerContext,
-  parseMaintainerPolicy,
-  revokeMaintainerGrantV2,
-  approveAndApplyMaintainerGrantV2,
-  reissueAndApplyMaintainerGrantV2,
-  produceControlPlaneApprovalCandidateV3,
-  inspectHumanResolutionGrantPublicationRecoveries,
-  inspectHumanResolutionGrants,
-  discardHumanResolutionGrantPublication,
-  revokeHumanResolutionGrant,
-  inspectInvestigationQuarantineState,
-  runtimePaths,
-  prepareTaskRevisionApprovalBinding,
-  resumeDirectHumanTaskDiffReview,
-  issueTaskRevisionApproval,
-  parseTaskMandateRequest,
-  inspectActiveTaskMandateBinding,
-  authorizeTaskMandate,
-  inspectTaskMandate,
-  revokeTaskMandate,
-} from '../../composition-root/cli-command-services.ts';
-import type {
-  AuthorityPlanIntent,
-  ExternalEffectTarget,
-  ExternalEffectRollbackPlan,
-  ExternalEffectGrantRequest,
-  ExternalEffectKind,
-  ExternalEffectReconciliationRequest,
-  MaintainerGrantV2PreflightRequest,
-  MaintainerEvidenceWaiver,
-  AuthorityAttestationRequest,
-  ApproveAndApplyMaintainerGrantV2Request,
-  ReissueAndApplyMaintainerGrantV2Request,
-  CandidateExternalEffect,
-} from '../../composition-root/cli-command-services.ts';
-
-import { dispatchAuthorityAuditCommand } from './authority-audit-cli.ts';
-import {
-  isCollaborationGrantCommand,
-  dispatchCollaborationGrantCommand,
-} from './collaboration-grant-cli.ts';
-import { dispatchRoleContextSharingGrantCommand } from './role-context-sharing-grant-cli.ts';
-
-import {
-  WorkflowError,
-  workflowError,
-  ExitCode,
-} from '../../foundation/errors/errors.ts';
-import {
-  issueExecutionBudgetGrant,
-  inspectIssuedExecutionBudgetGrant,
-  revokeIssuedExecutionBudgetGrant,
-} from './execution-grant-cli.ts';
-
-import { productionConsumedRoleResultReplayPort } from '../../composition-root/grant-verifier-composition.ts';
-
-import {
-  bootstrapInterventionStateRoot,
-  dispatchBootstrapInterventionCommand,
-} from './intervention-control-bootstrap-cli.ts';
-import { dispatchInterventionControlCommand } from './intervention-control-cli.ts';
-import {
-  dispatchProductionControlPlaneUpdaterCommand,
-  controlPlaneTaskMandateBindingFromTaskMandate,
-} from './intervention-control-updater-cli.ts';
-
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
-
-import {
-  usage,
-  requireArgumentCount,
-  type CommandResult,
-  usageText,
-} from './cli-input.ts';
-import {
-  controlPlaneUpdaterDependencies,
-  interventionControlDependencies,
-  taskDiffCollaborationGrantSelection,
-} from '../../composition-root/cli-authority-production.ts';
-import { parseTaskDiffReviewCliInput } from './task-review-cli-input.ts';
 
 function maintainerTaskDiffReviewUsage(): WorkflowError {
   return usage(
@@ -569,311 +554,6 @@ function executionGrantUsage(): WorkflowError {
   );
 }
 
-function dispatchProductionControlPlaneCommand(rest: string[], cwd: string) {
-  const repository = discoverRepository(cwd);
-  const stateRoot = bootstrapInterventionStateRoot(
-    repository.gitCommonDirectory,
-  );
-  const dependencies = controlPlaneUpdaterDependencies(
-    cwd,
-    controlPlaneTaskMandateBindingFromTaskMandate,
-  );
-  if (rest[0] === 'produce' && rest.length === 2) {
-    return produceControlPlaneApprovalCandidateV3(
-      repository.repositoryRealPath,
-      stateRoot,
-      rest[1]!,
-      {
-        now: dependencies.now,
-        reviewSigner: dependencies.approvalSigner,
-        verifyHumanSignature: dependencies.verifyHumanSignature,
-        presentReviewSummary: dependencies.presentReviewSummary,
-      },
-    );
-  }
-  return dispatchProductionControlPlaneUpdaterCommand(
-    rest,
-    stateRoot,
-    dependencies,
-    cwd,
-  );
-}
-
-export function dispatchAuthorityCommand(
-  args: string[],
-  cwd: string,
-  createHarnessBootstrapDependencies: (
-    cwd: string,
-  ) => Parameters<typeof dispatchBootstrapInterventionCommand>[2],
-): CommandResult {
-  const [command, ...rest] = args;
-  switch (command) {
-    case 'grant': {
-      if (rest[0] === 'approve' && (rest.length === 2 || rest.length === 4)) {
-        if (rest.length === 4 && rest[2] !== '--uses') {
-          throw executionGrantUsage();
-        }
-        const requestedUses =
-          rest.length === 4 ? Number.parseInt(rest[3]!, 10) : undefined;
-        if (
-          requestedUses !== undefined &&
-          (!Number.isSafeInteger(requestedUses) || requestedUses < 1)
-        ) {
-          throw executionGrantUsage();
-        }
-        const requestPath = path.resolve(cwd, rest[1]!);
-        const request = parseExecutionBudgetGrantRequest(
-          fs.readFileSync(requestPath, 'utf8'),
-        );
-        const issued = issueExecutionBudgetGrant(cwd, request, {
-          ...(requestedUses === undefined ? {} : { maxUses: requestedUses }),
-        });
-        return {
-          command,
-          action: 'approve',
-          ok: true,
-          grantId: issued.grantId,
-          jobId: issued.envelope.payload.jobId,
-          epoch: issued.envelope.payload.epoch,
-          maxUses: issued.envelope.payload.maxUses,
-          recordPath: issued.recordPath,
-        };
-      }
-      if (rest[0] === 'inspect' && rest.length === 2) {
-        return {
-          command,
-          action: 'inspect',
-          ok: true,
-          result: inspectIssuedExecutionBudgetGrant(cwd, rest[1]!),
-        };
-      }
-      if (rest[0] === 'revoke' && rest.length === 4 && rest[2] === '--reason') {
-        const grantId = rest[1]!;
-        const reason = rest[3]!;
-        const family = resolveStoredGrantFamily(cwd, grantId);
-        const result =
-          family === 'execution-budget'
-            ? revokeIssuedExecutionBudgetGrant(cwd, grantId, { reason })
-            : family === 'apply'
-              ? revokeMaintainerGrantV2(cwd, { grantId, reason })
-              : revokeExternalEffectGrant(cwd, grantId, { reason });
-        return {
-          command,
-          action: 'revoke',
-          family,
-          ok: true,
-          result,
-        };
-      }
-      throw executionGrantUsage();
-    }
-    case 'external-effect':
-      return dispatchExternalEffectCommand(command, rest, cwd);
-
-    case 'publish': {
-      if (rest[0] !== 'execute' || rest.length !== 3 || rest[1] !== '--grant') {
-        throw publishUsage();
-      }
-      return {
-        command,
-        action: 'execute',
-        ok: true,
-        result: executePublishGrant(cwd, rest[2]!, {}),
-      };
-    }
-    case 'intervention':
-      return {
-        command,
-        ok: true,
-        result: dispatchBootstrapInterventionCommand(
-          rest,
-          cwd,
-          interventionControlDependencies(cwd),
-        ),
-      };
-    case 'control-plane':
-      if (
-        [
-          'produce',
-          'approve-and-apply',
-          'promote',
-          'recover',
-          'status',
-        ].includes(rest[0] ?? '')
-      ) {
-        return {
-          command,
-          ok: true,
-          result: dispatchProductionControlPlaneCommand(rest, cwd),
-        };
-      }
-      return {
-        command,
-        ok: true,
-        result: dispatchInterventionControlCommand(
-          [command, ...rest],
-          interventionControlDependencies(cwd),
-        ),
-      };
-    case 'audit':
-      return {
-        command,
-        ok: true,
-        result: dispatchAuthorityAuditCommand(rest, cwd),
-      };
-    case 'change':
-    case 'engine':
-      if (
-        (command === 'change' &&
-          ['intervene', 'revoke-intervention'].includes(rest[0] ?? '')) ||
-        (command === 'engine' &&
-          ['adopt', 'build-artifact'].includes(rest[0] ?? ''))
-      ) {
-        return {
-          command,
-          ok: true,
-          result: dispatchBootstrapInterventionCommand(
-            [command, ...rest],
-            cwd,
-            createHarnessBootstrapDependencies(cwd),
-          ),
-        };
-      }
-      return {
-        command,
-        ok: true,
-        result: dispatchInterventionControlCommand(
-          [command, ...rest],
-          interventionControlDependencies(cwd),
-        ),
-      };
-    case 'task': {
-      if (
-        rest[0] === 'authorize' &&
-        rest.length === 4 &&
-        rest[2] === '--audit-root'
-      ) {
-        const request = readTaskMandateRequest(rest[1]!, cwd);
-        const mandate = authorizeTaskMandate(cwd, request, {
-          externalAuditRoot: rest[3]!,
-        });
-        return {
-          command,
-          action: 'authorize',
-          ok: true,
-          mandateId: mandate.mandateId,
-          taskId: mandate.envelope.payload.taskId,
-          intent: mandate.envelope.payload.intent,
-          inactivityDays: mandate.envelope.payload.validUntil.inactivityDays,
-          authoritativeEffects: mandate.envelope.payload.authoritativeEffects,
-          controlPlaneMutation: mandate.envelope.payload.controlPlaneMutation,
-          recordPath: mandate.recordPath,
-          audit: mandate.audit,
-        };
-      }
-      if (rest[0] === 'status' && rest.length === 2) {
-        return {
-          command,
-          action: 'status',
-          ok: true,
-          result: inspectTaskMandate(cwd, rest[1]!),
-        };
-      }
-      if (rest[0] === 'revoke' && rest.length === 4 && rest[2] === '--reason') {
-        return {
-          command,
-          action: 'revoke',
-          ok: true,
-          result: revokeTaskMandate(cwd, rest[1]!, {
-            reason: rest[3]!,
-          }),
-        };
-      }
-      throw taskMandateUsage();
-    }
-    case 'authority-plan': {
-      if (
-        rest.length === 3 &&
-        rest[0] === 'prepare' &&
-        rest[1] === '--intent'
-      ) {
-        return {
-          command,
-          action: 'prepare',
-          ok: true,
-          result: createAuthorityPlan(
-            cwd,
-            readAuthorityPlanIntent(cwd, rest[2]),
-          ),
-        };
-      }
-      if (rest.length === 2 && rest[0] === 'status') {
-        return {
-          command,
-          action: 'status',
-          ok: true,
-          result: inspectAuthorityPlan(cwd, rest[1]),
-        };
-      }
-      if (rest.length === 2 && rest[0] === 'resume') {
-        return {
-          command,
-          action: 'resume',
-          ok: true,
-          result: resumeAuthorityPlan(cwd, rest[1]),
-        };
-      }
-      if (rest.length === 2 && rest[0] === 'approve-and-apply') {
-        assertControllingTerminal();
-        return {
-          command,
-          action: 'approve-and-apply',
-          ok: true,
-          result: approveAndApplyAuthorityPlan(cwd, rest[1]),
-        };
-      }
-      if (rest.length === 2 && rest[0] === 'attest') {
-        assertControllingTerminal();
-        return {
-          command,
-          action: 'attest',
-          ok: true,
-          result: attestAuthorityPlan(cwd, rest[1]),
-        };
-      }
-      throw authorityPlanUsage();
-    }
-    case 'maintainer':
-      return dispatchMaintainerCommand(command, rest, cwd);
-
-    case 'human-resolution-state': {
-      requireArgumentCount(command, rest, 1, 1);
-      const context = loadInvestigationRuntimeContext(cwd);
-      const policy = parseMaintainerPolicy(
-        JSON.parse(
-          runGit(context.git.repositoryRoot, [
-            'show',
-            `${context.git.head}:workflow/maintainer-policy.json`,
-          ]),
-        ),
-      );
-      return {
-        command,
-        ok: true,
-        state: inspectInvestigationQuarantineState(
-          context.runtime,
-          rest[0],
-          policy.repository.id,
-        ),
-      };
-    }
-    default:
-      throw usage(
-        command ? `Unknown workflow command: ${command}` : usageText(),
-      );
-  }
-}
-
 function dispatchExternalEffectCommand(
   command: 'external-effect',
   rest: string[],
@@ -982,218 +662,503 @@ function dispatchExternalEffectCommand(
   }
 }
 
-function dispatchMaintainerCommand(
-  command: 'maintainer',
-  rest: string[],
-  cwd: string,
-): CommandResult {
-  {
-    if (rest[0] === 'review-diff-attest') {
-      const sessionId = rest[1];
-      const inputPath = rest[3];
-      const grantId = rest[5];
-      if (
-        rest.length !== 6 ||
-        !sessionId ||
-        rest[2] !== '--input' ||
-        !inputPath ||
-        rest[4] !== '--grant' ||
-        !grantId
-      ) {
-        throw maintainerTaskDiffReviewUsage();
-      }
-      const parsedInput = parseTaskDiffReviewCliInput(cwd, inputPath);
-      if (parsedInput.route === 'provider-response') {
-        throw maintainerTaskDiffReviewUsage();
-      }
-      const collaborationGrant = taskDiffCollaborationGrantSelection(
-        cwd,
-        grantId,
-      );
-      return {
-        command,
-        action: 'review-diff-attest',
-        ok: true,
-        result: resumeDirectHumanTaskDiffReview(
-          cwd,
-          sessionId,
-          parsedInput.input,
-          grantId,
-          {
-            consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-            ...('verifier' in collaborationGrant
-              ? { verifier: collaborationGrant.verifier }
-              : {}),
-            consumedReplayVerifier: collaborationGrant.consumedReplayVerifier,
-          },
-        ),
-      };
-    }
-    if (
-      rest.length === 6 &&
-      rest[0] === 'revision-approval' &&
-      rest[2] === '--target' &&
-      rest[4] === '--reason'
-    ) {
-      const binding = prepareTaskRevisionApprovalBinding(cwd, rest[1]!);
-      const approval = issueTaskRevisionApproval(cwd, {
-        binding,
-        expectedTargetDigest: rest[3]!,
-        rationale: rest[5]!,
-      });
-      return {
-        command,
-        action: 'revision-approval',
-        ok: true,
-        approvalId: approval.approvalId,
-        recordPath: approval.recordPath,
-        expiresAt: approval.envelope.payload.expiresAt,
-        targetDigest: approval.envelope.payload.targetDigest,
-        binding: approval.envelope.payload.binding,
-      };
-    }
-    if (isCollaborationGrantCommand(rest)) {
-      return {
-        command,
-        ...dispatchCollaborationGrantCommand(rest, cwd),
-      };
-    }
-    if (rest[0] === 'role-context-sharing-grant') {
-      return {
-        command,
-        ...dispatchRoleContextSharingGrantCommand(rest, cwd),
-      };
-    }
-    if (rest[0] === 'grant' && rest[1] === 'preflight') {
-      const request = parseMaintainerGrantV2PreflightArguments(rest);
-      return {
-        command,
-        action: 'grant-preflight',
-        ok: true,
-        result: preflightMaintainerGrantV2(cwd, request),
-      };
-    }
-    if (rest[0] === 'grant' && rest[1] === 'issue') {
-      throw workflowError(
-        'MAINTAINER_V2_MANUAL_ISSUE_DISABLED',
-        'Apply Grant v2 is issued only inside the atomic approve-and-apply command.',
-        ExitCode.guard,
-      );
-    }
-    if (rest[0] === 'grant' && rest[1] === 'approve-and-apply') {
-      const request = parseMaintainerApproveAndApplyArguments(rest, cwd);
-      return {
-        command,
-        action: 'grant-approve-and-apply',
-        ok: true,
-        result: approveAndApplyMaintainerGrantV2(cwd, request),
-      };
-    }
-    if (rest[0] === 'grant' && rest[1] === 'reissue-and-apply') {
-      const request = parseMaintainerReissueAndApplyArguments(rest, cwd);
-      return {
-        command,
-        action: 'grant-reissue-and-apply',
-        ok: true,
-        result: reissueAndApplyMaintainerGrantV2(cwd, request),
-      };
-    }
-    if (rest[0] === 'resolution-inspect' && rest.length <= 2) {
-      const publicationRecoveries =
-        inspectHumanResolutionGrantPublicationRecoveries(cwd, rest[1]);
-      let grants: ReturnType<typeof inspectHumanResolutionGrants>;
-      try {
-        grants = inspectHumanResolutionGrants(cwd, rest[1]);
-      } catch (error) {
-        if (
-          publicationRecoveries.length === 0 ||
-          !(error instanceof WorkflowError) ||
-          error.code !== 'HUMAN_RESOLUTION_GRANT_NOT_FOUND'
-        ) {
-          throw error;
+export function createAuthorityCommands(
+  maintainerAuthority: Pick<
+    MaintainerAuthorityOperations,
+    | 'createAuthorityPlan'
+    | 'resumeAuthorityPlan'
+    | 'approveAndApplyAuthorityPlan'
+    | 'attestAuthorityPlan'
+    | 'preflightMaintainerGrantV2'
+    | 'issueAuthorityAttestation'
+    | 'projectAuthorityAttestationRelay'
+    | 'approveAndApplyMaintainerGrantV2'
+    | 'reissueAndApplyMaintainerGrantV2'
+  >,
+) {
+  const {
+    createAuthorityPlan,
+    resumeAuthorityPlan,
+    approveAndApplyAuthorityPlan,
+    attestAuthorityPlan,
+    preflightMaintainerGrantV2,
+    issueAuthorityAttestation,
+    projectAuthorityAttestationRelay,
+    approveAndApplyMaintainerGrantV2,
+    reissueAndApplyMaintainerGrantV2,
+  } = maintainerAuthority;
+  function dispatchAuthorityCommand(
+    args: string[],
+    cwd: string,
+    createHarnessBootstrapDependencies: (
+      cwd: string,
+    ) => Parameters<typeof dispatchBootstrapInterventionCommand>[2],
+  ): CommandResult {
+    const [command, ...rest] = args;
+    switch (command) {
+      case 'grant': {
+        if (rest[0] === 'approve' && (rest.length === 2 || rest.length === 4)) {
+          if (rest.length === 4 && rest[2] !== '--uses') {
+            throw executionGrantUsage();
+          }
+          const requestedUses =
+            rest.length === 4 ? Number.parseInt(rest[3]!, 10) : undefined;
+          if (
+            requestedUses !== undefined &&
+            (!Number.isSafeInteger(requestedUses) || requestedUses < 1)
+          ) {
+            throw executionGrantUsage();
+          }
+          const requestPath = path.resolve(cwd, rest[1]!);
+          const request = parseExecutionBudgetGrantRequest(
+            fs.readFileSync(requestPath, 'utf8'),
+          );
+          const issued = issueExecutionBudgetGrant(cwd, request, {
+            ...(requestedUses === undefined ? {} : { maxUses: requestedUses }),
+          });
+          return {
+            command,
+            action: 'approve',
+            ok: true,
+            grantId: issued.grantId,
+            jobId: issued.envelope.payload.jobId,
+            epoch: issued.envelope.payload.epoch,
+            maxUses: issued.envelope.payload.maxUses,
+            recordPath: issued.recordPath,
+          };
         }
-        grants = [];
+        if (rest[0] === 'inspect' && rest.length === 2) {
+          return {
+            command,
+            action: 'inspect',
+            ok: true,
+            result: inspectIssuedExecutionBudgetGrant(cwd, rest[1]!),
+          };
+        }
+        if (
+          rest[0] === 'revoke' &&
+          rest.length === 4 &&
+          rest[2] === '--reason'
+        ) {
+          const grantId = rest[1]!;
+          const reason = rest[3]!;
+          const family = resolveStoredGrantFamily(cwd, grantId);
+          const result =
+            family === 'execution-budget'
+              ? revokeIssuedExecutionBudgetGrant(cwd, grantId, { reason })
+              : family === 'apply'
+                ? revokeMaintainerGrantV2(cwd, { grantId, reason })
+                : revokeExternalEffectGrant(cwd, grantId, { reason });
+          return {
+            command,
+            action: 'revoke',
+            family,
+            ok: true,
+            result,
+          };
+        }
+        throw executionGrantUsage();
       }
-      return {
-        command,
-        action: 'resolution-inspect',
-        ok: true,
-        grants,
-        publicationRecoveries,
-      };
+      case 'external-effect':
+        return dispatchExternalEffectCommand(command, rest, cwd);
+
+      case 'publish': {
+        if (
+          rest[0] !== 'execute' ||
+          rest.length !== 3 ||
+          rest[1] !== '--grant'
+        ) {
+          throw publishUsage();
+        }
+        return {
+          command,
+          action: 'execute',
+          ok: true,
+          result: executePublishGrant(cwd, rest[2]!, {}),
+        };
+      }
+      case 'intervention':
+        assertSupportedBootstrapInterventionCommand(rest);
+        return {
+          command,
+          ok: true,
+          result: dispatchBootstrapInterventionCommand(
+            rest,
+            cwd,
+            createHarnessBootstrapDependencies(cwd),
+          ),
+        };
+      case 'control-plane':
+        throw workflowError(
+          'CONTROL_PLANE_UPDATER_COMMAND_UNSUPPORTED',
+          'Repository engine self-update commands are no longer supported.',
+          ExitCode.usage,
+        );
+
+      case 'audit':
+        return {
+          command,
+          ok: true,
+          result: dispatchAuthorityAuditCommand(rest, cwd),
+        };
+      case 'change':
+      case 'engine':
+        assertSupportedBootstrapInterventionCommand([command, ...rest]);
+        return {
+          command,
+          ok: true,
+          result: dispatchBootstrapInterventionCommand(
+            [command, ...rest],
+            cwd,
+            createHarnessBootstrapDependencies(cwd),
+          ),
+        };
+      case 'task': {
+        if (
+          rest[0] === 'authorize' &&
+          rest.length === 4 &&
+          rest[2] === '--audit-root'
+        ) {
+          const request = readTaskMandateRequest(rest[1]!, cwd);
+          const mandate = authorizeTaskMandate(cwd, request, {
+            externalAuditRoot: rest[3]!,
+          });
+          return {
+            command,
+            action: 'authorize',
+            ok: true,
+            mandateId: mandate.mandateId,
+            taskId: mandate.envelope.payload.taskId,
+            intent: mandate.envelope.payload.intent,
+            inactivityDays: mandate.envelope.payload.validUntil.inactivityDays,
+            authoritativeEffects: mandate.envelope.payload.authoritativeEffects,
+            controlPlaneMutation: mandate.envelope.payload.controlPlaneMutation,
+            recordPath: mandate.recordPath,
+            audit: mandate.audit,
+          };
+        }
+        if (rest[0] === 'status' && rest.length === 2) {
+          return {
+            command,
+            action: 'status',
+            ok: true,
+            result: inspectTaskMandate(cwd, rest[1]!),
+          };
+        }
+        if (
+          rest[0] === 'revoke' &&
+          rest.length === 4 &&
+          rest[2] === '--reason'
+        ) {
+          return {
+            command,
+            action: 'revoke',
+            ok: true,
+            result: revokeTaskMandate(cwd, rest[1]!, {
+              reason: rest[3]!,
+            }),
+          };
+        }
+        throw taskMandateUsage();
+      }
+      case 'authority-plan': {
+        if (
+          rest.length === 3 &&
+          rest[0] === 'prepare' &&
+          rest[1] === '--intent'
+        ) {
+          return {
+            command,
+            action: 'prepare',
+            ok: true,
+            result: createAuthorityPlan(
+              cwd,
+              readAuthorityPlanIntent(cwd, rest[2]),
+            ),
+          };
+        }
+        if (rest.length === 2 && rest[0] === 'status') {
+          return {
+            command,
+            action: 'status',
+            ok: true,
+            result: inspectAuthorityPlan(cwd, rest[1]),
+          };
+        }
+        if (rest.length === 2 && rest[0] === 'resume') {
+          return {
+            command,
+            action: 'resume',
+            ok: true,
+            result: resumeAuthorityPlan(cwd, rest[1]),
+          };
+        }
+        if (rest.length === 2 && rest[0] === 'approve-and-apply') {
+          assertControllingTerminal();
+          return {
+            command,
+            action: 'approve-and-apply',
+            ok: true,
+            result: approveAndApplyAuthorityPlan(cwd, rest[1]),
+          };
+        }
+        if (rest.length === 2 && rest[0] === 'attest') {
+          assertControllingTerminal();
+          return {
+            command,
+            action: 'attest',
+            ok: true,
+            result: attestAuthorityPlan(cwd, rest[1]),
+          };
+        }
+        throw authorityPlanUsage();
+      }
+      case 'maintainer':
+        return dispatchMaintainerCommand(command, rest, cwd);
+
+      case 'human-resolution-state': {
+        requireArgumentCount(command, rest, 1, 1);
+        const context = loadInvestigationRuntimeContext(cwd);
+        const policy = parseMaintainerPolicy(
+          JSON.parse(
+            readFileAtRevision(
+              context.git.repositoryRoot,
+              context.git.head,
+              'workflow/maintainer-policy.json',
+            ),
+          ),
+        );
+        return {
+          command,
+          ok: true,
+          state: inspectInvestigationQuarantineState(
+            context.runtime,
+            rest[0],
+            policy.repository.id,
+          ),
+        };
+      }
+      default:
+        throw usage(
+          command ? `Unknown workflow command: ${command}` : usageText(),
+        );
     }
-    if (rest[0] === 'resolution-publication-discard') {
-      const request = parseHumanResolutionPublicationDiscardArguments(rest);
-      assertInteractiveSignerContext({
-        stdinIsTty: process.stdin.isTTY === true,
-        stdoutIsTty: process.stdout.isTTY === true,
-        stderrIsTty: process.stderr.isTTY === true,
-      });
-      return {
-        command,
-        action: 'resolution-publication-discard',
-        ok: true,
-        recovery: discardHumanResolutionGrantPublication(
+  }
+
+  function dispatchMaintainerCommand(
+    command: 'maintainer',
+    rest: string[],
+    cwd: string,
+  ): CommandResult {
+    {
+      if (rest[0] === 'review-diff-attest') {
+        const sessionId = rest[1];
+        const inputPath = rest[3];
+        const grantId = rest[5];
+        if (
+          rest.length !== 6 ||
+          !sessionId ||
+          rest[2] !== '--input' ||
+          !inputPath ||
+          rest[4] !== '--grant' ||
+          !grantId
+        ) {
+          throw maintainerTaskDiffReviewUsage();
+        }
+        const parsedInput = parseTaskDiffReviewCliInput(cwd, inputPath);
+        if (parsedInput.route === 'provider-response') {
+          throw maintainerTaskDiffReviewUsage();
+        }
+        const collaborationGrant = taskDiffCollaborationGrantSelection(
           cwd,
-          request.grantId,
-          request.expectedPublicationStateDigest,
-          request.reason,
-        ),
-      };
-    }
-    if (
-      rest[0] === 'resolution-revoke' &&
-      rest.length === 4 &&
-      rest[2] === '--reason'
-    ) {
-      return {
-        command,
-        action: 'resolution-revoke',
-        ok: true,
-        grant: revokeHumanResolutionGrant(cwd, rest[1], {
-          reason: rest[3],
-        }),
-      };
-    }
-    if (rest[0] === 'attest') {
-      const request = parseMaintainerAttestArguments(rest);
-      const attestation = issueAuthorityAttestation(cwd, request);
-      return {
-        command,
-        action: 'attest',
-        ok: true,
-        grantId: attestation.grantId,
-        tagRef: attestation.tagRef,
-        originalCommit: attestation.envelope.payload.originalCommit,
-        mainCommit: attestation.envelope.payload.mainCommit,
-        grantBases: attestation.envelope.payload.grantBases,
-        publishCommand: attestation.publishCommand,
-      };
-    }
-    if (
-      rest[0] === 'attestation-relay' &&
-      rest.length === 3 &&
-      rest[1] === '--original'
-    ) {
-      return {
-        command,
-        action: 'attestation-relay',
-        ok: true,
-        result: projectAuthorityAttestationRelay(cwd, rest[2]),
-      };
-    }
-    if (rest[0] !== 'inspect') {
+          grantId,
+        );
+        return {
+          command,
+          action: 'review-diff-attest',
+          ok: true,
+          result: resumeDirectHumanTaskDiffReview(
+            cwd,
+            sessionId,
+            parsedInput.input,
+            grantId,
+            {
+              consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+              ...('verifier' in collaborationGrant
+                ? { verifier: collaborationGrant.verifier }
+                : {}),
+              consumedReplayVerifier: collaborationGrant.consumedReplayVerifier,
+            },
+          ),
+        };
+      }
+      if (
+        rest.length === 6 &&
+        rest[0] === 'revision-approval' &&
+        rest[2] === '--target' &&
+        rest[4] === '--reason'
+      ) {
+        const binding = prepareTaskRevisionApprovalBinding(cwd, rest[1]!);
+        const approval = issueTaskRevisionApproval(cwd, {
+          binding,
+          expectedTargetDigest: rest[3]!,
+          rationale: rest[5]!,
+        });
+        return {
+          command,
+          action: 'revision-approval',
+          ok: true,
+          approvalId: approval.approvalId,
+          recordPath: approval.recordPath,
+          expiresAt: approval.envelope.payload.expiresAt,
+          targetDigest: approval.envelope.payload.targetDigest,
+          binding: approval.envelope.payload.binding,
+        };
+      }
+      if (isCollaborationGrantCommand(rest)) {
+        return {
+          command,
+          ...dispatchCollaborationGrantCommand(rest, cwd),
+        };
+      }
+      if (rest[0] === 'role-context-sharing-grant') {
+        return {
+          command,
+          ...dispatchRoleContextSharingGrantCommand(rest, cwd),
+        };
+      }
+      if (rest[0] === 'grant' && rest[1] === 'preflight') {
+        const request = parseMaintainerGrantV2PreflightArguments(rest);
+        return {
+          command,
+          action: 'grant-preflight',
+          ok: true,
+          result: preflightMaintainerGrantV2(cwd, request),
+        };
+      }
+      if (rest[0] === 'grant' && rest[1] === 'issue') {
+        throw workflowError(
+          'MAINTAINER_V2_MANUAL_ISSUE_DISABLED',
+          'Apply Grant v2 is issued only inside the atomic approve-and-apply command.',
+          ExitCode.guard,
+        );
+      }
+      if (rest[0] === 'grant' && rest[1] === 'approve-and-apply') {
+        const request = parseMaintainerApproveAndApplyArguments(rest, cwd);
+        return {
+          command,
+          action: 'grant-approve-and-apply',
+          ok: true,
+          result: approveAndApplyMaintainerGrantV2(cwd, request),
+        };
+      }
+      if (rest[0] === 'grant' && rest[1] === 'reissue-and-apply') {
+        const request = parseMaintainerReissueAndApplyArguments(rest, cwd);
+        return {
+          command,
+          action: 'grant-reissue-and-apply',
+          ok: true,
+          result: reissueAndApplyMaintainerGrantV2(cwd, request),
+        };
+      }
+      if (rest[0] === 'resolution-inspect' && rest.length <= 2) {
+        const publicationRecoveries =
+          inspectHumanResolutionGrantPublicationRecoveries(cwd, rest[1]);
+        let grants: ReturnType<typeof inspectHumanResolutionGrants>;
+        try {
+          grants = inspectHumanResolutionGrants(cwd, rest[1]);
+        } catch (error) {
+          if (
+            publicationRecoveries.length === 0 ||
+            !(error instanceof WorkflowError) ||
+            error.code !== 'HUMAN_RESOLUTION_GRANT_NOT_FOUND'
+          ) {
+            throw error;
+          }
+          grants = [];
+        }
+        return {
+          command,
+          action: 'resolution-inspect',
+          ok: true,
+          grants,
+          publicationRecoveries,
+        };
+      }
+      if (rest[0] === 'resolution-publication-discard') {
+        const request = parseHumanResolutionPublicationDiscardArguments(rest);
+        assertInteractiveSignerContext({
+          stdinIsTty: process.stdin.isTTY === true,
+          stdoutIsTty: process.stdout.isTTY === true,
+          stderrIsTty: process.stderr.isTTY === true,
+        });
+        return {
+          command,
+          action: 'resolution-publication-discard',
+          ok: true,
+          recovery: discardHumanResolutionGrantPublication(
+            cwd,
+            request.grantId,
+            request.expectedPublicationStateDigest,
+            request.reason,
+          ),
+        };
+      }
+      if (
+        rest[0] === 'resolution-revoke' &&
+        rest.length === 4 &&
+        rest[2] === '--reason'
+      ) {
+        return {
+          command,
+          action: 'resolution-revoke',
+          ok: true,
+          grant: revokeHumanResolutionGrant(cwd, rest[1], {
+            reason: rest[3],
+          }),
+        };
+      }
+      if (rest[0] === 'attest') {
+        const request = parseMaintainerAttestArguments(rest);
+        const attestation = issueAuthorityAttestation(cwd, request);
+        return {
+          command,
+          action: 'attest',
+          ok: true,
+          grantId: attestation.grantId,
+          tagRef: attestation.tagRef,
+          originalCommit: attestation.envelope.payload.originalCommit,
+          mainCommit: attestation.envelope.payload.mainCommit,
+          grantBases: attestation.envelope.payload.grantBases,
+          publishCommand: attestation.publishCommand,
+        };
+      }
+      if (
+        rest[0] === 'attestation-relay' &&
+        rest.length === 3 &&
+        rest[1] === '--original'
+      ) {
+        return {
+          command,
+          action: 'attestation-relay',
+          ok: true,
+          result: projectAuthorityAttestationRelay(cwd, rest[2]),
+        };
+      }
+      if (rest[0] !== 'inspect') {
+        throw maintainerUsage();
+      }
+      const git = discoverRepository(cwd);
+      if (rest[0] === 'inspect' && rest.length <= 2) {
+        return {
+          command,
+          action: 'inspect',
+          ok: true,
+          grants: inspectMaintainerGrants(git.gitCommonDirectory, rest[1]),
+        };
+      }
       throw maintainerUsage();
     }
-    const git = discoverRepository(cwd);
-    if (rest[0] === 'inspect' && rest.length <= 2) {
-      return {
-        command,
-        action: 'inspect',
-        ok: true,
-        grants: inspectMaintainerGrants(git.gitCommonDirectory, rest[1]),
-      };
-    }
-    throw maintainerUsage();
   }
+  return { dispatchAuthorityCommand };
 }

@@ -1,3 +1,14 @@
+import type { CandidateChecksAttestationV3 } from '../../src/modules/authority/maintainer-candidate-contracts.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../../src/composition-root/planning-execution-epoch-production.ts';
+import { managedDocuments } from '../../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import {
   type AuthoritySession,
   abortAuthoritySession,
@@ -5,9 +16,9 @@ import {
 import {
   approveAndApplyMaintainerGrantV2 as approveAndApplyMaintainerGrantV2Production,
   reissueAndApplyMaintainerGrantV2 as reissueAndApplyMaintainerGrantV2Production,
-} from '../../src/application/control-plane/maintainer-approve.ts';
-import { commitAuthoritySession as commitAuthoritySessionProduction } from '../../src/application/control-plane/maintainer-commit.ts';
-import { recoverAuthorityCommit as recoverAuthorityCommitProduction } from '../../src/application/control-plane/maintainer-recovery.ts';
+} from '../../bootstrap/maintainer-authority-production.ts';
+import { commitAuthoritySession as commitAuthoritySessionProduction } from '../../bootstrap/maintainer-authority-production.ts';
+import { recoverAuthorityCommit as recoverAuthorityCommitProduction } from '../../bootstrap/maintainer-authority-production.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -21,17 +32,16 @@ import {
 import {
   computeProtectedCapabilityEntryDigests,
   REQUIRED_PROTECTED_CAPABILITIES,
-} from '../../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
-import { commitPlanningTransition } from '../../src/application/propose/planning-transition.ts';
-import { authorizeTaskMandate } from '../../src/modules/authority/task-mandate.ts';
-import { type CandidateChecksAttestationV3 } from '../../src/modules/authority/maintainer-candidate.ts';
+} from '../../src/runtime/repository-validation/protected-capabilities.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../../src/runtime/planning-transition/planning-transition.ts';
+
 import { type MaintainerSignerProvider } from '../../src/adapters/signing/ssh/maintainer-signer.ts';
 import { parseMaintainerPolicy } from '../../src/modules/authority/maintainer-policy.ts';
 import os from 'node:os';
 import {
   MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
   type MaintainerGrantV2Payload,
-} from '../../src/modules/authority/maintainer-grant-v2.ts';
+} from '../../src/modules/authority/maintainer-grant-v2-codec.ts';
 import { AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE } from '../../src/modules/authority/authority-application-receipt.ts';
 import { inspectMaintainerGrants } from '../../src/runtime/storage-journal/maintainer-store.ts';
 
@@ -253,7 +263,10 @@ function installV2TrustBase(repository: string): void {
         policyPaths: ['workflow/**'],
         verificationInfrastructurePaths: ['.github/workflows/**'],
         forbiddenPaths: [
-          'packages/workflow-engine/src/modules/authority/maintainer-grant.ts',
+          'packages/workflow-engine/src/modules/authority/maintainer-grant-contracts.ts',
+          'packages/workflow-engine/src/runtime/grants/human-resolution-grant-verification.ts',
+          'packages/workflow-engine/src/runtime/repository-observation/human-resolution-grants.ts',
+          'packages/workflow-engine/src/runtime/repository-transaction/maintainer-audit-tag.ts',
         ],
         constraints: {
           evidenceOnlyGrantForbidden: true,
@@ -275,7 +288,10 @@ function installV2TrustBase(repository: string): void {
         policyPaths: ['workflow/**'],
         verificationInfrastructurePaths: ['.github/workflows/**'],
         forbiddenPaths: [
-          'packages/workflow-engine/src/modules/authority/maintainer-grant.ts',
+          'packages/workflow-engine/src/modules/authority/maintainer-grant-contracts.ts',
+          'packages/workflow-engine/src/runtime/grants/human-resolution-grant-verification.ts',
+          'packages/workflow-engine/src/runtime/repository-observation/human-resolution-grants.ts',
+          'packages/workflow-engine/src/runtime/repository-transaction/maintainer-audit-tag.ts',
         ],
         constraints: {
           evidenceOnlyGrantForbidden: true,
@@ -300,7 +316,7 @@ function installV2TrustBase(repository: string): void {
   fs.mkdirSync(
     path.join(
       repository,
-      'packages/workflow-engine/src/adapters/consumer/repository/work-registry',
+      'packages/workflow-engine/src/runtime/repository-validation',
     ),
     { recursive: true },
   );
@@ -321,7 +337,7 @@ function installV2TrustBase(repository: string): void {
   fs.writeFileSync(
     path.join(
       repository,
-      'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts',
+      'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts',
     ),
     'export const PROTECTED_CAPABILITY_LOADER = true;\n',
   );
@@ -360,7 +376,7 @@ function installV2TrustBase(repository: string): void {
     'packages/workflow-engine/src/modules/authority/execution-governance.ts',
   ];
   const dependencies = [
-    'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts',
+    'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts',
     'workflow/protected-capabilities.json',
   ];
   const closure = computeProtectedCapabilityEntryDigests(
@@ -698,3 +714,6 @@ export function freezeIssuableCandidate(
   git(repository, ['reset', '--mixed', 'HEAD']);
   return payload;
 }
+
+import { taskMandateOperations } from '../../src/composition-root/task-mandate-production.ts';
+const { authorizeTaskMandate } = taskMandateOperations;

@@ -1,3 +1,11 @@
+import type { PreMergeVerifier } from '../assurance/pre-merge-verification.ts';
+import type { ArchiveProjectionDependencies } from '../../modules/planning-provider/planning-archive-projection-port.ts';
+import type { StableValidatedChangeContractLoader } from '../../modules/assurance/validated-change-contract.ts';
+import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
+import type { ArchiveEligibilityReplayServices } from '../../modules/assurance/commit-replay/ci-archive.ts';
+import type { PlanningArchiveSourcePolicy } from '../../modules/planning-provider/planning-archive-projection-port.ts';
+import type { CollaborationGrantCodec } from '../../modules/authority/collaboration-grant-codec.ts';
+import type { ArchivedWorkItemReconciler } from '../../modules/governance-intake/work-registry-contracts.ts';
 /**
  * Discovers archive PR candidates and coordinates their worktree
  * preparation, assurance and authorized publication.
@@ -21,7 +29,6 @@ import type {
   OpenedGitHubArchivePullRequestV1,
 } from '@jigwright/github-adapter';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   discoverRepository,
@@ -35,23 +42,24 @@ import {
   type ArchiveTransitionResult,
   type ArchiveTransitionTestHooks,
 } from './archive-transition.ts';
-import { preparePullRequestPreMergeAssurance } from '../../entrypoints/ci/pre-merge-assurance-git.ts';
+
 import { ensurePlainDirectory } from '../../runtime/repository-transaction/filesystem-safety.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 import {
-  createArchivePublicationPreparation,
   persistArchivePublicationPreparation,
   readArchivePublicationPreparation,
-  type ArchivePublicationPreparationV1,
 } from '../../runtime/storage-journal/archive-publication-store.ts';
 import {
   assertArchivePublicationTarget,
-  authenticateCompletedArchivePullRequestGrant,
   type ArchivePullRequestPublicationTargetV1,
   type CompletedArchivePullRequestGrantReferenceV1,
 } from '../../modules/authority/archive-pr-grant.ts';
-import { grantStorePaths } from '../../runtime/storage-journal/grant-store.ts';
-import { repositoryPlanningConfiguration } from '../../modules/repository-consumer/repository-consumer-config.ts';
+import {
+  createArchivePublicationPreparation,
+  type ArchivePublicationPreparationV1,
+} from '../../modules/authority/archive-publication-preparation.ts';
+import type { ArchivePullRequestGrantAuthenticator } from './archive-pr-grant.ts';
+import { loadRepositoryConsumerConfiguration } from '../../runtime/workflow-configuration/repository-consumer.ts';
 
 export type ArchivePullRequestCandidateProjectionInput = Readonly<{
   repositoryId: string;
@@ -261,6 +269,7 @@ export type PublishedPostMergeArchivePullRequestV1 = Readonly<{
  * exact PlanReview binding before this projection is admitted.
  */
 export function discoverArchivePullRequestCandidate(
+  loadStableValidatedChangeContract: StableValidatedChangeContractLoader,
   cwd: string,
   requestedChangeId: string,
 ): ArchivePullRequestCandidateV1 {
@@ -273,9 +282,9 @@ export function discoverArchivePullRequestCandidate(
   }
   const stable = loadStableValidatedChangeContract(before, requestedChangeId);
   const { contract, git } = stable;
-  const currentSchemaName = repositoryPlanningConfiguration(
+  const currentSchemaName = loadRepositoryConsumerConfiguration(
     git.repositoryRoot,
-  ).currentSchemaName;
+  ).configuration.planning.currentSchemaName;
   const protectedBase = contract.config.protectedBranches[0];
   if (protectedBase === undefined || git.branch !== protectedBase) {
     throw archivePrError(
@@ -346,6 +355,7 @@ export function discoverArchivePullRequestCandidate(
 }
 
 export function discoverArchivePullRequestCandidates(
+  loadStableValidatedChangeContract: StableValidatedChangeContractLoader,
   cwd: string,
   requestedBase: string,
 ): ArchivePullRequestCandidateInventoryV1 {
@@ -376,6 +386,7 @@ export function discoverArchivePullRequestCandidates(
     activeIds.map((changeId) => {
       try {
         const candidate = discoverArchivePullRequestCandidate(
+          loadStableValidatedChangeContract,
           repository.repositoryRoot,
           changeId,
         );
@@ -576,11 +587,26 @@ export function openArchivePullRequest(
  * deliberately a later explicit operation.
  */
 export function preparePostMergeArchivePullRequest(
+  loadStableValidatedChangeContract: StableValidatedChangeContractLoader,
+  preparePullRequestPreMergeAssurance: PreMergeVerifier['preparePullRequestPreMergeAssurance'],
+  planningExecution: PlanningTransitionExecutionServices,
+  archiveProjection: ArchiveProjectionDependencies,
+  archiveReplayServices: ArchiveEligibilityReplayServices,
+  collaborationGrants: Pick<
+    CollaborationGrantCodec,
+    'assertUniqueCollaborationGrantUses'
+  >,
+  renderTrackedHandoff: (repositoryRoot: string) => string,
+  reconcileArchivedWorkItems: ArchivedWorkItemReconciler,
   cwd: string,
   requestedChangeId: string,
   options: PreparePostMergeArchivePullRequestOptions,
 ): PreparedPostMergeArchivePullRequestV1 {
-  const candidate = discoverArchivePullRequestCandidate(cwd, requestedChangeId);
+  const candidate = discoverArchivePullRequestCandidate(
+    loadStableValidatedChangeContract,
+    cwd,
+    requestedChangeId,
+  );
   const repository = discoverRepository(cwd);
   const archiveBranch = `work/archive-${candidate.changeId}`;
   const worktreePath = prepareArchiveWorktree(
@@ -594,6 +620,13 @@ export function preparePostMergeArchivePullRequest(
     worktreePath,
   );
   const archive = commitArchiveTransition(
+    loadStableValidatedChangeContract,
+    planningExecution,
+    archiveProjection,
+    archiveReplayServices,
+    collaborationGrants,
+    renderTrackedHandoff,
+    reconcileArchivedWorkItems,
     worktreePath,
     candidate.changeId,
     options.environment ?? process.env,
@@ -604,6 +637,13 @@ export function preparePostMergeArchivePullRequest(
     },
   );
   const archiveReplay = commitArchiveTransition(
+    loadStableValidatedChangeContract,
+    planningExecution,
+    archiveProjection,
+    archiveReplayServices,
+    collaborationGrants,
+    renderTrackedHandoff,
+    reconcileArchivedWorkItems,
     worktreePath,
     candidate.changeId,
     options.environment ?? process.env,
@@ -626,7 +666,12 @@ export function preparePostMergeArchivePullRequest(
       'Local archive replay did not return the same exact archive identity.',
     );
   }
-  const assure = options.assure ?? runLocalArchivePullRequestAssurance;
+  const assure =
+    options.assure ??
+    runLocalArchivePullRequestAssurance.bind(
+      undefined,
+      preparePullRequestPreMergeAssurance,
+    );
   const assurance = assure(
     worktreePath,
     candidate.base.commit,
@@ -812,6 +857,7 @@ export function projectArchivePullRequestPublication(
  * candidate discovery and local preparation never cross the network boundary.
  */
 export async function publishPostMergeArchivePullRequest(
+  authenticateCompletedArchivePullRequestGrant: ArchivePullRequestGrantAuthenticator,
   cwd: string,
   local: PreparedPostMergeArchivePullRequestV1,
   configValue: unknown,
@@ -843,7 +889,6 @@ export async function publishPostMergeArchivePullRequest(
   const runtimeRoot =
     loadInvestigationRuntimeContext(cwd).lifecycleRuntime.root;
   const centralGrantRecord = authenticateCompletedArchivePullRequestGrant(
-    grantStorePaths(runtimeRoot),
     runtimeRoot,
     options.grantChallengeId,
     local.preparation.preparationIdentity,
@@ -1133,6 +1178,7 @@ function materializeArchiveWorkspaceDependencies(
 }
 
 function runLocalArchivePullRequestAssurance(
+  preparePullRequestPreMergeAssurance: PreMergeVerifier['preparePullRequestPreMergeAssurance'],
   cwd: string,
   baseCommit: string,
   headCommit: string,

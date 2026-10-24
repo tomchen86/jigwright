@@ -12,7 +12,7 @@ import {
   SCAN_HIT_MAX_CONTEXT_BYTES,
   type InvestigationScanFacts,
   type ScanHitContextWindow,
-} from './investigation-scanner.ts';
+} from './investigation-scan-facts.ts';
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import type { ClassGroup } from './class-disposition.ts';
 import {

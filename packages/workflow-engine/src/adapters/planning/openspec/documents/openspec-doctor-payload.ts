@@ -15,14 +15,7 @@ import {
   record,
 } from './openspec-payload-primitives.ts';
 
-export type OpenSpecDiagnostic = {
-  severity: 'error' | 'warning' | 'info';
-  code: string;
-  message: string;
-  target?: string;
-  fix?: string;
-  causeCode?: string;
-};
+import type { OpenSpecDiagnostic } from '../../../../modules/planning-provider/openspec-diagnostics.ts';
 
 export type OpenSpecDoctor = {
   resolved: boolean;

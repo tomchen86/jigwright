@@ -1,3 +1,20 @@
+import {
+  parseDispositions,
+  SYSTEM_DOCUMENT_DISPOSITION_TRANSITION,
+} from '../src/modules/source/document-disposition.ts';
+import { matchesSystemDocumentGrantReceipt } from '../src/modules/authority/system-document-disposition.ts';
+import {
+  approvalSubjectDigest,
+  createApprovalSubject,
+  createGrantChallenge,
+} from '../src/modules/authority/grant-core.ts';
+import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
+import {
+  NOW,
+  CHALLENGE_ID,
+  OPERATION_ID,
+  digest,
+} from './grant-coordinator-fixture.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
@@ -246,4 +263,168 @@ test('a removed or unreadable handwritten explanation cannot be confirmed as sti
       { missing: [], invalid: [] },
     );
   }
+});
+
+test('disposition parser preserves entries while rejecting malformed decisions', () => {
+  const entry = { path: 'src/spec.md', disposition: 'still-valid' as const };
+  const input = [entry];
+  const parsed = parseDispositions(input);
+  assert.notEqual(parsed, input);
+  assert.equal(parsed[0], entry);
+  for (const value of [
+    null,
+    [{}],
+    [{ ...entry, extra: true }],
+    [{ ...entry, reason: ' ' }],
+    [{ ...entry, disposition: 'approved' }],
+  ]) {
+    assert.throws(() => parseDispositions(value), {
+      code: 'SYSTEM_DOCUMENT_REVIEW_INVALID',
+    });
+  }
+});
+
+test('completed document Grant receipt matches candidate, operation, approval and report exactly', () => {
+  const parameters = { candidateDigest: digest('a') };
+  const stateBinding = {
+    kind: 'system-document-candidate.v1',
+    digest: digest('b'),
+  };
+  const registry = createTransitionRegistry([
+    {
+      transitionId: SYSTEM_DOCUMENT_DISPOSITION_TRANSITION,
+      parameterSchemaDigest: digest('c'),
+      consequenceDigest: digest('d'),
+      resolutionKind: 'non-retry',
+      allowedApprovalMethods: ['human-presence'],
+      validateParameters(value) {
+        assert.deepEqual(value, parameters);
+        return parameters;
+      },
+      renderTrustedChoice() {
+        return {
+          title: 'Defer exact documents',
+          consequences: ['Record skipped-by-grant.'],
+        };
+      },
+      observeState() {
+        return stateBinding;
+      },
+      async execute() {
+        return { outcome: 'completed', details: { reportId: 'report' } };
+      },
+    },
+  ]);
+  const challenge = createGrantChallenge(
+    {
+      sourceModuleId: 'system-documents',
+      failureCode: 'system-documents.disposition-required',
+      facts: {},
+      stateBinding,
+      candidates: [
+        {
+          transitionId: SYSTEM_DOCUMENT_DISPOSITION_TRANSITION,
+          parameters,
+          allowedReasonCodes: ['defer-documents'],
+          reasonRequired: true,
+          proposedReason: 'Defer these exact documents.',
+        },
+      ],
+    },
+    registry,
+    {
+      challengeId: CHALLENGE_ID,
+      now: NOW,
+      expiresAt: new Date(NOW.getTime() + 60_000).toISOString(),
+    },
+  );
+  const approvalSubject = createApprovalSubject(
+    challenge,
+    {
+      choiceId: challenge.choices[0]!.choiceId,
+      approvalMethod: 'human-presence',
+      reasonCode: 'defer-documents',
+      reason: 'Defer these exact documents.',
+      sessionNonce: 'n'.repeat(32),
+    },
+    { now: NOW },
+  );
+  const record: Parameters<typeof matchesSystemDocumentGrantReceipt>[0] = {
+    challenge,
+    operationId: OPERATION_ID,
+    approvalSubject,
+    outcome: { outcome: 'completed', details: { reportId: 'report' } },
+  };
+  const binding = {
+    challengeId: CHALLENGE_ID,
+    operationId: OPERATION_ID,
+    approvalSubjectDigest: approvalSubjectDigest(approvalSubject),
+  };
+  assert.equal(
+    matchesSystemDocumentGrantReceipt(
+      record,
+      'report',
+      parameters.candidateDigest,
+      binding,
+    ),
+    true,
+  );
+  assert.equal(
+    matchesSystemDocumentGrantReceipt(
+      record,
+      'other-report',
+      parameters.candidateDigest,
+      binding,
+    ),
+    false,
+  );
+  assert.equal(
+    matchesSystemDocumentGrantReceipt(record, 'report', digest('e'), binding),
+    false,
+  );
+  assert.equal(
+    matchesSystemDocumentGrantReceipt(
+      record,
+      'report',
+      parameters.candidateDigest,
+      { ...binding, operationId: 'other-operation' },
+    ),
+    false,
+  );
+  assert.equal(
+    matchesSystemDocumentGrantReceipt(
+      record,
+      'report',
+      parameters.candidateDigest,
+      { ...binding, approvalSubjectDigest: digest('f') },
+    ),
+    false,
+  );
+  assert.equal(
+    matchesSystemDocumentGrantReceipt(
+      {
+        ...record,
+        outcome: { outcome: 'failed', details: record.outcome.details },
+      },
+      'report',
+      parameters.candidateDigest,
+      binding,
+    ),
+    false,
+  );
+  assert.equal(
+    matchesSystemDocumentGrantReceipt(
+      {
+        ...record,
+        challenge: { ...challenge, choices: [] },
+        get operationId(): string {
+          return assert.fail('later receipt field was read');
+        },
+      },
+      'report',
+      parameters.candidateDigest,
+      binding,
+    ),
+    false,
+  );
 });

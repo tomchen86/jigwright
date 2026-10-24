@@ -18,8 +18,8 @@ type ExecutionReplacementTransaction =
   ExecutionReplacementPublicationBindingsTypes['ExecutionReplacementTransaction'];
 type ExecuteGrantedReplacementOptions =
   ExecutionReplacementPublicationBindingsTypes['ExecuteGrantedReplacementOptions'];
-type ConsumedPlanReviewReplayPort =
-  ExecutionReplacementPublicationBindingsTypes['ConsumedPlanReviewReplayPort'];
+type ConsumedRoleReplayPort =
+  ExecutionReplacementPublicationBindingsTypes['ConsumedRoleReplayPort'];
 type ExecutionBudgetGrantRequest =
   ExecutionReplacementPublicationBindingsTypes['ExecutionBudgetGrantRequest'];
 declare const inspectExecutionJob: ExecutionReplacementPublicationBindings['inspectExecutionJob'];
@@ -304,8 +304,8 @@ export function createExecutionReplacementPublication(
     options: Pick<ExecuteGrantedReplacementOptions, 'consumedRoleResultReplay'>,
   ):
     | {
-        consumedRoleResultReplay: ConsumedPlanReviewReplayPort;
-        consumedPlanReviewReplay: ConsumedPlanReviewReplayPort;
+        consumedRoleResultReplay: ConsumedRoleReplayPort;
+        consumedPlanReviewReplay: ConsumedRoleReplayPort;
       }
     | undefined {
     return options.consumedRoleResultReplay === undefined

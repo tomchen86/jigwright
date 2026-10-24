@@ -1,3 +1,5 @@
+import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
+import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
 /**
  * Journals authority commits and recovers their durable completion phases.
  *
@@ -17,22 +19,16 @@ import {
   authorityAuditLedgerPaths,
   scanAuthorityAuditLedger,
   type AuthorityAuditAppendInput,
-  type AuthorityAuditEventType,
-  type AuthorityAuditLedgerEntry,
-  type AuthorityAuditLedgerScope,
-  type Sha256Digest,
 } from '../../runtime/storage-journal/authority-audit-ledger.ts';
 import {
   authorityAuditAppendInputForEvent,
   buildAuthorityAuditEvent,
   recordAuthorityAuditEvent,
   verifyAuthorityAuditEvents,
-  type AuthorityAuditEventInput,
 } from '../../runtime/storage-journal/authority-audit-service.ts';
 import {
   authorityApplicationReceiptTagRef,
   createAuthorityApplicationReceiptPayload,
-  publishAuthorityApplicationReceipt,
   signedGrantEnvelopeDigest,
 } from '../../modules/authority/authority-application-receipt.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
@@ -60,23 +56,17 @@ import {
   type PostApprovalAdmissionDeadline,
   type PostApprovalBudgetTestOptions,
 } from '../../runtime/repository-transaction/git.ts';
-import { canonicalMaintainerGrantV2Envelope } from '../../modules/authority/maintainer-grant-v2.ts';
+import { canonicalMaintainerGrantV2Envelope } from '../../modules/authority/maintainer-grant-v2-codec.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import {
-  createInteractiveSshSigner,
-  type MaintainerSignerProvider,
-} from '../../adapters/signing/ssh/maintainer-signer.ts';
+import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
 import {
   failAuthoritySession,
   markAuthoritySessionCommitted,
   readAuthoritySession,
-  type AuthoritySession,
 } from './maintainer-session.ts';
-import {
-  acceptApplyPrestate,
-  readDurableRefGenerationLedger,
-  recordDurableRefGenerationTransitionUnderLifecycleLock,
-} from '../../modules/authority/maintainer-candidate.ts';
+import type { AuthoritySession } from '../../modules/authority/authority-session-contract.ts';
+import { acceptApplyPrestate } from '../../modules/authority/maintainer-candidate-ref-ledger.ts';
+import type { RefGenerationRecords } from '../../modules/authority/maintainer-candidate-ref-ledger.ts';
 import {
   consumeMaintainerReservationUnderLifecycleLock,
   inspectMaintainerGrants,
@@ -86,13 +76,10 @@ import {
   terminallyFailMaintainerReservationUnderLifecycleLock,
   terminallyInvalidateMaintainerReservationUnderLifecycleLock,
 } from '../../runtime/storage-journal/maintainer-store.ts';
-import { parseManagedTrailers } from '../../modules/lifecycle/managed-trailers.ts';
-import { assertSessionId } from '../../runtime/session-workspace/paths.ts';
+import { parseManagedTrailers } from '@jigwright/core/managed-transition-trailers';
+import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
-import {
-  assertActiveTaskMandateBindingUnderLifecycleLock,
-  type TaskMandateBinding,
-} from '../../modules/authority/task-mandate.ts';
+import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 
 /**
  * The normative apply crash journal.
@@ -284,11 +271,23 @@ export function recordAuthorityCasPrepared(
 }
 
 export function recoverAuthorityCommit(
+  createSigner: MaintainerSignerFactory,
+  records: RefGenerationRecords,
+  authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
+  taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
   requestedSessionId: string,
   now = new Date(),
   options: AuthorityRecoveryOptions = {},
 ): AuthorityCommitResult {
+  const {
+    rejectAmbiguousAuthorityCas,
+    expireAuthorityCommitBeforeCas,
+    failAuthorityCommitBeforeCas,
+    rollbackAuthorityCommitAfterCas,
+    revokePreparingTransaction,
+    revokeAmbiguousTransaction,
+  } = createAuthorityRecoveryTerminalization(records);
   let deadline = options.postApprovalDeadline;
   try {
     if (deadline === undefined) {
@@ -322,10 +321,19 @@ export function recoverAuthorityCommit(
       armPostApprovalAdmissionDeadline(deadline);
     }
     return withPostApprovalAdmissionDeadline(deadline, () =>
-      recoverAuthorityCommitWithDeadline(cwd, requestedSessionId, now, {
-        ...options,
-        postApprovalDeadline: deadline,
-      }),
+      recoverAuthorityCommitWithDeadline(
+        createSigner,
+        records,
+        authorityApplicationReceipts,
+        taskMandate,
+        cwd,
+        requestedSessionId,
+        now,
+        {
+          ...options,
+          postApprovalDeadline: deadline,
+        },
+      ),
     );
   } catch (error) {
     if (isPostApprovalAdmissionFailure(error)) {
@@ -344,11 +352,23 @@ export function recoverAuthorityCommit(
 }
 
 function recoverAuthorityCommitWithDeadline(
+  createSigner: MaintainerSignerFactory,
+  records: RefGenerationRecords,
+  authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
+  taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
   requestedSessionId: string,
   now: Date,
   options: AuthorityRecoveryOptions,
 ): AuthorityCommitResult {
+  const {
+    rejectAmbiguousAuthorityCas,
+    expireAuthorityCommitBeforeCas,
+    failAuthorityCommitBeforeCas,
+    rollbackAuthorityCommitAfterCas,
+    revokePreparingTransaction,
+    revokeAmbiguousTransaction,
+  } = createAuthorityRecoveryTerminalization(records);
   const session = readAuthoritySession(cwd, requestedSessionId);
   const journal = readAuthorityCommitJournal(
     session.gitCommonDirectory,
@@ -445,6 +465,8 @@ function recoverAuthorityCommitWithDeadline(
         }
         if (currentJournal.state === 'audited') {
           return finalizeAudited(
+            createSigner,
+            authorityApplicationReceipts,
             cwd,
             currentSession,
             currentJournal,
@@ -455,6 +477,8 @@ function recoverAuthorityCommitWithDeadline(
         }
         if (currentJournal.state === 'consumed') {
           return finalizeConsumed(
+            createSigner,
+            authorityApplicationReceipts,
             cwd,
             currentSession,
             currentJournal,
@@ -493,7 +517,7 @@ function recoverAuthorityCommitWithDeadline(
               'Pre-CAS recovery requires the durable Task Mandate binding.',
             );
           }
-          assertActiveTaskMandateBindingUnderLifecycleLock(
+          taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock(
             cwd,
             currentSession.mandateBinding,
             assertOwned,
@@ -517,7 +541,7 @@ function recoverAuthorityCommitWithDeadline(
           }
           if (expectedGeneration !== null) {
             acceptApplyPrestate(
-              readDurableRefGenerationLedger(
+              records.readDurableRefGenerationLedger(
                 currentSession.gitCommonDirectory,
                 targetRef,
                 true,
@@ -542,7 +566,7 @@ function recoverAuthorityCommitWithDeadline(
             targetRef,
           );
           if (expectedGeneration !== null) {
-            recordDurableRefGenerationTransitionUnderLifecycleLock(
+            records.recordDurableRefGenerationTransitionUnderLifecycleLock(
               currentSession.gitCommonDirectory,
               {
                 ref: targetRef,
@@ -561,7 +585,7 @@ function recoverAuthorityCommitWithDeadline(
             'The branch no longer points to the journaled base or commit.',
           );
         } else if (expectedGeneration !== null) {
-          const ledger = readDurableRefGenerationLedger(
+          const ledger = records.readDurableRefGenerationLedger(
             currentSession.gitCommonDirectory,
             targetRef,
             true,
@@ -570,7 +594,7 @@ function recoverAuthorityCommitWithDeadline(
             ledger.currentOid === currentJournal.baseCommit &&
             ledger.generation === expectedGeneration
           ) {
-            recordDurableRefGenerationTransitionUnderLifecycleLock(
+            records.recordDurableRefGenerationTransitionUnderLifecycleLock(
               currentSession.gitCommonDirectory,
               {
                 ref: targetRef,
@@ -655,6 +679,8 @@ function recoverAuthorityCommitWithDeadline(
           },
         );
         return finalizeConsumed(
+          createSigner,
+          authorityApplicationReceipts,
           cwd,
           currentSession,
           consumed,
@@ -714,6 +740,8 @@ function recoverAuthorityCommitWithDeadline(
 }
 
 function finalizeConsumed(
+  createSigner: MaintainerSignerFactory,
+  authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   cwd: string,
   session: AuthoritySession,
   journal: AuthorityCommitJournal,
@@ -794,10 +822,21 @@ function finalizeConsumed(
       updatedAt: exactDate(now).toISOString(),
     },
   );
-  return finalizeAudited(cwd, session, audited, auditScope, now, options);
+  return finalizeAudited(
+    createSigner,
+    authorityApplicationReceipts,
+    cwd,
+    session,
+    audited,
+    auditScope,
+    now,
+    options,
+  );
 }
 
 function finalizeAudited(
+  createSigner: MaintainerSignerFactory,
+  authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
   cwd: string,
   session: AuthoritySession,
   journal: AuthorityCommitJournal,
@@ -853,6 +892,8 @@ function finalizeAudited(
     now,
   );
   ensurePortableApplicationReceipt(
+    createSigner,
+    authorityApplicationReceipts,
     session,
     verified,
     auditScope,
@@ -1043,8 +1084,6 @@ export type MaintainerRecoveryAuditBindings = {
   signedGrantEnvelopeDigest: typeof signedGrantEnvelopeDigest;
   canonicalMaintainerGrantV2Envelope: typeof canonicalMaintainerGrantV2Envelope;
   authorityApplicationReceiptTagRef: typeof authorityApplicationReceiptTagRef;
-  createInteractiveSshSigner: typeof createInteractiveSshSigner;
-  publishAuthorityApplicationReceipt: typeof publishAuthorityApplicationReceipt;
   canonicalJson: typeof canonicalJson;
   authorityAuditLedgerPaths: typeof authorityAuditLedgerPaths;
   authorityAuditAppendInputForEvent: typeof authorityAuditAppendInputForEvent;
@@ -1087,8 +1126,7 @@ const {
   signedGrantEnvelopeDigest,
   canonicalMaintainerGrantV2Envelope,
   authorityApplicationReceiptTagRef,
-  createInteractiveSshSigner,
-  publishAuthorityApplicationReceipt,
+
   canonicalJson,
   authorityAuditLedgerPaths,
   authorityAuditAppendInputForEvent,
@@ -1150,7 +1188,7 @@ export { verifyCreatedAuthorityCommit };
 export type MaintainerRecoveryTerminalizationBindings = {
   exactDate: typeof exactDate;
   recoveryError: typeof recoveryError;
-  recordDurableRefGenerationTransitionUnderLifecycleLock: typeof recordDurableRefGenerationTransitionUnderLifecycleLock;
+  recordDurableRefGenerationTransitionUnderLifecycleLock: RefGenerationRecords['recordDurableRefGenerationTransitionUnderLifecycleLock'];
   terminallyInvalidateMaintainerReservationUnderLifecycleLock: typeof terminallyInvalidateMaintainerReservationUnderLifecycleLock;
   rollbackExactStaging: typeof rollbackExactStaging;
   transitionJournal: typeof transitionJournal;
@@ -1171,7 +1209,7 @@ export type MaintainerRecoveryTerminalizationBindings = {
   requireCommitHash: typeof requireCommitHash;
   verifyJournaledCommit: typeof verifyJournaledCommit;
   updateManagedRef: typeof updateManagedRef;
-  readDurableRefGenerationLedger: typeof readDurableRefGenerationLedger;
+  readDurableRefGenerationLedger: RefGenerationRecords['readDurableRefGenerationLedger'];
   assertRolledBackTransactionPoststate: typeof assertRolledBackTransactionPoststate;
 };
 export type MaintainerRecoveryTerminalizationBindingsTypes = {
@@ -1179,42 +1217,45 @@ export type MaintainerRecoveryTerminalizationBindingsTypes = {
   AuthorityCommitJournal: AuthorityCommitJournal;
 };
 
-const {
-  rejectAmbiguousAuthorityCas,
-  expireAuthorityCommitBeforeCas,
-  failAuthorityCommitBeforeCas,
-  rollbackAuthorityCommitAfterCas,
-  revokePreparingTransaction,
-  revokeAmbiguousTransaction,
-} = createMaintainerRecoveryTerminalization(() => ({
-  exactDate,
-  recoveryError,
-  recordDurableRefGenerationTransitionUnderLifecycleLock,
-  terminallyInvalidateMaintainerReservationUnderLifecycleLock,
-  rollbackExactStaging,
-  transitionJournal,
-  enterActivePostApprovalTerminalCleanup,
-  readAuthoritySession,
-  withRepositoryLifecycleOperation,
-  maintainerGrantStorePaths,
-  readAuthorityCommitJournal,
-  assertJournalMatchesSession,
-  discoverRepository,
-  runGit,
-  terminallyExpireMaintainerReservationUnderLifecycleLock,
-  failAuthoritySession,
-  terminallyFailMaintainerReservationUnderLifecycleLock,
-  isPostApprovalAdmissionFailure,
-  authorityAuditScopeForJournal,
-  ensureTransactionAuditReceipt,
-  requireCommitHash,
-  verifyJournaledCommit,
-  updateManagedRef,
-  readDurableRefGenerationLedger,
-  assertRolledBackTransactionPoststate,
-}));
-export {
-  expireAuthorityCommitBeforeCas,
-  failAuthorityCommitBeforeCas,
-  rollbackAuthorityCommitAfterCas,
-};
+export function createAuthorityRecoveryTerminalization(
+  records: RefGenerationRecords,
+) {
+  return createMaintainerRecoveryTerminalization(() => ({
+    exactDate,
+    recoveryError,
+    recordDurableRefGenerationTransitionUnderLifecycleLock:
+      records.recordDurableRefGenerationTransitionUnderLifecycleLock,
+    terminallyInvalidateMaintainerReservationUnderLifecycleLock,
+    rollbackExactStaging,
+    transitionJournal,
+    enterActivePostApprovalTerminalCleanup,
+    readAuthoritySession,
+    withRepositoryLifecycleOperation,
+    maintainerGrantStorePaths,
+    readAuthorityCommitJournal,
+    assertJournalMatchesSession,
+    discoverRepository,
+    runGit,
+    terminallyExpireMaintainerReservationUnderLifecycleLock,
+    failAuthoritySession,
+    terminallyFailMaintainerReservationUnderLifecycleLock,
+    isPostApprovalAdmissionFailure,
+    authorityAuditScopeForJournal,
+    ensureTransactionAuditReceipt,
+    requireCommitHash,
+    verifyJournaledCommit,
+    updateManagedRef,
+    readDurableRefGenerationLedger: records.readDurableRefGenerationLedger,
+    assertRolledBackTransactionPoststate,
+  }));
+}
+
+import {
+  type AuthorityAuditEventType,
+  type AuthorityAuditLedgerEntry,
+  type AuthorityAuditLedgerScope,
+  type Sha256Digest,
+  type AuthorityAuditEventInput,
+} from '../../modules/authority/authority-audit-contract.ts';
+
+import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';

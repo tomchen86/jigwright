@@ -5,22 +5,22 @@
  * - The same per-lineage lock protects publication, exact replay, and contiguous round checks.
  * - Failure validation precedes publication and imported rounds preserve their predecessor bindings.
  */
-import {
-  type InvestigationRuntimePaths,
-  assertSessionId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
+import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import {
   parseTaskStrategyCorrectionPolicy,
   parseTaskStrategyGreenFailureRecord,
-  type TaskStrategyGreenFailureRecord,
-  type TaskStrategyCorrectionPolicy,
 } from './task-strategy-correction-store.ts';
+import type {
+  TaskStrategyGreenFailureRecord,
+  TaskStrategyCorrectionPolicy,
+} from '../../modules/provider-orchestration/task-strategy-correction-record.ts';
 import {
   createPrivateCanonicalJson,
   assertPrivateInvestigationDirectory,
   readPrivateCanonicalJson,
   withPrivateRuntimeLock,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   type ReserveTaskStrategyCorrectionRoundInput,
   type TaskStrategyCorrectionRoundReservation,

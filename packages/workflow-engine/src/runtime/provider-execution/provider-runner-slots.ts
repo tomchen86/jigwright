@@ -9,13 +9,13 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { MAX_AI_ADAPTER_LIMITS } from './ai-adapter-policy.ts';
+import { MAX_AI_ADAPTER_LIMITS } from '../provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   withPrivateRuntimeLock,
   ensurePrivateInvestigationDirectory,
-} from '../storage-journal/investigation-private-files.ts';
-import { type InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+} from '../journal-primitives/investigation-private-files.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   concurrencySlotFailed,
   concurrencyLimitExceeded,

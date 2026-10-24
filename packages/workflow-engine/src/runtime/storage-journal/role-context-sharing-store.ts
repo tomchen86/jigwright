@@ -1,3 +1,7 @@
+import type {
+  RoleContextSharingUseV1,
+  RoleContextSharingJournalRecord,
+} from '../../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
 /**
  * Stores and transitions role context sharing grants through reservation
  * and consumption.
@@ -10,21 +14,23 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import {
-  executeRoleContextSharingGrantTransitionV1,
-  type RoleContextSharingEligibilityPortV1,
-} from '../../modules/authority/role-context-sharing-grant.ts';
+import { executeRoleContextSharingGrantTransitionV1 } from '../grants/grant-services.ts';
+import { type RoleContextSharingEligibilityPortV1 } from '../../modules/authority/role-context-sharing-grant.ts';
 import {
   bindingFromRoleContextSharingGrantPayloadV1,
   canonicalRoleContextSharingGrantEnvelopeV1,
+} from '../grants/optional-grants-package.ts';
+import {
   GRANT_LIFECYCLE_AUDIT_RECEIPT_KIND_V1,
-  ROLE_CONTEXT_SHARING_ROLE_PAIRS_V1,
   type GrantLifecycleAuditReceiptV1,
   type GrantLifecycleState,
+} from '@jigwright/core/grant-lifecycle-contracts';
+import {
+  ROLE_CONTEXT_SHARING_ROLE_PAIRS_V1,
   type RoleContextSharingGrantEnvelopeV1,
   type RoleContextSharingGrantExpectedBindingV1,
   type RoleContextSharingRolePairV1,
-} from '../../modules/authority/optional-grants-package.ts';
+} from '@jigwright/core/role-context-sharing-grant-codec';
 import type { MaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import {
   assertAuthoritativeRoleContextSharingGrantVerifier,
@@ -121,38 +127,6 @@ export class RoleContextSharingJournalError extends Error {
     this.code = code;
   }
 }
-
-export type RoleContextSharingUseV1 = Readonly<{
-  rolePairs: readonly RoleContextSharingRolePairV1[];
-  providerId: string;
-  sessionId: string;
-  sharedEngineSessionId: string;
-  contextGeneration: number;
-  sessionGeneration: number;
-  providerDefinitionDigest: string;
-  invocationId: string;
-  requestDigest: string;
-  assignmentDigest: string;
-  admissionDigest: string;
-}>;
-
-export type RoleContextSharingJournalRecord = Readonly<{
-  schemaVersion: 1;
-  kind: 'role-context-sharing-journal.v1';
-  grantId: string;
-  state: GrantLifecycleState;
-  envelope: RoleContextSharingGrantEnvelopeV1;
-  expectedBinding: RoleContextSharingGrantExpectedBindingV1 | null;
-  transitionDigest: string | null;
-  receipts: readonly GrantLifecycleAuditReceiptV1[];
-  receiptDigests: readonly string[];
-  reservation: Readonly<{
-    reservedAt: string;
-    reservationDigest: string;
-  }> | null;
-  use: RoleContextSharingUseV1 | null;
-  recordDigest: string;
-}>;
 
 export type RoleContextSharingTransitionOptions = Readonly<{
   now?: Date;

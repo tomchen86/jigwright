@@ -17,15 +17,15 @@ import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { deriveInvestigationGroupFacts } from '../src/modules/investigation/domain/investigation-groups.ts';
+import { sealInvestigationManifestDraft } from '../src/modules/investigation/manifest/investigation-manifest.ts';
 import {
   buildInvestigationManifestDraft,
-  sealInvestigationManifestDraft,
   validateForAuthority,
-  type InvestigationRequirementV3,
-  type OrdinaryInvestigationAuthoringState,
-} from '../src/modules/investigation/manifest/investigation-manifest.ts';
+} from '../src/composition-root/investigation-production.ts';
+import { type OrdinaryInvestigationAuthoringState } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
+import type { InvestigationRequirementV3 } from '../src/modules/investigation/manifest/investigation-requirement-types.ts';
 import { buildGlobalPlanReviewCoverageRequirement } from '../src/modules/assurance/plan-review-coverage.ts';
-import { scanInvestigationTreeFacts } from '../src/modules/investigation/domain/investigation-scanner.ts';
+import { scanInvestigationTreeFacts } from '../src/composition-root/investigation-production.ts';
 import {
   previewInvestigationTermUnion,
   type InvestigationTermContribution,
@@ -55,7 +55,6 @@ test('ordinary propose production is v3-only outside shared session and evidence
     .filter((moduleName): moduleName is string => moduleName !== undefined);
 
   assert.deepEqual([...new Set(planningInvestigationImports)].sort(), [
-    'evidence-node.ts',
     'investigation-session.ts',
   ]);
 

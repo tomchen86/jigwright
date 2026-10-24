@@ -12,8 +12,8 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import {
   assertPrivateInvestigationDirectory,
   privatePathExists,
-} from '../storage-journal/investigation-private-files.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+} from '../journal-primitives/investigation-private-files.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   readProviderInvocationRequest,
   readProviderInvocationManifest,
@@ -25,7 +25,7 @@ import {
   type ProviderRetentionReceipt,
   providerRetentionReviewRootArtifact,
 } from '../storage-journal/provider-retention-receipt.ts';
-import { type InvocationBinding } from './provider-retention-observation.ts';
+import type { InvocationBinding } from './provider-retention-observation.ts';
 import {
   runtimeUnsafe,
   normalizeDigest,

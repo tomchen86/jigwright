@@ -1,4 +1,4 @@
-import { type BlindSurveyManifest } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import type { BlindSurveyManifest } from '../src/modules/investigation/manifest/blind-survey-manifest.ts';
 import { git } from './fixture.ts';
 
 export const CHANGE_ID = 'demo-change';

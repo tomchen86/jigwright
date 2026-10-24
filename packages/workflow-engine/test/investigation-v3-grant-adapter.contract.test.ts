@@ -1,3 +1,4 @@
+import { investigationFailureObservations } from '../src/composition-root/investigation-failure-production.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -17,25 +18,26 @@ import {
   createProductionCentralGrantRequestPort,
   createProductionWorkflowGrantCoordinator,
   requestInvestigationV3Grant,
-} from '../src/composition-root/grant-production.ts';
+} from '../bootstrap/session-lifecycle-production.ts';
 import { HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST } from '../src/modules/authority/grant-policy.ts';
-import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../src/modules/assurance/plan-review-coverage.ts';
+import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../src/modules/investigation/manifest/plan-review-coverage-policy.ts';
 import {
   grantStorePaths,
-  prepareGrantTransition,
-  readGrantRecord,
-} from '../src/runtime/storage-journal/grant-store.ts';
+  createFileGrantRecordStore,
+} from '../src/runtime/lifecycle-ledgers/grant-store.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
-  buildInvestigationManifestDraft,
-  INVESTIGATION_V3_ATTEMPTED_TRANSITIONS,
-  INVESTIGATION_V3_KNOWN_FAILURE_CODES,
   createInvestigationV3Blocker,
   createInvestigationV3BlockerFromError,
   sealInvestigationManifestDraft,
-  type ExemptionInvestigationAuthoringState,
 } from '../src/modules/investigation/manifest/investigation-manifest.ts';
-import { captureInvestigationV3DirectFailureEmission } from '../src/modules/investigation/seal/investigation-v3-failure-source.ts';
+import { buildInvestigationManifestDraft } from '../src/composition-root/investigation-production.ts';
+import {
+  INVESTIGATION_V3_ATTEMPTED_TRANSITIONS,
+  INVESTIGATION_V3_KNOWN_FAILURE_CODES,
+} from '../src/modules/investigation/domain/investigation-schema.ts';
+import { type ExemptionInvestigationAuthoringState } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
+import { captureInvestigationV3DirectFailureEmission } from '../src/composition-root/investigation-failure-production.ts';
 import {
   createInvestigationV3GrantRequest,
   investigationV3CentralFailureCode,
@@ -49,18 +51,18 @@ import {
   writeInvestigationV3FailureObservation,
 } from '../src/runtime/storage-journal/investigation-v3-failure-store.ts';
 import {
-  investigationManifestPublicationNamespace,
   publishInvestigationManifestV3,
   readInvestigationPublicationRefState,
 } from '../src/runtime/managed-documents/transaction/investigation-publication.ts';
+import { investigationManifestPublicationNamespace } from '../src/modules/investigation/manifest/investigation-publication-contracts.ts';
 import {
   compareAndSwapCurrentInvestigationRef,
   compareAndSwapInvestigationSession,
   createCurrentInvestigationRef,
   createInvestigationSessionRecord,
   readInvestigationSession,
-} from '../src/runtime/storage-journal/investigation-session-store.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+} from '../src/runtime/storage-journal/investigation-session-records.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { runtimePaths } from '../src/runtime/session-workspace/session-store.ts';
 import { git } from './fixture.ts';
 
@@ -99,12 +101,15 @@ test('central adapter covers every v3 transition and non-exhaustive failure code
     );
     const blocker = directBlocker(3, 'Exercise the central request shape.');
     const persisted = persistCurrentDirectFailure(repository, blocker);
-    const request = createInvestigationV3GrantRequest({
-      cwd: repository,
-      failure: persisted.identity,
-      emission: persisted.emission,
-      proposedReason: PROPOSED_REASON,
-    });
+    const request = createInvestigationV3GrantRequest(
+      investigationFailureObservations,
+      {
+        cwd: repository,
+        failure: persisted.identity,
+        emission: persisted.emission,
+        proposedReason: PROPOSED_REASON,
+      },
+    );
     assert.equal(request.sourceModuleId, 'investigation.v3');
     assert.equal(request.failureCode, 'investigation.v3.future-engine-failure');
     assert.equal(request.stateBinding.kind, 'investigation.v3.failure');
@@ -147,12 +152,15 @@ test('a future engine failure survives the real v3 emitter path into central map
   const repository = createGrantFixtureRepository();
   try {
     const persisted = persistCurrentDirectFailure(repository, blocker);
-    const request = createInvestigationV3GrantRequest({
-      cwd: repository,
-      failure: persisted.identity,
-      emission: persisted.emission,
-      proposedReason: PROPOSED_REASON,
-    });
+    const request = createInvestigationV3GrantRequest(
+      investigationFailureObservations,
+      {
+        cwd: repository,
+        failure: persisted.identity,
+        emission: persisted.emission,
+        proposedReason: PROPOSED_REASON,
+      },
+    );
     assert.equal(request.failureCode, 'investigation.v3.future-engine-failure');
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -169,14 +177,20 @@ test('central registry owns the safe stop transition without relabelling assuran
   const repository = createGrantFixtureRepository();
   try {
     const persisted = persistCurrentDirectFailure(repository, blocker);
-    const request = createInvestigationV3GrantRequest({
-      cwd: repository,
-      failure: persisted.identity,
-      emission: persisted.emission,
-      proposedReason: PROPOSED_REASON,
-    });
+    const request = createInvestigationV3GrantRequest(
+      investigationFailureObservations,
+      {
+        cwd: repository,
+        failure: persisted.identity,
+        emission: persisted.emission,
+        proposedReason: PROPOSED_REASON,
+      },
+    );
     const registry = createTransitionRegistry(
-      investigationV3GrantTransitionDefinitions(repository),
+      investigationV3GrantTransitionDefinitions(
+        investigationFailureObservations,
+        repository,
+      ),
     );
     assert.equal(
       registry.contractVersion,
@@ -205,7 +219,10 @@ test('central registry owns the safe stop transition without relabelling assuran
 
 test('the direct-v3 transition registry no longer carries the unused shadow-era v2 definition', () => {
   const registry = createTransitionRegistry(
-    investigationV3GrantTransitionDefinitions('/repo'),
+    investigationV3GrantTransitionDefinitions(
+      investigationFailureObservations,
+      '/repo',
+    ),
   );
   assert.throws(
     () => registry.resolve('investigation.v3.stop-transition.v2'),
@@ -360,12 +377,11 @@ test('the shared durable failure slot preserves a publication envelope for the v
       PROPOSED_REASON,
     );
     assert.equal(
-      readGrantRecord(
+      createFileGrantRecordStore(
         grantStorePaths(
           runtimePaths(gitState.gitCommonDirectory, 'workflow-engine').root,
         ),
-        requested.challengeId,
-      ).state,
+      ).readGrantRecord(requested.challengeId).state,
       'pending',
     );
 
@@ -483,14 +499,20 @@ test('a direct-v3 Grant rejects session revision and current pointer drift', asy
         repository,
         directBlocker(3, `The ${drift} will drift.`),
       );
-      const initial = createInvestigationV3GrantRequest({
-        cwd: repository,
-        failure: persisted.identity,
-        emission: persisted.emission,
-        proposedReason: PROPOSED_REASON,
-      });
+      const initial = createInvestigationV3GrantRequest(
+        investigationFailureObservations,
+        {
+          cwd: repository,
+          failure: persisted.identity,
+          emission: persisted.emission,
+          proposedReason: PROPOSED_REASON,
+        },
+      );
       const registry = createTransitionRegistry(
-        investigationV3GrantTransitionDefinitions(repository),
+        investigationV3GrantTransitionDefinitions(
+          investigationFailureObservations,
+          repository,
+        ),
       );
       const challenge = createGrantChallenge(initial, registry, {
         challengeId:
@@ -630,10 +652,9 @@ test('an engine-produced v3 blocker becomes a durable central challenge and stat
       'investigation-demo',
       PROPOSED_REASON,
     );
-    const stored = readGrantRecord(
+    const stored = createFileGrantRecordStore(
       grantStorePaths(lifecycleRuntime.root),
-      requested.challengeId,
-    );
+    ).readGrantRecord(requested.challengeId);
     assert.equal(stored.state, 'pending');
     assert.equal(stored.challenge.sourceModuleId, 'investigation.v3');
     assert.deepEqual(stored.challenge.facts, {
@@ -646,7 +667,10 @@ test('an engine-produced v3 blocker becomes a durable central challenge and stat
     assert.equal(failureBytes.includes('grantChallenge'), false);
 
     const registry = createTransitionRegistry(
-      investigationV3GrantTransitionDefinitions(repository),
+      investigationV3GrantTransitionDefinitions(
+        investigationFailureObservations,
+        repository,
+      ),
     );
     const choice = stored.challenge.choices[0]!;
     const definition = registry.resolve(choice.transitionId);
@@ -686,7 +710,7 @@ test('an engine-produced v3 blocker becomes a durable central challenge and stat
     });
     assert.equal(canonicalJson(outcome).includes('verified'), false);
     const storePaths = grantStorePaths(lifecycleRuntime.root);
-    prepareGrantTransition(storePaths, {
+    createFileGrantRecordStore(storePaths).prepareGrantTransition({
       operationId: transitionContext.operationId,
       challenge: stored.challenge,
       subject: approvalSubject,
@@ -731,7 +755,9 @@ test('an engine-produced v3 blocker becomes a durable central challenge and stat
       repository,
     ).recoverChallenge(stored.challenge.challengeId);
     assert.equal(recovered.outcome, 'failed');
-    const terminal = readGrantRecord(storePaths, stored.challenge.challengeId);
+    const terminal = createFileGrantRecordStore(storePaths).readGrantRecord(
+      stored.challenge.challengeId,
+    );
     assert.equal(terminal.state, 'failed');
     if (terminal.state !== 'failed') assert.fail('expected terminal failure');
     assert.equal(
@@ -739,7 +765,9 @@ test('an engine-produced v3 blocker becomes a durable central challenge and stat
       'GRANT_STATE_CHANGED',
     );
     assert.equal(
-      readGrantRecord(storePaths, stored.challenge.challengeId).state,
+      createFileGrantRecordStore(storePaths).readGrantRecord(
+        stored.challenge.challengeId,
+      ).state,
       'failed',
       'stale recovery must record a terminal failure without completing the transition',
     );

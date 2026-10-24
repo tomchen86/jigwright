@@ -1,27 +1,18 @@
-/**
- * Inspects archive eligibility under change transition authority and checks
- * refreshed date-bound eligibility.
- *
- * Invariants:
- * - Eligibility and rollover refresh are evaluated while the archive
- *   transition authority is held.
- */
+import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
+import { resolveParentCommitOid } from '../../runtime/repository-transaction/git-object-ids.ts';
+import type { StableValidatedChangeContractLoader } from '../../modules/assurance/validated-change-contract.ts';
+import type { ArchiveEligibilityReplayServices } from '../../modules/assurance/commit-replay/ci-archive.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { baseSpecPathForCapability } from '../../modules/source/system-spec-catalog.ts';
 import type { SystemDescriptionSnapshot } from '../../modules/source/spec-ownership.ts';
-
-import { assertUniqueCollaborationGrantUses } from '../../modules/authority/collaboration-grant.ts';
+import type { CollaborationGrantCodec } from '../../modules/authority/collaboration-grant-codec.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { collectHistoricalCollaborationGrantUses } from '../../entrypoints/ci/ci-planning.ts';
-import {
-  loadWorkflowConfig,
-  parseTasks,
-  type ManagedSchemaName,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
+import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
+import { type ManagedSchemaName } from '../../modules/planning-provider/change-contract.ts';
 import { assertDocumentationClosureCommitCurrent } from '../../runtime/managed-documents/contracts/documentation-closure.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { validateInvestigationFirstPlanningReadiness } from '../../modules/assurance/planning-assurance-validator.ts';
 import {
   discoverRepository,
   fingerprintRepositoryWorktree,
@@ -32,18 +23,21 @@ import {
 } from '../../runtime/repository-transaction/git.ts';
 import type { TaskCommit } from '../../runtime/repository-transaction/git-transitions.ts';
 import { committedPlanningGeneration } from '../../runtime/repository-transaction/planning-generation-history.ts';
-import { ensurePlanningExecutionEpochCompleteForArchive } from '../../modules/lifecycle/planning-execution-epoch.ts';
-import { resolveTaskExecutionGenerationEvidence } from '../../modules/assurance/task-execution-evidence.ts';
 import { withChangeTransitionAuthority } from '../../runtime/session-workspace/planning-lock.ts';
-import {
-  assertPlanningPaths,
-  requiredPlanningArtifactPaths,
-} from '../../modules/source/planning-paths.ts';
+import { assertPlanningPaths } from '../../modules/source/planning-paths.ts';
 import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
-import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
 import { completionDocumentPaths } from '../../runtime/managed-documents/validation/managed-documents.ts';
-import { repositoryPlanningConfiguration } from '../../modules/repository-consumer/repository-consumer-config.ts';
+import { loadRepositoryConsumerConfiguration } from '../../runtime/workflow-configuration/repository-consumer.ts';
 import type { ResolvedPlanningProviderBinding } from '../../modules/planning-provider/planning-provider-binding.ts';
+
+/**
+ * Inspects archive eligibility under change transition authority and checks
+ * refreshed date-bound eligibility.
+ *
+ * Invariants:
+ * - Eligibility and rollover refresh are evaluated while the archive
+ *   transition authority is held.
+ */
 
 export type ArchiveEligibility = {
   changeId: string;
@@ -71,6 +65,13 @@ export type ArchiveEligibility = {
 };
 
 export function withArchiveEligibility<T>(
+  loadStableValidatedChangeContract: StableValidatedChangeContractLoader,
+  planningExecution: PlanningTransitionExecutionServices,
+  replay: ArchiveEligibilityReplayServices,
+  collaborationGrants: Pick<
+    CollaborationGrantCodec,
+    'assertUniqueCollaborationGrantUses'
+  >,
   cwd: string,
   requestedChangeId: string,
   operation: (
@@ -92,6 +93,10 @@ export function withArchiveEligibility<T>(
     'archive',
     (assertOwned) => {
       const eligibility = inspectEligibility(
+        loadStableValidatedChangeContract,
+        planningExecution,
+        replay,
+        collaborationGrants,
         initial.repositoryRoot,
         requestedChangeId,
         now,
@@ -100,6 +105,10 @@ export function withArchiveEligibility<T>(
       return operation(eligibility, assertOwned, (refreshedNow) => {
         assertOwned();
         const refreshed = inspectEligibility(
+          loadStableValidatedChangeContract,
+          planningExecution,
+          replay,
+          collaborationGrants,
           initial.repositoryRoot,
           requestedChangeId,
           refreshedNow,
@@ -213,6 +222,13 @@ function isUtcDate(value: string): boolean {
 }
 
 function inspectEligibility(
+  loadStableValidatedChangeContract: StableValidatedChangeContractLoader,
+  planningExecution: PlanningTransitionExecutionServices,
+  replay: ArchiveEligibilityReplayServices,
+  collaborationGrants: Pick<
+    CollaborationGrantCodec,
+    'assertUniqueCollaborationGrantUses'
+  >,
   repositoryRoot: string,
   requestedChangeId: string,
   now: Date,
@@ -233,9 +249,9 @@ function inspectEligibility(
   }
 
   const config = loadWorkflowConfig(initial.repositoryRoot);
-  const currentSchemaName = repositoryPlanningConfiguration(
+  const currentSchemaName = loadRepositoryConsumerConfiguration(
     initial.repositoryRoot,
-  ).currentSchemaName;
+  ).configuration.planning.currentSchemaName;
   const protectedBranch = config.protectedBranches[0];
   if (!protectedBranch) {
     throw archiveError(
@@ -269,6 +285,7 @@ function inspectEligibility(
     .filter((artifactPath) => artifactPath.startsWith(activePrefix))
     .sort();
   assertPlanningPaths(
+    stable.planningPaths.admit,
     config.changeRoot,
     contract.changeId,
     activeArtifactPaths,
@@ -276,7 +293,7 @@ function inspectEligibility(
     contract.schemaName,
     currentSchemaName,
   );
-  const requiredArtifactPaths = requiredPlanningArtifactPaths(
+  const requiredArtifactPaths = stable.planningPaths.requiredArtifactPaths(
     config.changeRoot,
     contract.changeId,
     contract.schemaName,
@@ -302,18 +319,19 @@ function inspectEligibility(
     // shared validator. Archive additionally decides one-use grant uniqueness
     // over every exact planning transition in this change's immutable history;
     // a singleton current role result cannot reveal an earlier reuse.
-    const { grantUse } = validateInvestigationFirstPlanningReadiness(
+    const { grantUse } = stable.planningAssurance.validateReadiness(
       initial.repositoryRoot,
       contract,
       stable.consumedPlanReviewReplay,
     ).roleResult;
-    const historicalUses = collectHistoricalCollaborationGrantUses(
-      git.repositoryRoot,
-      git.head,
-      contract.changeId,
-      config.changeRoot,
-    );
-    assertUniqueCollaborationGrantUses(historicalUses);
+    const historicalUses =
+      replay.planningReplay.collectHistoricalCollaborationGrantUses(
+        git.repositoryRoot,
+        git.head,
+        contract.changeId,
+        config.changeRoot,
+      );
+    collaborationGrants.assertUniqueCollaborationGrantUses(historicalUses);
     if (
       grantUse !== null &&
       !historicalUses.some(
@@ -341,7 +359,7 @@ function inspectEligibility(
     );
   }
 
-  const executionGeneration = resolveTaskExecutionGenerationEvidence(
+  const executionGeneration = replay.taskExecutionGeneration(
     git.repositoryRoot,
     config.changeRoot,
     contract.changeId,
@@ -380,34 +398,37 @@ function inspectEligibility(
     taskCommits,
     completionPaths: completionDocumentPaths(git.repositoryRoot),
   });
-  ensurePlanningExecutionEpochCompleteForArchive(git.repositoryRoot, {
-    changeId: contract.changeId,
-    head: git.head,
-    planningGeneration: committedPlanningGeneration(
-      git.repositoryRoot,
-      git.head,
-      config.changeRoot,
-      contract.changeId,
-    ),
-    taskEvidence: contract.tasks.map(({ id: taskId }) => {
-      const commit = taskCommits.find(
-        ({ taskId: committedTaskId }) => committedTaskId === taskId,
-      );
-      if (commit === undefined) {
-        throw archiveError(
-          'ARCHIVE_TASK_EVIDENCE_MISSING',
-          'Each completed task requires exactly one canonical workflow commit.',
-          { taskId, commitHashes: [] },
+  planningExecution.planningExecutionEpoch.ensurePlanningExecutionEpochCompleteForArchive(
+    git.repositoryRoot,
+    {
+      changeId: contract.changeId,
+      head: git.head,
+      planningGeneration: committedPlanningGeneration(
+        git.repositoryRoot,
+        git.head,
+        config.changeRoot,
+        contract.changeId,
+      ),
+      taskEvidence: contract.tasks.map(({ id: taskId }) => {
+        const commit = taskCommits.find(
+          ({ taskId: committedTaskId }) => committedTaskId === taskId,
         );
-      }
-      return {
-        taskId,
-        source: 'managed-task-commit' as const,
-        commitHash: commit.hash,
-      };
-    }),
-    now,
-  });
+        if (commit === undefined) {
+          throw archiveError(
+            'ARCHIVE_TASK_EVIDENCE_MISSING',
+            'Each completed task requires exactly one canonical workflow commit.',
+            { taskId, commitHashes: [] },
+          );
+        }
+        return {
+          taskId,
+          source: 'managed-task-commit' as const,
+          commitHash: commit.hash,
+        };
+      }),
+      now,
+    },
+  );
 
   const date = utcDate(now);
   const archiveDestination = `${config.changeRoot}/archive/${date}-${contract.changeId}`;
@@ -483,10 +504,10 @@ function assertArchiveDocumentationClosure(input: {
     );
   }
   const finalCommit = finalCandidates[0]!;
-  const finalParent = runGit(input.repositoryRoot, [
-    'rev-parse',
-    `${finalCommit.hash}^`,
-  ]).trim();
+  const finalParent = resolveParentCommitOid(
+    input.repositoryRoot,
+    finalCommit.hash,
+  );
   const taskHashes = new Set(input.taskCommits.map(({ hash }) => hash));
   const firstTaskCommit = runGit(input.repositoryRoot, [
     'rev-list',
@@ -502,10 +523,10 @@ function assertArchiveDocumentationClosure(input: {
       'Archive cannot resolve the first managed task commit.',
     );
   }
-  const changeBaseCommit = runGit(input.repositoryRoot, [
-    'rev-parse',
-    `${firstTaskCommit}^`,
-  ]).trim();
+  const changeBaseCommit = resolveParentCommitOid(
+    input.repositoryRoot,
+    firstTaskCommit,
+  );
   try {
     assertDocumentationClosureCommitCurrent({
       repositoryRoot: input.repositoryRoot,

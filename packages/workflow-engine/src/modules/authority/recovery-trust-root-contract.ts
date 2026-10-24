@@ -822,3 +822,62 @@ export function pointerFileName(generation: number): string {
   }
   return `${String(generation).padStart(20, '0')}.json`;
 }
+
+export function prepareRecoveryTrustRootRestoreEnvelope(
+  value: unknown,
+  dependencies: RecoveryOperationalTrustRootRestoreDependencies,
+) {
+  const envelope = normalizeEnvelope(value);
+  const payload = envelope.payload;
+  const replacement = envelope.replacement;
+  const descriptor = dependencies.authorityDescriptor;
+  if (
+    payload.repositoryId !== descriptor.repositoryIdentity.repositoryId ||
+    payload.authorityDescriptorDigest !== descriptor.descriptorDigest ||
+    payload.authorityGeneration !== descriptor.generation ||
+    payload.recoveryRuntimeDigest !== descriptor.sealedRuntime.closureDigest ||
+    payload.externalAuditRoot !== dependencies.externalAuditRoot ||
+    payload.humanSigner !== descriptor.signer.identity ||
+    payload.signerFingerprint !== descriptor.signer.fingerprint
+  ) {
+    throw restoreError(
+      'RECOVERY_TRUST_ROOT_AUTHORITY_BINDING_MISMATCH',
+      'Trust-root restore does not bind the exact loaded Recovery Authority, runtime, and audit root.',
+      ExitCode.verification,
+    );
+  }
+  assertRecoveryAuthorityDomain(
+    descriptor,
+    dependencies.authorityExpectations,
+    RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE,
+    payload.signerFingerprint,
+  );
+  return { envelope, payload, replacement };
+}
+
+export function assertRecoveryTrustRootRestoreDependencies(
+  dependencies: RecoveryOperationalTrustRootRestoreDependencies,
+): void {
+  if (
+    !isRecord(dependencies) ||
+    !isExactAbsolutePath(dependencies.externalAuditRoot) ||
+    !(dependencies.now instanceof Date) ||
+    !Number.isFinite(dependencies.now.getTime()) ||
+    typeof dependencies.verifyHumanSignature !== 'function' ||
+    typeof dependencies.appendAudit !== 'function' ||
+    (dependencies.hooks !== undefined &&
+      (!isRecord(dependencies.hooks) ||
+        !hasExactKeys(dependencies.hooks, ['afterPhase']) ||
+        typeof dependencies.hooks.afterPhase !== 'function'))
+  ) {
+    throw restoreError(
+      'RECOVERY_TRUST_ROOT_DEPENDENCIES_INVALID',
+      'Trust-root restore requires exact out-of-band authority, time, signature, and audit dependencies.',
+      ExitCode.unsafeEnvironment,
+    );
+  }
+}
+
+import { assertRecoveryAuthorityDomain } from './recovery-authority-contract.ts';
+
+import { RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE } from './recovery-trust-root-values.ts';

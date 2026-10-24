@@ -4,11 +4,9 @@ import {
   writeManagedChangeArtifacts,
 } from './fixture.ts';
 import assert from 'node:assert/strict';
-import {
-  parseExecutionArtifact,
-  loadChangeContract,
-  parsePlanReviewArtifact,
-} from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { parseExecutionArtifact } from '../src/modules/planning-provider/planning-artifact-parsers.ts';
+import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
+import { parsePlanReviewArtifact } from '../src/composition-root/plan-review-artifact-production.ts';
 import path from 'node:path';
 import fs from 'node:fs';
 import {

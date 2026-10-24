@@ -6,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { createTaskDiffReviewRecord } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import {
   createTaskDiffReviewLineageSupersession,
@@ -18,9 +18,11 @@ import {
   createTaskDiffReviewSubject,
   deriveTaskDiffReviewCandidatePlan,
   TASK_DIFF_REVIEW_COVERAGE,
-  type TaskDiffReviewScope,
-  type TaskDiffReviewSubject,
 } from '../src/modules/assurance/task-diff-review.ts';
+import type {
+  TaskDiffReviewScope,
+  TaskDiffReviewSubject,
+} from '../src/modules/assurance/task-diff-review-record.ts';
 
 test('common lineage supersession is session-free, exact, replayable, and read-only', () => {
   const fixture = createFixture();

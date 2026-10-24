@@ -1,35 +1,42 @@
+import { createProviderWorkerDispatcherForTesting } from '../src/composition-root/provider-worker-dispatch-production.ts';
 import test from 'node:test';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import os from 'node:os';
-import { runCli, createAsyncCliDispatcherForTesting } from '../src/cli.ts';
+import {
+  runCli,
+  createAsyncCliDispatcherForTesting,
+} from '../bootstrap/workflow-engine-host.ts';
 import {
   ExitCode,
   type WorkflowError,
   workflowError,
 } from '../src/foundation/errors/errors.ts';
 import { createFixtureRepository, git } from './fixture.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
+import { runEvidenceRetentionMaintenance } from '../src/composition-root/retention-production.ts';
 import {
   runProviderWorker,
   runProviderWorkerAsync,
-  createProviderWorkerDispatcherForTesting,
+  type ProviderWorkerOptions,
 } from '../src/entrypoints/worker/provider-worker.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { createAgentRuntimeProgressTracker } from '../src/runtime/provider-execution/agent-runtime-progress-tracker.ts';
+import { createAgentRuntimeProgressTracker } from '../src/modules/provider-orchestration/agent-runtime-progress-tracker.ts';
 import {
   inspectProviderInvocationActivity,
   startProviderInvocationActivityHeartbeat,
 } from '../src/runtime/storage-journal/provider-invocation-activity.ts';
-import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import { digestPrivateDirectoryEntries } from '../src/runtime/storage-journal/provider-runtime-retention.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   readProviderInvocation,
   readProviderInvocationRequest,
   readProviderInvocationManifest,
   claimProviderInvocationForWorker,
+  providerCompletionCandidateExists,
   prepareProviderInvocationAcceptanceBinding,
   completeProviderInvocationFromRunner,
   releaseProviderInvocationWorkerFence,
@@ -38,13 +45,13 @@ import { type ProviderRunnerReport } from '../src/modules/provider-orchestration
 import {
   providerPromptContextStoreRoot,
   ensureProviderPromptContext,
-} from '../src/runtime/provider-execution/provider-execution-governance.ts';
+} from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import { buildContextManifest } from '../src/modules/authority/execution-governance-context.ts';
 import {
-  buildContextManifest,
   inspectDurableEpochContextStore,
   rolloverDurableEpochContextStore,
-} from '../src/modules/authority/execution-governance.ts';
+} from '../src/runtime/storage-journal/execution-governance-epoch-store.ts';
 import { projectProviderInvocationExecution } from '../src/modules/provider-orchestration/execution-core.ts';
 import {
   readExecutionJobState,
@@ -100,7 +107,7 @@ test('synchronous CLI refuses the hidden provider worker before repository acces
     );
 
     const cliSource = fs.readFileSync(
-      new URL('../src/cli.ts', import.meta.url),
+      new URL('../src/entrypoints/cli/workflow-cli.ts', import.meta.url),
       'utf8',
     );
     assert.doesNotMatch(cliSource, /\brunProviderWorker\b/u);
@@ -180,6 +187,13 @@ test('provider worker records launch and admission failure durably', () => {
       undefined,
       'the optional projection must not rewrite synchronous legacy records',
     );
+    assert.deepEqual(readProviderInvocation(runtime, invocationId).failure, {
+      kind: 'retryable',
+      code: 'PROVIDER_UNAVAILABLE',
+      message:
+        'Provider invocation failed durably (PROVIDER_UNAVAILABLE): The selected provider is unavailable.',
+      executionKind: 'provider-capacity',
+    });
 
     const replayed = runProviderWorker(repository, invocationId, {
       runner() {
@@ -191,6 +205,85 @@ test('provider worker records launch and admission failure durably', () => {
     assert.equal(replayed.launched, false);
     assert.equal(launches, 1);
   } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('provider worker replays a live leased invocation without a candidate or fence changes', () => {
+  const repository = createFixtureRepository();
+  const changeId = 'worker-live-leased-replay';
+  let releaseOwnedFence: (() => void) | undefined;
+  try {
+    git(repository, ['checkout', '-b', `work/${changeId}`]);
+    const started = startPropose(repository, changeId, intent(), {
+      explicitActor: 'codex',
+      environment: {},
+    });
+    const invocationId = started.investigation!.providerInvocationId;
+    const runtime = investigationRuntimePaths(
+      discoverRepository(repository).gitCommonDirectory,
+      'workflow-engine',
+    );
+    const request = readProviderInvocationRequest(runtime, invocationId);
+    const claim = claimProviderInvocationForWorker(runtime, invocationId, {
+      workerId: 'worker-live-leased-owner',
+      leaseDurationMs: request.limits.timeoutMs,
+    });
+    const fencePath = path.join(runtime.locks, `${invocationId}.worker-active`);
+    releaseOwnedFence = () => {
+      releaseProviderInvocationWorkerFence(
+        runtime,
+        invocationId,
+        claim.workerFenceToken,
+      );
+      assert.equal(fs.existsSync(fencePath), false);
+    };
+    assert.equal(
+      providerCompletionCandidateExists(runtime, invocationId),
+      false,
+    );
+    const before = readProviderInvocation(runtime, invocationId);
+    assert.equal(before.state, 'leased');
+    const statePath = path.join(
+      runtime.invocations,
+      invocationId,
+      'state.json',
+    );
+    const stateBytes = fs.readFileSync(statePath);
+    const fenceBytes = fs.readFileSync(fencePath);
+    assert.equal(
+      (JSON.parse(fenceBytes.toString('utf8')) as { ownerToken: string })
+        .ownerToken,
+      claim.workerFenceToken,
+    );
+    let launches = 0;
+    let maintenanceCalls = 0;
+    const replay = runProviderWorker(repository, invocationId, {
+      runner() {
+        launches++;
+        throw new Error('leased replay must not execute a provider');
+      },
+      retentionMaintenance() {
+        maintenanceCalls++;
+        throw new Error('leased replay must not run terminal maintenance');
+      },
+    });
+    assert.deepEqual(replay, {
+      schemaVersion: 1,
+      kind: 'provider-worker-result',
+      invocationId,
+      state: 'leased',
+      revision: before.revision,
+      launched: false,
+      failure: before.failure,
+    });
+    assert.equal(launches, 0);
+    assert.equal(maintenanceCalls, 0);
+    assert.deepEqual(readProviderInvocation(runtime, invocationId), before);
+    assert.deepEqual(fs.readFileSync(statePath), stateBytes);
+    assert.deepEqual(fs.readFileSync(fencePath), fenceBytes);
+  } finally {
+    releaseOwnedFence?.();
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
@@ -448,6 +541,13 @@ test('async provider worker records a rejected launch and partial progress recei
       lastProviderActivityElapsedMs: null,
     });
     const durable = readProviderInvocation(runtime, invocationId);
+    assert.deepEqual(durable.failure, {
+      kind: 'retryable',
+      code: 'PROVIDER_UNAVAILABLE',
+      message:
+        'Provider invocation failed durably (PROVIDER_UNAVAILABLE): The selected provider is unavailable.',
+      executionKind: 'provider-capacity',
+    });
     assert.deepEqual(failed.completionReceipt, durable.runtimeReceipt);
     assert.equal(durable.runtimeReceipt?.terminalState, 'failed');
     const replayed = await runProviderWorkerAsync(repository, invocationId, {
@@ -557,6 +657,117 @@ test('provider worker rejects output when current context rolls during execution
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
+
+for (const mode of ['sync', 'async'] as const) {
+  test(`terminal followups preserve ${mode} fence timing and terminal replay`, async () => {
+    const repository = createFixtureRepository();
+    const changeId = `worker-terminal-fence-${mode}`;
+    try {
+      git(repository, ['checkout', '-b', `work/${changeId}`]);
+      const started = startPropose(repository, changeId, intent(), {
+        explicitActor: 'codex',
+        environment: {},
+      });
+      const invocationId = started.investigation!.providerInvocationId;
+      const runtime = investigationRuntimePaths(
+        discoverRepository(repository).gitCommonDirectory,
+        'workflow-engine',
+      );
+      const request = readProviderInvocationRequest(runtime, invocationId);
+      const fencePath = path.join(
+        runtime.locks,
+        `${invocationId}.worker-active`,
+      );
+      const observations: Array<{
+        cwd: string;
+        limit: number;
+        fence: boolean;
+        state: string;
+        revision: number;
+      }> = [];
+      let launches = 0;
+      const options: ProviderWorkerOptions = {
+        agentRuntime: {
+          runSingleShot() {
+            assert.equal(mode, 'sync');
+            launches++;
+            return successfulWorkerReport(request, invocationId);
+          },
+          async runSingleShotAsync(_input, activity) {
+            assert.equal(mode, 'async');
+            launches++;
+            activity.onActivity?.({ type: 'spawned', elapsedMs: 0 });
+            activity.onActivity?.({ type: 'exited', elapsedMs: 7 });
+            return successfulWorkerReport(request, invocationId);
+          },
+        },
+        retentionMaintenance(
+          cwd: string,
+          input: { limit: number; now?: string },
+        ) {
+          const terminal = readProviderInvocation(runtime, invocationId);
+          // Assert captured facts outside the warning-catching operation.
+          observations.push({
+            cwd,
+            limit: input.limit,
+            fence: fs.existsSync(fencePath),
+            state: terminal.state,
+            revision: terminal.revision,
+          });
+          return runEvidenceRetentionMaintenance(cwd, input);
+        },
+      };
+      const completed =
+        mode === 'sync'
+          ? runProviderWorker(repository, invocationId, options)
+          : await runProviderWorkerAsync(repository, invocationId, options);
+      assert.equal(completed.state, 'succeeded');
+      assert.equal(completed.launched, true);
+      assert.equal(launches, 1);
+      assert.equal(fs.existsSync(fencePath), false);
+      const durable = readProviderInvocation(runtime, invocationId);
+      assert.equal(durable.state, 'succeeded');
+      assert.equal(completed.revision, durable.revision);
+      assert.deepEqual(observations, [
+        {
+          cwd: repository,
+          limit: 10,
+          fence: mode === 'sync',
+          state: 'succeeded',
+          revision: durable.revision,
+        },
+      ]);
+      const replayed =
+        mode === 'sync'
+          ? runProviderWorker(repository, invocationId, options)
+          : await runProviderWorkerAsync(repository, invocationId, options);
+      assert.equal(replayed.launched, false);
+      assert.equal(replayed.state, completed.state);
+      assert.equal(replayed.revision, completed.revision);
+      assert.equal(launches, 1);
+      assert.deepEqual(observations, [
+        {
+          cwd: repository,
+          limit: 10,
+          fence: mode === 'sync',
+          state: 'succeeded',
+          revision: durable.revision,
+        },
+        {
+          cwd: repository,
+          limit: 10,
+          fence: false,
+          state: 'succeeded',
+          revision: durable.revision,
+        },
+      ]);
+      assert.deepEqual(readProviderInvocation(runtime, invocationId), durable);
+      assert.equal(fs.existsSync(fencePath), false);
+    } finally {
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
+  });
+}
 
 test('provider worker rejects execution Job authority drift after launch', () => {
   const repository = createFixtureRepository();
@@ -770,6 +981,23 @@ test('provider dispatch is detached and replay targets the stored prepared reque
       invocationId,
       '--json',
     ]);
+    const probeRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'provider-worker-dispatch-entry-'),
+    );
+    try {
+      const probe = spawnSync(launches[0]!.executable, launches[0]!.args, {
+        cwd: probeRoot,
+        encoding: 'utf8',
+      });
+      assert.equal(probe.error, undefined);
+      assert.equal(probe.signal, null);
+      assert.notEqual(probe.status, 0);
+      const result = JSON.parse(probe.stderr);
+      assert.equal(result.error.code, 'GIT_COMMAND_FAILED');
+      assert.equal(result.ok, false);
+    } finally {
+      fs.rmSync(probeRoot, { recursive: true, force: true });
+    }
     assert.equal(unrefCount, 1);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

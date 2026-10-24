@@ -10,8 +10,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
-import { assertPrivateInvestigationDirectory } from '../storage-journal/investigation-private-files.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertPrivateInvestigationDirectory } from '../journal-primitives/investigation-private-files.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { readProviderInvocation } from '../storage-journal/provider-invocation-store.ts';
 import {
   type ProviderRetentionReceipt,
@@ -51,7 +51,7 @@ import {
   HOST_WRAPPER_PROBE_DIRECTORY,
   HOST_WRAPPER_TURN_DIRECTORY,
 } from './provider-retention-files.ts';
-import { type ProviderRetentionHooks } from './provider-retention.ts';
+import type { ProviderRetentionHooks } from '../../modules/provider-orchestration/provider-retention.ts';
 
 export function prepareReceipt(
   paths: InvestigationRuntimePaths,

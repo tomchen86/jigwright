@@ -6,21 +6,19 @@
  * - Task history and prior managed bytes retain their baseline authority during replacement.
  * - Rollback restores only owned mutations; receipts bind the exact materialized bytes.
  */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { deriveInvestigationFirstPlanningSubject } from '../../modules/assurance/planning-assurance-validator.ts';
 import { assertPlanningTaskHistory } from '../../modules/planning-provider/planning-task-history.ts';
-import { projectInvestigationManifestLedger } from '../../modules/projection/investigation-design-projection.ts';
-import { type RoleTopologyResolutionDependencyPortV1 } from '../../modules/provider-orchestration/role-topology-resolution.ts';
+import { projectInvestigationManifestLedger } from '../../modules/investigation/domain/investigation-design-ledger.ts';
+import type { RoleTopologyResolutionDependencyPortV1 } from '../../modules/provider-orchestration/role-topology-resolution.ts';
 import { preparePlanReviewInvocation } from './plan-review-preparation.ts';
 import {
   artifactDigests,
   assertPlanningTargetsCompatible,
 } from './propose-artifacts.ts';
-import { planningContributionInvalid } from './propose-common.ts';
+import { planningContributionInvalid } from '../../modules/proposal/propose-values.ts';
 import {
   assertCurrentGovernanceSources,
   currentChangeOriginBytes,
@@ -31,7 +29,7 @@ import {
   assertGuardContribution,
   assertPlanningPayload,
   assertSpecContributions,
-} from './propose-input.ts';
+} from '../../modules/proposal/propose-input.ts';
 import {
   currentPlanningSchemaName,
   indexBehaviorContracts,
@@ -44,17 +42,14 @@ import {
   prepareExemptionPlanningScaffold,
   preparePlanningScaffold,
 } from './propose-publication.ts';
+import type { ChangeContract } from '../../modules/planning-provider/change-contract.ts';
+import type { InvestigationStatus } from '../../modules/lifecycle/investigation-status.ts';
+import type { ProposeExemptionSession } from '../../modules/lifecycle/propose-exemption-session.ts';
+import type { ProposeRuntime } from './propose-runtime.ts';
 import type {
-  ChangeContract,
-  InvestigationStatus,
-  ProposeExemptionSession,
-  ProposeRuntime,
-} from './propose-runtime.ts';
-import {
-  type ProposeResumeOptions,
-  type RebuiltInvestigation,
-} from './propose-types.ts';
-
+  ProposeResumeOptions,
+  RebuiltInvestigation,
+} from '../../modules/proposal/propose-types.ts';
 export function materializePlanningContribution(
   services: ProposeRuntime,
   cwd: string,
@@ -140,6 +135,7 @@ export function materializePlanningContribution(
     ['execution.json', `${canonicalJson(execution)}\n`],
   ]);
   assertCurrentGovernanceSources(
+    services,
     context.git.repositoryRoot,
     rebuilt.intent.sourceRefs,
   );
@@ -298,7 +294,7 @@ export function materializePlanningContribution(
         ]),
       ),
     };
-    const planningSubject = deriveInvestigationFirstPlanningSubject(
+    const planningSubject = services.planningAssurance.deriveSubject(
       context.git.repositoryRoot,
       draftContract,
     );
@@ -390,6 +386,7 @@ export function materializeExemptionPlanningContribution(
     ['execution.json', `${canonicalJson(execution)}\n`],
   ]);
   assertCurrentGovernanceSources(
+    services,
     context.git.repositoryRoot,
     session.intent.sourceRefs,
   );
@@ -505,7 +502,7 @@ export function materializeExemptionPlanningContribution(
         ]),
       ),
     };
-    const planningSubject = deriveInvestigationFirstPlanningSubject(
+    const planningSubject = services.planningAssurance.deriveSubject(
       context.git.repositoryRoot,
       draftContract,
     );

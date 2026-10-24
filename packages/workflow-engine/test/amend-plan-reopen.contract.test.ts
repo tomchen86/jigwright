@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { assertTaskHistory } from '../src/entrypoints/ci/ci-task-state.ts';
+import { assertTaskHistory } from '../src/modules/assurance/commit-replay/ci-task-state.ts';
 import {
   amendmentLeftWorkMarkedDone,
   assertPlanningTaskHistory,

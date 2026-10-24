@@ -7,7 +7,7 @@
  */
 import crypto from 'node:crypto';
 
-import type { ProviderExecutableIdentity } from '@jigwright/agent-runtime/provider-executable-identity';
+import type { AgentRuntimeExecutableIdentityV1 as ProviderExecutableIdentity } from '@jigwright/core/agent-runtime-port';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

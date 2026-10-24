@@ -8,18 +8,16 @@ import { projectAuthorityRemap } from '../src/composition-root/authority-remap.t
 import type {
   AuthorityRemapPlanIntent,
   AuthorityRemapProjection,
-} from '../src/composition-root/authority-remap.ts';
-import {
-  loadCapabilityProfileFromTrustBase,
-  classifyFileRole,
-} from '../src/modules/authority/maintainer-manifest.ts';
-import { parseProtectedCapabilitiesManifestSource } from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
-import type { ProtectedCapabilitiesManifestSource } from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+} from '../src/modules/authority/authority-remap-contract.ts';
+import { classifyFileRole } from '../src/modules/authority/maintainer-manifest-contracts.ts';
+import { loadCapabilityProfileFromTrustBase } from '../src/composition-root/maintainer-manifest-production.ts';
+import { parseProtectedCapabilitiesManifestSource } from '../src/runtime/repository-validation/protected-capabilities.ts';
+import type { ProtectedCapabilitiesManifestSource } from '../src/runtime/repository-validation/protected-capabilities.ts';
 import { runGitBuffer } from '../src/runtime/repository-transaction/git.ts';
 import {
   normalizeExactRepositoryPath,
   matchesAllowedPath,
-} from '../src/runtime/session-workspace/paths.ts';
+} from '../src/foundation/repository-path/repository-path.ts';
 
 const MAX_MUTATIONS = 64;
 
@@ -29,6 +27,11 @@ export const PROTECTED_CAPABILITIES_PATH =
 export const BUILT_IN_OUTPUTS = new Set([
   'packages/workflow-engine/bootstrap/built-in-engine-closure.json',
   'packages/workflow-engine/bootstrap/built-in-engine-closure-pin.ts',
+]);
+
+export const WORKFLOW_BOOTSTRAP_HOST_OUTPUTS = new Set([
+  'packages/workflow-engine/bootstrap/workflow-bootstrap-host.json',
+  'packages/workflow-engine/bootstrap/workflow-bootstrap-host-pin.ts',
 ]);
 
 export const HARNESS_BOOTSTRAP_OUTPUTS = new Set([
@@ -377,6 +380,7 @@ export function assertAllowedFinalMutations(
   baseAuthorityPaths: readonly string[],
   steps: readonly (
     | 'built-in-engine-closure'
+    | 'workflow-bootstrap-host'
     | 'harness-bootstrap-runtime'
     | 'protected-capabilities'
   )[],
@@ -388,6 +392,8 @@ export function assertAllowedFinalMutations(
       base.has(mutation.path) ||
       (enabled.has('built-in-engine-closure') &&
         BUILT_IN_OUTPUTS.has(mutation.path)) ||
+      (enabled.has('workflow-bootstrap-host') &&
+        WORKFLOW_BOOTSTRAP_HOST_OUTPUTS.has(mutation.path)) ||
       (enabled.has('harness-bootstrap-runtime') &&
         (HARNESS_BOOTSTRAP_OUTPUTS.has(mutation.path) ||
           mutation.path.startsWith(`${HARNESS_BOOTSTRAP_RUNTIME_ROOT}/`))) ||

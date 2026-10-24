@@ -6,7 +6,7 @@
  * - Capability lookup requires a registered provider and an exact
  *   purpose/profile pair.
  */
-import { isBuiltInProviderFamily, listBuiltInProviderCapabilityDescriptors, } from '@jigwright/agent-runtime';
+import { isBuiltInProviderFamily, listBuiltInProviderCapabilityDescriptors, listBuiltInProviderFamilies, } from '@jigwright/core/built-in-provider-catalog';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 const BUILT_IN_PROVIDERS = Object.freeze(listBuiltInProviderCapabilityDescriptors().map(({ providerFamily: id, capabilities }) => Object.freeze({
     id,
@@ -16,6 +16,13 @@ const BUILT_IN_PROVIDERS = Object.freeze(listBuiltInProviderCapabilityDescriptor
  * Return the deeply frozen built-in provider registry. The same immutable
  * value is returned on every call, so no caller can mutate the shared registry.
  */
+/**
+ * The reviewed provider identities in stable preference order. Callers build
+ * per-provider candidates from this instead of repeating the identities.
+ */
+export function listProviderIds() {
+    return listBuiltInProviderFamilies();
+}
 export function listBuiltInProviders() {
     return BUILT_IN_PROVIDERS;
 }

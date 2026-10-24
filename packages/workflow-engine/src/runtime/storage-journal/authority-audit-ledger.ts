@@ -6,16 +6,13 @@
  * - Recovery and retention execute under the same ledger lock before a new append.
  */
 import {
-  type AuthorityAuditLedgerScope,
   type AuthorityAuditAppendInput,
   type AuthorityAuditAppendOptions,
-  type AuthorityAuditLedgerEntry,
   AUDIT_EVENT_MAX_FUTURE_SKEW_MS,
   type AuthorityAuditLedgerScan,
   type AuthorityAuditMaintenanceHooks,
   type AuthorityAuditCompactionResult,
   type AuthorityAuditLedgerPaths,
-  type AuthorityAuditProfile,
   AUTHORITY_AUDIT_PROFILE_POLICIES,
 } from './authority-audit-contracts.ts';
 import {
@@ -182,9 +179,7 @@ export function appendAuthorityAuditRecord(
   });
 }
 
-export function scanAuthorityAuditLedger(
-  scope: AuthorityAuditLedgerScope,
-): AuthorityAuditLedgerScan {
+export const scanAuthorityAuditLedger: ScanAuthorityAuditLedger = (scope) => {
   const prepared = prepareLedger(scope);
   return withLedgerLock(prepared.paths, prepared.scope.repositoryId, () => {
     recoverAuditMaintenance(prepared.paths, prepared.profile);
@@ -217,7 +212,7 @@ export function scanAuthorityAuditLedger(
       records: Object.freeze(records),
     });
   });
-}
+};
 
 /**
  * Runs the code-owned development retention policy. The live suffix remains
@@ -307,3 +302,11 @@ function compactDevelopmentUnderLock(
     checkpoint,
   );
 }
+
+import {
+  type AuthorityAuditLedgerScope,
+  type AuthorityAuditLedgerEntry,
+  type AuthorityAuditProfile,
+} from '../../modules/authority/authority-audit-contract.ts';
+
+import type { ScanAuthorityAuditLedger } from '../../modules/authority/authority-audit-contract.ts';

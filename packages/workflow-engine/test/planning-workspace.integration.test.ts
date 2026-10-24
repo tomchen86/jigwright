@@ -1,3 +1,5 @@
+import { productionPlanningArchiveSourcePolicy } from '../src/composition-root/planning-archive-projection-production.ts';
+import { createPlanningDraftWorkspaceService } from '../src/runtime/session-workspace/planning-workspace.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -7,7 +9,7 @@ import test from 'node:test';
 import {
   preparePlanningDraftWorkspace,
   readPlanningDraftWorkspace,
-} from '../src/runtime/session-workspace/planning-workspace.ts';
+} from '../src/composition-root/planning-workspace-production.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
 test('planning workspace creates and exactly reuses one durable draft owner', () => {
@@ -217,6 +219,52 @@ test('planning workspace accepts full SHA-256 commit identities', () => {
     );
     assert.equal(created.baseCommit, baseCommit);
     assert.equal(created.status, 'created');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+    fs.rmSync(workspaceParent, { recursive: true, force: true });
+  }
+});
+
+test('planning workspace re-observes required origin facts only while validating a workspace', () => {
+  const repository = createFixtureRepository();
+  const workspaceParent = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'workflow-planning-origin-')),
+  );
+  const reads: string[] = [];
+  let unavailable = false;
+  const service = createPlanningDraftWorkspaceService((worktree, changeId) => {
+    reads.push(`${worktree}:${changeId}`);
+    if (unavailable) throw new Error('Current provenance is unavailable.');
+    return null;
+  }, productionPlanningArchiveSourcePolicy.planningPaths.admit);
+  try {
+    assert.deepEqual(reads, []);
+    const created = service.preparePlanningDraftWorkspace(
+      repository,
+      'new-feature',
+      { workspaceParent },
+    );
+    assert.deepEqual(reads, [`${created.worktreePath}:new-feature`]);
+    const before = service.readPlanningDraftWorkspace(
+      repository,
+      'new-feature',
+    );
+    assert.equal(
+      reads.length,
+      1,
+      'reading ownership metadata must not observe origin facts',
+    );
+    unavailable = true;
+    assert.throws(
+      () => service.inspectPlanningDraftWorkspace(repository, 'new-feature'),
+      (error) => isWorkflowError(error, 'PLANNING_WORKSPACE_DIRTY'),
+    );
+    assert.equal(reads.length, 2, 'reuse requires a fresh observation');
+    assert.deepEqual(
+      service.readPlanningDraftWorkspace(repository, 'new-feature'),
+      before,
+      'a rejected observation must preserve the durable owner',
+    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
     fs.rmSync(workspaceParent, { recursive: true, force: true });

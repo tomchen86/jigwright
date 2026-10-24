@@ -1,3 +1,6 @@
+import { createProviderWorkerDispatcherForTesting } from '../src/composition-root/provider-worker-dispatch-production.ts';
+import { planningAssuranceDependencies } from '../src/composition-root/planning-assurance-production.ts';
+import { readCurrentPlanningRoleOverridePolicy } from '../src/runtime/repository-transaction/planning-role-provider-policy-reader.ts';
 import test from 'node:test';
 import {
   createFixtureRepository,
@@ -17,11 +20,11 @@ import {
   agentRolePlanV2Digest,
 } from '../src/modules/provider-orchestration/agent-role-plan.ts';
 import { agentRolePlanV2Path } from '../src/modules/source/planning-role-policy-paths.ts';
-import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
 import assert from 'node:assert/strict';
 import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   createPlanReviewTargetSnapshotNode,
   readPlanReviewTargetSnapshotNode,
@@ -31,25 +34,22 @@ import {
   writeEvidenceNode,
   resolvePlanReviewInvocationOwner,
 } from '../src/runtime/storage-journal/evidence-object-store.ts';
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
+import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
 import {
   PROPOSE_POLICY_DIGEST,
   createProviderInvocationRequest,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
-  type PlanReviewManifest,
   providerInvocationManifestDigest,
   storeProviderExecutionPolicySnapshot,
   createProviderInvocation,
   readProviderInvocation,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import type { PlanReviewManifest } from '../src/modules/assurance/provider-review-manifests.ts';
+import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { createCurrentAgentRuntimeAssignmentV1 } from '../src/composition-root/change-role-assignment-production.ts';
-import {
-  runProviderWorker,
-  createProviderWorkerDispatcherForTesting,
-} from '../src/entrypoints/worker/provider-worker.ts';
+import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import {
   createProductionChangeRoleAssignmentGrantPort,
   observeCurrentChangeRoleAssignmentGrantForInvocation,
@@ -62,8 +62,8 @@ import {
 import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
 import {
   grantStorePaths,
-  readGrantRecord,
-} from '../src/runtime/storage-journal/grant-store.ts';
+  createFileGrantRecordStore,
+} from '../src/runtime/lifecycle-ledgers/grant-store.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
   parseGrantPolicyV2,
@@ -73,7 +73,7 @@ import {
 import { type VerifiedApprovalProof } from '../src/modules/authority/grant-approval.ts';
 import { approvalSubjectDigest } from '../src/modules/authority/grant-core.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import {
   agentProviderConfigToml,
   writeCurrentPlanningMaterialization,
@@ -162,8 +162,10 @@ test('below-floor current role assignment blocks worker claim and detached spawn
     assert.ok(contract.investigation);
     const investigationManifest = contract.investigation.manifest;
     const planningContext = deriveInvestigationFirstPlanningSubject(
+      planningAssuranceDependencies,
       repository,
       contract,
+      readCurrentPlanningRoleOverridePolicy(repository, contract.changeId),
     );
     const subject = planningContext.subject;
     const investigationId = investigationManifest.investigationId;
@@ -431,7 +433,9 @@ test('below-floor current role assignment blocks worker claim and detached spawn
     ];
     const grantNow = new Date('2030-08-29T02:00:00.000Z');
     const coordinator = createGrantCoordinatorKernel({
-      paths: grantStorePaths(path.dirname(runtime.root)),
+      store: createFileGrantRecordStore(
+        grantStorePaths(path.dirname(runtime.root)),
+      ),
       registry: createTransitionRegistry(
         changeRoleAssignmentGrantTransitionDefinitions(grantPort),
       ),
@@ -493,10 +497,9 @@ test('below-floor current role assignment blocks worker claim and detached spawn
     const completed = await coordinator.resolveChallenge(challenge.challengeId);
     assert.equal(completed.outcome, 'completed');
 
-    const completedRecord = readGrantRecord(
+    const completedRecord = createFileGrantRecordStore(
       grantStorePaths(path.dirname(runtime.root)),
-      challenge.challengeId,
-    );
+    ).readGrantRecord(challenge.challengeId);
     assert.equal(completedRecord.state, 'completed');
     if (completedRecord.state !== 'completed') {
       assert.fail('expected completed role-assignment Grant');
@@ -629,8 +632,10 @@ test('provider worker selects the code-owned exact PlanReview contract', () => {
     assert.ok(contract.investigation);
     const investigationManifest = contract.investigation.manifest;
     const context = deriveInvestigationFirstPlanningSubject(
+      planningAssuranceDependencies,
       repository,
       contract,
+      readCurrentPlanningRoleOverridePolicy(repository, contract.changeId),
     );
     const locator = discoverRepository(repository);
     const runtime = investigationRuntimePaths(

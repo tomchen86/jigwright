@@ -6,6 +6,7 @@
  * - Public execution requires a current built-in provider definition.
  * - Observed process activity reaches the consumer even when the run fails.
  */
+import { builtInProviderAdapters } from './built-in-provider-adapter-production.ts';
 import crypto from 'node:crypto';
 
 import {
@@ -26,11 +27,13 @@ import {
 } from '@jigwright/agent-runtime/agent-runtime-port';
 import {
   assertAgentProviderProfileSnapshot,
+  type BuiltInReviewedProviderProfileSnapshot,
+} from '@jigwright/core/agent-provider-config';
+import {
   assertKnownBuiltInProviderDefinitionSnapshot,
   resolveBuiltInProviderDefinitionSnapshot,
-  type BuiltInReviewedProviderProfileSnapshot,
-  type ProviderDefinitionSnapshot,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/built-in-provider-definition';
+import { type ProviderDefinitionSnapshot } from '@jigwright/core/provider-definition-snapshot';
 
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
@@ -300,10 +303,14 @@ export const runBuiltInProviderThroughAgentRuntimeV1 =
   createBuiltInAgentRuntimeV1Bridge({
     preflight(providerId, options, selectedProfile) {
       return selectedProfile === null
-        ? preflightBuiltInProvider(providerId, options)
-        : preflightBuiltInProviderProfile(selectedProfile, options);
+        ? preflightBuiltInProvider(builtInProviderAdapters, providerId, options)
+        : preflightBuiltInProviderProfile(
+            builtInProviderAdapters,
+            selectedProfile,
+            options,
+          );
     },
-    runAsync: runBuiltInProviderAsync,
+    runAsync: runBuiltInProviderAsync.bind(undefined, builtInProviderAdapters),
   });
 
 function createStartInput(

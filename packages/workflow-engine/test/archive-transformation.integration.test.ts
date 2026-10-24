@@ -1,16 +1,38 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { createArchiveProjectionDependencies } from '../src/composition-root/planning-archive-projection-production.ts';
+import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';
+import { archiveEligibilityReplayServices } from '../src/composition-root/ci-replay-production.ts';
+import { productionPlanningArchiveSourcePolicy } from '../src/composition-root/planning-archive-projection-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { collaborationGrantCodec as productionArchiveGrantCodec } from '../src/runtime/grants/grant-services.ts';
+import { reconcileArchivedWorkItems as productionArchivedWorkItemReconciler } from '../src/composition-root/work-registry-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { renderHandoffFromTrackedFacts as productionTrackedHandoffRenderer } from '../src/composition-root/handoff-production.ts';
+const createArchiveTransformation = createArchiveTransformationWithHandoff.bind(
+  undefined,
+  createArchiveProjectionDependencies(),
+  productionTrackedHandoffRenderer,
+  productionArchivedWorkItemReconciler,
+);
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
 import { withArchiveEligibility } from '../src/application/archive/archive-eligibility.ts';
-import { createArchiveTransformation } from '../src/application/archive/archive-transformation.ts';
+import { createArchiveTransformation as createArchiveTransformationWithHandoff } from '../src/application/archive/archive-transformation.ts';
 import { createOpenSpecPlanningArchiveProjectionPort } from '../src/composition-root/planning-archive-projection-production.ts';
-import {
-  commitSession,
-  finalizeTask,
-} from '../src/application/finalize/lifecycle.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitSession } from '../src/runtime/finalization/commit.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
   createFixtureRepository,
@@ -44,6 +66,10 @@ test('archive transformation returns an exact full-index patch without mutating 
   try {
     const before = realState(repository);
     const result = withArchiveEligibility(
+      loadStableValidatedChangeContract,
+      productionPlanningExecution,
+      archiveEligibilityReplayServices,
+      productionArchiveGrantCodec,
       repository,
       'demo-change',
       (eligible) => createArchiveTransformation(eligible),
@@ -84,6 +110,65 @@ test('archive transformation returns an exact full-index patch without mutating 
   }
 });
 
+test('archive reconciliation failure prevents handoff and cleans its temporary projection', () => {
+  const repository = completedFixture();
+  const failure = new Error('injected registry reconciliation failure');
+  let reconciliations = 0;
+  let handoffCalls = 0;
+  try {
+    const before = realState(repository);
+    const worktrees = git(repository, ['worktree', 'list', '--porcelain']);
+    assert.throws(
+      () =>
+        withArchiveEligibility(
+          loadStableValidatedChangeContract,
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          repository,
+          'demo-change',
+          (eligible) =>
+            createArchiveTransformationWithHandoff(
+              createArchiveProjectionDependencies(),
+              () => {
+                handoffCalls++;
+                throw new Error('handoff must not run');
+              },
+              (root, changeId, archivedRoot, closedAt) => {
+                reconciliations++;
+                assert.notEqual(root, repository);
+                assert.equal(changeId, eligible.changeId);
+                assert.equal(archivedRoot, eligible.archiveDestination);
+                assert.equal(
+                  closedAt,
+                  new Date(
+                    git(root, [
+                      'show',
+                      '-s',
+                      '--format=%cI',
+                      eligible.head,
+                    ]).trim(),
+                  ).toISOString(),
+                );
+                throw failure;
+              },
+              eligible,
+            ),
+        ),
+      (error) => error === failure,
+    );
+    assert.equal(reconciliations, 1);
+    assert.equal(handoffCalls, 0);
+    assert.deepEqual(realState(repository), before);
+    assert.equal(
+      git(repository, ['worktree', 'list', '--porcelain']),
+      worktrees,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('archive transformation refuses a bound provider projection that rejects rebuilt specs', () => {
   const repository = completedFixture();
   try {
@@ -91,23 +176,30 @@ test('archive transformation refuses a bound provider projection that rejects re
     const productionPort = createOpenSpecPlanningArchiveProjectionPort();
     assert.throws(
       () =>
-        withArchiveEligibility(repository, 'demo-change', (eligible) =>
-          createArchiveTransformation(eligible, {
-            archiveProjectionPort: {
-              ...productionPort,
-              validateProjectedSpecs: (context) => ({
-                ...productionPort.validateProjectedSpecs(context),
-                valid: false,
-                diagnostics: [
-                  {
-                    level: 'ERROR',
-                    path: 'openspec/specs/demo/spec.md',
-                    message: 'The bound provider rejected rebuilt specs.',
-                  },
-                ],
-              }),
-            },
-          }),
+        withArchiveEligibility(
+          loadStableValidatedChangeContract,
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          repository,
+          'demo-change',
+          (eligible) =>
+            createArchiveTransformation(eligible, {
+              archiveProjectionPort: {
+                ...productionPort,
+                validateProjectedSpecs: (context) => ({
+                  ...productionPort.validateProjectedSpecs(context),
+                  valid: false,
+                  diagnostics: [
+                    {
+                      level: 'ERROR',
+                      path: 'openspec/specs/demo/spec.md',
+                      message: 'The bound provider rejected rebuilt specs.',
+                    },
+                  ],
+                }),
+              },
+            }),
         ),
       (error) => isWorkflowError(error, 'ARCHIVE_REBUILT_SPECS_INVALID'),
     );
@@ -122,11 +214,18 @@ test('archive transformation rejects an eligibility manifest that differs from t
   try {
     assert.throws(
       () =>
-        withArchiveEligibility(repository, 'demo-change', (eligible) =>
-          createArchiveTransformation({
-            ...eligible,
-            activeArtifactPaths: eligible.activeArtifactPaths.slice(1),
-          }),
+        withArchiveEligibility(
+          loadStableValidatedChangeContract,
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          repository,
+          'demo-change',
+          (eligible) =>
+            createArchiveTransformation({
+              ...eligible,
+              activeArtifactPaths: eligible.activeArtifactPaths.slice(1),
+            }),
         ),
       (error) => isWorkflowError(error, 'ARCHIVE_TRANSFORMATION_TREE_INVALID'),
     );
@@ -140,11 +239,18 @@ test('archive transformation rejects a schema selection that contradicts its man
   try {
     assert.throws(
       () =>
-        withArchiveEligibility(repository, 'demo-change', (eligible) =>
-          createArchiveTransformation({
-            ...eligible,
-            schemaName: 'expense-app',
-          }),
+        withArchiveEligibility(
+          loadStableValidatedChangeContract,
+          productionPlanningExecution,
+          archiveEligibilityReplayServices,
+          productionArchiveGrantCodec,
+          repository,
+          'demo-change',
+          (eligible) =>
+            createArchiveTransformation({
+              ...eligible,
+              schemaName: 'expense-app',
+            }),
         ),
       (error) => isWorkflowError(error, 'ARCHIVE_TRANSFORMATION_TREE_INVALID'),
     );
@@ -165,13 +271,20 @@ for (const fault of [
       assert.throws(
         () =>
           withPlanningFaultDisabled(repository, fault[0], () =>
-            withArchiveEligibility(repository, 'demo-change', (eligible) =>
-              createArchiveTransformation(eligible, {
-                testHooks: {
-                  aroundArchivePreparation: (invoke) =>
-                    withArchiveFaultEnabled(repository, fault[0], invoke),
-                },
-              }),
+            withArchiveEligibility(
+              loadStableValidatedChangeContract,
+              productionPlanningExecution,
+              archiveEligibilityReplayServices,
+              productionArchiveGrantCodec,
+              repository,
+              'demo-change',
+              (eligible) =>
+                createArchiveTransformation(eligible, {
+                  testHooks: {
+                    aroundArchivePreparation: (invoke) =>
+                      withArchiveFaultEnabled(repository, fault[0], invoke),
+                  },
+                }),
             ),
           ),
         (error) => isWorkflowError(error, fault[1]),
@@ -197,7 +310,12 @@ function completedFixture(marker?: string): string {
   withPlanningFaultDisabled(repository, marker, () =>
     commitPlanningTransition(repository, 'demo-change'),
   );
-  const session = startSession(repository, 'demo-change', '1.1');
+  const session = startSession(
+    productionChangeContract,
+    repository,
+    'demo-change',
+    '1.1',
+  );
   fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
   assert.throws(
     () => finalizeTask(repository, session.sessionId),
@@ -206,6 +324,7 @@ function completedFixture(marker?: string): string {
   satisfyCurrentTaskDiffReview(repository, session.sessionId);
   finalizeTask(repository, session.sessionId);
   const completed = commitSession(
+    productionChangeContract,
     repository,
     session.sessionId,
     'Complete demo task',

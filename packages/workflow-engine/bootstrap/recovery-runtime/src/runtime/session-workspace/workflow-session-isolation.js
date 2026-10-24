@@ -12,7 +12,7 @@ import { isWorkflowSession, } from "./workflow-session-records.js";
 import { invalidSessionLock, isNodeError, readDescriptorContent, fsyncDirectory, } from "./session-store-values.js";
 import fs from 'node:fs';
 import { releaseOwnedLock, assertOwnedLock, parseManagedSessionLock, } from "./session-operation-locks.js";
-import { assertSessionId, assertChangeId, assertTaskId } from "./paths.js";
+import { assertSessionId, assertChangeId, assertTaskId, } from "../../foundation/repository-path/repository-path.js";
 import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
 export function acquireTaskSessionIsolationLeases(runtime, session, testHooks = {}) {
     const acquired = [];

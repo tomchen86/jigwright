@@ -7,10 +7,10 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   listProviderInvocationLifecycleProjections,
   scanProviderInvocationLifecycles,
-} from '../src/runtime/storage-journal/investigation-session-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { providerExecutionPolicySnapshotPath } from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 

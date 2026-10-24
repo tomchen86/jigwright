@@ -38,6 +38,7 @@ const INTERNAL_PACKAGE_DIRECTORIES = [
   'packages/github-adapter',
   'packages/grants',
   'packages/openspec-adapter',
+  'packages/repository-runtime',
 ] as const;
 const PUBLIC_EXPORTS = Object.freeze({
   './central-grant': Object.freeze({
@@ -227,10 +228,13 @@ function writeEmbeddedRuntime(
       'installed-runtime-sources',
       safePackageName(value.name),
     );
-    copyPath(
-      path.join(source.packageRoot, 'src'),
-      path.join(stagedPackage, embeddedSourceRoot, 'src'),
-    );
+    for (const relativePath of source.manifest.files) {
+      assertSafeRelativePath(relativePath);
+      copyPath(
+        path.join(source.packageRoot, relativePath),
+        path.join(stagedPackage, embeddedSourceRoot, relativePath),
+      );
+    }
     return {
       name: value.name,
       sourceRoot: value.sourceRoot,
@@ -299,6 +303,25 @@ function writePublicRuntimeProjection(
   copyPath(
     path.join(stagedPackage, 'native'),
     path.join(stagedPackage, 'dist', 'native'),
+  );
+  const initBootstrap = path.join(
+    stagedPackage,
+    'bootstrap',
+    'jigwright-init.mjs',
+  );
+  fs.writeFileSync(
+    initBootstrap,
+    fs
+      .readFileSync(initBootstrap, 'utf8')
+      .replaceAll(
+        '../src/entrypoints/cli/consumer-setup-cli.ts',
+        '../dist/runtime/entrypoints/cli/consumer-setup-cli.js',
+      )
+      .replaceAll(
+        '../src/entrypoints/cli/human-command-output.ts',
+        '../dist/runtime/entrypoints/cli/human-command-output.js',
+      ),
+    'utf8',
   );
 }
 

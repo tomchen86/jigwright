@@ -1,3 +1,7 @@
+import {
+  createProductionCentralGrantRequestPort,
+  createProductionWorkflowGrantCoordinator,
+} from '../bootstrap/session-lifecycle-production.ts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -52,24 +56,22 @@ import {
   readVerifiedGitAuthorityCandidateApplyReceipt,
 } from '../src/composition-root/git-authority-candidate-apply-receipt-production.ts';
 import {
-  grantRecordDigest,
   grantStorePaths,
-  readGrantRecord,
-} from '../src/runtime/storage-journal/grant-store.ts';
+  createFileGrantRecordStore,
+} from '../src/runtime/lifecycle-ledgers/grant-store.ts';
+import { grantRecordDigest } from '../src/modules/authority/grant-records.ts';
 import {
   readGitAuthorityCandidateApplyJournal,
   readOptionalGitAuthorityCandidateApplyJournal,
 } from '../src/runtime/storage-journal/git-authority-candidate-apply-store.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   runtimePaths,
   withRepositoryLifecycleOperationAsync,
 } from '../src/runtime/session-workspace/session-store.ts';
 import {
-  createProductionCentralGrantRequestPort,
   createProductionGitAuthorityCandidateApplyGrantCoordinator,
   createProductionGrantCoordinator,
-  createProductionWorkflowGrantCoordinator,
 } from '../src/composition-root/grant-production.ts';
 import { createFixtureRepository, isWorkflowError } from './fixture.ts';
 import {
@@ -257,7 +259,7 @@ function fixture(
     },
   );
   const coordinator = createGrantCoordinatorKernel({
-    paths: grantPaths,
+    store: createFileGrantRecordStore(grantPaths),
     registry: createTransitionRegistry([definition]),
     policy: coordinatorPolicy,
     now: () => new Date(NOW),
@@ -429,7 +431,9 @@ test('production base authority ignores real Git replacement refs', async () => 
       ['human-presence'],
     );
     assert.equal(
-      readGrantRecord(current.grantPaths, requested.challengeId).state,
+      createFileGrantRecordStore(current.grantPaths).readGrantRecord(
+        requested.challengeId,
+      ).state,
       'pending',
     );
     assert.equal(
@@ -551,7 +555,9 @@ test('ordinary production coordinator ignores dirty Grant policy and runtime red
       ['human-presence'],
     );
     assert.equal(
-      readGrantRecord(current.grantPaths, requested.challengeId).state,
+      createFileGrantRecordStore(current.grantPaths).readGrantRecord(
+        requested.challengeId,
+      ).state,
       'pending',
     );
     assert.equal(
@@ -617,7 +623,10 @@ test('Central Apply remains pre-cutover with no repository journal artifacts', (
     'packages/workflow-engine/src/entrypoints/ci',
   );
   const cutoverSources = [
-    path.join(workspaceRoot, 'packages/workflow-engine/src/cli.ts'),
+    path.join(
+      workspaceRoot,
+      'packages/workflow-engine/src/entrypoints/cli/workflow-cli.ts',
+    ),
     ...fs
       .readdirSync(ciDirectory)
       .filter((entry) => entry.endsWith('.ts'))
@@ -797,7 +806,9 @@ test('real Central Grant applies policy deletion as an exact fact without a seco
     );
     assert.equal(journal.approvalMethod, 'human-presence');
     assert.equal(journal.preparedGrantRecordDigest.startsWith('sha256:'), true);
-    const terminal = readGrantRecord(current.grantPaths, CHALLENGE_ID);
+    const terminal = createFileGrantRecordStore(
+      current.grantPaths,
+    ).readGrantRecord(CHALLENGE_ID);
     assert.equal(terminal.state, 'completed');
     if (terminal.state !== 'completed') assert.fail('expected completed Grant');
     assert.equal(terminal.audit.approvalMethod, 'human-presence');
@@ -914,7 +925,11 @@ test('real SSH Central Apply publishes one canonical receipt that verifies in a 
     ]);
     assert.equal(
       published.receipt.terminalGrantRecordDigest,
-      grantRecordDigest(readGrantRecord(current.grantPaths, CHALLENGE_ID)),
+      grantRecordDigest(
+        createFileGrantRecordStore(current.grantPaths).readGrantRecord(
+          CHALLENGE_ID,
+        ),
+      ),
     );
     assert.deepEqual(
       publishGitAuthorityCandidateApplyReceipt(
@@ -1427,7 +1442,9 @@ test('durable exact Apply recovers every effect crash window without duplicate c
         new RegExp(`simulated ${crashPoint} crash`),
       );
       assert.equal(
-        readGrantRecord(current.grantPaths, CHALLENGE_ID).state,
+        createFileGrantRecordStore(current.grantPaths).readGrantRecord(
+          CHALLENGE_ID,
+        ).state,
         'prepared',
       );
       assert.equal(
@@ -1440,7 +1457,7 @@ test('durable exact Apply recovers every effect crash window without duplicate c
         current.repository,
       );
       const recoveryCoordinator = createGrantCoordinatorKernel({
-        paths: current.grantPaths,
+        store: createFileGrantRecordStore(current.grantPaths),
         registry: createTransitionRegistry(
           gitAuthorityCandidateApplyGrantTransitionDefinitions(recoveryPort),
         ),
@@ -1651,7 +1668,9 @@ test('fresh production recovery keeps the exact base runtime after the result ch
           current.repository,
           current.parameters,
         );
-      const beforeRecovery = readGrantRecord(current.grantPaths, CHALLENGE_ID);
+      const beforeRecovery = createFileGrantRecordStore(
+        current.grantPaths,
+      ).readGrantRecord(CHALLENGE_ID);
       assert.equal(beforeRecovery.state, 'prepared', resultConfig);
       if (beforeRecovery.state !== 'prepared') {
         assert.fail('expected prepared Grant before fresh recovery');
@@ -1661,7 +1680,9 @@ test('fresh production recovery keeps the exact base runtime after the result ch
       assert.equal(recovered.outcome, 'completed', resultConfig);
       assert.equal(recovered.recovered, true, resultConfig);
       assert.equal(
-        readGrantRecord(current.grantPaths, CHALLENGE_ID).state,
+        createFileGrantRecordStore(current.grantPaths).readGrantRecord(
+          CHALLENGE_ID,
+        ).state,
         'completed',
         resultConfig,
       );
@@ -1754,7 +1775,7 @@ test('prepared Apply records branch CAS drift as a natural failed result without
       current.repository,
     );
     const recoveryCoordinator = createGrantCoordinatorKernel({
-      paths: current.grantPaths,
+      store: createFileGrantRecordStore(current.grantPaths),
       registry: createTransitionRegistry(
         gitAuthorityCandidateApplyGrantTransitionDefinitions(recoveryPort),
       ),
@@ -1789,7 +1810,9 @@ test('prepared Apply records branch CAS drift as a natural failed result without
       journal.entries.at(-1)?.failure?.code,
       'git-authority-candidate-apply-ref-changed',
     );
-    const terminal = readGrantRecord(current.grantPaths, CHALLENGE_ID);
+    const terminal = createFileGrantRecordStore(
+      current.grantPaths,
+    ).readGrantRecord(CHALLENGE_ID);
     assert.equal(terminal.state, 'failed');
     const duplicate = await recoveryCoordinator.recoverChallenge(CHALLENGE_ID);
     assert.equal(duplicate.outcome, 'failed');
@@ -1853,7 +1876,7 @@ test('pre-publication recovery preserves foreign same-tree staging after a forei
       current.repository,
     );
     const recoveryCoordinator = createGrantCoordinatorKernel({
-      paths: current.grantPaths,
+      store: createFileGrantRecordStore(current.grantPaths),
       registry: createTransitionRegistry(
         gitAuthorityCandidateApplyGrantTransitionDefinitions(recoveryPort),
       ),
@@ -1949,7 +1972,7 @@ test('post-ref pre-index recovery records the partial effect and preserves forei
       current.repository,
     );
     const recoveryCoordinator = createGrantCoordinatorKernel({
-      paths: current.grantPaths,
+      store: createFileGrantRecordStore(current.grantPaths),
       registry: createTransitionRegistry(
         gitAuthorityCandidateApplyGrantTransitionDefinitions(recoveryPort),
       ),
@@ -2203,7 +2226,7 @@ test('durable terminal checkpoint fixes the natural result before later foreign 
       current.repository,
     );
     const recoveryCoordinator = createGrantCoordinatorKernel({
-      paths: current.grantPaths,
+      store: createFileGrantRecordStore(current.grantPaths),
       registry: createTransitionRegistry(
         gitAuthorityCandidateApplyGrantTransitionDefinitions(recoveryPort),
       ),
@@ -2321,7 +2344,9 @@ test('forged check observations and post-challenge Git drift fail closed without
       (error) => isWorkflowError(error, 'IMMUTABLE_GIT_CANDIDATE_DRIFT'),
     );
     assert.equal(
-      readGrantRecord(driftFixture.grantPaths, CHALLENGE_ID).state,
+      createFileGrantRecordStore(driftFixture.grantPaths).readGrantRecord(
+        CHALLENGE_ID,
+      ).state,
       'pending',
     );
     assert.equal(

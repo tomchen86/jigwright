@@ -7,13 +7,13 @@
  *   review.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
+import type { TaskDiffReviewSubmissionProtocolBindings } from './task-diff-review-artifact.ts';
 import type {
-  TaskDiffReviewSubmissionProtocolBindings,
   TaskDiffReviewContinuationSubmission,
   TaskDiffReviewContinuationDecision,
   TaskDiffReviewRecord,
   TaskDiffReviewChallengeResponseRecord,
-} from './task-diff-review-artifact.ts';
+} from './task-diff-review-artifact-record.ts';
 
 export function createTaskDiffReviewContinuationSubmissionProtocol(
   bindings: Pick<

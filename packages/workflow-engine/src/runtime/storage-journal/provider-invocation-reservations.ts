@@ -8,7 +8,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { type LoadedAiAdapterPolicy } from '../provider-execution/ai-adapter-policy.ts';
+import { type LoadedAiAdapterPolicy } from '../provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
@@ -16,26 +16,26 @@ import {
   createPrivateCanonicalJson,
   privatePathExists,
   readPrivateCanonicalJson,
-} from './investigation-private-files.ts';
-import { type ProviderExecutionGrantAuthorityInput } from '../provider-execution/provider-execution-policy-authority.ts';
+} from '../journal-primitives/investigation-private-files.ts';
+import { type ProviderExecutionGrantAuthorityInput } from './provider-execution-policy-authority.ts';
 import { type ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
-  type InvestigationRuntimePaths,
   assertChangeId,
   assertInvestigationId,
   assertInvocationId,
-} from '../session-workspace/paths.ts';
-import type { TaskMandateBinding } from '../../modules/authority/task-mandate.ts';
-import {
-  type BlindSurveyManifest,
-  type InvestigationStartReservation,
-  type InvestigationStartReservationSnapshot,
-  type ProviderInvocationManifest,
-  type ProviderRetryDecisionBinding,
-  type ProviderRetryReplacementBinding,
-  type ProviderRetryReservationCurrent,
-  type ProviderExecutionPolicySnapshotCurrent,
-} from './provider-invocation-types.ts';
+} from '../../foundation/repository-path/repository-path.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
+import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
+import type {
+  InvestigationStartReservation,
+  InvestigationStartReservationSnapshot,
+  ProviderRetryDecisionBinding,
+  ProviderRetryReplacementBinding,
+  ProviderRetryReservationCurrent,
+} from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
+import type { ProviderInvocationManifest } from './provider-invocation-manifest-validation.ts';
+import type { ProviderExecutionPolicySnapshotCurrent } from '../../modules/provider-orchestration/provider-execution-policy-snapshot.ts';
 import {
   assertBlindSurveyManifest,
   assertProviderRequest,

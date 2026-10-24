@@ -5,7 +5,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { inspectProjectionStatus } from '../src/composition-root/projection-status-production.ts';
-import { installAgentGuidance } from '../src/modules/adoption/agent-guidance.ts';
+import { installAgentGuidance } from '../src/composition-root/agent-guidance-production.ts';
 import { projectionDefinitions } from '../src/modules/projection/engine-projection-registry.ts';
 
 test('status covers every declaration, observes drift, and does not repair documents', () => {
@@ -59,7 +59,10 @@ test('public CLI routes guidance and advertises its commands', () => {
       spawnSync('git', ['init', '--quiet'], { cwd: root }).status,
       0,
     );
-    const cli = new URL('../src/cli.ts', import.meta.url);
+    const cli = new URL(
+      '../bootstrap/workflow-engine-host.ts',
+      import.meta.url,
+    );
     const execute = (...args: string[]) => {
       const output = spawnSync(
         process.execPath,

@@ -6,24 +6,22 @@
  * - Manifest authority binds the current session; conflicting node bytes fail.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import {
-  createEvidenceNode,
-  type EvidenceNode,
-} from '../../foundation/evidence-node/evidence-node.ts';
+import { createEvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';
+import type { EvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type {
   InvestigationTermContribution,
   InvestigationTermRawCounts,
   PreviewInvestigationTerm,
 } from '../../modules/investigation/domain/investigation-terms.ts';
-import type { InvestigationManifestV3 } from '../../modules/investigation/manifest/investigation-manifest.ts';
-import {
-  PROPOSE_POLICY_DIGEST,
-  type ProviderInvocationRequest,
-  type ProviderProcessResult,
+import type { InvestigationManifestV3 } from '../../modules/investigation/manifest/investigation-manifest-types.ts';
+import { PROPOSE_POLICY_DIGEST } from '../../modules/provider-orchestration/provider-contracts.ts';
+import type {
+  ProviderInvocationRequest,
+  ProviderProcessResult,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
-import type { ActorResolution } from '../../modules/provider-orchestration/actor-identity.ts';
-import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-scheduler.ts';
+import type { ActorResolution } from '../../modules/authority/actor-identity.ts';
+import type { AdmittedRoleResult } from '../../modules/provider-orchestration/role-admission-contracts.ts';
 import {
   DIGEST,
   hasExactKeys,
@@ -32,22 +30,24 @@ import {
   PROPOSE_AUTHORIZATION_OUTPUT_SCHEMA,
   PROPOSE_AUTHORIZATION_SCHEMA,
   sha256,
-} from './propose-common.ts';
+} from '../../modules/proposal/propose-values.ts';
 import { investigationV3SessionSnapshotDigest } from './propose-investigation-manifest.ts';
 import type {
   ExemptionProposeOutput,
   PlanReviewReservation,
   PlanReviewRetryEnvelope,
   RebuiltInvestigation,
-} from './propose-types.ts';
-
+} from '../../modules/proposal/propose-types.ts';
 type InvestigationSession = RebuiltInvestigation['session'];
+
 type StoredInvestigationCheckpoint = NonNullable<
   InvestigationSession['milestones']['groupDispositions']
 >;
+
 type ProviderRetryDecisionBinding = NonNullable<
   PlanReviewReservation['retry']
 >['retryDecision'];
+
 type ProviderExecutionPolicySnapshotCurrent = NonNullable<
   PlanReviewReservation['retry']
 >['executionPolicySnapshot'];

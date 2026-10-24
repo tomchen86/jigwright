@@ -30,52 +30,6 @@ export function appendBootstrapSidecarEvent(current, patch, event) {
     });
     return next;
 }
-export function ensureBootstrapSidecarArtifact(current, input) {
-    assertDigest(input.artifact.artifactId, 'INTERVENTION_SIDECAR_SESSION_INVALID');
-    assertDigest(input.artifact.sourceDigest, 'INTERVENTION_SIDECAR_SESSION_INVALID');
-    assertDigest(input.artifact.executableDigest, 'INTERVENTION_SIDECAR_SESSION_INVALID');
-    const candidate = {
-        artifactId: input.artifact.artifactId,
-        sourceDigest: input.artifact.sourceDigest,
-        executableDigest: input.artifact.executableDigest,
-        evidenceDigest: input.evidenceDigest,
-        readyAt: input.readyAt,
-        workflowBindingDigest: activeBootstrapMaintenanceWorkflowBindingDigest(current.workflowBinding),
-        workflowStatus: 'repair-active',
-    };
-    const existing = current.artifacts.find((artifact) => artifact.artifactId === input.artifact.artifactId);
-    if (existing !== undefined) {
-        if (existing.sourceDigest !== candidate.sourceDigest ||
-            existing.executableDigest !== candidate.executableDigest ||
-            existing.evidenceDigest !== candidate.evidenceDigest ||
-            existing.readyAt !== candidate.readyAt ||
-            existing.workflowBindingDigest !== candidate.workflowBindingDigest ||
-            existing.workflowStatus !== candidate.workflowStatus) {
-            throw sidecarProjectionConflict('Artifact id already has different sidecar content digests.');
-        }
-        return current;
-    }
-    return appendBootstrapSidecarEvent(current, { artifacts: [...current.artifacts, candidate] }, {
-        eventKind: 'artifact-ready',
-        evidenceDigest: input.evidenceDigest,
-        recordedAt: input.readyAt,
-    });
-}
-export function assertSidecarArtifactSource(current, artifact) {
-    if (artifact.sourceChangeId !== current.identity.interventionChangeId) {
-        throw sidecarProjectionConflict('Engine artifact source does not belong to this sidecar.');
-    }
-    if (artifact.workflowBindingDigest !== undefined &&
-        artifact.workflowBindingDigest !==
-            activeBootstrapMaintenanceWorkflowBindingDigest(current.workflowBinding)) {
-        throw sidecarProjectionConflict('Engine artifact belongs to a different bootstrap Workflow binding.');
-    }
-}
-export function assertSidecarActive(current) {
-    if (current.state !== 'repair-active') {
-        throw sidecarProjectionConflict('An abandoned sidecar cannot accept repair lifecycle events.');
-    }
-}
 export function sidecarMatchesIntervention(sidecar, intervention) {
     const expectedIdentity = {
         parentChangeId: intervention.parent.changeId,
@@ -94,8 +48,7 @@ export function sidecarMatchesIntervention(sidecar, intervention) {
             intervention.childWorkspace.childWorkspacePath &&
         sidecar.workspace.changeRef === intervention.childWorkspace.changeRef &&
         canonicalJson(sidecar.workflowBinding) ===
-            canonicalJson(createBootstrapMaintenanceWorkflow(intervention, sidecar.workflowBinding.status)) &&
-        sidecar.state === 'repair-active');
+            canonicalJson(createBootstrapMaintenanceWorkflow(intervention, sidecar.workflowBinding.status)));
 }
 function bootstrapMaintenanceWorkflowId(input) {
     return canonicalDigest({
@@ -414,7 +367,6 @@ function validateCurrentBootstrapSidecarRelation(record) {
     }
     if (relation.resolution !== 'abandonment' ||
         relation.resolvedByTxId !== null ||
-        record.adoption !== null ||
         record.state !== 'abandoned') {
         throw new Error('invalid abandonment relation');
     }

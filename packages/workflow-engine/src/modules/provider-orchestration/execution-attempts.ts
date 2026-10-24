@@ -6,7 +6,7 @@
  * - A semantic job specification must bind its workflow contract, stage,
  *   and context.
  */
-import type { TaskMandateBinding } from '../authority/task-mandate.ts';
+import type { TaskMandateBinding } from '../authority/task-mandate-contract.ts';
 import { ExitCode } from '../../foundation/errors/errors.ts';
 import { createAttemptAcceptanceBindingV1 } from '@jigwright/core/job-attempt-runtime';
 import type {

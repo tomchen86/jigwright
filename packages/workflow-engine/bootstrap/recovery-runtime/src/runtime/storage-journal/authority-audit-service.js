@@ -49,7 +49,7 @@ export function recordAuthorityAuditEvent(scope, rawInput, hooks = {}) {
     const eventPath = publishEventObject(scope, eventDigest, bytes, hooks);
     return deepFreeze({ eventDigest, eventPath, event, ledger });
 }
-export function verifyAuthorityAuditEvents(scope) {
+export const verifyAuthorityAuditEvents = (scope) => {
     const scan = scanAuthorityAuditLedger(scope);
     const paths = authorityAuditServicePaths(scope);
     assertEventDirectoryClosure(paths.events, new Set(scan.records.map(({ record }) => record.resultDigest)));
@@ -84,15 +84,15 @@ export function verifyAuthorityAuditEvents(scope) {
         headRecordDigest: scan.headRecordDigest,
         events,
     });
-}
-export function showAuthorityAuditTask(scope, requestedTaskId) {
+};
+export const showAuthorityAuditTask = (scope, requestedTaskId) => {
     const taskId = assertSubject(requestedTaskId, 'task ID');
     const verified = verifyAuthorityAuditEvents(scope);
     return deepFreeze({
         ...verified,
         events: verified.events.filter((entry) => entry.event.taskId === taskId),
     });
-}
+};
 export function canonicalAuthorityAuditEvent(event) {
     assertStoredEvent(event);
     const bytes = `${canonicalJson(event)}\n`;

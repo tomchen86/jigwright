@@ -30,13 +30,16 @@ import {
   type ChangeRoleAssignmentGrantParametersV1,
 } from '../../modules/provider-orchestration/change-role-assignment-grant.ts';
 import type { ChangeRoleAssignmentRecordV1 } from '../../modules/provider-orchestration/change-role-assignment-record.ts';
-import { grantStorePaths, readGrantRecord } from './grant-store.ts';
+import {
+  grantStorePaths,
+  createFileGrantRecordStore,
+} from '../lifecycle-ledgers/grant-store.ts';
 import {
   createPrivateCanonicalJson,
   readPrivateCanonicalJson,
-} from './investigation-session-store.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import { inspectHistoricalChangeRoleAssignmentRecordV1 } from './change-role-assignment-store.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/u;
 const SHA256_DIGEST = /^sha256:[0-9a-f]{64}$/u;
@@ -208,10 +211,9 @@ export function readCompletedChangeRoleAssignmentGrantAuthority(
     grantRequirementDigest: activation.grantRequirementDigest,
     exactRolePairs: activation.exactRolePairs,
   });
-  const grant = readGrantRecord(
+  const grant = createFileGrantRecordStore(
     grantStorePaths(grantRuntimeRoot),
-    activation.challengeId,
-  );
+  ).readGrantRecord(activation.challengeId);
   const preActivation = Object.freeze({
     ...observeChangeRoleAssignmentGrantActivation(paths, parameters),
     activation: null,

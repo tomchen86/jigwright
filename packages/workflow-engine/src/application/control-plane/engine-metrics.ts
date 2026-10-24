@@ -14,7 +14,7 @@ import type {
   AttemptRecord,
   WorkflowRecord,
 } from '../../modules/provider-orchestration/execution-core.ts';
-import { listExecutionBudgetGrantMetrics } from '../../modules/authority/execution-governance.ts';
+import { listExecutionBudgetGrantMetrics } from '../../runtime/storage-journal/execution-budget-grants.ts';
 import { listExecutionReplacementGrantRequestDigests } from './execution-replacement.ts';
 import {
   listExecutionJobs,
@@ -22,22 +22,20 @@ import {
 } from '../../runtime/provider-execution/execution-runtime.ts';
 import {
   privatePathExists,
-  readHumanResolutionNode,
   readPrivateCanonicalJson,
-} from '../../runtime/storage-journal/investigation-session-store.ts';
+} from '../../runtime/journal-primitives/investigation-private-files.ts';
+import { readHumanResolutionNode } from '../../runtime/storage-journal/human-resolution-nodes.ts';
 import {
   WORKFLOW_SUPERSEDE_REASONS,
   type WorkflowSupersedeReason,
 } from '../../modules/authority/intervention-control.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
-import {
-  assertInvestigationId,
-  type InvestigationRuntimePaths,
-} from '../../runtime/session-workspace/paths.ts';
-import {
-  inspectProviderRetentionMetrics,
-  type ProviderRetentionMetrics,
-} from '../../runtime/provider-execution/provider-retention.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
+import { type InvestigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';
+import { assertInvestigationId } from '../../foundation/repository-path/repository-path.ts';
+import type {
+  ProviderRetentionMetrics,
+  ProviderRetentionOptions,
+} from '../../modules/provider-orchestration/provider-retention.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
 type Rate = Readonly<{
@@ -103,6 +101,10 @@ const RATE_TERMINAL_STATUSES = new Set<AttemptRecord['status']>([
   'timed-out',
 ]);
 export function collectEngineMetrics(
+  inspectProviderRetentionMetrics: (
+    cwd: string,
+    options: Pick<ProviderRetentionOptions, 'now' | 'ttlDays'>,
+  ) => ProviderRetentionMetrics,
   cwd: string,
   options: { now?: string; retentionTtlDays?: number } = {},
 ): EngineMetricsSnapshot {

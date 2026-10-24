@@ -1,12 +1,13 @@
 import test from 'node:test';
 import { createFixtureRepository, git } from './fixture.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { type ProviderWorkerRuntimePort } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
 import assert from 'node:assert/strict';
 import { type ProviderRunnerReport } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { workflowError, ExitCode } from '../src/foundation/errors/errors.ts';
+import { readProviderInvocationActivity } from '../src/runtime/storage-journal/provider-invocation-activity.ts';
 import { runProviderWorkerAsync } from '../src/entrypoints/worker/provider-worker.ts';
 import {
   readProviderInvocation,
@@ -149,6 +150,7 @@ test(
           const signal = options.signal;
           assert.ok(signal);
           options.onActivity?.({ type: 'spawned', elapsedMs: 0 });
+          options.onActivity?.({ type: 'stdout', elapsedMs: 1, bytes: 7 });
           markLaunched();
           await new Promise<void>((resolve) => {
             const finishNaturally = () => {
@@ -166,8 +168,44 @@ test(
       const worker = runProviderWorkerAsync(repository, invocationId, {
         workerId: 'cancellation-success-race-worker',
         agentRuntime,
+      }).then((result) => {
+        // Observe the worker's own completion, before Grant cleanup can hide
+        // missing heartbeat stop or fence release in the public worker chain.
+        const finalActivity = readProviderInvocationActivity(
+          runtime,
+          invocationId,
+        );
+        assert.equal(finalActivity?.progress.processState, 'exited');
+        assert.equal(finalActivity?.progress.eventCount, 3);
+        assert.equal(finalActivity?.progress.stdoutBytes, 7);
+        assert.equal(
+          finalActivity?.workerId,
+          'cancellation-success-race-worker',
+        );
+        assert.equal(
+          finalActivity?.leaseGeneration,
+          readProviderInvocation(runtime, invocationId).leaseGeneration,
+        );
+        assert.equal(
+          fs.existsSync(
+            path.join(runtime.locks, `${invocationId}.worker-active`),
+          ),
+          false,
+        );
+        return result;
       });
       await launched;
+      const liveRecord = readProviderInvocation(runtime, invocationId);
+      const liveActivity = readProviderInvocationActivity(
+        runtime,
+        invocationId,
+      );
+      assert.equal(liveRecord.state, 'leased');
+      assert.equal(liveActivity?.leaseGeneration, liveRecord.leaseGeneration);
+      assert.equal(liveActivity?.workerId, 'cancellation-success-race-worker');
+      assert.equal(liveActivity?.progress.processState, 'running');
+      assert.equal(liveActivity?.progress.eventCount, 2);
+      assert.equal(liveActivity?.progress.stdoutBytes, 7);
       const grant = await beginExactProviderCancellationGrant(
         repository,
         invocationId,

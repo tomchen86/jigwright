@@ -10,7 +10,7 @@ import {
   assertExecutionWorkflowRecordV2,
   ExecutionWorkflowRecordCodecError,
 } from '@jigwright/core/execution-workflow-record';
-import type { TaskMandateBinding } from '../authority/task-mandate.ts';
+import type { TaskMandateBinding } from '../authority/task-mandate-contract.ts';
 import {
   assertAttemptAcceptanceBindingV1,
   AttemptResultCodecError,
