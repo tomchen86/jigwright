@@ -29,6 +29,10 @@ import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
 import { completionDocumentPaths } from '../../runtime/managed-documents/validation/managed-documents.ts';
 import { loadRepositoryConsumerConfiguration } from '../../runtime/workflow-configuration/repository-consumer.ts';
 import type { ResolvedPlanningProviderBinding } from '../../modules/planning-provider/planning-provider-binding.ts';
+import {
+  isArchiveUtcDate,
+  nextArchiveUtcDate,
+} from '../../modules/planning-provider/archive-destination.ts';
 
 /**
  * Inspects archive eligibility under change transition authority and checks
@@ -137,7 +141,7 @@ function assertRolloverRefreshStable(
   const stableRefreshed = stableRefreshAuthority(refreshed);
   const originalDate = archiveDestinationDate(original);
   const refreshedDate = utcDate(refreshedNow);
-  const expectedDate = nextUtcDate(originalDate);
+  const expectedDate = nextArchiveUtcDate(originalDate);
   const expectedDestination = `${original.changeRoot}/archive/${expectedDate}-${original.changeId}`;
   const expectedTargets = original.targetPaths
     .map((targetPath) =>
@@ -200,25 +204,13 @@ function archiveDestinationDate(eligibility: ArchiveEligibility): string {
     prefix.length,
     -suffix.length,
   );
-  if (!isUtcDate(date)) {
+  if (!isArchiveUtcDate(date)) {
     throw archiveError(
       'ARCHIVE_ELIGIBILITY_CHANGED',
       'Archive eligibility has a non-canonical dated destination.',
     );
   }
   return date;
-}
-
-function nextUtcDate(value: string): string {
-  const date = new Date(`${value}T00:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + 1);
-  return utcDate(date);
-}
-
-function isUtcDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T00:00:00.000Z`);
-  return Number.isFinite(date.getTime()) && utcDate(date) === value;
 }
 
 function inspectEligibility(

@@ -29,6 +29,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 
 import { commitArchiveTransition as commitArchiveTransitionWithHandoff } from '../src/application/archive/archive-transition.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
@@ -47,6 +48,71 @@ const START_DATE = '2026-08-09T23:59:59.999Z';
 const ROLLOVER_DATE = '2026-08-10T00:00:00.001Z';
 const SECOND_ROLLOVER_DATE = '2026-08-11T00:00:00.001Z';
 const ARCHIVE_DATE = '2026-08-10';
+
+test('same-day archive and its existing replay do not read a rollover clock', () => {
+  const repository = completedFixture();
+  const clock = fixedClock(ROLLOVER_DATE);
+  try {
+    const worktrees = worktreeTopology(repository);
+    const committed = commitArchiveTransition(
+      repository,
+      'demo-change',
+      process.env,
+      { now: clock.now },
+    );
+    assert.equal(committed.status, 'committed');
+    assert.equal(clock.calls(), 1);
+
+    const replay = commitArchiveTransition(
+      repository,
+      'demo-change',
+      process.env,
+      { now: clock.now },
+    );
+    assert.equal(replay.status, 'already-archived');
+    assert.equal(replay.commitHash, committed.commitHash);
+    assert.equal(replay.reportId, committed.reportId);
+    assert.equal(replay.archivePath, committed.archivePath);
+    assert.equal(clock.calls(), 1);
+    assert.equal(git(repository, ['status', '--porcelain=v2', '-z']), '');
+    assert.equal(worktreeTopology(repository), worktrees);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('malformed rollover details preserve the original error without refresh or another clock read', () => {
+  const repository = completedFixture();
+  const clock = fixedClock(ROLLOVER_DATE);
+  const failure = workflowError(
+    'ARCHIVE_UTC_DATE_ROLLOVER',
+    'Malformed rollover observation',
+    ExitCode.verification,
+    { details: { observedDate: '2026-02-30' } },
+  );
+  let attempts = 0;
+  try {
+    const before = repositoryState(repository);
+    const worktrees = worktreeTopology(repository);
+    assert.throws(
+      () =>
+        commitArchiveTransition(repository, 'demo-change', process.env, {
+          now: clock.now,
+          beforeApply() {
+            attempts += 1;
+            throw failure;
+          },
+        }),
+      (error) => error === failure,
+    );
+    assert.equal(attempts, 1);
+    assert.equal(clock.calls(), 1);
+    assert.deepEqual(repositoryState(repository), before);
+    assert.equal(worktreeTopology(repository), worktrees);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
 
 test('archive retries once under the same operation when exact output crosses to the adjacent UTC day', () => {
   const repository = completedFixture();
