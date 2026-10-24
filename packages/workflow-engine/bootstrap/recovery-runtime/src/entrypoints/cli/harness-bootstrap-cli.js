@@ -1,8 +1,7 @@
 import { ExitCode, WorkflowError, workflowError, } from "../../foundation/errors/errors.js";
-import { assertSupportedBootstrapInterventionCommand, bootstrapInterventionStateRoot, bootstrapInterventionUsage, dispatchBootstrapInterventionCommand, } from "./intervention-control-bootstrap-cli.js";
+import { assertSupportedBootstrapInterventionCommand, bootstrapInterventionUsage, dispatchBootstrapInterventionCommand, } from "./intervention-control-bootstrap-cli.js";
 export function createHarnessBootstrapCli({ createHarnessBootstrapDependencies, auditHarnessRecoveryRefusal, createHarnessBootstrapCommandDispatcher, }) {
     const { isRecoveryAuthorityCommand, isRecoveryQuarantineCommand, assertHarnessRecoveryQuarantineRouting, dispatchRecoveryAuthorityCommand, dispatchRecoveryQuarantineCommand, harnessBootstrapUsage, } = createHarnessBootstrapCommandDispatcher({
-        bootstrapInterventionStateRoot,
         bootstrapInterventionUsage,
     });
     function runHarnessBootstrapCli(argv, cwd = process.cwd(), overrides = {}) {

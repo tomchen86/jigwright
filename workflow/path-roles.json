@@ -71,6 +71,7 @@
       "packages/workflow-engine/src/application/control-plane/maintainer-session-inspection.ts",
       "packages/workflow-engine/src/application/control-plane/maintainer-session.ts",
       "packages/workflow-engine/src/application/control-plane/publish-executor.ts",
+      "packages/workflow-engine/src/application/control-plane/intervention-metadata-disposition.ts",
       "packages/workflow-engine/src/application/execute-task/session.ts",
       "packages/workflow-engine/src/application/governance-intake/current-governance-intake-counts.ts",
       "packages/workflow-engine/src/modules/planning-provider/archive-destination.ts",

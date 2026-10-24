@@ -728,7 +728,7 @@
     {
       "path": "src/application/control-plane/harness-bootstrap-recovery-commands.ts",
       "mode": "100644",
-      "digest": "sha256:0991facbd8706f7f150a7a3eed1df6261936be084fec47d4a55cfe0fe86e98bc"
+      "digest": "sha256:dcc05093e7e51708155411ab3ce460a830650da8016a4edb0bff70b0a9ec0dd8"
     },
     {
       "path": "src/application/control-plane/human-resolution-grant-revocation.ts",
@@ -744,6 +744,11 @@
       "path": "src/application/control-plane/intervention-maintenance.ts",
       "mode": "100644",
       "digest": "sha256:c22ee71c61a3597517380a66680e003f486838be7d8b270f68d9003d6934c8a8"
+    },
+    {
+      "path": "src/application/control-plane/intervention-metadata-disposition.ts",
+      "mode": "100644",
+      "digest": "sha256:98408398451dd2913910cf67ef1eae2e6b5edb01d5c69a152c51ca7d55d38f79"
     },
     {
       "path": "src/application/control-plane/maintainer-apply-audit.ts",
@@ -1328,7 +1333,7 @@
     {
       "path": "src/composition-root/harness-bootstrap-production.ts",
       "mode": "100644",
-      "digest": "sha256:6befb4a7fbb6124f387d9a4059410764aa7aab51503352610faebe78eb8473b8"
+      "digest": "sha256:65b1fd270734a8e2a09899974d1dff49997f9aba3e837760fd5b061ee94cdefa"
     },
     {
       "path": "src/composition-root/human-resolution-grant-production.ts",
@@ -1338,7 +1343,7 @@
     {
       "path": "src/composition-root/human-revocation-production.ts",
       "mode": "100644",
-      "digest": "sha256:d662577eba16f3b143844c3da1bf450107d9172690f5dd666eb44fae3aa27519"
+      "digest": "sha256:382c15342604241b3f5ef9077cfbb4167ef4eeae97caff47b56634678491dd48"
     },
     {
       "path": "src/composition-root/immutable-git-candidate-production.ts",
@@ -1793,7 +1798,7 @@
     {
       "path": "src/entrypoints/cli/harness-bootstrap-cli.ts",
       "mode": "100644",
-      "digest": "sha256:3be7bc0910f1cc3da74c12e898440c108baa69719e7773db8fa3a415ebe8c2cd"
+      "digest": "sha256:29d84a718af368ec45adc77609d61156613d8f484c153eea5f4a9b9d8a21a73d"
     },
     {
       "path": "src/entrypoints/cli/human-command-output.ts",
@@ -1808,7 +1813,7 @@
     {
       "path": "src/entrypoints/cli/intervention-control-bootstrap-cli.ts",
       "mode": "100644",
-      "digest": "sha256:c38b4a6d6d1cae988744f09e97c6d3aefbbb622c12e494da5c849844d4871b6d"
+      "digest": "sha256:61504341ca4fc2df6018ff50dfdc20c6a0186be95832ad2b51c912c7866627f8"
     },
     {
       "path": "src/entrypoints/cli/provider-operations-cli.ts",

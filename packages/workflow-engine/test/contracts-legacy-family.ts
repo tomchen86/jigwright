@@ -25,6 +25,7 @@ import './finalize-authenticated-gate-recovery.integration.test.ts';
 import './finalization-records.contract.test.ts';
 import './proposal-domain.contract.test.ts';
 import './archive-destination.contract.test.ts';
+import './intervention-metadata-disposition.contract.test.ts';
 import './task-strategy-execution.test.ts';
 import './task-strategy-execution-boundary.test.ts';
 import './task-strategy-patch.test.ts';

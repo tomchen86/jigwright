@@ -140,15 +140,51 @@ for (const state of ['absent', 'active', 'adopted'] as const) {
       const status = dispatchBootstrapInterventionCommand(
         ['status', 'parent-A'],
         f.repositoryRoot,
+        {
+          get now(): never {
+            throw new Error('Status must not observe a clock.');
+          },
+          get maintenanceSigner(): never {
+            throw new Error('Status must not resolve a signer.');
+          },
+          get verifyHumanSignature(): never {
+            throw new Error('Status must not inspect signature capabilities.');
+          },
+          get testHooks(): never {
+            throw new Error('Status must not inspect mutation hooks.');
+          },
+        },
       );
-      assert.equal(status.effectsPerformed, false);
+      assert.deepEqual(status, {
+        kind: 'bootstrap-intervention-cli-result.v1',
+        action: 'status',
+        stateRoot: f.stateRoot,
+        bindingPath: f.bindingFile,
+        parentChangeId: 'parent-A',
+        checkpointId: f.checkpoint.checkpointId,
+        workspaceId: f.intervention.childWorkspace.workspaceId,
+        intervention: f.intervention,
+        parentSession: state === 'absent' ? null : f.binding,
+        effectsPerformed: false,
+      });
       assert.deepEqual(f.protectedBytes(), before);
       const result = dispatchBootstrapInterventionCommand(
         ARGS,
         f.repositoryRoot,
         human.dependencies,
       );
-      assert.equal(result.effectsPerformed, true);
+      assert.deepEqual(result, {
+        kind: 'bootstrap-intervention-cli-result.v1',
+        action: 'revoke-intervention',
+        stateRoot: f.stateRoot,
+        bindingPath: f.bindingFile,
+        parentChangeId: 'parent-A',
+        checkpointId: f.checkpoint.checkpointId,
+        workspaceId: null,
+        intervention: null,
+        parentSession: null,
+        effectsPerformed: true,
+      });
       assert.equal(human.signatures(), 1);
       assert.equal(fs.existsSync(f.bindingFile), false);
       assert.equal(fs.existsSync(f.interventionFile), false);
