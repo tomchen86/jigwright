@@ -176,7 +176,9 @@ test('WHY-answer guidance warns about the seam between files before sealing', ()
     },
   });
 
-  const nextSteps = workflowResultNextSteps(proposeResult('submit-why-answers'));
+  const nextSteps = workflowResultNextSteps(
+    proposeResult('submit-why-answers'),
+  );
   assert.equal(nextSteps.length <= 3, true);
   assert.equal(
     nextSteps[0]?.command,

@@ -391,9 +391,7 @@
         },
         {
           "path": "packages/workflow-engine/src/runtime/repository-transaction/archive-delta-verifier.ts",
-          "contains": [
-            "import { readFileAtCommit } from './git.ts';"
-          ]
+          "contains": ["import { readFileAtCommit } from './git.ts';"]
         }
       ],
       "negativeEvidence": null
@@ -464,15 +462,9 @@
         }
       ],
       "negativeEvidence": {
-        "absentPaths": [
-          "workflow/change-providers"
-        ],
-        "absentSymbols": [
-          "adapterContractVersion"
-        ],
-        "searchRoots": [
-          "workflow"
-        ]
+        "absentPaths": ["workflow/change-providers"],
+        "absentSymbols": ["adapterContractVersion"],
+        "searchRoots": ["workflow"]
       }
     },
     {
@@ -512,21 +504,15 @@
       "evidence": [
         {
           "path": "packages/core/src/planning-provider-port.ts",
-          "contains": [
-            "export interface PlanningProviderPort {"
-          ]
+          "contains": ["export interface PlanningProviderPort {"]
         },
         {
           "path": "packages/core/src/agent-runtime-port.ts",
-          "contains": [
-            "export interface AgentRuntimePortV1<"
-          ]
+          "contains": ["export interface AgentRuntimePortV1<"]
         },
         {
           "path": "packages/workflow-engine/src/modules/provider-orchestration/agent-runtime-port.ts",
-          "contains": [
-            "export interface ProviderWorkerRuntimePort {"
-          ]
+          "contains": ["export interface ProviderWorkerRuntimePort {"]
         },
         {
           "path": "packages/core/src/grant-verifier-port.ts",
@@ -537,9 +523,7 @@
         },
         {
           "path": "packages/workflow-engine/src/modules/source/planning-role-policy-paths.ts",
-          "contains": [
-            "return `workflow/agent-plans/${changeId}.json`;"
-          ]
+          "contains": ["return `workflow/agent-plans/${changeId}.json`;"]
         }
       ],
       "negativeEvidence": null
@@ -603,9 +587,7 @@
         },
         {
           "path": "packages/workflow-engine/bootstrap/harness-bootstrap-runtime-closure-pin.ts",
-          "contains": [
-            "HARNESS_BOOTSTRAP_RUNTIME_CLOSURE_MANIFEST_DIGEST"
-          ]
+          "contains": ["HARNESS_BOOTSTRAP_RUNTIME_CLOSURE_MANIFEST_DIGEST"]
         }
       ],
       "negativeEvidence": null
@@ -662,9 +644,7 @@
         },
         {
           "path": "workflow/schemas/session.schema.json",
-          "contains": [
-            "https://jigwright.local/workflow/session.schema.json"
-          ]
+          "contains": ["https://jigwright.local/workflow/session.schema.json"]
         }
       ],
       "negativeEvidence": null
