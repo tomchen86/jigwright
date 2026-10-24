@@ -9,12 +9,12 @@ import { type ProviderRunnerReport } from '../src/modules/provider-orchestration
 import { workflowError, ExitCode } from '../src/foundation/errors/errors.ts';
 import { readProviderInvocationActivity } from '../src/runtime/storage-journal/provider-invocation-activity.ts';
 import { runProviderWorkerAsync } from '../src/entrypoints/worker/provider-worker.ts';
+import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-state.ts';
 import {
-  readProviderInvocation,
   readProviderInvocationCancellationRequest,
-  readProviderInvocationRequest,
   createProviderInvocationCancellationBinding,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-cancellation.ts';
+import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';

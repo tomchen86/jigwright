@@ -24,10 +24,8 @@ import type { ProviderWorkerRuntimePort } from '../src/modules/provider-orchestr
 import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
 import type { InvestigationPlanReviewCoverageRequirementV3 } from '../src/modules/investigation/manifest/investigation-requirement-types.ts';
 import { renderPlanningProviderBinding } from '../src/modules/planning-provider/planning-provider-binding.ts';
-import {
-  claimProviderInvocation,
-  completeProviderInvocation,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import { completeProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-completion.ts';
 import {
   PROVIDER_RUNNER_RESIDUALS,
   type ProviderRunnerReport,

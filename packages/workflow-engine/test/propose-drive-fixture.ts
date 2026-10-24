@@ -5,10 +5,8 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
 import { getInvestigationStatus } from '../src/runtime/investigation-lifecycle/investigation-session.ts';
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import {
-  claimProviderInvocation,
-  completeProviderInvocation,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import { completeProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-completion.ts';
 import {
   resumePropose,
   startPropose,

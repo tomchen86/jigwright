@@ -69,7 +69,7 @@ test('intent and blind-survey DTOs have an effect-free, type-inclusive dependenc
     () =>
       readClosure('modules/source/change-intent.ts', (file, source) =>
         file.endsWith('/modules/source/change-intent.ts')
-          ? `${source}\nimport type { NormalizedChangeIntent } from '../../runtime/storage-journal/provider-invocation-store.ts';`
+          ? `${source}\nimport type { CreateProviderInvocationInput } from '../../runtime/storage-journal/provider-invocation-state.ts';`
           : source,
       ),
     /depends outward/,
@@ -77,10 +77,10 @@ test('intent and blind-survey DTOs have an effect-free, type-inclusive dependenc
 });
 
 test('invocation DTO owners contain only type declarations and no legacy runtime type facade remains', () => {
-  const storageTypeOwners = [
+  const canonicalTypeOwners = [
     [
       'ProviderInvocationManifest',
-      'runtime/storage-journal/provider-invocation-manifest-validation.ts',
+      'modules/assurance/provider-invocation-manifest.ts',
     ],
     [
       'CreateProviderInvocationInput',
@@ -114,12 +114,12 @@ test('invocation DTO owners contain only type declarations and no legacy runtime
       );
       assert.ok(
         !ts.isTypeAliasDeclaration(statement) ||
-          !storageTypeOwners.some(([name]) => name === statement.name.text),
-        `${entry} retains a storage API declaration`,
+          !canonicalTypeOwners.some(([name]) => name === statement.name.text),
+        `${entry} duplicates a declaration owned by another module`,
       );
     }
   }
-  for (const [name, owner] of storageTypeOwners) {
+  for (const [name, owner] of canonicalTypeOwners) {
     const source = ts.createSourceFile(
       owner,
       fs.readFileSync(path.join(sourceRoot, owner), 'utf8'),

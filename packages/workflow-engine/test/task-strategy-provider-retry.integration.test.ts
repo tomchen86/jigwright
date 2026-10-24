@@ -24,12 +24,12 @@ import { readExecutionJobState } from '../src/runtime/storage-journal/execution-
 import { runGitWithEnvironment } from '../src/runtime/repository-transaction/git.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
+import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-state.ts';
 import {
-  readProviderInvocation,
   readProviderInvocationManifest,
   readProviderInvocationRequest,
-  readProviderRetryReservation,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
+import { readProviderRetryReservation } from '../src/runtime/storage-journal/provider-invocation-reservations.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { startSession } from '../src/application/execute-task/session.ts';

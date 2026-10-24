@@ -97,14 +97,16 @@ import {
   readProviderInvocationRequest,
   readProviderInvocationManifest,
 } from './provider-invocation-artifacts.ts';
+import { providerOutputValidator } from '../../modules/assurance/provider-output-contract.ts';
 import {
-  providerOutputValidator,
   assertProviderResultManifestBinding,
+  providerResultFromRunnerReport,
+  assertProviderResult,
+} from './provider-invocation-output-validation.ts';
+import {
   assertCurrentLease,
   assertProviderInvocationRecord,
-  providerResultFromRunnerReport,
   assertMonotonicInvocationTransition,
-  assertProviderResult,
   assertProviderFailure,
 } from './provider-invocation-validation.ts';
 import {

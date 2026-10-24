@@ -71,9 +71,9 @@ import {
 } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {
   providerInvocationExists,
-  readProviderInvocation,
   readProviderInvocationRequest,
-} from '../../runtime/storage-journal/provider-invocation-store.ts';
+} from '../../runtime/storage-journal/provider-invocation-artifacts.ts';
+import { readProviderInvocation } from '../../runtime/storage-journal/provider-invocation-state.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
 import type { ConsumedRoleReplayPort } from '../../modules/provider-orchestration/role-admission-contracts.ts';
 

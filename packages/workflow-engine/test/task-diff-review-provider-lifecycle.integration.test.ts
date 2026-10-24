@@ -5,14 +5,14 @@ import path from 'node:path';
 import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { finalizeTask } from './support/session-lifecycle-host.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import { completeProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-completion.ts';
+import { providerInvocationManifestDigest } from '../src/runtime/storage-journal/provider-invocation-manifest-validation.ts';
+import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-state.ts';
 import {
-  claimProviderInvocation,
-  completeProviderInvocation,
-  providerInvocationManifestDigest,
-  readProviderInvocation,
   readProviderInvocationManifest,
   readProviderInvocationRequest,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { startSession } from '../src/application/execute-task/session.ts';

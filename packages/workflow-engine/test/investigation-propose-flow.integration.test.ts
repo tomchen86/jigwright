@@ -31,7 +31,7 @@ import {
   createProviderInvocationRequest,
   type ProviderInvocationRequest,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import { storeProviderExecutionPolicySnapshot } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { storeProviderExecutionPolicySnapshot } from '../src/runtime/storage-journal/provider-invocation-policy.ts';
 import { fixtureCurrentSchemaName, git, isWorkflowError } from './fixture.ts';
 import {
   mainTerm,

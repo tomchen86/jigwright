@@ -19,17 +19,21 @@ import {
   type ProviderProcessOutcome,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { inspectProviderPromptContextRetentionBinding } from '../src/runtime/storage-journal/provider-execution-governance.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
 import {
-  claimProviderInvocation,
   completeProviderInvocation,
-  createProviderInvocation,
   failProviderInvocation,
-  providerInvocationManifestDigest,
+} from '../src/runtime/storage-journal/provider-invocation-completion.ts';
+import {
+  createProviderInvocation,
   readProviderInvocation,
+} from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import { providerInvocationManifestDigest } from '../src/runtime/storage-journal/provider-invocation-manifest-validation.ts';
+import {
   readProviderInvocationManifest,
   readProviderInvocationRequest,
-  storeProviderExecutionPolicySnapshot,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
+import { storeProviderExecutionPolicySnapshot } from '../src/runtime/storage-journal/provider-invocation-policy.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import {
   providerRuntimeEvidenceId,

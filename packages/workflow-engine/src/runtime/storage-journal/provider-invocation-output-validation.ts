@@ -10,12 +10,6 @@ import {
   providerOutputSchemaGeneration,
   providerOutputValidator,
 } from '../../modules/assurance/provider-output-contract.ts';
-export {
-  providerOutputSchemaGeneration,
-  matchesPersistedProviderOutputSchema,
-  blindSurveyOutputValidator,
-  providerOutputValidator,
-} from '../../modules/assurance/provider-output-contract.ts';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

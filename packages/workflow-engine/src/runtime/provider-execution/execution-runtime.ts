@@ -21,12 +21,10 @@ import { readExecutionJobState } from '../storage-journal/execution-store.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import { listProviderInvocationLifecycleProjections } from '../storage-journal/provider-invocation-lifecycle.ts';
 import { observeInvestigationRuntimeContext } from '../repository-observation/investigation-runtime-context.ts';
-import {
-  readProviderInvocationRequest,
-  readProviderInvocation,
-  providerOutputSchemaGeneration,
-  providerResidualsGeneration,
-} from '../storage-journal/provider-invocation-store.ts';
+import { readProviderInvocationRequest } from '../storage-journal/provider-invocation-artifacts.ts';
+import { readProviderInvocation } from '../storage-journal/provider-invocation-state.ts';
+import { providerOutputSchemaGeneration } from '../../modules/assurance/provider-output-contract.ts';
+import { providerResidualsGeneration } from '../storage-journal/provider-invocation-output-validation.ts';
 import type {
   ProviderOutputSchemaGeneration,
   ProviderResidualsGeneration,

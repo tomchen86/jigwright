@@ -33,23 +33,31 @@ import { PROVIDER_RUNNER_RESIDUALS } from '../src/modules/provider-orchestration
 import {
   BLIND_SURVEY_OUTPUT_SCHEMA,
   BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA,
+} from '../src/modules/provider-orchestration/blind-survey-output.ts';
+import {
   assertProviderInvocationAcceptanceBindingCurrent,
-  blindSurveyOutputValidator,
-  blindSurveyIntentDigest,
-  claimProviderInvocation,
-  completeProviderInvocation,
-  completeProviderInvocationFromRunner,
   createProviderInvocation,
-  failProviderInvocation,
-  providerInvocationManifestDigest,
   prepareProviderInvocationAcceptanceBinding,
   readProviderInvocation,
-  readProviderExecutionPolicySnapshot,
-  readProviderInvocationRequest,
+} from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import { blindSurveyOutputValidator } from '../src/modules/assurance/provider-output-contract.ts';
+import {
+  blindSurveyIntentDigest,
+  providerInvocationManifestDigest,
+} from '../src/runtime/storage-journal/provider-invocation-manifest-validation.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import {
+  completeProviderInvocation,
+  completeProviderInvocationFromRunner,
+  failProviderInvocation,
   recoverProviderInvocationCompletion,
+} from '../src/runtime/storage-journal/provider-invocation-completion.ts';
+import {
+  readProviderExecutionPolicySnapshot,
   storeProviderExecutionPolicySnapshot,
-  type ProviderInvocationAcceptanceBinding,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-policy.ts';
+import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
+import type { ProviderInvocationAcceptanceBinding } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
 import type { BlindSurveyManifest } from '../src/modules/investigation/manifest/blind-survey-manifest.ts';
 import type { ProviderLeaseClaim } from '../src/modules/provider-orchestration/provider-invocation-lifecycle.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';

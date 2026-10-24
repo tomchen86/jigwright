@@ -21,10 +21,8 @@ import { readExecutionJobState } from '../storage-journal/execution-store.ts';
 import { WorkflowError } from '../../foundation/errors/errors.ts';
 import { runGitBuffer } from '../repository-transaction/git.ts';
 import { observeInvestigationRuntimeContext } from '../repository-observation/investigation-runtime-context.ts';
-import {
-  readProviderInvocation,
-  readProviderInvocationRequest,
-} from '../storage-journal/provider-invocation-store.ts';
+import { readProviderInvocation } from '../storage-journal/provider-invocation-state.ts';
+import { readProviderInvocationRequest } from '../storage-journal/provider-invocation-artifacts.ts';
 
 const MAX_FILE_PROBE_BYTES = 64 * 1024;
 

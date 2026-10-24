@@ -32,11 +32,11 @@ import {
   listProviderInvocationLifecycleProjections,
 } from '../storage-journal/provider-invocation-lifecycle.ts';
 import type { InvestigationRuntimePaths } from '@jigwright/core/runtime-path-kernel';
+import { readProviderInvocation } from '../storage-journal/provider-invocation-state.ts';
 import {
-  readProviderInvocation,
   readProviderInvocationRequest,
   readProviderInvocationManifest,
-} from '../storage-journal/provider-invocation-store.ts';
+} from '../storage-journal/provider-invocation-artifacts.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import { type ProviderRetentionReceipt } from '../storage-journal/provider-retention-receipt.ts';
 import type {

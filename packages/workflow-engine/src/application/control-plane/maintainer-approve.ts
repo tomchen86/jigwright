@@ -85,7 +85,7 @@ import {
 } from '../../runtime/storage-journal/maintainer-store.ts';
 import { listProviderInvocationLifecycleProjections } from '../../runtime/storage-journal/provider-invocation-lifecycle.ts';
 import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
-import { readProviderInvocation } from '../../runtime/storage-journal/provider-invocation-store.ts';
+import { readProviderInvocation } from '../../runtime/storage-journal/provider-invocation-state.ts';
 import {
   listConflictingActiveWorkflowSessionIds,
   withRepositoryLifecycleOperation,

@@ -12,15 +12,15 @@ import {
   createProviderInvocationRequest,
   type ProviderInvocationRequest,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
+import { BLIND_SURVEY_OUTPUT_SCHEMA } from '../src/modules/provider-orchestration/blind-survey-output.ts';
 import {
-  BLIND_SURVEY_OUTPUT_SCHEMA,
   blindSurveyIntentDigest,
-  claimProviderInvocation,
-  createProviderInvocation,
-  failProviderInvocation,
   providerInvocationManifestDigest,
-  storeProviderExecutionPolicySnapshot,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-manifest-validation.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import { createProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import { failProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-completion.ts';
+import { storeProviderExecutionPolicySnapshot } from '../src/runtime/storage-journal/provider-invocation-policy.ts';
 import type { BlindSurveyManifest } from '../src/modules/investigation/manifest/blind-survey-manifest.ts';
 import type { ProviderInvocationFailure } from '../src/modules/provider-orchestration/provider-invocation-record.ts';
 import { createFixtureRepository, git } from './fixture.ts';

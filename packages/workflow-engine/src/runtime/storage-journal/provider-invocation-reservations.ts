@@ -38,11 +38,13 @@ import type { ProviderInvocationManifest } from './provider-invocation-manifest-
 import type { ProviderExecutionPolicySnapshotCurrent } from '../../modules/provider-orchestration/provider-execution-policy-snapshot.ts';
 import {
   assertBlindSurveyManifest,
-  assertProviderRequest,
   blindSurveyManifestDigest,
-  assertBlindInvocationBinding,
   assertProviderInvocationManifest,
   providerInvocationManifestDigest,
+} from './provider-invocation-manifest-validation.ts';
+import {
+  assertProviderRequest,
+  assertBlindInvocationBinding,
   assertProviderInvocationBinding,
 } from './provider-invocation-validation.ts';
 import {

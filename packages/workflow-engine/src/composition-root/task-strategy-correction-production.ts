@@ -25,7 +25,7 @@ import {
   assertTaskStrategyImplementationProviderAuthorityCurrent,
   assertTaskStrategyCallerImplementationAuthorityCurrent,
 } from '../runtime/storage-journal/task-strategy-provider-store.ts';
-import { readProviderInvocation } from '../runtime/storage-journal/provider-invocation-store.ts';
+import { readProviderInvocation } from '../runtime/storage-journal/provider-invocation-state.ts';
 
 export const productionTaskStrategyCorrection = createTaskStrategyCorrection({
   observeJournal(gitCommonDirectory, runtimeDirectory) {

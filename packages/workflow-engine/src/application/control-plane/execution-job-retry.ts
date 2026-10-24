@@ -7,7 +7,7 @@
  */
 import type { ProviderRetryAccountingReader } from '../../modules/provider-orchestration/provider-retry-accounting.ts';
 import crypto from 'node:crypto';
-import { readProviderInvocationRequest } from '../../runtime/storage-journal/provider-invocation-store.ts';
+import { readProviderInvocationRequest } from '../../runtime/storage-journal/provider-invocation-artifacts.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   ExitCode,

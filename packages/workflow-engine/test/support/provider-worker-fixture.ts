@@ -62,11 +62,9 @@ import {
   type ProviderInvocationRequest,
 } from '../../src/modules/provider-orchestration/provider-contracts.ts';
 import { canonicalJson } from '../../src/foundation/canonical-json/canonical-json.ts';
-import {
-  providerInvocationManifestDigest,
-  storeProviderExecutionPolicySnapshot,
-  createProviderInvocation,
-} from '../../src/runtime/storage-journal/provider-invocation-store.ts';
+import { providerInvocationManifestDigest } from '../../src/runtime/storage-journal/provider-invocation-manifest-validation.ts';
+import { storeProviderExecutionPolicySnapshot } from '../../src/runtime/storage-journal/provider-invocation-policy.ts';
+import { createProviderInvocation } from '../../src/runtime/storage-journal/provider-invocation-state.ts';
 import type { PlanReviewManifest } from '../../src/modules/assurance/provider-review-manifests.ts';
 import { loadAiAdapterPolicy } from '../../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { type InvestigationManifestV3 } from '../../src/modules/investigation/manifest/investigation-manifest-types.ts';

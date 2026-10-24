@@ -5,7 +5,7 @@ import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { parseCollaborationGrantArguments } from '../src/entrypoints/cli/collaboration-grant-cli.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import { providerOutputSchemaGeneration } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { providerOutputSchemaGeneration } from '../src/modules/assurance/provider-output-contract.ts';
 import { providerInvocationManifestDigest } from '../src/runtime/storage-journal/provider-invocation-manifest-validation.ts';
 import { prepareTaskStrategyGreenFailureRecord } from '../src/modules/provider-orchestration/task-strategy-correction-record.ts';
 import { runGit } from '../src/runtime/repository-transaction/git.ts';

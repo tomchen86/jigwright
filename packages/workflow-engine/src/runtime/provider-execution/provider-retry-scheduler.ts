@@ -19,10 +19,8 @@ import {
   assertPrivateInvestigationDirectory,
   withPrivateRuntimeLock,
 } from '../journal-primitives/investigation-private-files.ts';
-import {
-  readProviderInvocation,
-  readProviderInvocationRequest,
-} from '../storage-journal/provider-invocation-store.ts';
+import { readProviderInvocation } from '../storage-journal/provider-invocation-state.ts';
+import { readProviderInvocationRequest } from '../storage-journal/provider-invocation-artifacts.ts';
 import {
   type ProviderAutomaticRetrySchedule,
   exactTimestamp,

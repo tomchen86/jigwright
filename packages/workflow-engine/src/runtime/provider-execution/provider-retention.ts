@@ -33,7 +33,7 @@ export type ProviderRetentionRuntimeResolver = (cwd: string) => {
   runtime: InvestigationRuntimePaths;
   lifecycleRuntime: SessionRuntimeLayoutV1;
 };
-import { readProviderInvocation } from '../storage-journal/provider-invocation-store.ts';
+import { readProviderInvocation } from '../storage-journal/provider-invocation-state.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   readProviderRetentionReceipt,

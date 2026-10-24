@@ -23,7 +23,7 @@ import { createProviderInvocationRequest } from '../src/modules/provider-orchest
 import {
   BLIND_SURVEY_OUTPUT_SCHEMA,
   BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/modules/provider-orchestration/blind-survey-output.ts';
 import {
   PLAN_REVIEW_OUTPUT_SCHEMA,
   PLAN_REVIEW_PROVIDER_OUTPUT_SCHEMA,

@@ -34,18 +34,24 @@ import {
 import {
   BLIND_SURVEY_OUTPUT_SCHEMA,
   BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA,
+} from '../src/modules/provider-orchestration/blind-survey-output.ts';
+import {
   blindSurveyIntentDigest,
-  claimProviderInvocation,
-  createProviderInvocation,
+  providerInvocationManifestDigest,
+} from '../src/runtime/storage-journal/provider-invocation-manifest-validation.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import { createProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import {
   createProviderRetryReservation,
-  failProviderInvocation,
+  readProviderRetryReservation,
+} from '../src/runtime/storage-journal/provider-invocation-reservations.ts';
+import { failProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-completion.ts';
+import {
   ensureProviderExecutionPolicySnapshotFromSnapshot,
   providerExecutionPolicySnapshotPath,
-  providerInvocationManifestDigest,
   readProviderExecutionPolicySnapshot,
-  readProviderRetryReservation,
   storeProviderExecutionPolicySnapshot,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-policy.ts';
 import type { BlindSurveyManifest } from '../src/modules/investigation/manifest/blind-survey-manifest.ts';
 import { authorizeAutomaticProviderRetry } from '../src/modules/provider-orchestration/provider-retry-decision.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';

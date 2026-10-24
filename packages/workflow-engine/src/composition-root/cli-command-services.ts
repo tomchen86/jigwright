@@ -157,7 +157,7 @@ export type {
   TaskDiffReviewExternalClosureRequestInput,
   TaskDiffReviewExternalSubmissionInput,
 } from '../modules/assurance/task-diff-review-input.ts';
-export { readProviderInvocation } from '../runtime/storage-journal/provider-invocation-store.ts';
+export { readProviderInvocation } from '../runtime/storage-journal/provider-invocation-state.ts';
 
 export const reviseTask = reviseTaskWithRouting.bind(
   undefined,

@@ -56,13 +56,15 @@ import { reserveCollaborationGrantUnderLifecycleLock } from '../storage-journal/
 import { writeEvidenceNode } from '../storage-journal/evidence-object-store.ts';
 import {
   createProviderInvocation,
-  providerInvocationExists,
-  providerInvocationManifestDigest,
   readProviderInvocation,
+} from '../storage-journal/provider-invocation-state.ts';
+import {
+  providerInvocationExists,
   readProviderInvocationManifest,
   readProviderInvocationRequest,
-  storeProviderExecutionPolicySnapshot,
-} from '../storage-journal/provider-invocation-store.ts';
+} from '../storage-journal/provider-invocation-artifacts.ts';
+import { providerInvocationManifestDigest } from '../storage-journal/provider-invocation-manifest-validation.ts';
+import { storeProviderExecutionPolicySnapshot } from '../storage-journal/provider-invocation-policy.ts';
 import {
   createTaskDiffReviewContinuationReservation,
   createTaskDiffReviewReservation,

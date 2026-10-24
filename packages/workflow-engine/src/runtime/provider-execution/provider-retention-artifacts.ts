@@ -17,7 +17,7 @@ import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   readProviderInvocationRequest,
   readProviderInvocationManifest,
-} from '../storage-journal/provider-invocation-store.ts';
+} from '../storage-journal/provider-invocation-artifacts.ts';
 import {
   type ProviderRetentionArtifactName,
   providerRetentionStagingDirectory,

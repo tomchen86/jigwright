@@ -41,7 +41,7 @@ import { withRepositoryLifecycleOperation } from '../src/runtime/session-workspa
 import { readFinalizeTransaction } from '../src/runtime/storage-journal/finalize-transaction.ts';
 import { readFinalizeCancellation } from '../src/runtime/storage-journal/finalize-cancellation.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
-import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-state.ts';
 import { abortSessionAfterProtectedTaskApplyRecoveryUnderGrant } from '../src/application/execute-task/session-abort.ts';
 import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
 import { abortSession } from '../src/composition-root/task-session-production.ts';
