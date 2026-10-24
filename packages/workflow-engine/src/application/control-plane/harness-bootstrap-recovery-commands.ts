@@ -60,7 +60,6 @@ export interface HarnessBootstrapRecoveryCommandBindings extends ReturnType<
     tree: string;
     statusEntries: string[];
   };
-  bootstrapInterventionStateRoot(gitCommonDirectory: string): string;
   bootstrapInterventionUsage(): string;
   importRecoveryAuthorityDescriptor: RecoveryAuthorityDescriptorImporter;
   readRecoveryAuthorityDescriptor: RecoveryAuthorityDescriptorReader;
@@ -91,7 +90,6 @@ export function createHarnessBootstrapRecoveryCommands(
 ) {
   const {
     discoverRepository,
-    bootstrapInterventionStateRoot,
     bootstrapInterventionUsage,
     importRecoveryAuthorityDescriptor,
     readRecoveryAuthorityDescriptor,

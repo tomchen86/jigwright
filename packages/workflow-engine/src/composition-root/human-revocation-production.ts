@@ -33,11 +33,36 @@ export const revokeStoredHumanResolutionGrant =
     authorizeHumanRevocation,
     openHumanResolutionRevocationStore,
   );
-import { revokeMaintenanceGrantForParent as revokeMaintenance } from '../application/control-plane/intervention-maintenance.ts';
+import {
+  readMaintenanceGrantForParent,
+  revokeMaintenanceGrantForParent as revokeMaintenance,
+} from '../application/control-plane/intervention-maintenance.ts';
 export const revokeMaintenanceGrantForParent = revokeMaintenance.bind(
   undefined,
   authorizeHumanRevocation,
 );
+
+import { createInterventionMetadataDisposition } from '../application/control-plane/intervention-metadata-disposition.ts';
+import { runtimePaths } from '../runtime/session-workspace/workflow-session-records.ts';
+import {
+  abandonPersistedIntervention,
+  assertPersistedInterventionAbandonable,
+} from '../runtime/storage-journal/intervention-abandonment.ts';
+import { readLocalEngineBinding } from '../runtime/storage-journal/intervention-parent-binding.ts';
+import { readPersistedIntervention } from '../runtime/storage-journal/intervention-plan-store.ts';
+export const interventionMetadataDisposition =
+  createInterventionMetadataDisposition({
+    discoverRepository,
+    runtimePaths,
+    readMaintenanceGrantForParent,
+    assertPersistedInterventionAbandonable,
+    verifyAuthorityAuditEvents,
+    revokeMaintenanceGrantForParent: revokeMaintenance,
+    authorizeHumanRevocation,
+    abandonPersistedIntervention,
+    readPersistedIntervention,
+    readLocalEngineBinding,
+  });
 
 import { createHumanResolutionGrantVerification } from '../runtime/grants/human-resolution-grant-verification.ts';
 import { loadMaintainerPolicyForResolution } from '../runtime/repository-observation/human-resolution-grants.ts';

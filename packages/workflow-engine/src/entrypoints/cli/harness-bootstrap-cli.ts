@@ -18,7 +18,6 @@ import {
 import { type RecoveryOperationalTrustRootRestoreResult } from '../../modules/authority/recovery-trust-root-contract.ts';
 import {
   assertSupportedBootstrapInterventionCommand,
-  bootstrapInterventionStateRoot,
   bootstrapInterventionUsage,
   dispatchBootstrapInterventionCommand,
 } from './intervention-control-bootstrap-cli.ts';
@@ -52,7 +51,6 @@ export function createHarnessBootstrapCli({
     dispatchRecoveryQuarantineCommand,
     harnessBootstrapUsage,
   } = createHarnessBootstrapCommandDispatcher({
-    bootstrapInterventionStateRoot,
     bootstrapInterventionUsage,
   });
   function runHarnessBootstrapCli(

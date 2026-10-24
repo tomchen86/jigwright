@@ -108,15 +108,13 @@ export function createHarnessBootstrapProduction() {
     productionRecoveryQuarantineAuditSink,
   });
   function createHarnessBootstrapCommandDispatcher({
-    bootstrapInterventionStateRoot,
     bootstrapInterventionUsage,
   }: Pick<
     HarnessBootstrapRecoveryCommandBindings,
-    'bootstrapInterventionStateRoot' | 'bootstrapInterventionUsage'
+    'bootstrapInterventionUsage'
   >) {
     return createHarnessBootstrapRecoveryCommands({
       discoverRepository,
-      bootstrapInterventionStateRoot,
       bootstrapInterventionUsage,
       importRecoveryAuthorityDescriptor,
       readRecoveryAuthorityDescriptor,
