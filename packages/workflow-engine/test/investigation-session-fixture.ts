@@ -49,15 +49,15 @@ import {
   type ProviderProcessOutcome,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { authorizeAutomaticProviderRetry } from '../src/modules/provider-orchestration/provider-retry-decision.ts';
+import { BLIND_SURVEY_OUTPUT_SCHEMA } from '../src/modules/provider-orchestration/blind-survey-output.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
 import {
-  BLIND_SURVEY_OUTPUT_SCHEMA,
-  claimProviderInvocation,
   completeProviderInvocation,
-  createProviderInvocation,
   failProviderInvocation,
-  readProviderInvocationRequest,
-  storeProviderExecutionPolicySnapshot,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-completion.ts';
+import { createProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
+import { storeProviderExecutionPolicySnapshot } from '../src/runtime/storage-journal/provider-invocation-policy.ts';
 import type { BlindSurveyManifest } from '../src/modules/investigation/manifest/blind-survey-manifest.ts';
 import { humanResolutionBlockerBinding } from '../src/modules/investigation/domain/human-resolution-grant-contract.ts';
 import {

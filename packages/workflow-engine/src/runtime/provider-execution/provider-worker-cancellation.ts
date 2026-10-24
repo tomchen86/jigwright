@@ -2,7 +2,7 @@
 import type { InvestigationRuntimePaths } from '@jigwright/core/runtime-path-kernel';
 import type { ProviderWorkerLeaseClaim } from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
 import type { ProviderInvocationCancellationWatcher } from '../../modules/provider-orchestration/agent-runtime-port.ts';
-import { readProviderInvocationCancellationRequestForWorkerClaim } from '../storage-journal/provider-invocation-store.ts';
+import { readProviderInvocationCancellationRequestForWorkerClaim } from '../storage-journal/provider-invocation-cancellation.ts';
 
 const PROVIDER_CANCELLATION_POLL_INTERVAL_MS = 25;
 

@@ -126,7 +126,7 @@ test('current provider Job and Attempt runtime has no legacy projection surface'
       'execution-state-values.ts',
     ],
     'execution-runtime.ts': ['provider-execution-projection.ts'],
-    'provider-invocation-store.ts': [
+    'provider-invocation-cancellation.ts': [
       'provider-invocation-artifacts.ts',
       'provider-invocation-common.ts',
       'provider-invocation-completion.ts',
@@ -154,7 +154,7 @@ test('current provider Job and Attempt runtime has no legacy projection surface'
       /LegacyReplacement|LegacyProjection|prepareLegacyReplacement|previewLegacyReplacementGrantDelta|inspectLegacyExecutionJobSource|authorizeLegacyReplacement|authorizeProviderReplacement|legacyExecutionPolicy|legacyRetryPolicy|legacyEnvironmentDigest/u,
     ],
     [
-      'provider-invocation-store.ts',
+      'provider-invocation-cancellation.ts',
       /LegacyProviderExecutionEntry|materializeLegacyProviderExecutionJob|acceptLegacyProviderAttemptResult|expectedLegacyRevision|legacyRevision/u,
     ],
   ] as const;

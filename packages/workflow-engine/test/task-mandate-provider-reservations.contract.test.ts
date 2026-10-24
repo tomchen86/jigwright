@@ -17,12 +17,10 @@ import {
   startPropose,
 } from '../src/composition-root/propose-production.ts';
 import { readProposeExemptionSession } from '../src/runtime/storage-journal/propose-exemption-store.ts';
-import {
-  claimProviderInvocation,
-  failProviderInvocation,
-  readProviderInvocation,
-  readProviderRetryReservation,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import { failProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-completion.ts';
+import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import { readProviderRetryReservation } from '../src/runtime/storage-journal/provider-invocation-reservations.ts';
 
 import {
   git,

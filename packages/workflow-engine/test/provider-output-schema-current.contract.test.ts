@@ -5,10 +5,8 @@ import {
   createProviderInvocationRequest,
   type ProviderOutputSchema,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import {
-  BLIND_SURVEY_OUTPUT_SCHEMA,
-  providerOutputSchemaGeneration,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { BLIND_SURVEY_OUTPUT_SCHEMA } from '../src/modules/provider-orchestration/blind-survey-output.ts';
+import { providerOutputSchemaGeneration } from '../src/modules/assurance/provider-output-contract.ts';
 import { isWorkflowError } from './fixture.ts';
 
 test('provider output admission accepts only the exact current code-owned schema', () => {

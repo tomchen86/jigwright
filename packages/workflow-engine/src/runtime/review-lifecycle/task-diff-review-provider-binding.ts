@@ -64,7 +64,7 @@ import {
   readEvidenceNode,
   writeEvidenceNode,
 } from '../storage-journal/evidence-object-store.ts';
-import { readProviderInvocation } from '../storage-journal/provider-invocation-store.ts';
+import { readProviderInvocation } from '../storage-journal/provider-invocation-state.ts';
 import {
   createTaskDiffFinalAssuranceBinding,
   readTaskDiffFinalAssuranceBinding,

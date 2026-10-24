@@ -38,10 +38,8 @@ import {
   sha256Buffer,
   fsyncDirectory,
 } from './provider-invocation-common.ts';
-import {
-  assertProviderRequest,
-  assertProviderInvocationManifest,
-} from './provider-invocation-validation.ts';
+import { assertProviderRequest } from './provider-invocation-validation.ts';
+import { assertProviderInvocationManifest } from './provider-invocation-manifest-validation.ts';
 
 export function readPlanReviewSnapshotRuntime(
   paths: InvestigationRuntimePaths,

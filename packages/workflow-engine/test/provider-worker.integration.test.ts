@@ -33,14 +33,20 @@ import { digestPrivateDirectoryEntries } from '../src/runtime/storage-journal/pr
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   readProviderInvocation,
+  prepareProviderInvocationAcceptanceBinding,
+} from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import {
   readProviderInvocationRequest,
   readProviderInvocationManifest,
+} from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
+import {
   claimProviderInvocationForWorker,
-  providerCompletionCandidateExists,
-  prepareProviderInvocationAcceptanceBinding,
-  completeProviderInvocationFromRunner,
   releaseProviderInvocationWorkerFence,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import {
+  providerCompletionCandidateExists,
+  completeProviderInvocationFromRunner,
+} from '../src/runtime/storage-journal/provider-invocation-completion.ts';
 import { type ProviderRunnerReport } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   providerPromptContextStoreRoot,

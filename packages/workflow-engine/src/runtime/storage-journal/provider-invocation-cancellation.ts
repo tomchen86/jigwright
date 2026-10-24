@@ -1,5 +1,5 @@
 /**
- * Expose the provider invocation store API and its grant-backed cancellation operations.
+ * Persist exact provider invocation cancellation requests authorized by prepared Grants.
  *
  * Invariants:
  * - Public names, signatures, and cancellation lock and grant checks stay stable.
@@ -45,118 +45,6 @@ import {
   providerWorkerFenceDigest,
 } from './provider-invocation-workers.ts';
 import { readProviderInvocation } from './provider-invocation-state.ts';
-
-export {
-  BLIND_SURVEY_OUTPUT_SCHEMA,
-  BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA,
-} from '../../modules/provider-orchestration/blind-survey-output.ts';
-export type { ProviderInvocationAcceptanceBinding } from '../../modules/provider-orchestration/agent-runtime-port.ts';
-export { PROVIDER_COMPLETION_GRACE_MS } from './provider-invocation-common.ts';
-export type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
-export type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
-export type {
-  PlanReviewManifest,
-  TaskDiffReviewManifest,
-  TaskDiffReviewContinuationManifest,
-  PlanReviewSnapshotRuntime,
-} from '../../modules/assurance/provider-review-manifests.ts';
-export type {
-  InvestigationStartReservation,
-  InvestigationStartReservationSnapshot,
-  ProviderRetryDecisionBinding,
-  ProviderRetryReservationV2,
-  ProviderRetryReplacementBinding,
-  ProviderRetryReservationV3,
-  ProviderRetryReservationCurrent,
-} from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
-export type {
-  ProviderInvocationFailure,
-  ProviderInvocationLease,
-  ProviderInvocationRecord,
-} from '../../modules/provider-orchestration/provider-invocation-record.ts';
-export type {
-  ProviderAttemptBudgetReservation,
-  ProviderRetryAccountingSnapshot,
-} from '../../modules/provider-orchestration/provider-retry-accounting.ts';
-export type {
-  ProviderExecutionPolicySnapshotV2,
-  ProviderExecutionPolicySnapshotV3,
-  ProviderExecutionPolicySnapshotCurrent,
-} from '../../modules/provider-orchestration/provider-execution-policy-snapshot.ts';
-export type {
-  ProviderLeaseClaim,
-  ProviderWorkerLeaseClaim,
-  ProviderCompletionRecovery,
-  ProviderOutputSchemaGeneration,
-  ProviderResidualsGeneration,
-} from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
-export {
-  blindSurveyManifestDigest,
-  providerInvocationManifestDigest,
-  blindSurveyIntentDigest,
-  providerOutputSchemaGeneration,
-  blindSurveyOutputValidator,
-  providerResidualsGeneration,
-} from './provider-invocation-validation.ts';
-export {
-  createInvestigationStartReservation,
-  readInvestigationStartReservation,
-  readInvestigationStartReservationSnapshot,
-  retireInvestigationStartReservation,
-  createProviderRetryReservation,
-  readProviderRetryReservation,
-} from './provider-invocation-reservations.ts';
-export {
-  createProviderInvocation,
-  readProviderInvocation,
-  readProviderInvocationRuntimeReceipt,
-  readProviderInvocationEvidence,
-  recoverProviderInvocationSupersession,
-  prepareProviderInvocationAcceptanceBinding,
-  assertProviderInvocationAcceptanceBindingCurrent,
-  assertProviderInvocationAcceptanceBindingTerminalCurrent,
-} from './provider-invocation-state.ts';
-export {
-  readPlanReviewSnapshotRuntime,
-  readProviderInvocationRequest,
-  readBlindSurveyManifest,
-  readProviderInvocationManifest,
-  providerInvocationExists,
-} from './provider-invocation-artifacts.ts';
-export {
-  storeProviderExecutionPolicySnapshot,
-  createProviderExecutionPolicySnapshot,
-  ensureProviderExecutionPolicySnapshotFromSnapshot,
-  validateProviderExecutionPolicySnapshot,
-  ensureProviderExecutionPolicySnapshot,
-  readProviderExecutionPolicySnapshot,
-  providerExecutionPolicySnapshotPath,
-} from './provider-invocation-policy.ts';
-export {
-  claimProviderInvocation,
-  claimProviderInvocationForWorker,
-  claimProviderInvocationForWorkerUnderLifecycleLock,
-  releaseProviderInvocationWorkerFence,
-  releaseProviderInvocationWorkerFenceForWorkerClaim,
-  releaseProviderInvocationWorkerFenceUnderLifecycleLock,
-  assertProviderWorkersQuiescentUnderLifecycleLock,
-  expireProviderInvocationLease,
-  expireProviderInvocationLeaseUnderLifecycleLock,
-} from './provider-invocation-workers.ts';
-export {
-  completeProviderInvocation,
-  completeProviderInvocationFromRunner,
-  completeProviderInvocationFromRunnerForWorkerClaim,
-  completeProviderInvocationFromRunnerUnderLifecycleLock,
-  providerCompletionCandidateExists,
-  recoverProviderInvocationCompletion,
-  recoverProviderInvocationCompletionForWorkerUnderLifecycleLock,
-  recoverProviderInvocationCompletionUnderLifecycleLock,
-  recoverProviderInvocationNativeContinuationForReplay,
-  failProviderInvocation,
-  failProviderInvocationForWorkerClaim,
-  failProviderInvocationUnderLifecycleLock,
-} from './provider-invocation-completion.ts';
 
 export function createProviderInvocationCancellationBinding(
   paths: InvestigationRuntimePaths,

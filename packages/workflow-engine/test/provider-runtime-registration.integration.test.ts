@@ -10,11 +10,11 @@ import { startPropose } from '../src/composition-root/propose-production.ts';
 import { inspectProviderPromptContextRetentionBinding } from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import { providerRuntimeEvidenceId } from '../src/runtime/provider-execution/provider-retention.ts';
 import { inspectProviderRetentionMetrics } from '../src/composition-root/retention-production.ts';
+import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-state.ts';
 import {
-  readProviderInvocation,
   readProviderInvocationManifest,
   readProviderInvocationRequest,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
 import {
   pinWorkflowEvidence,
   runEvidenceRetentionMaintenance,

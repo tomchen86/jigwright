@@ -44,18 +44,22 @@ import {
   PROPOSE_POLICY_DIGEST,
   createProviderInvocationRequest,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
+import { storeProviderExecutionPolicySnapshot } from '../src/runtime/storage-journal/provider-invocation-policy.ts';
 import {
-  storeProviderExecutionPolicySnapshot,
   createProviderInvocation,
   prepareProviderInvocationAcceptanceBinding,
-  claimProviderInvocation,
-  failProviderInvocation,
   readProviderInvocation,
+} from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import {
+  failProviderInvocation,
+  completeProviderInvocationFromRunner,
+} from '../src/runtime/storage-journal/provider-invocation-completion.ts';
+import {
   providerInvocationManifestDigest,
   blindSurveyIntentDigest,
-  BLIND_SURVEY_OUTPUT_SCHEMA,
-  completeProviderInvocationFromRunner,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-manifest-validation.ts';
+import { BLIND_SURVEY_OUTPUT_SCHEMA } from '../src/modules/provider-orchestration/blind-survey-output.ts';
 import type { PlanReviewManifest } from '../src/modules/assurance/provider-review-manifests.ts';
 import type { BlindSurveyManifest } from '../src/modules/investigation/manifest/blind-survey-manifest.ts';
 import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';

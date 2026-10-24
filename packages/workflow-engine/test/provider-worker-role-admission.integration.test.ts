@@ -40,12 +40,12 @@ import {
   createProviderInvocationRequest,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import { providerInvocationManifestDigest } from '../src/runtime/storage-journal/provider-invocation-manifest-validation.ts';
+import { storeProviderExecutionPolicySnapshot } from '../src/runtime/storage-journal/provider-invocation-policy.ts';
 import {
-  providerInvocationManifestDigest,
-  storeProviderExecutionPolicySnapshot,
   createProviderInvocation,
   readProviderInvocation,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-state.ts';
 import type { PlanReviewManifest } from '../src/modules/assurance/provider-review-manifests.ts';
 import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { createCurrentAgentRuntimeAssignmentV1 } from '../src/composition-root/change-role-assignment-production.ts';

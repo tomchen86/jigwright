@@ -15,11 +15,9 @@ import {
   type ProviderInvocationRequest,
   type ProviderInvocationRequestInput,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import {
-  BLIND_SURVEY_OUTPUT_SCHEMA,
-  createProviderExecutionPolicySnapshot,
-  type ProviderInvocationAcceptanceBinding,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { BLIND_SURVEY_OUTPUT_SCHEMA } from '../src/modules/provider-orchestration/blind-survey-output.ts';
+import { createProviderExecutionPolicySnapshot } from '../src/runtime/storage-journal/provider-invocation-policy.ts';
+import type { ProviderInvocationAcceptanceBinding } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
 import {
   ensureProviderPromptContext,
   providerPromptContextStoreRoot,

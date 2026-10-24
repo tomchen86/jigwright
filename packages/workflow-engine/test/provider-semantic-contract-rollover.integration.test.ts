@@ -14,7 +14,7 @@ import {
   inspectProviderPromptContextRetentionBinding,
   prepareProviderPromptContextForInvocation,
 } from '../src/runtime/storage-journal/provider-execution-governance.ts';
-import { BLIND_SURVEY_OUTPUT_SCHEMA } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { BLIND_SURVEY_OUTPUT_SCHEMA } from '../src/modules/provider-orchestration/blind-survey-output.ts';
 
 const FIRST_AT = new Date('2026-08-10T02:00:00.000Z');
 const SECOND_AT = new Date('2026-08-10T02:01:00.000Z');

@@ -25,10 +25,8 @@ import { type ProviderRunnerReport } from '../src/runtime/provider-execution/pro
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { renderPlanningProviderBinding } from '../src/modules/planning-provider/planning-provider-binding.ts';
-import {
-  readProviderInvocation,
-  readProviderInvocationRequest,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
 import {
   createFixtureRepository,
   git,

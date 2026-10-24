@@ -95,14 +95,18 @@ import {
 } from './provider-invocation-common.ts';
 import {
   assertProviderInvocationManifest,
-  assertProviderRequest,
   providerInvocationManifestDigest,
+} from './provider-invocation-manifest-validation.ts';
+import {
+  assertProviderRequest,
   assertProviderInvocationBinding,
   assertProviderInvocationRecord,
-  assertProviderResult,
-  assertProviderResultManifestBinding,
   assertMonotonicInvocationTransition,
 } from './provider-invocation-validation.ts';
+import {
+  assertProviderResult,
+  assertProviderResultManifestBinding,
+} from './provider-invocation-output-validation.ts';
 import { readProviderExecutionPolicySnapshot } from './provider-invocation-policy.ts';
 import {
   createPlanReviewSnapshotFiles,

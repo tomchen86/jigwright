@@ -26,18 +26,22 @@ import {
   inspectInvestigationResolutionState,
 } from '../src/runtime/storage-journal/human-resolution-state.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
 import {
-  claimProviderInvocation,
   createInvestigationStartReservation,
-  createProviderInvocation,
   createProviderRetryReservation,
-  failProviderInvocation,
-  readBlindSurveyManifest,
   readInvestigationStartReservation,
+} from '../src/runtime/storage-journal/provider-invocation-reservations.ts';
+import {
+  createProviderInvocation,
   readProviderInvocation,
+} from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import { failProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-completion.ts';
+import {
+  readBlindSurveyManifest,
   readProviderInvocationRequest,
-  storeProviderExecutionPolicySnapshot,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
+import { storeProviderExecutionPolicySnapshot } from '../src/runtime/storage-journal/provider-invocation-policy.ts';
 import { git, isWorkflowError, runtimeRoot } from './fixture.ts';
 import {
   FIRST_INSTANT,

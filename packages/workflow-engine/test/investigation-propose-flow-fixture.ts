@@ -24,12 +24,12 @@ import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts'
 import { readInvestigationSession } from '../src/runtime/storage-journal/investigation-session-records.ts';
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { renderPlanningProviderBinding } from '../src/modules/planning-provider/planning-provider-binding.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
 import {
-  claimProviderInvocation,
   completeProviderInvocation,
   failProviderInvocation,
-  readProviderInvocationRequest,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-completion.ts';
+import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 import { installPlanReviewAuthority } from './plan-review-authority-fixture.ts';
 import {

@@ -36,7 +36,7 @@ import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext }
 import { loadActiveSessionContext } from '../repository-observation/workflow-session-context.ts';
 import { readCollaborationGrantInspection } from '../storage-journal/collaboration-grant-records.ts';
 import { readEvidenceNode } from '../storage-journal/evidence-object-store.ts';
-import { readProviderInvocation } from '../storage-journal/provider-invocation-store.ts';
+import { readProviderInvocation } from '../storage-journal/provider-invocation-state.ts';
 import {
   listAllTaskDiffExternalContinuationReservations,
   listTaskDiffExternalReviewBindings,

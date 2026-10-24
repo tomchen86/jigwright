@@ -663,7 +663,7 @@
     {
       "path": "src/application/control-plane/execution-job-retry.ts",
       "mode": "100644",
-      "digest": "sha256:1aade2532f04689914844edfedc86d5995c23c902c00ebaa8e318161ec18829d"
+      "digest": "sha256:a7e2431292912e7aed8f4c194a2bb2ec697fa789bea22de0d29aff25eef61e6e"
     },
     {
       "path": "src/application/control-plane/execution-replacement-budget.ts",
@@ -683,7 +683,7 @@
     {
       "path": "src/application/control-plane/execution-replacement.ts",
       "mode": "100644",
-      "digest": "sha256:0b248e66611dc7606cec0ef3afee53af3ac838cb2c4ef46cb0622eca00da0e47"
+      "digest": "sha256:52ece19ad9de0a17353c019c4fda3397ff1beb0eefea2993bfef23d177feb109"
     },
     {
       "path": "src/application/control-plane/external-effect-grant-context.ts",
@@ -768,7 +768,7 @@
     {
       "path": "src/application/control-plane/maintainer-approve.ts",
       "mode": "100644",
-      "digest": "sha256:4f6a975c20c53499bfc3e8de75b58abe2558659400c2587f6a0b92706dc09004"
+      "digest": "sha256:daa55606573d10964679a51dd2d3da87d9d421d039282a8d314117029cb51c9e"
     },
     {
       "path": "src/application/control-plane/maintainer-attestation.ts",
@@ -1173,7 +1173,7 @@
     {
       "path": "src/composition-root/change-role-assignment-grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:e1dc962152e49bf84b7face7e1a20b5238a0ce9ab2f45a6aa77aa2553151b3e5"
+      "digest": "sha256:a0dfd57b4ad2f9793ed8b19a0f1d45a7e483b6929776954d2a07a15a16799d0d"
     },
     {
       "path": "src/composition-root/change-role-assignment-production.ts",
@@ -1233,7 +1233,7 @@
     {
       "path": "src/composition-root/cli-command-services.ts",
       "mode": "100644",
-      "digest": "sha256:27d905e4dff5c532ed7c194f22245fca76ab4c2f748eb46943e6fae338d9d9bc"
+      "digest": "sha256:cba6bdbc728ca1aa6a58911c264b70badc7ac4748ebccf8711b7e0dec5220150"
     },
     {
       "path": "src/composition-root/collaboration-grant-issuance-production.ts",
@@ -1508,7 +1508,7 @@
     {
       "path": "src/composition-root/provider-invocation-cancellation-grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:14a45bca2957615999e04e2e45f967b697c9cc0c719cd1da35359799092b8737"
+      "digest": "sha256:c7ec5018fe5e7251883e67953b40b9cc527f8d015502dc12e00f4636a11ad437"
     },
     {
       "path": "src/composition-root/provider-operations-cli-production.ts",
@@ -1518,7 +1518,7 @@
     {
       "path": "src/composition-root/provider-retry-production.ts",
       "mode": "100644",
-      "digest": "sha256:f315be1a3c7d9a5521486c6665ae83723d52e2572caee50fe2df6d55821bda90"
+      "digest": "sha256:9811e6370074b3c2a1d3fc860899bf0eb5fcd46611907915951d92e71cbc27b3"
     },
     {
       "path": "src/composition-root/provider-worker-assignment-production.ts",
@@ -1533,7 +1533,7 @@
     {
       "path": "src/composition-root/provider-worker-dispatch-production.ts",
       "mode": "100644",
-      "digest": "sha256:4db8606b8abe1861f1f11959f6f357e5afa7e01ec8cdc96ae1bea00516d9411a"
+      "digest": "sha256:82aa25a834800af2579a553456b3619fb0235b1ae5c796cfefab5c63af2866aa"
     },
     {
       "path": "src/composition-root/provider-worker-failure-production.ts",
@@ -1658,7 +1658,7 @@
     {
       "path": "src/composition-root/task-strategy-correction-production.ts",
       "mode": "100644",
-      "digest": "sha256:3b74bc4ae1d12a83403e7b8811cdbdb7b4c99ac89beac01a3c4900c8992ecbeb"
+      "digest": "sha256:e49c588b9122ef0226f2d8f6b5b88668974d079b52dceb6eb6bedc93fa65cef0"
     },
     {
       "path": "src/composition-root/task-strategy-execution-production.ts",
@@ -1678,7 +1678,7 @@
     {
       "path": "src/composition-root/task-strategy-production.ts",
       "mode": "100644",
-      "digest": "sha256:d8202b5fd02484ae0eceb0dc0027a733783f06f797bf2a5ea8bc172e3ca18f28"
+      "digest": "sha256:3cb6bf57c01974c49a6931a89bea0b8fd1ccaba6f7c762ac7d3bda8413beb23e"
     },
     {
       "path": "src/composition-root/task-strategy-red-revision-production.ts",
@@ -3883,7 +3883,7 @@
     {
       "path": "src/runtime/investigation-lifecycle/investigation-session.ts",
       "mode": "100644",
-      "digest": "sha256:bfb3b84c91cf5f6274bcb94544d69b878106d27a697479d9808da8384cbeb70a"
+      "digest": "sha256:7e5e33baef8355221b7733f75bb6103da981bd465b9da15119aa1d980a536f53"
     },
     {
       "path": "src/runtime/journal-primitives/evidence-store-values.ts",
@@ -4183,12 +4183,12 @@
     {
       "path": "src/runtime/provider-execution/execution-runtime.ts",
       "mode": "100644",
-      "digest": "sha256:ff176a25c196f79571092e97f504127906bb893627349dd3a8363fa014b7e362"
+      "digest": "sha256:32caa4b92a9dc520bc252d06016b6c07e062f88101c8854e3a65f6d803099070"
     },
     {
       "path": "src/runtime/provider-execution/provider-availability-pilot.ts",
       "mode": "100644",
-      "digest": "sha256:20e5c1194af58d78375afba2c0e0ec6b0156a4b9f3535c8fc06b88ed2eafffa9"
+      "digest": "sha256:3c353f8b8ba3991ef5ee2667cc32f2ee3e3666e5d6c02fe8aaed4838573e220c"
     },
     {
       "path": "src/runtime/provider-execution/provider-availability-record.ts",
@@ -4203,12 +4203,12 @@
     {
       "path": "src/runtime/provider-execution/provider-probe-executor.ts",
       "mode": "100644",
-      "digest": "sha256:4cdaef1d6b5dbdb85007560424af1f852c2c2d733acc94b7419575ee62c0aeed"
+      "digest": "sha256:8eb1729879873913f460ef1a40d857c38250f4ce6dbd28be4fe7b94a65ccf475"
     },
     {
       "path": "src/runtime/provider-execution/provider-retention-artifacts.ts",
       "mode": "100644",
-      "digest": "sha256:550a7d8c0f7fb8962c609a1878288913066278044f2d61751004585e6bf6f416"
+      "digest": "sha256:adce196134bf046e80f177482c8ac378c7cc117985dc7a5c45f3e5ac993e5edf"
     },
     {
       "path": "src/runtime/provider-execution/provider-retention-files.ts",
@@ -4218,12 +4218,12 @@
     {
       "path": "src/runtime/provider-execution/provider-retention-observation.ts",
       "mode": "100644",
-      "digest": "sha256:cf933232dc00e1a1987eab21fa3cfa97caef636dfcaff29bf69e65bfe142ad58"
+      "digest": "sha256:91eadb9595df589dc51081da482b62620da7635d106bf58e1c70d53db8908ab5"
     },
     {
       "path": "src/runtime/provider-execution/provider-retention-transaction.ts",
       "mode": "100644",
-      "digest": "sha256:77dd4060f58daefe26bdbf11e2e1774b2530a3ac59720dc946de3a844daeb496"
+      "digest": "sha256:ad9cdbc4c727a6a8f7b6f64bf20afa7ea1c2d633cea28bb69d7e49b2d0f1f338"
     },
     {
       "path": "src/runtime/provider-execution/provider-retention-values.ts",
@@ -4233,12 +4233,12 @@
     {
       "path": "src/runtime/provider-execution/provider-retention.ts",
       "mode": "100644",
-      "digest": "sha256:f566f5ad80aac5150cfb3a5e70f49032854b84d1257144e7ae93f1c6e42eb448"
+      "digest": "sha256:a0c0ab4731658cb9ff6b7afb10d3793a164f2a98de5c6d1808809d148706f43e"
     },
     {
       "path": "src/runtime/provider-execution/provider-retry-scheduler.ts",
       "mode": "100644",
-      "digest": "sha256:6a0a6159ef345c7e9ade585f4557bbd5e2cf14201f77a870a9981b59fdcecc1a"
+      "digest": "sha256:223a3f928ac371a12411eaf5b02bb638b8abc5d0ba042de5435377c4b5846f48"
     },
     {
       "path": "src/runtime/provider-execution/provider-retry-store.ts",
@@ -4278,12 +4278,12 @@
     {
       "path": "src/runtime/provider-execution/provider-runner.ts",
       "mode": "100644",
-      "digest": "sha256:44248158284058f6a26a1e32e5f23d0a4e0d381dde7b0b17ec587ed5e23e62af"
+      "digest": "sha256:44e632014cd5b589f6b7379a64e9af8dc0b671e6fe2a80954df9731e7d06c616"
     },
     {
       "path": "src/runtime/provider-execution/provider-worker-cancellation.ts",
       "mode": "100644",
-      "digest": "sha256:43b7b2ad0cb36fcdb425f070974bc32ff778b9145f26ce9f447ee64eceabf228"
+      "digest": "sha256:ea3caca775ef234b72552ca1d3276ce9b192c1959d3547ecbb4c453edbc72d7f"
     },
     {
       "path": "src/runtime/provider-execution/provider-worker-launcher.ts",
@@ -4783,7 +4783,7 @@
     {
       "path": "src/runtime/review-lifecycle/task-diff-review-completion.ts",
       "mode": "100644",
-      "digest": "sha256:15b22532fa1d6019d70d4dd32441424f0f617dccfa661d0d87b8c343daec0c4d"
+      "digest": "sha256:72e08d3eca1553ad1b2dcef9a740cb5dc9eeb4dd9efd05fbedcae547ee3cd922"
     },
     {
       "path": "src/runtime/review-lifecycle/task-diff-review-context.ts",
@@ -4803,12 +4803,12 @@
     {
       "path": "src/runtime/review-lifecycle/task-diff-review-external-continuation-binding.ts",
       "mode": "100644",
-      "digest": "sha256:c96ef6029afce584d6cfb9a40c71b8a9dd5d7877c303a65362db8a321386d0fa"
+      "digest": "sha256:2d5b359aec7f4ce95e9e54708f7b24bbe52cf2b66e4b56feebd33bd2678feeb5"
     },
     {
       "path": "src/runtime/review-lifecycle/task-diff-review-inspection.ts",
       "mode": "100644",
-      "digest": "sha256:efbb4c46c6506a093b02ba3b062074e769f758cbdbee96ff4b92d2cdeb9fd1f9"
+      "digest": "sha256:b2009a82abc3f585b337186c12cffedbe676c54d417aaa0098b52ab26bd86780"
     },
     {
       "path": "src/runtime/review-lifecycle/task-diff-review-lineage.ts",
@@ -4818,17 +4818,17 @@
     {
       "path": "src/runtime/review-lifecycle/task-diff-review-provider-binding.ts",
       "mode": "100644",
-      "digest": "sha256:4c13b8d107538fd0ff99acd1caf2b22b061b09833c029713fea0c70dd9c2acf0"
+      "digest": "sha256:45765e4e8ebadda1da2b35652c5f36b3d94a011e0d818b700413ddc6493b5910"
     },
     {
       "path": "src/runtime/review-lifecycle/task-diff-review-provider-commands.ts",
       "mode": "100644",
-      "digest": "sha256:d862013533255786516acb5704c409004915ef57d5984e9ae4dca6e4e151b308"
+      "digest": "sha256:ac8013fafafed0a70127930de20ea5c5db6da9e6de75d69b55d948b08b5b078d"
     },
     {
       "path": "src/runtime/review-lifecycle/task-diff-review-provider-reservations.ts",
       "mode": "100644",
-      "digest": "sha256:5499775c3f1634e936241c9f3ab0921ce86d38ac24ba5fef5ce820ca8cf3bb16"
+      "digest": "sha256:d33f7d07512dec7f39b37b5ccee6f9218e6d557c6ede8228d0c3ce7a12ea4bac"
     },
     {
       "path": "src/runtime/review-lifecycle/task-diff-review-subject.ts",
@@ -5393,7 +5393,12 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-artifacts.ts",
       "mode": "100644",
-      "digest": "sha256:47664a193aa056a6a00c3fff5f39eb2abe03390f512d800a91ac0983efcd24fe"
+      "digest": "sha256:08f8e93fbd4faf22d34fc004754680451559985e37e6e2c30f653f39b08de94e"
+    },
+    {
+      "path": "src/runtime/storage-journal/provider-invocation-cancellation.ts",
+      "mode": "100644",
+      "digest": "sha256:047400b714b22434a0d35cda580f5a81445cbe53795b9e34ee60c37958078cc7"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-common.ts",
@@ -5403,7 +5408,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-completion.ts",
       "mode": "100644",
-      "digest": "sha256:7cf7af5c1aabd9a94f10e9a937bd0b435a68d9579d607f4709ac17f926ff5535"
+      "digest": "sha256:fcbad5b3215471ef0687f6bb2bd865a8f69b8ee79899bfeb8c0882f69bf589d6"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-lifecycle.ts",
@@ -5418,7 +5423,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-output-validation.ts",
       "mode": "100644",
-      "digest": "sha256:d27ab4acfe408ef30490547701bf5740fe309c5b1b5a4b2131187952b0ee8515"
+      "digest": "sha256:d8f5a85b8c2bd3714b3e4e2734eb0b3dbcf8a5f498cf3dcdd28383878335cc27"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-policy.ts",
@@ -5428,17 +5433,12 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-reservations.ts",
       "mode": "100644",
-      "digest": "sha256:c605d0134be08bc05372e7d90ccb497ce9b1871a2f9e92d20f02cb0dcec5ab9c"
+      "digest": "sha256:f9614ff383051755b180959660c903443d8dc5ac77aa8b958924666508fc14d7"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-state.ts",
       "mode": "100644",
-      "digest": "sha256:089adbf4f8a0238e43b6fd07080ea2db832ec3b840cace308f4f0bb572f170d0"
-    },
-    {
-      "path": "src/runtime/storage-journal/provider-invocation-store.ts",
-      "mode": "100644",
-      "digest": "sha256:67915f85750a8be966872e12bd3b9d63cfda3b523ddaabf7dc5cbdddfdd0ef12"
+      "digest": "sha256:c487053e0412d1d139b7552da74a0bc399ae6df1198271768ea94ef7e8a5302e"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-supersession-schema.ts",
@@ -5453,7 +5453,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-validation.ts",
       "mode": "100644",
-      "digest": "sha256:9db930de46fbb80cecdd41312bd7e6ab8f5bde51c81ecddf33fd5b73ef85ba7e"
+      "digest": "sha256:09a71f1084d64f42f21b200e1a484a07258773c1b6c1697ca780f9e540180177"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-workers.ts",
@@ -5653,7 +5653,7 @@
     {
       "path": "src/runtime/storage-journal/task-strategy-provider-attempts.ts",
       "mode": "100644",
-      "digest": "sha256:d5a9e317caa8a1e20c2a9c96e82557d9d2d0afbf2528e8e0fd8f3b4de92df5da"
+      "digest": "sha256:f04f3d9ef90fee4036a8654702de445d2c8c3ea6199e4a18cfaea590fd9b001c"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-provider-authority.ts",

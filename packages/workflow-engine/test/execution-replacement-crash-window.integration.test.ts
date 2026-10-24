@@ -20,13 +20,15 @@ import {
   startPropose,
 } from '../src/composition-root/propose-production.ts';
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
 import {
-  claimProviderInvocation,
   completeProviderInvocation,
   failProviderInvocation,
+} from '../src/runtime/storage-journal/provider-invocation-completion.ts';
+import {
   providerInvocationExists,
   readProviderInvocationRequest,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
 

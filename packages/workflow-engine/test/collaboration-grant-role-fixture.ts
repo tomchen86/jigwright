@@ -6,10 +6,8 @@ import type {
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-  claimProviderInvocation,
-  completeProviderInvocation,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import { completeProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-completion.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import type { ProviderRunnerReport } from '../src/runtime/provider-execution/provider-runner.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';

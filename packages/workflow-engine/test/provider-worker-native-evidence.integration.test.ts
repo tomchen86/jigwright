@@ -10,10 +10,8 @@ import { readEvidenceNode } from '../src/runtime/storage-journal/evidence-node-s
 import { PROPOSE_POLICY_DIGEST } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
-import {
-  readProviderInvocationRequest,
-  readProviderInvocation,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
+import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-state.ts';
 import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import assert from 'node:assert/strict';
 import {

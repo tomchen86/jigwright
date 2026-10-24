@@ -26,11 +26,11 @@ import {
   type InvestigationRuntimePaths,
 } from '../paths/runtime-paths.ts';
 import { assertInvocationId } from '../../foundation/repository-path/repository-path.ts';
+import { readProviderInvocationRequest } from '../storage-journal/provider-invocation-artifacts.ts';
 import {
-  readProviderInvocationRequest,
   readProviderExecutionPolicySnapshot,
   providerExecutionPolicySnapshotPath,
-} from '../storage-journal/provider-invocation-store.ts';
+} from '../storage-journal/provider-invocation-policy.ts';
 import {
   type ProviderId,
   isProviderId,

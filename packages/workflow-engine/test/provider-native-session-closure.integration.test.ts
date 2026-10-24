@@ -13,16 +13,20 @@ import { createProviderInvocationRequest } from '../src/modules/provider-orchest
 import {
   BLIND_SURVEY_OUTPUT_SCHEMA,
   BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA,
-  blindSurveyIntentDigest,
-  blindSurveyOutputValidator,
-  claimProviderInvocation,
+} from '../src/modules/provider-orchestration/blind-survey-output.ts';
+import { blindSurveyIntentDigest } from '../src/runtime/storage-journal/provider-invocation-manifest-validation.ts';
+import { blindSurveyOutputValidator } from '../src/modules/assurance/provider-output-contract.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import {
   completeProviderInvocationFromRunner,
+  recoverProviderInvocationCompletion,
+} from '../src/runtime/storage-journal/provider-invocation-completion.ts';
+import {
   createProviderInvocation,
   prepareProviderInvocationAcceptanceBinding,
   readProviderInvocation,
-  recoverProviderInvocationCompletion,
-  storeProviderExecutionPolicySnapshot,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import { storeProviderExecutionPolicySnapshot } from '../src/runtime/storage-journal/provider-invocation-policy.ts';
 import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import {
   providerExecutionAdmissionAuthorityPath,

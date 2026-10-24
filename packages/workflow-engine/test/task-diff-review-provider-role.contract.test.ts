@@ -7,7 +7,7 @@ import {
   type ProviderInvocationRequest,
   type ProviderProcessOutcome,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import { providerInvocationManifestDigest } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { providerInvocationManifestDigest } from '../src/runtime/storage-journal/provider-invocation-manifest-validation.ts';
 import type { TaskDiffReviewManifest } from '../src/modules/assurance/provider-review-manifests.ts';
 import { requireProviderCapability } from '../src/modules/provider-orchestration/provider-registry.ts';
 import { admitRoleResult } from '../src/composition-root/role-admission-production.ts';

@@ -15,10 +15,8 @@ import { readExecutionJobState } from '../src/runtime/storage-journal/execution-
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { startPropose } from '../src/composition-root/propose-production.ts';
-import {
-  readProviderInvocation,
-  readProviderInvocationRequest,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import {
   listProviderRetryScheduleReceipts,

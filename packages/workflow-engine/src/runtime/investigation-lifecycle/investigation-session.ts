@@ -70,19 +70,27 @@ import type { ProviderInvocationRequest } from '../../modules/provider-orchestra
 import {
   blindSurveyIntentDigest,
   blindSurveyManifestDigest,
+} from '../storage-journal/provider-invocation-manifest-validation.ts';
+import {
   createInvestigationStartReservation,
-  createProviderInvocation,
   createProviderRetryReservation,
+  readInvestigationStartReservation,
+  readProviderRetryReservation,
+} from '../storage-journal/provider-invocation-reservations.ts';
+import {
+  createProviderInvocation,
+  readProviderInvocation,
+} from '../storage-journal/provider-invocation-state.ts';
+import {
   ensureProviderExecutionPolicySnapshot,
   ensureProviderExecutionPolicySnapshotFromSnapshot,
-  expireProviderInvocationLeaseUnderLifecycleLock,
+} from '../storage-journal/provider-invocation-policy.ts';
+import { expireProviderInvocationLeaseUnderLifecycleLock } from '../storage-journal/provider-invocation-workers.ts';
+import {
   providerInvocationExists,
   readBlindSurveyManifest,
-  readInvestigationStartReservation,
-  readProviderInvocation,
   readProviderInvocationRequest,
-  readProviderRetryReservation,
-} from '../storage-journal/provider-invocation-store.ts';
+} from '../storage-journal/provider-invocation-artifacts.ts';
 import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
 import type { InvestigationStartReservation } from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
 import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';

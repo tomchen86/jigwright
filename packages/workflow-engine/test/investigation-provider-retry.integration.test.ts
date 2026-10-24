@@ -36,16 +36,22 @@ import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   claimProviderInvocation,
-  completeProviderInvocation,
-  createProviderInvocation,
-  createProviderRetryReservation,
   expireProviderInvocationLease,
+} from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import {
+  completeProviderInvocation,
   failProviderInvocation,
+} from '../src/runtime/storage-journal/provider-invocation-completion.ts';
+import {
+  createProviderInvocation,
   readProviderInvocation,
-  readProviderInvocationRequest,
+} from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import {
+  createProviderRetryReservation,
   readProviderRetryReservation,
-  storeProviderExecutionPolicySnapshot,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-reservations.ts';
+import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
+import { storeProviderExecutionPolicySnapshot } from '../src/runtime/storage-journal/provider-invocation-policy.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 import {
   FIRST_INSTANT,

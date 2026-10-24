@@ -5,10 +5,8 @@ import { processProviderFailureRetry as processFailure } from '../application/pr
 import { createProviderRetryRuntime } from '../runtime/provider-execution/provider-retry-scheduler.ts';
 import { loadInvestigationRuntimeContext } from './lifecycle-context.ts';
 import { inspectExecutionJob } from '../runtime/provider-execution/execution-runtime.ts';
-import {
-  readProviderRetryReservation,
-  readProviderInvocationRequest,
-} from '../runtime/storage-journal/provider-invocation-store.ts';
+import { readProviderRetryReservation } from '../runtime/storage-journal/provider-invocation-reservations.ts';
+import { readProviderInvocationRequest } from '../runtime/storage-journal/provider-invocation-artifacts.ts';
 import { readInvestigationSession } from '../runtime/storage-journal/investigation-session-records.ts';
 import { loadAiAdapterPolicy } from '../runtime/provider-policy/ai-adapter-policy.ts';
 import { executeProviderReadOnlyProbe } from '../runtime/provider-execution/provider-probe-executor.ts';

@@ -47,11 +47,11 @@ import type { CollaborationGrantSelectionCoreBinding } from '../../modules/autho
 import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../repository-observation/investigation-runtime-context.ts';
 import { loadActiveSessionContext } from '../repository-observation/workflow-session-context.ts';
 import { listActiveWorkflowSessionIds } from '../session-workspace/session-store.ts';
+import { readProviderInvocation } from '../storage-journal/provider-invocation-state.ts';
 import {
-  readProviderInvocation,
   readProviderInvocationManifest,
   readProviderInvocationRequest,
-} from '../storage-journal/provider-invocation-store.ts';
+} from '../storage-journal/provider-invocation-artifacts.ts';
 import {
   readTaskDiffReviewContinuationReservation,
   readTaskDiffReviewReservation,

@@ -10,10 +10,8 @@ import {
   launchProviderWorker,
   type ProviderDispatcherHost,
 } from '../runtime/provider-execution/provider-worker-launcher.ts';
-import {
-  readProviderInvocation,
-  readProviderInvocationRequest,
-} from '../runtime/storage-journal/provider-invocation-store.ts';
+import { readProviderInvocation } from '../runtime/storage-journal/provider-invocation-state.ts';
+import { readProviderInvocationRequest } from '../runtime/storage-journal/provider-invocation-artifacts.ts';
 import { loadInvestigationRuntimeContext } from './lifecycle-context.ts';
 import { resolveCurrentProviderWorkerAssignment } from './provider-worker-assignment-production.ts';
 

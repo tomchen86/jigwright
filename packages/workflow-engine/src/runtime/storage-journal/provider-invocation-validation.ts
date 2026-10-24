@@ -3,7 +3,7 @@
  *
  * Invariants:
  * - Current record schemas, failure shapes, request bindings, and lease checks stay exact.
- * - Manifest and output validation remain available through this existing entrypoint.
+ * - Manifest and output rules are consumed from their canonical owners.
  */
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
@@ -52,24 +52,7 @@ import {
   blindSurveyIntentDigest,
   type ProviderInvocationManifest,
 } from './provider-invocation-manifest-validation.ts';
-import { matchesPersistedProviderOutputSchema } from './provider-invocation-output-validation.ts';
-
-export {
-  blindSurveyManifestDigest,
-  providerInvocationManifestDigest,
-  blindSurveyIntentDigest,
-  assertBlindSurveyManifest,
-  assertProviderInvocationManifest,
-} from './provider-invocation-manifest-validation.ts';
-export {
-  providerOutputSchemaGeneration,
-  blindSurveyOutputValidator,
-  providerResidualsGeneration,
-  assertProviderResult,
-  providerResultFromRunnerReport,
-  providerOutputValidator,
-  assertProviderResultManifestBinding,
-} from './provider-invocation-output-validation.ts';
+import { matchesPersistedProviderOutputSchema } from '../../modules/assurance/provider-output-contract.ts';
 
 export function assertProviderRequest(
   value: unknown,

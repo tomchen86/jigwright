@@ -9,13 +9,15 @@ import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   claimProviderInvocationForWorker,
-  completeProviderInvocationFromRunner,
-  prepareProviderInvocationAcceptanceBinding,
-  providerResidualsGeneration,
-  readProviderInvocation,
-  readProviderInvocationRequest,
   releaseProviderInvocationWorkerFence,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import { completeProviderInvocationFromRunner } from '../src/runtime/storage-journal/provider-invocation-completion.ts';
+import {
+  prepareProviderInvocationAcceptanceBinding,
+  readProviderInvocation,
+} from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import { providerResidualsGeneration } from '../src/runtime/storage-journal/provider-invocation-output-validation.ts';
+import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import { startPropose } from '../src/composition-root/propose-production.ts';
 import {

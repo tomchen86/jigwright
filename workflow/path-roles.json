@@ -390,7 +390,7 @@
       "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-policy.ts",
       "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-reservations.ts",
       "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-state.ts",
-      "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-store.ts",
+      "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-cancellation.ts",
       "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-supersession.ts",
       "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-validation.ts",
       "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-workers.ts",

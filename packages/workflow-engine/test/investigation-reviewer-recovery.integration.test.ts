@@ -35,10 +35,8 @@ import {
 
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { PROPOSE_POLICY_DIGEST } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import {
-  claimProviderInvocation,
-  completeProviderInvocation,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import { completeProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-completion.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 import {
   writeFixtureProviderRuntime,

@@ -27,13 +27,13 @@ import {
   createProviderInvocationRequest,
   type ProviderInvocationRequest,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import { failProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-completion.ts';
 import {
-  claimProviderInvocation,
-  failProviderInvocation,
   readPlanReviewSnapshotRuntime,
-  readProviderInvocation,
   readProviderInvocationRequest,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
+import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-state.ts';
 import { isWorkflowError } from './fixture.ts';
 import { setFixtureProviderTimeout } from './investigation-session-fixture.ts';
 import { createMaterializedProposeFixture } from './investigation-propose-flow-fixture.ts';

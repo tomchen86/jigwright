@@ -25,11 +25,11 @@ import { createHash } from 'node:crypto';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import {
   readProviderInvocation,
-  readProviderInvocationRequest,
-  claimProviderInvocation,
   prepareProviderInvocationAcceptanceBinding,
-  completeProviderInvocationFromRunner,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import { completeProviderInvocationFromRunner } from '../src/runtime/storage-journal/provider-invocation-completion.ts';
 import { readProviderRepairEvidence } from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import { executionJobStatePath } from '../src/runtime/storage-journal/execution-store.ts';
 import { dispatchPreparedTaskStrategyProvider } from '../bootstrap/workflow-engine-host.ts';

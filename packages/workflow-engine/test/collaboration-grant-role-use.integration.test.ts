@@ -14,7 +14,7 @@ import {
 } from '../src/composition-root/propose-production.ts';
 import assert from 'node:assert/strict';
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
-import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
 import {
   authorizeGrantedOrdinaryRole,
   admitRoleResult,

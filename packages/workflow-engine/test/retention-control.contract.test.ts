@@ -9,11 +9,11 @@ import { listProviderInvocationLifecycleProjections } from '../src/runtime/stora
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { startPropose } from '../src/composition-root/propose-production.ts';
 import { prepareProviderPromptContextForInvocation } from '../src/runtime/storage-journal/provider-execution-governance.ts';
+import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-state.ts';
 import {
-  readProviderInvocation,
   readProviderInvocationManifest,
   readProviderInvocationRequest,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
 import {
   inspectEvidenceRetention,
   pinWorkflowEvidence,

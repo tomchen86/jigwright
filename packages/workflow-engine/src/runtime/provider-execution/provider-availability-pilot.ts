@@ -28,17 +28,23 @@ import {
 import {
   blindSurveyIntentDigest,
   providerInvocationManifestDigest,
+} from '../storage-journal/provider-invocation-manifest-validation.ts';
+import {
   BLIND_SURVEY_OUTPUT_SCHEMA,
-  ensureProviderExecutionPolicySnapshot,
-  createProviderInvocation,
-  claimProviderInvocation,
-  prepareProviderInvocationAcceptanceBinding,
   BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA,
-  blindSurveyOutputValidator,
-  completeProviderInvocationFromRunner,
+} from '../../modules/provider-orchestration/blind-survey-output.ts';
+import { ensureProviderExecutionPolicySnapshot } from '../storage-journal/provider-invocation-policy.ts';
+import {
+  createProviderInvocation,
+  prepareProviderInvocationAcceptanceBinding,
   readProviderInvocation,
+} from '../storage-journal/provider-invocation-state.ts';
+import { claimProviderInvocation } from '../storage-journal/provider-invocation-workers.ts';
+import { blindSurveyOutputValidator } from '../../modules/assurance/provider-output-contract.ts';
+import {
+  completeProviderInvocationFromRunner,
   failProviderInvocation,
-} from '../storage-journal/provider-invocation-store.ts';
+} from '../storage-journal/provider-invocation-completion.ts';
 import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
 import {
   type ProviderId,

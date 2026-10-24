@@ -62,13 +62,15 @@ import {
 } from '../runtime/storage-journal/task-strategy-provider-store.ts';
 import {
   readProviderInvocation,
+  createProviderInvocation,
+} from '../runtime/storage-journal/provider-invocation-state.ts';
+import {
   readProviderInvocationRequest,
   readProviderInvocationManifest,
   providerInvocationExists,
-  createProviderInvocation,
-  createProviderRetryReservation,
-  storeProviderExecutionPolicySnapshot,
-} from '../runtime/storage-journal/provider-invocation-store.ts';
+} from '../runtime/storage-journal/provider-invocation-artifacts.ts';
+import { createProviderRetryReservation } from '../runtime/storage-journal/provider-invocation-reservations.ts';
+import { storeProviderExecutionPolicySnapshot } from '../runtime/storage-journal/provider-invocation-policy.ts';
 import {
   readEvidenceNode,
   writeEvidenceNode,
