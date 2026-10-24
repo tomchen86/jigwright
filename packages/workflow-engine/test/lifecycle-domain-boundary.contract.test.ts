@@ -107,7 +107,11 @@ function referenceContract(
 }
 void referenceContract;
 
-for (const name of ['mechanical-transformation-evidence', 'session-check']) {
+for (const name of [
+  'mechanical-transformation-evidence',
+  'session-check',
+  'predecessor-reconciliation',
+]) {
   const entry = path.resolve(
     import.meta.dirname,
     `../src/modules/lifecycle/${name}.ts`,

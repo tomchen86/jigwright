@@ -973,17 +973,12 @@
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:3904bc3c54148633bfd210016370473178f79988ab36e8ada960ce61239ff027"
-    },
-    {
-      "path": "src/application/finalize/predecessor-reconciliation.ts",
-      "mode": "100644",
-      "digest": "sha256:85efb936b48b14888f796c2a969373a0425e40f17b97fd50976f2ee960c74d6e"
+      "digest": "sha256:182f36e28dd5fe86593a5957825a09e96559cefb4a55d016f3be80598d8ab679"
     },
     {
       "path": "src/application/finalize/projected-finalization.ts",
       "mode": "100644",
-      "digest": "sha256:7aa60f8c336a99cbd2754e05873bdde211f6d85bee1f7e0076b95d7e7ebdd443"
+      "digest": "sha256:a86acbc4596ab8da6a2708bea5a3881afb3742637728e470eab4d64ae5441b3f"
     },
     {
       "path": "src/application/finalize/system-document-candidate.ts",
@@ -3316,6 +3311,11 @@
       "digest": "sha256:5c96a8137c1dceb19ac06a7e5ef039ad41941bba229effa0cc5a74588f805188"
     },
     {
+      "path": "src/modules/lifecycle/predecessor-reconciliation.ts",
+      "mode": "100644",
+      "digest": "sha256:6adf34cb9c8cf795fb1edff5438604bb0c3caa63f8b29d7a938507dd0db755ce"
+    },
+    {
       "path": "src/modules/lifecycle/repository-hooks.ts",
       "mode": "100644",
       "digest": "sha256:4f9023b078dd3c465d5857674799e9dbdcc2347a52f8c912b6e45ee0b5e1abfa"
@@ -3703,7 +3703,7 @@
     {
       "path": "src/modules/repository-consumer/commit-facts.ts",
       "mode": "100644",
-      "digest": "sha256:a65951f78a2d6f0fd3f3db9c29ccce391b1df10f6f5e325266a01521d7012a22"
+      "digest": "sha256:2b7c9d6320df2e6ae25b6a1fe1e5ddfd6a2733361861690fd7483a6022ca8580"
     },
     {
       "path": "src/modules/repository-consumer/repository-consumer-policy.ts",
@@ -4438,7 +4438,7 @@
     {
       "path": "src/runtime/repository-transaction/git-commit-history.ts",
       "mode": "100644",
-      "digest": "sha256:dae54ebcba8bdefe104dde26ec733e2514da2591bde41c33a67f641a2bf94890"
+      "digest": "sha256:5598b2c7f0dd945428981abf8ef99e7cfe0a8481f842ff3a0883bc6749116875"
     },
     {
       "path": "src/runtime/repository-transaction/git-commit-messages.ts",
@@ -4478,7 +4478,7 @@
     {
       "path": "src/runtime/repository-transaction/git-transitions.ts",
       "mode": "100644",
-      "digest": "sha256:fa8cf41a657268d4b52b1822bdfc04520420020d4ab234aa1027c4b7a5b87dab"
+      "digest": "sha256:d2c0b840f7e717064d6ad1af45b523c15fe3a306173d2e77c9232085752f8bfb"
     },
     {
       "path": "src/runtime/repository-transaction/git-working-state.ts",
@@ -4634,6 +4634,11 @@
       "path": "src/runtime/repository-validation/commit-replay/task-execution-evidence.ts",
       "mode": "100644",
       "digest": "sha256:c841f98eeff7b2e5deb07e4df55e82511dff96a59e2e8ed829abad531150909a"
+    },
+    {
+      "path": "src/runtime/repository-validation/predecessor-reconciliation.ts",
+      "mode": "100644",
+      "digest": "sha256:d7e50929c373d9b16eda19164d1cb6d2be3730fdfc647b49f70d6e7405e52a15"
     },
     {
       "path": "src/runtime/repository-validation/protected-capabilities.ts",

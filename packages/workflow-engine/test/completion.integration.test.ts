@@ -38,11 +38,25 @@ import {
   finishSession,
 } from './support/session-lifecycle-host.ts';
 import {
-  hasExactTrailers,
   previewExactStaging,
   stageExactPaths,
   updateManagedRef,
 } from '../src/runtime/repository-transaction/git-transitions.ts';
+import {
+  hasExactTrailers,
+  type CommitFacts,
+} from '../src/modules/repository-consumer/commit-facts.ts';
+import {
+  assertPinnedPredecessorContract,
+  assertPredecessorCommit,
+  selectImmediatePredecessor,
+} from '../src/modules/lifecycle/predecessor-reconciliation.ts';
+import type { ChangeContract } from '../src/modules/planning-provider/change-contract.ts';
+import type {
+  ParsedTask,
+  TaskPolicy,
+} from '../src/modules/planning-provider/planning-artifact-types.ts';
+import type { WorkflowSession } from '../src/modules/lifecycle/workflow-session-contract.ts';
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { projectTasksCompleted } from '../src/runtime/managed-documents/transaction/task-projection.ts';
 import {
@@ -1401,6 +1415,246 @@ test('commit rejects a worktree changed after finish', () => {
   }
 });
 
+test('predecessor selection preserves task identity and nested getter order', () => {
+  const prior: ParsedTask = { id: '1.1', completed: false, title: 'Prior' };
+  const current: ParsedTask = { id: '1.2', completed: false, title: 'Current' };
+  const completed: ParsedTask = { id: '1.0', completed: true, title: 'Done' };
+  for (const tasks of [[current], [completed, current]]) {
+    assert.equal(
+      selectImmediatePredecessor({ tasks }, { taskId: current.id }),
+      null,
+    );
+  }
+  for (const tasks of [
+    [prior, { ...prior, id: '1.0' }, current],
+    [prior, completed, current],
+  ]) {
+    assert.throws(
+      () => selectImmediatePredecessor({ tasks }, { taskId: current.id }),
+      (error) => isWorkflowError(error, 'PREDECESSOR_NOT_RECONCILABLE'),
+    );
+  }
+  // Preserve the existing findIndex=-1 behavior, including the empty prefix case.
+  assert.equal(
+    selectImmediatePredecessor(
+      { tasks: [completed, current] },
+      { taskId: 'missing' },
+    ),
+    null,
+  );
+  assert.throws(
+    () =>
+      selectImmediatePredecessor(
+        { tasks: [prior, current] },
+        { taskId: 'missing' },
+      ),
+    (error) => isWorkflowError(error, 'PREDECESSOR_NOT_RECONCILABLE'),
+  );
+  const events: string[] = [];
+  const contract: Pick<ChangeContract, 'tasks'> = {
+    get tasks() {
+      events.push('tasks');
+      return [prior, current];
+    },
+  };
+  const session: Pick<WorkflowSession, 'taskId'> = {
+    get taskId() {
+      events.push('taskId');
+      return current.id;
+    },
+  };
+  assert.equal(selectImmediatePredecessor(contract, session), prior);
+  assert.deepEqual(events, ['tasks', 'taskId', 'taskId', 'tasks', 'tasks']);
+});
+
+test('pinned predecessor rules defer current-check getters until each admitted comparison', () => {
+  const events: string[] = [];
+  const definitions: ChangeContract['checks']['checks'] = {
+    first: { command: ['node', 'first.mjs'], destructiveDatabase: false },
+    second: { command: ['node', 'second.mjs'], destructiveDatabase: false },
+  };
+  const contract: Pick<ChangeContract, 'checks'> = {
+    get checks(): ChangeContract['checks'] {
+      events.push('current checks');
+      return {
+        schemaVersion: 1,
+        get checks() {
+          events.push('definitions');
+          return definitions;
+        },
+      };
+    },
+  };
+  const policy: TaskPolicy = {
+    allowedPaths: ['src/**'],
+    requiredChecks: ['first', 'second'],
+  };
+  for (const guard of [
+    { tasks: null },
+    { tasks: { '1.1': { ...policy, allowedPaths: ['elsewhere/**'] } } },
+    {
+      tasks: {
+        '1.1': {
+          requiredChecks: policy.requiredChecks,
+          allowedPaths: policy.allowedPaths,
+        },
+      },
+    },
+  ]) {
+    assert.throws(
+      () =>
+        assertPinnedPredecessorContract(contract, '1.1', policy, guard, {
+          checks: definitions,
+        }),
+      (error) => isWorkflowError(error, 'PREDECESSOR_NOT_RECONCILABLE'),
+    );
+    assert.deepEqual(events, []);
+  }
+  const noChecks: TaskPolicy = { ...policy, requiredChecks: [] };
+  assertPinnedPredecessorContract(
+    contract,
+    '1.1',
+    noChecks,
+    { tasks: { '1.1': noChecks } },
+    { checks: {} },
+  );
+  assert.deepEqual(events, []);
+  assert.throws(
+    () =>
+      assertPinnedPredecessorContract(
+        contract,
+        '1.1',
+        policy,
+        { tasks: { '1.1': policy } },
+        { checks: null },
+      ),
+    (error) => isWorkflowError(error, 'PREDECESSOR_NOT_RECONCILABLE'),
+  );
+  assert.deepEqual(events, []);
+  assertPinnedPredecessorContract(
+    contract,
+    '1.1',
+    policy,
+    { tasks: { '1.1': policy } },
+    { checks: definitions },
+  );
+  assert.deepEqual(events, [
+    'current checks',
+    'definitions',
+    'current checks',
+    'definitions',
+  ]);
+  events.length = 0;
+  assert.throws(
+    () =>
+      assertPinnedPredecessorContract(
+        contract,
+        '1.1',
+        policy,
+        { tasks: { '1.1': policy } },
+        {
+          checks: {
+            ...definitions,
+            first: { ...definitions.first, command: ['node', 'drift.mjs'] },
+          },
+        },
+      ),
+    (error) => isWorkflowError(error, 'PREDECESSOR_NOT_RECONCILABLE'),
+  );
+  assert.deepEqual(events, ['current checks', 'definitions']);
+});
+
+test('predecessor commit admission preserves refusal priority and lazy field reads', () => {
+  const exactMessage = 'Prior\n\nChange: demo-change\nTask: 1.1\n';
+  for (const [parents, paths, message, expectedEvents, accepted] of [
+    [[], ['src/prior.ts'], exactMessage, [], false],
+    [['a', 'b'], ['src/prior.ts'], exactMessage, [], false],
+    [['a'], [], exactMessage, [], false],
+    [
+      ['a'],
+      ['src/prior.ts'],
+      'wrong trailers',
+      ['message', 'changeId', 'id'],
+      false,
+    ],
+    [
+      ['a'],
+      ['other/prior.ts'],
+      exactMessage,
+      ['message', 'changeId', 'id', 'allowedPaths'],
+      false,
+    ],
+    [
+      ['a'],
+      ['src/prior.ts', 'src/next.ts'],
+      exactMessage,
+      ['message', 'changeId', 'id', 'allowedPaths', 'allowedPaths'],
+      true,
+    ],
+  ] as const) {
+    const events: string[] = [];
+    const facts: CommitFacts = {
+      hash: 'a'.repeat(40),
+      tree: 'b'.repeat(40),
+      parents: [...parents],
+      get message() {
+        events.push('message');
+        return message;
+      },
+    };
+    const session: Pick<WorkflowSession, 'changeId'> = {
+      get changeId() {
+        events.push('changeId');
+        return 'demo-change';
+      },
+    };
+    const predecessor: ParsedTask = {
+      get id() {
+        events.push('id');
+        return '1.1';
+      },
+      completed: false,
+      title: 'Prior',
+    };
+    const policy: TaskPolicy = {
+      get allowedPaths() {
+        events.push('allowedPaths');
+        return ['src/**'];
+      },
+      requiredChecks: [],
+    };
+    const admit = () =>
+      assertPredecessorCommit(facts, [...paths], session, predecessor, policy);
+    if (accepted) admit();
+    else
+      assert.throws(admit, (error) =>
+        isWorkflowError(error, 'PREDECESSOR_NOT_RECONCILABLE'),
+      );
+    assert.deepEqual(events, expectedEvents);
+  }
+});
+
+test('exact predecessor trailers preserve newline, whitespace and duplicate boundaries', () => {
+  const message = 'Prior\n\nChange: demo-change\nTask: 1.1';
+  for (const [candidate, expected] of [
+    [message, true],
+    [message + '\n', true],
+    [message + '\n\n', false],
+    [message.replaceAll('\n', '\r\n'), false],
+    [message + ' ', false],
+    [message.replace('\n\n', '\n'), false],
+    [message.replace('Change:', 'change:'), false],
+    ['Change: other\n' + message, false],
+    ['Task: other\n' + message, false],
+    [message.replace('1.1', '1.2'), false],
+  ] as const)
+    assert.equal(
+      hasExactTrailers(candidate, 'demo-change', '1.1'),
+      expected,
+      JSON.stringify(candidate),
+    );
+});
+
 test('completion reconciles the immediate committed predecessor from Git', () => {
   const repository = createFixtureRepository();
   try {
@@ -1461,6 +1715,87 @@ test('completion reconciles the immediate committed predecessor from Git', () =>
       session.sessionId,
     );
     const result = completeTask(repository, session.sessionId);
+
+    assert.deepEqual(result.completedTaskIds, ['1.1', '1.2']);
+    const tasks = fs.readFileSync(tasksPath, 'utf8');
+    assert.match(tasks, /- \[x\] 1\.1 Prior task/);
+    assert.match(tasks, /- \[x\] 1\.2 Current task/);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('fresh projected finalize reconciles the committed predecessor without prior check evidence', () => {
+  const repository = createFixtureRepository();
+  try {
+    const changeDirectory = path.join(
+      repository,
+      'openspec/changes/demo-change',
+    );
+    const tasksPath = path.join(changeDirectory, 'tasks.md');
+    fs.writeFileSync(
+      tasksPath,
+      [
+        '# Tasks',
+        '',
+        '- [ ] 1.1 Prior task',
+        '- [ ] 1.2 Current task',
+        '- [ ] 1.3 Keep the fixture change open',
+        '',
+      ].join('\n'),
+    );
+    const guardPath = path.join(changeDirectory, 'guard.json');
+    const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8'));
+    guard.tasks['1.2'] = {
+      allowedPaths: ['src/**'],
+      requiredChecks: ['fixture'],
+    };
+    guard.tasks['1.3'] = {
+      allowedPaths: ['src/**'],
+      requiredChecks: ['fixture'],
+    };
+    fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+    git(repository, ['add', tasksPath, guardPath]);
+    git(repository, ['commit', '-m', 'Add current task']);
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentV3Change(repository);
+
+    fs.writeFileSync(path.join(repository, 'src/prior.ts'), 'export {};\n');
+    git(repository, ['add', 'src/prior.ts']);
+    git(repository, [
+      'commit',
+      '-m',
+      'Implement prior task',
+      '-m',
+      'Change: demo-change\nTask: 1.1',
+    ]);
+
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.2',
+    );
+    fs.writeFileSync(path.join(repository, 'src/current.ts'), 'export {};\n');
+    assert.equal(
+      getSession(repository, session.sessionId).latestCheckReportId,
+      undefined,
+    );
+    const result = finalizeTask(repository, session.sessionId);
+    assert.equal(result.assurance, 'projected-single-pass-ordinary-failure');
+    assert.ok(result.stagedPaths.includes('src/current.ts'));
+    assert.equal(result.stagedPaths.includes('src/prior.ts'), false);
+    const completed = getSession(repository, session.sessionId);
+    const report = readImmutableReport(
+      path.join(runtimeRoot(repository), 'reports'),
+      session.sessionId,
+      completed.completionReportId!,
+    );
+    assert.ok(Array.isArray(report.reconciledTasks));
+    assert.equal(report.reconciledTasks.length, 1);
+    assert.equal(report.reconciledTasks[0].taskId, '1.1');
+    assert.equal(report.reconciledTasks[0].commitHash, session.baseline.head);
+    assert.deepEqual(report.reconciledTasks[0].changedPaths, ['src/prior.ts']);
 
     assert.deepEqual(result.completedTaskIds, ['1.1', '1.2']);
     const tasks = fs.readFileSync(tasksPath, 'utf8');

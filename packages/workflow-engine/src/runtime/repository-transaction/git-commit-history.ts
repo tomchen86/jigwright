@@ -1,6 +1,9 @@
 import type { TaskCommit } from '../../modules/assurance/task-execution-evidence.ts';
 import { resolveCommitOid } from './git-object-ids.ts';
-import type { CommitFacts } from '../../modules/repository-consumer/commit-facts.ts';
+import {
+  hasExactTrailers,
+  type CommitFacts,
+} from '../../modules/repository-consumer/commit-facts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { parseManagedTrailers } from '@jigwright/core/managed-transition-trailers';
 import { normalizeChangedPath } from '../../foundation/repository-path/repository-path.ts';
@@ -146,25 +149,4 @@ function latestRequiredExecutionBoundary(
     }
   }
   return null;
-}
-
-export function hasExactTrailers(
-  message: string,
-  changeId: string,
-  taskId: string,
-): boolean {
-  const normalized = message.endsWith('\n') ? message.slice(0, -1) : message;
-  if (normalized.endsWith('\n') || normalized.includes('\r')) {
-    return false;
-  }
-  const lines = normalized.split('\n');
-  if (
-    lines.length < 4 ||
-    lines.at(-3) !== '' ||
-    lines.at(-2) !== `Change: ${changeId}` ||
-    lines.at(-1) !== `Task: ${taskId}`
-  ) {
-    return false;
-  }
-  return !lines.slice(0, -2).some((line) => /^(?:Change|Task):/.test(line));
 }

@@ -64,7 +64,7 @@ import {
   loadActiveSessionContext,
   runSessionOperation,
 } from '../../runtime/repository-observation/workflow-session-context.ts';
-import { reconcilePredecessor } from './predecessor-reconciliation.ts';
+import { reconcilePredecessor } from '../../runtime/repository-validation/predecessor-reconciliation.ts';
 import {
   removeFinalizeTransaction,
   readFinalizeTransaction,

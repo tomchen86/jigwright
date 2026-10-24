@@ -54,7 +54,7 @@ import { loadActiveSessionContext } from '../../runtime/repository-observation/w
 import { applyGeneratedDocumentMutations } from '../../runtime/managed-documents/validation/managed-documents.ts';
 import type { ImplementationReconciliationGate } from '../reconciliation/implementation-reconciliation.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
-import { reconcilePredecessor } from './predecessor-reconciliation.ts';
+import { reconcilePredecessor } from '../../runtime/repository-validation/predecessor-reconciliation.ts';
 import type { WorkflowReport } from '../../modules/lifecycle/workflow-report.ts';
 import {
   assertInspectionReport,

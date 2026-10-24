@@ -8,11 +8,11 @@ Keep repository routing in one controlled source and derive the visible inventor
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:2f4b1205e426139e05b2a1432f16a5d9f2ea1bef695566db3b9e48be3daec595 -->
+<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:9ef5365fe0ba5e6adb4c3338909405ecc92a9a1426f9512a3cd4b67a5eeacf84 -->
 
 <!-- prettier-ignore-start -->
 
-24 files changed in this module since confirmation.
+25 files changed in this module since confirmation.
 
 ## Commands
 
@@ -79,6 +79,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [planning-execution-epoch-observations.ts](planning-execution-epoch-observations.ts) | Required repository observations, invoked at each epoch admission phase. | 0 | History unavailable |
 | [planning-execution-epoch.ts](planning-execution-epoch.ts) | Exact epoch manifests, evidence, and recovery predicates. | 0 | History unavailable |
 | [planning-transition-report.ts](planning-transition-report.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [predecessor-reconciliation.ts](predecessor-reconciliation.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [repository-hooks.ts](repository-hooks.ts) | Repository hook admission rules over required current observations and checks. | 0 | History unavailable |
 | [repository-specification-policy.ts](repository-specification-policy.ts) | Combines canonical spec ownership with repository-specific lifecycle paths. | 1 | History unavailable |
 | [session-check.ts](session-check.ts) | Data returned by session checks and their caller-supplied execution options. | 0 | History unavailable |
