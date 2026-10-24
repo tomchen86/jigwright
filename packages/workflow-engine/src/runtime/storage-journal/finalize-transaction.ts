@@ -1,3 +1,10 @@
+import type {
+  FinalizeTransactionPhase,
+  FinalizeProjectionMutation,
+  FinalizeReconciledTask,
+  ProtectedTaskApplyAuthorizationBinding,
+  FinalizeTransaction,
+} from '../../modules/lifecycle/finalize-transaction.ts';
 import {
   parseDocumentationReviewCapture,
   type DocumentationReviewCapture,
@@ -30,75 +37,6 @@ const SHA256_DIGEST = /^sha256:[0-9a-f]{64}$/;
 const OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-
-export type FinalizeTransactionPhase =
-  | 'projection-prepared'
-  | 'candidate-prepared'
-  | 'checks-running'
-  | 'checked'
-  | 'staged'
-  | 'reports-persisted'
-  | 'completed';
-
-export type FinalizeProjectionMutation = Readonly<{
-  path: string;
-  before: string | null;
-  after: string;
-}>;
-
-export type FinalizeReconciledTask = Readonly<{
-  taskId: string;
-  commitHash: string;
-  changedPaths: readonly string[];
-  checks: readonly unknown[];
-}>;
-
-export type ProtectedTaskApplyAuthorizationBinding = Readonly<{
-  schemaVersion: 1;
-  kind: 'protected-task-apply-authorization.v1';
-  transitionId: 'task.protected-apply.finalize.v1';
-  challengeId: string;
-  operationId: string;
-  approvalSubjectDigest: `sha256:${string}`;
-  stateBindingDigest: `sha256:${string}`;
-  parametersDigest: `sha256:${string}`;
-  commitMessage: string;
-}>;
-
-export type FinalizeTransaction = Readonly<{
-  schemaVersion: 2;
-  kind: 'projected-finalize-transaction.v2';
-  transactionId: string;
-  recordDigest: string;
-  phase: FinalizeTransactionPhase;
-  sessionId: string;
-  changeId: string;
-  taskId: string;
-  repositoryRoot: string;
-  gitCommonDirectory: string;
-  branch: string;
-  baseline: Readonly<{ head: string; tree: string }>;
-  completedTaskIds: readonly string[];
-  requiredChecks: readonly string[];
-  checkEscalation: FinalizeCheckEscalation;
-  reconciledTasks: readonly FinalizeReconciledTask[];
-  taskProjectionPath: string;
-  projectionMutations: readonly FinalizeProjectionMutation[];
-  projectionSourceDigest: string;
-  projectionBaseFingerprint: string;
-  transitionPaths: readonly string[];
-  changedPaths: readonly string[];
-  candidateTree: string | null;
-  candidateFingerprint: string | null;
-  candidateStatusEntries: readonly string[];
-  previousIndexTree: string;
-  createdAt: string;
-  checkReportId: string | null;
-  completionReportId: string | null;
-  finishReportId: string | null;
-  documentationReview?: DocumentationReviewCapture;
-  protectedApply?: ProtectedTaskApplyAuthorizationBinding;
-}>;
 
 type FinalizeTransactionSeed = Readonly<{
   schemaVersion: 2;

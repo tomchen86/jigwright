@@ -111,6 +111,9 @@ for (const name of [
   'mechanical-transformation-evidence',
   'session-check',
   'predecessor-reconciliation',
+  'projected-finalization',
+  'finalize-transaction',
+  '../authority/system-document-disposition',
 ]) {
   const entry = path.resolve(
     import.meta.dirname,
@@ -123,6 +126,7 @@ for (const name of [
     for (const source of [
       "\nimport type { InvestigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';\n",
       "\nimport fs from 'node:fs';\n",
+      "\nimport type { FinalizeSessionResult } from '../../application/finalize/lifecycle.ts';\n",
     ])
       assert.throws(
         () => assertPureDependencyClosure(entry, source),

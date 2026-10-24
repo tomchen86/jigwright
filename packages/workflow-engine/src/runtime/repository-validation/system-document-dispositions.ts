@@ -1,3 +1,9 @@
+import { matchesSystemDocumentGrantReceipt } from '../../modules/authority/system-document-disposition.ts';
+import {
+  parseDispositions,
+  reviewInvalid,
+  type SystemDocumentGrantBinding,
+} from '../../modules/source/document-disposition.ts';
 /**
  * Binds contract and design dispositions to the implementation being finalized.
  *
@@ -10,30 +16,18 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
-  approvalSubjectDigest,
   type ApprovalSubject,
   type GrantChallenge,
 } from '../../modules/authority/grant-core.ts';
 import type { TransitionOutcome } from '../../modules/authority/grant-transition-registry.ts';
 import { grantHasExactKeys } from '../../modules/authority/grant-primitives.ts';
 import {
-  SYSTEM_DOCUMENT_DISPOSITION_TRANSITION,
   SYSTEM_DOCUMENT_DISPOSITION_REQUIRED,
   assessSystemDocumentDispositions,
   type SystemDocumentDisposition,
 } from '../../modules/source/document-disposition.ts';
 
 import type { SystemDocumentCandidate } from './system-document-candidate.ts';
-export type SystemDocumentGrantBinding = Readonly<{
-  challengeId: string;
-  operationId: string;
-  approvalSubjectDigest: `sha256:${string}`;
-}>;
-export type SystemDocumentReviewInput = Readonly<{
-  schemaVersion: 1;
-  candidateDigest: string;
-  dispositions: readonly SystemDocumentDisposition[];
-}>;
 
 export type SystemDocumentDispositionPorts = Readonly<{
   observeSystemDocumentCandidate(
@@ -289,19 +283,11 @@ export function createSystemDocumentDispositionService({
     try {
       const record = readCompletedGrant(runtimeRoot, value.challengeId);
       if (record === null) return false;
-      const choice = record.challenge.choices.find(
-        ({ choiceId }) => choiceId === record.approvalSubject.choiceId,
-      );
-      return (
-        choice?.transitionId === SYSTEM_DOCUMENT_DISPOSITION_TRANSITION &&
-        isRecord(choice.parameters) &&
-        choice.parameters.candidateDigest === candidateDigest &&
-        record.operationId === value.operationId &&
-        approvalSubjectDigest(record.approvalSubject) ===
-          value.approvalSubjectDigest &&
-        record.outcome.outcome === 'completed' &&
-        isRecord(record.outcome.details) &&
-        record.outcome.details.reportId === reportId
+      return matchesSystemDocumentGrantReceipt(
+        record,
+        reportId,
+        candidateDigest,
+        value,
       );
     } catch {
       return false;
@@ -315,41 +301,4 @@ export function createSystemDocumentDispositionService({
     observeSystemDocumentCandidate,
     recordSystemDocumentGrantException,
   };
-}
-
-function parseDispositions(
-  value: unknown,
-): readonly SystemDocumentDisposition[] {
-  if (!Array.isArray(value))
-    throw reviewInvalid('dispositions must be an array.');
-  return value.map((entry) => {
-    if (
-      !isRecord(entry) ||
-      typeof entry.path !== 'string' ||
-      !['still-valid', 'updated', 'later'].includes(
-        entry.disposition as string,
-      ) ||
-      Object.keys(entry).some(
-        (key) =>
-          !['path', 'disposition', 'reason', 'followUpRef'].includes(key),
-      ) ||
-      [entry.reason, entry.followUpRef].some(
-        (field) =>
-          field !== undefined && (typeof field !== 'string' || !field.trim()),
-      )
-    )
-      throw reviewInvalid(
-        'Each disposition needs a path and still-valid, updated, or later; reasons and optional references are nonempty text.',
-      );
-    return entry as SystemDocumentDisposition;
-  });
-}
-
-function reviewInvalid(message: string, details?: Record<string, unknown>) {
-  return workflowError(
-    'SYSTEM_DOCUMENT_REVIEW_INVALID',
-    message,
-    ExitCode.guard,
-    details === undefined ? {} : { details },
-  );
 }

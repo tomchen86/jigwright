@@ -1,4 +1,4 @@
-import type { SystemDocumentDispositionService } from './system-document-dispositions.ts';
+import type { SystemDocumentDispositionService } from '../../runtime/repository-validation/system-document-dispositions.ts';
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
 import {
@@ -68,17 +68,21 @@ import { reconcilePredecessor } from '../../runtime/repository-validation/predec
 import {
   removeFinalizeTransaction,
   readFinalizeTransaction,
-  type FinalizeTransaction,
-  type ProtectedTaskApplyAuthorizationBinding,
 } from '../../runtime/storage-journal/finalize-transaction.ts';
 import {
+  type FinalizeTransaction,
+  type ProtectedTaskApplyAuthorizationBinding,
+} from '../../modules/lifecycle/finalize-transaction.ts';
+import {
   finalizeTaskUnlocked,
-  PROJECTED_SINGLE_PASS_ASSURANCE,
   restoreFinalizeTransactionProjection,
+} from '../../runtime/finalization/projected-finalization.ts';
+import {
+  PROJECTED_SINGLE_PASS_ASSURANCE,
   type FinalizeTaskOptions,
   type FinalizeTaskResult,
-} from './projected-finalization.ts';
-import type { ImplementationReconciliationGate } from '../reconciliation/implementation-reconciliation.ts';
+} from '../../modules/lifecycle/projected-finalization.ts';
+import type { ImplementationReconciliationGate } from '../../modules/why-knowledge/implementation-reconciliation.ts';
 import { readImmutableReport } from '../../runtime/storage-journal/report-store.ts';
 import type { WorkflowReport } from '../../modules/lifecycle/workflow-report.ts';
 import {
@@ -154,7 +158,7 @@ export type FinishSessionResult = {
 };
 
 export type { CommitSessionResult } from './commit-recovery.ts';
-export type { FinalizeTaskResult } from './projected-finalization.ts';
+export type { FinalizeTaskResult } from '../../modules/lifecycle/projected-finalization.ts';
 
 export type FinalizeSessionResult = Omit<FinalizeTaskResult, 'session'> & {
   session: WorkflowSession;

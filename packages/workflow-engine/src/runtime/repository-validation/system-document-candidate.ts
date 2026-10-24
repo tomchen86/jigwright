@@ -1,3 +1,13 @@
+import { loadActiveSessionContext } from '../repository-observation/workflow-session-context.ts';
+import { readSystemDescriptionSnapshot } from '../repository-transaction/system-description-snapshot.ts';
+import {
+  listChangedPaths,
+  fingerprintRepositoryProjection,
+} from '../repository-transaction/git.ts';
+import {
+  combineOpenSpecDeltas,
+  specDeltaChangesContract,
+} from '../repository-transaction/archive-delta-verifier.ts';
 /**
  * Identifies the exact implementation, documents and deltas awaiting disposition.
  *
@@ -19,61 +29,12 @@ import {
 } from '../../modules/source/document-disposition.ts';
 import { sourceDigest } from '../../modules/source/import-dependencies.ts';
 import { systemSpecCatalog } from '../../modules/source/system-spec-catalog.ts';
-import type { SystemDescriptionSnapshot } from '../../modules/source/spec-ownership.ts';
-
-export type SystemDocumentCandidatePorts = Readonly<{
-  loadActiveSessionContext(
-    cwd: string,
-    sessionId: string,
-  ): {
-    git: {
-      repositoryRoot: string;
-      head: string;
-      branch: string | null;
-      statusEntries: string[];
-    };
-    session: {
-      repositoryRoot: string;
-      baseline: { head: string };
-      branch: string;
-      changeId: string;
-      taskId: string;
-    };
-    runtime: { root: string };
-    config: { changeRoot: string };
-  };
-  readSystemDescriptionSnapshot(
-    repositoryRoot: string,
-    commit?: string,
-  ): SystemDescriptionSnapshot;
-  listChangedPaths(repositoryRoot: string, baselineCommit: string): string[];
-  fingerprintRepositoryProjection(
-    repositoryRoot: string,
-    baselineCommit: string,
-    statusEntries: string[],
-  ): string;
-  deltaChangesContract(
-    documentPath: string,
-    before: string,
-    deltas: readonly string[],
-  ): boolean;
-}>;
 
 export type SystemDocumentCandidate = ReturnType<
   typeof observeSystemDocumentCandidate
 >;
 
-export function observeSystemDocumentCandidate(
-  cwd: string,
-  sessionId: string,
-  {
-    loadActiveSessionContext,
-    readSystemDescriptionSnapshot,
-    listChangedPaths,
-    fingerprintRepositoryProjection,
-    deltaChangesContract: changesContract,
-  }: SystemDocumentCandidatePorts,
-) {
+export function observeSystemDocumentCandidate(cwd: string, sessionId: string) {
   const { git, session, runtime, config } = loadActiveSessionContext(
     cwd,
     sessionId,
@@ -136,10 +97,12 @@ export function observeSystemDocumentCandidate(
       let deltaChangesContract = false;
       if (deltas.length) {
         try {
-          deltaChangesContract = changesContract(
+          deltaChangesContract = specDeltaChangesContract(
             document.path,
             before.readText(document.path) ?? '',
-            deltas.map(({ path }) => after.readText(path)!),
+            combineOpenSpecDeltas(
+              deltas.map(({ path }) => after.readText(path)!),
+            ),
           );
         } catch (error) {
           if (!(error instanceof WorkflowError)) throw error;

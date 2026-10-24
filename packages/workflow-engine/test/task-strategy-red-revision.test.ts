@@ -45,7 +45,7 @@ import type {
   TaskStrategyRedRevisionOperations,
   TaskStrategyRedRevisionJournalOperations,
 } from '../src/application/execute-task/task-strategy-red-revision-operations.ts';
-import type { ImplementationReconciliationGate } from '../src/application/reconciliation/implementation-reconciliation.ts';
+import type { ImplementationReconciliationGate } from '../src/modules/why-knowledge/implementation-reconciliation.ts';
 
 const NOW = '2026-09-23T01:00:00.000Z';
 const ROOT = '/memory/task-strategy';

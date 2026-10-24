@@ -8,11 +8,11 @@ Keep repository routing in one controlled source and derive the visible inventor
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:9ef5365fe0ba5e6adb4c3338909405ecc92a9a1426f9512a3cd4b67a5eeacf84 -->
+<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:d822b8ecca3c1ff90e7f2a8137b02392df97b4bb2cf0a6a7d445162e478345d9 -->
 
 <!-- prettier-ignore-start -->
 
-25 files changed in this module since confirmation.
+27 files changed in this module since confirmation.
 
 ## Commands
 
@@ -45,6 +45,7 @@ Keep repository routing in one controlled source and derive the visible inventor
 | --- | --- | --- |
 | ChangeRoutingState | primary, concurrent, ready, blocked, resume-available, parked, completed-awaiting-archive, archived, revising, recovery-required | [change-routing.ts](change-routing.ts) |
 | ChangeRoutingRuntimeState | revising, recovery-required, null | [change-routing.ts](change-routing.ts) |
+| FinalizeTransactionPhase | projection-prepared, candidate-prepared, checks-running, checked, staged, reports-persisted, completed | [finalize-transaction.ts](finalize-transaction.ts) |
 | ManagedTaskStrategyState | not-required, session-terminal, transformation-required, transformation-produced, red-authoring, implementation-required, ready, reservation-persisted, collaboration-grant-required, waiting-for-provider, provider-succeeded-awaiting-import, provider-failed, correction-required, correction-exhausted, caller-supplied-awaiting-import, patch-imported | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
 | ManagedTaskDiffReviewState | not-required, ready, collaboration-grant-required, external-grant-resume-required, direct-human-attestation-required, external-reconciliation-required, satisfied, challenge-response-required, challenge-closure-required, changes-required, waiting-for-provider, provider-succeeded-awaiting-reconciliation, provider-failed | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
 | TaskMechanicalTransformLifecycleState | transformation-required, transformation-produced | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
@@ -72,6 +73,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [change-routing.ts](change-routing.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [completion-rollback.ts](completion-rollback.ts) | Pure admission and state reset for reversing an unfinished completion projection. | 0 | History unavailable |
 | [contract-digests.ts](contract-digests.ts) | Computes identities for the required registered check definitions. | 1 | History unavailable |
+| [finalize-transaction.ts](finalize-transaction.ts) | Canonical durable projected-finalization transaction data. | 0 | History unavailable |
 | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) | Defines shared task strategy, review and authority-plan state names. | 1 | Header changed since confirmation |
 | [mechanical-transformation-evidence.ts](mechanical-transformation-evidence.ts) | Pure mechanical transformation closure, projection and immutable evidence validation. | 0 | History unavailable |
 | [open-task-status.ts](open-task-status.ts) | Durable open-task phase and status values shared by activation and status queries. | 0 | History unavailable |
@@ -80,6 +82,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [planning-execution-epoch.ts](planning-execution-epoch.ts) | Exact epoch manifests, evidence, and recovery predicates. | 0 | History unavailable |
 | [planning-transition-report.ts](planning-transition-report.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [predecessor-reconciliation.ts](predecessor-reconciliation.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [projected-finalization.ts](projected-finalization.ts) | Pure projected-finalization admission, reports, session projection and results. | 0 | History unavailable |
 | [repository-hooks.ts](repository-hooks.ts) | Repository hook admission rules over required current observations and checks. | 0 | History unavailable |
 | [repository-specification-policy.ts](repository-specification-policy.ts) | Combines canonical spec ownership with repository-specific lifecycle paths. | 1 | History unavailable |
 | [session-check.ts](session-check.ts) | Data returned by session checks and their caller-supplied execution options. | 0 | History unavailable |

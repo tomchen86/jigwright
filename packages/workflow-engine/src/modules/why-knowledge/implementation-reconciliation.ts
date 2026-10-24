@@ -632,3 +632,7 @@ export function deepFreeze<T>(value: T): T {
   }
   return value;
 }
+
+export type ImplementationReconciliationGate<Inspection> = (
+  inspection: Inspection,
+) => ImplementationReconciliationRecord | null;

@@ -68,7 +68,7 @@ test('all four finalization gates require an injected capability with no default
   let gates = 0;
   for (const [file, owner] of [
     ['application/finalize/lifecycle.ts', 'createFinalizationService'],
-    ['application/finalize/projected-finalization.ts', 'finalizeTaskUnlocked'],
+    ['runtime/finalization/projected-finalization.ts', 'finalizeTaskUnlocked'],
     [
       'application/execute-task/task-strategy-red-revision.ts',
       'createTaskStrategyRedRevisionService',
@@ -86,6 +86,26 @@ test('all four finalization gates require an injected capability with no default
         ts.isFunctionDeclaration(node) && node.name?.text === owner,
     );
     assert.ok(factory);
+    assert.ok(
+      ast.statements.some(
+        (node) =>
+          ts.isImportDeclaration(node) &&
+          ts.isStringLiteral(node.moduleSpecifier) &&
+          node.importClause?.isTypeOnly &&
+          path.posix.normalize(
+            path.posix.join(
+              path.posix.dirname(file!),
+              node.moduleSpecifier.text,
+            ),
+          ) === 'modules/why-knowledge/implementation-reconciliation.ts' &&
+          node.importClause.namedBindings &&
+          ts.isNamedImports(node.importClause.namedBindings) &&
+          node.importClause.namedBindings.elements.some(
+            (element) =>
+              element.name.text === 'ImplementationReconciliationGate',
+          ),
+      ),
+    );
     const injectedGates = factory.parameters.filter(
       (parameter) =>
         ts.isIdentifier(parameter.name) &&

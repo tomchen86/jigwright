@@ -8,11 +8,11 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:c95bda3f4e2b4c9e12fb29fb0b87769515c0b3831229ecbc1cdc53471d1a61f4 -->
+<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:5a5f33e8332c997db08dabd0a29361cdec22816032840a7c62788042ed306daa -->
 
 <!-- prettier-ignore-start -->
 
-114 files changed in this module since confirmation.
+115 files changed in this module since confirmation.
 
 ## Commands
 
@@ -149,12 +149,10 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [grant-revocation-contract.ts](grant-revocation-contract.ts) | Canonical collaboration revocation targets and required transaction capabilities. | 0 | History unavailable |
 | [grant-transition-registry.ts](grant-transition-registry.ts) | Registers Grant transitions and renders choices bound to their declared parameters and consequences. | 2 | History unavailable |
 | [grant-verifier-port.ts](grant-verifier-port.ts) | Seals authoritative collaboration verifiers and resolves opaque consumed- replay verifier handles. | 2 | History unavailable |
-| [harness-bootstrap-parent-contract.ts](harness-bootstrap-parent-contract.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [human-revocation-contract.ts](human-revocation-contract.ts) | Parses canonical human revocation envelopes and validates their exact subject bindings. | 2 | History unavailable |
 | [immutable-git-candidate-codec.ts](immutable-git-candidate-codec.ts) | Decodes immutable Git candidates and validates their canonical patch, policy and check bindings. | 2 | Header changed since confirmation |
 | [immutable-git-candidate.ts](immutable-git-candidate.ts) | Builds immutable Git candidates and verifies their observed repository state and pinned objects. | 2 | History unavailable |
 | [intervention-bootstrap-contract.ts](intervention-bootstrap-contract.ts) | Retained intervention metadata and signed disposition inputs. | 0 | History unavailable |
-| [intervention-control-adoption.ts](intervention-control-adoption.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [intervention-control-values.ts](intervention-control-values.ts) | Provides shared intervention value checks, signature namespaces and safe verifier calls. | 2 | History unavailable |
 | [intervention-control.ts](intervention-control.ts) | Local intervention contracts and permitted workflow replacement reasons. | 0 | History unavailable |
 | [intervention-record-contract.ts](intervention-record-contract.ts) | Validate retained intervention checkpoints and their signed maintenance grants. | 0 | History unavailable |
@@ -186,6 +184,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [role-context-sharing-grant.ts](role-context-sharing-grant.ts) | Validates role-context-sharing Grants and applies their reserve and consume transitions. | 2 | History unavailable |
 | [role-independence-continuation-contracts.ts](role-independence-continuation-contracts.ts) | Validates and encodes role-independence continuation owners, parameters and observations. | 2 | Header changed since confirmation |
 | [role-independence-continuation-grant.ts](role-independence-continuation-grant.ts) | Requests degraded role-independence continuation and authenticates its completed activation. | 2 | History unavailable |
+| [system-document-disposition.ts](system-document-disposition.ts) | Matches completed document-disposition Grant receipts against the exact candidate and report. | 0 | History unavailable |
 | [task-mandate-access-contract.ts](task-mandate-access-contract.ts) | Authority capabilities required by actual mandate consumers. | 0 | History unavailable |
 | [task-mandate-audit.ts](task-mandate-audit.ts) | Pure mandate audit scope, refusal binding and canonical event inputs. | 0 | History unavailable |
 | [task-mandate-contract.ts](task-mandate-contract.ts) | Exact authority binding carried by execution jobs and Grants. | 0 | History unavailable |

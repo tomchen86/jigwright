@@ -2,7 +2,7 @@
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import type { ImplementationReconciliationGate } from '../reconciliation/implementation-reconciliation.ts';
+import type { ImplementationReconciliationGate } from '../../modules/why-knowledge/implementation-reconciliation.ts';
 import type { WorkflowSession } from '../../modules/lifecycle/workflow-session-contract.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 import type { TaskStrategyTransaction } from '../../modules/assurance/task-strategy-evidence.ts';

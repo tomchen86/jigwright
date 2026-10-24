@@ -9,7 +9,7 @@ import {
   readFinalizeTransaction,
   removeFinalizeTransaction,
 } from '../src/runtime/storage-journal/finalize-transaction.ts';
-import { restoreFinalizeTransactionProjection } from '../src/application/finalize/projected-finalization.ts';
+import { restoreFinalizeTransactionProjection } from '../src/runtime/finalization/projected-finalization.ts';
 import {
   readProviderInvocation,
   readProviderInvocationManifest,

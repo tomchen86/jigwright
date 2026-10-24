@@ -34,10 +34,8 @@ import { grantSha256 } from '../modules/authority/grant-primitives.ts';
 import { parseMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
 import { loadWorkflowConfig } from '../runtime/workflow-configuration/workflow-configuration.ts';
 import { discoverRepository } from '../runtime/repository-transaction/git.ts';
-import {
-  readFinalizeTransaction,
-  type FinalizeTransaction,
-} from '../runtime/storage-journal/finalize-transaction.ts';
+import { readFinalizeTransaction } from '../runtime/storage-journal/finalize-transaction.ts';
+import { type FinalizeTransaction } from '../modules/lifecycle/finalize-transaction.ts';
 import {
   grantStorePaths,
   createFileGrantRecordStore,

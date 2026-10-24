@@ -1,8 +1,13 @@
+import {
+  createSystemDocumentDispositionService,
+  type SystemDocumentDispositionPorts,
+} from '../src/runtime/repository-validation/system-document-dispositions.ts';
+import { createSystemDocumentGrantService } from '../src/runtime/repository-validation/system-document-grant.ts';
 import { createProductionSessionCheckService } from '../src/composition-root/session-check-production.ts';
 import { createFinalizationService } from '../src/application/finalize/lifecycle.ts';
 import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
-import { finalizeTaskUnlocked } from '../src/application/finalize/projected-finalization.ts';
-import type { SystemDocumentDispositionService } from '../src/application/finalize/system-document-dispositions.ts';
+import { finalizeTaskUnlocked } from '../src/runtime/finalization/projected-finalization.ts';
+import type { SystemDocumentDispositionService } from '../src/runtime/repository-validation/system-document-dispositions.ts';
 import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
 import { taskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
 import { assertCurrentImplementationReconciliation } from '../src/composition-root/implementation-reconciliation-production.ts';
@@ -47,7 +52,7 @@ import {
   finalizeSession,
 } from './support/session-lifecycle-host.ts';
 import { systemDocumentDispositions } from '../src/composition-root/system-document-disposition-production.ts';
-import { SYSTEM_DOCUMENT_GRANT_REASON } from '../src/application/finalize/system-document-grant.ts';
+import { SYSTEM_DOCUMENT_GRANT_REASON } from '../src/runtime/repository-validation/system-document-grant.ts';
 import { createProductionSystemDocumentGrantService } from '../src/composition-root/grant-production.ts';
 import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
@@ -584,6 +589,138 @@ test('durable finalization resume never looks up the injected document method ag
     assert.equal(lookups, 2);
     assert.equal(fs.readFileSync(counter, 'utf8'), '1');
     assert.equal(git(repository, ['status', '--porcelain']), '');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('document factories capture capabilities once and preserve bare calls and observer identity', () => {
+  const { repository, sessionId } = prepare();
+  try {
+    const candidate = systemDocumentDispositions.observeSystemDocumentCandidate(
+      repository,
+      sessionId,
+    );
+    const events: string[] = [];
+    const originalObserve: SystemDocumentDispositionPorts['observeSystemDocumentCandidate'] =
+      function (this: void, cwd, id) {
+        assert.equal(this, undefined);
+        assert.equal(cwd, repository);
+        assert.equal(id, sessionId);
+        events.push('observe');
+        return candidate;
+      };
+    let observe = originalObserve;
+    const ports: SystemDocumentDispositionPorts = {
+      get observeSystemDocumentCandidate() {
+        events.push('capture observe');
+        return observe;
+      },
+      get runSessionOperation() {
+        events.push('capture operation');
+        return function <T>(
+          this: void,
+          _cwd: string,
+          _id: string,
+          operation: () => T,
+        ): T {
+          assert.equal(this, undefined);
+          return operation();
+        };
+      },
+      get readSystemDocumentReviewRecord() {
+        events.push('capture read');
+        return function (this: void) {
+          assert.equal(this, undefined);
+          events.push('read');
+          return null;
+        };
+      },
+      get writeSystemDocumentReviewRecord() {
+        events.push('capture write');
+        return function (this: void) {
+          assert.equal(this, undefined);
+          assert.fail('inspection wrote a review');
+        };
+      },
+      get readCompletedGrant() {
+        events.push('capture grant');
+        return function (this: void) {
+          assert.equal(this, undefined);
+          assert.fail('unreviewed candidate read a Grant');
+        };
+      },
+    };
+    const first = createSystemDocumentDispositionService(ports);
+    const second = createSystemDocumentDispositionService(ports);
+    assert.deepEqual(
+      events,
+      [...Array(2)].flatMap(() => [
+        'capture observe',
+        'capture operation',
+        'capture read',
+        'capture write',
+        'capture grant',
+      ]),
+    );
+    observe = () => assert.fail('factory reread the observer getter');
+    assert.notEqual(first, second);
+    assert.notEqual(
+      first.inspectSystemDocumentDispositions,
+      second.inspectSystemDocumentDispositions,
+    );
+    assert.equal(first.observeSystemDocumentCandidate, originalObserve);
+    assert.equal(Object.isFrozen(first), false);
+    events.length = 0;
+    const review = first.inspectSystemDocumentDispositions(
+      repository,
+      sessionId,
+    );
+    const other = second.inspectSystemDocumentDispositions(
+      repository,
+      sessionId,
+    );
+    assert.deepEqual(events, ['observe', 'read', 'observe', 'read']);
+    assert.notEqual(review, other);
+    assert.equal(review.documents, candidate.documents);
+    assert.equal('runtimeRoot' in review, false);
+    const grantPorts: Parameters<typeof createSystemDocumentGrantService>[0] = {
+      get observeSystemDocumentCandidate() {
+        events.push('grant capture observe');
+        return originalObserve;
+      },
+      get recordSystemDocumentGrantException() {
+        events.push('grant capture record');
+        return function (this: void) {
+          assert.equal(this, undefined);
+          return 'report';
+        };
+      },
+    };
+    events.length = 0;
+    const grant = createSystemDocumentGrantService(grantPorts);
+    const otherGrant = createSystemDocumentGrantService(grantPorts);
+    assert.deepEqual(events, [
+      'grant capture observe',
+      'grant capture record',
+      'grant capture observe',
+      'grant capture record',
+    ]);
+    assert.notEqual(
+      grant.createSystemDocumentGrantRequest,
+      otherGrant.createSystemDocumentGrantRequest,
+    );
+    const request = grant.createSystemDocumentGrantRequest(
+      repository,
+      sessionId,
+    );
+    assert.ok(
+      typeof request.facts === 'object' &&
+        request.facts !== null &&
+        'documents' in request.facts,
+    );
+    assert.equal(request.facts.documents, candidate.documents);
+    assert.equal(events.at(-1), 'observe');
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import ts from 'typescript';
 import { createFinalizationService } from '../src/application/finalize/lifecycle.ts';
-import { finalizeTaskUnlocked } from '../src/application/finalize/projected-finalization.ts';
+import { finalizeTaskUnlocked } from '../src/runtime/finalization/projected-finalization.ts';
 import { readRepositoryDependencies } from './support/repository-dependency-graph.ts';
 
 type WithoutLast<T extends unknown[]> = T extends [...infer Prefix, unknown]
@@ -42,7 +42,7 @@ const root = path.resolve(import.meta.dirname, '../../..');
 const prefix = 'packages/workflow-engine/src/';
 const consumers = [
   ['application/finalize/lifecycle.ts', 'createFinalizationService'],
-  ['application/finalize/projected-finalization.ts', 'finalizeTaskUnlocked'],
+  ['runtime/finalization/projected-finalization.ts', 'finalizeTaskUnlocked'],
 ] as const;
 
 test('both finalization boundaries require the canonical document capability without a default production binding', () => {
@@ -76,8 +76,13 @@ test('both finalization boundaries require the canonical document capability wit
       imported.some(
         (node) =>
           node.importClause?.isTypeOnly &&
-          node.moduleSpecifier.getText(ast) ===
-            "'./system-document-dispositions.ts'",
+          ts.isStringLiteral(node.moduleSpecifier) &&
+          path.posix.normalize(
+            path.posix.join(
+              path.posix.dirname(file),
+              node.moduleSpecifier.text,
+            ),
+          ) === 'runtime/repository-validation/system-document-dispositions.ts',
       ),
     );
     assert.equal(
@@ -160,5 +165,30 @@ test('document production wiring has one owner and value or type imports back in
       1,
       caller,
     );
+  }
+});
+
+test('document and projected runtime owners reject application back-edges', () => {
+  const resolver = readRepositoryDependencies(root);
+  for (const file of [
+    'runtime/repository-validation/system-document-candidate.ts',
+    'runtime/repository-validation/system-document-dispositions.ts',
+    'runtime/repository-validation/system-document-grant.ts',
+    'runtime/finalization/projected-finalization.ts',
+  ]) {
+    const check = (extra = '') => {
+      const { edges } = resolver.read(path.join(root, prefix, file), extra);
+      assert.equal(
+        edges.some((edge) => edge.to.startsWith(prefix + 'application/')),
+        false,
+        file,
+      );
+    };
+    check();
+    for (const declaration of [
+      "import { createFinalizationService } from '../../application/finalize/lifecycle.ts';",
+      "import type { FinalizeSessionResult } from '../../application/finalize/lifecycle.ts';",
+    ])
+      assert.throws(() => check('\n' + declaration), assert.AssertionError);
   }
 });

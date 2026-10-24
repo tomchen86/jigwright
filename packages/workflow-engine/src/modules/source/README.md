@@ -8,11 +8,11 @@ Use the directory tree to locate governing contracts and source imports to disco
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.source-readme v=1 digest=sha256:3fe9c987e9bccba4c6525018239f0177039d8c516b8dc61d40d6ea295f391c0c -->
+<!-- jigwright:region id=documents.source-readme v=1 digest=sha256:f85041538fb8a46db075dd512c51646a6c49ad6604c5327b938311ad35291fcd -->
 
 <!-- prettier-ignore-start -->
 
-20 files changed in this module since confirmation.
+21 files changed in this module since confirmation.
 
 ## Commands
 
@@ -47,7 +47,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [change-intent.ts](change-intent.ts) | Canonical change intent DTOs; field and wire semantics are unchanged. | 0 | History unavailable |
 | [check-command.ts](check-command.ts) | Owns resolved and pinned check-runner facts and exposes canonical check command parsing and registry types. | 1 | History unavailable |
 | [declared-path-symbols.ts](declared-path-symbols.ts) | Lexically extracts published names from declared source paths for investigation search. | 1 | Header changed since confirmation |
-| [document-disposition.ts](document-disposition.ts) | Finds the contracts and design explanations that a module change must disposition. | 2 | Possibly stale |
+| [document-disposition.ts](document-disposition.ts) | No leading responsibility comment. | 0 | Header changed since confirmation |
 | [file-header.ts](file-header.ts) | Reads a file's responsibility and invariant bullets for document projections. | 2 | Header changed since confirmation |
 | [import-dependencies.ts](import-dependencies.ts) | Derives file dependency bindings from literal JavaScript and TypeScript imports. | 2 | Possibly stale |
 | [module-readme.ts](module-readme.ts) | Reads the handwritten module explanation and its confirmation marker. | 1 | Header changed since confirmation |

@@ -34,10 +34,8 @@ import {
   readSessionFile,
   runtimePaths,
 } from '../session-workspace/session-store.ts';
-import {
-  readFinalizeTransaction,
-  type ProtectedTaskApplyAuthorizationBinding,
-} from '../storage-journal/finalize-transaction.ts';
+import { readFinalizeTransaction } from '../storage-journal/finalize-transaction.ts';
+import { type ProtectedTaskApplyAuthorizationBinding } from '../../modules/lifecycle/finalize-transaction.ts';
 import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
 import { assertPreparedProtectedTaskApplyAuthorization } from './protected-task-apply-authorization.ts';
 import type { WorkflowSession } from '../../modules/lifecycle/workflow-session-contract.ts';

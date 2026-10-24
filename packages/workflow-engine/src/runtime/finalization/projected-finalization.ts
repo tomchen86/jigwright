@@ -1,9 +1,25 @@
-import type { SystemDocumentDispositionService } from './system-document-dispositions.ts';
+import {
+  PROJECTED_SINGLE_PASS_ASSURANCE,
+  type FinalizeTaskResult,
+  type FinalizeTaskOptions,
+  type CandidateFinalizeTransaction,
+  assertCandidateTransaction,
+  createCheckReport,
+  createCompletionReport,
+  createFinishReport,
+  finalizedSession,
+  sessionHasFinalizeReports,
+  resultFrom,
+  assertProtectedApplyRequestMatches,
+  transactionDiverged,
+  assertExplicitCheckRequestMatches,
+  assertFinalizeTransactionIdentity,
+} from '../../modules/lifecycle/projected-finalization.ts';
+import type { SystemDocumentDispositionService } from '../repository-validation/system-document-dispositions.ts';
 import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
-import type { DocumentationReviewCapture } from '../../modules/assurance/documentation-closure.ts';
+
 import type { TaskStrategyExecutionGate } from '../../modules/assurance/task-strategy-gate.ts';
-import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
 import type { ManagedDocumentOperations } from '../../modules/projection/managed-documents.ts';
 /**
  * Applies projected finalize transactions and recovers their checks and
@@ -16,7 +32,6 @@ import type { ManagedDocumentOperations } from '../../modules/projection/managed
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
 import { parseTasks } from '../../modules/planning-provider/planning-artifact-parsers.ts';
 import { classifyProjectionPaths } from '../../modules/projection/engine-projection-registry.ts';
 import {
@@ -30,56 +45,46 @@ import {
   publishFinalizeTransaction,
   readFinalizeTransaction,
   removeFinalizeTransaction,
-  type FinalizeTransaction,
-  type FinalizeTransactionPhase,
-  type ProtectedTaskApplyAuthorizationBinding,
-} from '../../runtime/storage-journal/finalize-transaction.ts';
-import {
-  resolveExplicitFinalizeChecks,
-  resolveFinalizeCheckPolicy,
-  type FinalizeCheckEscalation,
-} from '../../modules/assurance/finalize-check-policy.ts';
+} from '../storage-journal/finalize-transaction.ts';
+import { type FinalizeTransaction } from '../../modules/lifecycle/finalize-transaction.ts';
+import { resolveFinalizeCheckPolicy } from '../../modules/assurance/finalize-check-policy.ts';
 import {
   listStagedPaths,
   previewExactStaging,
   rollbackExactStaging,
   stageExactPaths,
-} from '../../runtime/repository-transaction/git-transitions.ts';
+} from '../repository-transaction/git-transitions.ts';
 import {
   fingerprintRepositoryProjectionExcludingPaths,
   fingerprintUnstagedRepositoryProjection,
   runGit,
-} from '../../runtime/repository-transaction/git.ts';
-import { loadActiveSessionContext } from '../../runtime/repository-observation/workflow-session-context.ts';
-import { applyGeneratedDocumentMutations } from '../../runtime/managed-documents/validation/managed-documents.ts';
-import type { ImplementationReconciliationGate } from '../reconciliation/implementation-reconciliation.ts';
+} from '../repository-transaction/git.ts';
+import { loadActiveSessionContext } from '../repository-observation/workflow-session-context.ts';
+import { applyGeneratedDocumentMutations } from '../managed-documents/validation/managed-documents.ts';
+import type { ImplementationReconciliationGate } from '../../modules/why-knowledge/implementation-reconciliation.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
-import { reconcilePredecessor } from '../../runtime/repository-validation/predecessor-reconciliation.ts';
+import { reconcilePredecessor } from '../repository-validation/predecessor-reconciliation.ts';
 import type { WorkflowReport } from '../../modules/lifecycle/workflow-report.ts';
 import {
   assertInspectionReport,
   assertReportChecks,
 } from '../../modules/lifecycle/workflow-report.ts';
-import { readSessionReport } from '../../runtime/storage-journal/session-report-reader.ts';
-import type { WorkflowSession } from '../../runtime/session-workspace/session-store.ts';
+import { readSessionReport } from '../storage-journal/session-report-reader.ts';
 import {
   applyTaskProjection,
   digestTaskContent,
   planTasksCompleted,
   restoreTaskProjection,
-} from '../../runtime/managed-documents/transaction/task-projection.ts';
-import {
-  type TaskDiffReviewCompletionOperations,
-  type TaskDiffReviewCompletionGateOptions,
-} from '../../modules/lifecycle/task-diff-review-contracts.ts';
+} from '../managed-documents/transaction/task-projection.ts';
+import { type TaskDiffReviewCompletionOperations } from '../../modules/lifecycle/task-diff-review-contracts.ts';
 
-import { ensureTaskMechanicalTransformationEvidence } from '../../runtime/repository-validation/task-mechanical-transform.ts';
+import { ensureTaskMechanicalTransformationEvidence } from '../repository-validation/task-mechanical-transform.ts';
 import {
   type SessionCheckService,
   writeSessionReport,
-} from '../../runtime/repository-validation/session-verification.ts';
-import { persistSession } from '../../runtime/session-workspace/session-persistence.ts';
-import { inspectSession } from '../../runtime/repository-validation/session-inspection.ts';
+} from '../repository-validation/session-verification.ts';
+import { persistSession } from '../session-workspace/session-persistence.ts';
+import { inspectSession } from '../repository-validation/session-inspection.ts';
 
 /**
  * A projected single-pass finalize builds the final implementation, checkbox,
@@ -90,44 +95,6 @@ import { inspectSession } from '../../runtime/repository-validation/session-insp
  * distinct. On any caught ordinary failure it restores the controlled
  * projections and leaves no evidence pointers behind.
  */
-export const PROJECTED_SINGLE_PASS_ASSURANCE =
-  'projected-single-pass-ordinary-failure' as const;
-
-export type FinalizeTaskResult = {
-  session: WorkflowSession;
-  assurance: typeof PROJECTED_SINGLE_PASS_ASSURANCE;
-  transactionId: string;
-  checkReportId: string;
-  completionReportId: string;
-  finishReportId: string;
-  completedTaskIds: string[];
-  requiredChecks: string[];
-  checkEscalation: 'all-tasks-terminal' | 'explicit' | null;
-  stagedPaths: string[];
-  tree: string;
-};
-
-export type FinalizeTaskOptions = Readonly<{
-  fullGate?: boolean;
-  consumedRoleResultReplay?: TaskDiffReviewCompletionGateOptions['consumedRoleResultReplay'];
-  onCheckEscalation?: (
-    escalation: Exclude<FinalizeCheckEscalation, null>,
-    requiredChecks: readonly string[],
-  ) => void;
-  /** Internal exact authorization lineage; never accepted from a CLI caller. */
-  protectedApply?: ProtectedTaskApplyAuthorizationBinding;
-  testCrashAfter?:
-    | 'projection-prepared'
-    | 'task-projected'
-    | 'projection-applied'
-    | 'candidate-prepared'
-    | 'checks-running'
-    | 'checks-executed'
-    | 'checked'
-    | 'staged'
-    | 'reports-persisted'
-    | 'session-finished';
-}>;
 
 export function finalizeTaskUnlocked(
   reviewedAssets: ReviewedGeneratedAssetInventory,
@@ -156,8 +123,13 @@ export function finalizeTaskUnlocked(
     active.session.sessionId,
   );
   if (existing !== null) {
-    assertFinalizeTransactionIdentity(active, existing);
-    assertExplicitCheckRequestMatches(active, existing, options);
+    assertFinalizeTransactionIdentity(active.session, active.git, existing);
+    assertExplicitCheckRequestMatches(
+      active.session,
+      active.config,
+      existing,
+      options,
+    );
     assertProtectedApplyRequestMatches(existing, options);
     try {
       return continueFinalizeTransaction(
@@ -501,11 +473,6 @@ function continueFinalizeTransaction(
   }
 }
 
-type CandidateFinalizeTransaction = FinalizeTransaction & {
-  candidateTree: string;
-  candidateFingerprint: string;
-};
-
 function applyPreparedFinalizeProjection(
   changeContract: ChangeContractServices,
   cwd: string,
@@ -513,7 +480,7 @@ function applyPreparedFinalizeProjection(
   options: FinalizeTaskOptions,
 ): CandidateFinalizeTransaction {
   const context = loadActiveSessionContext(cwd, transaction.sessionId);
-  assertFinalizeTransactionIdentity(context, transaction);
+  assertFinalizeTransactionIdentity(context.session, context.git, transaction);
   if (
     context.session.latestCheckReportId ||
     context.session.completionReportId ||
@@ -606,25 +573,13 @@ function assertProjectionBaseCurrent(
   }
 }
 
-function assertCandidateTransaction(
-  transaction: FinalizeTransaction,
-): asserts transaction is CandidateFinalizeTransaction {
-  if (
-    transaction.phase === 'projection-prepared' ||
-    transaction.candidateTree === null ||
-    transaction.candidateFingerprint === null
-  ) {
-    throw transactionDiverged();
-  }
-}
-
 function inspectFinalizeTransaction(
   changeContract: ChangeContractServices,
   cwd: string,
   transaction: CandidateFinalizeTransaction,
 ) {
   const context = loadActiveSessionContext(cwd, transaction.sessionId);
-  assertFinalizeTransactionIdentity(context, transaction);
+  assertFinalizeTransactionIdentity(context.session, context.git, transaction);
   for (const mutation of transaction.projectionMutations) {
     if (
       readProjectionText(transaction.repositoryRoot, mutation.path) !==
@@ -709,81 +664,6 @@ function inspectFinalizeTransaction(
   };
 }
 
-function createCheckReport(
-  transaction: FinalizeTransaction,
-  inspection: ReturnType<typeof inspectSession>,
-  checks: unknown[],
-): WorkflowReport {
-  const requiredChecks = [...transaction.requiredChecks];
-  return {
-    schemaVersion: 1,
-    kind: 'check',
-    finalizeProfile: PROJECTED_SINGLE_PASS_ASSURANCE,
-    candidateTree: transaction.candidateTree,
-    sessionId: transaction.sessionId,
-    changeId: transaction.changeId,
-    taskId: transaction.taskId,
-    createdAt: transaction.createdAt,
-    baseline: transaction.baseline,
-    branch: transaction.branch,
-    artifactDigests: inspection.artifactDigests,
-    allowedPaths: inspection.session.allowedPaths,
-    requiredChecks,
-    requiredCheckDigests: digestRequiredCheckDefinitions(
-      inspection.contract.checks,
-      requiredChecks,
-    ),
-    checkEscalation: transaction.checkEscalation,
-    ...classifyProjectionPaths(
-      inspection.changedPaths,
-      [transaction.taskProjectionPath],
-      [...transaction.transitionPaths],
-    ),
-    fingerprint: inspection.fingerprint,
-    checks,
-  };
-}
-
-function createCompletionReport(
-  transaction: FinalizeTransaction,
-  inspection: ReturnType<typeof inspectSession>,
-  documentationReview: DocumentationReviewCapture | null,
-): WorkflowReport {
-  return {
-    ...createCheckReport(transaction, inspection, []),
-    kind: 'completion',
-    parentReportId: transaction.checkReportId!,
-    completedTaskIds: [...transaction.completedTaskIds],
-    projectionSourceDigest: transaction.projectionSourceDigest,
-    transitionPaths: [...transaction.transitionPaths],
-    reconciledTasks: transaction.reconciledTasks,
-    checks: undefined,
-    ...(documentationReview === null ? {} : { documentationReview }),
-  };
-}
-
-function createFinishReport(
-  transaction: FinalizeTransaction,
-  inspection: ReturnType<typeof inspectSession>,
-  checkReport: WorkflowReport,
-  completionReportId: string,
-): WorkflowReport {
-  return {
-    ...createCheckReport(
-      transaction,
-      inspection,
-      checkReport.checks as unknown[],
-    ),
-    kind: 'finish',
-    parentReportId: completionReportId,
-    completedTaskIds: [...transaction.completedTaskIds],
-    projectionSourceDigest: transaction.projectionSourceDigest,
-    transitionPaths: [...transaction.transitionPaths],
-    stagedPaths: [...transaction.changedPaths],
-    tree: transaction.candidateTree,
-  };
-}
-
 function currentCheckReport(
   inspection: ReturnType<typeof inspectSession>,
   transaction: CandidateFinalizeTransaction,
@@ -814,123 +694,6 @@ function currentCheckReport(
   return report;
 }
 
-function finalizedSession(
-  session: WorkflowSession,
-  transaction: FinalizeTransaction,
-): WorkflowSession {
-  if (
-    transaction.checkReportId === null ||
-    transaction.completionReportId === null ||
-    transaction.finishReportId === null
-  ) {
-    throw transactionDiverged();
-  }
-  return {
-    ...session,
-    latestCheckReportId: transaction.checkReportId,
-    completionReportId: transaction.completionReportId,
-    finishReportId: transaction.finishReportId,
-  };
-}
-
-function sessionHasFinalizeReports(
-  session: WorkflowSession,
-  transaction: FinalizeTransaction,
-): boolean {
-  return (
-    session.latestCheckReportId === transaction.checkReportId &&
-    session.completionReportId === transaction.completionReportId &&
-    session.finishReportId === transaction.finishReportId
-  );
-}
-
-function resultFrom(
-  transaction: CandidateFinalizeTransaction,
-  session: WorkflowSession,
-): FinalizeTaskResult {
-  if (
-    transaction.checkReportId === null ||
-    transaction.completionReportId === null ||
-    transaction.finishReportId === null
-  ) {
-    throw transactionDiverged();
-  }
-  return {
-    session,
-    assurance: PROJECTED_SINGLE_PASS_ASSURANCE,
-    transactionId: transaction.transactionId,
-    checkReportId: transaction.checkReportId,
-    completionReportId: transaction.completionReportId,
-    finishReportId: transaction.finishReportId,
-    completedTaskIds: [...transaction.completedTaskIds],
-    requiredChecks: [...transaction.requiredChecks],
-    checkEscalation: transaction.checkEscalation,
-    stagedPaths: [...transaction.changedPaths],
-    tree: transaction.candidateTree,
-  };
-}
-
-function assertExplicitCheckRequestMatches(
-  context: ReturnType<typeof loadActiveSessionContext>,
-  transaction: FinalizeTransaction,
-  options: FinalizeTaskOptions,
-): void {
-  if (options.fullGate !== true) return;
-  const terminalChecks = context.config.allTasksTerminalChecks ?? [];
-  const expected = resolveExplicitFinalizeChecks(
-    context.session.requiredChecks,
-    context.config,
-  );
-  if (
-    terminalChecks.length === 0 ||
-    JSON.stringify([...transaction.requiredChecks]) !== JSON.stringify(expected)
-  ) {
-    throw workflowError(
-      'FINALIZE_REQUEST_CHANGED',
-      'A durable finalize transaction cannot be escalated after it was created.',
-      ExitCode.conflict,
-      {
-        recovery: `Resume without --full-gate: pnpm workflow finalize-recover ${transaction.sessionId} --json`,
-      },
-    );
-  }
-}
-
-function assertProtectedApplyRequestMatches(
-  transaction: FinalizeTransaction,
-  options: FinalizeTaskOptions,
-): void {
-  if (
-    JSON.stringify(transaction.protectedApply ?? null) ===
-    JSON.stringify(options.protectedApply ?? null)
-  ) {
-    return;
-  }
-  throw workflowError(
-    'FINALIZE_REQUEST_CHANGED',
-    'A durable protected Apply transaction can only resume under its exact Central Grant operation.',
-    ExitCode.conflict,
-  );
-}
-
-function assertFinalizeTransactionIdentity(
-  context: ReturnType<typeof loadActiveSessionContext>,
-  transaction: FinalizeTransaction,
-): void {
-  const session = context.session;
-  if (
-    transaction.sessionId !== session.sessionId ||
-    transaction.changeId !== session.changeId ||
-    transaction.taskId !== session.taskId ||
-    transaction.repositoryRoot !== context.git.repositoryRealPath ||
-    transaction.gitCommonDirectory !== context.git.gitCommonDirectory ||
-    transaction.branch !== session.branch ||
-    JSON.stringify(transaction.baseline) !== JSON.stringify(session.baseline)
-  ) {
-    throw transactionDiverged();
-  }
-}
-
 function rollbackPersistedFinalizeTransaction(
   cwd: string,
   sessionId: string,
@@ -953,7 +716,7 @@ export function restoreFinalizeTransactionProjection(
   cause: unknown,
 ): void {
   const context = loadActiveSessionContext(cwd, transaction.sessionId);
-  assertFinalizeTransactionIdentity(context, transaction);
+  assertFinalizeTransactionIdentity(context.session, context.git, transaction);
   const observed = readFinalizeTransaction(
     context.runtime.root,
     transaction.sessionId,
@@ -1050,12 +813,4 @@ class SimulatedFinalizeInterruption extends Error {
   constructor(phase: string) {
     super(`Simulated finalize interruption after ${phase}.`);
   }
-}
-
-function transactionDiverged() {
-  return workflowError(
-    'FINALIZE_TRANSACTION_DIVERGED',
-    'Durable finalize state differs from its exact candidate transaction.',
-    ExitCode.staleState,
-  );
 }

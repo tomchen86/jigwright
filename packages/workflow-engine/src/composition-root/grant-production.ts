@@ -13,7 +13,7 @@ import {
   openMacOsHumanGateApprovalSession,
 } from '../adapters/human/macos/human-gate-macos.ts';
 import { collectSshApprovalProof } from '../adapters/signing/ssh/grant-proof-ssh.ts';
-import { createSystemDocumentGrantService } from '../application/finalize/system-document-grant.ts';
+import { createSystemDocumentGrantService } from '../runtime/repository-validation/system-document-grant.ts';
 import { deriveProtectedTaskApplyTaskDiffProviderGrantContinuation } from './task-diff-review-production.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../foundation/canonical-json/contract-values.ts';

@@ -1,3 +1,15 @@
+import {
+  assertCandidateTransaction,
+  assertExplicitCheckRequestMatches,
+  assertFinalizeTransactionIdentity,
+  createCheckReport,
+  createCompletionReport,
+  createFinishReport,
+  finalizedSession as projectFinalizedSession,
+  sessionHasFinalizeReports,
+  resultFrom,
+} from '../src/modules/lifecycle/projected-finalization.ts';
+import { inspectSession } from '../src/runtime/repository-validation/session-inspection.ts';
 import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
 import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
@@ -659,6 +671,132 @@ test('projected single-pass finalize checks and stages one exact final tree', ()
       );
       assert.equal(report.candidateTree, finalized.tree);
     }
+
+    const transaction = readFinalizeTransaction(
+      runtimeRoot(repository),
+      session.sessionId,
+    );
+    assert.ok(transaction);
+    assertCandidateTransaction(transaction);
+    const ruleInspection = inspectSession(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      {
+        projectedTaskIds: [...transaction.completedTaskIds],
+        projectionSourceDigest: transaction.projectionSourceDigest,
+        authorizedTransitionPaths: [...transaction.transitionPaths],
+      },
+    );
+    assert.deepEqual(ruleInspection.changedPaths, transaction.changedPaths);
+    const ruleCheck = createCheckReport(
+      transaction,
+      ruleInspection,
+      checkReport.checks as unknown[],
+    );
+    assert.equal(ruleCheck.checks, checkReport.checks);
+    assert.equal(ruleCheck.baseline, transaction.baseline);
+    assert.equal(ruleCheck.artifactDigests, ruleInspection.artifactDigests);
+    assert.equal(ruleCheck.allowedPaths, ruleInspection.session.allowedPaths);
+    assert.deepEqual(ruleCheck.requiredChecks, transaction.requiredChecks);
+    assert.notEqual(ruleCheck.requiredChecks, transaction.requiredChecks);
+    const ruleCompletion = createCompletionReport(
+      transaction,
+      ruleInspection,
+      null,
+    );
+    assert.equal(ruleCompletion.reconciledTasks, transaction.reconciledTasks);
+    assert.notEqual(
+      ruleCompletion.completedTaskIds,
+      transaction.completedTaskIds,
+    );
+    const ruleFinish = createFinishReport(
+      transaction,
+      ruleInspection,
+      ruleCheck,
+      finalizedSession.completionReportId!,
+    );
+    assert.equal(ruleFinish.checks, ruleCheck.checks);
+    assert.notEqual(ruleFinish.stagedPaths, transaction.changedPaths);
+    const projectedSession = projectFinalizedSession(session, transaction);
+    assert.notEqual(projectedSession, session);
+    assert.equal(projectedSession.baseline, session.baseline);
+    assert.equal(
+      sessionHasFinalizeReports(projectedSession, transaction),
+      true,
+    );
+    const ruleResult = resultFrom(transaction, projectedSession);
+    assert.equal(ruleResult.session, projectedSession);
+    assert.notEqual(ruleResult.requiredChecks, transaction.requiredChecks);
+    assert.deepEqual(ruleResult.stagedPaths, transaction.changedPaths);
+    assert.throws(
+      () => assertCandidateTransaction({ ...transaction, candidateTree: null }),
+      (error) => isWorkflowError(error, 'FINALIZE_TRANSACTION_DIVERGED'),
+    );
+    const reads: string[] = [];
+    const observedSession = {
+      ...session,
+      get requiredChecks() {
+        reads.push('requiredChecks');
+        return session.requiredChecks;
+      },
+    };
+    const observedConfig = {
+      ...ruleInspection.contract.config,
+      get allTasksTerminalChecks() {
+        reads.push('terminalChecks');
+        return [{ checkId: 'projected', subsumes: ['projected'] }];
+      },
+    };
+    assertExplicitCheckRequestMatches(
+      observedSession,
+      observedConfig,
+      transaction,
+      {},
+    );
+    assert.deepEqual([...reads], []);
+    assertExplicitCheckRequestMatches(
+      observedSession,
+      observedConfig,
+      transaction,
+      { fullGate: true },
+    );
+    assert.deepEqual(
+      [...reads],
+      ['terminalChecks', 'requiredChecks', 'terminalChecks'],
+    );
+    assert.throws(
+      () =>
+        assertExplicitCheckRequestMatches(
+          observedSession,
+          observedConfig,
+          { ...transaction, requiredChecks: [] },
+          { fullGate: true },
+        ),
+      (error) => isWorkflowError(error, 'FINALIZE_REQUEST_CHANGED'),
+    );
+    reads.length = 0;
+    const observedGit = {
+      get repositoryRealPath() {
+        reads.push('repositoryRealPath');
+        return ruleInspection.git.repositoryRealPath;
+      },
+      get gitCommonDirectory() {
+        reads.push('gitCommonDirectory');
+        return ruleInspection.git.gitCommonDirectory;
+      },
+    };
+    assert.throws(
+      () =>
+        assertFinalizeTransactionIdentity(session, observedGit, {
+          ...transaction,
+          sessionId: 'different-session',
+        }),
+      (error) => isWorkflowError(error, 'FINALIZE_TRANSACTION_DIVERGED'),
+    );
+    assert.deepEqual([...reads], []);
+    assertFinalizeTransactionIdentity(session, observedGit, transaction);
+    assert.deepEqual([...reads], ['repositoryRealPath', 'gitCommonDirectory']);
 
     commitSession(
       productionChangeContract,

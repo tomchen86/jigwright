@@ -33,7 +33,7 @@ import {
   withSessionOperation,
 } from '../session-workspace/session-store.ts';
 import { ensureTaskMechanicalTransformationEvidence } from './task-mechanical-transform.ts';
-import { type ProtectedTaskApplyAuthorizationBinding } from '../storage-journal/finalize-transaction.ts';
+import { type ProtectedTaskApplyAuthorizationBinding } from '../../modules/lifecycle/finalize-transaction.ts';
 import { inspectSession } from './session-inspection.ts';
 import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 import { readFileAtRevision } from '../repository-transaction/git-command.ts';

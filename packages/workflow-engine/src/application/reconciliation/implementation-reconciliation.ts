@@ -28,9 +28,6 @@ import {
   type ReconciledLedgerProjection,
 } from '../../modules/why-knowledge/implementation-reconciliation.ts';
 
-export type ImplementationReconciliationGate<Inspection> = (
-  inspection: Inspection,
-) => ImplementationReconciliationRecord | null;
 export type ReconciliationSessionFacts = Readonly<{
   sessionId: string;
   changeId: string;

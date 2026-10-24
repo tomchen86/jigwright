@@ -1,19 +1,9 @@
 /** Bind document disposition rules to repository observations and durable Grant records. */
-import {
-  loadActiveSessionContext,
-  runSessionOperation,
-} from './lifecycle-context.ts';
-import {
-  listChangedPaths,
-  fingerprintRepositoryProjection,
-} from '../runtime/repository-transaction/git.ts';
-import { createSystemDocumentDispositionService } from '../application/finalize/system-document-dispositions.ts';
-import { observeSystemDocumentCandidate } from '../application/finalize/system-document-candidate.ts';
-import { readSystemDescriptionSnapshot } from '../runtime/repository-transaction/system-description-snapshot.ts';
-import {
-  combineOpenSpecDeltas,
-  specDeltaChangesContract,
-} from '../runtime/repository-transaction/archive-delta-verifier.ts';
+import { runSessionOperation } from './lifecycle-context.ts';
+
+import { createSystemDocumentDispositionService } from '../runtime/repository-validation/system-document-dispositions.ts';
+import { observeSystemDocumentCandidate } from '../runtime/repository-validation/system-document-candidate.ts';
+
 import {
   grantStorePaths,
   createFileGrantRecordStore,
@@ -25,19 +15,7 @@ import {
 
 export const systemDocumentDispositions =
   createSystemDocumentDispositionService({
-    observeSystemDocumentCandidate: (cwd, sessionId) =>
-      observeSystemDocumentCandidate(cwd, sessionId, {
-        loadActiveSessionContext,
-        readSystemDescriptionSnapshot,
-        listChangedPaths,
-        fingerprintRepositoryProjection,
-        deltaChangesContract: (documentPath, before, deltas) =>
-          specDeltaChangesContract(
-            documentPath,
-            before,
-            combineOpenSpecDeltas(deltas),
-          ),
-      }),
+    observeSystemDocumentCandidate,
     runSessionOperation,
     readSystemDocumentReviewRecord,
     writeSystemDocumentReviewRecord,
