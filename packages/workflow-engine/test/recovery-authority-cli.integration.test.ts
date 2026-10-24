@@ -311,6 +311,10 @@ test('sealed Recovery Authority CLI rejects in-repository sources, incomplete ex
       path.join(fixture.externalRoot, 'expectations-symlink.json'),
       path.join(fixture.externalRoot, 'expectations-mode.json'),
       path.join(fixture.externalRoot, 'expectations-hardlink.json'),
+      path.join(fixture.externalRoot, 'expectations-missing.json'),
+      path.join(fixture.externalRoot, 'expectations-empty.json'),
+      path.join(fixture.externalRoot, 'expectations-over-limit.json'),
+      path.join(fixture.gitCommonDirectory, 'expectations.json'),
     ];
     fs.symlinkSync(fixture.expectationsPath, unsafeExpectations[0]!);
     fs.copyFileSync(fixture.expectationsPath, unsafeExpectations[1]!);
@@ -322,8 +326,69 @@ test('sealed Recovery Authority CLI rejects in-repository sources, incomplete ex
     fs.copyFileSync(fixture.expectationsPath, hardlinkSource);
     fs.chmodSync(hardlinkSource, 0o600);
     fs.linkSync(hardlinkSource, unsafeExpectations[2]!);
+    for (const [filePath, content] of [
+      [unsafeExpectations[4]!, ''],
+      [unsafeExpectations[5]!, ' '.repeat(1024 * 1024 + 1)],
+      [unsafeExpectations[6]!, `${canonicalJson(fixture.expectations)}\n`],
+    ] as const) {
+      fs.writeFileSync(filePath, content, { flag: 'wx', mode: 0o600 });
+      fs.chmodSync(filePath, 0o600);
+    }
+    // The common-directory input must also be rejected outside the worktree.
+    const linkedWorktree = path.join(fixture.externalRoot, 'linked-worktree');
+    git(fixture.repository, [
+      'worktree',
+      'add',
+      '--detach',
+      linkedWorktree,
+      'HEAD',
+    ]);
+    assert.equal(
+      fs.realpathSync(
+        path.resolve(
+          linkedWorktree,
+          git(linkedWorktree, ['rev-parse', '--git-common-dir']).trim(),
+        ),
+      ),
+      fixture.gitCommonDirectory,
+    );
     for (const expectationsPath of unsafeExpectations) {
       const unsafe = captureHarness(() =>
+        runHarnessBootstrapCli(
+          [
+            'recovery-authority',
+            'status',
+            '--expectations',
+            expectationsPath,
+            '--json',
+          ],
+          expectationsPath === unsafeExpectations[6]
+            ? linkedWorktree
+            : fixture.repository,
+          overrides,
+        ),
+      );
+      assert.equal(unsafe.status, 12, `${expectationsPath}: ${unsafe.stderr}`);
+      assert.match(
+        unsafe.stderr,
+        /RECOVERY_AUTHORITY_EXTERNAL_INPUT_UNSAFE/,
+        expectationsPath,
+      );
+    }
+
+    const canonicalExpectations = canonicalJson(fixture.expectations);
+    for (const [name, content] of [
+      ['utf8', Buffer.from([0xff, 0x0a])],
+      ['missing-lf', Buffer.from(canonicalExpectations)],
+      ['noncanonical', Buffer.from(` ${canonicalExpectations}\n`)],
+    ] as const) {
+      const expectationsPath = path.join(
+        fixture.externalRoot,
+        `expectations-${name}.json`,
+      );
+      fs.writeFileSync(expectationsPath, content, { flag: 'wx', mode: 0o600 });
+      fs.chmodSync(expectationsPath, 0o600);
+      const invalid = captureHarness(() =>
         runHarnessBootstrapCli(
           [
             'recovery-authority',
@@ -336,8 +401,40 @@ test('sealed Recovery Authority CLI rejects in-repository sources, incomplete ex
           overrides,
         ),
       );
-      assert.notEqual(unsafe.status, 0);
-      assert.match(unsafe.stderr, /RECOVERY_AUTHORITY_EXTERNAL_INPUT_UNSAFE/);
+      assert.equal(invalid.status, 13, `${name}: ${invalid.stderr}`);
+      assert.match(
+        invalid.stderr,
+        /RECOVERY_AUTHORITY_EXTERNAL_INPUT_INVALID/,
+        name,
+      );
+    }
+
+    for (const args of [
+      ['recovery-authority', 'status', '--expectations', 'expectations.json'],
+      [
+        'recovery-authority',
+        'status',
+        '--expectations',
+        `${fixture.externalRoot}/./expectations.json`,
+      ],
+      [
+        'recovery-quarantine',
+        'enter',
+        wrongDomain,
+        '--expectations',
+        fixture.expectationsPath,
+        '--extra',
+      ],
+    ]) {
+      const unsupported = captureHarness(() =>
+        runHarnessBootstrapCli(
+          [...args, '--json'],
+          fixture.repository,
+          overrides,
+        ),
+      );
+      assert.equal(unsupported.status, 2, unsupported.stderr);
+      assert.match(unsupported.stderr, /HARNESS_RECOVERY_COMMAND_UNSUPPORTED/);
     }
   } finally {
     fixture.cleanup();

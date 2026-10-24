@@ -307,7 +307,7 @@ test('authority-plan and bootstrap recovery retain an independent repair path', 
   for (const filePath of [
     'packages/workflow-engine/src/application/control-plane/authority-plan.ts',
     'packages/workflow-engine/src/application/control-plane/maintainer-recovery.ts',
-    'packages/workflow-engine/src/application/control-plane/harness-bootstrap-production.ts',
+    'packages/workflow-engine/src/runtime/recovery/harness-bootstrap-external-input.ts',
     'packages/workflow-engine/src/application/control-plane/harness-bootstrap-recovery-commands.ts',
     'packages/workflow-engine/src/composition-root/harness-bootstrap-production.ts',
   ]) {

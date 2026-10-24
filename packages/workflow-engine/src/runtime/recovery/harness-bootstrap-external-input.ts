@@ -12,7 +12,11 @@ import type {
   RecoveryAuthorityImportBoundary,
   RecoveryAuthorityExpectations,
 } from '../../modules/authority/recovery-authority-contract.ts';
-import type { RecoveryQuarantineEnvelope } from '../../modules/authority/recovery-quarantine-contract.ts';
+import {
+  isExactAbsolutePath,
+  type RecoveryQuarantineEnvelope,
+} from '../../modules/authority/recovery-quarantine-contract.ts';
+import type { readRecoveryQuarantineMarker } from './recovery-quarantine.ts';
 import {
   workflowError,
   ExitCode,
@@ -20,7 +24,7 @@ import {
 } from '../../foundation/errors/errors.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 
-export function recoveryAuthorityStateRoot(gitCommonDirectory: string): string {
+function recoveryAuthorityStateRoot(gitCommonDirectory: string): string {
   return path.join(
     gitCommonDirectory,
     'workflow-engine',
@@ -46,6 +50,18 @@ export function requireRecoveryAuthorityStateRoot(
   return stateRoot;
 }
 
+export function readOptionalRecoveryQuarantineMarker(
+  gitCommonDirectory: string,
+  readMarker: typeof readRecoveryQuarantineMarker,
+) {
+  const storageRoot = recoveryAuthorityStateRoot(gitCommonDirectory);
+  if (fs.lstatSync(storageRoot, { throwIfNoEntry: false }) === undefined) {
+    return null;
+  }
+  assertPrivateRecoveryDirectory(storageRoot);
+  return readMarker(storageRoot);
+}
+
 function ensurePrivateDirectory(parent: string, directory: string): void {
   assertExactDirectory(parent, false);
   if (path.dirname(directory) !== parent) throw recoveryExternalInputUnsafe();
@@ -55,7 +71,7 @@ function ensurePrivateDirectory(parent: string, directory: string): void {
   assertPrivateRecoveryDirectory(directory);
 }
 
-export function assertPrivateRecoveryDirectory(directory: string): void {
+function assertPrivateRecoveryDirectory(directory: string): void {
   assertExactDirectory(directory, true);
 }
 
@@ -79,8 +95,9 @@ function assertExactDirectory(
 }
 
 export function hasRecoveryOperationalTrustRootFence(
-  storageRoot: string,
+  gitCommonDirectory: string,
 ): boolean {
+  const storageRoot = recoveryAuthorityStateRoot(gitCommonDirectory);
   if (fs.lstatSync(storageRoot, { throwIfNoEntry: false }) === undefined) {
     return false;
   }
@@ -232,14 +249,6 @@ function pathIsWithin(parent: string, candidate: string): boolean {
   return (
     relative.length === 0 ||
     (!relative.startsWith(`..${path.sep}`) && relative !== '..')
-  );
-}
-
-export function isExactAbsolutePath(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    path.isAbsolute(value) &&
-    path.resolve(value) === value
   );
 }
 
