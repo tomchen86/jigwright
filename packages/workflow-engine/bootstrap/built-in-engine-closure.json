@@ -568,7 +568,7 @@
     {
       "path": "src/application/archive/archive-eligibility.ts",
       "mode": "100644",
-      "digest": "sha256:e530c469293bc090c4e5bc71d825e06c9175bcc009d6bd259f6957eabceafe4c"
+      "digest": "sha256:e3fafa1c44b83290d4bde39aafd0f1253fdae94b8222cfc672f084407544500a"
     },
     {
       "path": "src/application/archive/archive-pr-grant.ts",
@@ -583,12 +583,12 @@
     {
       "path": "src/application/archive/archive-transformation.ts",
       "mode": "100644",
-      "digest": "sha256:600952c4636018ff8b3f79ff527c0741f2a0bab25655e0318d3d4edb89296d2b"
+      "digest": "sha256:780b3b908cdd8ae7177cf07a0cc236800b0f14574c66756b086100bcc9eabaa5"
     },
     {
       "path": "src/application/archive/archive-transition.ts",
       "mode": "100644",
-      "digest": "sha256:95ba114c1d957dd955ea654508ca9472b15180f7d077cec1f990bfb3c4e833fb"
+      "digest": "sha256:19a4ee4e855a2533d0a6fbb513153c1b466b112af209679395ae543f5775da49"
     },
     {
       "path": "src/application/assurance/base-authority-attestation.ts",
@@ -1918,12 +1918,12 @@
     {
       "path": "src/modules/assurance/commit-replay/ci-archive-tree.ts",
       "mode": "100644",
-      "digest": "sha256:0d8c61717210968970ff30c890c400c2f53a5b2f08ca1fc18e01b8f78658b791"
+      "digest": "sha256:96e8d5a449134a7394751cb5dfc94c66438462c746ed5f997c92d23f0ee427ae"
     },
     {
       "path": "src/modules/assurance/commit-replay/ci-archive.ts",
       "mode": "100644",
-      "digest": "sha256:15f01308ae0a60941edefe0493c07c6ab158195c6b7f41490d0240c4f79beac6"
+      "digest": "sha256:9c9c43ccc4dbd89b08c6f78b27729ba6f4cbac7188fbee53000e6b547431e36a"
     },
     {
       "path": "src/modules/assurance/commit-replay/ci-authority.ts",
@@ -3184,6 +3184,11 @@
       "path": "src/modules/lifecycle/workflow-session-contract.ts",
       "mode": "100644",
       "digest": "sha256:efdde9734af42bbd4029030b088a018a3f2ba47691feb27553d216f081b86677"
+    },
+    {
+      "path": "src/modules/planning-provider/archive-destination.ts",
+      "mode": "100644",
+      "digest": "sha256:20058ac2fff82d5c63d9b197478eed5dc148d4aca70a83a2686c69ede5357ad5"
     },
     {
       "path": "src/modules/planning-provider/change-contract-errors.ts",
@@ -4653,7 +4658,7 @@
     {
       "path": "src/runtime/repository-validation/commit-replay/ci-archive-tree.ts",
       "mode": "100644",
-      "digest": "sha256:35d02f7ae55e9178eb9f612e5479d843e8063e2cc766cd416175b8cca479c0ea"
+      "digest": "sha256:dc5b1d2f49d516b899ce371de26115b7d1a91a7b4235ec92a7e481c01045cea8"
     },
     {
       "path": "src/runtime/repository-validation/commit-replay/ci-archive.ts",
