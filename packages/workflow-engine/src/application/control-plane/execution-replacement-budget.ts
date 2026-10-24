@@ -8,7 +8,7 @@
  */
 import { executionRetryBudgetChanges } from '../../modules/provider-orchestration/execution-retry.ts';
 import type { ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
-import type { ExecutionJobInspection } from '../../runtime/provider-execution/execution-runtime.ts';
+import type { ExecutionJobInspection } from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
 import type { LoadedAiAdapterPolicy } from '../../runtime/provider-policy/ai-adapter-policy.ts';
 
 export function executionReplacementBudgetChanges(

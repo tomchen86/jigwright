@@ -7,7 +7,7 @@ import test from 'node:test';
 
 import { ExitCode } from '../src/foundation/errors/errors.ts';
 import { runCli, runCliAsync } from '../bootstrap/workflow-engine-host.ts';
-import type { ExecutionJobInspection } from '../src/runtime/provider-execution/execution-runtime.ts';
+import type { ExecutionJobInspection } from '../src/modules/provider-orchestration/provider-invocation-lifecycle.ts';
 import { createFixtureRepository, sourceRepositoryRoot } from './fixture.ts';
 
 test('package CLI dispatches against an explicit external repository root', () => {
