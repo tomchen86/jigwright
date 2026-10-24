@@ -141,16 +141,16 @@ for (const state of ['absent', 'active', 'adopted'] as const) {
         ['status', 'parent-A'],
         f.repositoryRoot,
         {
-          get now() {
+          get now(): never {
             throw new Error('Status must not observe a clock.');
           },
-          get maintenanceSigner() {
+          get maintenanceSigner(): never {
             throw new Error('Status must not resolve a signer.');
           },
-          get verifyHumanSignature() {
+          get verifyHumanSignature(): never {
             throw new Error('Status must not inspect signature capabilities.');
           },
-          get testHooks() {
+          get testHooks(): never {
             throw new Error('Status must not inspect mutation hooks.');
           },
         },

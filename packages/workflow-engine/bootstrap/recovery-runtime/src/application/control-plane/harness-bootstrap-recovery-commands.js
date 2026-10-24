@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import { ExitCode, workflowError, } from "../../foundation/errors/errors.js";
 import { assertPrivateRecoveryDirectory, ensureRecoveryAuthorityStateRoot, hasRecoveryOperationalTrustRootFence, isExactAbsolutePath, readExternalRecoveryEnvelope, readExternalRecoveryExpectations, readExternalRecoveryInput, readExternalRecoveryTrustRootAuditRoot, recoveryAuthorityStateRoot, requireRecoveryAuthorityStateRoot, } from "./harness-bootstrap-external-input.js";
 export function createHarnessBootstrapRecoveryCommands(bindings) {
-    const { discoverRepository, bootstrapInterventionStateRoot, bootstrapInterventionUsage, importRecoveryAuthorityDescriptor, readRecoveryAuthorityDescriptor, verifyRecoveryAuthorityDescriptor, executeRecoveryOperationalTrustRootRestore, executeRecoveryQuarantineEnter, executeRecoveryQuarantineRelease, readRecoveryQuarantineMarker, recoveryOperationalTrustRootDependencies, recoveryQuarantineDependencies, } = bindings;
+    const { discoverRepository, bootstrapInterventionUsage, importRecoveryAuthorityDescriptor, readRecoveryAuthorityDescriptor, verifyRecoveryAuthorityDescriptor, executeRecoveryOperationalTrustRootRestore, executeRecoveryQuarantineEnter, executeRecoveryQuarantineRelease, readRecoveryQuarantineMarker, recoveryOperationalTrustRootDependencies, recoveryQuarantineDependencies, } = bindings;
     function isRecoveryAuthorityCommand(args) {
         return args[0] === 'recovery-authority';
     }

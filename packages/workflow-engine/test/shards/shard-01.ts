@@ -116,3 +116,4 @@ import '../task-diff-review-binding.contract.test.ts';
 import '../finalization-records.contract.test.ts';
 import '../proposal-domain.contract.test.ts';
 import '../archive-destination.contract.test.ts';
+import '../intervention-metadata-disposition.contract.test.ts';

@@ -19,8 +19,25 @@ export const authorizeHumanRevocation = createHumanRevocationAuthorizer({
 import { createHumanResolutionGrantRevoker } from "../application/control-plane/human-resolution-grant-revocation.js";
 import { openHumanResolutionRevocationStore } from "../runtime/storage-journal/human-resolution-revocation-store.js";
 export const revokeStoredHumanResolutionGrant = createHumanResolutionGrantRevoker(authorizeHumanRevocation, openHumanResolutionRevocationStore);
-import { revokeMaintenanceGrantForParent as revokeMaintenance } from "../application/control-plane/intervention-maintenance.js";
+import { readMaintenanceGrantForParent, revokeMaintenanceGrantForParent as revokeMaintenance, } from "../application/control-plane/intervention-maintenance.js";
 export const revokeMaintenanceGrantForParent = revokeMaintenance.bind(undefined, authorizeHumanRevocation);
+import { createInterventionMetadataDisposition } from "../application/control-plane/intervention-metadata-disposition.js";
+import { runtimePaths } from "../runtime/session-workspace/workflow-session-records.js";
+import { abandonPersistedIntervention, assertPersistedInterventionAbandonable, } from "../runtime/storage-journal/intervention-abandonment.js";
+import { readLocalEngineBinding } from "../runtime/storage-journal/intervention-parent-binding.js";
+import { readPersistedIntervention } from "../runtime/storage-journal/intervention-plan-store.js";
+export const interventionMetadataDisposition = createInterventionMetadataDisposition({
+    discoverRepository,
+    runtimePaths,
+    readMaintenanceGrantForParent,
+    assertPersistedInterventionAbandonable,
+    verifyAuthorityAuditEvents,
+    revokeMaintenanceGrantForParent: revokeMaintenance,
+    authorizeHumanRevocation,
+    abandonPersistedIntervention,
+    readPersistedIntervention,
+    readLocalEngineBinding,
+});
 import { createHumanResolutionGrantVerification } from "../runtime/grants/human-resolution-grant-verification.js";
 import { loadMaintainerPolicyForResolution } from "../runtime/repository-observation/human-resolution-grants.js";
 export const { verifyHumanResolutionGrantEnvelope, verifyHumanResolutionGrantForRevocation, } = createHumanResolutionGrantVerification({
