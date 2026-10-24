@@ -68,92 +68,65 @@ test('package CLI fails closed on an invalid external repository root', () => {
   }
 });
 
-test('main CLI routes human intervention through the durable bootstrap surface', () => {
+test('main CLI rejects retired local self-update routes before creating state', () => {
   const repository = createFixtureRepository();
-  const auditRoot = fs.realpathSync(
-    fs.mkdtempSync(path.join(os.tmpdir(), 'unified-cli-audit-')),
+  const auditRoot = path.join(repository, 'unused-audit');
+  const artifactRoot = path.join(
+    repository,
+    'packages/workflow-engine/dist/engine',
   );
-  fs.chmodSync(auditRoot, 0o700);
+  const maintenanceGrants = path.join(
+    repository,
+    '.git/workflow-engine/intervention-control/maintenance-grants',
+  );
   try {
-    const result = spawnSync(
-      process.execPath,
+    for (const target of [auditRoot, artifactRoot, maintenanceGrants])
+      assert.equal(fs.existsSync(target), false);
+    for (const args of [
       [
-        '--experimental-strip-types',
-        path.join(
-          sourceRepositoryRoot,
-          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
-        ),
         'change',
         'intervene',
         'demo-change',
         '--reason',
         'Repair the harness engine.',
-        '--audit-root',
-        auditRoot,
-        '--json',
       ],
-      { cwd: repository, encoding: 'utf8' },
-    );
-
-    assert.equal(result.status, 14, result.stderr);
-    assert.equal(
-      (JSON.parse(result.stderr) as { error: { code: string } }).error.code,
-      'HARNESS_BOOTSTRAP_PARENT_SESSION_NOT_FOUND',
-    );
-    assert.equal(
-      fs.existsSync(
-        path.join(
-          repository,
-          '.git/workflow-engine/intervention-control/maintenance-grants',
-        ),
-      ),
-      false,
-    );
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-    fs.rmSync(auditRoot, { recursive: true, force: true });
-  }
-});
-
-test('main CLI routes engine artifact builds through persisted intervention state', () => {
-  const repository = createFixtureRepository();
-  const auditRoot = fs.realpathSync(
-    fs.mkdtempSync(path.join(os.tmpdir(), 'unified-build-audit-')),
-  );
-  fs.chmodSync(auditRoot, 0o700);
-  try {
-    const result = spawnSync(
-      process.execPath,
       [
-        '--experimental-strip-types',
-        path.join(
-          sourceRepositoryRoot,
-          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
-        ),
         'engine',
         'build-artifact',
-        path.join(repository, 'packages/workflow-engine/dist/engine'),
+        artifactRoot,
         '--for',
         'demo-change',
         '--protocol-version',
         '3',
         '--policy-schema-version',
         '2',
-        '--audit-root',
-        auditRoot,
-        '--json',
       ],
-      { cwd: repository, encoding: 'utf8' },
-    );
-
-    assert.equal(result.status, 11, result.stderr);
-    assert.equal(
-      (JSON.parse(result.stderr) as { error: { code: string } }).error.code,
-      'INTERVENTION_PERSISTENCE_NOT_FOUND',
-    );
+    ]) {
+      const result = spawnSync(
+        process.execPath,
+        [
+          '--experimental-strip-types',
+          path.join(
+            sourceRepositoryRoot,
+            'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+          ),
+          ...args,
+          '--audit-root',
+          auditRoot,
+          '--json',
+        ],
+        { cwd: repository, encoding: 'utf8' },
+      );
+      assert.equal(result.status, ExitCode.usage, result.stderr);
+      assert.equal(
+        (JSON.parse(result.stderr) as { error: { code: string } }).error.code,
+        'INTERVENTION_BOOTSTRAP_COMMAND_UNSUPPORTED',
+      );
+      for (const target of [auditRoot, artifactRoot, maintenanceGrants])
+        assert.equal(fs.existsSync(target), false);
+    }
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
-    fs.rmSync(auditRoot, { recursive: true, force: true });
   }
 });
 
