@@ -70,6 +70,10 @@ import {
   normalizeChangedPath,
 } from '../../foundation/repository-path/repository-path.ts';
 import type { ResolvedPlanningProviderBinding } from '../../modules/planning-provider/planning-provider-binding.ts';
+import {
+  isArchiveUtcDate,
+  nextArchiveUtcDate,
+} from '../../modules/planning-provider/archive-destination.ts';
 
 export type ArchiveTransformation = {
   changeId: string;
@@ -816,11 +820,8 @@ function assertPreflightArchiveDestination(
   const date = payload.archivedAs.endsWith(suffix)
     ? payload.archivedAs.slice(0, -suffix.length)
     : '';
-  const parsed = new Date(`${date}T00:00:00.000Z`);
   if (
-    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
-    !Number.isFinite(parsed.getTime()) ||
-    utcDate(parsed) !== date ||
+    !isArchiveUtcDate(date) ||
     path.posix.dirname(archivedRoot) !== `${changeRoot}/archive` ||
     payload.archivePath !== archivedRoot
   ) {
@@ -1327,13 +1328,8 @@ function assertAdjacentUtcRollover(
 }
 
 function nextUtcDate(value: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw archiveProjectionInvalid();
-  const date = new Date(`${value}T00:00:00.000Z`);
-  if (!Number.isFinite(date.getTime()) || utcDate(date) !== value) {
-    throw archiveProjectionInvalid();
-  }
-  date.setUTCDate(date.getUTCDate() + 1);
-  return utcDate(date);
+  if (!isArchiveUtcDate(value)) throw archiveProjectionInvalid();
+  return nextArchiveUtcDate(value);
 }
 
 function utcDate(value: Date): string {

@@ -1,7 +1,7 @@
 import type { CiPlanningReplayOperations } from './ci-planning.ts';
 import type { TaskExecutionGenerationReader } from '../task-execution-evidence.ts';
 /** Canonical commit replay contracts and pure predicates. */
-import { isArchiveName } from './ci-archive-tree.ts';
+import { isArchiveName } from '../../planning-provider/archive-destination.ts';
 import { ExitCode } from '../../../foundation/errors/errors.ts';
 import { WorkflowError } from '../../../foundation/errors/errors.ts';
 import { workflowError } from '../../../foundation/errors/errors.ts';

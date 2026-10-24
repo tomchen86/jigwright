@@ -8,11 +8,11 @@ Keep planning-provider contracts neutral and adapt only their error presentation
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.planning-provider-readme v=1 digest=sha256:159b380a4a970b26d70ecdde2487c284b72df4e7d230f6c0b9ec1843fcc26922 -->
+<!-- jigwright:region id=documents.planning-provider-readme v=1 digest=sha256:a625c10ea397004b1f1a30fd540799674fa562007edac11982bb0fc498a1a8db -->
 
 <!-- prettier-ignore-start -->
 
-15 files changed in this module since confirmation.
+16 files changed in this module since confirmation.
 
 ## Commands
 
@@ -40,6 +40,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
+| [archive-destination.ts](archive-destination.ts) | Shared archive name and UTC calendar rules. | 0 | History unavailable |
 | [change-contract-errors.ts](change-contract-errors.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [change-contract.ts](change-contract.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [change-metadata-policy.ts](change-metadata-policy.ts) | Parse canonical schema metadata text under the supplied consumer policy. | 0 | History unavailable |

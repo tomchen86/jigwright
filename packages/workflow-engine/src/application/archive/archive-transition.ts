@@ -58,6 +58,7 @@ import {
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
 import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
+import { isArchiveUtcDate } from '../../modules/planning-provider/archive-destination.ts';
 
 export type ArchiveTransitionResult = {
   status: 'committed' | 'already-archived';
@@ -431,17 +432,7 @@ function archiveRolloverDate(error: unknown): string | undefined {
     return undefined;
   }
   const observedDate = error.details?.observedDate;
-  if (
-    typeof observedDate !== 'string' ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(observedDate)
-  ) {
-    throw error;
-  }
-  const parsed = new Date(`${observedDate}T00:00:00.000Z`);
-  if (
-    !Number.isFinite(parsed.getTime()) ||
-    parsed.toISOString().slice(0, 10) !== observedDate
-  ) {
+  if (typeof observedDate !== 'string' || !isArchiveUtcDate(observedDate)) {
     throw error;
   }
   return observedDate;

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { readFileAtCommit } from '../../repository-transaction/git-command.ts';
 import { runGit } from '../../repository-transaction/git.ts';
 import type { TreeEntry } from '../../../modules/assurance/commit-replay/ci-archive-tree.ts';
-import { isArchiveName } from '../../../modules/assurance/commit-replay/ci-archive-tree.ts';
+import { isArchiveName } from '../../../modules/planning-provider/archive-destination.ts';
 import { sameRelativeTree } from '../../../modules/assurance/commit-replay/ci-archive-tree.ts';
 import { replayMismatch } from '../../../modules/assurance/commit-replay/ci-archive-tree.ts';
 

@@ -26,18 +26,6 @@ export function normalizeArchivePaths(
     .sort();
 }
 
-export function isArchiveName(value: string, changeId: string): boolean {
-  const match = new RegExp(
-    `^(\\d{4}-\\d{2}-\\d{2})-${escapeRegExp(changeId)}$`,
-  ).exec(value);
-  if (!match) return false;
-  const parsed = new Date(`${match[1]}T00:00:00.000Z`);
-  return (
-    Number.isFinite(parsed.getTime()) &&
-    parsed.toISOString().slice(0, 10) === match[1]
-  );
-}
-
 export function sameRelativeTree(
   before: TreeEntry[],
   beforeRoot: string,
