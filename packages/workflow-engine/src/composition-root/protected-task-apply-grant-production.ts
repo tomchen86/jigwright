@@ -1,7 +1,7 @@
 import { taskMandateOperations } from './task-mandate-production.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
-import { inspectProtectedTaskApplyLifecycleState } from '../application/finalize/lifecycle.ts';
+import { inspectProtectedTaskApplyLifecycleState } from '../runtime/finalization/protected-apply.ts';
 import type { ProtectedTaskApplyFinalizer } from './finalization-production.ts';
 import {
   type ProtectedTaskApplyFinalizationParametersV1,

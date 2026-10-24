@@ -41,11 +41,11 @@ import {
 } from '../../foundation/errors/errors.ts';
 import {
   advanceFinalizeTransaction,
-  createFinalizeTransaction,
   publishFinalizeTransaction,
   readFinalizeTransaction,
   removeFinalizeTransaction,
 } from '../storage-journal/finalize-transaction.ts';
+import { createFinalizeTransaction } from '../../modules/lifecycle/finalize-transaction.ts';
 import { type FinalizeTransaction } from '../../modules/lifecycle/finalize-transaction.ts';
 import { resolveFinalizeCheckPolicy } from '../../modules/assurance/finalize-check-policy.ts';
 import {

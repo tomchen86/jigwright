@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import ts from 'typescript';
-import { createFinalizationService } from '../src/application/finalize/lifecycle.ts';
+import { createFinalizationService } from '../src/runtime/finalization/finalization-service.ts';
 import { finalizeTaskUnlocked } from '../src/runtime/finalization/projected-finalization.ts';
 import { readRepositoryDependencies } from './support/repository-dependency-graph.ts';
 
@@ -41,7 +41,7 @@ void documentsRemainRequired;
 const root = path.resolve(import.meta.dirname, '../../..');
 const prefix = 'packages/workflow-engine/src/';
 const consumers = [
-  ['application/finalize/lifecycle.ts', 'createFinalizationService'],
+  ['runtime/finalization/finalization-service.ts', 'createFinalizationService'],
   ['runtime/finalization/projected-finalization.ts', 'finalizeTaskUnlocked'],
 ] as const;
 
@@ -175,6 +175,13 @@ test('document and projected runtime owners reject application back-edges', () =
     'runtime/repository-validation/system-document-dispositions.ts',
     'runtime/repository-validation/system-document-grant.ts',
     'runtime/finalization/projected-finalization.ts',
+    'runtime/finalization/finalization-service.ts',
+    'runtime/finalization/commit.ts',
+    'runtime/finalization/commit-recovery.ts',
+    'runtime/finalization/recovery.ts',
+    'runtime/finalization/protected-apply.ts',
+    'runtime/storage-journal/finalize-transaction.ts',
+    'runtime/storage-journal/finalize-cancellation.ts',
   ]) {
     const check = (extra = '') => {
       const { edges } = resolver.read(path.join(root, prefix, file), extra);
@@ -186,8 +193,8 @@ test('document and projected runtime owners reject application back-edges', () =
     };
     check();
     for (const declaration of [
-      "import { createFinalizationService } from '../../application/finalize/lifecycle.ts';",
-      "import type { FinalizeSessionResult } from '../../application/finalize/lifecycle.ts';",
+      "import { createTaskStrategyRedRevisionService } from '../../application/execute-task/task-strategy-red-revision.ts';",
+      "import type { createTaskStrategyRedRevisionService } from '../../application/execute-task/task-strategy-red-revision.ts';",
     ])
       assert.throws(() => check('\n' + declaration), assert.AssertionError);
   }

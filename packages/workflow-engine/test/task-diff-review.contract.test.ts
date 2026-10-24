@@ -370,7 +370,7 @@ test('TaskDiffReview policy requires explicit, behavioral, risky, and unregister
       strategy: 'mechanical-transform',
       paths: [
         {
-          path: 'packages/workflow-engine/src/application/finalize/lifecycle.ts',
+          path: 'packages/workflow-engine/src/runtime/finalization/finalization-service.ts',
           role: 'lifecycle',
         },
       ],
@@ -380,7 +380,7 @@ test('TaskDiffReview policy requires explicit, behavioral, risky, and unregister
       basis: 'risk-role',
       riskPaths: [
         {
-          path: 'packages/workflow-engine/src/application/finalize/lifecycle.ts',
+          path: 'packages/workflow-engine/src/runtime/finalization/finalization-service.ts',
           role: 'lifecycle',
         },
       ],

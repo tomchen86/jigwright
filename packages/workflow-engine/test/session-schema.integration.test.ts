@@ -19,7 +19,7 @@ import { reviseTask } from '../src/application/revise/task-revision.ts';
 import path from 'node:path';
 import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { commitSession } from '../src/application/finalize/lifecycle.ts';
+import { commitSession } from '../src/runtime/finalization/commit.ts';
 import {
   finalizeTask,
   completeTask,

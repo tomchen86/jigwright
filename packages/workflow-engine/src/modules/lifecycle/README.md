@@ -8,11 +8,11 @@ Keep repository routing in one controlled source and derive the visible inventor
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:d822b8ecca3c1ff90e7f2a8137b02392df97b4bb2cf0a6a7d445162e478345d9 -->
+<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:7c34a83d565349020f0ce9294ee4b0b7ba96a88ce10ddcc4b058d78f20262473 -->
 
 <!-- prettier-ignore-start -->
 
-27 files changed in this module since confirmation.
+29 files changed in this module since confirmation.
 
 ## Commands
 
@@ -45,6 +45,7 @@ Keep repository routing in one controlled source and derive the visible inventor
 | --- | --- | --- |
 | ChangeRoutingState | primary, concurrent, ready, blocked, resume-available, parked, completed-awaiting-archive, archived, revising, recovery-required | [change-routing.ts](change-routing.ts) |
 | ChangeRoutingRuntimeState | revising, recovery-required, null | [change-routing.ts](change-routing.ts) |
+| FinalizeCancellationPhase | requested, projection-restored, completed | [finalize-cancellation.ts](finalize-cancellation.ts) |
 | FinalizeTransactionPhase | projection-prepared, candidate-prepared, checks-running, checked, staged, reports-persisted, completed | [finalize-transaction.ts](finalize-transaction.ts) |
 | ManagedTaskStrategyState | not-required, session-terminal, transformation-required, transformation-produced, red-authoring, implementation-required, ready, reservation-persisted, collaboration-grant-required, waiting-for-provider, provider-succeeded-awaiting-import, provider-failed, correction-required, correction-exhausted, caller-supplied-awaiting-import, patch-imported | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
 | ManagedTaskDiffReviewState | not-required, ready, collaboration-grant-required, external-grant-resume-required, direct-human-attestation-required, external-reconciliation-required, satisfied, challenge-response-required, challenge-closure-required, changes-required, waiting-for-provider, provider-succeeded-awaiting-reconciliation, provider-failed | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) |
@@ -73,7 +74,9 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [change-routing.ts](change-routing.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [completion-rollback.ts](completion-rollback.ts) | Pure admission and state reset for reversing an unfinished completion projection. | 0 | History unavailable |
 | [contract-digests.ts](contract-digests.ts) | Computes identities for the required registered check definitions. | 1 | History unavailable |
-| [finalize-transaction.ts](finalize-transaction.ts) | Canonical durable projected-finalization transaction data. | 0 | History unavailable |
+| [finalization.ts](finalization.ts) | Pure finalization, commit and recovery contracts and admission rules. | 0 | History unavailable |
+| [finalize-cancellation.ts](finalize-cancellation.ts) | Canonical finalize cancellation records, digests and phase preparation. | 0 | History unavailable |
+| [finalize-transaction.ts](finalize-transaction.ts) | Canonical finalize transaction records, digests and phase admission. | 0 | History unavailable |
 | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) | Defines shared task strategy, review and authority-plan state names. | 1 | Header changed since confirmation |
 | [mechanical-transformation-evidence.ts](mechanical-transformation-evidence.ts) | Pure mechanical transformation closure, projection and immutable evidence validation. | 0 | History unavailable |
 | [open-task-status.ts](open-task-status.ts) | Durable open-task phase and status values shared by activation and status queries. | 0 | History unavailable |

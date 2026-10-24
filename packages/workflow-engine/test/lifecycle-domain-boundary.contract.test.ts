@@ -112,6 +112,9 @@ for (const name of [
   'session-check',
   'predecessor-reconciliation',
   'projected-finalization',
+  'finalization',
+  'finalize-cancellation',
+  '../repository-consumer/task-authorization-policy',
   'finalize-transaction',
   '../authority/system-document-disposition',
 ]) {
@@ -126,7 +129,7 @@ for (const name of [
     for (const source of [
       "\nimport type { InvestigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';\n",
       "\nimport fs from 'node:fs';\n",
-      "\nimport type { FinalizeSessionResult } from '../../application/finalize/lifecycle.ts';\n",
+      "\nimport type { createTaskStrategyRedRevisionService } from '../../application/execute-task/task-strategy-red-revision.ts';\n",
     ])
       assert.throws(
         () => assertPureDependencyClosure(entry, source),

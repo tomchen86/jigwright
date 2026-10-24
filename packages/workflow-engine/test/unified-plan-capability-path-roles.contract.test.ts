@@ -68,7 +68,9 @@ test('task authorization distinguishes ordinary, protected, and unclassified sco
   const protectedScope = resolveTaskAuthorizationRequirement(
     repositoryRoot,
     config,
-    ['packages/workflow-engine/src/application/finalize/lifecycle.ts'],
+    [
+      'packages/workflow-engine/src/runtime/finalization/finalization-service.ts',
+    ],
   );
   assert.equal(protectedScope.requiresMandate, true);
   assert.deepEqual(protectedScope.roles, ['lifecycle']);

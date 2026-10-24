@@ -1,35 +1,26 @@
-import { parseDocumentationClosureFromCommitMessage } from '../../modules/assurance/documentation-closure.ts';
-/**
- * Resumes a pending managed commit and finalizes its session and isolation
- * leases.
- *
- * Invariants:
- * - Recovery accepts HEAD only at the recorded baseline or the
- *   already-created managed commit.
- */
+/** Resumes pending commits and settles committed sessions and isolation leases. */
 import path from 'node:path';
-
-import { assertCommitObject } from '../../runtime/repository-validation/commit-replay/commit-object-validation.ts';
-
-import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import type { WorkflowSession } from '../../modules/lifecycle/workflow-session-contract.ts';
+import { type readWorkflowSessionContext } from '../repository-observation/workflow-session-context.ts';
+import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
+import { readImmutableReport } from '../storage-journal/report-store.ts';
 import {
   commitFacts,
   updateManagedRef,
-} from '../../runtime/repository-transaction/git-transitions.ts';
-import { type readWorkflowSessionContext } from '../../runtime/repository-observation/workflow-session-context.ts';
-import { readImmutableReport } from '../../runtime/storage-journal/report-store.ts';
+} from '../repository-transaction/git-transitions.ts';
 import {
-  reportString,
   reportStringArray,
+  reportString,
   staleReport,
 } from '../../modules/lifecycle/workflow-report.ts';
+import { assertCommitObject } from '../repository-validation/commit-replay/commit-object-validation.ts';
+import { parseDocumentationClosureFromCommitMessage } from '../../modules/assurance/documentation-closure.ts';
 import {
+  type runtimePaths,
+  writeJsonAtomic,
   releaseOwnedLock,
   releaseTaskSessionIsolationLeases,
-  type runtimePaths,
-  type WorkflowSession,
-  writeJsonAtomic,
-} from '../../runtime/session-workspace/session-store.ts';
+} from '../session-workspace/session-store.ts';
 
 export type CommitSessionResult = {
   session: WorkflowSession;

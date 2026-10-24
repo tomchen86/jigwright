@@ -305,7 +305,7 @@ test('protected propose CLI requires a task mandate before durable planning', ()
         summary: 'Change protected workflow lifecycle behavior.',
         sourceRefs: [],
         explicitPaths: [
-          'packages/workflow-engine/src/application/finalize/lifecycle.ts',
+          'packages/workflow-engine/src/runtime/finalization/finalization-service.ts',
         ],
         explicitSymbols: [],
         explicitConfigKeys: [],

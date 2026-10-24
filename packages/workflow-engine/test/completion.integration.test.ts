@@ -42,7 +42,7 @@ import test from 'node:test';
 import {
   commitSession,
   findTaskCommits,
-} from '../src/application/finalize/lifecycle.ts';
+} from '../src/runtime/finalization/commit.ts';
 import { rollbackCompletion } from './support/session-lifecycle-host.ts';
 import {
   completeTask,
@@ -76,10 +76,8 @@ import {
   writeImmutableReport,
 } from '../src/runtime/storage-journal/report-store.ts';
 import type { WorkflowReport } from '../src/modules/lifecycle/workflow-report.ts';
-import {
-  createFinalizeTransaction,
-  readFinalizeTransaction,
-} from '../src/runtime/storage-journal/finalize-transaction.ts';
+import { createFinalizeTransaction } from '../src/modules/lifecycle/finalize-transaction.ts';
+import { readFinalizeTransaction } from '../src/runtime/storage-journal/finalize-transaction.ts';
 import { resolveFinalizeCheckPolicy } from '../src/modules/assurance/finalize-check-policy.ts';
 import {
   runtimePaths,

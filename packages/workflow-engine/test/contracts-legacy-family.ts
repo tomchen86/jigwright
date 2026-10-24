@@ -22,6 +22,7 @@ import './implementation-term-floor-v3.test.ts';
 import './single-pass-finalize-command.integration.test.ts';
 import './finalize-recovery-command.integration.test.ts';
 import './finalize-authenticated-gate-recovery.integration.test.ts';
+import './finalization-records.contract.test.ts';
 import './task-strategy-execution.test.ts';
 import './task-strategy-execution-boundary.test.ts';
 import './task-strategy-patch.test.ts';

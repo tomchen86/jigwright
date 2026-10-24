@@ -4,7 +4,7 @@ import {
 } from '../src/runtime/repository-validation/system-document-dispositions.ts';
 import { createSystemDocumentGrantService } from '../src/runtime/repository-validation/system-document-grant.ts';
 import { createProductionSessionCheckService } from '../src/composition-root/session-check-production.ts';
-import { createFinalizationService } from '../src/application/finalize/lifecycle.ts';
+import { createFinalizationService } from '../src/runtime/finalization/finalization-service.ts';
 import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
 import { finalizeTaskUnlocked } from '../src/runtime/finalization/projected-finalization.ts';
 import type { SystemDocumentDispositionService } from '../src/runtime/repository-validation/system-document-dispositions.ts';

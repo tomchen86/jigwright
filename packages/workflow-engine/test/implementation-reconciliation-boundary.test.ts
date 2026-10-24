@@ -67,7 +67,10 @@ test('reconciliation rules and application use cases have no repository/session/
 test('all four finalization gates require an injected capability with no default production binding', () => {
   let gates = 0;
   for (const [file, owner] of [
-    ['application/finalize/lifecycle.ts', 'createFinalizationService'],
+    [
+      'runtime/finalization/finalization-service.ts',
+      'createFinalizationService',
+    ],
     ['runtime/finalization/projected-finalization.ts', 'finalizeTaskUnlocked'],
     [
       'application/execute-task/task-strategy-red-revision.ts',

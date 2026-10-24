@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import type { createFinalizationService } from '../src/application/finalize/lifecycle.ts';
+import type { createFinalizationService } from '../src/runtime/finalization/finalization-service.ts';
 import { createProductionFinalizationService } from '../src/composition-root/finalization-production.ts';
 import { loadActiveSessionContext } from '../src/composition-root/lifecycle-context.ts';
 import {
@@ -540,7 +540,7 @@ test('a fresh session reread refuses drift and missing-document compensation ret
   }
 });
 
-test('rollback policy and physical transaction reject backedges and the application factory does not reacquire the moved use case', () => {
+test('rollback policy and physical transaction reject backedges and the finalization factory does not reacquire the moved use case', () => {
   const root = path.resolve(import.meta.dirname, '../../..');
   const prefix = 'packages/workflow-engine/src/';
   const resolver = readRepositoryDependencies(root);
@@ -576,23 +576,27 @@ test('rollback policy and physical transaction reject backedges and the applicat
       () => checkTransaction('\n' + declaration),
       assert.AssertionError,
     );
-  const checkApplication = (extra = '') =>
+  const checkFinalization = (extra = '') =>
     assert.equal(
       resolver
         .read(
-          path.join(root, prefix, 'application/finalize/lifecycle.ts'),
+          path.join(
+            root,
+            prefix,
+            'runtime/finalization/finalization-service.ts',
+          ),
           extra,
         )
         .edges.some((edge) => edge.to === transaction),
       false,
     );
-  checkApplication();
+  checkFinalization();
   for (const declaration of [
     "import { rollbackCompletionProjection } from '../../runtime/managed-documents/transaction/completion-rollback.ts';",
     "import type { rollbackCompletionProjection } from '../../runtime/managed-documents/transaction/completion-rollback.ts';",
   ])
     assert.throws(
-      () => checkApplication('\n' + declaration),
+      () => checkFinalization('\n' + declaration),
       assert.AssertionError,
     );
 });

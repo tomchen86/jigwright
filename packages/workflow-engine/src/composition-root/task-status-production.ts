@@ -16,7 +16,7 @@ import {
 import { inspectFinalizeRecoveryStatus } from './finalization-production.ts';
 import { inspectTaskStrategyLifecycle } from './task-strategy-production.ts';
 import { inspectTaskRevisionStatus } from '../application/revise/task-revision.ts';
-import { findTaskCommits } from '../application/finalize/lifecycle.ts';
+import { findTaskCommits } from '../runtime/finalization/commit.ts';
 
 const findOpenTaskLifecycleStatus =
   findOpenTaskLifecycleStatusWithContractReader.bind(

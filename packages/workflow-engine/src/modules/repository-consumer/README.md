@@ -8,11 +8,11 @@ Keep a project's schema, document paths, Work Registry settings and database pol
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.repository-consumer-readme v=1 digest=sha256:3373e53b7331f8ddf67340e333d240f3e76babec92e3a840e61e6ab0f02dc6a6 -->
+<!-- jigwright:region id=documents.repository-consumer-readme v=1 digest=sha256:b798cb49d0997ed40e70d4b8118e2a127a539b47813c518ddaa87a310bcddafe -->
 
 <!-- prettier-ignore-start -->
 
-8 files changed in this module since confirmation.
+9 files changed in this module since confirmation.
 
 ## Commands
 
@@ -41,6 +41,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [repository-consumer-policy.ts](repository-consumer-policy.ts) | Validates consumer policy values without observing repository files or adapters. | 0 | History unavailable |
 | [repository-git-state.ts](repository-git-state.ts) | Observed Git identity and working-state facts, with no Git process dependency. | 0 | History unavailable |
 | [repository-validation.ts](repository-validation.ts) | Canonical result of validating repository changes and managed documents. | 0 | History unavailable |
+| [task-authorization-policy.ts](task-authorization-policy.ts) | Pure task authorization policy parsing and scope classification. | 0 | History unavailable |
 | [workflow-config.ts](workflow-config.ts) | Parses repository workflow configuration, namespace choices and task authorization policy. | 1 | History unavailable |
 
 <!-- prettier-ignore-end -->

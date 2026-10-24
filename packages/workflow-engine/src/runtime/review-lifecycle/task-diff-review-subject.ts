@@ -404,7 +404,7 @@ function documentationHints(
       changedPath ===
         'packages/workflow-engine/src/composition-root/lifecycle-context.ts' ||
       changedPath.startsWith(
-        'packages/workflow-engine/src/application/finalize/lifecycle',
+        'packages/workflow-engine/src/runtime/finalization/',
       ) ||
       changedPath.includes('workflow')
     ) {

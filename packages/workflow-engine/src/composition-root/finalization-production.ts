@@ -15,7 +15,7 @@ import { productionChangeContract } from './change-routing-observation-productio
 import { taskDiffReview } from './task-diff-review-production.ts';
 import { managedDocuments } from './managed-documents-production.ts';
 /** Binds the mandatory reconciliation gate for every finalization path. */
-import { createFinalizationService } from '../application/finalize/lifecycle.ts';
+import { createFinalizationService } from '../runtime/finalization/finalization-service.ts';
 import { assertCurrentImplementationReconciliation } from './implementation-reconciliation-production.ts';
 export function createProductionFinalizationService() {
   const finalization = createFinalizationService(
@@ -55,7 +55,7 @@ import {
   cancelFinalizeRecovery as cancelFinalizeRecoveryWithTaskDiffReview,
   cancelProtectedTaskApplyRecoveryUnderGrant as cancelProtectedTaskApplyRecoveryUnderGrantWithTaskDiffReview,
   inspectFinalizeRecoveryStatus as inspectFinalizeRecoveryStatusWithTaskDiffReview,
-} from '../application/finalize/lifecycle.ts';
+} from '../runtime/finalization/recovery.ts';
 export const cancelFinalizeRecovery =
   cancelFinalizeRecoveryWithTaskDiffReview.bind(undefined, taskDiffReview);
 export const cancelProtectedTaskApplyRecoveryUnderGrant =

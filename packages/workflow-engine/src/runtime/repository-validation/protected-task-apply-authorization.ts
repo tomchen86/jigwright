@@ -21,7 +21,7 @@ import {
   createFileGrantRecordStore,
   grantStorePaths,
 } from '../lifecycle-ledgers/grant-store.ts';
-import { parseProtectedTaskApplyAuthorizationBinding } from '../storage-journal/finalize-transaction.ts';
+import { parseProtectedTaskApplyAuthorizationBinding } from '../../modules/lifecycle/finalize-transaction.ts';
 import { type ProtectedTaskApplyAuthorizationBinding } from '../../modules/lifecycle/finalize-transaction.ts';
 
 export function assertPreparedProtectedTaskApplyAuthorization(

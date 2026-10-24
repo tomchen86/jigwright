@@ -22,7 +22,7 @@ import {
   withSessionOperation,
   writeJsonAtomic,
 } from '../../runtime/session-workspace/session-store.ts';
-import { type TaskAuthorizationRequirement } from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
+import { type TaskAuthorizationRequirement } from '../../modules/repository-consumer/task-authorization-policy.ts';
 import {
   completeTaskRevisionAbort,
   prepareTaskRevisionAbort,
@@ -34,10 +34,8 @@ import {
 } from '../../modules/authority/protected-task-apply-recovery-grant.ts';
 import { protectedTaskApplyDescendantSettlementGrantRequired } from '../../modules/authority/protected-task-apply-descendant-settlement-grant.ts';
 import { inspectPreparedGrantDescendants } from '../../modules/authority/grant-coordinator.ts';
-import {
-  readActiveFinalizeTransaction,
-  readProtectedFinalizeCancellation,
-} from '../finalize/finalize-cancellation.ts';
+import { readFinalizeTransaction } from '../../runtime/storage-journal/finalize-transaction.ts';
+import { readProtectedFinalizeCancellation } from '../../runtime/storage-journal/finalize-cancellation.ts';
 
 /**
  * Admits, publishes, inspects, and aborts task execution sessions.
@@ -128,10 +126,7 @@ export function abortSession(
   const initial = readSessionFile(
     path.join(runtime.sessions, `${sessionId}.json`),
   );
-  const initialTransaction = readActiveFinalizeTransaction(
-    runtime.root,
-    sessionId,
-  );
+  const initialTransaction = readFinalizeTransaction(runtime.root, sessionId);
   const parentChallengeId =
     initialTransaction?.protectedApply?.challengeId ?? null;
   if (initialTransaction?.protectedApply !== undefined) {
@@ -220,9 +215,7 @@ export function abortSessionAfterProtectedTaskApplyRecoveryUnderGrant(
         ExitCode.staleState,
       );
     }
-    if (
-      readActiveFinalizeTransaction(runtime.root, parameters.sessionId) !== null
-    ) {
+    if (readFinalizeTransaction(runtime.root, parameters.sessionId) !== null) {
       throw workflowError(
         'PROTECTED_TASK_APPLY_RECOVERY_STATE_CHANGED',
         'The protected finalize transaction remains active after cancellation.',
@@ -287,7 +280,7 @@ function abortSessionUnlocked(
       ExitCode.staleState,
     );
   }
-  const transaction = readActiveFinalizeTransaction(runtime.root, sessionId);
+  const transaction = readFinalizeTransaction(runtime.root, sessionId);
   if (transaction?.protectedApply !== undefined) {
     throw protectedTaskApplyRecoveryGrantRequired({
       action: 'cancel-and-abort',

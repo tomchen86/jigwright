@@ -15,7 +15,7 @@ import type {
 } from '@jigwright/core/agent-provider-config';
 import type { ProviderDefinitionSnapshot } from '@jigwright/core/provider-definition-snapshot';
 import { loadChangeContract } from './consumer-contract-production.ts';
-import { parseTaskAuthorizationPolicyFromWorkflowConfig } from '../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
+import { parseTaskAuthorizationPolicyFromWorkflowConfig } from '../modules/repository-consumer/task-authorization-policy.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import {

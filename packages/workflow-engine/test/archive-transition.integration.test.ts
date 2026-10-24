@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { commitSession } from '../src/application/finalize/lifecycle.ts';
+import { commitSession } from '../src/runtime/finalization/commit.ts';
 import { finalizeTask } from './support/session-lifecycle-host.ts';
 import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';

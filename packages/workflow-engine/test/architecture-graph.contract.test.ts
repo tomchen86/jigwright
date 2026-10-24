@@ -667,7 +667,7 @@ test('application and runtime immutable reads do not invert into CI entrypoints'
     fs.readFileSync(
       path.join(
         repositoryRoot,
-        'packages/workflow-engine/src/application/finalize/lifecycle.ts',
+        'packages/workflow-engine/src/runtime/finalization/protected-apply.ts',
       ),
       'utf8',
     ),

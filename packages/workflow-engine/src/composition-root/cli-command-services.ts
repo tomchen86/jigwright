@@ -42,7 +42,7 @@ export const contextualizeOpenTaskError =
 import { revokeMaintainerGrantV2 as revokeMaintainerGrantV2WithAudit } from '../application/control-plane/maintainer-approve.ts';
 import { preflightTaskSession as preflightTaskSessionWithRouting } from '../application/execute-task/session.ts';
 import { updateTaskSessionBase as updateTaskSessionBaseWithContractReader } from '../application/execute-task/update-base.ts';
-import { commitSession as commitSessionWithRouting } from '../application/finalize/lifecycle.ts';
+import { commitSession as commitSessionWithRouting } from '../runtime/finalization/commit.ts';
 import {
   commitPlanAmendment as commitPlanAmendmentWithContractReader,
   commitPlanningTransition as commitPlanningTransitionWithContractReader,
