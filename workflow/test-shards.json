@@ -12,9 +12,9 @@
   },
   "sourceTelemetryRunId": "run-20260912023916307-f369e0a2-e7a4-441a-bca1-57c8300410a4",
   "sourceTelemetryDigest": "sha256:9b45f37d8baf330b4fbd88d81456c97b50767229cf3cb6646d9dcdc1fdb4661d",
-  "physicalFileCount": 549,
-  "executionUnitCount": 546,
-  "inventoryDigest": "sha256:02471d358c7f9e0ae19547df523b9600309763856eadc6650f2d23374aff2d91",
+  "physicalFileCount": 551,
+  "executionUnitCount": 548,
+  "inventoryDigest": "sha256:e00d603c6b099f13802171909cbdad84b2ca2f92861d1fcb1b7549646d188829",
   "shards": [
     {
       "shardNumber": 1,
@@ -940,6 +940,22 @@
             "packages/workflow-engine/test/intervention-metadata-disposition.contract.test.ts"
           ],
           "legacyOrdinal": 546,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/open-task-journal.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/open-task-journal.contract.test.ts"
+          ],
+          "legacyOrdinal": 547,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/open-task-journal-store.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/open-task-journal-store.contract.test.ts"
+          ],
+          "legacyOrdinal": 548,
           "estimatedDurationMs": 0
         }
       ]

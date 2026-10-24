@@ -230,6 +230,8 @@ import './planning-execution-epoch-recovery.integration.test.ts';
 import './planning-workspace.integration.test.ts';
 import './propose-planning-workspace.integration.test.ts';
 import './open-task-atomic-ingress.integration.test.ts';
+import './open-task-journal.contract.test.ts';
+import './open-task-journal-store.contract.test.ts';
 import './provider-retention-human-pin.contract.test.ts';
 import './task-mandate-grant-budget.integration.test.ts';
 import './provider-retention.contract.test.ts';

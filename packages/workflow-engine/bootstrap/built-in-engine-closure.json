@@ -853,7 +853,7 @@
     {
       "path": "src/application/execute-task/open-task.ts",
       "mode": "100644",
-      "digest": "sha256:e931bfbf9a5539a9332c875c92ac88c87ece075bc10e3ae551900ae9b7bff7a7"
+      "digest": "sha256:dcdf3f81a147eeb0afffd4cb1efe098c8b107331569cc7d7b21d8a437cbc42e5"
     },
     {
       "path": "src/application/execute-task/session-abort.ts",
@@ -3111,6 +3111,11 @@
       "digest": "sha256:f7ab11cbb6fed8ee00947f3373300bb5b31e8990b57783379a1cc04a60186954"
     },
     {
+      "path": "src/modules/lifecycle/open-task-journal.ts",
+      "mode": "100644",
+      "digest": "sha256:e8b896b634a6373cdc5ce7d8237b4a0884ad3a2868c30a743d0159a0daf2de65"
+    },
+    {
       "path": "src/modules/lifecycle/open-task-status.ts",
       "mode": "100644",
       "digest": "sha256:ecad4830a16355bd263d74acf717b6f734ce2cd2451ce793664e3eb77a4a5831"
@@ -5329,6 +5334,11 @@
       "path": "src/runtime/storage-journal/maintainer-store.ts",
       "mode": "100644",
       "digest": "sha256:c590628f3c02e1f787e1cbf1e18a3cd59a9d1d0a358649ee0be4f222acca6b7d"
+    },
+    {
+      "path": "src/runtime/storage-journal/open-task-journal.ts",
+      "mode": "100644",
+      "digest": "sha256:e2a309086b7f887a32dc015e7c781efa2662b0255e29a1edf8af3d60d4d35d55"
     },
     {
       "path": "src/runtime/storage-journal/planning-report.ts",
