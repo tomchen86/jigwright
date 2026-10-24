@@ -8,11 +8,11 @@ Keep repository routing in one controlled source and derive the visible inventor
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:b74eab4cdbe68ab9e8a92625603b1d50fa2921df3c764f68255561d800dcdab8 -->
+<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:a8deee78ac09d17633af59bb22032356976c1ea0e9f62a0b17198aade447eee8 -->
 
 <!-- prettier-ignore-start -->
 
-33 files changed in this module since confirmation.
+34 files changed in this module since confirmation.
 
 ## Commands
 
@@ -81,6 +81,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [investigation-status.ts](investigation-status.ts) | Canonical investigation lifecycle status, including provider progress observations. | 0 | History unavailable |
 | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) | Defines shared task strategy, review and authority-plan state names. | 1 | Header changed since confirmation |
 | [mechanical-transformation-evidence.ts](mechanical-transformation-evidence.ts) | Pure mechanical transformation closure, projection and immutable evidence validation. | 0 | History unavailable |
+| [open-task-journal.ts](open-task-journal.ts) | Journal schema, stable transaction identity and phase rules without external effects. | 0 | History unavailable |
 | [open-task-status.ts](open-task-status.ts) | Durable open-task phase and status values shared by activation and status queries. | 0 | History unavailable |
 | [planning-amendment-decision.ts](planning-amendment-decision.ts) | Creates, reads and replaces canonical amendment decisions embedded in proposal markers. | 1 | History unavailable |
 | [planning-execution-epoch-observations.ts](planning-execution-epoch-observations.ts) | Required repository observations, invoked at each epoch admission phase. | 0 | History unavailable |

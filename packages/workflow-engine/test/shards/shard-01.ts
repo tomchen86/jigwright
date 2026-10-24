@@ -117,3 +117,5 @@ import '../finalization-records.contract.test.ts';
 import '../proposal-domain.contract.test.ts';
 import '../archive-destination.contract.test.ts';
 import '../intervention-metadata-disposition.contract.test.ts';
+import '../open-task-journal.contract.test.ts';
+import '../open-task-journal-store.contract.test.ts';
