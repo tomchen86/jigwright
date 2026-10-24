@@ -713,22 +713,12 @@
     {
       "path": "src/application/control-plane/harness-bootstrap-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:8296ca5e72c5fb12f8c267480e012843eb74d060c052d7064a668fd986b678d2"
-    },
-    {
-      "path": "src/application/control-plane/harness-bootstrap-external-input.ts",
-      "mode": "100644",
-      "digest": "sha256:30070864be792bcac0fc7f884187bcdc08f9544b7d6cd63eceb599c4409f65d4"
-    },
-    {
-      "path": "src/application/control-plane/harness-bootstrap-production.ts",
-      "mode": "100644",
-      "digest": "sha256:7df9ca953b4cb6ba8828f0edc013404a6f4cbd21f386d738c0a3c3e0fa1c7b77"
+      "digest": "sha256:36b7414492b550603ac921db6b1f048c8ab434d4e4dda0d257fe35660a861c77"
     },
     {
       "path": "src/application/control-plane/harness-bootstrap-recovery-commands.ts",
       "mode": "100644",
-      "digest": "sha256:dcc05093e7e51708155411ab3ce460a830650da8016a4edb0bff70b0a9ec0dd8"
+      "digest": "sha256:ac51350dbdbc205bf693dbaf4885caaef070935efccdaccedcf61724b3dc7be9"
     },
     {
       "path": "src/application/control-plane/human-resolution-grant-revocation.ts",
@@ -1333,7 +1323,7 @@
     {
       "path": "src/composition-root/harness-bootstrap-production.ts",
       "mode": "100644",
-      "digest": "sha256:65b1fd270734a8e2a09899974d1dff49997f9aba3e837760fd5b061ee94cdefa"
+      "digest": "sha256:9267f49870f7efd61f18d7eddc1d5025f0da184d4069f02e8ebb7e4a1ce5a173"
     },
     {
       "path": "src/composition-root/human-resolution-grant-production.ts",
@@ -4299,6 +4289,11 @@
       "path": "src/runtime/provider-policy/ai-adapter-policy.ts",
       "mode": "100644",
       "digest": "sha256:42d32cf54dce93cdce4ed8f159a44e2952d6361ec750bf996509d8937aaf479d"
+    },
+    {
+      "path": "src/runtime/recovery/harness-bootstrap-external-input.ts",
+      "mode": "100644",
+      "digest": "sha256:b145b7d8d50d6ca1f69b13c0c06cc505dc47af08b57784ccae8938659f3c9da2"
     },
     {
       "path": "src/runtime/recovery/recovery-authority-store.ts",

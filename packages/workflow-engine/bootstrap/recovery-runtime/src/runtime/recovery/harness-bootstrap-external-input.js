@@ -8,9 +8,10 @@
  */
 import path from 'node:path';
 import fs from 'node:fs';
+import { isExactAbsolutePath, } from "../../modules/authority/recovery-quarantine-contract.js";
 import { workflowError, ExitCode, WorkflowError, } from "../../foundation/errors/errors.js";
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
-export function recoveryAuthorityStateRoot(gitCommonDirectory) {
+function recoveryAuthorityStateRoot(gitCommonDirectory) {
     return path.join(gitCommonDirectory, 'workflow-engine', 'recovery-authority-state');
 }
 export function ensureRecoveryAuthorityStateRoot(gitCommonDirectory) {
@@ -25,6 +26,14 @@ export function requireRecoveryAuthorityStateRoot(gitCommonDirectory) {
     assertPrivateRecoveryDirectory(stateRoot);
     return stateRoot;
 }
+export function readOptionalRecoveryQuarantineMarker(gitCommonDirectory, readMarker) {
+    const storageRoot = recoveryAuthorityStateRoot(gitCommonDirectory);
+    if (fs.lstatSync(storageRoot, { throwIfNoEntry: false }) === undefined) {
+        return null;
+    }
+    assertPrivateRecoveryDirectory(storageRoot);
+    return readMarker(storageRoot);
+}
 function ensurePrivateDirectory(parent, directory) {
     assertExactDirectory(parent, false);
     if (path.dirname(directory) !== parent)
@@ -34,7 +43,7 @@ function ensurePrivateDirectory(parent, directory) {
     }
     assertPrivateRecoveryDirectory(directory);
 }
-export function assertPrivateRecoveryDirectory(directory) {
+function assertPrivateRecoveryDirectory(directory) {
     assertExactDirectory(directory, true);
 }
 function assertExactDirectory(directory, requirePrivateMode) {
@@ -50,7 +59,8 @@ function assertExactDirectory(directory, requirePrivateMode) {
         throw recoveryExternalInputUnsafe();
     }
 }
-export function hasRecoveryOperationalTrustRootFence(storageRoot) {
+export function hasRecoveryOperationalTrustRootFence(gitCommonDirectory) {
+    const storageRoot = recoveryAuthorityStateRoot(gitCommonDirectory);
     if (fs.lstatSync(storageRoot, { throwIfNoEntry: false }) === undefined) {
         return false;
     }
@@ -167,11 +177,6 @@ function pathIsWithin(parent, candidate) {
     const relative = path.relative(parent, candidate);
     return (relative.length === 0 ||
         (!relative.startsWith(`..${path.sep}`) && relative !== '..'));
-}
-export function isExactAbsolutePath(value) {
-    return (typeof value === 'string' &&
-        path.isAbsolute(value) &&
-        path.resolve(value) === value);
 }
 function recoveryExternalInputUnsafe() {
     return workflowError('RECOVERY_AUTHORITY_EXTERNAL_INPUT_UNSAFE', 'Recovery Authority inputs must be exact private canonical files outside the repository and Git common directory.', ExitCode.unsafeEnvironment);

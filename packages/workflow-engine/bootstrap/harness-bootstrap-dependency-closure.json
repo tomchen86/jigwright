@@ -81,19 +81,9 @@
       "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/application/control-plane/harness-bootstrap-external-input.js",
-      "mode": "100644",
-      "digest": "sha256:12a91629eeabb0bbfdaf7cd101361805dfcc01c9ae045412888342ff421303be"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/application/control-plane/harness-bootstrap-production.js",
-      "mode": "100644",
-      "digest": "sha256:4f64e8ff21710aceae4029aa205849eb536c621d969b33bf39370e4afdcae126"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/harness-bootstrap-recovery-commands.js",
       "mode": "100644",
-      "digest": "sha256:fb63751c6c50cbe62b0db9931992aa175c83a6c4106d79ad96aced0c01a0745d"
+      "digest": "sha256:956a4d2d0eb8a9fadb069fc61b98b45f3047e7c6e0906ce4d185c9c24a327ade"
     },
     {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/human-resolution-grant-revocation.js",
@@ -118,7 +108,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/composition-root/harness-bootstrap-production.js",
       "mode": "100644",
-      "digest": "sha256:131cfb34cdf053632b62f8b7fc0d934bd059f018b9fb08deb4fd8ffed2334da8"
+      "digest": "sha256:a52310e7de08a4943af2f5959d235f073aa742730d454c1d505fa2a8bbb43f49"
     },
     {
       "path": "bootstrap/recovery-runtime/src/composition-root/human-revocation-production.js",
@@ -454,6 +444,11 @@
       "path": "bootstrap/recovery-runtime/src/runtime/process-environment/execution-environment.js",
       "mode": "100644",
       "digest": "sha256:8c609c5dd3442addcf8dcd387e126f3ed6bbb2c018bd7972ab79471eeb4b82ac"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/recovery/harness-bootstrap-external-input.js",
+      "mode": "100644",
+      "digest": "sha256:e2039854e4632872169ac00bae751ba4ac6685c5f60a9567bdf76e9a8c615289"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/recovery/recovery-authority-store.js",

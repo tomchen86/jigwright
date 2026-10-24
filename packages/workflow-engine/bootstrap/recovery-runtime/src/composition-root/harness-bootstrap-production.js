@@ -1,9 +1,9 @@
 import { createInteractiveSshSigner, verifySshSignatureWithPublicKey, } from "../adapters/signing/ssh/maintainer-signer.js";
 import { createHarnessBootstrapAudit } from "../application/control-plane/harness-bootstrap-audit.js";
-import { createHarnessBootstrapRecoveryProduction } from "../application/control-plane/harness-bootstrap-production.js";
-import { createHarnessBootstrapRecoveryCommands, } from "../application/control-plane/harness-bootstrap-recovery-commands.js";
+import { createHarnessBootstrapRecoveryCommands } from "../application/control-plane/harness-bootstrap-recovery-commands.js";
 import { parseMaintainerPolicy } from "../modules/authority/maintainer-policy.js";
-import { verifyRecoveryAuthorityDescriptor } from "../modules/authority/recovery-authority-contract.js";
+import { verifyRecoveryAuthorityDescriptor, } from "../modules/authority/recovery-authority-contract.js";
+import { ensureRecoveryAuthorityStateRoot, hasRecoveryOperationalTrustRootFence, readExternalRecoveryEnvelope, readExternalRecoveryExpectations, readExternalRecoveryInput, readExternalRecoveryTrustRootAuditRoot, readOptionalRecoveryQuarantineMarker, requireRecoveryAuthorityStateRoot, } from "../runtime/recovery/harness-bootstrap-external-input.js";
 import { RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE } from "../modules/authority/recovery-trust-root-values.js";
 import { importRecoveryAuthorityDescriptor, readRecoveryAuthorityDescriptor, } from "../runtime/recovery/recovery-authority-store.js";
 import { executeRecoveryQuarantineEnter, executeRecoveryQuarantineRelease, readRecoveryQuarantineMarker, } from "../runtime/recovery/recovery-quarantine.js";
@@ -52,12 +52,54 @@ export function createHarnessBootstrapProduction() {
         deriveAuthorityAuditRepositoryId,
         recordAuthorityAuditEvent,
     });
-    const { recoveryOperationalTrustRootDependencies, recoveryQuarantineDependencies, } = createHarnessBootstrapRecoveryProduction({
-        RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE,
-        verifySshSignatureWithPublicKey,
-        productionRecoveryTrustRootAuditSink,
-        productionRecoveryQuarantineAuditSink,
-    });
+    function recoveryOperationalTrustRootDependencies(descriptor, expectations, externalAuditRoot, repositoryRoot, overrides) {
+        return {
+            authorityDescriptor: descriptor,
+            authorityExpectations: expectations,
+            externalAuditRoot,
+            now: overrides.now?.() ?? new Date(),
+            verifyHumanSignature(payload, signature, identity, namespace) {
+                if (namespace !== RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE ||
+                    identity !== descriptor.signer.identity ||
+                    descriptor.signer.fingerprint !== expectations.signerFingerprint) {
+                    return false;
+                }
+                try {
+                    verifySshSignatureWithPublicKey(payload, signature, identity, descriptor.signer.publicKey, namespace);
+                    return true;
+                }
+                catch {
+                    return false;
+                }
+            },
+            appendAudit: overrides.recoveryTrustRootAuditSink?.append ??
+                productionRecoveryTrustRootAuditSink(repositoryRoot).append,
+        };
+    }
+    function recoveryQuarantineDependencies(descriptor, expectations, envelope, repositoryRoot, overrides) {
+        const externalAuditRoot = envelope.payload.externalAuditRoot;
+        return {
+            authorityDescriptor: descriptor,
+            authorityExpectations: expectations,
+            externalAuditRoot,
+            now: overrides.now?.() ?? new Date(),
+            verifyHumanSignature(payload, signature, identity, namespace) {
+                if (identity !== descriptor.signer.identity ||
+                    descriptor.signer.fingerprint !== expectations.signerFingerprint) {
+                    return false;
+                }
+                try {
+                    verifySshSignatureWithPublicKey(payload, signature, identity, descriptor.signer.publicKey, namespace);
+                    return true;
+                }
+                catch {
+                    return false;
+                }
+            },
+            appendAudit: overrides.recoveryQuarantineAuditSink?.append ??
+                productionRecoveryQuarantineAuditSink(repositoryRoot).append,
+        };
+    }
     function createHarnessBootstrapCommandDispatcher({ bootstrapInterventionUsage, }) {
         return createHarnessBootstrapRecoveryCommands({
             discoverRepository,
@@ -68,7 +110,17 @@ export function createHarnessBootstrapProduction() {
             executeRecoveryOperationalTrustRootRestore,
             executeRecoveryQuarantineEnter,
             executeRecoveryQuarantineRelease,
-            readRecoveryQuarantineMarker,
+            input: {
+                readExternalRecoveryExpectations,
+                readExternalRecoveryInput,
+                readExternalRecoveryEnvelope,
+                readExternalRecoveryTrustRootAuditRoot,
+                ensureRecoveryAuthorityStateRoot,
+                requireRecoveryAuthorityStateRoot,
+                readOptionalRecoveryQuarantineMarker,
+                hasRecoveryOperationalTrustRootFence,
+                readRecoveryQuarantineMarker,
+            },
             recoveryOperationalTrustRootDependencies,
             recoveryQuarantineDependencies,
         });
