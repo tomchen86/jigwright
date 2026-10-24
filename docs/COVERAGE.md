@@ -52,7 +52,7 @@ Header counts cover source files in each scope; package rows include their modul
 | packages/grants | package | [Grant services](../packages/grants/spec.md) | Local | Missing | 6/6 | 1/6 |
 | packages/openspec-adapter | package | [OpenSpec adapter](../packages/openspec-adapter/spec.md) | Local | Missing | 6/6 | 6/6 |
 | packages/repository-runtime | package | [Repository contracts](../spec.md) | Inherited | [Present](../packages/repository-runtime/README.md) | 1/1 | 0/1 |
-| packages/workflow-engine | package | [Shared workflow contracts](../packages/workflow-engine/spec.md) | Local | Missing | 851/1064 | 499/1064 |
+| packages/workflow-engine | package | [Shared workflow contracts](../packages/workflow-engine/spec.md) | Local | Missing | 850/1063 | 498/1063 |
 | packages/workflow-engine/src/modules/adoption | module | [Adoption](../packages/workflow-engine/src/modules/adoption/spec.md) | Local | [Present](../packages/workflow-engine/src/modules/adoption/README.md) | 2/2 | 0/2 |
 | packages/workflow-engine/src/modules/assurance | module | [Assurance](../packages/workflow-engine/src/modules/assurance/spec.md) | Local | [Present](../packages/workflow-engine/src/modules/assurance/README.md) | 64/78 | 32/78 |
 | packages/workflow-engine/src/modules/authority | module | [Authority](../packages/workflow-engine/src/modules/authority/spec.md) | Local | [Present](../packages/workflow-engine/src/modules/authority/README.md) | 77/87 | 43/87 |

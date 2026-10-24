@@ -4,15 +4,33 @@ import {
   verifySshSignatureWithPublicKey,
 } from '../adapters/signing/ssh/maintainer-signer.ts';
 import { createHarnessBootstrapAudit } from '../application/control-plane/harness-bootstrap-audit.ts';
-import type { HarnessBootstrapRuntimeOverrides } from '../application/control-plane/harness-bootstrap-contracts.ts';
-import { createHarnessBootstrapRecoveryProduction } from '../application/control-plane/harness-bootstrap-production.ts';
-import {
-  createHarnessBootstrapRecoveryCommands,
-  type HarnessBootstrapRecoveryCommandBindings,
-} from '../application/control-plane/harness-bootstrap-recovery-commands.ts';
+import type {
+  HarnessBootstrapRecoveryCommandBindings,
+  HarnessBootstrapRuntimeOverrides,
+} from '../application/control-plane/harness-bootstrap-contracts.ts';
+import { createHarnessBootstrapRecoveryCommands } from '../application/control-plane/harness-bootstrap-recovery-commands.ts';
 import { type BootstrapInterventionCliDependencies } from '../modules/authority/intervention-bootstrap-contract.ts';
 import { parseMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
-import { verifyRecoveryAuthorityDescriptor } from '../modules/authority/recovery-authority-contract.ts';
+import {
+  verifyRecoveryAuthorityDescriptor,
+  type RecoveryAuthorityDescriptorV1,
+  type RecoveryAuthorityExpectations,
+} from '../modules/authority/recovery-authority-contract.ts';
+import type {
+  RecoveryQuarantineDependencies,
+  RecoveryQuarantineEnvelope,
+} from '../modules/authority/recovery-quarantine-contract.ts';
+import type { RecoveryOperationalTrustRootRestoreDependencies } from '../modules/authority/recovery-trust-root-contract.ts';
+import {
+  ensureRecoveryAuthorityStateRoot,
+  hasRecoveryOperationalTrustRootFence,
+  readExternalRecoveryEnvelope,
+  readExternalRecoveryExpectations,
+  readExternalRecoveryInput,
+  readExternalRecoveryTrustRootAuditRoot,
+  readOptionalRecoveryQuarantineMarker,
+  requireRecoveryAuthorityStateRoot,
+} from '../runtime/recovery/harness-bootstrap-external-input.ts';
 import { RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE } from '../modules/authority/recovery-trust-root-values.ts';
 import {
   importRecoveryAuthorityDescriptor,
@@ -98,15 +116,84 @@ export function createHarnessBootstrapProduction() {
     deriveAuthorityAuditRepositoryId,
     recordAuthorityAuditEvent,
   });
-  const {
-    recoveryOperationalTrustRootDependencies,
-    recoveryQuarantineDependencies,
-  } = createHarnessBootstrapRecoveryProduction({
-    RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE,
-    verifySshSignatureWithPublicKey,
-    productionRecoveryTrustRootAuditSink,
-    productionRecoveryQuarantineAuditSink,
-  });
+  function recoveryOperationalTrustRootDependencies(
+    descriptor: RecoveryAuthorityDescriptorV1,
+    expectations: RecoveryAuthorityExpectations,
+    externalAuditRoot: string,
+    repositoryRoot: string,
+    overrides: HarnessBootstrapRuntimeOverrides,
+  ): RecoveryOperationalTrustRootRestoreDependencies {
+    return {
+      authorityDescriptor: descriptor,
+      authorityExpectations: expectations,
+      externalAuditRoot,
+      now: overrides.now?.() ?? new Date(),
+      verifyHumanSignature(payload, signature, identity, namespace) {
+        if (
+          namespace !== RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE ||
+          identity !== descriptor.signer.identity ||
+          descriptor.signer.fingerprint !== expectations.signerFingerprint
+        ) {
+          return false;
+        }
+        try {
+          verifySshSignatureWithPublicKey(
+            payload,
+            signature,
+            identity,
+            descriptor.signer.publicKey,
+            namespace,
+          );
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      appendAudit:
+        overrides.recoveryTrustRootAuditSink?.append ??
+        productionRecoveryTrustRootAuditSink(repositoryRoot).append,
+    };
+  }
+
+  function recoveryQuarantineDependencies(
+    descriptor: RecoveryAuthorityDescriptorV1,
+    expectations: RecoveryAuthorityExpectations,
+    envelope: RecoveryQuarantineEnvelope,
+    repositoryRoot: string,
+    overrides: HarnessBootstrapRuntimeOverrides,
+  ): RecoveryQuarantineDependencies {
+    const externalAuditRoot = envelope.payload.externalAuditRoot;
+    return {
+      authorityDescriptor: descriptor,
+      authorityExpectations: expectations,
+      externalAuditRoot,
+      now: overrides.now?.() ?? new Date(),
+      verifyHumanSignature(payload, signature, identity, namespace) {
+        if (
+          identity !== descriptor.signer.identity ||
+          descriptor.signer.fingerprint !== expectations.signerFingerprint
+        ) {
+          return false;
+        }
+        try {
+          verifySshSignatureWithPublicKey(
+            payload,
+            signature,
+            identity,
+            descriptor.signer.publicKey,
+            namespace,
+          );
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      appendAudit:
+        overrides.recoveryQuarantineAuditSink?.append ??
+        productionRecoveryQuarantineAuditSink(repositoryRoot).append,
+    };
+  }
+
   function createHarnessBootstrapCommandDispatcher({
     bootstrapInterventionUsage,
   }: Pick<
@@ -122,7 +209,17 @@ export function createHarnessBootstrapProduction() {
       executeRecoveryOperationalTrustRootRestore,
       executeRecoveryQuarantineEnter,
       executeRecoveryQuarantineRelease,
-      readRecoveryQuarantineMarker,
+      input: {
+        readExternalRecoveryExpectations,
+        readExternalRecoveryInput,
+        readExternalRecoveryEnvelope,
+        readExternalRecoveryTrustRootAuditRoot,
+        ensureRecoveryAuthorityStateRoot,
+        requireRecoveryAuthorityStateRoot,
+        readOptionalRecoveryQuarantineMarker,
+        hasRecoveryOperationalTrustRootFence,
+        readRecoveryQuarantineMarker,
+      },
       recoveryOperationalTrustRootDependencies,
       recoveryQuarantineDependencies,
     });

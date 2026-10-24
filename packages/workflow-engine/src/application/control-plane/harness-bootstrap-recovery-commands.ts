@@ -6,85 +6,27 @@
  * - Active quarantine permits only exact release, trust-root restore or
  *   trust-root restore commands.
  */
-import fs from 'node:fs';
 import {
   ExitCode,
   workflowError,
   WorkflowError,
 } from '../../foundation/errors/errors.ts';
 import type {
-  RecoveryAuthorityDescriptorImporter,
-  RecoveryAuthorityDescriptorReader,
   RecoveryAuthorityDescriptorV1,
   RecoveryAuthorityImportBoundary,
-  verifyRecoveryAuthorityDescriptor,
 } from '../../modules/authority/recovery-authority-contract.ts';
 import type {
-  RecoveryQuarantineDependencies,
   RecoveryQuarantineEnterResult,
-  RecoveryQuarantineEnvelope,
-  RecoveryQuarantineMarker,
   RecoveryQuarantineReleaseResult,
 } from '../../modules/authority/recovery-quarantine-contract.ts';
+import { isExactAbsolutePath } from '../../modules/authority/recovery-quarantine-contract.ts';
+import type { RecoveryOperationalTrustRootRestoreResult } from '../../modules/authority/recovery-trust-root-contract.ts';
 import type {
-  RecoveryOperationalTrustRootRestoreDependencies,
-  RecoveryOperationalTrustRootRestoreResult,
-} from '../../modules/authority/recovery-trust-root-contract.ts';
-import type {
+  HarnessBootstrapRecoveryCommandBindings,
   HarnessBootstrapRuntimeOverrides,
   HarnessRecoveryRefusalAuthority,
   RecoveryAuthorityStatus,
 } from './harness-bootstrap-contracts.ts';
-import {
-  assertPrivateRecoveryDirectory,
-  ensureRecoveryAuthorityStateRoot,
-  hasRecoveryOperationalTrustRootFence,
-  isExactAbsolutePath,
-  readExternalRecoveryEnvelope,
-  readExternalRecoveryExpectations,
-  readExternalRecoveryInput,
-  readExternalRecoveryTrustRootAuditRoot,
-  recoveryAuthorityStateRoot,
-  requireRecoveryAuthorityStateRoot,
-} from './harness-bootstrap-external-input.ts';
-import type { createHarnessBootstrapRecoveryProduction } from './harness-bootstrap-production.ts';
-export interface HarnessBootstrapRecoveryCommandBindings extends ReturnType<
-  typeof createHarnessBootstrapRecoveryProduction
-> {
-  discoverRepository: (cwd: string) => {
-    repositoryRoot: string;
-    repositoryRealPath: string;
-    gitCommonDirectory: string;
-    branch: string | null;
-    head: string;
-    tree: string;
-    statusEntries: string[];
-  };
-  bootstrapInterventionUsage(): string;
-  importRecoveryAuthorityDescriptor: RecoveryAuthorityDescriptorImporter;
-  readRecoveryAuthorityDescriptor: RecoveryAuthorityDescriptorReader;
-  verifyRecoveryAuthorityDescriptor: typeof verifyRecoveryAuthorityDescriptor;
-  executeRecoveryOperationalTrustRootRestore(
-    externalEnvelopePath: string,
-    privateStoreRoot: string,
-    boundary: RecoveryAuthorityImportBoundary,
-    dependencies: RecoveryOperationalTrustRootRestoreDependencies,
-  ): RecoveryOperationalTrustRootRestoreResult;
-  executeRecoveryQuarantineEnter(
-    storageRoot: string,
-    envelope: RecoveryQuarantineEnvelope,
-    dependencies: RecoveryQuarantineDependencies,
-  ): RecoveryQuarantineEnterResult;
-  executeRecoveryQuarantineRelease(
-    storageRoot: string,
-    envelope: RecoveryQuarantineEnvelope,
-    dependencies: RecoveryQuarantineDependencies,
-  ): RecoveryQuarantineReleaseResult;
-  readRecoveryQuarantineMarker(
-    storageRoot: string,
-  ): RecoveryQuarantineMarker | null;
-}
-
 export function createHarnessBootstrapRecoveryCommands(
   bindings: HarnessBootstrapRecoveryCommandBindings,
 ) {
@@ -97,10 +39,21 @@ export function createHarnessBootstrapRecoveryCommands(
     executeRecoveryOperationalTrustRootRestore,
     executeRecoveryQuarantineEnter,
     executeRecoveryQuarantineRelease,
-    readRecoveryQuarantineMarker,
+    input,
     recoveryOperationalTrustRootDependencies,
     recoveryQuarantineDependencies,
   } = bindings;
+  const {
+    readExternalRecoveryExpectations,
+    readExternalRecoveryInput,
+    readExternalRecoveryEnvelope,
+    readExternalRecoveryTrustRootAuditRoot,
+    ensureRecoveryAuthorityStateRoot,
+    requireRecoveryAuthorityStateRoot,
+    readOptionalRecoveryQuarantineMarker,
+    hasRecoveryOperationalTrustRootFence,
+    readRecoveryQuarantineMarker,
+  } = input;
 
   function isRecoveryAuthorityCommand(args: readonly string[]): boolean {
     return args[0] === 'recovery-authority';
@@ -132,7 +85,8 @@ export function createHarnessBootstrapRecoveryCommands(
       throw error;
     }
     const marker = readOptionalRecoveryQuarantineMarker(
-      recoveryAuthorityStateRoot(repository.gitCommonDirectory),
+      repository.gitCommonDirectory,
+      readRecoveryQuarantineMarker,
     );
     if (marker !== null) {
       observeRefusalAuthority({
@@ -141,7 +95,7 @@ export function createHarnessBootstrapRecoveryCommands(
       });
     }
     const operationalTrustFence = hasRecoveryOperationalTrustRootFence(
-      recoveryAuthorityStateRoot(repository.gitCommonDirectory),
+      repository.gitCommonDirectory,
     );
     if (marker !== null) {
       if (
@@ -413,14 +367,6 @@ export function createHarnessBootstrapRecoveryCommands(
       repositoryWorktreeRoot: repository.repositoryRealPath,
       gitCommonDirectory: repository.gitCommonDirectory,
     };
-  }
-
-  function readOptionalRecoveryQuarantineMarker(storageRoot: string) {
-    if (fs.lstatSync(storageRoot, { throwIfNoEntry: false }) === undefined) {
-      return null;
-    }
-    assertPrivateRecoveryDirectory(storageRoot);
-    return readRecoveryQuarantineMarker(storageRoot);
   }
 
   function harnessBootstrapUsage(): string {
