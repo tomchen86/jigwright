@@ -50,7 +50,7 @@ import {
 import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import type { InvestigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';
-import type { ProposeOperations } from '../propose/propose-orchestrator.ts';
+import type { ProposeOperations } from '../../runtime/proposal/propose-operations.ts';
 export type ExecutionReplacementProposePort = Pick<
   ProposeOperations,
   | 'completeInterruptedPlanReviewReplacement'

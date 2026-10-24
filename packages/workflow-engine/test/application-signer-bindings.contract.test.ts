@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { withTaskRevisionPlanningOperation } from '../src/application/revise/task-revision.ts';
 import fs from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import type {
@@ -34,7 +35,7 @@ import {
   TASK_ID,
   PROFILE_ID,
 } from './support/maintainer-grant-v2-fixture.ts';
-import type { ProposeDecisionServices } from '../src/application/propose/propose-decision-services.ts';
+import type { ProposeDecisionServices } from '../src/runtime/proposal/propose-decision-services.ts';
 import { createSecondReplannedProposeFixture } from './investigation-propose-flow-fixture.ts';
 import {
   fakeRunnerReport,
@@ -447,6 +448,7 @@ test('Propose disposition signer preserves receiver, baseline policy and overrid
           'createInteractiveSshSigner' in this,
       );
       assert.equal(this.createInteractiveSshSigner, factory);
+      assert.equal(this, decisions);
       assert.equal(root, fs.realpathSync(repository));
       assert.deepEqual(
         policy,
@@ -461,7 +463,83 @@ test('Propose disposition signer preserves receiver, baseline policy and overrid
         },
       };
     };
-    const operations = proposeOperations(factory);
+    const decisions = proposeDecisions(factory);
+    let capturedWorkspaceReads = 0;
+    let lateAuthoringReads = 0;
+    let lateMirrorReads = 0;
+    let lateExecutionReads = 0;
+    const workspaceOwner = {
+      ...decisions.planningWorkspace,
+      readPlanningDraftWorkspace(
+        ...args: Parameters<
+          ProposeDecisionServices['planningWorkspace']['readPlanningDraftWorkspace']
+        >
+      ) {
+        assert.equal(this, workspaceOwner);
+        capturedWorkspaceReads++;
+        return planningDraftWorkspace.readPlanningDraftWorkspace(...args);
+      },
+      inspectPlanningDraftWorkspace(
+        ...args: Parameters<
+          ProposeDecisionServices['planningWorkspace']['inspectPlanningDraftWorkspace']
+        >
+      ) {
+        assert.equal(this, workspaceOwner);
+        capturedWorkspaceReads++;
+        return planningDraftWorkspace.inspectPlanningDraftWorkspace(...args);
+      },
+    };
+    decisions.planningWorkspace = workspaceOwner;
+    decisions.planningProvider = {
+      reviewedGeneratedAssets,
+      createAuthoringPort() {
+        throw new Error('provider must be looked up at invocation');
+      },
+      reviewedAssetMirrors() {
+        throw new Error('mirror provider must be looked up at invocation');
+      },
+    };
+    decisions.planningExecution = {
+      ...planningExecution,
+      inspectPlanningTransition() {
+        throw new Error('execution port must be looked up at resume');
+      },
+    };
+    const operations = createProposeOperations(decisions);
+    assert.equal(capturedWorkspaceReads, 0);
+    workspaceOwner.readPlanningDraftWorkspace = () => {
+      throw new Error('workspace method must remain construction-captured');
+    };
+    workspaceOwner.inspectPlanningDraftWorkspace = () => {
+      throw new Error('workspace method must remain construction-captured');
+    };
+    const providerOwner = {
+      reviewedGeneratedAssets,
+      createAuthoringPort(root: string) {
+        assert.equal(this, providerOwner);
+        lateAuthoringReads++;
+        return createPlanningProviderAuthoringPort(root);
+      },
+      reviewedAssetMirrors(root: string) {
+        assert.equal(this, providerOwner);
+        lateMirrorReads++;
+        return planningProviderReviewedAssetMirrors(root);
+      },
+    };
+    decisions.planningProvider = providerOwner;
+    const executionOwner = {
+      ...planningExecution,
+      inspectPlanningTransition(
+        ...args: Parameters<
+          ProposeDecisionServices['planningExecution']['inspectPlanningTransition']
+        >
+      ) {
+        assert.equal(this, executionOwner);
+        lateExecutionReads++;
+        return planningExecution.inspectPlanningTransition(...args);
+      },
+    };
+    decisions.planningExecution = executionOwner;
     assert.equal(events.length, 0);
     assert.throws(
       () =>
@@ -488,6 +566,10 @@ test('Propose disposition signer preserves receiver, baseline policy and overrid
       ['factory', 'presence'],
       'supplied signer bypasses factory',
     );
+    assert.ok(capturedWorkspaceReads > 0);
+    assert.ok(lateAuthoringReads > 0);
+    assert.ok(lateMirrorReads > 0);
+    assert.ok(lateExecutionReads > 0);
   } finally {
     reviewAuthority.dispose();
     fs.rmSync(repository, { recursive: true, force: true });
@@ -532,16 +614,14 @@ import {
   reviewedGeneratedAssets,
 } from '../src/composition-root/planning-provider-authoring-production.ts';
 /** Binds proposal workflows to required current planning and retry observations. */
-import { createProposeOperations } from '../src/application/propose/propose-orchestrator.ts';
+import { createProposeOperations } from '../src/runtime/proposal/propose-operations.ts';
 import {
   productionPlanningAssurance,
   planningAssuranceDependencies,
 } from '../src/composition-root/planning-assurance-production.ts';
 import { readProviderRetryAccountingEvidence } from '../src/runtime/storage-journal/provider-retry-accounting-reader.ts';
 
-function proposeOperations(
-  createInteractiveSshSigner: MaintainerSignerFactory,
-) {
+function proposeDecisions(createInteractiveSshSigner: MaintainerSignerFactory) {
   const decisions = {
     createInteractiveSshSigner,
     withTaskRevisionPlanningOperation,
@@ -580,5 +660,70 @@ function proposeOperations(
     planningEvidence: planningAssuranceDependencies,
     readProviderRetryAccountingEvidence,
   } satisfies ProposeDecisionServices;
-  return createProposeOperations(decisions);
+  return decisions;
 }
+
+test('Propose construction is lazy and each factory returns fresh operation wrappers', () => {
+  const decisions = proposeDecisions(() => {
+    throw new Error('construction must not invoke the signer');
+  });
+  const first = createProposeOperations(decisions);
+  const second = createProposeOperations(decisions);
+  assert.notEqual(first, second);
+  assert.notEqual(first.startPropose, second.startPropose);
+  assert.notEqual(first.resumePropose, second.resumePropose);
+  assert.notEqual(first.resumeProposeFromFile, second.resumeProposeFromFile);
+  assert.notEqual(first.getProposeStatus, second.getProposeStatus);
+});
+
+test('Propose resume reads execution once before file parsing and keeps validation before dispatch', () => {
+  const directory = fs.mkdtempSync(
+    path.join(tmpdir(), 'propose-resume-order-'),
+  );
+  const decisions = proposeDecisions(() => {
+    throw new Error('invalid input must not invoke the signer');
+  });
+  const stop = new Error('observe execution lookup before reading JSON');
+  let reads = 0;
+  let refuseLookup = true;
+  Object.defineProperty(decisions, 'planningExecution', {
+    get() {
+      reads++;
+      if (refuseLookup) throw stop;
+      return planningExecution;
+    },
+  });
+  try {
+    const operations = createProposeOperations(decisions);
+    assert.equal(reads, 0, 'construction does not read the execution port');
+    assert.throws(
+      () =>
+        operations.resumeProposeFromFile(
+          directory,
+          'resume-order',
+          'missing.json',
+        ),
+      (error) => error === stop,
+    );
+    assert.equal(reads, 1);
+    refuseLookup = false;
+    fs.writeFileSync(path.join(directory, 'input.json'), '{}');
+    assert.throws(
+      () =>
+        operations.resumeProposeFromFile(
+          directory,
+          'resume-order',
+          'input.json',
+        ),
+      (error) => isWorkflowError(error, 'PROPOSE_INPUT_INVALID'),
+    );
+    assert.equal(reads, 2, 'FromFile does not read execution again in resume');
+    assert.throws(
+      () => operations.resumePropose(directory, 'resume-order', {}),
+      (error) => isWorkflowError(error, 'PROPOSE_INPUT_INVALID'),
+    );
+    assert.equal(reads, 3, 'direct resume reads execution once per call');
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});

@@ -34,10 +34,11 @@ import {
 import {
   resolvePlanReviewRoleTopology,
   preparePlanReviewRoleTopology,
-  type PreparePlanReviewRoleTopologyInput,
-} from '../src/application/propose/plan-review-role-topology.ts';
+} from '../src/runtime/proposal/plan-review-role-topology.ts';
+import { type PreparePlanReviewRoleTopologyInput } from '../src/modules/proposal/plan-review-role-topology.ts';
 import { createProductionRoleTopologyResolutionPort } from '../src/composition-root/role-topology-resolution-production.ts';
 import { isWorkflowError } from './fixture.ts';
+import { assertPureDependencyClosure } from './support/pure-dependency-closure.ts';
 
 const CHANGE_ID = 'topology-change';
 const PLANNING_GENERATION = 'a'.repeat(64);
@@ -296,16 +297,26 @@ test('logical aliases in one provider family satisfy the ordinary fresh-session 
   assert.equal(resolution.disposition, 'satisfied');
 });
 
-test('application topology bridge has no adapter or runtime value imports', () => {
-  const source = fs.readFileSync(
-    new URL(
-      '../src/application/propose/plan-review-role-topology.ts',
-      import.meta.url,
-    ),
-    'utf8',
+test('proposal topology owners preserve the injected snapshot boundary', () => {
+  for (const owner of ['runtime', 'modules']) {
+    const file = path.resolve(
+      import.meta.dirname,
+      `../src/${owner}/proposal/plan-review-role-topology.ts`,
+    );
+    const source = fs.readFileSync(file, 'utf8');
+    assert.doesNotMatch(
+      source,
+      /from ['"][^'"]*(?:adapters|runtime|composition-root)\//u,
+    );
+  }
+  assert.ok(
+    assertPureDependencyClosure(
+      path.resolve(
+        import.meta.dirname,
+        '../src/modules/proposal/plan-review-role-topology.ts',
+      ),
+    ).size >= 1,
   );
-
-  assert.doesNotMatch(source, /from ['"]\.\.\/\.\.\/(?:adapters|runtime)\//u);
 });
 
 test('provider registry ordering is canonical rather than caller-order dependent', () => {
@@ -931,24 +942,46 @@ test('production CLI injects the topology snapshot port into start, resume, and 
     new URL('../src/entrypoints/cli/workflow-cli.ts', import.meta.url),
     'utf8',
   );
+  const taskLifecycle = fs.readFileSync(
+    new URL('../src/entrypoints/cli/task-lifecycle-cli.ts', import.meta.url),
+    'utf8',
+  );
+  const immediateIntake = fs.readFileSync(
+    new URL(
+      '../src/composition-root/governance-intake-command-production.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
   assert.match(
-    source,
+    taskLifecycle,
     /import \{ productionRoleTopologyResolutionPort \} from '\.\.\/\.\.\/composition-root\/role-topology-resolution-production\.ts';/u,
   );
-  assert.equal(
-    [
-      source,
-      fs.readFileSync(
-        new URL(
-          '../src/entrypoints/cli/task-lifecycle-cli.ts',
-          import.meta.url,
-        ),
-        'utf8',
-      ),
-    ]
-      .join('\n')
-      .match(/roleTopologyResolution:\s*productionRoleTopologyResolutionPort/gu)
-      ?.length,
-    3,
+  assert.match(
+    immediateIntake,
+    /import \{ productionRoleTopologyResolutionPort \} from '\.\/role-topology-resolution-production\.ts';/u,
+  );
+  for (const [owner, count] of [
+    [taskLifecycle, 2],
+    [immediateIntake, 1],
+  ] as const) {
+    assert.equal(
+      owner.match(
+        /roleTopologyResolution:\s*productionRoleTopologyResolutionPort/gu,
+      )?.length,
+      count,
+    );
+  }
+  assert.match(
+    source,
+    /import\s*\{[^}]*\bcreateGovernanceIntakeCommandDependencies\b[^}]*\}\s*from '\.\.\/\.\.\/composition-root\/governance-intake-command-production\.ts';/u,
+  );
+  assert.match(
+    source,
+    /const intakeDependencies = createGovernanceIntakeCommandDependencies\(\);/u,
+  );
+  assert.match(
+    source,
+    /dispatchGovernanceIntakeCommand\(\s*command,\s*rest,\s*discoverRepository\(cwd\)\.repositoryRoot,\s*intakeDependencies,\s*\)/u,
   );
 });

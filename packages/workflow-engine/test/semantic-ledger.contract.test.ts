@@ -19,7 +19,7 @@ function input(overrides: Partial<LedgerEntryInput> = {}): LedgerEntryInput {
     subject: {
       subjectId: 'investigation.resume-propose',
       kind: 'symbol',
-      path: 'packages/workflow-engine/src/application/propose/propose-orchestrator.ts',
+      path: 'packages/workflow-engine/src/runtime/proposal/propose-operations.ts',
       symbol: 'resumePropose',
     },
     binding: {

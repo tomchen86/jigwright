@@ -102,13 +102,41 @@ test('plan-commit task history crosses the production planning composition root'
 });
 
 test('propose immutable Git reads cross the repository transaction boundary', () => {
-  const proposeSource = fs.readFileSync(
+  for (const owner of [
+    'propose-planning-materialization',
+    'propose-planning-store',
+    'propose-publication',
+  ]) {
+    const source = fs.readFileSync(
+      new URL(`../src/runtime/proposal/${owner}.ts`, import.meta.url),
+      'utf8',
+    );
+    assert.doesNotMatch(
+      source,
+      /adapters\/planning\/openspec\/documents\/planning-contract/u,
+    );
+    assert.match(
+      source,
+      /import \{[^}]*\breadFileAtCommit\b[^}]*\} from '\.\.\/repository-transaction\/git-command\.ts';/su,
+    );
+    assert.match(source, /\breadFileAtCommit\(/u);
+  }
+  const reconciliationSource = fs.readFileSync(
     new URL(
-      '../src/application/propose/propose-orchestrator.ts',
+      '../src/runtime/proposal/propose-reviewer-reconciliation.ts',
       import.meta.url,
     ),
     'utf8',
   );
+  assert.doesNotMatch(
+    reconciliationSource,
+    /adapters\/planning\/openspec\/documents\/planning-contract/u,
+  );
+  assert.match(
+    reconciliationSource,
+    /import \{[^}]*\breplaceTextAtomic\b[^}]*\} from '\.\.\/repository-transaction\/atomic-text\.ts';/su,
+  );
+  assert.match(reconciliationSource, /\breplaceTextAtomic\(/u);
   const planningContractSource = fs.readFileSync(
     new URL(
       '../src/adapters/planning/openspec/documents/planning-contract.ts',
@@ -132,14 +160,6 @@ test('propose immutable Git reads cross the repository transaction boundary', ()
   );
 
   assert.doesNotMatch(
-    proposeSource,
-    /adapters\/planning\/openspec\/documents\/planning-contract/u,
-  );
-  assert.match(
-    proposeSource,
-    /from '\.\.\/\.\.\/runtime\/repository-transaction\/git\.ts';/u,
-  );
-  assert.doesNotMatch(
     planningContractSource,
     /export function readFileAtCommit\(/u,
   );
@@ -154,10 +174,7 @@ test('propose immutable Git reads cross the repository transaction boundary', ()
 
 test('propose authoring crosses the production planning-provider composition root', () => {
   const proposeSource = fs.readFileSync(
-    new URL(
-      '../src/application/propose/propose-orchestrator.ts',
-      import.meta.url,
-    ),
+    new URL('../src/runtime/proposal/propose-operations.ts', import.meta.url),
     'utf8',
   );
   const compositionSource = fs.readFileSync(
