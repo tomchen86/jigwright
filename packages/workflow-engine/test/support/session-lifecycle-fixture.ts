@@ -25,7 +25,7 @@ import {
   prepareCurrentV3IntroductionFixture,
   runtimeRoot,
 } from '../fixture.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../../src/runtime/planning-transition/planning-transition.ts';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';

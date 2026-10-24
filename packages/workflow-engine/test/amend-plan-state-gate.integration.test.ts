@@ -30,7 +30,7 @@ import {
 import {
   commitPlanAmendment as commitPlanAmendmentWithContractReader,
   commitPlanningTransition as commitPlanningTransitionWithContractReader,
-} from '../src/application/propose/planning-transition.ts';
+} from '../src/runtime/planning-transition/planning-transition.ts';
 import { validateCiPlanningCommit } from '../src/composition-root/ci-replay-production.ts';
 import { validatePlanningTransition as validateOpenSpecPlanning } from '../src/composition-root/planning-provider-production.ts';
 import { readPlanningTransitionReport } from '../src/runtime/storage-journal/planning-report.ts';

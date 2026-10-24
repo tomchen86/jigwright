@@ -23,7 +23,7 @@ import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { readExecutionJobState } from '../src/runtime/storage-journal/execution-store.ts';
 import { runGitWithEnvironment } from '../src/runtime/repository-transaction/git.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import {
   readProviderInvocation,
   readProviderInvocationManifest,

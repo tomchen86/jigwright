@@ -24,7 +24,7 @@ import {
   fingerprintRepositoryProjection,
   fingerprintWorkingState,
 } from '../src/runtime/repository-transaction/git.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { checkSession } from './support/session-lifecycle-host.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';

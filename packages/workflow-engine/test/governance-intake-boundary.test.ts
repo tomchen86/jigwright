@@ -57,7 +57,7 @@ test('Source/Finding policy and use cases have an effect-free, type-inclusive de
     'modules/governance-intake/governance-finding-ref.ts',
     'modules/governance-intake/source-aliases.ts',
     'application/governance-intake/governance-findings.ts',
-    'application/governance-intake/governance-sources.ts',
+    'modules/governance-intake/governance-sources.ts',
     'application/governance-intake/governance-intake-workflow.ts',
     'application/governance-intake/current-governance-intake-counts.ts',
   ]) {

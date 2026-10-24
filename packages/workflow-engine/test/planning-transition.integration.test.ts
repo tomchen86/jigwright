@@ -31,7 +31,7 @@ import { readPlanningTransitionReport } from '../src/runtime/storage-journal/pla
 import {
   commitPlanningTransition as commitPlanningTransitionWithContractReader,
   type PlanningTransitionTestHooks,
-} from '../src/application/propose/planning-transition.ts';
+} from '../src/runtime/planning-transition/planning-transition.ts';
 import { inspectPlanningTransition } from '../src/composition-root/planning-provider-production.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { abortSession } from '../src/composition-root/task-session-production.ts';
@@ -48,7 +48,7 @@ import {
 test('plan-commit validation crosses the production planning composition root', () => {
   const applicationSource = fs.readFileSync(
     new URL(
-      '../src/application/propose/planning-transition.ts',
+      '../src/runtime/planning-transition/planning-transition.ts',
       import.meta.url,
     ),
     'utf8',
@@ -71,7 +71,7 @@ test('plan-commit validation crosses the production planning composition root', 
 test('plan-commit task history crosses the production planning composition root', () => {
   const applicationSource = fs.readFileSync(
     new URL(
-      '../src/application/propose/planning-transition.ts',
+      '../src/runtime/planning-transition/planning-transition.ts',
       import.meta.url,
     ),
     'utf8',

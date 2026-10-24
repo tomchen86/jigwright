@@ -10,7 +10,7 @@ import {
   type PathRole,
 } from '../src/modules/source/path-role-registry.ts';
 import { loadWorkflowConfig } from '../src/runtime/workflow-configuration/workflow-configuration.ts';
-import { resolveTaskAuthorizationRequirement } from '../src/adapters/consumer/repository/work-registry/task-authorization-policy.ts';
+import { resolveTaskAuthorizationRequirement } from '../src/runtime/repository-observation/task-authorization-policy.ts';
 
 const EXPECTED_ROLES: ReadonlyArray<
   readonly [repositoryPath: string, role: PathRole]
@@ -28,7 +28,7 @@ const EXPECTED_ROLES: ReadonlyArray<
     'control-plane',
   ],
   [
-    'packages/workflow-engine/src/adapters/consumer/repository/work-registry/task-authorization-policy.ts',
+    'packages/workflow-engine/src/runtime/repository-observation/task-authorization-policy.ts',
     'lifecycle',
   ],
 ];

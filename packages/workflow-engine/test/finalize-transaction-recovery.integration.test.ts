@@ -24,7 +24,7 @@ import test from 'node:test';
 
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { finalizeTask } from './support/session-lifecycle-host.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
 import {

@@ -1,5 +1,5 @@
 /** Connect Source capture and reads to the built-in immutable ledger. */
-import { createGovernanceSourceServices } from '../application/governance-intake/governance-sources.ts';
+import { createGovernanceSourceServices } from '../modules/governance-intake/governance-sources.ts';
 import {
   readGovernanceSource as readSource,
   listGovernanceSources as listSources,

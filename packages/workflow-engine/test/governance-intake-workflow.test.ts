@@ -9,7 +9,7 @@ import {
   type GovernanceIntakeWorkflowOptions,
 } from '../src/application/governance-intake/governance-intake-workflow.ts';
 import { createCurrentGovernanceIntakeCounts } from '../src/application/governance-intake/current-governance-intake-counts.ts';
-import { createGovernanceSourceServices } from '../src/application/governance-intake/governance-sources.ts';
+import { createGovernanceSourceServices } from '../src/modules/governance-intake/governance-sources.ts';
 import { createGovernanceFindingServices } from '../src/application/governance-intake/governance-findings.ts';
 import type { GovernanceSourceV1 } from '@jigwright/core/governance-source';
 import type { GovernanceFindingContextV1 } from '../src/modules/governance-intake/governance-intake.ts';

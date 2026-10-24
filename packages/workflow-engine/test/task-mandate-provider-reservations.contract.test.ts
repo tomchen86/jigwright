@@ -6,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { showAuthorityAuditTask } from '../src/runtime/storage-journal/authority-audit-service.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   createPlanningContributionEnvelope,

@@ -14,7 +14,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { validateCiPlanningCommit } from '../src/composition-root/ci-replay-production.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import {
   createFixtureRepository,
   git,

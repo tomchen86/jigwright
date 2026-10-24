@@ -37,7 +37,7 @@ import {
   TASK_DIFF_REVIEW_COVERAGE,
 } from '../src/modules/assurance/task-diff-review.ts';
 import { createTaskDiffReviewRecord } from '../src/modules/assurance/task-diff-review-artifact.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import {
   configureChecks,
   createFixtureRepository as createLegacyFixtureRepository,

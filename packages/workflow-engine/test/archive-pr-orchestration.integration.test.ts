@@ -55,7 +55,7 @@ import {
   persistArchivePublicationPreparation,
   readArchivePublicationPreparation,
 } from '../src/runtime/storage-journal/archive-publication-store.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { commitSession } from '../src/runtime/finalization/commit.ts';
 import { finalizeTask } from './support/session-lifecycle-host.ts';

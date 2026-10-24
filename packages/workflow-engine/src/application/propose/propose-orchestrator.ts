@@ -16,7 +16,7 @@ import {
   parseExecutionArtifact,
   parseTasks,
 } from '../../modules/planning-provider/planning-artifact-parsers.ts';
-import { assertTaskMandateOptional } from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
+import { assertTaskMandateOptional } from '../../runtime/repository-observation/task-authorization-policy.ts';
 import {
   assertStoredEvidenceNode,
   createEvidenceNode,
@@ -25,14 +25,14 @@ import {
   acknowledgeReviewerTermInputClosureUnderAuthority,
   blockInvestigationForPlanReviewRetryUnderAuthority,
   blockInvestigationForReviewerTermsUnderAuthority,
-  decideReviewerTermReopen,
   getInvestigationStatus,
   inspectReviewerTermResolutionAuthorization,
   reopenInvestigationForReviewerTermsUnderAuthority,
   resumeInvestigationSessionUnderAuthority,
   retryInvestigationProvider,
   startInvestigationSessionUnderLifecycleLock,
-} from '../../adapters/planning/investigation/investigation-session.ts';
+} from '../../runtime/investigation-lifecycle/investigation-session.ts';
+import { decideReviewerTermReopen } from '../../modules/investigation/domain/reviewer-term-reopen.ts';
 import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 import type { InvestigationManifestV3 } from '../../modules/investigation/manifest/investigation-manifest-types.ts';
 import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';

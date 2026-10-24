@@ -28,7 +28,7 @@ import {
   writeReadyV3ExemptChange,
   runtimeRoot,
 } from './fixture.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import {
   createCrossAgentFixture,
   runWorkflowCli,

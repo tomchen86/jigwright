@@ -30,7 +30,7 @@ import {
   type MaintainerSignerProvider,
 } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import {
   inspectTaskDiffReviewStatus,

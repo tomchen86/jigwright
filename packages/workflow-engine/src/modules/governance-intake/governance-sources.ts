@@ -4,11 +4,11 @@ import {
   type GovernanceSourceAuthoringV1,
   type GovernanceSourceV1,
 } from '@jigwright/core/governance-source';
-import { governanceSourceRelativePath } from '../../modules/governance-intake/governance-intake.ts';
+import { governanceSourceRelativePath } from './governance-intake.ts';
 import {
   sourceAliasReferences,
   type GovernanceSourceAlias,
-} from '../../modules/governance-intake/source-aliases.ts';
+} from './source-aliases.ts';
 export type GovernanceSourceLedger = Readonly<{
   readSource(repositoryRoot: string, sourceId: string): GovernanceSourceV1;
   readAliases(

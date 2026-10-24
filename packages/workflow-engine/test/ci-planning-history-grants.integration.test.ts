@@ -20,7 +20,7 @@ import { git, isWorkflowError } from './fixture.ts';
 import fs from 'node:fs';
 import { assertUniqueCollaborationGrantUses } from '../src/runtime/grants/grant-services.ts';
 import path from 'node:path';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { prepareCurrentV3IntroductionRepository } from './ci-planning-assurance-fixture.ts';
 import {
   writeRetiredInvestigationArtifact,

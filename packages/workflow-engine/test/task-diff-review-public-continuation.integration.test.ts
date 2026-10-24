@@ -31,7 +31,7 @@ import { discoverRepository } from '../src/runtime/repository-transaction/git.ts
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { finalizeTask } from './support/session-lifecycle-host.ts';
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';

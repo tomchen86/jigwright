@@ -42,7 +42,7 @@ import {
 import { beginTaskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
 import { preflightProviderWorkerAssignment } from '../src/composition-root/provider-worker-dispatch-production.ts';
 import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 
 import {
   git,

@@ -44,7 +44,7 @@ import { type TaskMandateBinding } from '../../modules/authority/task-mandate-co
 import {
   assertTaskMandateOptional,
   resolveTaskAuthorizationRequirement,
-} from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
+} from '../../runtime/repository-observation/task-authorization-policy.ts';
 import { type TaskAuthorizationRequirement } from '../../modules/repository-consumer/task-authorization-policy.ts';
 import { assertDisposableDatabaseForRepository } from '../../adapters/consumer/repository/work-registry/database-policy.ts';
 

@@ -41,7 +41,7 @@ import {
   normalizePolicyPath,
 } from '../../foundation/repository-path/repository-path.ts';
 import { readPlanningTransitionReport } from '../../runtime/storage-journal/planning-report.ts';
-import { commitTaskRevisionPlanningTransitionUnderAuthority } from '../propose/planning-transition.ts';
+import { commitTaskRevisionPlanningTransitionUnderAuthority } from '../../runtime/planning-transition/planning-transition.ts';
 import {
   withTaskRevisionPlanningAuthority,
   type HeldChangeTransitionAuthority,

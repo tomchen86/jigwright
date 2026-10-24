@@ -49,7 +49,7 @@ import {
   assertTaskId,
   normalizeChangedPath,
 } from '../../foundation/repository-path/repository-path.ts';
-import { commitPlanningTransitionUnderAuthority } from '../propose/planning-transition.ts';
+import { commitPlanningTransitionUnderAuthority } from '../../runtime/planning-transition/planning-transition.ts';
 import type { PlanningTransitionResult } from '../../modules/lifecycle/planning-transition-result.ts';
 import {
   reclaimDeadChangeTransitionLock,
@@ -77,7 +77,7 @@ import type { TaskMandateBinding } from '../../modules/authority/task-mandate-co
 import {
   assertTaskMandateOptional,
   resolveTaskAuthorizationRequirement,
-} from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
+} from '../../runtime/repository-observation/task-authorization-policy.ts';
 const COMMIT_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 
 const SHA256 = /^[0-9a-f]{64}$/;

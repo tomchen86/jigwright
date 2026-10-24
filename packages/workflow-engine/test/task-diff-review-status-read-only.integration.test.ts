@@ -30,7 +30,7 @@ import { discoverRepository } from '../src/runtime/repository-transaction/git.ts
 import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { finalizeTask } from './support/session-lifecycle-host.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { productionConsumedRoleResultReplayPort } from '../src/composition-root/grant-verifier-composition.ts';
 import {

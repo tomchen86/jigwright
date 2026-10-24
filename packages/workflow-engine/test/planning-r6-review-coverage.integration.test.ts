@@ -22,7 +22,7 @@ const resumeTask = resumeTaskWithContractReader.bind(
 );
 import assert from 'node:assert/strict';
 
-import { getInvestigationStatus } from '../src/adapters/planning/investigation/investigation-session.ts';
+import { getInvestigationStatus } from '../src/runtime/investigation-lifecycle/investigation-session.ts';
 import { readInvestigationSession } from '../src/runtime/storage-journal/investigation-session-records.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -52,7 +52,7 @@ import {
   type ProviderRunnerReport,
 } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { readLedgerIndex } from '../src/runtime/storage-journal/semantic-ledger-store.ts';
 import { validateCiPlanningCommit } from '../src/composition-root/ci-replay-production.ts';
 import { planPlanningSemanticLedger } from '../src/runtime/managed-documents/transaction/semantic-ledger-projection.ts';

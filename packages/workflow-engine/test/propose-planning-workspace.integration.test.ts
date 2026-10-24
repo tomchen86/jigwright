@@ -17,7 +17,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
 import {
   preparePlanningDraftWorkspace,
   readPlanningDraftWorkspace,

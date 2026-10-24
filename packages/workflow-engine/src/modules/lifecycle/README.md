@@ -8,11 +8,11 @@ Keep repository routing in one controlled source and derive the visible inventor
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:1c47ed5c7845b764bf8a184c60c781cfe08694e5e573740de95522baa40f2034 -->
+<!-- jigwright:region id=documents.lifecycle-readme v=1 digest=sha256:b74eab4cdbe68ab9e8a92625603b1d50fa2921df3c764f68255561d800dcdab8 -->
 
 <!-- prettier-ignore-start -->
 
-32 files changed in this module since confirmation.
+33 files changed in this module since confirmation.
 
 ## Commands
 
@@ -77,6 +77,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [finalization.ts](finalization.ts) | Pure finalization, commit and recovery contracts and admission rules. | 0 | History unavailable |
 | [finalize-cancellation.ts](finalize-cancellation.ts) | Canonical finalize cancellation records, digests and phase preparation. | 0 | History unavailable |
 | [finalize-transaction.ts](finalize-transaction.ts) | Canonical finalize transaction records, digests and phase admission. | 0 | History unavailable |
+| [investigation-checkpoint-envelope.ts](investigation-checkpoint-envelope.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [investigation-status.ts](investigation-status.ts) | Canonical investigation lifecycle status, including provider progress observations. | 0 | History unavailable |
 | [managed-workflow-state-contract.ts](managed-workflow-state-contract.ts) | Defines shared task strategy, review and authority-plan state names. | 1 | Header changed since confirmation |
 | [mechanical-transformation-evidence.ts](mechanical-transformation-evidence.ts) | Pure mechanical transformation closure, projection and immutable evidence validation. | 0 | History unavailable |

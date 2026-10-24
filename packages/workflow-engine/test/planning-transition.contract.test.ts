@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { assertPlanningTaskHistory } from '../src/application/propose/planning-transition.ts';
+import { assertPlanningTaskHistory } from '../src/modules/planning-provider/planning-task-history.ts';
 import { ExitCode, WorkflowError } from '../src/foundation/errors/errors.ts';
 import { planningProviderBindingPath } from '../src/modules/source/planning-paths.ts';
 import { isWorkflowError } from './fixture.ts';

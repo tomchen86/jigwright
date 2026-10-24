@@ -10,7 +10,7 @@ import {
   inspectHumanResolutionGrants,
   revokeHumanResolutionGrant,
 } from '../src/composition-root/human-resolution-grant-production.ts';
-import { startInvestigationSession as startInvestigationSessionWithMandate } from '../src/adapters/planning/investigation/investigation-session.ts';
+import { startInvestigationSession as startInvestigationSessionWithMandate } from '../src/runtime/investigation-lifecycle/investigation-session.ts';
 import {
   assertHumanResolutionDecision,
   type HumanResolutionDecision,

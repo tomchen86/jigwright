@@ -8,11 +8,11 @@ Build the investigation around a manifest of the exact tracked source snapshot s
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.investigation-readme v=1 digest=sha256:016e375c31b8033aec96a44fb5092f534e7ff0def1d996b3a8d9cf595eac8ec4 -->
+<!-- jigwright:region id=documents.investigation-readme v=1 digest=sha256:4bc0676c94a208640540c19406aa24674848a2a633b0edbf51dd2905b760d4a5 -->
 
 <!-- prettier-ignore-start -->
 
-44 files changed in this module since confirmation.
+45 files changed in this module since confirmation.
 
 ## Commands
 
@@ -72,6 +72,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [domain/investigation-store-values.ts](domain/investigation-store-values.ts) | Supplies shared value checks, digests, and provider-state errors for investigation storage. | 2 | History unavailable |
 | [domain/investigation-terms.ts](domain/investigation-terms.ts) | Normalizes investigation terms and previews their bounded provenance union. | 1 | History unavailable |
 | [domain/predicate-discrimination.ts](domain/predicate-discrimination.ts) | Measures whether a class predicate matches its members and distinguishes control evidence. | 1 | History unavailable |
+| [domain/reviewer-term-reopen.ts](domain/reviewer-term-reopen.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [manifest/blind-survey-manifest.ts](manifest/blind-survey-manifest.ts) | Canonical blind survey manifest DTOs; field and wire semantics are unchanged. | 0 | History unavailable |
 | [manifest/investigation-baseline.ts](manifest/investigation-baseline.ts) | Canonical investigation evidence DTOs, independent of materialization and normalization. | 0 | History unavailable |
 | [manifest/investigation-manifest-builder.ts](manifest/investigation-manifest-builder.ts) | Builds, seals and checks an investigation manifest against the exact lifecycle snapshot. | 1 | History unavailable |

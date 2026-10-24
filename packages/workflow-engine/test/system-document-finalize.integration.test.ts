@@ -46,7 +46,7 @@ import {
 } from './governance-intake-fixture.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import {
   finalizeTask,
   finalizeSession,

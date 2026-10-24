@@ -22,7 +22,7 @@ import test from 'node:test';
 import {
   commitPlanAmendment as commitPlanAmendmentWithContractReader,
   commitPlanningTransition as commitPlanningTransitionWithContractReader,
-} from '../src/application/propose/planning-transition.ts';
+} from '../src/runtime/planning-transition/planning-transition.ts';
 import {
   createPlanningAmendmentDecision,
   replacePlanningAmendmentDecisionMarker,

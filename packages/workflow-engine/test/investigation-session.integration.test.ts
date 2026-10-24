@@ -5,13 +5,13 @@ import test from 'node:test';
 import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
 import {
-  createInvestigationCheckpointEnvelope,
   getInvestigationStatus,
   publishProviderResultToInvestigation,
   resumeInvestigationSession,
   startInvestigationSession as startInvestigationSessionWithMandate,
-} from '../src/adapters/planning/investigation/investigation-session.ts';
+} from '../src/runtime/investigation-lifecycle/investigation-session.ts';
 import {
   getProposeStatus,
   resumePropose,

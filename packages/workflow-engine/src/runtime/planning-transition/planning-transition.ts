@@ -11,7 +11,7 @@ import type { ChangeContractReader } from '../../modules/planning-provider/chang
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
+import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
 import {
   ExitCode,
   WorkflowError,
@@ -29,13 +29,13 @@ import {
   stageExactPaths,
   stageExactPathsPreservingUnstaged,
   updateManagedRef,
-} from '../../runtime/repository-transaction/git-transitions.ts';
+} from '../repository-transaction/git-transitions.ts';
 import {
   discoverRepository,
   fingerprintRepositoryWorktree,
   listChangedPaths,
   runGit,
-} from '../../runtime/repository-transaction/git.ts';
+} from '../repository-transaction/git.ts';
 import {
   assertChangeId,
   normalizeChangedPath,
@@ -48,20 +48,20 @@ import {
 import {
   readPlanningTransitionReport,
   writePlanningTransitionReport,
-} from '../../runtime/storage-journal/planning-report.ts';
-import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
+} from '../storage-journal/planning-report.ts';
+import { runtimePaths } from '../session-workspace/session-store.ts';
 import {
   type HeldChangeTransitionAuthority,
   assertHeldChangeTransitionAuthority,
   withPlanningAuthority,
-} from '../../runtime/session-workspace/planning-lock.ts';
+} from '../session-workspace/planning-lock.ts';
 import {
   planningAmendmentDecisionDigest,
   readPlanningAmendmentDecision,
 } from '../../modules/lifecycle/planning-amendment-decision.ts';
 import type { PlanningAmendmentDecision } from '../../modules/lifecycle/planning-amendment-decision.ts';
-import { committedPlanningGeneration } from '../../runtime/repository-transaction/planning-generation-history.ts';
-import { rollbackGeneratedDocuments } from '../../runtime/managed-documents/validation/managed-documents.ts';
+import { committedPlanningGeneration } from '../repository-transaction/planning-generation-history.ts';
+import { rollbackGeneratedDocuments } from '../managed-documents/validation/managed-documents.ts';
 import type { PlanningTransitionResult } from '../../modules/lifecycle/planning-transition-result.ts';
 export type AmendmentRequest = {
   reason: string;

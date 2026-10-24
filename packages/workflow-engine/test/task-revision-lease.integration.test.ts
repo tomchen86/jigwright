@@ -48,7 +48,7 @@ import { issueTaskRevisionApproval } from '../src/composition-root/task-revision
 import { taskRevisionApprovalTargetDigest } from '../src/modules/authority/task-revision-approval-contracts.ts';
 import type { MaintainerSignerProvider } from '../src/modules/authority/maintainer-signer-port.ts';
 import { commitChangedPaths } from '../src/runtime/repository-transaction/git-transitions.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { completeTask } from './support/session-lifecycle-host.ts';
 import { readImmutableReport } from '../src/runtime/storage-journal/report-store.ts';
 import { startPropose } from '../src/composition-root/propose-production.ts';

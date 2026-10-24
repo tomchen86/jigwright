@@ -11,7 +11,7 @@ import {
   type SampleAudit,
 } from '../src/modules/investigation/domain/class-sample-audit.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
-import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
 import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
 import type { InvestigationPlanReviewCoverageRequirementV3 } from '../src/modules/investigation/manifest/investigation-requirement-types.ts';
 import {

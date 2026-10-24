@@ -19,6 +19,17 @@ import type {
   ProposeOutput,
 } from '../src/modules/proposal/propose-types.ts';
 import type { InvestigationStatus } from '../src/modules/lifecycle/investigation-status.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
+import {
+  decideReviewerTermReopen,
+  type ReviewerTermResolutionAuthorization,
+} from '../src/modules/investigation/domain/reviewer-term-reopen.ts';
+import type {
+  GroupDispositionsPayload,
+  InvestigationCheckpointEnvelope,
+  MainTermsPayload,
+  WhyAnswersPayload,
+} from '../src/modules/investigation/domain/investigation-session-types.ts';
 import {
   createRoleContextSharingPlanReviewRequirementV3,
   createRoleContextSharingRequirementEligibilityPort,
@@ -534,7 +545,152 @@ test('role-sharing requirement retains aliases, freezes shared data and binds ex
   }
 });
 
+test('checkpoint overloads preserve binding and produce frozen snapshots without freezing caller data', () => {
+  const current = status();
+  const mainPayload: MainTermsPayload = {
+    reference: 'proposal-domain-survey',
+    terms: [
+      {
+        kind: 'symbol',
+        value: 'createInvestigationCheckpointEnvelope',
+        rationale:
+          'This function binds caller input to the investigation checkpoint.',
+        expectedRelationship:
+          'The lifecycle owner preserves the investigation input contract.',
+      },
+    ],
+  };
+  const groupPayload: GroupDispositionsPayload = { dispositions: [] };
+  const whyPayload: WhyAnswersPayload = { answers: [] };
+  assert.throws(
+    () => createInvestigationCheckpointEnvelope(current, mainPayload),
+    code('INVESTIGATION_CHECKPOINT_NOT_AVAILABLE', ExitCode.guard),
+  );
+  current.checkpoint = {
+    schemaVersion: 1,
+    kind: 'main-terms',
+    checkpointId: `checkpoint-${digest('1')}`,
+  };
+  const main: Extract<InvestigationCheckpointEnvelope, { kind: 'main-terms' }> =
+    createInvestigationCheckpointEnvelope(current, mainPayload);
+  current.checkpoint.kind = 'group-dispositions';
+  const groups: Extract<
+    InvestigationCheckpointEnvelope,
+    { kind: 'group-dispositions' }
+  > = createInvestigationCheckpointEnvelope(current, groupPayload);
+  current.checkpoint.kind = 'why-answers';
+  const why: Extract<InvestigationCheckpointEnvelope, { kind: 'why-answers' }> =
+    createInvestigationCheckpointEnvelope(current, whyPayload);
+  assert.deepEqual(
+    [main.kind, groups.kind, why.kind],
+    ['main-terms', 'group-dispositions', 'why-answers'],
+  );
+  for (const [envelope, original] of [
+    [main, mainPayload],
+    [groups, groupPayload],
+    [why, whyPayload],
+  ] as const) {
+    assert.deepEqual(envelope, {
+      schemaVersion: 1,
+      kind: envelope.kind,
+      checkpointId: current.checkpoint.checkpointId,
+      investigationId: current.investigationId,
+      changeId: current.changeId,
+      expectedRevision: current.revision,
+      baseline: current.baseline,
+      intentDigest: current.intentDigest,
+      blindManifestDigest: current.blindManifestDigest,
+      payload: original,
+    });
+    assert.notEqual(envelope.payload, original);
+    assert.notEqual(envelope.baseline, current.baseline);
+    assert.ok(Object.isFrozen(envelope));
+    assert.ok(Object.isFrozen(envelope.payload));
+    assert.ok(Object.isFrozen(envelope.baseline));
+    assert.equal(Object.isFrozen(original), false);
+  }
+  for (const items of [
+    main.payload.terms,
+    groups.payload.dispositions,
+    why.payload.answers,
+  ])
+    assert.ok(Object.isFrozen(items));
+  assert.ok(Object.isFrozen(main.payload.terms[0]));
+  const originalTerm = { ...mainPayload.terms[0]! };
+  mainPayload.terms[0]!.value = 'changedByCaller';
+  current.baseline.head = 'f'.repeat(40);
+  assert.deepEqual(main.payload.terms[0], originalTerm);
+  assert.equal(main.baseline.head, baseline().head);
+});
+
+test('reviewer-term decisions preserve the two automatic reopens and human outcomes', () => {
+  const none: ReviewerTermResolutionAuthorization = {
+    outcome: 'none',
+    resolutionNodeId: null,
+  };
+  const resume: ReviewerTermResolutionAuthorization = {
+    outcome: 'resume',
+    resolutionNodeId: 'resolution-resume',
+  };
+  const close: ReviewerTermResolutionAuthorization = {
+    outcome: 'close-input',
+    resolutionNodeId: 'resolution-close',
+    assurance: 'degraded',
+  };
+  assert.equal(
+    decideReviewerTermReopen({
+      usedReopens: 2,
+      novelTermCount: 0,
+      humanResolution: close,
+    }),
+    'no-novel-terms',
+  );
+  for (const usedReopens of [0, 1])
+    assert.equal(
+      decideReviewerTermReopen({
+        usedReopens,
+        novelTermCount: 1,
+        humanResolution: close,
+      }),
+      'automatic-reopen',
+    );
+  for (const [humanResolution, expected] of [
+    [none, 'human-action-required'],
+    [resume, 'human-reopen'],
+    [close, 'human-close-input'],
+  ] as const)
+    assert.equal(
+      decideReviewerTermReopen({
+        usedReopens: 2,
+        novelTermCount: 1,
+        humanResolution,
+      }),
+      expected,
+    );
+  for (const value of [
+    -1,
+    0.5,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    Number.MAX_SAFE_INTEGER + 1,
+  ]) {
+    for (const field of ['usedReopens', 'novelTermCount'] as const)
+      assert.throws(
+        () =>
+          decideReviewerTermReopen({
+            usedReopens: 0,
+            novelTermCount: 0,
+            humanResolution: none,
+            [field]: value,
+          }),
+        code('INVESTIGATION_REVIEWER_REOPEN_POLICY_INVALID'),
+      );
+  }
+});
+
 const pureEntries = [
+  'lifecycle/investigation-checkpoint-envelope',
+  'investigation/domain/reviewer-term-reopen',
   'lifecycle/investigation-status',
   'lifecycle/planning-transition-result',
   'lifecycle/propose-exemption-session',
@@ -558,9 +714,29 @@ test('proposal boundaries reject deliberately injected runtime, application and 
       import.meta.dirname,
       `../src/modules/${entry}.ts`,
     );
+    const runtimeSpecifier = path
+      .relative(
+        path.dirname(file),
+        path.resolve(
+          import.meta.dirname,
+          '../src/runtime/paths/runtime-paths.ts',
+        ),
+      )
+      .split(path.sep)
+      .join('/');
+    const applicationSpecifier = path
+      .relative(
+        path.dirname(file),
+        path.resolve(
+          import.meta.dirname,
+          '../src/application/execute-task/task-strategy-red-revision.ts',
+        ),
+      )
+      .split(path.sep)
+      .join('/');
     for (const source of [
-      "\nimport type { InvestigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';\n",
-      "\nimport type { createTaskStrategyRedRevisionService } from '../../application/execute-task/task-strategy-red-revision.ts';\n",
+      `\nimport type { InvestigationRuntimePaths } from '${runtimeSpecifier}';\n`,
+      `\nimport type { createTaskStrategyRedRevisionService } from '${applicationSpecifier}';\n`,
       "\nimport fs from 'node:fs';\n",
     ])
       assert.throws(

@@ -8,11 +8,11 @@ Keep original requirement wording separate from the working inbox so corrections
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.governance-intake-readme v=1 digest=sha256:4dec68400f6f2e54c5d6ac21d9c952e530120f44df7cf98b9ad936f8a4443913 -->
+<!-- jigwright:region id=documents.governance-intake-readme v=1 digest=sha256:93b68858561bfd5324bd6b3215983d63875158d6b38bbb1e1d8c1530ab5962b3 -->
 
 <!-- prettier-ignore-start -->
 
-21 files changed in this module since confirmation.
+22 files changed in this module since confirmation.
 
 ## Commands
 
@@ -72,6 +72,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [governance-finding-ref.ts](governance-finding-ref.ts) | Defines canonical Finding paths and the dedicated-ref persistence contract. | 1 | Header changed since confirmation |
 | [governance-findings.ts](governance-findings.ts) | Pure Finding identity, canonical byte admission and append-only read projection. | 0 | Header changed since confirmation |
 | [governance-intake.ts](governance-intake.ts) | Canonical intake DTOs and Source byte admission; no repository access. | 0 | History unavailable |
+| [governance-sources.ts](governance-sources.ts) | Capture Sources against a required immutable ledger capability. | 0 | History unavailable |
 | [intake-policy.ts](intake-policy.ts) | Defines intake kinds and the destination of deferred observations. | 1 | Header changed since confirmation |
 | [intake-summary.ts](intake-summary.ts) | Aggregates observed inbox, backlog and pending Finding facts without repository access. | 0 | History unavailable |
 | [source-aliases.ts](source-aliases.ts) | Parse named Source aliases; wording remains in immutable Source records. | 0 | Header changed since confirmation |

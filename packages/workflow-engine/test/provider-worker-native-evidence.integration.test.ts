@@ -5,7 +5,7 @@ import {
   resumePropose,
   getProposeStatus,
 } from '../src/composition-root/propose-production.ts';
-import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
 import { readEvidenceNode } from '../src/runtime/storage-journal/evidence-node-store.ts';
 import { PROPOSE_POLICY_DIGEST } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';

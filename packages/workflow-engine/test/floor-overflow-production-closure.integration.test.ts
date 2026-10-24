@@ -4,10 +4,8 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import {
-  createInvestigationCheckpointEnvelope,
-  getInvestigationStatus,
-} from '../src/adapters/planning/investigation/investigation-session.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
+import { getInvestigationStatus } from '../src/runtime/investigation-lifecycle/investigation-session.ts';
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   claimProviderInvocation,

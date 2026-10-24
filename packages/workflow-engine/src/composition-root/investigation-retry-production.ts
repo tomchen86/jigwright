@@ -1,6 +1,6 @@
 import { taskMandateOperations } from './task-mandate-production.ts';
 /** Supplies durable retry accounting to the investigation retry workflow. */
-import { retryInvestigationProvider as retry } from '../adapters/planning/investigation/investigation-session.ts';
+import { retryInvestigationProvider as retry } from '../runtime/investigation-lifecycle/investigation-session.ts';
 import { readProviderRetryAccountingEvidence } from '../runtime/storage-journal/provider-retry-accounting-reader.ts';
 
 export const retryInvestigationProvider = retry.bind(
@@ -9,12 +9,17 @@ export const retryInvestigationProvider = retry.bind(
   readProviderRetryAccountingEvidence,
 );
 
-export * from '../adapters/planning/investigation/investigation-session.ts';
+export * from '../runtime/investigation-lifecycle/investigation-session.ts';
+export { createInvestigationCheckpointEnvelope } from '../modules/lifecycle/investigation-checkpoint-envelope.ts';
+export {
+  decideReviewerTermReopen,
+  type ReviewerTermResolutionAuthorization,
+} from '../modules/investigation/domain/reviewer-term-reopen.ts';
 
 import {
   startInvestigationSession as startSession,
   startInvestigationSessionUnderLifecycleLock as startLocked,
-} from '../adapters/planning/investigation/investigation-session.ts';
+} from '../runtime/investigation-lifecycle/investigation-session.ts';
 export const startInvestigationSession = startSession.bind(
   undefined,
   taskMandateOperations,
@@ -31,7 +36,7 @@ import {
   blockInvestigationForReviewerTerms as blockReviewer,
   blockInvestigationForReviewerTermsUnderAuthority as blockReviewerLocked,
   blockInvestigationForPlanReviewRetryUnderAuthority as blockRetryLocked,
-} from '../adapters/planning/investigation/investigation-session.ts';
+} from '../runtime/investigation-lifecycle/investigation-session.ts';
 export const blockInvestigationForReviewerTerms = blockReviewer.bind(
   undefined,
   createInvestigationHumanActionBlocker,
@@ -45,7 +50,7 @@ import {
   reopenInvestigationForReviewerTerms as reopen,
   reopenInvestigationForReviewerTermsUnderAuthority as reopenLocked,
   inspectReviewerTermResolutionAuthorization as inspectReviewer,
-} from '../adapters/planning/investigation/investigation-session.ts';
+} from '../runtime/investigation-lifecycle/investigation-session.ts';
 import { loadMaintainerPolicyForResolution } from '../runtime/repository-observation/human-resolution-grants.ts';
 
 export const reopenInvestigationForReviewerTerms = reopen.bind(
@@ -62,7 +67,7 @@ export const inspectReviewerTermResolutionAuthorization = inspectReviewer.bind(
 import {
   acknowledgeReviewerTermInputClosure as acknowledge,
   acknowledgeReviewerTermInputClosureUnderAuthority as acknowledgeLocked,
-} from '../adapters/planning/investigation/investigation-session.ts';
+} from '../runtime/investigation-lifecycle/investigation-session.ts';
 export const acknowledgeReviewerTermInputClosure = acknowledge.bind(
   undefined,
   loadMaintainerPolicyForResolution,

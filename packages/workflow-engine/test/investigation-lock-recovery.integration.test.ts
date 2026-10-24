@@ -26,8 +26,8 @@ import { discoverRepository } from '../src/runtime/repository-transaction/git.ts
 import {
   publishProviderResultToInvestigation,
   resumeInvestigationSession,
-} from '../src/adapters/planning/investigation/investigation-session.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+} from '../src/runtime/investigation-lifecycle/investigation-session.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { readHumanResolutionJournal } from '../src/runtime/lifecycle-ledgers/human-resolution-journal.ts';
 import { withHumanResolutionGrantExecution } from '../src/runtime/storage-journal/human-resolution-grant-store.ts';
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';

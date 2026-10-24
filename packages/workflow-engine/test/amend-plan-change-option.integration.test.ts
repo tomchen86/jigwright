@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { committedPlanningGeneration } from '../src/runtime/repository-transaction/planning-generation-history.ts';
 import {
   createPlanningAmendmentDecision,

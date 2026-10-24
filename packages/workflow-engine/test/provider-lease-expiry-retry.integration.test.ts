@@ -8,7 +8,7 @@ import { discoverRepository } from '../src/runtime/repository-transaction/git.ts
 import {
   expireInvestigationProviderLease,
   getInvestigationStatus,
-} from '../src/adapters/planning/investigation/investigation-session.ts';
+} from '../src/runtime/investigation-lifecycle/investigation-session.ts';
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { startPropose } from '../src/composition-root/propose-production.ts';
 import {

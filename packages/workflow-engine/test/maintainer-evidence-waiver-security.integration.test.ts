@@ -48,7 +48,7 @@ import {
   REQUIRED_PROTECTED_CAPABILITIES,
 } from '../src/runtime/repository-validation/protected-capabilities.ts';
 
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import {
   createFixtureRepository,
   git,

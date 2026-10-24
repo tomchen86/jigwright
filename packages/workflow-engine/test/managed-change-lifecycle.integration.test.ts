@@ -22,7 +22,7 @@ import {
   completeTask,
   finishSession,
 } from './support/session-lifecycle-host.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
 import { checkSession } from './support/session-lifecycle-host.ts';
 import { startSession } from '../src/application/execute-task/session.ts';

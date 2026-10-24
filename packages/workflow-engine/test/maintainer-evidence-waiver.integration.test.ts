@@ -46,7 +46,7 @@ import {
   readTerminalMaintainerGrant,
 } from '../src/runtime/storage-journal/maintainer-store.ts';
 import { startAuthoritySession } from '../bootstrap/maintainer-authority-production.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 
 import {
   createFixtureRepository,

@@ -13,7 +13,7 @@ import test from 'node:test';
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { validateCiPlanningCommit } from '../src/composition-root/ci-replay-production.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';

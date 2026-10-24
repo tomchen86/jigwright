@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { resolveCurrentTaskStrategyCorrection } from '../src/composition-root/task-strategy-correction-production.ts';
 import { listTaskStrategyCorrectionRounds } from '../src/runtime/storage-journal/task-strategy-correction-round-store.ts';

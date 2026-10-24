@@ -6,10 +6,8 @@ import {
   readInvestigationEvidenceRefsClosure,
 } from '../src/runtime/storage-journal/evidence-object-store.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import {
-  createInvestigationCheckpointEnvelope,
-  getInvestigationStatus,
-} from '../src/adapters/planning/investigation/investigation-session.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
+import { getInvestigationStatus } from '../src/runtime/investigation-lifecycle/investigation-session.ts';
 import {
   createPlanningContributionEnvelope,
   createPlanReviewProgressEnvelope,

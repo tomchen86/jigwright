@@ -26,7 +26,7 @@ const REGISTRY: PathRoleRegistry = parsePathRoleRegistry({
       'packages/workflow-engine/src/modules/authority/maintainer-candidate-contracts.ts',
     ],
     lifecycle: [
-      'packages/workflow-engine/src/application/propose/planning-transition.ts',
+      'packages/workflow-engine/src/runtime/planning-transition/planning-transition.ts',
     ],
     policy: ['workflow/**'],
     'verification-infrastructure': ['packages/workflow-engine/test/**'],
@@ -81,7 +81,7 @@ test('only ordinary and unregistered-free paths may be compressed', () => {
     'workflow/checks.json',
     'openspec/specs/workflow-assurance/spec.md',
     'packages/workflow-engine/src/modules/authority/maintainer-candidate-contracts.ts',
-    'packages/workflow-engine/src/application/propose/planning-transition.ts',
+    'packages/workflow-engine/src/runtime/planning-transition/planning-transition.ts',
     'packages/workflow-engine/bootstrap/canonical-json.ts',
     'packages/workflow-engine/test/fixture.ts',
   ]) {
@@ -198,7 +198,7 @@ test('the repository registry classifies its own risky substrate', () => {
       'grant',
     ],
     [
-      'packages/workflow-engine/src/application/propose/planning-transition.ts',
+      'packages/workflow-engine/src/runtime/planning-transition/planning-transition.ts',
       'lifecycle',
     ],
     [

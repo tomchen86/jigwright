@@ -15,7 +15,7 @@ const consumers = [
   'application/execute-task/open-task.ts',
   'application/execute-task/update-base.ts',
   'application/revise/task-revision.ts',
-  'application/propose/planning-transition.ts',
+  'runtime/planning-transition/planning-transition.ts',
 ];
 
 function calls(file: string, expression: string): number {
@@ -59,7 +59,10 @@ test('consumer readers are supplied by callers, without a low-level production i
         false,
         relative,
       );
-      if (relative.startsWith('application/')) {
+      if (
+        relative.startsWith('application/') ||
+        relative.startsWith('runtime/')
+      ) {
         assert.equal(
           reference.specifier?.endsWith('/handoff/handoff.ts'),
           false,

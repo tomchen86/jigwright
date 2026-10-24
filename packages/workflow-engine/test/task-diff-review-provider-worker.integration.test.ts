@@ -45,7 +45,7 @@ import {
   finalizeTask,
 } from './support/session-lifecycle-host.ts';
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import {
   readProviderInvocation,
   readProviderInvocationManifest,

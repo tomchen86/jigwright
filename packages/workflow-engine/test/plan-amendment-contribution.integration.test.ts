@@ -6,7 +6,7 @@ import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import type { ExecutionArtifact } from '../src/modules/planning-provider/planning-artifact-types.ts';
-import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
 import {
   PLAN_REVIEW_COVERAGE,
   readPlanReviewNode,

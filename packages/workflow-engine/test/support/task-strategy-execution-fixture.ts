@@ -20,7 +20,7 @@ import {
 } from '../fixture.ts';
 import path from 'node:path';
 import fs from 'node:fs';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../../src/runtime/planning-transition/planning-transition.ts';
 import os from 'node:os';
 import { runGitWithEnvironment } from '../../src/runtime/repository-transaction/git.ts';
 import { createHash } from 'node:crypto';

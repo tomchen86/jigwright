@@ -46,7 +46,7 @@ import { commitSession as commitSessionWithRouting } from '../runtime/finalizati
 import {
   commitPlanAmendment as commitPlanAmendmentWithContractReader,
   commitPlanningTransition as commitPlanningTransitionWithContractReader,
-} from '../application/propose/planning-transition.ts';
+} from '../runtime/planning-transition/planning-transition.ts';
 import { prepareTaskRevisionApprovalBinding as prepareTaskRevisionApprovalBindingWithServices } from '../application/revise/task-revision.ts';
 import { withAuthorityRefusalAudit } from './authority-refusal-production.ts';
 export const updateTaskSessionBase =

@@ -32,7 +32,7 @@ import { createArchiveTransformation as createArchiveTransformationWithHandoff }
 import { createOpenSpecPlanningArchiveProjectionPort } from '../src/composition-root/planning-archive-projection-production.ts';
 import { commitSession } from '../src/runtime/finalization/commit.ts';
 import { finalizeTask } from './support/session-lifecycle-host.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
   createFixtureRepository,

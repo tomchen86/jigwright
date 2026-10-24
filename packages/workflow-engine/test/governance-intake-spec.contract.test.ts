@@ -46,7 +46,7 @@ const currentWorkRegistrySources = [
     import.meta.url,
   ),
   new URL(
-    '../src/application/governance-intake/governance-sources.ts',
+    '../src/modules/governance-intake/governance-sources.ts',
     import.meta.url,
   ),
   new URL(

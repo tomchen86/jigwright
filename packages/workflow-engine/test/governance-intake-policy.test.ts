@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { canonicalJson } from '@jigwright/core/canonical-json';
-import { createGovernanceSourceServices } from '../src/application/governance-intake/governance-sources.ts';
+import { createGovernanceSourceServices } from '../src/modules/governance-intake/governance-sources.ts';
 import { createGovernanceFindingServices } from '../src/application/governance-intake/governance-findings.ts';
 import {
   parseGovernanceSourceBytes,

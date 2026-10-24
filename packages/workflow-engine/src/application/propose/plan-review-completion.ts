@@ -21,7 +21,7 @@ import {
   readTrackedPlanReview,
   writeTrackedPlanReview,
 } from './plan-review-store.ts';
-import { commitPlanningTransitionUnderAuthority } from './planning-transition.ts';
+import { commitPlanningTransitionUnderAuthority } from '../../runtime/planning-transition/planning-transition.ts';
 import {
   assertCurrentExemptionContext,
   currentRevisingTaskSession,

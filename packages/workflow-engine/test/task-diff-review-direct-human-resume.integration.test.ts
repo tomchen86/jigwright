@@ -36,7 +36,7 @@ import {
   verifySshSignatureWithPublicKey,
   type MaintainerSignerProvider,
 } from '../src/adapters/signing/ssh/maintainer-signer.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
   inspectTaskDiffReviewStatus,

@@ -10,7 +10,7 @@ import {
 } from '../src/composition-root/execution-retry-production.ts';
 import { issueExecutionBudgetGrant } from '../src/composition-root/execution-budget-grant-production.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/modules/lifecycle/investigation-checkpoint-envelope.ts';
 import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   createPlanningContributionEnvelope,

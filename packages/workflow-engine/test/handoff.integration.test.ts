@@ -37,7 +37,7 @@ import { loadChangeContract } from '../src/composition-root/consumer-contract-pr
 import { readSystemDescriptionSnapshot } from '../src/runtime/repository-transaction/system-description-snapshot.ts';
 import { validateManagedDocuments } from '../src/composition-root/managed-documents-production.ts';
 import { finalizeTask } from './support/session-lifecycle-host.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
   applyWorkItemReview,

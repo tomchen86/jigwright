@@ -27,7 +27,7 @@ import type { InvestigationTreeScanner } from '../../modules/investigation/domai
 import type { InvestigationEvidenceReplayer } from '../../modules/investigation/manifest/investigation-materializer.ts';
 import type { ManagedDocumentOperations } from '../../modules/projection/managed-documents.ts';
 import type { ChangeContractReader } from '../../modules/planning-provider/change-contract.ts';
-import type { createGovernanceSourceServices } from '../governance-intake/governance-sources.ts';
+import type { createGovernanceSourceServices } from '../../modules/governance-intake/governance-sources.ts';
 import type { PlanningDraftWorkspacePort } from '../../modules/planning-provider/planning-workspace.ts';
 /** Required planning and retry observations supplied by production composition. */
 import type { PlanningAssurancePort } from '../../modules/assurance/planning-assurance-port.ts';

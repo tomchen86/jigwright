@@ -15,7 +15,7 @@ import type {
   WorkItemPromotionSurveyDeclarationV1,
 } from '../../modules/governance-intake/work-registry-contracts.ts';
 import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
-import type { createGovernanceSourceServices } from './governance-sources.ts';
+import type { createGovernanceSourceServices } from '../../modules/governance-intake/governance-sources.ts';
 import type { createGovernanceFindingServices } from './governance-findings.ts';
 import type { createWorkRegistryWriteService } from '../work-registry/work-registry.ts';
 import type { createWorkRegistryQueries } from '../work-registry/work-registry-queries.ts';

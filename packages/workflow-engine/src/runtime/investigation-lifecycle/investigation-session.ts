@@ -1,36 +1,36 @@
 import type {
   TaskMandateProviderAdmission,
   TaskMandateActiveBinding,
-} from '../../../modules/authority/task-mandate-access-contract.ts';
-import type { HumanResolutionServices } from '../../../modules/investigation/domain/human-resolution-grant-contract.ts';
+} from '../../modules/authority/task-mandate-access-contract.ts';
+import type { HumanResolutionServices } from '../../modules/investigation/domain/human-resolution-grant-contract.ts';
 import type {
   InvestigationHumanActionBlockerFactory,
   HumanResolutionNode,
   InvestigationResolutionState,
-} from '../../../modules/investigation/domain/human-resolution-contract.ts';
-import { investigationResolutionStateDigest } from '../../../modules/investigation/domain/human-resolution-contract.ts';
-import type { ProviderRetryAccountingReader } from '../../../modules/provider-orchestration/provider-retry-accounting.ts';
+} from '../../modules/investigation/domain/human-resolution-contract.ts';
+import { investigationResolutionStateDigest } from '../../modules/investigation/domain/human-resolution-contract.ts';
+import type { ProviderRetryAccountingReader } from '../../modules/provider-orchestration/provider-retry-accounting.ts';
 import {
   AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
   loadAiAdapterPolicy,
-} from '../../../runtime/provider-policy/ai-adapter-policy.ts';
-import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
-import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
+} from '../provider-policy/ai-adapter-policy.ts';
+import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
+import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   createReplacementAttempt,
   providerExecutionEnvironmentDigest,
   providerExecutionPolicySnapshot,
-} from '../../../modules/provider-orchestration/execution-core.ts';
-import type { RetryMode } from '../../../modules/provider-orchestration/execution-core.ts';
+} from '../../modules/provider-orchestration/execution-core.ts';
+import type { RetryMode } from '../../modules/provider-orchestration/execution-core.ts';
 import {
   loadProviderExecutionRepairContext,
   preflightProviderRepairRetry,
-} from '../../../runtime/storage-journal/provider-execution-governance.ts';
+} from '../storage-journal/provider-execution-governance.ts';
 import {
   assertInvestigationCheckpointEnvelope,
   checkpointContributionDigest,
   checkpointEnvelopeDigest,
-} from '../../../modules/investigation/domain/investigation-checkpoint-contract.ts';
+} from '../../modules/investigation/domain/investigation-checkpoint-contract.ts';
 import {
   compareAndSwapInvestigationSession,
   createCurrentInvestigationRef,
@@ -39,37 +39,34 @@ import {
   investigationSessionExists,
   readCurrentInvestigationRef,
   readInvestigationSession,
-} from '../../../runtime/storage-journal/investigation-session-records.ts';
+} from '../storage-journal/investigation-session-records.ts';
 import {
   readHumanResolutionHead,
   readHumanResolutionNode,
-} from '../../../runtime/storage-journal/human-resolution-nodes.ts';
+} from '../storage-journal/human-resolution-nodes.ts';
 import {
   deriveInvestigationSessionState,
   investigationCheckpointId,
-} from '../../../modules/investigation/domain/investigation-session-contract.ts';
-import { inspectInvestigationResolutionState } from '../../../runtime/storage-journal/human-resolution-state.ts';
+} from '../../modules/investigation/domain/investigation-session-contract.ts';
+import { inspectInvestigationResolutionState } from '../storage-journal/human-resolution-state.ts';
 import type {
-  GroupDispositionsPayload,
   InvestigationCheckpointEnvelope,
   InvestigationCheckpointKind,
   InvestigationSession,
-  MainTermsPayload,
   StoredInvestigationCheckpoint,
-  WhyAnswersPayload,
-} from '../../../modules/investigation/domain/investigation-session-types.ts';
-import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../../runtime/repository-observation/investigation-runtime-context.ts';
-import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../../modules/investigation/manifest/plan-review-coverage-policy.ts';
+} from '../../modules/investigation/domain/investigation-session-types.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../repository-observation/investigation-runtime-context.ts';
+import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../modules/investigation/manifest/plan-review-coverage-policy.ts';
 import {
   assertChangeId,
   assertInvestigationId,
-} from '../../../foundation/repository-path/repository-path.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import {
   type HeldChangeTransitionAuthority,
   assertHeldChangeTransitionAuthority,
   withInvestigationTransitionAuthority,
-} from '../../../runtime/session-workspace/planning-lock.ts';
-import type { ProviderInvocationRequest } from '../../../modules/provider-orchestration/provider-contracts.ts';
+} from '../session-workspace/planning-lock.ts';
+import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {
   blindSurveyIntentDigest,
   blindSurveyManifestDigest,
@@ -85,18 +82,20 @@ import {
   readProviderInvocation,
   readProviderInvocationRequest,
   readProviderRetryReservation,
-} from '../../../runtime/storage-journal/provider-invocation-store.ts';
-import type { BlindSurveyManifest } from '../../../modules/investigation/manifest/blind-survey-manifest.ts';
-import type { InvestigationStartReservation } from '../../../modules/provider-orchestration/provider-invocation-reservations.ts';
-import type { ProviderInvocationRecord } from '../../../modules/provider-orchestration/provider-invocation-record.ts';
-import { inspectProviderInvocationActivity } from '../../../runtime/storage-journal/provider-invocation-activity.ts';
+} from '../storage-journal/provider-invocation-store.ts';
+import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
+import type { InvestigationStartReservation } from '../../modules/provider-orchestration/provider-invocation-reservations.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
+import { inspectProviderInvocationActivity } from '../storage-journal/provider-invocation-activity.ts';
 import {
   assertProviderExecutionGrantAuthorization,
   authorizeAutomaticProviderRetry,
-} from '../../../modules/provider-orchestration/provider-retry-decision.ts';
-import type { ProviderExecutionGrantAuthorization } from '../../../modules/provider-orchestration/provider-retry-decision.ts';
-import type { TaskMandateBinding } from '../../../modules/authority/task-mandate-contract.ts';
-import type { InvestigationStatus } from '../../../modules/lifecycle/investigation-status.ts';
+} from '../../modules/provider-orchestration/provider-retry-decision.ts';
+import type { ProviderExecutionGrantAuthorization } from '../../modules/provider-orchestration/provider-retry-decision.ts';
+import type { TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
+import type { InvestigationStatus } from '../../modules/lifecycle/investigation-status.ts';
+import type { ReviewerTermResolutionAuthorization } from '../../modules/investigation/domain/reviewer-term-reopen.ts';
+
 type TaskMandateDependencies = Pick<
   TaskMandateActiveBinding,
   'assertActiveTaskMandateBindingUnderLifecycleLock'
@@ -405,47 +404,6 @@ export function getInvestigationStatus(
   const session = readInvestigationSession(context.runtime, investigationId);
   assertCurrentInvestigationContext(context, session);
   return statusFromSession(context, session);
-}
-
-export function createInvestigationCheckpointEnvelope(
-  status: InvestigationStatus,
-  payload: MainTermsPayload,
-): Extract<InvestigationCheckpointEnvelope, { kind: 'main-terms' }>;
-
-export function createInvestigationCheckpointEnvelope(
-  status: InvestigationStatus,
-  payload: GroupDispositionsPayload,
-): Extract<InvestigationCheckpointEnvelope, { kind: 'group-dispositions' }>;
-
-export function createInvestigationCheckpointEnvelope(
-  status: InvestigationStatus,
-  payload: WhyAnswersPayload,
-): Extract<InvestigationCheckpointEnvelope, { kind: 'why-answers' }>;
-
-export function createInvestigationCheckpointEnvelope(
-  status: InvestigationStatus,
-  payload: MainTermsPayload | GroupDispositionsPayload | WhyAnswersPayload,
-): InvestigationCheckpointEnvelope {
-  if (status.checkpoint === null) {
-    throw workflowError(
-      'INVESTIGATION_CHECKPOINT_NOT_AVAILABLE',
-      'The investigation is not waiting for caller input.',
-      ExitCode.guard,
-    );
-  }
-  const envelope = {
-    schemaVersion: 1 as const,
-    kind: status.checkpoint.kind,
-    checkpointId: status.checkpoint.checkpointId,
-    investigationId: status.investigationId,
-    changeId: status.changeId,
-    expectedRevision: status.revision,
-    baseline: status.baseline,
-    intentDigest: status.intentDigest,
-    blindManifestDigest: status.blindManifestDigest,
-    payload,
-  };
-  return assertInvestigationCheckpointEnvelope(envelope);
 }
 
 export function resumeInvestigationSession(
@@ -780,58 +738,6 @@ function humanResolutionNodeBindsCurrentState(
       resolutionHeadNodeId: node.previousResolutionNodeId,
     }) === node.expected.stateDigest
   );
-}
-
-export type ReviewerTermResolutionAuthorization =
-  | {
-      outcome: 'none';
-      resolutionNodeId: null;
-    }
-  | {
-      outcome: 'resume';
-      resolutionNodeId: string;
-    }
-  | {
-      outcome: 'close-input';
-      resolutionNodeId: string;
-      assurance: 'degraded' | 'human-waived';
-    };
-
-export function decideReviewerTermReopen(input: {
-  usedReopens: number;
-  novelTermCount: number;
-  humanResolution: ReviewerTermResolutionAuthorization;
-}):
-  | 'no-novel-terms'
-  | 'automatic-reopen'
-  | 'human-reopen'
-  | 'human-close-input'
-  | 'human-action-required' {
-  if (
-    !Number.isSafeInteger(input.usedReopens) ||
-    input.usedReopens < 0 ||
-    !Number.isSafeInteger(input.novelTermCount) ||
-    input.novelTermCount < 0
-  ) {
-    throw workflowError(
-      'INVESTIGATION_REVIEWER_REOPEN_POLICY_INVALID',
-      'Reviewer-term reopen policy input is malformed.',
-      ExitCode.usage,
-    );
-  }
-  if (input.novelTermCount === 0) {
-    return 'no-novel-terms';
-  }
-  if (input.usedReopens < 2) {
-    return 'automatic-reopen';
-  }
-  if (input.humanResolution.outcome === 'resume') {
-    return 'human-reopen';
-  }
-  if (input.humanResolution.outcome === 'close-input') {
-    return 'human-close-input';
-  }
-  return 'human-action-required';
 }
 
 export function inspectReviewerTermResolutionAuthorization(

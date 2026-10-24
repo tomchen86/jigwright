@@ -19,7 +19,7 @@ import test from 'node:test';
 import type { TransformationTerm } from '../src/modules/planning-provider/planning-artifact-types.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { finalizeTask } from './support/session-lifecycle-host.ts';
-import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { beginTaskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
 import {
