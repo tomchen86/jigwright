@@ -4,19 +4,24 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import type {
   AttemptRecord,
   FailureDescriptor,
   JobRecord,
   WorkflowRecord,
-} from '../src/modules/provider-orchestration/execution-core.ts';
-import type { ExecutionJobInspection } from '../src/runtime/provider-execution/execution-runtime.ts';
+} from '../src/modules/provider-orchestration/execution-record-types.ts';
+import type { ExecutionJobInspection } from '../src/modules/provider-orchestration/provider-invocation-lifecycle.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
   computeEngineMetrics,
-  inspectEngineSupersedeReason,
   type EngineMetricsSnapshot,
+} from '../src/modules/provider-orchestration/engine-metrics.ts';
+import {
+  inspectEngineSupersedeReason,
+  collectEngineMetrics as collectEngineMetricsWithRetention,
 } from '../src/application/control-plane/engine-metrics.ts';
 import { collectEngineMetrics } from '../src/composition-root/provider-operations-cli-production.ts';
 import {
@@ -34,9 +39,23 @@ import { createHumanResolutionNode } from '../src/modules/investigation/domain/h
 import type { ProviderRetentionMetrics } from '../src/modules/provider-orchestration/provider-retention.ts';
 import type { TaskMandateBinding } from '../src/modules/authority/task-mandate-contract.ts';
 import { createFixtureRepository, sourceRepositoryRoot } from './fixture.ts';
+import { assertPureDependencyClosure } from './support/pure-dependency-closure.ts';
 
 const NOW = '2026-08-03T10:00:00.000Z';
 const DIGEST = `sha256:${'a'.repeat(64)}`;
+
+test('metrics and inspection DTO owners have a pure value/type dependency closure', () => {
+  for (const name of ['engine-metrics', 'provider-invocation-lifecycle']) {
+    assertPureDependencyClosure(
+      fileURLToPath(
+        new URL(
+          `../src/modules/provider-orchestration/${name}.ts`,
+          import.meta.url,
+        ),
+      ),
+    );
+  }
+});
 
 test('engine metrics derive resilience, speed, governance, and storage measures', () => {
   const first = inspection(
@@ -96,11 +115,10 @@ test('engine metrics derive resilience, speed, governance, and storage measures'
     'c-2',
   );
 
-  const metrics = computeEngineMetrics(
-    [first, second, third],
-    storageMetrics(),
-    NOW,
-    {
+  const input = {
+    inspections: [third, first, second],
+    storage: storageMetrics(),
+    governance: {
       grantRequestDigests: [DIGEST],
       issuedGrants: [
         {
@@ -111,7 +129,18 @@ test('engine metrics derive resilience, speed, governance, and storage measures'
       ],
       supersedeReasons: [],
     },
+  };
+  const before = structuredClone(input);
+  assertRecursivelyFrozen(input, false);
+  const metrics = computeEngineMetrics(
+    input.inspections,
+    input.storage,
+    NOW,
+    input.governance,
   );
+  assert.deepEqual(input, before);
+  assertRecursivelyFrozen(input, false);
+  assertRecursivelyFrozen(metrics, true);
 
   assert.deepEqual(metrics.metrics.attempt_failure_recovered_rate, {
     numerator: 4,
@@ -189,13 +218,15 @@ test('engine metrics retain historical wait time and count one stage per replace
 });
 
 test('engine metrics refuse a missing governance observation source', () => {
-  assert.throws(
-    () => computeEngineMetrics([], storageMetrics(), NOW, undefined as never),
-    (error: unknown) =>
-      error instanceof Error &&
-      'code' in error &&
-      error.code === 'ENGINE_METRICS_INVALID',
-  );
+  for (const source of [undefined, null, 0, []]) {
+    assert.throws(
+      () => computeEngineMetrics([], storageMetrics(), NOW, source as never),
+      (error: unknown) =>
+        error instanceof WorkflowError &&
+        error.code === 'ENGINE_METRICS_INVALID' &&
+        error.exitCode === 13,
+    );
+  }
 });
 
 test('engine governance metrics count issued-but-unused grants in the success denominator', () => {
@@ -359,6 +390,19 @@ test('production metrics enumerate issued unused grants and durable replacement 
       denominator: 1,
       value: 0,
     });
+    let retentionCalls = 0;
+    const observed = collectEngineMetricsWithRetention(
+      (cwd, options) => {
+        retentionCalls++;
+        assert.equal(cwd, repository);
+        assert.deepEqual(options, { now: NOW, ttlDays: 11 });
+        return { ...storageMetrics(), ttlDays: 11 };
+      },
+      repository,
+      { now: NOW, retentionTtlDays: 11 },
+    );
+    assert.equal(retentionCalls, 1);
+    assert.equal(observed.generatedAt, NOW);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
     fs.rmSync(auditRoot, { recursive: true, force: true });
@@ -498,6 +542,13 @@ test('metrics show exposes a zero-sample production snapshot', () => {
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
+
+function assertRecursivelyFrozen(value: unknown, expected: boolean): void {
+  if (value === null || typeof value !== 'object') return;
+  assert.equal(Object.isFrozen(value), expected);
+  for (const child of Object.values(value))
+    assertRecursivelyFrozen(child, expected);
+}
 
 function inspection(
   jobId: string,

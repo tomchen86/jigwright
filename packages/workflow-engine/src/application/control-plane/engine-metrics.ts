@@ -6,100 +6,35 @@
  * - A supersede reason is accepted only from a resolution node bound to
  *   that workflow and a supersede decision.
  */
-import { createEngineMetricsComputation } from './engine-metrics-computation.ts';
 import path from 'node:path';
 
-import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import type {
-  AttemptRecord,
-  WorkflowRecord,
-} from '../../modules/provider-orchestration/execution-core.ts';
+import type { WorkflowRecord } from '../../modules/provider-orchestration/execution-record-types.ts';
+import { deepFreeze } from '../../modules/provider-orchestration/execution-values.ts';
+import {
+  assertMetricsInvestigationId,
+  computeEngineMetrics,
+  exactTimestamp,
+  uniqueWorkflows,
+  type EngineGovernanceMetricsSource,
+  type EngineMetricsSnapshot,
+} from '../../modules/provider-orchestration/engine-metrics.ts';
 import { listExecutionBudgetGrantMetrics } from '../../runtime/storage-journal/execution-budget-grants.ts';
 import { listExecutionReplacementGrantRequestDigests } from './execution-replacement.ts';
-import {
-  listExecutionJobs,
-  type ExecutionJobInspection,
-} from '../../runtime/provider-execution/execution-runtime.ts';
+import { listExecutionJobs } from '../../runtime/provider-execution/execution-runtime.ts';
 import {
   privatePathExists,
   readPrivateCanonicalJson,
 } from '../../runtime/journal-primitives/investigation-private-files.ts';
 import { readHumanResolutionNode } from '../../runtime/storage-journal/human-resolution-nodes.ts';
-import {
-  WORKFLOW_SUPERSEDE_REASONS,
-  type WorkflowSupersedeReason,
-} from '../../modules/authority/intervention-control.ts';
+import type { WorkflowSupersedeReason } from '../../modules/authority/intervention-control.ts';
 import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 import { type InvestigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';
-import { assertInvestigationId } from '../../foundation/repository-path/repository-path.ts';
 import type {
   ProviderRetentionMetrics,
   ProviderRetentionOptions,
 } from '../../modules/provider-orchestration/provider-retention.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
-type Rate = Readonly<{
-  numerator: number;
-  denominator: number;
-  value: number | null;
-}>;
-
-export type EngineGovernanceMetricsSource = Readonly<{
-  grantRequestDigests: readonly string[];
-  issuedGrants: readonly Readonly<{
-    grantId: string;
-    requestDigest: string;
-    consumedAttemptIds: readonly string[];
-  }>[];
-  supersedeReasons: readonly Readonly<{
-    workflowId: string;
-    reason: WorkflowSupersedeReason;
-  }>[];
-}>;
-
-export type EngineMetricsSnapshot = Readonly<{
-  schemaVersion: 1;
-  kind: 'engine-metrics-snapshot.v1';
-  generatedAt: string;
-  sample: Readonly<{
-    workflows: number;
-    jobs: number;
-    attempts: number;
-  }>;
-  metrics: Readonly<{
-    attempt_failure_recovered_rate: Rate;
-    automatic_retry_success_rate: Rate;
-    repair_retry_success_rate: Rate;
-    late_output_rejected_count: number;
-    same_fingerprint_replay_count: number;
-    median_failure_to_next_attempt_ms: number | null;
-    median_failure_to_recovery_ms: number | null;
-    human_actions_per_recoverable_failure: number | null;
-    stages_recomputed_per_retry: number | null;
-    workflow_blocked_hours: number;
-    suspended_created_count: 0;
-    supersede_by_reason: Readonly<Record<string, number>>;
-    direct_refusal_count: number;
-    grant_request_count: number;
-    grant_to_success_rate: Rate;
-    raw_evidence_bytes_by_retention_class: ProviderRetentionMetrics['rawEvidenceBytesByRetentionClass'];
-    expired_pending_deletion: ProviderRetentionMetrics['expiredPendingDeletion'];
-    pinned_count: number;
-    receipt_count: number;
-  }>;
-}>;
-
-const FAILURE_STATUSES = new Set<AttemptRecord['status']>([
-  'failed-retryable',
-  'failed-terminal',
-  'timed-out',
-]);
-const RATE_TERMINAL_STATUSES = new Set<AttemptRecord['status']>([
-  'succeeded',
-  'failed-retryable',
-  'failed-terminal',
-  'timed-out',
-]);
 export function collectEngineMetrics(
   inspectProviderRetentionMetrics: (
     cwd: string,
@@ -203,16 +138,6 @@ export function inspectEngineSupersedeReason(
   }
 }
 
-function assertMetricsInvestigationId(value: string): string {
-  try {
-    return assertInvestigationId(value);
-  } catch {
-    throw metricsInvalid(
-      'A superseded execution Workflow is not a bound Investigation.',
-    );
-  }
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -239,51 +164,3 @@ function metricsStoreUnsafe() {
     ExitCode.unsafeEnvironment,
   );
 }
-
-function metricsInvalid(message: string) {
-  return workflowError(
-    'ENGINE_METRICS_INVALID',
-    message,
-    ExitCode.verification,
-  );
-}
-
-function deepFreeze<T>(value: T): T {
-  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const child of Object.values(value as Record<string, unknown>)) {
-      deepFreeze(child);
-    }
-  }
-  return value;
-}
-
-export type EngineMetricsComputationBindings = {
-  metricsInvalid: typeof metricsInvalid;
-  FAILURE_STATUSES: typeof FAILURE_STATUSES;
-  RATE_TERMINAL_STATUSES: typeof RATE_TERMINAL_STATUSES;
-  deepFreeze: typeof deepFreeze;
-  isRecord: typeof isRecord;
-  WORKFLOW_SUPERSEDE_REASONS: typeof WORKFLOW_SUPERSEDE_REASONS;
-  canonicalJson: typeof canonicalJson;
-};
-export type EngineMetricsComputationBindingsTypes = {
-  ExecutionJobInspection: ExecutionJobInspection;
-  ProviderRetentionMetrics: ProviderRetentionMetrics;
-  EngineGovernanceMetricsSource: EngineGovernanceMetricsSource;
-  EngineMetricsSnapshot: EngineMetricsSnapshot;
-  WorkflowRecord: WorkflowRecord;
-  Rate: Rate;
-};
-
-const { computeEngineMetrics, uniqueWorkflows, exactTimestamp } =
-  createEngineMetricsComputation(() => ({
-    metricsInvalid,
-    FAILURE_STATUSES,
-    RATE_TERMINAL_STATUSES,
-    deepFreeze,
-    isRecord,
-    WORKFLOW_SUPERSEDE_REASONS,
-    canonicalJson,
-  }));
-export { computeEngineMetrics };

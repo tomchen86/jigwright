@@ -8,11 +8,6 @@
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
-  type FailureDescriptor,
-  type RetryDecision,
-  type WorkflowRecord,
-  type JobRecord,
-  type AttemptRecord,
   type ChangedField,
   type ExecutionPolicySnapshot,
   projectProviderInvocationExecution,
@@ -26,6 +21,7 @@ import { readProviderInvocation } from '../storage-journal/provider-invocation-s
 import { providerOutputSchemaGeneration } from '../../modules/assurance/provider-output-contract.ts';
 import { providerResidualsGeneration } from '../storage-journal/provider-invocation-output-validation.ts';
 import type {
+  ExecutionJobInspection,
   ProviderOutputSchemaGeneration,
   ProviderResidualsGeneration,
 } from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
@@ -45,34 +41,6 @@ const JOB_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,191}$/;
 const DEFAULT_JOB_WATCH_POLL_INTERVAL_MS = 1_000;
 
 const MAX_JOB_WATCH_POLL_INTERVAL_MS = 60_000;
-
-export type ExecutionResultView = {
-  attemptId: string;
-  invocationId: string;
-  acceptance: 'accepted' | 'late-duplicate';
-  outputDigest: string;
-  outputSchema: ProviderOutputSchemaGeneration;
-  residuals: ProviderResidualsGeneration | null;
-};
-
-export type ExecutionFailureView = {
-  attemptId: string;
-  failure: FailureDescriptor;
-  decision: RetryDecision;
-};
-
-export type ExecutionJobInspection = {
-  schemaVersion: 1;
-  /** Stable public AgentRuntime lifecycle projected from the durable Job. */
-  runtimeStatus: 'scheduled' | 'running' | 'completed' | 'failed' | 'cancelled';
-  workflow: WorkflowRecord;
-  job: JobRecord;
-  attemptNumbering: 'recorded';
-  attempts: AttemptRecord[];
-  acceptedAttemptId: string | null;
-  results: ExecutionResultView[];
-  latestFailure: ExecutionFailureView | null;
-};
 
 export type ExecutionJobWatchOptions = Readonly<{
   signal?: AbortSignal;

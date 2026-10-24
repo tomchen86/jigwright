@@ -56,10 +56,8 @@ import {
   ExitCode,
 } from '../../foundation/errors/errors.ts';
 
-import {
-  type ExecutionJobInspection,
-  watchExecutionJob,
-} from '../../runtime/provider-execution/execution-runtime.ts';
+import type { ExecutionJobInspection } from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
+import { watchExecutionJob } from '../../runtime/provider-execution/execution-runtime.ts';
 
 import {
   discoverRepository,
