@@ -1290,7 +1290,7 @@ The workflow-format contract assertion SHALL accept only the registered command 
 
 #### Scenario: Asset-separated format scope is active
 covers: #Requirement: Generated OpenSpec Asset Format Scope Is Exact
-test: packages/workflow-engine/test/public-contract-surface.test.ts#format verification delegates to the registered canonical authority
+test: packages/workflow-engine/test/public-contract-surface.test.ts#format verification preserves the registered canonical scope
 
 - **WHEN** the post-authority repository contract validates `workflow-format`
 - **THEN** the exact asset-separated command passes
@@ -1298,7 +1298,7 @@ test: packages/workflow-engine/test/public-contract-surface.test.ts#format verif
 
 #### Scenario: Broad or otherwise drifted format scope returns
 covers: #Requirement: Generated OpenSpec Asset Format Scope Is Exact
-test: packages/workflow-engine/test/public-contract-surface.test.ts#format verification delegates to the registered canonical authority
+test: packages/workflow-engine/test/public-contract-surface.test.ts#format verification preserves the registered canonical scope
 
 - **WHEN** `workflow-format` names the broad workflow directory, omits a required human-maintained path, includes the generated asset home, or otherwise changes
 - **THEN** the repository contract fails

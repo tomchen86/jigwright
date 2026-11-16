@@ -821,9 +821,19 @@ test('workflow assurance CI is read-only and policy paths have owners', () => {
     workflow.match(/pnpm install --frozen-lockfile --ignore-scripts/g)?.length,
     2,
   );
-  assert.match(
-    workflow,
-    /\.\.\/trusted-base\/packages\/workflow-engine\/bootstrap\/workflow-engine-host\.ts ci/,
+  assert.ok(
+    workflow.includes(
+      [
+        '          entrypoint=../trusted-base/packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        '          if [ ! -f "$entrypoint" ]; then',
+        '            entrypoint=../trusted-base/packages/workflow-engine/src/cli.ts',
+        '          fi',
+        '          test -f "$entrypoint"',
+        '          node --experimental-strip-types "$entrypoint" ci \\',
+        '            --base "${{ github.event.pull_request.base.sha }}" \\',
+        '            --head "${{ github.event.pull_request.head.sha }}"',
+      ].join('\n'),
+    ),
   );
   assert.doesNotMatch(workflow, /secrets\.|pnpm workflow ci/);
   const actionRefs = [...workflow.matchAll(/uses: [^@\s]+@([^\s]+)/g)].map(
@@ -1144,7 +1154,10 @@ test('trusted workflow assurance entrypoint actually dispatches CI instead of ex
     path.join(sourceRepositoryRoot, '.github/workflows/workflow-assurance.yml'),
     'utf8',
   );
-  const entrypoint = workflow.match(/\.\.\/trusted-base\/(\S+)\s+ci/u)?.[1];
+  const entrypoint = workflow.match(
+    /entrypoint=\.\.\/trusted-base\/(\S+)\n/u,
+  )?.[1];
+  assert.match(workflow, /node --experimental-strip-types "\$entrypoint" ci/u);
   assert.ok(
     entrypoint,
     'trusted CI command must identify its executable entrypoint',

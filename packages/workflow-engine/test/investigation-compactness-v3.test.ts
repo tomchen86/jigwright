@@ -2,10 +2,10 @@
  * Checks that propose production modules use current investigation facts and bounded evidence.
  *
  * Invariants:
- * - Shared session and evidence adapters remain the only investigation adapter imports.
+ * - Investigation lifecycle imports remain limited to the shared session primitive.
  * - Retired replay wrappers stay absent across the decomposed production workflow.
  *
- * Depends on: propose application sources, current investigation kernels, and compactness fixtures.
+ * Depends on: proposal feature sources, current investigation kernels, and compactness fixtures.
  * Failure modes: old evidence paths return or production facts expand into redundant per-hit nodes.
  */
 import assert from 'node:assert/strict';
@@ -36,25 +36,36 @@ import { git } from './fixture.ts';
 const PRODUCTION_SCALE_HIT_COUNT = 400;
 
 test('ordinary propose production is v3-only outside shared session and evidence primitives', () => {
-  const proposeDirectory = path.join(
-    import.meta.dirname,
-    '../src/application/propose',
+  const sourcePaths = ['runtime/proposal', 'modules/proposal'].flatMap(
+    (relativePath) => {
+      const directory = path.join(import.meta.dirname, '../src', relativePath);
+      const files = fs
+        .readdirSync(directory)
+        .filter((name) => name.endsWith('.ts'));
+      assert.ok(
+        files.length > 0,
+        `${relativePath} must contain production sources`,
+      );
+      return files.map((name) => path.join(directory, name));
+    },
   );
-  const source = fs
-    .readdirSync(proposeDirectory)
-    .filter((name) => /^(?:propose-|plan-review-).*\.ts$/u.test(name))
-    .sort()
-    .map((name) => fs.readFileSync(path.join(proposeDirectory, name), 'utf8'))
-    .join('\n');
-  const planningInvestigationImports = [
-    ...source.matchAll(
-      /from '..\/..\/adapters\/planning\/investigation\/([^']+)'/gu,
+  sourcePaths.push(
+    path.join(
+      import.meta.dirname,
+      '../src/composition-root/propose-production.ts',
     ),
-  ]
-    .map((match) => match[1])
-    .filter((moduleName): moduleName is string => moduleName !== undefined);
-
-  assert.deepEqual([...new Set(planningInvestigationImports)].sort(), [
+  );
+  const source = sourcePaths
+    .sort()
+    .map((file) => fs.readFileSync(file, 'utf8'))
+    .join('\n');
+  assert.doesNotMatch(source, /adapters\/planning\/investigation\//u);
+  const investigationLifecycleImports = [
+    ...source.matchAll(
+      /from ['"][^'"]*\/investigation-lifecycle\/([^'"]+)['"]/gu,
+    ),
+  ].map((match) => match[1]);
+  assert.deepEqual([...new Set(investigationLifecycleImports)].sort(), [
     'investigation-session.ts',
   ]);
 

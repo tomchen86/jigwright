@@ -21,11 +21,9 @@ import { readCurrentRoleContextSharingPlanReviewRequirement } from './propose-pr
 import {
   assertInteractiveSignerContext,
   createInteractiveSshSigner,
+  type InteractiveSignerContext,
 } from '../adapters/signing/ssh/maintainer-signer.ts';
-import type {
-  InteractiveSignerContext,
-  MaintainerSignerProvider,
-} from '../adapters/signing/ssh/maintainer-signer.ts';
+import type { MaintainerSignerProvider } from '../modules/authority/maintainer-signer-port.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { verifyRoleContextSharingGrantCapability } from '../runtime/grants/grant-services.ts';
 import type { AuthoritativeRoleContextSharingGrantVerifier } from '../modules/authority/role-context-sharing-grant-verifier-port.ts';

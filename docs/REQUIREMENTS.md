@@ -460,7 +460,7 @@ No linked contract yet.
 - [Reuse Reassesses Changed Import Dependencies](../packages/workflow-engine/src/modules/why-knowledge/spec.md)
 - [Repository Agent Skill Surface](../spec.md)
 - [Historical Spectra Data Has No Execution Authority](../spec.md)
-- [Registered Checks Are the Sole CI Command Authority](../spec.md)
+- [Registered Checks Define Managed Verification](../spec.md)
 - [Standalone Registered Check Execution Is Fail-Closed](../spec.md)
 - [Registered format scope excludes archived bootstrap trees](../spec.md)
 - [Formatting and Generated Asset Validation Have Disjoint Scope](../spec.md)

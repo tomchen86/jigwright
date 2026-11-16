@@ -324,7 +324,7 @@ test('the global JSON flag is accepted once at the terminal argv position', () =
   }
 });
 
-test('help omits retired Work Registry, Issue, and raw maintenance commands', () => {
+test('help exposes Work Registry and omits retired Issue and intervention commands', () => {
   const originalWrite = process.stdout.write;
   let output = '';
   process.stdout.write = ((chunk: string | Uint8Array) => {
@@ -344,10 +344,10 @@ test('help omits retired Work Registry, Issue, and raw maintenance commands', ()
   );
   assert.doesNotMatch(
     output,
-    /pnpm workflow intervention (?:checkpoint|worktree|prepare-adoption|adopt)\b/,
+    /pnpm workflow intervention (?:checkpoint|worktree|prepare-adoption|adopt|recover)\b/,
   );
   assert.match(output, /pnpm workflow intervention status <parent-change-id>/);
-  assert.match(output, /pnpm workflow intervention recover <tx-id>/);
+  assert.match(output, /pnpm workflow work-item </);
 });
 
 test('global help exposes the executable local after-merge command without a retired authorization input', () => {

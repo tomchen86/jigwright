@@ -192,5 +192,6 @@ projections, and stops at a terminal state or when its abort signal fires. It
 does not stream provider transcripts or acquire retry, cancellation, or other
 lifecycle authority.
 
-The local release workflow builds candidate artifacts. Publishing and other
-external operations require the separately scoped authority recorded for them.
+The local release workflow builds candidate artifacts; it does not publish an
+npm package or perform real external operations. Publishing and other external
+operations require the separately scoped authority recorded for them.

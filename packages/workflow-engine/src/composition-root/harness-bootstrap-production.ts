@@ -1,8 +1,8 @@
 import {
   createInteractiveSshSigner,
-  type MaintainerSignerProvider,
   verifySshSignatureWithPublicKey,
 } from '../adapters/signing/ssh/maintainer-signer.ts';
+import type { MaintainerSignerProvider } from '../modules/authority/maintainer-signer-port.ts';
 import { createHarnessBootstrapAudit } from '../application/control-plane/harness-bootstrap-audit.ts';
 import type {
   HarnessBootstrapRecoveryCommandBindings,

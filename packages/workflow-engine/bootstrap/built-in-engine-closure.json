@@ -543,7 +543,7 @@
     {
       "path": "src/adapters/signing/ssh/grant-proof-ssh.ts",
       "mode": "100644",
-      "digest": "sha256:fda76a29013bb2a2e604d36ded1ab719fcb8fb2281c7792352eb33da46883bfc"
+      "digest": "sha256:ee8d5ab6b8b76f5a3ea4fdf4903ab63ef2a7d2090b0d1f32f36fe8a7f3cd87c5"
     },
     {
       "path": "src/adapters/signing/ssh/maintainer-signer.ts",
@@ -1308,7 +1308,7 @@
     {
       "path": "src/composition-root/harness-bootstrap-production.ts",
       "mode": "100644",
-      "digest": "sha256:9267f49870f7efd61f18d7eddc1d5025f0da184d4069f02e8ebb7e4a1ce5a173"
+      "digest": "sha256:3ac1e3a253d33175dd5f6d211dd870b3d6f7ff679106266492f6fb0a9abcc6ae"
     },
     {
       "path": "src/composition-root/human-resolution-grant-production.ts",
@@ -1573,7 +1573,7 @@
     {
       "path": "src/composition-root/role-context-sharing-grant-approval-production.ts",
       "mode": "100644",
-      "digest": "sha256:b36d9bb096267d2614a396bdaed743a402c4209fe6115f780d8b480a391a6b14"
+      "digest": "sha256:7ff768373f1dfbbdbe39eb16076d6eca6ec963a02c2c628499aafbf318180993"
     },
     {
       "path": "src/composition-root/role-context-sharing-grant-lifecycle-production.ts",

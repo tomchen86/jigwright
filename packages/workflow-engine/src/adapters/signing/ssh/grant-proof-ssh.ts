@@ -20,10 +20,8 @@ import {
 import type { GrantAuthenticationRequest } from '../../../modules/authority/grant-coordinator.ts';
 import type { GrantPolicyV2 } from '../../../modules/authority/grant-policy.ts';
 import { copyGrantDate } from '../../../modules/authority/grant-primitives.ts';
-import {
-  createInteractiveSshSigner,
-  type MaintainerSignerProvider,
-} from './maintainer-signer.ts';
+import { createInteractiveSshSigner } from './maintainer-signer.ts';
+import type { MaintainerSignerProvider } from '../../../modules/authority/maintainer-signer-port.ts';
 
 export type SshApprovalSigner = MaintainerSignerProvider;
 

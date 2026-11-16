@@ -5,6 +5,22 @@ function emit(frame) {
   process.stdout.write(`${JSON.stringify(frame)}\n`);
 }
 
+// Install cancellation handlers before hello allows the parent to abort.
+if (mode === 'cancel-ack') {
+  process.once('SIGTERM', () => {
+    emit({
+      schemaVersion: 1,
+      type: 'cancel-ack',
+      sequence: sequence++,
+    });
+    setTimeout(() => process.exit(0), 10);
+  });
+  setInterval(() => {}, 1_000);
+} else if (mode === 'cancel-ignore') {
+  process.on('SIGTERM', () => {});
+  setInterval(() => {}, 1_000);
+}
+
 emit({
   schemaVersion: 1,
   type: 'hello',
@@ -32,19 +48,6 @@ if (mode === 'success') {
     sequence: sequence++,
     code: 'FIXTURE_REJECTED',
   });
-} else if (mode === 'cancel-ack') {
-  process.once('SIGTERM', () => {
-    emit({
-      schemaVersion: 1,
-      type: 'cancel-ack',
-      sequence: sequence++,
-    });
-    setTimeout(() => process.exit(0), 10);
-  });
-  setInterval(() => {}, 1_000);
-} else if (mode === 'cancel-ignore') {
-  process.on('SIGTERM', () => {});
-  setInterval(() => {}, 1_000);
-} else {
+} else if (mode !== 'cancel-ack' && mode !== 'cancel-ignore') {
   process.exitCode = 2;
 }

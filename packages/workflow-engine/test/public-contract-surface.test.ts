@@ -273,16 +273,11 @@ test('runner security suite is portable to the package working directory', () =>
   );
 });
 
-test('format verification delegates to the registered canonical authority', () => {
+test('format verification preserves the registered canonical scope', () => {
   const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
   const manifest = JSON.parse(
     fs.readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8'),
   );
-  assert.equal(
-    manifest.scripts['format:check'],
-    'pnpm workflow run-check workflow-format --json',
-  );
-
   const formatWorkflow = fs.readFileSync(
     path.join(repositoryRoot, '.github/workflows/format.yml'),
     'utf8',
@@ -324,6 +319,10 @@ test('format verification delegates to the registered canonical authority', () =
     '.github/workflows/workflow-assurance.yml',
     'prettier.config.cjs',
   ];
+  assert.equal(
+    manifest.scripts['format:check'],
+    assetSeparatedFormatCommand.slice(3).join(' '),
+  );
   assert.equal(registeredFormat?.destructiveDatabase, false);
   assert.deepEqual(registeredFormat?.command, assetSeparatedFormatCommand);
   const config = JSON.parse(
