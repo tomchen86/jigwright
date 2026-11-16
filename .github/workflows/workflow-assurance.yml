@@ -71,8 +71,12 @@ jobs:
         env:
           GH_TOKEN: ''
           GITHUB_TOKEN: ''
-        run: >-
-          node --experimental-strip-types
-          ../trusted-base/packages/workflow-engine/src/cli.ts ci
-          --base "${{ github.event.pull_request.base.sha }}"
-          --head "${{ github.event.pull_request.head.sha }}"
+        run: |
+          entrypoint=../trusted-base/packages/workflow-engine/bootstrap/workflow-engine-host.ts
+          if [ ! -f "$entrypoint" ]; then
+            entrypoint=../trusted-base/packages/workflow-engine/src/cli.ts
+          fi
+          test -f "$entrypoint"
+          node --experimental-strip-types "$entrypoint" ci \
+            --base "${{ github.event.pull_request.base.sha }}" \
+            --head "${{ github.event.pull_request.head.sha }}"
