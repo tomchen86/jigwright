@@ -48,10 +48,11 @@
       "packages/workflow-engine/src/application/control-plane/authority-plan.ts",
       "packages/workflow-engine/src/application/control-plane/collaboration-grant-revocation.ts",
       "packages/workflow-engine/src/modules/provider-orchestration/engine-metrics.ts",
-      "packages/workflow-engine/src/application/control-plane/engine-metrics.ts",
+      "packages/workflow-engine/src/runtime/provider-execution/engine-metrics.ts",
       "packages/workflow-engine/src/application/control-plane/evidence-retention.ts",
       "packages/workflow-engine/src/application/control-plane/execution-replacement-publication.ts",
-      "packages/workflow-engine/src/application/control-plane/execution-replacement-records.ts",
+      "packages/workflow-engine/src/modules/provider-orchestration/execution-replacement-records.ts",
+      "packages/workflow-engine/src/runtime/storage-journal/execution-replacement-records.ts",
       "packages/workflow-engine/src/application/control-plane/execution-replacement.ts",
       "packages/workflow-engine/src/application/control-plane/harness-bootstrap-audit.ts",
       "packages/workflow-engine/src/application/control-plane/harness-bootstrap-contracts.ts",
@@ -403,7 +404,8 @@
       "packages/workflow-engine/src/runtime/storage-journal/provider-worker-maintenance.ts",
       "packages/workflow-engine/src/runtime/storage-journal/session-report-reader.ts",
       "workflow/maintainer-policy.json",
-      "workflow/maintainer-profiles.json"
+      "workflow/maintainer-profiles.json",
+      "packages/workflow-engine/src/runtime/repository-observation/execution-replacement-requests.ts"
     ],
     "grant": [
       "packages/grants/src/central-grant-contracts.ts",

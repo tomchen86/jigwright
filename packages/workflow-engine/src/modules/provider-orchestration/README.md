@@ -12,11 +12,11 @@ Keep installed provider profiles on the host so repositories select roles withou
 
 Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessment and planned action, then submit the template with `jigwright job retry-request <job-id> --input retry.json --json`. The timeout may stay unchanged. See [retry behavior and single-use budget exceptions](../../../../../docs/features/PROVIDER_RETRY.md).
 
-<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:844de1dd5951ffa85e470a36720070d0c3783abb24240b62711ca6a904dc8c24 -->
+<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:fa85f0e07427fd4da37fe141ef73fd4c4fda824a9d8d757540ec997a7b5a6444 -->
 
 <!-- prettier-ignore-start -->
 
-54 files changed in this module since confirmation.
+55 files changed in this module since confirmation.
 
 ## Commands
 
@@ -42,6 +42,7 @@ Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessmen
 | AttemptRetention | active, debug, pinned | [execution-record-types.ts](execution-record-types.ts) |
 | FailureSource | provider, network, worker, lease, tool, validator, environment, state, effect, policy | [execution-record-types.ts](execution-record-types.ts) |
 | ExecutionFailureKind | provider-timeout, network, rate-limit, provider-process-crash, worker-crash, lease-expiry, temporary-file-lock, provider-capacity, stdout-truncated, process-nonzero, json-parse, schema-mismatch, missing-required-field, citation-out-of-range, probe-transient, needs-user-decision, state-corruption, unknown-side-effect | [execution-record-types.ts](execution-record-types.ts) |
+| ExecutionReplacementPhase | prepared, grant-consumed, invocation-published, dispatch-issued, complete | [execution-replacement-records.ts](execution-replacement-records.ts) |
 | ProviderOutputSchemaGeneration | code-owned | [provider-invocation-lifecycle.ts](provider-invocation-lifecycle.ts) |
 | ProviderNativeSessionDispositionV1 | usable, rejected, error, cancelled, timeout, indeterminate | [provider-native-session.ts](provider-native-session.ts) |
 | ProviderNativeSessionErrorCode | PROVIDER_NATIVE_SESSION_INVALID, PROVIDER_NATIVE_SESSION_ASSIGNMENT_AUTHORITY_REQUIRED, PROVIDER_NATIVE_SESSION_CALLER_EXISTING_UNSUPPORTED, PROVIDER_NATIVE_SESSION_PROTOCOL_UNSUPPORTED, PROVIDER_NATIVE_SESSION_CAPABILITY_UNSUPPORTED | [provider-native-session.ts](provider-native-session.ts) |
@@ -88,6 +89,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [execution-core.ts](execution-core.ts) | Projects provider requests and invocation records into execution job and attempt state. | 1 | History unavailable |
 | [execution-record-types.ts](execution-record-types.ts) | Defines engine Job, Attempt, failure and retry records around the shared execution contracts. | 1 | Header changed since confirmation |
 | [execution-records.ts](execution-records.ts) | Validates execution records and constructs canonical failure descriptors. | 1 | Header changed since confirmation |
+| [execution-replacement-records.ts](execution-replacement-records.ts) | Canonical replacement records, receipt identity and transaction phase rules. | 0 | History unavailable |
 | [execution-retry.ts](execution-retry.ts) | Decides retry eligibility, budget grants, and projected execution failure state. | 1 | Header changed since confirmation |
 | [execution-values.ts](execution-values.ts) | Validates execution value shapes and canonical record encodings. | 1 | Header changed since confirmation |
 | [planning-role-provider-policy.ts](planning-role-provider-policy.ts) | Decodes role policy bytes and projects the exact change-bound override identity. | 2 | History unavailable |

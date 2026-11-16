@@ -646,11 +646,6 @@
       "digest": "sha256:41ea1cd1dfd9ac386fa9e1c13646fc2d1f6a6d0e7f2ef3dac12710a6d99761f3"
     },
     {
-      "path": "src/application/control-plane/engine-metrics.ts",
-      "mode": "100644",
-      "digest": "sha256:bdf6612c241b7bd34ec2ded2ed43ff3ab62199c222188822ff0646d0898daa5a"
-    },
-    {
       "path": "src/application/control-plane/evidence-retention.ts",
       "mode": "100644",
       "digest": "sha256:fcb99504bf912b1c18ea218e76501053c904ebee784a38c9ab41f23e83806043"
@@ -668,17 +663,12 @@
     {
       "path": "src/application/control-plane/execution-replacement-publication.ts",
       "mode": "100644",
-      "digest": "sha256:2e47d0244f619d9f69e2c325138ee9500ad3e3a8d0f89e9c453d67b57832fc34"
-    },
-    {
-      "path": "src/application/control-plane/execution-replacement-records.ts",
-      "mode": "100644",
-      "digest": "sha256:7e316839bcc830a34240d5d8c2ac96b03857abd2f3bd0af90897704ef02a1125"
+      "digest": "sha256:8b36ff5a4f18b9d8972adf79334524680461cb1eafbe002a3ccaa4e252694d17"
     },
     {
       "path": "src/application/control-plane/execution-replacement.ts",
       "mode": "100644",
-      "digest": "sha256:52ece19ad9de0a17353c019c4fda3397ff1beb0eefea2993bfef23d177feb109"
+      "digest": "sha256:4cccd211d5f315effbc67138ea8f686adade40ca89e613a1cf8a325f584c6816"
     },
     {
       "path": "src/application/control-plane/external-effect-grant-context.ts",
@@ -1258,7 +1248,7 @@
     {
       "path": "src/composition-root/execution-retry-production.ts",
       "mode": "100644",
-      "digest": "sha256:47645cecf7679fef629824fc90f580d5d320e04c511d5a7471135408e1e3ca05"
+      "digest": "sha256:5ce0a8ece03b48d3651280adfb7a361b982055871733a7263a3260290331275d"
     },
     {
       "path": "src/composition-root/external-effect-production.ts",
@@ -1498,7 +1488,7 @@
     {
       "path": "src/composition-root/provider-operations-cli-production.ts",
       "mode": "100644",
-      "digest": "sha256:440775e428636adf4a40f596808af6a15d6164dab63908b33a97ed58400da4d4"
+      "digest": "sha256:c90e4ea9e2a5c793da8e8c820330688df6edc675a301e735d75a2db33a71b590"
     },
     {
       "path": "src/composition-root/provider-retry-production.ts",
@@ -3436,6 +3426,11 @@
       "digest": "sha256:b4973c5f9674afbea95d461ff738d0296f39d21d04890d8f58c37ef009ad198d"
     },
     {
+      "path": "src/modules/provider-orchestration/execution-replacement-records.ts",
+      "mode": "100644",
+      "digest": "sha256:89a143eb2f5b3232720f15d0e7618bcdf3c833de125ccdf51a2544af43a89d31"
+    },
+    {
       "path": "src/modules/provider-orchestration/execution-retry.ts",
       "mode": "100644",
       "digest": "sha256:c9385f2062ddb31e1e85ed7587f08231155620e6025c56bb75a0803e0b9b239b"
@@ -4171,6 +4166,11 @@
       "digest": "sha256:2314e71565924b839c4424648615c22c3c5834a134e1eb6c9a78d1daee1965aa"
     },
     {
+      "path": "src/runtime/provider-execution/engine-metrics.ts",
+      "mode": "100644",
+      "digest": "sha256:e2050c7e417890818ba2f76ae923719262d61aee383bc7a9c2d71dd3f0e73126"
+    },
+    {
       "path": "src/runtime/provider-execution/execution-runtime.ts",
       "mode": "100644",
       "digest": "sha256:a047f00b1c5f9738cfe455441b50e43ead88d5bd6a937a4c2c8c7a6c7fbcb072"
@@ -4344,6 +4344,11 @@
       "path": "src/runtime/repository-observation/contract-artifact-observation.ts",
       "mode": "100644",
       "digest": "sha256:3c00256662ce23c56eea6a69d93484e338c5884e22578044f30ff5207faba2cd"
+    },
+    {
+      "path": "src/runtime/repository-observation/execution-replacement-requests.ts",
+      "mode": "100644",
+      "digest": "sha256:de4a0502d82a9db225234f202cc487d2c038a83130e3875a1c29cd54ab51095a"
     },
     {
       "path": "src/runtime/repository-observation/governance-intake-context.ts",
@@ -5109,6 +5114,11 @@
       "path": "src/runtime/storage-journal/execution-provider-projection.ts",
       "mode": "100644",
       "digest": "sha256:b5aa726ec28ec48224e54a8a52a4023804b3cc6321a6948e6979a67b398b083f"
+    },
+    {
+      "path": "src/runtime/storage-journal/execution-replacement-records.ts",
+      "mode": "100644",
+      "digest": "sha256:c4fa3124ac4a822b657eb970db7e774a84cced10220a9218710d0f56bc23b704"
     },
     {
       "path": "src/runtime/storage-journal/execution-state-contract.ts",
