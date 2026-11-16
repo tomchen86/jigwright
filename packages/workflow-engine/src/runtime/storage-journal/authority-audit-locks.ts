@@ -14,7 +14,6 @@ import {
 } from '../repository-transaction/filesystem-safety.ts';
 import {
   type AuthorityAuditLedgerPaths,
-  type Sha256Digest,
   LOCK_NAME,
   LOCK_KEYS,
   UUID_V4,
@@ -165,3 +164,5 @@ function assertLockEntriesBeforeAcquire(
     }
   }
 }
+
+import { type Sha256Digest } from '../../modules/authority/authority-audit-contract.ts';

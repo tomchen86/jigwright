@@ -11,11 +11,11 @@ import type {
   CheckRegistryPortV1,
 } from '@jigwright/core/check-registry-port';
 
+import { loadChecksConfig } from '../../../../runtime/workflow-configuration/workflow-configuration.ts';
 import {
-  loadChecksConfig,
   type CheckDefinition,
   type ChecksConfig,
-} from './contracts.ts';
+} from '../../../../modules/source/check-command.ts';
 
 type AssertTrue<Value extends true> = Value;
 type AssertBidirectionalExact<Left, Right> = [Left] extends [Right]

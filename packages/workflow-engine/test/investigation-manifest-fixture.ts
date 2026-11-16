@@ -1,14 +1,12 @@
-import {
-  type InvestigationAuthoringState,
-  type InvestigationRequirementV3,
-} from '../src/modules/investigation/manifest/investigation-manifest.ts';
+import { type InvestigationAuthoringState } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
+import type { InvestigationRequirementV3 } from '../src/modules/investigation/manifest/investigation-requirement-types.ts';
 import {
   type InvestigationTermContribution,
   previewInvestigationTermUnion,
 } from '../src/modules/investigation/domain/investigation-terms.ts';
 import assert from 'node:assert/strict';
 import { createMutationClassPolicy } from '../src/modules/source/mutation-class-policy.ts';
-import { scanInvestigationTreeFacts } from '../src/modules/investigation/domain/investigation-scanner.ts';
+import { scanInvestigationTreeFacts } from '../src/composition-root/investigation-production.ts';
 import { deriveInvestigationGroupFacts } from '../src/modules/investigation/domain/investigation-groups.ts';
 import { type BuildInvestigationManifestV3Input } from '../src/modules/investigation/manifest/investigation-manifest-builder.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';

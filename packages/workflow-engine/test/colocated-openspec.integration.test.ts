@@ -1,3 +1,8 @@
+import {
+  assertSpecDeltaScenarioPreservation,
+  verifyArchiveDeltaOutcomes,
+} from '../src/composition-root/planning-archive-projection-production.ts';
+import { createArchiveProjectionDependencies } from '../src/composition-root/planning-archive-projection-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -10,10 +15,7 @@ import {
   validatePlanningArchiveProjectedSpecs,
   type PlanningArchiveProjectionContext,
 } from '../src/modules/planning-provider/planning-archive-projection-port.ts';
-import {
-  verifyArchiveDeltaOutcomes,
-  assertSpecDeltaScenarioPreservation,
-} from '../src/runtime/repository-transaction/archive-delta-verifier.ts';
+import {} from '../src/runtime/repository-transaction/archive-delta-verifier.ts';
 import { git, isWorkflowError, sourceRepositoryRoot } from './fixture.ts';
 
 test('native OpenSpec validates and archives aliased deltas into one colocated spec without copying planning authority', () => {
@@ -82,6 +84,7 @@ test('native OpenSpec validates and archives aliased deltas into one colocated s
     };
     const port = createOpenSpecPlanningArchiveProjectionPort();
     const applicability = createArchiveApplicabilityProjection(
+      createArchiveProjectionDependencies(),
       {
         repositoryRoot: root,
         changeRoot: 'openspec/changes',
@@ -259,6 +262,7 @@ test('native strict validation blocks malformed colocated bases and a heading-on
     const applicability = () => {
       const current = context();
       return createArchiveApplicabilityProjection(
+        createArchiveProjectionDependencies(),
         {
           repositoryRoot: root,
           changeRoot: 'openspec/changes',

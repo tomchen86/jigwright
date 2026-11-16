@@ -1,12 +1,11 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
-
 import {
   createDocumentationClosureRecord,
   encodeDocumentationClosure,
   parseDocumentationClosureFromCommitMessage,
   parseDocumentationClosureRecord,
-} from '../src/runtime/managed-documents/contracts/documentation-closure.ts';
+} from '../src/modules/assurance/documentation-closure.ts';
+import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import {
   assertTaskDiffReviewChallengeResponseCurrent,
@@ -20,9 +19,11 @@ import {
   parseTaskDiffReviewDispositionRecord,
   parseTaskDiffFinalAssuranceRecord,
   parseTaskDiffReviewRecord,
-  type CreateTaskDiffReviewRecordInput,
-  type TaskDiffReviewAssignment,
 } from '../src/modules/assurance/task-diff-review-artifact.ts';
+import type {
+  CreateTaskDiffReviewRecordInput,
+  TaskDiffReviewAssignment,
+} from '../src/modules/assurance/task-diff-review-artifact-record.ts';
 import {
   createTaskDiffDocumentationClosureRequirement,
   createTaskDiffReviewSubject,

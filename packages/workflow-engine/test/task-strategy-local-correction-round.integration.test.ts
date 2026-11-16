@@ -1,19 +1,31 @@
+import { productionTaskStrategyCorrection } from '../src/composition-root/task-strategy-correction-production.ts';
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
-import { resolveCurrentTaskStrategyCorrection } from '../src/application/execute-task/task-strategy-correction.ts';
+import { resolveCurrentTaskStrategyCorrection } from '../src/composition-root/task-strategy-correction-production.ts';
 import { listTaskStrategyCorrectionRounds } from '../src/runtime/storage-journal/task-strategy-correction-round-store.ts';
-import { adoptCurrentTaskStrategyImplementation } from '../src/application/execute-task/task-strategy-patch.ts';
-import { sealTaskStrategyRed } from '../src/application/execute-task/task-strategy-execution.ts';
-import { resumeTaskStrategy } from '../src/application/execute-task/task-strategy-lifecycle.ts';
-import {
-  checkSession,
-  inspectSession,
-} from '../src/application/finalize/verification.ts';
+import { adoptCurrentTaskStrategyImplementation } from '../src/composition-root/task-strategy-patch-production.ts';
+import { sealTaskStrategyRed } from '../src/composition-root/task-strategy-execution-production.ts';
+import { resumeTaskStrategy } from '../src/composition-root/task-strategy-production.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
+import { inspectSession } from '../src/runtime/repository-validation/session-inspection.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import {
   configureChecks,
@@ -26,7 +38,12 @@ import {
 test('single-agent correction reserves and authenticates one local round before exposing its patch head', () => {
   const repository = createLocalCorrectionFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
@@ -43,7 +60,15 @@ test('single-agent correction reserves and authenticates one local round before 
     )!;
 
     assert.throws(
-      () => checkSession(repository, session.sessionId, { environment: {} }),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeContract,
+          repository,
+          session.sessionId,
+          { environment: {} },
+        ),
       hasCode('CHECK_FAILED'),
     );
     fs.writeFileSync(implementationPath, 'export const corrected = true;\n');
@@ -51,7 +76,11 @@ test('single-agent correction reserves and authenticates one local round before 
     const resumed = resumeTaskStrategy(repository, session.sessionId);
     assert.equal(resumed.state, 'patch-imported');
 
-    const inspection = inspectSession(repository, session.sessionId);
+    const inspection = inspectSession(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     const projection = resolveCurrentTaskStrategyCorrection(inspection);
     const runtime = loadInvestigationRuntimeContext(repository).runtime;
     const rounds = listTaskStrategyCorrectionRounds(
@@ -86,7 +115,14 @@ test('single-agent correction reserves and authenticates one local round before 
     assert.equal(JSON.stringify(round).includes('invocationId'), false);
     assert.equal(JSON.stringify(round).includes('providerRequest'), false);
     assert.equal(
-      checkSession(repository, session.sessionId, { environment: {} }).passed,
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeContract,
+        repository,
+        session.sessionId,
+        { environment: {} },
+      ).passed,
       true,
     );
     fs.rmSync(
@@ -101,7 +137,11 @@ test('single-agent correction reserves and authenticates one local round before 
     assert.throws(
       () =>
         resolveCurrentTaskStrategyCorrection(
-          inspectSession(repository, session.sessionId),
+          inspectSession(
+            productionChangeContract,
+            repository,
+            session.sessionId,
+          ),
         ),
       hasCode('TASK_STRATEGY_CORRECTION_STATE_STALE'),
     );

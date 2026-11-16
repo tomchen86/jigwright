@@ -5,12 +5,12 @@ import path from 'node:path';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
-import { dispatchAsync } from '../src/cli.ts';
+import { dispatchAsync } from '../bootstrap/workflow-engine-host.ts';
 import {
   listGovernanceSources,
   readGovernanceSource,
   captureGovernanceSource,
-} from '../src/modules/governance-intake/governance-intake.ts';
+} from '../src/composition-root/governance-sources-production.ts';
 import {
   applyWorkItemReview,
   correctWorkItemSource,
@@ -19,7 +19,7 @@ import {
   promoteWorkItem,
   showWorkItem,
   workItemDigest,
-} from '../src/modules/governance-intake/work-registry.ts';
+} from '../src/composition-root/work-registry-production.ts';
 import {
   createGovernancePersistenceFixture,
   runGitForTest,
@@ -215,7 +215,7 @@ function activate(
 
 test('active Source corrections recover after each journal and paired-write crash', () => {
   const moduleUrl = new URL(
-    '../src/modules/governance-intake/work-registry.ts',
+    '../src/composition-root/work-registry-production.ts',
     import.meta.url,
   ).href;
   for (const cut of [

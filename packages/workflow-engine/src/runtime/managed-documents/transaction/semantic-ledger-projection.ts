@@ -1,3 +1,4 @@
+import type { LedgerIndex } from '../../../modules/why-knowledge/semantic-ledger-reader.ts';
 /**
  * Projects validated planning and reconciled source bindings into the semantic index.
  *
@@ -10,8 +11,8 @@
 import crypto from 'node:crypto';
 import { readFileAtCommit } from '../../repository-transaction/git.ts';
 import { PROPOSE_POLICY_DIGEST } from '../../../modules/provider-orchestration/provider-contracts.ts';
-import type { GeneratedDocumentMutation } from '../validation/managed-documents.ts';
-import { readImportDependencies } from '../../../modules/source/import-dependencies.ts';
+import type { GeneratedDocumentMutation } from '../../../modules/projection/managed-documents.ts';
+import { readSemanticImportDependencies } from '../../../modules/why-knowledge/semantic-freshness.ts';
 import { readSystemDescriptionSnapshot } from '../../repository-transaction/system-description-snapshot.ts';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,8 +22,8 @@ import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import type {
   InvestigationManifestV3,
   InvestigationWhyOverlayV3,
-} from '../../../modules/investigation/manifest/investigation-manifest.ts';
-import { normalizeExactRepositoryPath } from '../../session-workspace/paths.ts';
+} from '../../../modules/investigation/manifest/investigation-manifest-types.ts';
+import { normalizeExactRepositoryPath } from '../../../foundation/repository-path/repository-path.ts';
 import type { ActualMutation } from '../../../modules/why-knowledge/semantic-reconciliation.ts';
 import {
   createLedgerEntry,
@@ -38,16 +39,10 @@ import {
   ledgerObjectPath,
   updateLedgerIndex,
   writeLedgerEntry,
-  type LedgerIndex,
 } from '../../storage-journal/semantic-ledger-store.ts';
 
-export type ReconciledLedgerProjection = Readonly<{
-  schemaVersion: 1;
-  kind: 'reconciled-semantic-ledger-projection';
-  entryIds: readonly string[];
-  paths: readonly string[];
-  indexDigest: string;
-}>;
+import type { ReconciledLedgerProjection } from '../../../modules/why-knowledge/implementation-reconciliation.ts';
+export type { ReconciledLedgerProjection } from '../../../modules/why-knowledge/implementation-reconciliation.ts';
 
 /** Planning-time v3 projection from one authority-validated Manifest. */
 export function projectInvestigationManifestWhyToLedger(input: {
@@ -136,7 +131,10 @@ function projectPlanningWhyClaims(input: {
           semanticDigest: claim.semanticDigest,
           extractorVersion: claim.extractorVersion,
         },
-        semanticDependencies: readImportDependencies(snapshot, subjectPath),
+        semanticDependencies: readSemanticImportDependencies(
+          snapshot,
+          subjectPath,
+        ),
         policyDigest: prefixedDigest(input.policyDigest),
         provenance: {
           changeId: input.changeId,
@@ -312,7 +310,10 @@ function projectReconciledWhyClaims(input: {
         ),
         extractorVersion: 'implementation-reconciliation-exact-source.v1',
       },
-      semanticDependencies: readImportDependencies(snapshot, subjectPath),
+      semanticDependencies: readSemanticImportDependencies(
+        snapshot,
+        subjectPath,
+      ),
       policyDigest: prefixedDigest(input.policyDigest),
       provenance: {
         changeId: input.changeId,

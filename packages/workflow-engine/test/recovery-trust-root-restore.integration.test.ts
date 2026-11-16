@@ -13,24 +13,30 @@ import {
   type RecoveryAuthorityDescriptorV1,
   type RecoveryAuthorityExpectations,
   type RecoveryAuthorityImportBoundary,
-} from '../src/recovery-authority.ts';
+} from '../src/modules/authority/recovery-authority-contract.ts';
 import {
   RECOVERY_TRUST_ROOT_RESTORE_NAMESPACE,
   RECOVERY_TRUST_ROOT_RESTORE_TTL_MS,
+} from '../src/modules/authority/recovery-trust-root-values.ts';
+import {
   canonicalRecoveryOperationalTrustRootRestoreStatement,
-  executeRecoveryOperationalTrustRootRestore,
-  readRecoveryOperationalTrustRootActive,
-  readRecoveryOperationalTrustRootRestoreRecord,
-  recoveryOperationalTrustRootDigest,
   recoveryOperationalTrustRootRestoreGrantId,
-  type RecoveryOperationalTrustRoot,
-  type RecoveryOperationalTrustRootPayload,
   type RecoveryOperationalTrustRootRestoreAuditRecord,
   type RecoveryOperationalTrustRootRestoreDependencies,
   type RecoveryOperationalTrustRootRestoreEnvelope,
   type RecoveryOperationalTrustRootRestoreFaultPhase,
   type RecoveryOperationalTrustRootRestoreGrantPayload,
-} from '../src/recovery-trust-root-restore.ts';
+} from '../src/modules/authority/recovery-trust-root-contract.ts';
+import {
+  executeRecoveryOperationalTrustRootRestore,
+  readRecoveryOperationalTrustRootActive,
+  readRecoveryOperationalTrustRootRestoreRecord,
+} from '../src/runtime/recovery/recovery-trust-root-restore.ts';
+import {
+  recoveryOperationalTrustRootDigest,
+  type RecoveryOperationalTrustRoot,
+  type RecoveryOperationalTrustRootPayload,
+} from '../src/modules/authority/recovery-operational-trust-root.ts';
 
 const RECOVERY_PUBLIC_KEY =
   'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJL6dVljsgm9EAbjCiOhA/tKsgApOhKmcB/NRewL1uns';

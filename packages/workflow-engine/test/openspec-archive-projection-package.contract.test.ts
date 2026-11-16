@@ -33,11 +33,11 @@ test('OpenSpec archive projection is public and the workflow verifier is an acti
   for (const file of [
     'packages/workflow-engine/src/application/archive/archive-transition.ts',
     'packages/workflow-engine/src/application/archive/archive-transformation.ts',
-    'packages/workflow-engine/src/entrypoints/ci/ci-archive.ts',
+    'packages/workflow-engine/src/runtime/repository-validation/commit-replay/ci-archive.ts',
   ]) {
     assert.match(
       readSource(file),
-      /runtime\/repository-transaction\/archive-delta-verifier\.ts/,
+      /repository-transaction\/archive-delta-verifier\.ts/,
       file,
     );
   }

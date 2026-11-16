@@ -10,17 +10,17 @@ import {
   parseTaskDiffReviewSubject,
   TASK_DIFF_REVIEW_POLICY_DIGEST,
 } from '../../modules/assurance/task-diff-review.ts';
-import { type TaskMandateBinding } from '../../modules/authority/task-mandate.ts';
+import { type TaskMandateBinding } from '../../modules/authority/task-mandate-contract.ts';
 import { isProviderRoleAssignment } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {
   assertTaskStrategyImplementationSubject,
   TASK_STRATEGY_IMPLEMENTATION_POLICY_DIGEST,
 } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
-  type InvestigationRuntimePaths,
   assertChangeId,
   assertInvestigationId,
-} from '../session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import { readEvidenceNode } from './evidence-node-store.ts';
 import {
   DIGEST_PATTERN,
@@ -29,7 +29,7 @@ import {
   isPlainRecord,
   refInvalid,
   sha256,
-} from './evidence-store-values.ts';
+} from '../journal-primitives/evidence-store-values.ts';
 
 export function resolveTaskDiffReviewInvocationOwner(
   paths: InvestigationRuntimePaths,

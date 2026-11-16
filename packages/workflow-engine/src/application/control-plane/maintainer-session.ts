@@ -1,31 +1,17 @@
-/**
- * Starts and tracks authority sessions bound to reserved grants and
- * candidates.
- *
- * Invariants:
- * - A reserved grant must match the repository, change, and starting
- *   commit.
- */
+import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
 import { createMaintainerSessionInspection } from './maintainer-session-inspection.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-
 import { deriveAuthorityAuditRepositoryId } from '../../runtime/storage-journal/authority-audit-ledger.ts';
-import type { AuthorityAuditServiceHooks } from '../../runtime/storage-journal/authority-audit-service.ts';
-import {
-  authorityRefusalDigest,
-  withAuthorityRefusalAudit,
-  type AuthorityRefusalAuditBinding,
-} from '../../modules/authority/authority-refusal-audit.ts';
+import { authorityRefusalDigest } from '../../modules/authority/authority-refusal-audit.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   pinCheckRunner,
   runCheck,
-  type CheckEvidence,
-  type PinnedCheckRunner,
 } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
-import type { CheckDefinition } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import type { CheckEvidence } from '../../foundation/check-evidence/check-evidence.ts';
+import type { CheckDefinition } from '../../modules/source/check-command.ts';
 import {
   assertDisposableDatabaseForRepository,
   createCheckEnvironmentForRepository,
@@ -49,19 +35,13 @@ import {
   commitFacts,
   previewExactStaging,
 } from '../../runtime/repository-transaction/git-transitions.ts';
-import {
-  acceptApplyPrestate,
-  assertCandidateV2ChecksFresh,
-  readDurableRefGenerationLedger,
-} from '../../modules/authority/maintainer-candidate.ts';
-import { currentCandidateDependencySnapshot } from './maintainer-candidate-dependencies.ts';
+import { acceptApplyPrestate } from '../../modules/authority/maintainer-candidate-ref-ledger.ts';
+import { assertCandidateV2ChecksFresh } from '../../modules/authority/maintainer-candidate-contracts.ts';
 import {
   canonicalMaintainerGrantV2Envelope,
   maintainerChecksEnvironmentDigest,
-  validateMaintainerGrantV2AuthorityBinding,
   type MaintainerGrantV2Envelope,
-} from '../../modules/authority/maintainer-grant-v2.ts';
-import { verifyPatchManifestAgainstWorktree } from '../../modules/authority/maintainer-manifest.ts';
+} from '../../modules/authority/maintainer-grant-v2-codec.ts';
 import {
   parseMaintainerPolicy,
   type MaintainerPolicy,
@@ -82,56 +62,37 @@ import {
 import {
   assertChangeId,
   assertSessionId,
-} from '../../runtime/session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import {
   createSessionId,
   runtimePaths,
   withRepositoryLifecycleOperation,
 } from '../../runtime/session-workspace/session-store.ts';
-import type { TaskMandateBinding } from '../../modules/authority/task-mandate.ts';
-import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
+import {
+  type AuthorityAuditServiceHooks,
+  type AuthorityRefusalAuditBinding,
+  type WithAuthorityRefusalAudit,
+} from '../../modules/authority/authority-audit-contract.ts';
+import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
+import type {
+  AuthorityPinnedCheck,
+  AuthoritySession,
+} from '../../modules/authority/authority-session-contract.ts';
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
+import { resolveBlobOid } from '../../runtime/repository-transaction/git-object-ids.ts';
+import {
+  readFileAtRevision,
+  readTagObject,
+} from '../../runtime/repository-transaction/git-command.ts';
 
-export type AuthorityPinnedCheck = {
-  checkId: string;
-  definition: CheckDefinition;
-  runner: PinnedCheckRunner;
-};
-
-export type AuthoritySession = {
-  schemaVersion: 1;
-  sessionId: string;
-  state: 'active' | 'failed' | 'aborted' | 'committed';
-  grantVersion: 2;
-  grantId: string;
-  changeId: string;
-  repositoryRoot: string;
-  gitCommonDirectory: string;
-  branch: string;
-  baseCommit: string;
-  baselineTree: string;
-  policyBlob: string;
-  policyDigest: string;
-  grantDigest: string;
-  signer: string;
-  contractDigest: string;
-  contractArtifacts: Record<string, string>;
-  allowedPaths: string[];
-  requiredChecks: string[];
-  pinnedChecks: AuthorityPinnedCheck[];
-  candidateCommit: string | null;
-  resultTree: string | null;
-  candidateBundleDigest: string | null;
-  mandateBinding: TaskMandateBinding | null;
-  expectedRefGeneration: number | null;
-  createdAt: string;
-  latestCheckReportId?: string;
-  failedAt?: string;
-  failureReason?: string;
-  abortedAt?: string;
-  abortReason?: string;
-  committedAt?: string;
-  commitHash?: string;
-};
+/**
+ * Starts and tracks authority sessions bound to reserved grants and
+ * candidates.
+ *
+ * Invariants:
+ * - A reserved grant must match the repository, change, and starting
+ *   commit.
+ */
 
 export type AuthoritySessionOptions = {
   now?: Date;
@@ -186,6 +147,10 @@ export function verifiedV2AuthorityLifecycleRefusalBinding(
 }
 
 export function startAuthoritySession(
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
+  grantServices: MaintainerGrantExecutionServices,
+  manifestOperations: MaintainerManifestOperations,
+  taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
   requestedChangeId: string,
   requestedGrantId: string,
@@ -230,6 +195,9 @@ export function startAuthoritySession(
       initial.head,
     );
     validateReservedGrantAuthorityBinding(
+      grantServices,
+      manifestOperations,
+      taskMandate,
       initial.repositoryRoot,
       envelope,
       policy,
@@ -275,7 +243,7 @@ export function startAuthoritySession(
               'A dirty v2 candidate requires the atomic approve-and-apply route.',
             );
           }
-          verifyPatchManifestAgainstWorktree(
+          manifestOperations.verifyPatchManifestAgainstWorktree(
             initial.repositoryRoot,
             envelope.payload.manifest,
           );
@@ -290,7 +258,7 @@ export function startAuthoritySession(
             : null;
           if (candidate) {
             acceptApplyPrestate(
-              readDurableRefGenerationLedger(
+              grantServices.readDurableRefGenerationLedger(
                 initial.gitCommonDirectory,
                 candidate.targetRef,
                 true,
@@ -321,10 +289,8 @@ export function startAuthoritySession(
           }
         }
         assertExactAuditTag(initial.repositoryRoot, envelope, policy);
-        const { git, contract } = loadStableValidatedChangeContract(
-          initial,
-          changeId,
-        );
+        const { git, contract } =
+          grantServices.loadStableValidatedChangeContract(initial, changeId);
         const expectedBranch = contract.config.branchTemplate.replace(
           '{changeId}',
           changeId,
@@ -411,6 +377,7 @@ export function startAuthoritySession(
             environmentDigest,
           );
           assertV2CandidateFresh(
+            grantServices,
             git.repositoryRoot,
             envelope,
             exactDate(options.now ?? new Date()),
@@ -443,7 +410,9 @@ export function startAuthoritySession(
           runtimePaths(initial.gitCommonDirectory, 'workflow-engine'),
           (assertOwned) => {
             assertPostApprovalAdmissionDeadline(options.postApprovalDeadline);
-            validateMaintainerGrantV2AuthorityBinding(
+            grantServices.validateMaintainerGrantV2AuthorityBinding(
+              manifestOperations,
+              taskMandate,
               initial.repositoryRoot,
               envelope,
               policy,
@@ -600,6 +569,9 @@ export function readAuthoritySession(
 }
 
 export function inspectActiveAuthoritySession(
+  grantServices: MaintainerGrantExecutionServices,
+  manifestOperations: MaintainerManifestOperations,
+  taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
   requestedSessionId: string,
   options: AuthoritySessionOptions = {},
@@ -611,7 +583,17 @@ export function inspectActiveAuthoritySession(
       `Authority session ${session.sessionId} is ${session.state}.`,
     );
   }
-  return { session, ...inspectAuthoritySession(cwd, session, options) };
+  return {
+    session,
+    ...inspectAuthoritySession(
+      grantServices,
+      manifestOperations,
+      taskMandate,
+      cwd,
+      session,
+      options,
+    ),
+  };
 }
 
 export function markAuthoritySessionCommitted(
@@ -645,15 +627,20 @@ export function markAuthoritySessionCommitted(
 }
 
 function validateReservedGrantAuthorityBinding(
+  grantServices: MaintainerGrantExecutionServices,
+  manifestOperations: MaintainerManifestOperations,
+  taskMandate: MaintainerTaskMandateOperations,
   repositoryRoot: string,
   envelope: MaintainerGrantV2Envelope,
   policy: MaintainerPolicy,
-  options: Parameters<typeof validateMaintainerGrantV2AuthorityBinding>[3],
+  options: import('../../modules/authority/maintainer-grant-v2.ts').MaintainerGrantV2ValidationOptions,
   gitCommonDirectory: string,
   grantId: string,
 ): void {
   if (options.assertLifecycleOwned) {
-    validateMaintainerGrantV2AuthorityBinding(
+    grantServices.validateMaintainerGrantV2AuthorityBinding(
+      manifestOperations,
+      taskMandate,
       repositoryRoot,
       envelope,
       policy,
@@ -664,7 +651,9 @@ function validateReservedGrantAuthorityBinding(
   withRepositoryLifecycleOperation(
     runtimePaths(gitCommonDirectory, 'workflow-engine'),
     (assertOwned) =>
-      validateMaintainerGrantV2AuthorityBinding(
+      grantServices.validateMaintainerGrantV2AuthorityBinding(
+        manifestOperations,
+        taskMandate,
         repositoryRoot,
         envelope,
         policy,
@@ -675,8 +664,9 @@ function validateReservedGrantAuthorityBinding(
 }
 
 function assertV2CandidateFresh(
+  grantServices: MaintainerGrantExecutionServices,
   repositoryRoot: string,
-  envelope: import('../../modules/authority/maintainer-grant-v2.ts').MaintainerGrantV2Envelope,
+  envelope: import('../../modules/authority/maintainer-grant-v2-codec.ts').MaintainerGrantV2Envelope,
   now: Date,
   environmentDigest: string,
   environment: NodeJS.ProcessEnv | undefined,
@@ -694,16 +684,18 @@ function assertV2CandidateFresh(
       ({ checkId }) => checkId,
     ),
     environmentDigest,
-    currentDependencySnapshot: currentCandidateDependencySnapshot({
-      cwd: repositoryRoot,
-      repositoryId: envelope.payload.repositoryId,
-      candidateTree: candidate.resultTree,
-      baseCommit: envelope.payload.baseCommit,
-      policyDigest: envelope.payload.policyDigest,
-      checks: candidate.checksAttestation.checks,
-      environment,
-      externalStateDigests,
-    }),
+    currentDependencySnapshot: grantServices.currentCandidateDependencySnapshot(
+      {
+        cwd: repositoryRoot,
+        repositoryId: envelope.payload.repositoryId,
+        candidateTree: candidate.resultTree,
+        baseCommit: envelope.payload.baseCommit,
+        policyDigest: envelope.payload.policyDigest,
+        checks: candidate.checksAttestation.checks,
+        environment,
+        externalStateDigests,
+      },
+    ),
   });
 }
 
@@ -765,15 +757,17 @@ function isSemanticAuthorityInvalidation(error: unknown): boolean {
 
 function loadBasePolicy(repositoryRoot: string, baseCommit: string) {
   try {
-    const policyContent = runGit(repositoryRoot, [
-      'show',
-      `${baseCommit}:workflow/maintainer-policy.json`,
-    ]);
+    const policyContent = readFileAtRevision(
+      repositoryRoot,
+      baseCommit,
+      'workflow/maintainer-policy.json',
+    );
     const policy = parseMaintainerPolicy(JSON.parse(policyContent));
-    const policyBlob = runGit(repositoryRoot, [
-      'rev-parse',
-      `${baseCommit}:workflow/maintainer-policy.json`,
-    ]).trim();
+    const policyBlob = resolveBlobOid(
+      repositoryRoot,
+      baseCommit,
+      'workflow/maintainer-policy.json',
+    );
     return { policy, policyContent, policyBlob };
   } catch (error) {
     if (isPostApprovalAdmissionFailure(error)) throw error;
@@ -791,7 +785,7 @@ function assertExactAuditTag(
 ): void {
   const tagRef = `${policy.auditTagPrefix}${envelope.payload.grantId}`;
   try {
-    const raw = runGit(repositoryRoot, ['cat-file', 'tag', tagRef]);
+    const raw = readTagObject(repositoryRoot, tagRef);
     const separator = raw.indexOf('\n\n');
     const headers = raw.slice(0, separator).split('\n');
     const object = headers.find((line) => line.startsWith('object '))?.slice(7);
@@ -898,11 +892,10 @@ function authorityError(
 export type MaintainerSessionInspectionBindings = {
   readAuthoritySession: typeof readAuthoritySession;
   authorityError: typeof authorityError;
-  withAuthorityRefusalAudit: typeof withAuthorityRefusalAudit;
   verifiedV2AuthorityLifecycleRefusalBinding: typeof verifiedV2AuthorityLifecycleRefusalBinding;
   authorityRefusalDigest: typeof authorityRefusalDigest;
   listChangedPaths: typeof listChangedPaths;
-  verifyPatchManifestAgainstWorktree: typeof verifyPatchManifestAgainstWorktree;
+
   assertDisposableDatabaseForRepository: typeof assertDisposableDatabaseForRepository;
   fingerprintWorkingState: typeof fingerprintWorkingState;
   runCheck: typeof runCheck;
@@ -919,7 +912,6 @@ export type MaintainerSessionInspectionBindings = {
   loadBasePolicy: typeof loadBasePolicy;
   validateReservedGrantAuthorityBinding: typeof validateReservedGrantAuthorityBinding;
   assertExactAuditTag: typeof assertExactAuditTag;
-  loadStableValidatedChangeContract: typeof loadStableValidatedChangeContract;
   sameRecord: typeof sameRecord;
   pinCheckRunner: typeof pinCheckRunner;
   sameStringArray: typeof sameStringArray;
@@ -944,11 +936,10 @@ const {
 } = createMaintainerSessionInspection(() => ({
   readAuthoritySession,
   authorityError,
-  withAuthorityRefusalAudit,
   verifiedV2AuthorityLifecycleRefusalBinding,
   authorityRefusalDigest,
   listChangedPaths,
-  verifyPatchManifestAgainstWorktree,
+
   assertDisposableDatabaseForRepository,
   fingerprintWorkingState,
   runCheck,
@@ -965,7 +956,6 @@ const {
   loadBasePolicy,
   validateReservedGrantAuthorityBinding,
   assertExactAuditTag,
-  loadStableValidatedChangeContract,
   sameRecord,
   pinCheckRunner,
   sameStringArray,
@@ -976,3 +966,8 @@ const {
   isPostApprovalAdmissionFailure,
 }));
 export { checkAuthoritySession };
+
+export type {
+  AuthorityPinnedCheck,
+  AuthoritySession,
+} from '../../modules/authority/authority-session-contract.ts';

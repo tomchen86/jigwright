@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
 
-import { validateClosedEvidenceDag } from '../src/adapters/planning/investigation/evidence-dag.ts';
+import { validateClosedEvidenceDag } from '../src/foundation/evidence-node/evidence-dag.ts';
 import {
   createEvidenceNode,
   type EvidenceNode,
   type EvidenceNodeInput,
-} from '../src/adapters/planning/investigation/evidence-node.ts';
+} from '../src/foundation/evidence-node/evidence-node.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
   evaluatePlanningAssurance,

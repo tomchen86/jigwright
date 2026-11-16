@@ -8,19 +8,17 @@ import { discoverRepository } from '../src/runtime/repository-transaction/git.ts
 import {
   expireInvestigationProviderLease,
   getInvestigationStatus,
-} from '../src/adapters/planning/investigation/investigation-session.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
-import {
-  claimProviderInvocation,
-  failProviderInvocation,
-  readProviderInvocation,
-  readProviderInvocationRequest,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/investigation-lifecycle/investigation-session.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
+import { startPropose } from '../src/composition-root/propose-production.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import { failProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-completion.ts';
+import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import { readProviderInvocationRequest } from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
 import {
   processProviderFailureRetry,
   readProviderAutomaticRetrySchedule,
-} from '../src/runtime/provider-execution/provider-retry-scheduler.ts';
+} from '../src/composition-root/provider-retry-production.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
 test('an expired provider lease schedules one freshly fenced replacement Attempt', () => {
@@ -166,7 +164,7 @@ function intent() {
     summary: 'Exercise automatic replacement after a provider lease expires.',
     sourceRefs: [],
     explicitPaths: [
-      'packages/workflow-engine/src/runtime/provider-execution/provider-retry-scheduler.ts',
+      'packages/workflow-engine/src/application/provider-retry/provider-failure-retry.ts',
     ],
     explicitSymbols: ['processProviderFailureRetry'],
     explicitConfigKeys: [],

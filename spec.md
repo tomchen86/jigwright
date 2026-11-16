@@ -68,21 +68,22 @@ test: packages/workflow-engine/test/public-contract-surface.test.ts#repository e
 - **WHEN** the tracked root `.spectra.yaml` is encountered
 - **THEN** repository guidance classifies it as historical-only and does not invoke or regenerate Spectra assets
 
-### Requirement: Registered Checks Are the Sole CI Command Authority
+### Requirement: Registered Checks Define Managed Verification
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
-External CI and local verification SHALL resolve a named check through the versioned workflow check registry and execute it through the repository-owned workflow runner. An adapter command or CI workflow MUST NOT maintain a second command, runner, or path-scope definition for that check.
+Managed check execution and evidence replay SHALL resolve a named check through the versioned workflow check registry and execute it through the repository-owned workflow runner. Ordinary repository CI MAY run source checks without managed-lifecycle preconditions; these checks MUST NOT manufacture managed observations or confer lifecycle authority. The local `format:check` entry point MAY invoke Prettier directly only while a repository contract enforces exact equality with the executable arguments and path scope of registered `workflow-format`.
 
 #### Scenario: GitHub runs the formatting check
-covers: #Requirement: Registered Checks Are the Sole CI Command Authority
-test: packages/workflow-engine/test/public-contract-surface.test.ts#format verification delegates to the registered canonical authority
+covers: #Requirement: Registered Checks Define Managed Verification
+test: packages/workflow-engine/test/public-contract-surface.test.ts#format verification preserves the registered canonical scope
 
 - **WHEN** the GitHub formatting job invokes its local verification entry point
-- **THEN** the workflow engine resolves `workflow-format` from `workflow/checks.json`
-- **THEN** the registered command and path scope are executed
+- **THEN** `format:check` executes the exact Prettier arguments and path scope registered for `workflow-format` in `workflow/checks.json`
+- **AND** the repository contract rejects any difference between the local entry point and that registered scope
+- **AND** the formatting result grants no managed-lifecycle authority
 
 #### Scenario: Task runs generated-asset validation
-covers: #Requirement: Registered Checks Are the Sole CI Command Authority
+covers: #Requirement: Registered Checks Define Managed Verification
 test: packages/workflow-engine/test/check-registry-package-boundaries.contract.test.ts#registered OpenSpec asset validation runs the read-only authority without an alternate formatter
 
 - **WHEN** a managed task or CI evidence set requires `openspec-assets`
@@ -90,7 +91,7 @@ test: packages/workflow-engine/test/check-registry-package-boundaries.contract.t
 - **THEN** the registered command is the only task-level OpenSpec asset validation command executed
 
 #### Scenario: Historical definition is replayed
-covers: #Requirement: Registered Checks Are the Sole CI Command Authority
+covers: #Requirement: Registered Checks Define Managed Verification
 test: packages/workflow-engine/test/ci.integration.test.ts#registered format and asset definitions activate in planning and replay from committed evidence
 
 - **WHEN** historical task evidence references `workflow-format` or `openspec-assets`
@@ -147,7 +148,7 @@ authority commit MUST be attested before the next pull request is evaluated.
 
 #### Scenario: Bootstrap path is retired
 covers: #Requirement: Registered format scope excludes archived bootstrap trees
-test: packages/workflow-engine/test/public-contract-surface.test.ts#format verification delegates to the registered canonical authority
+test: packages/workflow-engine/test/public-contract-surface.test.ts#format verification preserves the registered canonical scope
 
 - **WHEN** the maintainer authority commit removes the archived bootstrap
   planning tree from the registered command
@@ -168,7 +169,7 @@ The registered `workflow-format` check SHALL own workflow-engine sources and exp
 
 #### Scenario: Human-maintained workflow files are formatted
 covers: #Requirement: Formatting and Generated Asset Validation Have Disjoint Scope
-test: packages/workflow-engine/test/public-contract-surface.test.ts#format verification delegates to the registered canonical authority
+test: packages/workflow-engine/test/public-contract-surface.test.ts#format verification preserves the registered canonical scope
 
 - **WHEN** `workflow-format` executes after the authority transition
 - **THEN** it checks each declared human-maintained workflow policy and schema path

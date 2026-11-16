@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
+import { builtInProviderAdapters } from '../src/composition-root/built-in-provider-adapter-production.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { extractProviderRepairFailure } from '../src/runtime/provider-execution/provider-execution-governance.ts';
+import { extractProviderRepairFailure } from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import { createProviderRunnerForTesting } from '../src/runtime/provider-execution/provider-runner.ts';
 import { sourceRepositoryRoot } from './fixture.ts';
 import {
@@ -41,12 +42,12 @@ test('runner enforces native output, aggregate limit, and executable identity', 
     try {
       assert.throws(
         () =>
-          createProviderRunnerForTesting(claudeRunnerHost(execute)).run(
-            fixture.input,
-            {
-              platform: 'darwin',
-            },
-          ),
+          createProviderRunnerForTesting(
+            builtInProviderAdapters,
+            claudeRunnerHost(execute),
+          ).run(fixture.input, {
+            platform: 'darwin',
+          }),
         (error) => isWorkflowError(error, code),
         name,
       );
@@ -63,6 +64,7 @@ test('malformed native output yields bounded redacted repair feedback', () => {
     assert.throws(
       () =>
         createProviderRunnerForTesting(
+          builtInProviderAdapters,
           claudeRunnerHost(() => successfulProbe(malformed)),
         ).run(fixture.input, { platform: 'darwin' }),
       (error) => {
@@ -100,6 +102,7 @@ test('missing Codex semantic payload yields the same bounded repair contract', (
     assert.throws(
       () =>
         createProviderRunnerForTesting(
+          builtInProviderAdapters,
           codexRunnerHost(() => successfulProbe('{"type":"turn.completed"}\n')),
         ).run(fixture.input, { platform: 'darwin' }),
       (error) => {
@@ -129,6 +132,7 @@ test('real runner returns bounded structured schema feedback for a repair Attemp
     assert.throws(
       () =>
         createProviderRunnerForTesting(
+          builtInProviderAdapters,
           claudeRunnerHost(() =>
             successfulProbe(
               JSON.stringify({
@@ -178,6 +182,7 @@ test('real runner distinguishes semantic feedback after structural validation pa
     assert.throws(
       () =>
         createProviderRunnerForTesting(
+          builtInProviderAdapters,
           claudeRunnerHost(() =>
             successfulProbe(
               JSON.stringify({
@@ -227,6 +232,7 @@ test('Codex semantic output file and normalized output count toward the aggregat
     assert.throws(
       () =>
         createProviderRunnerForTesting(
+          builtInProviderAdapters,
           codexRunnerHost((input) => {
             const outputIndex = input.args.indexOf('--output-last-message');
             assert.ok(outputIndex >= 0);
@@ -261,6 +267,7 @@ test('provider concurrency is bounded repository-wide and slots release in final
   let thirdLaunches = 0;
   try {
     const thirdRunner = createProviderRunnerForTesting(
+      builtInProviderAdapters,
       claudeRunnerHost(() => {
         thirdLaunches += 1;
         return successfulProbe(
@@ -273,6 +280,7 @@ test('provider concurrency is bounded repository-wide and slots release in final
       }),
     );
     const secondRunner = createProviderRunnerForTesting(
+      builtInProviderAdapters,
       claudeRunnerHost(() => {
         assert.throws(
           () => thirdRunner.run(third, { platform: 'darwin' }),
@@ -288,6 +296,7 @@ test('provider concurrency is bounded repository-wide and slots release in final
       }),
     );
     const outerRunner = createProviderRunnerForTesting(
+      builtInProviderAdapters,
       claudeRunnerHost(() => {
         const nested = secondRunner.run(second, { platform: 'darwin' });
         assert.equal(nested.assurance, 'unchanged-governed-projection');
@@ -319,6 +328,7 @@ test('provider concurrency reclaims dead owners and honors a lowered limit', () 
     writeProviderSlot(reclaimable.repository, 0, 999_999_991);
     writeProviderSlot(reclaimable.repository, 1, 999_999_992);
     const report = createProviderRunnerForTesting(
+      builtInProviderAdapters,
       claudeRunnerHost(() =>
         successfulProbe(
           JSON.stringify({
@@ -340,6 +350,7 @@ test('provider concurrency reclaims dead owners and honors a lowered limit', () 
     assert.throws(
       () =>
         createProviderRunnerForTesting(
+          builtInProviderAdapters,
           claudeRunnerHost(() => successfulProbe('')),
         ).run(lowered.input, { platform: 'darwin' }),
       (error) => isWorkflowError(error, 'PROVIDER_CONCURRENCY_LIMIT'),

@@ -6,19 +6,17 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../src/modules/authority/collaboration-grant-codec.ts';
 import {
-  COLLABORATION_GRANT_AUTHORIZED_EFFECT,
   COLLABORATION_GRANT_REPLAY_SCOPE,
   COLLABORATION_GRANT_RESIDUALS,
   COLLABORATION_GRANT_RETAINED_OBLIGATIONS,
   COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
-} from '../src/modules/authority/collaboration-grant.ts';
-import type { InvestigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+} from '../src/modules/authority/collaboration-grant-codec.ts';
+import type { InvestigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import {
-  admitRoleResult,
-  scheduleOrdinaryRole,
-} from '../src/modules/provider-orchestration/role-scheduler.ts';
+import { admitRoleResult } from '../src/composition-root/role-admission-production.ts';
+import { scheduleOrdinaryRole } from '../src/modules/provider-orchestration/role-assignment.ts';
 import {
   createTaskStrategyPatchCurrentBinding,
   createTaskStrategyPatchImportReceipt,
@@ -34,8 +32,8 @@ import {
   TASK_STRATEGY_IMPLEMENTATION_POLICY_DIGEST,
   createTaskStrategyImplementationManifest,
   createTaskStrategyImplementationSubject,
-  type TaskStrategyImplementationSubject,
 } from '../src/modules/provider-orchestration/task-strategy-provider-contract.ts';
+import type { TaskStrategyImplementationSubject } from '../src/modules/provider-orchestration/task-strategy-implementation-manifest.ts';
 import {
   createTaskStrategyCallerImplementationBinding,
   createTaskStrategyCallerImplementationReservation,
@@ -1028,3 +1026,242 @@ function hasCode(expected: string): (error: unknown) => boolean {
     'code' in error &&
     (error as Error & { code: string }).code === expected;
 }
+
+// Keep the old entrypoint and canonical type names usable by durable consumers.
+import {
+  prepareTaskStrategyPatchRecord as durablePrepare,
+  persistTaskStrategyPatchRecord,
+} from '../src/runtime/storage-journal/task-strategy-patch-store.ts';
+import type {
+  TaskStrategyPatchEntry as DurableEntry,
+  TaskStrategyPatchRecord as DurableRecord,
+  CurrentTaskStrategyPatchHead as DurableHead,
+  TaskStrategyCorrectionProjection as DurableProjection,
+} from '../src/runtime/storage-journal/task-strategy-patch-store.ts';
+import type {
+  TaskStrategyPatchEntry as CanonicalEntry,
+  TaskStrategyPatchRecord as CanonicalRecord,
+} from '../src/modules/assurance/task-strategy-evidence.ts';
+import {
+  prepareTaskStrategyPatchRecord as purePrepare,
+  parsePatchRecord,
+  parseReservation,
+  parseImportReceipt,
+  parseCurrentBinding,
+} from '../src/modules/assurance/task-strategy-patch-record.ts';
+
+test('durable prepare is the canonical function and preserves former type entrypoints', () => {
+  assert.equal(durablePrepare, purePrepare);
+  const entry: DurableEntry = { mode: '100644', objectId: 'a'.repeat(40) };
+  const canonical: CanonicalEntry = entry;
+  assert.equal(canonical, entry);
+  const identities = (
+    record: DurableRecord,
+    head: DurableHead,
+    projection: DurableProjection,
+  ): CanonicalRecord => {
+    assert.equal(head.record, record);
+    assert.equal(projection.head, head);
+    return record;
+  };
+  assert.equal(typeof identities, 'function');
+});
+
+test('all durable patch publishers replay immutable canonical bytes and reread actual persisted records', () => {
+  const f = createRuntimeFixture();
+  try {
+    const bytes = Buffer.from('durable patch');
+    const record = purePrepare({
+      sessionId: SESSION_ID,
+      changeId: 'demo-change',
+      taskId: '1.1',
+      strategy: 'tdd-single-agent',
+      sourceTree: SOURCE_A,
+      candidateTree: SOURCE_B,
+      taskContractDigest: digest('task'),
+      patchDigest: digestBytes(bytes),
+      patchBase64: bytes.toString('base64'),
+      changedPaths: ['src/feature.ts'],
+      changes: [
+        {
+          path: 'src/feature.ts',
+          before: null,
+          after: { mode: '100644', objectId: '4'.repeat(40) },
+        },
+      ],
+      implementer: { providerId: 'codex', assurance: 'runtime-hint' },
+      createdAt: '2026-10-02T00:00:00.000Z',
+    });
+    const persisted = persistTaskStrategyPatchRecord(f.paths, record);
+    assert.notEqual(persisted, record);
+    assert.deepEqual(persisted, record);
+    const reserve = {
+      sessionId: SESSION_ID,
+      sourceTree: SOURCE_A,
+      candidateTree: SOURCE_B,
+      patchDigest: record.patchDigest,
+      recordDigest: record.recordDigest,
+      createdAt: record.createdAt,
+    };
+    const reservation = createTaskStrategyPatchReservation(f.paths, reserve);
+    const receiptInput = {
+      sessionId: SESSION_ID,
+      patchDigest: record.patchDigest,
+      recordDigest: record.recordDigest,
+      candidateTree: SOURCE_B,
+      importedAt: '2026-10-02T00:01:00.000Z',
+    };
+    const receipt = createTaskStrategyPatchImportReceipt(
+      f.paths,
+      receiptInput,
+      SOURCE_A,
+    );
+    const bindingInput = {
+      sessionId: SESSION_ID,
+      patchDigest: record.patchDigest,
+      recordDigest: record.recordDigest,
+      receiptDigest: receipt.receiptDigest,
+      candidateTree: SOURCE_B,
+      createdAt: receipt.importedAt,
+    };
+    const binding = createTaskStrategyPatchCurrentBinding(
+      f.paths,
+      bindingInput,
+      SOURCE_A,
+    );
+    const directory = path.join(
+      f.paths.refs,
+      'task-strategy-patches',
+      SESSION_ID,
+      'sources',
+      SOURCE_A,
+    );
+    const before = fs
+      .readdirSync(directory)
+      .sort()
+      .map((name) => ({
+        name,
+        bytes: fs.readFileSync(path.join(directory, name)),
+        ino: fs.statSync(path.join(directory, name)).ino,
+        mtime: fs.statSync(path.join(directory, name)).mtimeMs,
+      }));
+    assert.deepEqual(persistTaskStrategyPatchRecord(f.paths, record), record);
+    assert.deepEqual(
+      createTaskStrategyPatchReservation(f.paths, reserve),
+      reservation,
+    );
+    assert.deepEqual(
+      createTaskStrategyPatchImportReceipt(f.paths, receiptInput, SOURCE_A),
+      receipt,
+    );
+    assert.deepEqual(
+      createTaskStrategyPatchCurrentBinding(f.paths, bindingInput, SOURCE_A),
+      binding,
+    );
+    assert.deepEqual(
+      fs
+        .readdirSync(directory)
+        .sort()
+        .map((name) => ({
+          name,
+          bytes: fs.readFileSync(path.join(directory, name)),
+          ino: fs.statSync(path.join(directory, name)).ino,
+          mtime: fs.statSync(path.join(directory, name)).mtimeMs,
+        })),
+      before,
+    );
+    const decoded = before.map(({ bytes }) =>
+      JSON.parse(bytes.toString('utf8')),
+    );
+    for (const [value, parse] of [
+      [record, parsePatchRecord],
+      [reservation, parseReservation],
+      [receipt, parseImportReceipt],
+      [binding, parseCurrentBinding],
+    ] as const) {
+      const wire = decoded.find((v) => v.kind === value.kind);
+      assert.ok(wire);
+      assert.deepEqual(parse(wire), value);
+    }
+    const {
+      schemaVersion: _schema,
+      kind: _kind,
+      recordDigest: _digest,
+      ...recordInput
+    } = record;
+    assert.throws(
+      () =>
+        persistTaskStrategyPatchRecord(
+          f.paths,
+          purePrepare({ ...recordInput, createdAt: '2026-10-03' }),
+        ),
+      { code: 'TASK_STRATEGY_PATCH_RECORD_CONFLICT' },
+    );
+    assert.throws(
+      () =>
+        createTaskStrategyPatchReservation(f.paths, {
+          ...reserve,
+          createdAt: '2026-10-03',
+        }),
+      { code: 'TASK_STRATEGY_PATCH_RESERVATION_CONFLICT' },
+    );
+    assert.throws(
+      () =>
+        createTaskStrategyPatchImportReceipt(
+          f.paths,
+          { ...receiptInput, importedAt: '2026-10-03' },
+          SOURCE_A,
+        ),
+      { code: 'TASK_STRATEGY_PATCH_RECEIPT_CONFLICT' },
+    );
+    assert.throws(
+      () =>
+        createTaskStrategyPatchCurrentBinding(
+          f.paths,
+          { ...bindingInput, createdAt: '2026-10-03' },
+          SOURCE_A,
+        ),
+      { code: 'TASK_STRATEGY_PATCH_CURRENT_CONFLICT' },
+    );
+    for (const delta of [
+      { recordDigest: digest('other') },
+      { candidateTree: SOURCE_UNKNOWN },
+    ]) {
+      assert.throws(
+        () =>
+          createTaskStrategyPatchImportReceipt(
+            f.paths,
+            { ...receiptInput, ...delta },
+            SOURCE_A,
+          ),
+        { code: 'TASK_STRATEGY_PATCH_STATE_CORRUPT' },
+      );
+      assert.throws(
+        () =>
+          createTaskStrategyPatchCurrentBinding(
+            f.paths,
+            { ...bindingInput, ...delta },
+            SOURCE_A,
+          ),
+        { code: 'TASK_STRATEGY_PATCH_STATE_CORRUPT' },
+      );
+    }
+    fs.rmSync(path.join(directory, record.patchDigest + '.json'));
+    assert.throws(
+      () =>
+        readTaskStrategyPatchImportReceipt(
+          f.paths,
+          SESSION_ID,
+          record.patchDigest,
+          SOURCE_A,
+        ),
+      { code: 'TASK_STRATEGY_PATCH_STATE_CORRUPT' },
+    );
+    assert.throws(
+      () => readTaskStrategyPatchCurrentBinding(f.paths, SESSION_ID, SOURCE_A),
+      { code: 'TASK_STRATEGY_PATCH_STATE_CORRUPT' },
+    );
+  } finally {
+    fs.rmSync(f.base, { recursive: true, force: true });
+  }
+});

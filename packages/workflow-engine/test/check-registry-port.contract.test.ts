@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import * as checkRegistryAdapter from '../src/adapters/consumer/repository/work-registry/check-registry-adapter.ts';
-import { resolveRequiredCiChecks } from '../src/entrypoints/ci/ci-checks.ts';
+import { resolveRequiredCiChecks } from '../src/modules/assurance/required-checks.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { fixtureCheckRegistryPort } from '../../fixture-adapter/src/fixture-check-registry.ts';
 

@@ -10,15 +10,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import type { CheckEvidence } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
+import type { CheckEvidence } from '../../foundation/check-evidence/check-evidence.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { ensurePlainDirectory } from '../repository-transaction/filesystem-safety.ts';
 import type {
   MaintainerChecksAttestationV2,
   MaintainerPreapprovalCheck,
-} from '../../modules/authority/maintainer-grant-v2.ts';
-import type { CheckDependency } from '../../modules/authority/maintainer-manifest.ts';
+} from '../../modules/authority/maintainer-grant-v2-codec.ts';
+import type { CheckDependency } from '../../modules/authority/maintainer-manifest-contracts.ts';
 import { writeJsonAtomic } from '../session-workspace/session-store.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;

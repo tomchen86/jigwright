@@ -7,13 +7,11 @@ import test from 'node:test';
 import {
   appendAuthorityAuditRecord,
   deriveAuthorityAuditRepositoryId,
-  type AuthorityAuditLedgerScope,
 } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import {
   recordAuthorityAuditEvent,
   showAuthorityAuditTask,
   verifyAuthorityAuditEvents,
-  type AuthorityAuditEventInput,
 } from '../src/runtime/storage-journal/authority-audit-service.ts';
 import { isWorkflowError } from './fixture.ts';
 
@@ -231,3 +229,8 @@ test('strict bounded schema rejects secrets-by-extension and inconsistent failur
     value.cleanup();
   }
 });
+
+import {
+  type AuthorityAuditLedgerScope,
+  type AuthorityAuditEventInput,
+} from '../src/modules/authority/authority-audit-contract.ts';

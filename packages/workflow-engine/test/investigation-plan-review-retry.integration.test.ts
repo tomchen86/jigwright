@@ -6,7 +6,7 @@ import test from 'node:test';
 import {
   previewExecutionJobRetry,
   requestExecutionJobRetry,
-} from '../src/application/control-plane/execution-job-retry.ts';
+} from '../src/composition-root/execution-retry-production.ts';
 import { projectProviderInvocationExecution } from '../src/modules/provider-orchestration/execution-core.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
@@ -15,25 +15,25 @@ import {
   readInvestigationEvidenceRefsClosure,
   writeEvidenceNode,
 } from '../src/runtime/storage-journal/evidence-object-store.ts';
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
+import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import {
   createPlanReviewRetryEnvelope,
   getProposeStatus,
   resumePropose,
-} from '../src/application/propose/propose-orchestrator.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+} from '../src/composition-root/propose-production.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   createProviderInvocationRequest,
   type ProviderInvocationRequest,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import { failProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-completion.ts';
 import {
-  claimProviderInvocation,
-  failProviderInvocation,
   readPlanReviewSnapshotRuntime,
-  readProviderInvocation,
   readProviderInvocationRequest,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-artifacts.ts';
+import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-state.ts';
 import { isWorkflowError } from './fixture.ts';
 import { setFixtureProviderTimeout } from './investigation-session-fixture.ts';
 import { createMaterializedProposeFixture } from './investigation-propose-flow-fixture.ts';

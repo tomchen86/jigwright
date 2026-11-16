@@ -1,11 +1,23 @@
+import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionPlanningArchiveSourcePolicy } from '../src/composition-root/planning-archive-projection-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { preparePostMergeArchivePullRequest } from '../src/composition-root/archive-cli-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import test from 'node:test';
 import {
   discoverArchivePullRequestCandidate,
   discoverArchivePullRequestCandidates,
   openArchivePullRequest,
   projectArchivePullRequestCandidate,
-  preparePostMergeArchivePullRequest,
-  publishPostMergeArchivePullRequest,
   projectArchivePullRequestPublication,
   type ExactArchiveBranchPublisherPortV1,
 } from '../src/application/archive/archive-pr-orchestration.ts';
@@ -26,7 +38,7 @@ import {
   syncOriginMain,
 } from './fixture.ts';
 import path from 'node:path';
-import { createArchivePullRequestCliDispatcherForTesting } from '../src/cli.ts';
+import { createArchivePullRequestCliDispatcherForTesting } from '../bootstrap/workflow-engine-host.ts';
 import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -34,24 +46,19 @@ import {
   authenticateCompletedArchivePullRequestGrant,
   archivePullRequestGrantTransitionDefinitions,
   createArchivePullRequestGrantRequest,
-} from '../src/modules/authority/archive-pr-grant.ts';
+} from '../src/composition-root/archive-pr-grant-production.ts';
 import {
   grantStorePaths,
-  persistGrantChallenge,
-  prepareGrantTransition,
-  recordGrantTransitionOutcome,
-} from '../src/runtime/storage-journal/grant-store.ts';
+  createFileGrantRecordStore,
+} from '../src/runtime/lifecycle-ledgers/grant-store.ts';
 import {
-  createArchivePublicationPreparation,
   persistArchivePublicationPreparation,
   readArchivePublicationPreparation,
 } from '../src/runtime/storage-journal/archive-publication-store.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
-import {
-  finalizeTask,
-  commitSession,
-} from '../src/application/finalize/lifecycle.ts';
+import { commitSession } from '../src/runtime/finalization/commit.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
@@ -72,10 +79,12 @@ test('discovers one read-only current-v3 independently reviewed archive candidat
   try {
     const before = repositoryProjection(repository);
     const candidate = discoverArchivePullRequestCandidate(
+      loadStableValidatedChangeContract,
       repository,
       'demo-change',
     );
     const inventory = discoverArchivePullRequestCandidates(
+      loadStableValidatedChangeContract,
       repository,
       'origin/main',
     );
@@ -102,7 +111,11 @@ test('opens the same completed Grant-bound fake archive PR publication twice wit
   try {
     const remote = createFakeArchivePullRequestRemote();
     const publication = fakeArchivePullRequestPublication(
-      discoverArchivePullRequestCandidate(repository, 'demo-change'),
+      discoverArchivePullRequestCandidate(
+        loadStableValidatedChangeContract,
+        repository,
+        'demo-change',
+      ),
     );
     const first = openArchivePullRequest(publication, remote);
     const second = openArchivePullRequest(publication, remote);
@@ -713,7 +726,12 @@ test('candidate discovery fails closed when local protected base differs from re
     git(repository, ['add', 'remote-drift.txt']);
     git(repository, ['commit', '-m', 'Advance local protected base']);
     assert.throws(
-      () => discoverArchivePullRequestCandidate(repository, 'demo-change'),
+      () =>
+        discoverArchivePullRequestCandidate(
+          loadStableValidatedChangeContract,
+          repository,
+          'demo-change',
+        ),
       (error) => isWorkflowError(error, 'ARCHIVE_PR_REMOTE_BASE_MISMATCH'),
     );
   } finally {
@@ -896,9 +914,6 @@ test('prepares, publishes, and recovers one exact archive PR identity', async ()
     assert.throws(
       () =>
         authenticateCompletedArchivePullRequestGrant(
-          grantStorePaths(
-            loadInvestigationRuntimeContext(repository).lifecycleRuntime.root,
-          ),
           loadInvestigationRuntimeContext(repository).lifecycleRuntime.root,
           staleGrantChallengeId,
           first.preparation.preparationIdentity,
@@ -931,7 +946,6 @@ test('prepares, publishes, and recovers one exact archive PR identity', async ()
     assert.throws(
       () =>
         authenticateCompletedArchivePullRequestGrant(
-          grantStorePaths(runtimeRoot),
           runtimeRoot,
           grantChallengeId,
           replayPreparation.preparationIdentity,
@@ -1091,7 +1105,10 @@ test('archive preparation status replays exact local Git truth without a worktre
       process.execPath,
       [
         '--experimental-strip-types',
-        path.resolve(import.meta.dirname, '../src/cli.ts'),
+        path.resolve(
+          import.meta.dirname,
+          '../bootstrap/workflow-engine-host.ts',
+        ),
         'archive-pr',
         'status',
         local.preparation.preparationIdentity,
@@ -1192,7 +1209,10 @@ test('archive preparation status replays exact local Git truth without a worktre
       process.execPath,
       [
         '--experimental-strip-types',
-        path.resolve(import.meta.dirname, '../src/cli.ts'),
+        path.resolve(
+          import.meta.dirname,
+          '../bootstrap/workflow-engine-host.ts',
+        ),
         'archive-pr',
         'status',
         local.preparation.preparationIdentity,
@@ -1419,7 +1439,12 @@ function completedFixture(): string {
   prepareCurrentV3IntroductionFixture(repository, 'demo-change');
   writeReadyV3ExemptChange(repository);
   commitPlanningTransition(repository, 'demo-change');
-  const session = startSession(repository, 'demo-change', '1.1');
+  const session = startSession(
+    productionChangeContract,
+    repository,
+    'demo-change',
+    '1.1',
+  );
   fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
   assert.throws(
     () => finalizeTask(repository, session.sessionId),
@@ -1428,6 +1453,7 @@ function completedFixture(): string {
   satisfyCurrentTaskDiffReview(repository, session.sessionId);
   finalizeTask(repository, session.sessionId);
   const completed = commitSession(
+    productionChangeContract,
     repository,
     session.sessionId,
     'Complete archive PR fixture task',
@@ -1516,7 +1542,7 @@ function completePublicationGrant(
       expiresAt: new Date(now.getTime() + 10 * 60_000).toISOString(),
     },
   );
-  persistGrantChallenge(paths, challenge);
+  createFileGrantRecordStore(paths).persistGrantChallenge(challenge);
   const subject = createApprovalSubject(
     challenge,
     {
@@ -1529,7 +1555,7 @@ function completePublicationGrant(
     { now },
   );
   const operationId = '77777777-7777-4777-8777-777777777777';
-  prepareGrantTransition(paths, {
+  createFileGrantRecordStore(paths).prepareGrantTransition({
     operationId,
     challenge,
     subject,
@@ -1545,7 +1571,7 @@ function completePublicationGrant(
     ],
     createdAt: now.toISOString(),
   });
-  recordGrantTransitionOutcome(paths, {
+  createFileGrantRecordStore(paths).recordGrantTransitionOutcome({
     challengeId: challenge.challengeId,
     operationId,
     poststateDigest: challenge.stateBinding.digest,
@@ -1932,3 +1958,553 @@ function snapshotDirectory(root: string): readonly unknown[] {
   visit(root, '.');
   return entries;
 }
+
+import { publishPostMergeArchivePullRequest } from '../src/composition-root/archive-cli-production.ts';
+import { createArchivePublicationPreparation } from '../src/modules/authority/archive-publication-preparation.ts';
+
+import os from 'node:os';
+import {
+  assertArchivePublicationPreparation,
+  type ArchivePublicationPreparationV1,
+} from '../src/modules/authority/archive-publication-preparation.ts';
+import {
+  createArchivePullRequestGrantRequest as buildArchiveGrantRequest,
+  type ArchivePullRequestGrantParametersV1,
+  type ArchivePullRequestPublicationTargetV1,
+} from '../src/modules/authority/archive-pr-grant.ts';
+import {
+  createArchivePullRequestGrantRequest as requestArchiveGrantWithReader,
+  archivePullRequestGrantTransitionDefinitions as archiveTransitionsWithReader,
+  authenticateCompletedArchivePullRequestGrant as authenticateArchiveGrantWithReaders,
+} from '../src/application/archive/archive-pr-grant.ts';
+import { createMemoryGrantRecordStore } from './support/memory-grant-record-store.ts';
+import type { GrantRecordStore } from '../src/modules/authority/grant-record-store.ts';
+import type { GrantRecord } from '../src/modules/authority/grant-records.ts';
+import { approvalSubjectDigest } from '../src/modules/authority/grant-core.ts';
+
+function archivePreparationInput() {
+  return {
+    repositoryId: 'fixture',
+    changeId: 'archive-fixture',
+    candidateIdentity: '7'.repeat(64),
+    protectedBase: {
+      branch: 'main',
+      remoteName: 'origin' as const,
+      trackingRef: 'refs/remotes/origin/main',
+      commit: '1'.repeat(40),
+      tree: '2'.repeat(40),
+    },
+    archive: {
+      branch: 'work/archive-archive-fixture',
+      headCommit: '3'.repeat(40),
+      reportId: '4'.repeat(64),
+    },
+    assurance: {
+      reportIdentity: '8'.repeat(64),
+      baseCommit: '1'.repeat(40),
+      headCommit: '3'.repeat(40),
+    },
+  };
+}
+
+function archiveMemoryTarget(): ArchivePullRequestPublicationTargetV1 {
+  return {
+    schemaVersion: 1,
+    kind: 'archive-pr-publication-target.v1',
+    repositoryId: 'github:fixture',
+    canonicalOrigin: 'https://github.com/example/repo.git',
+    remoteName: 'origin',
+    apiBaseUrl: 'https://api.github.com',
+    owner: 'example',
+    repository: 'repo',
+    adapterConfigDigest: digest('config'),
+  };
+}
+
+function canonicalArchiveGrantFixture(
+  now = new Date('2026-09-12T00:00:00.000Z'),
+  store: GrantRecordStore = createMemoryGrantRecordStore().store,
+) {
+  const preparation = createArchivePublicationPreparation(
+    archivePreparationInput(),
+  );
+  const target = archiveMemoryTarget();
+  const request = buildArchiveGrantRequest(
+    preparation,
+    target,
+    'Publish reviewed archive.',
+  );
+  const definitions = archiveTransitionsWithReader(() => preparation);
+  const challenge = createGrantChallenge(
+    request,
+    createTransitionRegistry(definitions),
+    {
+      challengeId: '00000000-0000-4000-8000-000000000001',
+      now,
+      expiresAt: new Date(now.getTime() + 600_000).toISOString(),
+    },
+  );
+  store.persistGrantChallenge(challenge);
+  const subject = createApprovalSubject(
+    challenge,
+    {
+      choiceId: challenge.choices[0]!.choiceId,
+      approvalMethod: 'human-presence',
+      reasonCode: 'publish-reviewed-archive',
+      reason: 'Publish exact archive.',
+      sessionNonce: 'nonce-33333333333333333333333333333333',
+    },
+    { now },
+  );
+  const operationId = '77777777-7777-4777-8777-777777777777';
+  store.prepareGrantTransition({
+    operationId,
+    challenge,
+    subject,
+    proofModules: [
+      {
+        moduleId: 'human-gate-macos',
+        version: '1',
+        claim: 'fresh-local-device-owner',
+        proofDigest: digest('proof'),
+        identity: null,
+        portableEvidence: null,
+      },
+    ],
+    createdAt: now.toISOString(),
+  });
+  const terminal = store.recordGrantTransitionOutcome({
+    challengeId: challenge.challengeId,
+    operationId,
+    poststateDigest: challenge.stateBinding.digest,
+    outcome: {
+      outcome: 'completed',
+      details: {
+        schemaVersion: 1,
+        kind: 'archive-pr-publication-authorized.v1',
+        preparationIdentity: preparation.preparationIdentity,
+        publicationTargetDigest: digest(canonicalJson(target)),
+        remoteEffectApplied: false,
+      },
+    },
+    completedAt: now.toISOString(),
+    audit: {
+      approvalMethod: 'human-presence',
+      authorityClass: 'local-device-owner',
+      identity: null,
+      identityAssurance: 'not-asserted',
+      presenceAssurance: 'fresh-os-authentication',
+      proofModules: ['human-gate-macos@1'],
+    },
+  });
+  const context = {
+    parameters: definitions[0]!.validateParameters(
+      challenge.choices[0]!.parameters,
+    ),
+    approvalSubject: subject,
+    approvalSubjectDigest: approvalSubjectDigest(subject),
+    challengeId: challenge.challengeId,
+    operationId,
+    recovered: false,
+    assertLifecycleOwned() {},
+  };
+  return {
+    now,
+    preparation,
+    target,
+    request,
+    challenge,
+    terminal,
+    store,
+    context,
+  };
+}
+
+// Intentional invalid reader outputs test the rule; the canonical stores do not produce them.
+function changedArchiveRecord(
+  record: GrantRecord,
+  field: string,
+  value: unknown,
+): GrantRecord {
+  const clone = JSON.parse(canonicalJson(record)) as Record<string, unknown>;
+  const parts = field.split('.');
+  let owner = clone;
+  for (const key of parts.slice(0, -1))
+    owner = owner[key] as Record<string, unknown>;
+  owner[parts.at(-1)!] = value;
+  return clone as unknown as GrantRecord;
+}
+
+function assertArchivePreparationReadonly(
+  value: ArchivePublicationPreparationV1,
+) {
+  if (false) {
+    // @ts-expect-error canonical preparation fields stay readonly
+    value.changeId = 'changed';
+    // @ts-expect-error the complete protected-base object stays readonly
+    value.protectedBase = value.protectedBase;
+    // @ts-expect-error nested protected-base values stay readonly
+    value.protectedBase.commit = 'changed';
+    // @ts-expect-error nested archive values stay readonly
+    value.archive.headCommit = 'changed';
+    // @ts-expect-error nested assurance values stay readonly
+    value.assurance.headCommit = 'changed';
+    // @ts-expect-error the canonical remote literal stays exact
+    const remote: 'upstream' = value.protectedBase.remoteName;
+    void remote;
+  }
+}
+
+test('archive grant boundary: canonical preparation and request preserve exact vectors and reference boundaries', () => {
+  const input = archivePreparationInput();
+  const preparation = createArchivePublicationPreparation(input);
+  assertArchivePreparationReadonly(preparation);
+  assert.equal(
+    preparation.preparationIdentity,
+    'sha256:3c499dffe3f1a7eae65f6dce826f969240d85342276ba1904c3586fa331dca63',
+  );
+  assert.ok(Object.isFrozen(preparation));
+  for (const name of ['protectedBase', 'archive', 'assurance'] as const) {
+    assert.notEqual(preparation[name], input[name]);
+    assert.equal(Object.isFrozen(preparation[name]), false);
+  }
+  assert.deepEqual(
+    assertArchivePublicationPreparation(preparation),
+    preparation,
+  );
+  assert.throws(
+    () => assertArchivePublicationPreparation({ ...preparation, extra: true }),
+    (error) => isWorkflowError(error, 'ARCHIVE_PR_PREPARATION_INVALID'),
+  );
+  const target = archiveMemoryTarget();
+  let reads = 0;
+  const request = requestArchiveGrantWithReader(
+    (id) => {
+      reads += 1;
+      assert.equal(id, preparation.preparationIdentity);
+      return preparation;
+    },
+    preparation.preparationIdentity,
+    target,
+    'exact reason',
+  );
+  assert.equal(reads, 1);
+  assert.ok(
+    request.facts !== null &&
+      typeof request.facts === 'object' &&
+      'publicationTarget' in request.facts,
+  );
+  assert.equal(request.facts.publicationTarget, target);
+  const parameters = request.candidates[0]!
+    .parameters as ArchivePullRequestGrantParametersV1;
+  assert.notEqual(parameters.publicationTarget, target);
+  assert.deepEqual(parameters.publicationTarget, target);
+  assert.equal(
+    digest(canonicalJson(request)),
+    'sha256:a2d3d020a916d84506af8b6e1003ad5859e2d99142f3ed0aecb3a1ae87d4615d',
+  );
+  assert.equal(
+    request.stateBinding.digest,
+    'sha256:91d173862031ac557da69e5a2d38154c8eab9c053aed6b0f38fa7294e25449c8',
+  );
+  assert.throws(
+    () =>
+      requestArchiveGrantWithReader(
+        () => {
+          reads += 1;
+          return preparation;
+        },
+        preparation.preparationIdentity,
+        {
+          ...target,
+          remoteName: 'other',
+        } as unknown as ArchivePullRequestPublicationTargetV1,
+        'reason',
+      ),
+    (error) => isWorkflowError(error, 'ARCHIVE_PR_PUBLICATION_TARGET_INVALID'),
+  );
+  assert.equal(reads, 2);
+});
+
+test('archive grant boundary: registration is inert and render and observe each reread preparation', async () => {
+  const fixture = canonicalArchiveGrantFixture();
+  const trace: string[] = [];
+  const definitions = archiveTransitionsWithReader((id) => {
+    trace.push(id);
+    return fixture.preparation;
+  });
+  assert.deepEqual(trace, []);
+  const definition = definitions[0]!;
+  assert.ok(Object.isFrozen(definitions) && Object.isFrozen(definition));
+  assert.equal(Object.isFrozen(definition.allowedApprovalMethods), false);
+  assert.equal(
+    definition.parameterSchemaDigest,
+    'sha256:f17bb449c9fb499933a50b1f85def3cd9bde4ca79a3a5c925f94261ceaf1bbb2',
+  );
+  assert.equal(
+    definition.consequenceDigest,
+    'sha256:a2371ffd8666a29329a4a27dd4d94e6160eafe4eb8419434af78892ed79e93f7',
+  );
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const choice = definition.renderTrustedChoice(fixture.context.parameters);
+    assert.ok(Object.isFrozen(choice) && Object.isFrozen(choice.consequences));
+    assert.deepEqual(
+      await definition.observeState(fixture.context.parameters),
+      fixture.request.stateBinding,
+    );
+  }
+  assert.deepEqual(
+    trace,
+    Array(4).fill(fixture.preparation.preparationIdentity),
+  );
+});
+
+test('archive grant boundary: execute retains lifecycle ownership and normalizes only preparation read failure', async () => {
+  const fixture = canonicalArchiveGrantFixture();
+  for (const fault of ['none', 'before', 'read', 'after'] as const) {
+    const trace: string[] = [];
+    const failure = new Error(fault);
+    const definition = archiveTransitionsWithReader(() => {
+      trace.push('read');
+      if (fault === 'read') throw failure;
+      return fixture.preparation;
+    })[0]!;
+    let asserts = 0;
+    const pending = definition.execute({
+      ...fixture.context,
+      assertLifecycleOwned() {
+        asserts += 1;
+        trace.push('assert');
+        if (
+          (fault === 'before' && asserts === 1) ||
+          (fault === 'after' && asserts === 2)
+        )
+          throw failure;
+      },
+    });
+    if (fault === 'none') {
+      const result = await pending;
+      assert.deepEqual(result, fixture.terminal.outcome);
+      assert.equal(
+        digest(canonicalJson(result)),
+        'sha256:36a8ac74ddbf2d5f1a83a4de85a3226e0d08ffedfc3d55076f0878175aaa4fce',
+      );
+      assert.ok(Object.isFrozen(result) && Object.isFrozen(result.details));
+    } else {
+      await assert.rejects(pending, (error) =>
+        fault === 'read'
+          ? isWorkflowError(error, 'ARCHIVE_PR_PREPARATION_STALE') &&
+            error !== failure
+          : error === failure,
+      );
+    }
+    assert.deepEqual(
+      trace,
+      fault === 'before'
+        ? ['assert']
+        : fault === 'read'
+          ? ['assert', 'read']
+          : ['assert', 'read', 'assert'],
+    );
+  }
+});
+
+test('archive grant boundary: canonical memory authentication rereads before records and preserves the completed reference', () => {
+  const fixture = canonicalArchiveGrantFixture();
+  let preparation = fixture.preparation;
+  const trace: string[] = [];
+  const authenticate = () =>
+    authenticateArchiveGrantWithReaders(
+      () => {
+        trace.push('preparation');
+        return preparation;
+      },
+      (id) => {
+        trace.push('record');
+        return fixture.store.readGrantRecord(id);
+      },
+      fixture.challenge.challengeId,
+      fixture.preparation.preparationIdentity,
+      fixture.target,
+      fixture.now,
+    );
+  const reference = authenticate();
+  assert.deepEqual(trace, ['preparation', 'record']);
+  assert.deepEqual(reference, {
+    contractVersion: 'central-grant-completed-authority-ref.v1',
+    challengeId: fixture.challenge.challengeId,
+    challengeDigest:
+      'sha256:69f4bbc0731e8c3caf90186ac9e45e9cf39e5e27fcc1abbe4c2d387f986a268d',
+    transitionId: 'github.archive-pr.publish',
+    operationId: fixture.context.operationId,
+    terminalOutcomeDigest:
+      'sha256:36a8ac74ddbf2d5f1a83a4de85a3226e0d08ffedfc3d55076f0878175aaa4fce',
+  });
+  assert.ok(Object.isFrozen(reference));
+  preparation = createArchivePublicationPreparation({
+    ...archivePreparationInput(),
+    candidateIdentity: '9'.repeat(64),
+  });
+  trace.length = 0;
+  assert.throws(authenticate, (error) =>
+    isWorkflowError(error, 'ARCHIVE_PR_CENTRAL_GRANT_INVALID'),
+  );
+  assert.deepEqual(trace, ['preparation', 'record']);
+});
+
+test('archive grant boundary: authentication normalizes reader failures and invalid explicit time after reads', () => {
+  const fixture = canonicalArchiveGrantFixture();
+  for (const fault of ['preparation', 'record', 'null', 'nonfinite'] as const) {
+    const trace: string[] = [];
+    assert.throws(
+      () =>
+        authenticateArchiveGrantWithReaders(
+          () => {
+            trace.push('preparation');
+            if (fault === 'preparation') throw new Error('read failed');
+            return fixture.preparation;
+          },
+          () => {
+            trace.push('record');
+            if (fault === 'record') throw new Error('read failed');
+            return fixture.terminal;
+          },
+          fixture.challenge.challengeId,
+          fixture.preparation.preparationIdentity,
+          fixture.target,
+          fault === 'null'
+            ? (null as unknown as Date)
+            : fault === 'nonfinite'
+              ? new Date(NaN)
+              : fixture.now,
+        ),
+      (error) => isWorkflowError(error, 'ARCHIVE_PR_CENTRAL_GRANT_INVALID'),
+    );
+    assert.deepEqual(
+      trace,
+      fault === 'preparation' ? ['preparation'] : ['preparation', 'record'],
+    );
+  }
+});
+
+test('archive grant boundary: completed timestamps retain exact inclusive freshness limits', () => {
+  const fixture = canonicalArchiveGrantFixture();
+  for (const delta of [-600001, -600000, -599999, 0, 29999, 30000, 30001]) {
+    const record = changedArchiveRecord(
+      fixture.terminal,
+      'completedAt',
+      new Date(fixture.now.getTime() + delta).toISOString(),
+    );
+    const authenticate = () =>
+      authenticateArchiveGrantWithReaders(
+        () => fixture.preparation,
+        () => record,
+        fixture.challenge.challengeId,
+        fixture.preparation.preparationIdentity,
+        fixture.target,
+        fixture.now,
+      );
+    if (delta >= -600000 && delta <= 30000)
+      assert.equal(authenticate().challengeId, fixture.challenge.challengeId);
+    else
+      assert.throws(authenticate, (error) =>
+        isWorkflowError(error, 'ARCHIVE_PR_CENTRAL_GRANT_INVALID'),
+      );
+  }
+  assert.throws(
+    () =>
+      authenticateArchiveGrantWithReaders(
+        () => fixture.preparation,
+        () => changedArchiveRecord(fixture.terminal, 'completedAt', 'invalid'),
+        fixture.challenge.challengeId,
+        fixture.preparation.preparationIdentity,
+        fixture.target,
+        fixture.now,
+      ),
+    (error) => isWorkflowError(error, 'ARCHIVE_PR_CENTRAL_GRANT_INVALID'),
+  );
+});
+
+test('archive grant boundary: every completed authorization component remains exact', () => {
+  const fixture = canonicalArchiveGrantFixture();
+  const changes: readonly (readonly [string, unknown])[] = [
+    ['state', 'pending'],
+    ['challenge.sourceModuleId', 'other'],
+    ['challenge.failureCode', 'other'],
+    ['approvalSubject.choiceId', 'absent'],
+    ['challenge.choices.0.transitionId', 'other'],
+    ['challenge.choices.0.parameters.preparationIdentity', digest('other')],
+    [
+      'challenge.choices.0.parameters.publicationTarget.adapterConfigDigest',
+      digest('other'),
+    ],
+    ['challenge.stateBinding.kind', 'other'],
+    ['challenge.stateBinding.digest', digest('other')],
+    ['approvalSubject.stateDigest', digest('other')],
+    ['poststateDigest', digest('other')],
+    ['outcome.outcome', 'failed'],
+    ['outcome.details.preparationIdentity', digest('other')],
+    ['outcome.details.publicationTargetDigest', digest('other')],
+    ['outcome.details.remoteEffectApplied', true],
+    ['outcome.details.extra', true],
+  ];
+  for (const [field, value] of changes) {
+    assert.throws(
+      () =>
+        authenticateArchiveGrantWithReaders(
+          () => fixture.preparation,
+          () => changedArchiveRecord(fixture.terminal, field, value),
+          fixture.challenge.challengeId,
+          fixture.preparation.preparationIdentity,
+          fixture.target,
+          fixture.now,
+        ),
+      (error) => isWorkflowError(error, 'ARCHIVE_PR_CENTRAL_GRANT_INVALID'),
+      field,
+    );
+  }
+});
+
+test('archive grant boundary: production binding keeps path failures outside auth and defaults only undefined time', () => {
+  const runtimeRoot = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'archive-grant-binding-')),
+  );
+  try {
+    const fixture = canonicalArchiveGrantFixture(
+      new Date(),
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)),
+    );
+    persistArchivePublicationPreparation(runtimeRoot, fixture.preparation);
+    const authenticate = (now?: Date) =>
+      authenticateCompletedArchivePullRequestGrant(
+        runtimeRoot,
+        fixture.challenge.challengeId,
+        fixture.preparation.preparationIdentity,
+        fixture.target,
+        now,
+      );
+    assert.equal(authenticate().challengeId, fixture.challenge.challengeId);
+    assert.equal(
+      authenticate(fixture.now).challengeId,
+      fixture.challenge.challengeId,
+    );
+    for (const now of [null as unknown as Date, new Date(NaN)]) {
+      assert.throws(
+        () => authenticate(now),
+        (error) => isWorkflowError(error, 'ARCHIVE_PR_CENTRAL_GRANT_INVALID'),
+      );
+    }
+    assert.throws(
+      () =>
+        authenticateCompletedArchivePullRequestGrant(
+          path.join(runtimeRoot, 'absent'),
+          fixture.challenge.challengeId,
+          fixture.preparation.preparationIdentity,
+          fixture.target,
+        ),
+      (error) => isWorkflowError(error, 'GRANT_STORE_UNSAFE'),
+    );
+  } finally {
+    fs.rmSync(runtimeRoot, { recursive: true, force: true });
+  }
+});

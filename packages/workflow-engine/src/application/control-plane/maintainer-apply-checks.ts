@@ -1,3 +1,11 @@
+import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
+import type {
+  MaintainerApplyChecksBindings,
+  MaintainerApplyChecksBindingsTypes,
+} from './maintainer-approve.ts';
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
 /**
  * Prepares candidate checks and verifies maintainer apply preconditions.
  *
@@ -6,10 +14,7 @@
  *   preflight.
  */
 // maintainer apply checks; repository effects remain bound by the public module.
-import type {
-  MaintainerApplyChecksBindings,
-  MaintainerApplyChecksBindingsTypes,
-} from './maintainer-approve.ts';
+
 type MaintainerGrantV2PreflightResult =
   MaintainerApplyChecksBindingsTypes['MaintainerGrantV2PreflightResult'];
 type PrepareMaintainerGrantV2ChecksOptions =
@@ -27,6 +32,8 @@ export function createMaintainerApplyChecks(
   bindings: () => MaintainerApplyChecksBindings,
 ) {
   function prepareMaintainerGrantV2Checks(
+    grantServices: MaintainerGrantExecutionServices,
+    manifestOperations: MaintainerManifestOperations,
     cwd: string,
     preflight: MaintainerGrantV2PreflightResult,
     environment: NodeJS.ProcessEnv = process.env,
@@ -37,7 +44,6 @@ export function createMaintainerApplyChecks(
       workflowError,
       ExitCode,
       discoverRepository,
-      preflightMaintainerGrantV2,
       canonicalJson,
       pinCheckRunner,
       assertDisposableDatabaseForRepository,
@@ -45,8 +51,6 @@ export function createMaintainerApplyChecks(
       maintainerChecksEnvironmentDigest,
       parseMaintainerPolicy,
       runGit,
-      loadCapabilityProfileFromTrustBase,
-      resolveCandidateHarnessEngineDigest,
       digest,
       maintainerGrantStorePaths,
       withRepositoryLifecycleOperation,
@@ -72,9 +76,13 @@ export function createMaintainerApplyChecks(
         ExitCode.staleState,
       );
     }
-    const refreshed = preflightMaintainerGrantV2(cwd, {
-      profileId: preflight.manifest.profile,
-    });
+    const refreshed = grantServices.preflightMaintainerGrantV2(
+      manifestOperations,
+      cwd,
+      {
+        profileId: preflight.manifest.profile,
+      },
+    );
     if (canonicalJson(refreshed) !== canonicalJson(preflight)) {
       throw workflowError(
         'MAINTAINER_CHECK_PREFLIGHT_STALE',
@@ -114,22 +122,24 @@ export function createMaintainerApplyChecks(
     );
     const basePolicy = parseMaintainerPolicy(
       JSON.parse(
-        runGit(initial.repositoryRoot, [
-          'show',
-          `${preflight.trustBaseCommit}:workflow/maintainer-policy.json`,
-        ]),
+        readFileAtRevision(
+          initial.repositoryRoot,
+          preflight.trustBaseCommit,
+          'workflow/maintainer-policy.json',
+        ),
       ),
     );
-    const profile = loadCapabilityProfileFromTrustBase(
+    const profile = manifestOperations.loadCapabilityProfileFromTrustBase(
       initial.repositoryRoot,
       preflight.trustBaseCommit,
       preflight.manifest.profile,
     );
-    const harnessEngineDigest = resolveCandidateHarnessEngineDigest(
-      initial,
-      basePolicy.repository.id,
-      environment,
-    );
+    const harnessEngineDigest =
+      grantServices.resolveCandidateHarnessEngineDigest(
+        initial,
+        basePolicy.repository.id,
+        environment,
+      );
     const identity: MaintainerCheckJournalIdentity = {
       schemaVersion: 2,
       repositoryId: basePolicy.repository.id,
@@ -176,6 +186,7 @@ export function createMaintainerApplyChecks(
           fingerprint,
         );
         assertHarnessEngineUnchanged(
+          grantServices,
           initial,
           basePolicy.repository.id,
           environment,
@@ -230,6 +241,7 @@ export function createMaintainerApplyChecks(
             fingerprint,
           );
           assertHarnessEngineUnchanged(
+            grantServices,
             initial,
             basePolicy.repository.id,
             environment,
@@ -273,6 +285,10 @@ export function createMaintainerApplyChecks(
   }
 
   function assertApproveAndApplyPreconditions(
+    grantServices: Pick<
+      MaintainerGrantExecutionServices,
+      'loadStableValidatedChangeContract'
+    >,
     cwd: string,
     request: ApproveAndApplyMaintainerGrantV2Request,
     preflight: MaintainerGrantV2PreflightResult,
@@ -285,7 +301,6 @@ export function createMaintainerApplyChecks(
       ExitCode,
       validateMaintainerEvidenceWaivers,
       discoverRepository,
-      loadStableValidatedChangeContract,
       listConflictingActiveWorkflowSessionIds,
       maintainerGrantStorePaths,
       runGit,
@@ -321,7 +336,7 @@ export function createMaintainerApplyChecks(
         ExitCode.staleState,
       );
     }
-    const contract = loadStableValidatedChangeContract(
+    const contract = grantServices.loadStableValidatedChangeContract(
       repository,
       request.changeId,
     ).contract;
@@ -423,17 +438,17 @@ export function createMaintainerApplyChecks(
   }
 
   function assertHarnessEngineUnchanged(
+    grantServices: MaintainerGrantExecutionServices,
     repository: ReturnType<typeof discoverRepository>,
     repositoryId: string,
     environment: NodeJS.ProcessEnv,
     expectedDigest: string,
   ): void {
     const boundServices: MaintainerApplyChecksBindings = bindings();
-    const { resolveCandidateHarnessEngineDigest, workflowError, ExitCode } =
-      boundServices;
+    const { workflowError, ExitCode } = boundServices;
 
     if (
-      resolveCandidateHarnessEngineDigest(
+      grantServices.resolveCandidateHarnessEngineDigest(
         repository,
         repositoryId,
         environment,
@@ -492,7 +507,7 @@ export function createMaintainerApplyChecks(
 
     try {
       const raw = JSON.parse(
-        runGit(repositoryRoot, ['show', `${baseCommit}:workflow/checks.json`]),
+        readFileAtRevision(repositoryRoot, baseCommit, 'workflow/checks.json'),
       ) as { schemaVersion?: unknown; checks?: unknown };
       if (
         raw.schemaVersion !== 1 ||

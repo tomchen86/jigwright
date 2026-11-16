@@ -7,23 +7,23 @@ import test, { after } from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
-  collaborationGrantEnvelopeDigest,
   collaborationPolicyDigestForPhase,
-  issueCollaborationGrant,
   type CollaborationGrantRequest,
-} from '../src/modules/authority/collaboration-grant.ts';
+} from '../src/modules/authority/collaboration-grant-codec.ts';
+import { collaborationGrantEnvelopeDigest } from '../src/runtime/grants/grant-services.ts';
+import { issueCollaborationGrant } from '../src/composition-root/collaboration-grant-issuance-production.ts';
+import { collaborationGrantStorePaths } from '../src/runtime/storage-journal/collaboration-grant-private-files.ts';
+import { consumeCollaborationGrant } from '../src/runtime/storage-journal/collaboration-grant-consumption.ts';
 import {
-  collaborationGrantStorePaths,
-  consumeCollaborationGrant,
   inspectCollaborationGrants,
   listCollaborationGrantInspections,
   readCollaborationGrantInspection,
-  selectAndReserveCollaborationGrantUnderLifecycleLock,
-  type CollaborationGrantSelectionCoreBinding,
-} from '../src/runtime/storage-journal/collaboration-grant-store.ts';
+} from '../src/runtime/storage-journal/collaboration-grant-records.ts';
+import { selectAndReserveCollaborationGrantUnderLifecycleLock } from '../src/runtime/storage-journal/collaboration-grant-reservation.ts';
+import { type CollaborationGrantSelectionCoreBinding } from '../src/modules/authority/collaboration-grant-records.ts';
 import type { MaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
-import { authorizeGrantedOrdinaryRole } from '../src/modules/provider-orchestration/role-scheduler.ts';
+import { authorizeGrantedOrdinaryRole } from '../src/composition-root/role-admission-production.ts';
 import { withRepositoryLifecycleOperation } from '../src/runtime/session-workspace/session-store.ts';
 import {
   authoritativeCollaborationGrantVerifierForTest,

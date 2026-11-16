@@ -8,17 +8,16 @@ Keep a project's schema, document paths, Work Registry settings and database pol
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.repository-consumer-readme v=1 digest=sha256:4714bdb3729fe0833ec4bc9590420745ba84ebd277a17f9b2b89bd46e18bf406 -->
+<!-- jigwright:region id=documents.repository-consumer-readme v=1 digest=sha256:b798cb49d0997ed40e70d4b8118e2a127a539b47813c518ddaa87a310bcddafe -->
 
 <!-- prettier-ignore-start -->
 
-4 files changed in this module since confirmation.
+9 files changed in this module since confirmation.
 
 ## Commands
 
 | Command and parameters | Does what |
 | --- | --- |
-| boundary inventory [--check] [--json] | Inspect or verify the machine-checked T3 consumer-coupling inventory. |
 | boundary vectors [--check] [--json] | Authenticate the public language-neutral conformance corpus. |
 | boundary remap --input &lt;request.json&gt; [--json] | Prove one exact mechanical move and project its authority remap manifest. |
 
@@ -38,7 +37,11 @@ Header history compares Git blame at the explanation confirmation with this sour
 
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
-| [repository-consumer-config.ts](repository-consumer-config.ts) | Loads consumer configuration and resolves repository-contained policy paths. | 1 | History unavailable |
+| [commit-facts.ts](commit-facts.ts) | Immutable Git commit facts and exact task-trailer matching. | 0 | History unavailable |
+| [repository-consumer-policy.ts](repository-consumer-policy.ts) | Validates consumer policy values without observing repository files or adapters. | 0 | History unavailable |
+| [repository-git-state.ts](repository-git-state.ts) | Observed Git identity and working-state facts, with no Git process dependency. | 0 | History unavailable |
+| [repository-validation.ts](repository-validation.ts) | Canonical result of validating repository changes and managed documents. | 0 | History unavailable |
+| [task-authorization-policy.ts](task-authorization-policy.ts) | Pure task authorization policy parsing and scope classification. | 0 | History unavailable |
 | [workflow-config.ts](workflow-config.ts) | Parses repository workflow configuration, namespace choices and task authorization policy. | 1 | History unavailable |
 
 <!-- prettier-ignore-end -->

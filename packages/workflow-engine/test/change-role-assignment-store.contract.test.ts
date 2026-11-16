@@ -4,8 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import ts from 'typescript';
 
-import { parseAgentProviderConfigToml } from '@jigwright/agent-runtime';
+import { parseAgentProviderConfigToml } from '@jigwright/core/agent-provider-config';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import type { VerifiedApprovalProof } from '../src/modules/authority/grant-approval.ts';
@@ -67,7 +68,10 @@ import {
   observeChangeRoleAssignmentGrantActivation,
   readCompletedChangeRoleAssignmentGrantAuthority,
 } from '../src/runtime/storage-journal/change-role-assignment-grant-store.ts';
-import { grantStorePaths } from '../src/runtime/storage-journal/grant-store.ts';
+import {
+  grantStorePaths,
+  createFileGrantRecordStore,
+} from '../src/runtime/lifecycle-ledgers/grant-store.ts';
 import {
   assertPinnedAgentRolePlanV2Snapshot,
   readPinnedAgentRolePlanV2Snapshot,
@@ -77,7 +81,7 @@ import {
   CENTRAL_ROLE_PROVIDER_DEFAULT_PATH,
   readPinnedCentralRoleProviderDefaultSnapshot,
 } from '../src/runtime/repository-transaction/central-role-provider-default-store.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import {
   changeRoleAssignmentObjectPathV1,
   changeRoleAssignmentRefPathV1,
@@ -494,7 +498,9 @@ test('completed Central Grant activates only the exact durable below-floor assig
     };
     const ids = [GRANT_CHALLENGE_ID, GRANT_OPERATION_ID];
     const coordinator = createGrantCoordinatorKernel({
-      paths: grantStorePaths(path.dirname(state.paths.root)),
+      store: createFileGrantRecordStore(
+        grantStorePaths(path.dirname(state.paths.root)),
+      ),
       registry: createTransitionRegistry(
         changeRoleAssignmentGrantTransitionDefinitions(port),
       ),
@@ -1513,23 +1519,677 @@ test('assignment evidence verification has one explicit production composition a
     consumers.map((filePath) => path.relative(sourceRoot, filePath)),
     ['composition-root/change-role-assignment-production.ts'],
   );
-  const productionCallers = candidates.flatMap((root) =>
+  const sourceFiles = candidates.flatMap((root) =>
     fs
       .readdirSync(root, { recursive: true, withFileTypes: true })
       .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
-      .map((entry) => path.join(entry.parentPath, entry.name))
+      .map((entry) => path.join(entry.parentPath, entry.name)),
+  );
+  const owner = 'composition-root/provider-worker-assignment-production.ts';
+  const worker = 'entrypoints/worker/provider-worker.ts';
+  const workerProduction = 'composition-root/provider-worker-production.ts';
+  const workerApplication =
+    'application/provider-worker/provider-worker-execution.ts';
+  const dispatch = 'composition-root/provider-worker-dispatch-production.ts';
+  const claimProduction =
+    'composition-root/provider-worker-claim-production.ts';
+  const claimApplication =
+    'application/provider-worker/provider-worker-claim.ts';
+  const sharedHelper = 'resolveCurrentProviderWorkerAssignment';
+  const source = (file: string) =>
+    fs.readFileSync(path.join(sourceRoot, file), 'utf8');
+  const ast = (file: string, text = source(file)) =>
+    ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  function calls(node: ts.Node, name: string): ts.CallExpression[] {
+    const found: ts.CallExpression[] = [];
+    const visit = (current: ts.Node) => {
+      if (
+        ts.isCallExpression(current) &&
+        ts.isIdentifier(current.expression) &&
+        current.expression.text === name
+      )
+        found.push(current);
+      current.forEachChild(visit);
+    };
+    visit(node);
+    return found;
+  }
+  // Exact creation stays at its sole owner; all three current-admission sites
+  // must positively reach the shared selector, rather than merely having no callers.
+  assert.deepEqual(
+    sourceFiles
       .filter(
-        (filePath) =>
-          !filePath.endsWith('change-role-assignment-production.ts') &&
-          fs
-            .readFileSync(filePath, 'utf8')
-            .includes('createCurrentAgentRuntimeAssignmentV1('),
-      ),
+        (file) =>
+          calls(
+            ast(path.relative(sourceRoot, file)),
+            'createCurrentAgentRuntimeAssignmentV1',
+          ).length > 0,
+      )
+      .map((file) => path.relative(sourceRoot, file)),
+    [owner],
   );
   assert.deepEqual(
-    productionCallers.map((filePath) => path.relative(sourceRoot, filePath)),
-    ['entrypoints/worker/provider-worker.ts'],
+    sourceFiles
+      .filter(
+        (file) =>
+          calls(ast(path.relative(sourceRoot, file)), sharedHelper).length > 0,
+      )
+      .map((file) => path.relative(sourceRoot, file)),
+    [claimProduction, dispatch, workerProduction],
   );
+  const ownerAst = ast(owner);
+  const helper = ownerAst.statements.find(
+    (node): node is ts.FunctionDeclaration =>
+      ts.isFunctionDeclaration(node) && node.name?.text === sharedHelper,
+  );
+  assert.ok(helper?.body);
+  assert.equal(
+    calls(helper.body, 'createCurrentAgentRuntimeAssignmentV1').length,
+    1,
+  );
+
+  function assertNamedImport(
+    tree: ts.SourceFile,
+    local: string,
+    imported: string,
+    from: string,
+  ) {
+    const matching = tree.statements
+      .filter(ts.isImportDeclaration)
+      .filter(
+        (node) =>
+          ts.isStringLiteral(node.moduleSpecifier) &&
+          node.moduleSpecifier.text === from,
+      )
+      .flatMap((node) => {
+        const bindings = node.importClause?.namedBindings;
+        return bindings && ts.isNamedImports(bindings)
+          ? [...bindings.elements]
+          : [];
+      })
+      .filter(
+        (node) =>
+          node.name.text === local &&
+          (node.propertyName?.text ?? node.name.text) === imported,
+      );
+    assert.equal(
+      matching.length,
+      1,
+      `${local} must use its exact production owner`,
+    );
+  }
+  function namedFunction(tree: ts.SourceFile, name: string) {
+    const declaration = tree.statements.find(
+      (node): node is ts.FunctionDeclaration =>
+        ts.isFunctionDeclaration(node) && node.name?.text === name,
+    );
+    assert.ok(declaration?.body, name);
+    return declaration.body;
+  }
+  function assertAssignmentInput(call: ts.CallExpression, tree: ts.SourceFile) {
+    assert.equal(call.arguments.length, 2);
+    assert.equal(call.arguments[1]?.getText(tree), 'options');
+    const input = call.arguments[0];
+    assert.ok(input && ts.isObjectLiteralExpression(input));
+    assert.deepEqual(
+      input.properties.map((property) =>
+        property.getText(tree).replace(/\s/g, ''),
+      ),
+      [
+        'repositoryRoot:context.git.repositoryRoot',
+        'runtime:context.runtime',
+        'grantRuntimeRoot:context.lifecycleRuntime.root',
+        'changeId:initial.changeId',
+        'request',
+      ],
+    );
+  }
+  function exportedBinding(tree: ts.SourceFile, name: string) {
+    const statement = tree.statements.find(
+      (node): node is ts.VariableStatement =>
+        ts.isVariableStatement(node) &&
+        node.declarationList.declarations.some(
+          (declaration) => declaration.name.getText(tree) === name,
+        ),
+    );
+    assert.ok(statement);
+    assert.ok(
+      statement.modifiers?.some(
+        (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
+      ),
+    );
+    const declaration = statement.declarationList.declarations.find(
+      (node) => node.name.getText(tree) === name,
+    )!;
+    assert.ok(
+      declaration.initializer && ts.isCallExpression(declaration.initializer),
+    );
+    const call = declaration.initializer;
+    assert.ok(ts.isPropertyAccessExpression(call.expression));
+    assert.equal(call.expression.name.text, 'bind');
+    assert.equal(call.arguments.length, 2);
+    assert.equal(call.arguments[0]?.getText(tree), 'undefined');
+    return {
+      target: call.expression.expression.getText(tree),
+      dependency: call.arguments[1]!.getText(tree),
+    };
+  }
+  function assertWorkerAdmissions(
+    text: string,
+    productionText = source(claimProduction),
+    applicationText = source(claimApplication),
+    workerProductionText = source(workerProduction),
+    entryText = source(worker),
+  ) {
+    const workerAst = ast(workerApplication, text);
+    const productionAst = ast(claimProduction, productionText);
+    const applicationAst = ast(claimApplication, applicationText);
+    const boundAst = ast(workerProduction, workerProductionText);
+    const entryAst = ast(worker, entryText);
+    const exports = entryAst.statements.filter(ts.isExportDeclaration);
+    assert.equal(exports.length, 1);
+    const entry = exports[0]!;
+    assert.equal(
+      entry.moduleSpecifier?.getText(entryAst),
+      "'../../composition-root/provider-worker-production.ts'",
+    );
+    assert.ok(entry.exportClause && ts.isNamedExports(entry.exportClause));
+    assert.deepEqual(
+      entry.exportClause.elements.map((element) => [
+        element.name.text,
+        element.propertyName?.text,
+        element.isTypeOnly,
+      ]),
+      [
+        ['runProviderWorkerWithMandate', undefined, false],
+        ['runProviderWorkerAsyncWithMandate', undefined, false],
+        ['runProviderWorker', undefined, false],
+        ['runProviderWorkerAsync', undefined, false],
+        ['ProviderWorkerResult', undefined, true],
+        ['AsyncProviderWorkerResult', undefined, true],
+        ['ProviderWorkerOptions', undefined, true],
+      ],
+    );
+    const sync = exportedBinding(boundAst, 'runProviderWorkerWithMandate');
+    const async = exportedBinding(
+      boundAst,
+      'runProviderWorkerAsyncWithMandate',
+    );
+    assert.equal(sync.dependency, async.dependency);
+    assertNamedImport(
+      boundAst,
+      sync.target,
+      'runProviderWorkerWithMandate',
+      '../application/provider-worker/provider-worker-execution.ts',
+    );
+    assertNamedImport(
+      boundAst,
+      async.target,
+      'runProviderWorkerAsyncWithMandate',
+      '../application/provider-worker/provider-worker-execution.ts',
+    );
+    assert.deepEqual(exportedBinding(boundAst, 'runProviderWorker'), {
+      target: 'runProviderWorkerWithMandate',
+      dependency: 'taskMandateOperations',
+    });
+    assert.deepEqual(exportedBinding(boundAst, 'runProviderWorkerAsync'), {
+      target: 'runProviderWorkerAsyncWithMandate',
+      dependency: 'taskMandateOperations',
+    });
+    assertNamedImport(
+      boundAst,
+      'taskMandateOperations',
+      'taskMandateOperations',
+      './task-mandate-production.ts',
+    );
+    const actualEffects = boundAst.statements
+      .filter(ts.isVariableStatement)
+      .flatMap((statement) => [...statement.declarationList.declarations])
+      .find(
+        (declaration) => declaration.name.getText(boundAst) === sync.dependency,
+      )?.initializer;
+    assert.ok(actualEffects && ts.isObjectLiteralExpression(actualEffects));
+    const claimBinding = actualEffects.properties.find(
+      (property) => property.name?.getText(boundAst) === 'claimProviderWorker',
+    );
+    assert.ok(claimBinding && ts.isShorthandPropertyAssignment(claimBinding));
+    assertNamedImport(
+      boundAst,
+      claimBinding.name.text,
+      'claimProviderWorker',
+      './provider-worker-claim-production.ts',
+    );
+    const actualResolver = actualEffects.properties.find(
+      (property) => property.name?.getText(boundAst) === 'resolveAssignment',
+    );
+    assert.ok(
+      actualResolver &&
+        ts.isMethodDeclaration(actualResolver) &&
+        actualResolver.body,
+    );
+    assert.deepEqual(
+      actualResolver.parameters.map((parameter) =>
+        parameter.name.getText(boundAst),
+      ),
+      ['context', 'initial', 'request', 'options'],
+    );
+    assert.equal(actualResolver.body.statements.length, 1);
+    const returned = actualResolver.body.statements[0]!;
+    assert.ok(ts.isReturnStatement(returned));
+    const workerResolutions = calls(actualResolver.body, sharedHelper);
+    assert.equal(workerResolutions.length, 1);
+    assert.equal(returned.expression, workerResolutions[0]);
+    assertNamedImport(
+      boundAst,
+      sharedHelper,
+      sharedHelper,
+      './provider-worker-assignment-production.ts',
+    );
+    assertAssignmentInput(workerResolutions[0]!, boundAst);
+    assertNamedImport(
+      productionAst,
+      'claim',
+      'claimProviderWorker',
+      '../application/provider-worker/provider-worker-claim.ts',
+    );
+    assertNamedImport(
+      productionAst,
+      sharedHelper,
+      sharedHelper,
+      './provider-worker-assignment-production.ts',
+    );
+    // Both actually bound application wrappers must reach this same execution
+    // function with the injected effects, rather than an unused correct helper.
+    for (const wrapper of [
+      'runProviderWorkerWithMandate',
+      'runProviderWorkerAsyncWithMandate',
+    ]) {
+      const body = namedFunction(workerAst, wrapper);
+      const callsToExecution = calls(body, 'runProviderWorkerWithExecution');
+      assert.equal(callsToExecution.length, 1);
+      const invocation = callsToExecution[0]!;
+      assert.equal(invocation.arguments[0]?.getText(workerAst), 'effects');
+      const initializer = ts.isAwaitExpression(invocation.parent)
+        ? invocation.parent
+        : invocation;
+      assert.ok(ts.isVariableDeclaration(initializer.parent));
+      assert.equal(initializer.parent.name.getText(workerAst), 'result');
+      assert.equal(initializer.parent.parent.parent.parent, body);
+    }
+    const execution = namedFunction(
+      workerAst,
+      'runProviderWorkerWithExecution',
+    );
+    const injected = execution.statements
+      .filter(ts.isVariableStatement)
+      .flatMap((statement) => [...statement.declarationList.declarations])
+      .find(
+        (declaration) =>
+          declaration.initializer?.getText(workerAst) === 'effects',
+      );
+    assert.ok(injected && ts.isObjectBindingPattern(injected.name));
+    for (const name of [
+      'claimProviderWorker',
+      'resolveAssignment',
+      'prepareProviderInvocationAcceptanceBinding',
+    ]) {
+      const binding: ts.BindingElement[] = injected.name.elements.filter(
+        (element) => element.name.getText(workerAst) === name,
+      );
+      assert.equal(binding.length, 1);
+      assert.equal(binding[0]!.propertyName, undefined);
+    }
+    const admissions = calls(execution, 'resolveAssignment');
+    assert.equal(admissions.length, 1);
+    const claimCalls = calls(execution, 'claimProviderWorker');
+    assert.equal(claimCalls.length, 1);
+    const claimCall = claimCalls[0]!;
+    const claim = claimCall.parent;
+    assert.ok(
+      ts.isVariableDeclaration(claim) && ts.isObjectBindingPattern(claim.name),
+    );
+    assert.equal(claim.parent.parent.parent, execution);
+    assert.deepEqual(
+      claim.name.elements.map((element) => element.getText(workerAst)),
+      ['claim', 'claimInput'],
+    );
+    assert.equal(claim.initializer, claimCall);
+    assert.deepEqual(
+      claimCall.arguments.map((arg) =>
+        arg.getText(workerAst).replace(/\s/g, ''),
+      ),
+      [
+        'taskMandate',
+        'cwd',
+        'context',
+        '{initial,request,taskDiffReviewOwner,taskStrategyImplementationOwner}',
+        'options',
+      ],
+    );
+    const mainTry = execution.statements.find(ts.isTryStatement);
+    assert.ok(mainTry);
+    const assignment = admissions[0]!.parent;
+    assert.ok(ts.isVariableDeclaration(assignment));
+    assert.equal(assignment.name.getText(workerAst), 'assignment');
+    assert.equal(assignment.parent.parent.parent, mainTry.tryBlock);
+    assert.deepEqual(
+      admissions[0]!.arguments.map((arg) => arg.getText(workerAst)),
+      ['context', 'initial', 'request', 'options'],
+    );
+    const acceptance = calls(
+      execution,
+      'prepareProviderInvocationAcceptanceBinding',
+    );
+    assert.equal(acceptance.length, 1);
+    assert.equal(acceptance[0]!.parent.parent.parent.parent, mainTry.tryBlock);
+    const launch = calls(execution, 'execute');
+    assert.equal(launch.length, 1);
+    assert.equal(launch[0]!.parent.parent.parent.parent, mainTry.tryBlock);
+    assert.ok(
+      admissions[0]!.pos > claim.end,
+      'second admission freshly follows claim',
+    );
+    assert.ok(
+      admissions[0]!.end < acceptance[0]!.pos &&
+        acceptance[0]!.end < launch[0]!.pos,
+      'fresh admission precedes acceptance and execution',
+    );
+    const production = namedFunction(productionAst, 'claimProviderWorker');
+    const boundCalls = calls(production, 'claim');
+    assert.equal(boundCalls.length, 1);
+    const boundCall = boundCalls[0]!;
+    assert.ok(
+      ts.isReturnStatement(boundCall.parent) &&
+        boundCall.parent.parent === production,
+    );
+    assert.equal(boundCall.arguments.length, 4);
+    assert.deepEqual(
+      boundCall.arguments.slice(1).map((arg) => arg.getText(productionAst)),
+      ['cwd', 'observation', 'options'],
+    );
+    const effects = boundCall.arguments[0];
+    assert.ok(effects && ts.isObjectLiteralExpression(effects));
+    // Inspect the method actually passed to the application. An unused helper
+    // elsewhere must not make a null or incorrect resolver binding pass.
+    const resolvers = effects.properties.filter(
+      (node) => node.name?.getText(productionAst) === 'resolveAssignment',
+    );
+    assert.equal(resolvers.length, 1);
+    const resolver = resolvers[0]!;
+    assert.ok(ts.isMethodDeclaration(resolver) && resolver.body);
+    assert.deepEqual(
+      resolver.parameters.map((parameter) =>
+        parameter.name.getText(productionAst),
+      ),
+      ['options'],
+    );
+    assert.equal(resolver.body.statements.length, 1);
+    const resolutionReturn = resolver.body.statements[0]!;
+    assert.ok(ts.isReturnStatement(resolutionReturn));
+    const resolutions = calls(resolver.body, sharedHelper);
+    assert.equal(resolutions.length, 1);
+    assert.equal(resolutionReturn.expression, resolutions[0]);
+    assert.equal(
+      calls(production, sharedHelper).length,
+      1,
+      'assignment is lazy inside the passed resolver',
+    );
+    assertAssignmentInput(resolutions[0]!, productionAst);
+    const captured = production.statements[0];
+    assert.ok(captured && ts.isVariableStatement(captured));
+    const capture = captured.declarationList.declarations[0];
+    assert.ok(capture && ts.isObjectBindingPattern(capture.name));
+    assert.deepEqual(
+      capture.name.elements.map((element) => element.getText(productionAst)),
+      ['initial', 'request'],
+    );
+    assert.equal(capture.initializer?.getText(productionAst), 'observation');
+
+    const application = namedFunction(applicationAst, 'claimProviderWorker');
+    const effectBinding = application.statements
+      .filter(ts.isVariableStatement)
+      .flatMap((statement) => [...statement.declarationList.declarations])
+      .find(
+        (declaration) =>
+          declaration.initializer?.getText(applicationAst) === 'effects',
+      );
+    assert.ok(effectBinding && ts.isObjectBindingPattern(effectBinding.name));
+    const resolverBinding = effectBinding.name.elements.filter(
+      (element) => element.name.getText(applicationAst) === 'resolveAssignment',
+    );
+    assert.equal(resolverBinding.length, 1);
+    assert.equal(resolverBinding[0]!.propertyName, undefined);
+    const preflights = calls(application, 'resolveAssignment');
+    assert.equal(preflights.length, 1);
+    const preflight = preflights[0]!;
+    assert.deepEqual(
+      preflight.arguments.map((arg) => arg.getText(applicationAst)),
+      ['options'],
+    );
+    assert.ok(
+      ts.isExpressionStatement(preflight.parent) &&
+        preflight.parent.parent === application,
+    );
+    const variables = application.statements
+      .filter(ts.isVariableStatement)
+      .flatMap((node) => [...node.declarationList.declarations]);
+    const input = variables.find(
+      (node) => ts.isIdentifier(node.name) && node.name.text === 'claimInput',
+    );
+    const lease = variables.find(
+      (node) => ts.isIdentifier(node.name) && node.name.text === 'claim',
+    );
+    assert.ok(input && lease);
+    assert.ok(
+      preflight.end < input.pos,
+      'preflight precedes lease field reads',
+    );
+    assert.ok(input.end < lease.pos, 'preflight precedes lease selection');
+    const ordinary = calls(application, 'claimOrdinary');
+    const held = calls(application, 'claimUnderLifecycleLock');
+    assert.equal(ordinary.length, 1);
+    assert.equal(held.length, 1);
+    assert.ok(preflight.end < ordinary[0]!.pos && preflight.end < held[0]!.pos);
+    assert.equal(
+      ordinary[0]!.arguments[0]?.getText(applicationAst),
+      'claimInput',
+    );
+    assert.equal(held[0]!.arguments[0]?.getText(applicationAst), 'claimInput');
+  }
+  const workerSource = source(workerApplication);
+  const productionSource = source(claimProduction);
+  const applicationSource = source(claimApplication);
+  assertWorkerAdmissions(workerSource);
+  const replaceNode = (text: string, node: ts.Node, replacement: string) =>
+    text.slice(0, node.getStart()) + replacement + text.slice(node.end);
+  for (const call of [
+    ...calls(ast(workerApplication), 'resolveAssignment'),
+    ...calls(ast(workerApplication), 'claimProviderWorker'),
+  ]) {
+    assert.throws(
+      () =>
+        assertWorkerAdmissions(
+          replaceNode(workerSource, call.expression, 'bypassedAssignment'),
+        ),
+      assert.AssertionError,
+    );
+  }
+  const preflight = calls(ast(claimApplication), 'resolveAssignment')[0]!;
+  assert.throws(
+    () =>
+      assertWorkerAdmissions(
+        workerSource,
+        productionSource,
+        replaceNode(
+          applicationSource,
+          preflight.expression,
+          'bypassedAssignment',
+        ),
+      ),
+    assert.AssertionError,
+  );
+  const productionAstForMutation = ast(claimProduction);
+  const boundEffects = calls(productionAstForMutation, 'claim')[0]!
+    .arguments[0]!;
+  assert.ok(ts.isObjectLiteralExpression(boundEffects));
+  const actualResolver = boundEffects.properties.find(
+    (node) =>
+      node.name?.getText(productionAstForMutation) === 'resolveAssignment',
+  )!;
+  for (const replacement of [
+    'resolveAssignment() { return null; }',
+    actualResolver
+      .getText(productionAstForMutation)
+      .replace('resolveAssignment', 'unusedResolver') +
+      ', resolveAssignment() { return null; }',
+    actualResolver
+      .getText(productionAstForMutation)
+      .replace('changeId: initial.changeId', "changeId: 'wrong-change'"),
+  ]) {
+    assert.throws(
+      () =>
+        assertWorkerAdmissions(
+          workerSource,
+          replaceNode(productionSource, actualResolver, replacement),
+        ),
+      assert.AssertionError,
+    );
+  }
+  assert.throws(
+    () =>
+      assertWorkerAdmissions(
+        workerSource,
+        productionSource,
+        applicationSource.replace(
+          '    resolveAssignment,',
+          '    resolveAssignment: wrongResolver,',
+        ),
+      ),
+    assert.AssertionError,
+  );
+  // Moving the second admission before claim must fail even when both calls remain.
+  const secondCall = calls(ast(workerApplication), 'resolveAssignment')[0]!;
+  const secondStatement = secondCall.parent.parent.parent;
+  assert.ok(ts.isVariableStatement(secondStatement));
+  const claimCall = calls(ast(workerApplication), 'claimProviderWorker')[0]!;
+  const claimStatement = claimCall.parent.parent.parent;
+  assert.ok(ts.isVariableStatement(claimStatement));
+  const movedSecond =
+    workerSource.slice(0, claimStatement.getStart()) +
+    secondStatement.getText() +
+    '\n' +
+    workerSource.slice(claimStatement.getStart(), secondStatement.getStart()) +
+    workerSource.slice(secondStatement.end);
+  assert.throws(
+    () => assertWorkerAdmissions(movedSecond),
+    assert.AssertionError,
+  );
+
+  // The new production seam must protect the actually bound object as well.
+  const boundSource = source(workerProduction);
+  const boundAstForMutation = ast(workerProduction);
+  const newResolver = calls(boundAstForMutation, sharedHelper)[0]!.parent.parent
+    .parent;
+  assert.ok(ts.isMethodDeclaration(newResolver));
+  for (const replacement of [
+    'resolveAssignment() { return null; }',
+    newResolver
+      .getText(boundAstForMutation)
+      .replace('resolveAssignment', 'unusedResolver') +
+      ', resolveAssignment() { return null; }',
+    newResolver
+      .getText(boundAstForMutation)
+      .replace('changeId: initial.changeId', "changeId: 'wrong-change'"),
+  ]) {
+    assert.throws(
+      () =>
+        assertWorkerAdmissions(
+          workerSource,
+          productionSource,
+          applicationSource,
+          replaceNode(boundSource, newResolver, replacement),
+        ),
+      assert.AssertionError,
+    );
+  }
+  assert.throws(
+    () =>
+      assertWorkerAdmissions(
+        workerSource,
+        productionSource,
+        applicationSource,
+        boundSource.replace('  effects,', '  unusedEffects,'),
+      ),
+    assert.AssertionError,
+  );
+  assert.throws(
+    () =>
+      assertWorkerAdmissions(
+        workerSource,
+        productionSource,
+        applicationSource,
+        boundSource,
+        source(worker).replace(
+          'provider-worker-production.ts',
+          'unbound-worker.ts',
+        ),
+      ),
+    assert.AssertionError,
+  );
+
+  const dispatchAst = ast(dispatch);
+  const observerDeclaration = dispatchAst.statements
+    .filter(ts.isVariableStatement)
+    .flatMap((node) => [...node.declarationList.declarations])
+    .find((node) => ts.isIdentifier(node.name) && node.name.text === 'observe');
+  assert.ok(
+    observerDeclaration?.initializer &&
+      ts.isArrowFunction(observerDeclaration.initializer),
+  );
+  const observer = observerDeclaration.initializer;
+  const returned = ts.isBlock(observer.body)
+    ? observer.body.statements.find(ts.isReturnStatement)?.expression
+    : undefined;
+  assert.ok(returned && ts.isObjectLiteralExpression(returned));
+  const resolveAssignment = returned.properties.find(
+    (node): node is ts.MethodDeclaration =>
+      ts.isMethodDeclaration(node) &&
+      node.name.getText(dispatchAst) === 'resolveAssignment',
+  );
+  assert.ok(resolveAssignment?.body);
+  const resolutions = calls(resolveAssignment.body, sharedHelper);
+  const explicitRequests = calls(observer, 'readProviderInvocationRequest');
+  const strictReads = calls(observer, 'readProviderInvocation');
+  assert.equal(resolutions.length, 1);
+  assert.equal(explicitRequests.length, 1);
+  assert.equal(strictReads.length, 1);
+  assert.ok(strictReads[0]!.end < resolveAssignment.pos);
+  assert.ok(explicitRequests[0]!.pos > resolveAssignment.body.pos);
+  assert.ok(explicitRequests[0]!.end < resolutions[0]!.pos);
+  for (const file of [
+    owner,
+    'composition-root/change-role-assignment-production.ts',
+    dispatch,
+    claimProduction,
+    claimApplication,
+    workerProduction,
+    workerApplication,
+    'application/provider-worker/provider-dispatch.ts',
+  ]) {
+    for (const declaration of ast(file).statements.filter(
+      ts.isImportDeclaration,
+    )) {
+      assert.equal(
+        ts.isStringLiteral(declaration.moduleSpecifier) &&
+          path.resolve(
+            path.dirname(path.join(sourceRoot, file)),
+            declaration.moduleSpecifier.text,
+          ) === path.join(sourceRoot, worker),
+        false,
+        file,
+      );
+    }
+  }
 });
 
 test('a non-null change override is re-read from its exact commit and blob before create and read', () => {

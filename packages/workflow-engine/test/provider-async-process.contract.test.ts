@@ -8,11 +8,11 @@ import { spawnBoundedProviderProcess } from '../src/runtime/provider-execution/b
 import {
   HARNESS_JSONL_V1_LIMITS,
   ProviderWrapperProtocolError,
-  createProviderWrapperProtocolParser,
   renderProviderWrapperFrame,
   type ProviderWrapperFrame,
   type ProviderWrapperProtocolBinding,
-} from '../src/modules/provider-orchestration/agent-runtime-protocol.ts';
+} from '@jigwright/core/harness-jsonl-v1-contracts';
+import { createProviderWrapperProtocolParser } from '@jigwright/agent-runtime/harness-jsonl-v1';
 
 const fixtureProcess = path.join(
   import.meta.dirname,

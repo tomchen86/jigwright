@@ -1,3 +1,4 @@
+export { deriveAuthorityAuditRepositoryId } from "../../modules/authority/authority-audit-contract.js";
 /**
  * Prepares the external audit layout and validates its pinned profile and backend configuration.
  *
@@ -9,28 +10,11 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
-import { MAX_REPOSITORY_ID_BYTES, LOCK_NAME, PROFILE_STATE_NAME, PROTECTED_CONFIGURATION_NAME, RETENTION_CHECKPOINT_NAME, RETENTION_CHECKPOINT_NEXT_NAME, MAINTENANCE_JOURNAL_NAME, SCOPE_KEYS, MAX_METADATA_BYTES, deepFreeze, MAX_PATH_BYTES, PROTECTED_CONFIGURATION_KEYS, PROFILE_STATE_KEYS, AUTHORITY_AUDIT_PROFILE_POLICIES, } from "./authority-audit-contracts.js";
+import { LOCK_NAME, PROFILE_STATE_NAME, PROTECTED_CONFIGURATION_NAME, RETENTION_CHECKPOINT_NAME, RETENTION_CHECKPOINT_NEXT_NAME, MAINTENANCE_JOURNAL_NAME, SCOPE_KEYS, MAX_METADATA_BYTES, deepFreeze, MAX_PATH_BYTES, PROTECTED_CONFIGURATION_KEYS, PROFILE_STATE_KEYS, AUTHORITY_AUDIT_PROFILE_POLICIES, } from "./authority-audit-contracts.js";
 import { invalidScope, sha256Digest, pathsOverlap, externalRootRequired, maintenanceInvalid, anchorInvalid, destructionTombstoneInvalid, isPlainRecord, hasExactKeys, assertAbsolutePath, assertDigest, unsafeFilesystem, invalidProfile, isNodeError, profileMismatch, protectedConfigurationInvalid, parseJson, anchorBackendInvalid, } from "./authority-audit-values.js";
 import { assertRepositoryRoot, ensurePrivateRoot, ensurePrivateDirectory, recoverPrivateFilePublications, readExactPrivateFile, writeExclusivePrivateFile, fsyncDirectory, assertPrivateDirectory, assertExactDirectoryEntries, } from "./authority-audit-private-files.js";
 import { readAnchorPublications, assertAnchorDirectoryLocal, } from "./authority-audit-anchor-records.js";
 import { readDestructionTombstones, assertTombstoneDirectoryLocal, } from "./authority-audit-destruction-records.js";
-export function deriveAuthorityAuditRepositoryId(repositoryIdentity) {
-    if (typeof repositoryIdentity !== 'string' ||
-        repositoryIdentity.length === 0 ||
-        repositoryIdentity.trim() !== repositoryIdentity ||
-        Buffer.byteLength(repositoryIdentity) > MAX_REPOSITORY_ID_BYTES ||
-        [...repositoryIdentity].some((character) => {
-            const point = character.codePointAt(0) ?? 0;
-            return point <= 31 || (point >= 127 && point <= 159);
-        })) {
-        throw invalidScope();
-    }
-    return sha256Digest(canonicalJson({
-        schemaVersion: 1,
-        kind: 'authority-audit-repository.v1',
-        repositoryIdentity,
-    }));
-}
 export function authorityAuditLedgerPaths(scope) {
     const checked = assertScope(scope);
     return ledgerPathsForScope(checked);

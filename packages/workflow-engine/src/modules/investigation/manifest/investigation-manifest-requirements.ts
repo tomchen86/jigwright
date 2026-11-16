@@ -5,8 +5,9 @@
  * Invariants:
  * - Ordinary manifests require exactly one PlanReview coverage requirement.
  */
+import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST as GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST_V3 } from './plan-review-coverage-policy.ts';
 import type { InvestigationSemanticAuthor } from '../domain/investigation-applicability.ts';
-import type { InvestigationV3Baseline } from './investigation-materializer.ts';
+import type { InvestigationV3Baseline } from './investigation-baseline.ts';
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import {
   digest,
@@ -27,22 +28,6 @@ const SEMANTIC_SUBJECT_ID = /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/;
 
 const MAX_STRUCTURED_REQUIREMENTS = 4_096;
 
-const GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST_V3 = digest({
-  schemaVersion: 2,
-  kind: 'plan-review-coverage-policy',
-  activation: 'global',
-  sampling: 'review-coverage.v1',
-  evidence: 'namespace-correct-exact-location',
-  targetFields: [
-    'invariants',
-    'risk-factors',
-    'freshness',
-    'evidence-mode',
-    'degraded-extraction',
-    'cost-profile',
-  ],
-});
-
 const IMPLEMENTATION_RECONCILIATION_POLICY_DIGEST_V3 = digest({
   schemaVersion: 1,
   kind: 'implementation-reconciliation-policy',
@@ -53,132 +38,9 @@ const IMPLEMENTATION_RECONCILIATION_POLICY_DIGEST_V3 = digest({
   unplannedSubject: 'delta-review-required',
 });
 
-type InvestigationRequirementMetadataV3 = {
-  requirementId: string;
-  semanticAuthor: InvestigationSemanticAuthor;
-  provenanceDigest: string;
-};
-
-export type InvestigationGenericRequirementV3 =
-  InvestigationRequirementMetadataV3 & {
-    /** Optional only while existing generic authoring callers move to tags. */
-    kind?: 'investigation-requirement';
-    text: string;
-  };
-
-export type InvestigationPlanReviewCoverageTargetV3 = {
-  targetId: string;
-  stratum:
-    | 'planned-mutation'
-    | 'hard-risk'
-    | 'largest-blast-radius'
-    | 'degraded-extraction'
-    | 'unresolved-uncertainty'
-    | 'production-consumer'
-    | 'test-or-mirror'
-    | 'contract-or-schema'
-    | 'cli-or-integration'
-    | 'cross-module';
-  reusedFromLedger: boolean;
-};
-
-export type InvestigationPlanReviewCoverageTargetBindingV3 =
-  InvestigationPlanReviewCoverageTargetV3 & {
-    source:
-      'planned-mutation' | 'investigation-target' | 'carried-ledger-subject';
-    path: string;
-    targetDigest: string;
-    evidenceKind: 'planning-or-repository-location';
-    subjectId: string | null;
-    ledgerEntryId: string | null;
-    invariants: readonly string[];
-    riskFactors: readonly string[];
-    freshness: string;
-    evidenceMode: 'bounded-context' | 'full-blob';
-    degradedExtraction: boolean;
-    cost: { rawBytes: number; reviewUnits: number };
-  };
-
-export type InvestigationSemanticReuseCoverageV3 = {
-  schemaVersion: 1;
-  kind: 'semantic-reuse-coverage';
-  owedCount: number;
-  carriedCount: number;
-  carried: readonly {
-    manifestEntryId: string;
-    subjectId: string;
-    ledgerEntryId: string;
-  }[];
-  resolutions: readonly {
-    subjectId: string;
-    resolution: string;
-    state: string;
-  }[];
-  reviewTargets: readonly InvestigationPlanReviewCoverageTargetV3[];
-};
-
 /** Exact v3-carried form of the current global PlanReview coverage facts. */
-export type InvestigationPlanReviewCoveragePayloadV3 = {
-  schemaVersion: 2;
-  kind: 'plan-review-coverage-requirement';
-  activation: 'global';
-  investigationId: string;
-  changeId: string;
-  baselineCommit: string;
-  baselineTree: string;
-  coverageTier: 'standard' | 'elevated' | 'critical';
-  sealedSamplingSeed: string;
-  coveragePolicyDigest: string;
-  manifest: {
-    schemaVersion: 1;
-    kind: 'review-coverage-manifest';
-    tier: 'standard' | 'elevated' | 'critical';
-    targets: readonly InvestigationPlanReviewCoverageTargetV3[];
-    populationDigest: string;
-  };
-  requiredTargetIds: readonly string[];
-  targetBindings: readonly InvestigationPlanReviewCoverageTargetBindingV3[];
-  semanticReuse: InvestigationSemanticReuseCoverageV3;
-  costProfile: {
-    targetCount: number;
-    rawBytes: number;
-    reviewUnits: number;
-  };
-};
-
-export type InvestigationPlanReviewCoverageRequirementV3 =
-  InvestigationRequirementMetadataV3 & {
-    kind: 'plan-review-coverage-requirement';
-    coverage: InvestigationPlanReviewCoveragePayloadV3;
-  };
-
-export type InvestigationImplementationPlannedMutationV3 = {
-  subjectId: string;
-  path: string;
-  intendedChange: string;
-  invariantsToPreserve: readonly string[];
-};
 
 /** Exact v3-carried form of the current implementation reconciliation facts. */
-export type InvestigationImplementationReconciliationPayloadV3 = {
-  schemaVersion: 1;
-  kind: 'implementation-reconciliation-requirement';
-  changeId: string;
-  baseline: { head: string; tree: string };
-  policyDigest: string;
-  plannedMutations: readonly InvestigationImplementationPlannedMutationV3[];
-};
-
-export type InvestigationImplementationReconciliationRequirementV3 =
-  InvestigationRequirementMetadataV3 & {
-    kind: 'implementation-reconciliation-requirement';
-    reconciliation: InvestigationImplementationReconciliationPayloadV3;
-  };
-
-export type InvestigationRequirementV3 =
-  | InvestigationGenericRequirementV3
-  | InvestigationPlanReviewCoverageRequirementV3
-  | InvestigationImplementationReconciliationRequirementV3;
 
 export function normalizeRequirements(
   values: InvestigationRequirementV3[],
@@ -939,3 +801,28 @@ function safeIntegerSum(left: number, right: number): number {
   }
   return sum;
 }
+
+import type {
+  InvestigationGenericRequirementV3,
+  InvestigationPlanReviewCoverageTargetV3,
+  InvestigationPlanReviewCoverageTargetBindingV3,
+  InvestigationSemanticReuseCoverageV3,
+  InvestigationPlanReviewCoveragePayloadV3,
+  InvestigationPlanReviewCoverageRequirementV3,
+  InvestigationImplementationPlannedMutationV3,
+  InvestigationImplementationReconciliationPayloadV3,
+  InvestigationImplementationReconciliationRequirementV3,
+  InvestigationRequirementV3,
+} from './investigation-requirement-types.ts';
+export type {
+  InvestigationGenericRequirementV3,
+  InvestigationPlanReviewCoverageTargetV3,
+  InvestigationPlanReviewCoverageTargetBindingV3,
+  InvestigationSemanticReuseCoverageV3,
+  InvestigationPlanReviewCoveragePayloadV3,
+  InvestigationPlanReviewCoverageRequirementV3,
+  InvestigationImplementationPlannedMutationV3,
+  InvestigationImplementationReconciliationPayloadV3,
+  InvestigationImplementationReconciliationRequirementV3,
+  InvestigationRequirementV3,
+} from './investigation-requirement-types.ts';

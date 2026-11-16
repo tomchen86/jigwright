@@ -11,10 +11,12 @@ import {
   parseTaskDiffReviewContinuationSubmission,
   parseTaskDiffReviewSubmission,
   TASK_DIFF_REVIEW_LIMITS,
-  type TaskDiffReviewContinuationSubmission,
-  type TaskDiffReviewEvidence,
-  type TaskDiffReviewSubmission,
 } from './task-diff-review-artifact.ts';
+import type {
+  TaskDiffReviewContinuationSubmission,
+  TaskDiffReviewEvidence,
+  TaskDiffReviewSubmission,
+} from './task-diff-review-artifact-record.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;
 

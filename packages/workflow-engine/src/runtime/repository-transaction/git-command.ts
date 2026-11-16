@@ -9,7 +9,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { createTrustedExecutionEnvironment } from '../provider-execution/execution-environment.ts';
+import { createTrustedExecutionEnvironment } from '../process-environment/execution-environment.ts';
 import {
   activePostApprovalGitTimeout,
   isProcessTimeout,
@@ -29,6 +29,31 @@ export function runGit(
  * remain distinguishable from empty files, and the literal tree lookup prevents
  * pathspec expansion before the blob is read.
  */
+/** Raw bytes of the blob at `objectId`. */
+export function readBlobBytes(
+  repositoryRoot: string,
+  objectId: string,
+): Buffer {
+  return runGitBuffer(repositoryRoot, ['cat-file', 'blob', objectId]);
+}
+
+/** Text of the annotated tag object at `ref`. */
+export function readTagObject(repositoryRoot: string, ref: string): string {
+  return runGit(repositoryRoot, ['cat-file', 'tag', ref]);
+}
+
+/**
+ * Content of `filePath` at `revision`. Unlike readFileAtCommit this requires
+ * the path to exist and lets Git's own failure surface.
+ */
+export function readFileAtRevision(
+  repositoryRoot: string,
+  revision: string,
+  filePath: string,
+): string {
+  return runGit(repositoryRoot, ['show', `${revision}:${filePath}`]);
+}
+
 export function readFileAtCommit(
   repositoryRoot: string,
   commit: string,

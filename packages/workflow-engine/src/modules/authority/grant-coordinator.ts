@@ -44,19 +44,13 @@ import {
   GRANT_UUID_V4 as UUID_V4,
   grantHasExactKeys as hasExactKeys,
 } from './grant-primitives.ts';
+import type { GrantRecordStore } from './grant-record-store.ts';
 import {
-  grantStorePaths,
-  inspectPreparedGrantDescendantTree,
-  persistGrantChallenge,
-  prepareGrantTransition,
   grantRecordDigest,
-  readGrantRecord,
-  recordGrantTransitionOutcome,
-  type GrantStorePaths,
   type GrantAuditRecord,
   type PreparedGrantRecord,
   type TerminalGrantRecord,
-} from '../../runtime/storage-journal/grant-store.ts';
+} from './grant-records.ts';
 import {
   assertPreparedGrantDescendantNodeV1,
   assertPreparedGrantDescendantTreeV1,
@@ -136,13 +130,15 @@ export type GrantCoordinator = CentralGrantRequestPortV1 &
  * about the runtime Grant representation.
  */
 export function inspectPreparedGrantDescendants(
-  runtimeRoot: string,
+  store: Pick<
+    GrantRecordStore,
+    'readGrantRecord' | 'inspectPreparedGrantDescendantTree'
+  >,
   challengeId: string,
 ): PreparedGrantDescendantTreeV1 | null {
-  const paths = grantStorePaths(runtimeRoot);
-  const record = readGrantRecord(paths, challengeId);
+  const record = store.readGrantRecord(challengeId);
   return record.state === 'prepared'
-    ? inspectPreparedGrantDescendantTree(paths, record)
+    ? store.inspectPreparedGrantDescendantTree(record)
     : null;
 }
 
@@ -158,11 +154,11 @@ type LifecycleOperation = <T>(
  */
 export function createGrantCoordinatorKernel(
   options: Readonly<{
-    paths: GrantStorePaths;
+    store: GrantRecordStore;
     registry: TransitionRegistry;
     policy: GrantPolicyV2;
-    now?: () => Date;
-    randomUUID?: () => string;
+    now: () => Date;
+    randomUUID: () => string;
     challengeTtlMs?: number;
     openApprovalSession(
       presentation: TrustedGrantPresentation,
@@ -170,8 +166,8 @@ export function createGrantCoordinatorKernel(
     withLifecycleOperation: LifecycleOperation;
   }>,
 ): GrantCoordinator {
-  const now = options.now ?? (() => new Date());
-  const randomUUID = options.randomUUID ?? (() => crypto.randomUUID());
+  const now = options.now;
+  const randomUUID = options.randomUUID;
   const challengeTtlMs = options.challengeTtlMs ?? DEFAULT_CHALLENGE_TTL_MS;
   if (
     !Number.isInteger(challengeTtlMs) ||
@@ -195,7 +191,7 @@ export function createGrantCoordinatorKernel(
         now: issuedAt,
         expiresAt: new Date(issuedAt.getTime() + challengeTtlMs).toISOString(),
       });
-      persistGrantChallenge(options.paths, challenge);
+      options.store.persistGrantChallenge(challenge);
       return Object.freeze({
         challengeId: challenge.challengeId,
         challengeDigest: challenge.challengeDigest,
@@ -203,7 +199,7 @@ export function createGrantCoordinatorKernel(
     },
 
     inspectChallenge(challengeId) {
-      const stored = readGrantRecord(options.paths, challengeId);
+      const stored = options.store.readGrantRecord(challengeId);
       return trustedPresentation(
         stored.challenge,
         options.registry,
@@ -212,7 +208,7 @@ export function createGrantCoordinatorKernel(
     },
 
     async resolveChallenge(challengeId) {
-      const stored = readGrantRecord(options.paths, challengeId);
+      const stored = options.store.readGrantRecord(challengeId);
       if (stored.state !== 'pending') throw challengeUnavailable(challengeId);
       const challenge = stored.challenge;
       const presentation = trustedPresentation(
@@ -249,7 +245,7 @@ export function createGrantCoordinatorKernel(
         challengeId,
         async (assertOwned) => {
           assertOwned();
-          const current = readGrantRecord(options.paths, challengeId);
+          const current = options.store.readGrantRecord(challengeId);
           if (
             current.state !== 'pending' ||
             current.challenge.challengeDigest !== challenge.challengeDigest
@@ -272,7 +268,7 @@ export function createGrantCoordinatorKernel(
             challenge.challengeId,
           );
           assertOwned();
-          const prepared = prepareGrantTransition(options.paths, {
+          const prepared = options.store.prepareGrantTransition({
             operationId: exactUuid(randomUUID()),
             challenge,
             subject,
@@ -281,7 +277,7 @@ export function createGrantCoordinatorKernel(
           });
           assertOwned();
           return executePreparedTransition(
-            options.paths,
+            options.store,
             options.registry,
             challenge,
             prepared,
@@ -294,7 +290,7 @@ export function createGrantCoordinatorKernel(
     },
 
     async recoverChallenge(challengeId) {
-      const observed = readGrantRecord(options.paths, challengeId);
+      const observed = options.store.readGrantRecord(challengeId);
       if (observed.state === 'pending') {
         throw workflowError(
           'GRANT_TRANSITION_RECORD_MISSING',
@@ -309,7 +305,7 @@ export function createGrantCoordinatorKernel(
         challengeId,
         async (assertOwned) => {
           assertOwned();
-          const current = readGrantRecord(options.paths, challengeId);
+          const current = options.store.readGrantRecord(challengeId);
           if (
             current.state === 'pending' ||
             current.operationId !== observed.operationId
@@ -331,7 +327,7 @@ export function createGrantCoordinatorKernel(
             );
           }
           return executePreparedTransition(
-            options.paths,
+            options.store,
             options.registry,
             current.challenge,
             current,
@@ -346,7 +342,7 @@ export function createGrantCoordinatorKernel(
 }
 
 async function executePreparedTransition(
-  paths: GrantStorePaths,
+  store: GrantRecordStore,
   registry: TransitionRegistry,
   challenge: GrantChallenge,
   record: PreparedGrantRecord,
@@ -381,7 +377,7 @@ async function executePreparedTransition(
         : {
             settlePreparedDescendant: (node: PreparedGrantDescendantNodeV1) =>
               terminalizeAuthorizedPreparedDescendant({
-                paths,
+                store,
                 registry,
                 outerRecord: record,
                 descendantTree,
@@ -409,7 +405,7 @@ async function executePreparedTransition(
     ) {
       throw error;
     }
-    const failed = recordGrantTransitionOutcome(paths, {
+    const failed = store.recordGrantTransitionOutcome({
       challengeId: challenge.challengeId,
       operationId: record.operationId,
       poststateDigest: observed.digest,
@@ -439,7 +435,7 @@ async function executePreparedTransition(
     },
   );
   const normalizedPoststate = assertStateBinding(poststate);
-  const completed = recordGrantTransitionOutcome(paths, {
+  const completed = store.recordGrantTransitionOutcome({
     challengeId: challenge.challengeId,
     operationId: record.operationId,
     poststateDigest: normalizedPoststate.digest,
@@ -452,7 +448,7 @@ async function executePreparedTransition(
 
 async function terminalizeAuthorizedPreparedDescendant(
   input: Readonly<{
-    paths: GrantStorePaths;
+    store: GrantRecordStore;
     registry: TransitionRegistry;
     outerRecord: PreparedGrantRecord;
     descendantTree: PreparedGrantDescendantTreeV1;
@@ -476,7 +472,7 @@ async function terminalizeAuthorizedPreparedDescendant(
     );
   }
   input.assertOwned();
-  const current = readGrantRecord(input.paths, node.challengeId);
+  const current = input.store.readGrantRecord(node.challengeId);
   if (current.state === 'completed' || current.state === 'failed') {
     if (
       current.state !== 'failed' ||
@@ -568,7 +564,7 @@ async function terminalizeAuthorizedPreparedDescendant(
         observationErrorCode,
       })}`,
     );
-  recordGrantTransitionOutcome(input.paths, {
+  input.store.recordGrantTransitionOutcome({
     challengeId: current.challenge.challengeId,
     operationId: current.operationId,
     poststateDigest,

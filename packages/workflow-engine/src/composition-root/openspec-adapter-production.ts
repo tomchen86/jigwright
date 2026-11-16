@@ -13,7 +13,7 @@ import {
 } from '../adapters/planning/openspec/documents/openspec-adapter.ts';
 import type { ColocatedOpenSpecViewDependencies } from '../adapters/planning/openspec/documents/colocated-openspec-view.ts';
 import { readSystemDescriptionSnapshot } from '../runtime/repository-transaction/system-description-snapshot.ts';
-import { createTrustedExecutionEnvironment } from '../runtime/provider-execution/execution-environment.ts';
+import { createTrustedExecutionEnvironment } from '../runtime/process-environment/execution-environment.ts';
 
 export function createColocatedOpenSpecViewDependencies(): ColocatedOpenSpecViewDependencies {
   return {

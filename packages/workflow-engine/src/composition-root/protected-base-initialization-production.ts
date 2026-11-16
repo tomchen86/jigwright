@@ -12,7 +12,7 @@ import path from 'node:path';
 
 import type { CentralGrantCompletedAuthorityRefV1 } from '@jigwright/core/central-grant-port';
 
-import { loadWorkflowConfig } from '../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../runtime/workflow-configuration/workflow-configuration.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
@@ -29,7 +29,8 @@ import {
   initialLocalProtectedBaseObservation,
   protectedBaseSelectionStateBinding,
 } from '../modules/authority/protected-base-selection-grant.ts';
-import { loadMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
+import { loadMaintainerPolicy } from '../runtime/repository-observation/maintainer-policy.ts';
+
 import type {
   ProtectedBaseInitializationObservationV1,
   ProtectedBaseInitializationPort,
@@ -43,8 +44,8 @@ import {
 } from '../runtime/repository-transaction/git.ts';
 import {
   grantStorePaths,
-  readGrantRecord,
-} from '../runtime/storage-journal/grant-store.ts';
+  createFileGrantRecordStore,
+} from '../runtime/lifecycle-ledgers/grant-store.ts';
 import { loadInvestigationRuntimeContext } from './lifecycle-context.ts';
 
 const COMMIT_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
@@ -324,7 +325,9 @@ function authenticateCompletedProtectedBaseInitializationGrant(
   localSelection: boolean;
 }> {
   try {
-    const record = readGrantRecord(grantStorePaths(runtimeRoot), challengeId);
+    const record = createFileGrantRecordStore(
+      grantStorePaths(runtimeRoot),
+    ).readGrantRecord(challengeId);
     if (record.state !== 'completed') throw completedGrantInvalid();
     const choice = record.challenge.choices.find(
       ({ choiceId }) => choiceId === record.approvalSubject.choiceId,

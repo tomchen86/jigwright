@@ -1,3 +1,4 @@
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import {
   createFixtureRepository,
@@ -12,10 +13,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
   startSession,
-  abortSession,
   preflightTaskSession,
   startSessionUnderLifecycleLock,
 } from '../src/application/execute-task/session.ts';
+import { abortSession } from '../src/composition-root/task-session-production.ts';
 import {
   parseTaskWorktreeRegistrations,
   createSessionId,
@@ -39,7 +40,10 @@ test('task-session preflight reuses exact admission without mutating Git, runtim
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'task-preflight',
         'demo-change',
         '--task',
@@ -113,7 +117,12 @@ test('task-session preflight reuses exact admission without mutating Git, runtim
     ]);
     assert.deepEqual(snapshotTaskPreflightState(repository), before);
 
-    const started = startSession(repository, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     assert.deepEqual(started.isolation, output.result.isolation);
     abortSession(
       repository,
@@ -148,7 +157,12 @@ test('task ingress pins the latest plan and rejects an older PlanReview after ad
       first.planningAssurance.planningGenerationId,
     );
 
-    const started = startSession(repository, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     assert.equal(started.baseline.head, currentCommit);
     assert.equal(
       started.planningAssurance?.planningGenerationId,
@@ -164,7 +178,12 @@ test('task ingress pins the latest plan and rejects an older PlanReview after ad
       'Verified latest generation admission.',
     );
 
-    const advisory = preflightTaskSession(repository, 'demo-change', '1.1');
+    const advisory = preflightTaskSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     assert.equal(advisory.status, 'ready');
     assert.equal(advisory.authority, 'advisory');
     assert.equal(advisory.observed.head, currentCommit);
@@ -190,6 +209,7 @@ test('task ingress pins the latest plan and rejects an older PlanReview after ad
       assert.throws(
         () =>
           startSessionUnderLifecycleLock(
+            productionChangeContract,
             repository,
             'demo-change',
             '1.1',
@@ -208,7 +228,13 @@ test('task ingress pins the latest plan and rejects an older PlanReview after ad
     });
     const before = snapshotTaskPreflightState(repository);
     assert.throws(
-      () => startSession(repository, 'demo-change', '1.1'),
+      () =>
+        startSession(
+          productionChangeContract,
+          repository,
+          'demo-change',
+          '1.1',
+        ),
       (error) => isWorkflowError(error, 'OPENSPEC_CHANGE_NOT_READY'),
     );
     assert.deepEqual(snapshotTaskPreflightState(repository), before);
@@ -271,13 +297,25 @@ test('task-session admission rejects a duplicate live registration for its curre
     const before = snapshotTaskPreflightState(repository);
 
     assert.throws(
-      () => preflightTaskSession(repository, 'demo-change', '1.1'),
+      () =>
+        preflightTaskSession(
+          productionChangeContract,
+          repository,
+          'demo-change',
+          '1.1',
+        ),
       (error) =>
         isWorkflowError(error, 'TASK_SESSION_WORKTREE_REGISTRATION_CONFLICT'),
     );
     assert.deepEqual(snapshotTaskPreflightState(repository), before);
     assert.throws(
-      () => startSession(repository, 'demo-change', '1.1'),
+      () =>
+        startSession(
+          productionChangeContract,
+          repository,
+          'demo-change',
+          '1.1',
+        ),
       (error) =>
         isWorkflowError(error, 'TASK_SESSION_WORKTREE_REGISTRATION_CONFLICT'),
     );
@@ -325,7 +363,13 @@ test('task-session admission leaves a prunable duplicate registration untouched 
     assert.match(before, /prunable/u);
 
     assert.throws(
-      () => preflightTaskSession(repository, 'demo-change', '1.1'),
+      () =>
+        preflightTaskSession(
+          productionChangeContract,
+          repository,
+          'demo-change',
+          '1.1',
+        ),
       (error) =>
         isWorkflowError(error, 'TASK_SESSION_WORKTREE_REGISTRATION_CONFLICT'),
     );
@@ -343,7 +387,12 @@ test('task-session admission leaves a prunable duplicate registration untouched 
 
     git(repository, ['worktree', 'prune', '--expire', 'now']);
     assert.equal(
-      preflightTaskSession(repository, 'demo-change', '1.1').status,
+      preflightTaskSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      ).status,
       'ready',
     );
   } finally {
@@ -364,7 +413,12 @@ test('task-session admission leaves an unsafe isolation lease and all unrelated 
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const prior = startSession(repository, 'demo-change', '1.1');
+    const prior = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     abortSession(repository, prior.sessionId, 'Prepare unsafe lease fixture.');
     const leasePath = path.join(
       runtimeRoot(repository),
@@ -378,12 +432,24 @@ test('task-session admission leaves an unsafe isolation lease and all unrelated 
     const before = snapshotTaskPreflightState(repository);
 
     assert.throws(
-      () => preflightTaskSession(repository, 'demo-change', '1.1'),
+      () =>
+        preflightTaskSession(
+          productionChangeContract,
+          repository,
+          'demo-change',
+          '1.1',
+        ),
       (error) => isWorkflowError(error, 'SESSION_LOCK_INVALID'),
     );
     assert.deepEqual(snapshotTaskPreflightState(repository), before);
     assert.throws(
-      () => startSession(repository, 'demo-change', '1.1'),
+      () =>
+        startSession(
+          productionChangeContract,
+          repository,
+          'demo-change',
+          '1.1',
+        ),
       (error) => isWorkflowError(error, 'SESSION_LOCK_INVALID'),
     );
     assert.deepEqual(snapshotTaskPreflightState(repository), before);
@@ -416,7 +482,12 @@ test('task-session admission detects a poisoned later resource before any lease 
     ];
     fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
     prepareCurrentChange(repository);
-    const inspected = preflightTaskSession(repository, 'demo-change', '1.1');
+    const inspected = preflightTaskSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     assert.equal(inspected.isolation.resources.length, 2);
     const isolationRoot = path.join(runtimeRoot(repository), 'task-isolation');
     const worktreeLease = path.join(
@@ -443,11 +514,23 @@ test('task-session admission detects a poisoned later resource before any lease 
     const before = snapshotTaskPreflightState(repository);
 
     assert.throws(
-      () => preflightTaskSession(repository, 'demo-change', '1.1'),
+      () =>
+        preflightTaskSession(
+          productionChangeContract,
+          repository,
+          'demo-change',
+          '1.1',
+        ),
       (error) => isWorkflowError(error, 'SESSION_LOCK_INVALID'),
     );
     assert.throws(
-      () => startSession(repository, 'demo-change', '1.1'),
+      () =>
+        startSession(
+          productionChangeContract,
+          repository,
+          'demo-change',
+          '1.1',
+        ),
       (error) => isWorkflowError(error, 'SESSION_LOCK_INVALID'),
     );
     assert.deepEqual(snapshotTaskPreflightState(repository), before);
@@ -488,23 +571,29 @@ test('task-session start rolls back exact earlier publications when a later leas
 
     assert.throws(
       () =>
-        startSession(repository, 'demo-change', '1.1', {
-          testHooks: {
-            beforeIsolationLeasePublication({ index, leasePath }) {
-              visited.push(leasePath);
-              if (index !== 2) return;
-              poisonPath = leasePath;
-              fs.mkdirSync(path.dirname(leasePath), {
-                recursive: true,
-                mode: 0o700,
-              });
-              fs.writeFileSync(leasePath, poisonBytes, {
-                flag: 'wx',
-                mode: 0o600,
-              });
+        startSession(
+          productionChangeContract,
+          repository,
+          'demo-change',
+          '1.1',
+          {
+            testHooks: {
+              beforeIsolationLeasePublication({ index, leasePath }) {
+                visited.push(leasePath);
+                if (index !== 2) return;
+                poisonPath = leasePath;
+                fs.mkdirSync(path.dirname(leasePath), {
+                  recursive: true,
+                  mode: 0o700,
+                });
+                fs.writeFileSync(leasePath, poisonBytes, {
+                  flag: 'wx',
+                  mode: 0o600,
+                });
+              },
             },
           },
-        }),
+        ),
       (error) => isWorkflowError(error, 'SESSION_LOCK_INVALID'),
     );
     assert.equal(visited.length, 3);
@@ -532,7 +621,12 @@ test('task-session start reclaims an exact terminal-owner lease and republishes 
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const prior = startSession(repository, 'demo-change', '1.1');
+    const prior = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const leasePath = path.join(
       runtimeRoot(repository),
       'task-isolation',
@@ -548,11 +642,21 @@ test('task-session start reclaims an exact terminal-owner lease and republishes 
     fs.writeFileSync(leasePath, priorLeaseBytes, { flag: 'wx', mode: 0o600 });
 
     assert.equal(
-      preflightTaskSession(repository, 'demo-change', '1.1').status,
+      preflightTaskSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      ).status,
       'ready',
     );
     assert.equal(fs.readFileSync(leasePath, 'utf8'), priorLeaseBytes);
-    const current = startSession(repository, 'demo-change', '1.1');
+    const current = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const currentLease = JSON.parse(fs.readFileSync(leasePath, 'utf8')) as {
       sessionId: string;
     };
@@ -569,7 +673,12 @@ test('task-session start only reclaims a missing-owner lease after exact dead-pr
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const inspected = preflightTaskSession(repository, 'demo-change', '1.1');
+    const inspected = preflightTaskSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const leasePath = path.join(
       runtimeRoot(repository),
       'task-isolation',
@@ -593,7 +702,13 @@ test('task-session start only reclaims a missing-owner lease after exact dead-pr
     });
 
     assert.throws(
-      () => preflightTaskSession(repository, 'demo-change', '1.1'),
+      () =>
+        preflightTaskSession(
+          productionChangeContract,
+          repository,
+          'demo-change',
+          '1.1',
+        ),
       (error) => isWorkflowError(error, 'TASK_SESSION_LEASE_CONFLICT'),
     );
     assert.equal(fs.readFileSync(leasePath, 'utf8'), leaseBytes(process.pid));
@@ -608,12 +723,22 @@ test('task-session start only reclaims a missing-owner lease after exact dead-pr
     const deadBytes = leaseBytes(exited.pid!);
     fs.writeFileSync(leasePath, deadBytes);
     assert.equal(
-      preflightTaskSession(repository, 'demo-change', '1.1').status,
+      preflightTaskSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      ).status,
       'ready',
     );
     assert.equal(fs.readFileSync(leasePath, 'utf8'), deadBytes);
 
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const currentLease = JSON.parse(fs.readFileSync(leasePath, 'utf8')) as {
       sessionId: string;
     };
@@ -629,7 +754,12 @@ test('fixed session identity publication never overwrites or removes foreign byt
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const prior = startSession(repository, 'demo-change', '1.1');
+    const prior = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     abortSession(
       repository,
       prior.sessionId,
@@ -647,6 +777,7 @@ test('fixed session identity publication never overwrites or removes foreign byt
       () =>
         withRepositoryLifecycleOperation(runtime, (assertRepositoryLock) =>
           startSessionUnderLifecycleLock(
+            productionChangeContract,
             repository,
             'demo-change',
             '1.1',
@@ -734,13 +865,19 @@ test('task-session start rejects replacement, in-place rewrite, and hardlink rac
       let startError: unknown;
       assert.throws(
         () =>
-          startSession(repository, 'demo-change', '1.1', {
-            testHooks: {
-              afterSessionPublication({ sessionPath }) {
-                expectedFiles = scenario.tamper(sessionPath);
+          startSession(
+            productionChangeContract,
+            repository,
+            'demo-change',
+            '1.1',
+            {
+              testHooks: {
+                afterSessionPublication({ sessionPath }) {
+                  expectedFiles = scenario.tamper(sessionPath);
+                },
               },
             },
-          }),
+          ),
         (error) => {
           startError = error;
           return true;
@@ -813,7 +950,10 @@ test('task-session preflight reports protected authority without requesting a Gr
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'task-preflight',
         'demo-change',
         '--json',
@@ -867,7 +1007,7 @@ test('task-session preflight fails closed on an active lifecycle barrier without
           '--experimental-strip-types',
           path.join(
             sourceRepositoryRoot,
-            'packages/workflow-engine/src/cli.ts',
+            'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
           ),
           'task-preflight',
           'demo-change',
@@ -935,7 +1075,7 @@ test('task-session preflight fails closed on change-lock and publication-directo
           '--experimental-strip-types',
           path.join(
             sourceRepositoryRoot,
-            'packages/workflow-engine/src/cli.ts',
+            'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
           ),
           'task-preflight',
           'demo-change',

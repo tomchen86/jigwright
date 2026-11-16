@@ -10,8 +10,8 @@ import type { ProviderProcessOutcome } from '../src/modules/provider-orchestrati
 import {
   admitRoleResult,
   assertAdmittedRoleResultRecord,
-} from '../src/modules/provider-orchestration/role-scheduler.ts';
-import type { ProviderRoleAssignment } from '../src/modules/provider-orchestration/role-scheduler.ts';
+} from '../src/composition-root/role-admission-production.ts';
+import type { ProviderRoleAssignment } from '../src/modules/provider-orchestration/role-assignment.ts';
 import fs from 'node:fs';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';

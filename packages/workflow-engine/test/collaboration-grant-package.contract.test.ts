@@ -1,3 +1,4 @@
+import { observeChangeRoutingContinuationState } from '../src/runtime/change-routing/routing-observation.ts';
 import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
 import crypto from 'node:crypto';
@@ -14,22 +15,27 @@ import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
 import { parseGrantPolicyV2Document } from '../src/modules/authority/grant-policy.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
+import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../src/modules/authority/collaboration-grant-codec.ts';
 import {
-  COLLABORATION_GRANT_AUTHORIZED_EFFECT,
   COLLABORATION_GRANT_POLICY_DIGEST,
   COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
+  type CollaborationGrantEnvelope,
+  type CollaborationGrantPayload,
+} from '../src/modules/authority/collaboration-grant-codec.ts';
+import {
   canonicalCollaborationGrantPayload,
   parseCollaborationGrantEnvelope,
   verifyCollaborationGrantCapability,
-  type CollaborationGrantEnvelope,
-  type CollaborationGrantPayload,
-} from '../src/modules/authority/collaboration-grant.ts';
+} from '../src/runtime/grants/grant-services.ts';
 import type { MaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
 import {
   changeRoutingGrantTransitionDefinitions,
   createChangeRoutingContinuationGrantRequest,
 } from '../src/modules/lifecycle/change-routing-grant.ts';
-import { grantStorePaths } from '../src/runtime/storage-journal/grant-store.ts';
+import {
+  grantStorePaths,
+  createFileGrantRecordStore,
+} from '../src/runtime/lifecycle-ledgers/grant-store.ts';
 import {
   createFixtureRepository,
   git,
@@ -181,12 +187,15 @@ test('@jigwright/grants remains optional for generic Central Grant inspection an
       '@jigwright',
     );
     fs.mkdirSync(fixtureScope, { recursive: true });
-    for (const packageName of [
-      'agent-runtime',
-      'core',
-      'github-adapter',
-      'openspec-adapter',
-    ]) {
+    for (const packageName of Object.keys({
+      ...packageManifest.dependencies,
+      ...packageManifest.optionalDependencies,
+    })
+      .filter(
+        (name) =>
+          name.startsWith('@jigwright/') && name !== '@jigwright/grants',
+      )
+      .map((name) => name.slice('@jigwright/'.length))) {
       fs.symlinkSync(
         path.join(WORKSPACE_ROOT, 'packages', packageName),
         path.join(fixtureScope, packageName),
@@ -195,7 +204,7 @@ test('@jigwright/grants remains optional for generic Central Grant inspection an
     }
 
     const cliPath = fs.realpathSync(
-      path.join(fixtureEngineRoot, 'src', 'cli.ts'),
+      path.join(fixtureEngineRoot, 'bootstrap/workflow-engine-host.ts'),
     );
     const help = childProcess.spawnSync(
       process.execPath,
@@ -399,9 +408,12 @@ async function createCompletedGenericCentralChallenge(repository: string) {
     'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   ];
   const coordinator = createGrantCoordinatorKernel({
-    paths: grantStorePaths(runtimeRoot(repository)),
+    store: createFileGrantRecordStore(grantStorePaths(runtimeRoot(repository))),
     registry: createTransitionRegistry(
-      changeRoutingGrantTransitionDefinitions(repository),
+      changeRoutingGrantTransitionDefinitions(
+        observeChangeRoutingContinuationState,
+        repository,
+      ),
     ),
     policy: parseGrantPolicyV2Document(
       fs.readFileSync(
@@ -445,6 +457,7 @@ async function createCompletedGenericCentralChallenge(repository: string) {
   });
   const requested = await coordinator.requestGrant(
     createChangeRoutingContinuationGrantRequest(
+      observeChangeRoutingContinuationState,
       repository,
       'demo-change',
       'Continue after the exact external decision.',

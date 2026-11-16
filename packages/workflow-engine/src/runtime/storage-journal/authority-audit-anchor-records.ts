@@ -10,7 +10,6 @@ import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   type AuthorityAuditAnchorBackend,
-  type Sha256Digest,
   type AuthorityAuditAnchorReceipt,
   ANCHOR_RECEIPT_KEYS,
   MAX_ANCHOR_BACKEND_RECEIPT_BYTES,
@@ -159,3 +158,5 @@ export function assertAnchorDirectoryLocal(directory: string): void {
     parseAnchorReceipt(bytes);
   }
 }
+
+import { type Sha256Digest } from '../../modules/authority/authority-audit-contract.ts';

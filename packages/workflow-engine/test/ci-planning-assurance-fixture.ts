@@ -1,4 +1,6 @@
+import { planningAssuranceDependencies } from '../src/composition-root/planning-assurance-production.ts';
 /** Current Manifest and PlanReview assurance setup for CI planning histories. */
+import { readCurrentPlanningRoleOverridePolicy } from '../src/runtime/repository-transaction/planning-role-provider-policy-reader.ts';
 import {
   createFixtureRepository,
   git,
@@ -8,16 +10,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
-import {
-  buildInvestigationManifestDraft,
-  sealInvestigationManifestDraft,
-} from '../src/modules/investigation/manifest/investigation-manifest.ts';
-import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest.ts';
+import { sealInvestigationManifestDraft } from '../src/modules/investigation/manifest/investigation-manifest.ts';
+import { buildInvestigationManifestDraft } from '../src/composition-root/investigation-production.ts';
+import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
 import assert from 'node:assert/strict';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
-import { investigationManifestPublicationNamespace } from '../src/runtime/managed-documents/transaction/investigation-publication.ts';
-import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
+import { investigationManifestPublicationNamespace } from '../src/modules/investigation/manifest/investigation-publication-contracts.ts';
+import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
 import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
 import {
   createPlanReviewTargetSnapshotNode,
@@ -25,7 +25,7 @@ import {
   createPlanReviewProviderResultNode,
   createPlanReviewNode,
 } from '../src/modules/assurance/plan-review.ts';
-import { admitRoleResult } from '../src/modules/provider-orchestration/role-scheduler.ts';
+import { admitRoleResult } from '../src/composition-root/role-admission-production.ts';
 import {
   CHANGE_ID,
   write,
@@ -267,7 +267,12 @@ export function refreshFixturePlanReview(repository: string): void {
   const changeId = 'demo-change';
   const changeRoot = path.join(repository, 'openspec/changes', changeId);
   const contract = loadChangeContract(repository, changeId);
-  const context = deriveInvestigationFirstPlanningSubject(repository, contract);
+  const context = deriveInvestigationFirstPlanningSubject(
+    planningAssuranceDependencies,
+    repository,
+    contract,
+    readCurrentPlanningRoleOverridePolicy(repository, contract.changeId),
+  );
   const applicabilityNode = context.applicabilityNode;
   const assignment = {
     role: 'plan-reviewer' as const,

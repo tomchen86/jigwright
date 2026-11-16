@@ -29,7 +29,8 @@ import {
   assertArchivePublicationTarget,
   type ArchivePullRequestPublicationTargetV1,
 } from '../modules/authority/archive-pr-grant.ts';
-import { loadMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
+import { loadMaintainerPolicy } from '../runtime/repository-observation/maintainer-policy.ts';
+
 import {
   discoverRepository,
   runGit,

@@ -7,33 +7,31 @@
  */
 import path from 'node:path';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  type InvestigationRuntimePaths,
-  assertInvestigationId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
+import { assertInvestigationId } from '../../foundation/repository-path/repository-path.ts';
 import {
   type HumanResolutionNode,
   assertHumanResolutionNode,
-} from './human-resolution-contract.ts';
+} from '../../modules/investigation/domain/human-resolution-contract.ts';
 import {
   createPrivateCanonicalJson,
   privatePathExists,
   readPrivateCanonicalJson,
   withPrivateRuntimeLock,
   writePrivateCanonicalJsonAtomic,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   humanResolutionNodePath,
-  humanResolutionObjectUnsafe,
   humanResolutionPaths,
   humanResolutionRefPath,
   humanResolutionRefUnsafe,
-} from './investigation-resolution-values.ts';
+} from '../journal-primitives/investigation-resolution-values.ts';
+import { humanResolutionObjectUnsafe } from '../../modules/investigation/domain/human-resolution-values.ts';
 import {
   hasExactKeys,
   isDigest,
   isRecord,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 
 export function writeHumanResolutionNode(
   paths: InvestigationRuntimePaths,

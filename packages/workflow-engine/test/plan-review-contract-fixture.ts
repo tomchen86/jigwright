@@ -4,10 +4,10 @@ import path from 'node:path';
 import {
   createEvidenceNode,
   type EvidenceNode,
-} from '../src/adapters/planning/investigation/evidence-node.ts';
+} from '../src/foundation/evidence-node/evidence-node.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
-import { type PlanReviewTermProjection } from '../src/modules/projection/investigation-term-projection.ts';
+import { type PlanReviewTermProjection } from '../src/modules/assurance/plan-review-terms.ts';
 import {
   createPlanReviewDispositionNode,
   createPlanReviewProviderResultNode,
@@ -17,21 +17,18 @@ import {
   planReviewProviderSubmission,
   readPlanReviewTargetSnapshotNode,
   readPlanReviewNode,
-  type PlanReviewSubmission,
 } from '../src/modules/assurance/plan-review.ts';
+import { type PlanReviewSubmission } from '../src/modules/assurance/plan-review-report.ts';
+
 import {
   createPlanTarget,
   type PlanTarget,
   type PlanTargetInput,
 } from '../src/modules/assurance/plan-target.ts';
-import {
-  createPlanningGeneration,
-  type PlanningGeneration,
-} from '../src/modules/lifecycle/planning-generation.ts';
-import {
-  admitRoleResult,
-  type RoleAssignment,
-} from '../src/modules/provider-orchestration/role-scheduler.ts';
+import { createPlanningGeneration } from '../src/modules/assurance/planning-generation.ts';
+import type { PlanningGeneration } from '../src/modules/assurance/planning-generation-record.ts';
+import { admitRoleResult } from '../src/composition-root/role-admission-production.ts';
+import { type RoleAssignment } from '../src/modules/provider-orchestration/role-assignment.ts';
 import type {
   ProviderInvocationRequest,
   ProviderProcessResult,

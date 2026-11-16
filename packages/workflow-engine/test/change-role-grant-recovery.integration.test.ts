@@ -9,9 +9,9 @@ import { rethrowChangeRoleAssignmentGrantCurrentSourceDrift } from '../src/compo
 import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
 import {
   grantStorePaths,
-  readGrantRecord,
   assertGrantLifecycleBarrier,
-} from '../src/runtime/storage-journal/grant-store.ts';
+  createFileGrantRecordStore,
+} from '../src/runtime/lifecycle-ledgers/grant-store.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
   parseGrantPolicyV2,
@@ -87,7 +87,7 @@ test('role-assignment prepared recovery terminalizes production current-source d
       freshOperationId,
     ];
     const coordinator = createGrantCoordinatorKernel({
-      paths: grantStorePaths(runtimeRoot),
+      store: createFileGrantRecordStore(grantStorePaths(runtimeRoot)),
       registry: createTransitionRegistry([definition]),
       policy: parseGrantPolicyV2(policyInput(), {
         registry: codeOwnedApprovalModuleRegistry(),
@@ -130,7 +130,9 @@ test('role-assignment prepared recovery terminalizes production current-source d
       /simulated role-assignment activation crash/,
     );
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        CHALLENGE_ID,
+      ).state,
       'prepared',
     );
     assert.throws(
@@ -144,7 +146,9 @@ test('role-assignment prepared recovery terminalizes production current-source d
     assert.equal(recovered.outcome, 'failed');
     assert.equal(recovered.recovered, true);
     assert.equal(activationAttempts, 1);
-    const failed = readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID);
+    const failed = createFileGrantRecordStore(
+      grantStorePaths(runtimeRoot),
+    ).readGrantRecord(CHALLENGE_ID);
     assert.equal(failed.state, 'failed');
     if (failed.state !== 'failed') assert.fail('expected failed challenge');
     assert.deepEqual(failed.outcome, {
@@ -177,11 +181,15 @@ test('role-assignment prepared recovery terminalizes production current-source d
     assert.equal(completed.outcome, 'completed');
     assert.equal(activationAttempts, 2);
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        CHALLENGE_ID,
+      ).state,
       'failed',
     );
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot), freshChallengeId).state,
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        freshChallengeId,
+      ).state,
       'completed',
     );
   });
@@ -239,7 +247,7 @@ test('role-assignment recovery accepts only the exact activation written before 
     })[0]!;
     const ids = [CHALLENGE_ID, OPERATION_ID];
     const coordinator = createGrantCoordinatorKernel({
-      paths: grantStorePaths(runtimeRoot),
+      store: createFileGrantRecordStore(grantStorePaths(runtimeRoot)),
       registry: createTransitionRegistry([definition]),
       policy: parseGrantPolicyV2(policyInput(), {
         registry: codeOwnedApprovalModuleRegistry(),
@@ -281,7 +289,9 @@ test('role-assignment recovery accepts only the exact activation written before 
     );
     assert.equal(effectWrites, 1);
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        CHALLENGE_ID,
+      ).state,
       'prepared',
     );
     assert.throws(
@@ -295,7 +305,9 @@ test('role-assignment recovery accepts only the exact activation written before 
     assert.equal(recovered.recovered, true);
     assert.equal(effectWrites, 1);
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        CHALLENGE_ID,
+      ).state,
       'completed',
     );
     assert.doesNotThrow(() => assertGrantLifecycleBarrier(runtimeRoot));
@@ -347,7 +359,7 @@ test('role-assignment hard recovery failures retain the prepared barrier', async
       })[0]!;
       const ids = [CHALLENGE_ID, OPERATION_ID];
       const coordinator = createGrantCoordinatorKernel({
-        paths: grantStorePaths(runtimeRoot),
+        store: createFileGrantRecordStore(grantStorePaths(runtimeRoot)),
         registry: createTransitionRegistry([definition]),
         policy: parseGrantPolicyV2(policyInput(), {
           registry: codeOwnedApprovalModuleRegistry(),
@@ -394,7 +406,9 @@ test('role-assignment hard recovery failures retain the prepared barrier', async
           error instanceof Error && 'code' in error && error.code === code,
       );
       assert.equal(
-        readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+        createFileGrantRecordStore(
+          grantStorePaths(runtimeRoot),
+        ).readGrantRecord(CHALLENGE_ID).state,
         'prepared',
         code,
       );
@@ -442,7 +456,7 @@ test('role-assignment recovery keeps its barrier when invocation advancement has
     })[0]!;
     const ids = [CHALLENGE_ID, OPERATION_ID];
     const coordinator = createGrantCoordinatorKernel({
-      paths: grantStorePaths(runtimeRoot),
+      store: createFileGrantRecordStore(grantStorePaths(runtimeRoot)),
       registry: createTransitionRegistry([definition]),
       policy: parseGrantPolicyV2(policyInput(), {
         registry: codeOwnedApprovalModuleRegistry(),
@@ -492,7 +506,9 @@ test('role-assignment recovery keeps its barrier when invocation advancement has
     );
     assert.equal(activationAttempts, 1);
     assert.equal(
-      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      createFileGrantRecordStore(grantStorePaths(runtimeRoot)).readGrantRecord(
+        CHALLENGE_ID,
+      ).state,
       'prepared',
     );
     assert.throws(

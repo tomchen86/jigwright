@@ -1,3 +1,10 @@
+import { productionChangeRoutingInspector } from '../src/composition-root/change-routing-observation-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const renderHandoff = renderHandoffWithContractReader.bind(
+  undefined,
+  productionChangeRoutingInspector,
+  productionChangeContractReader,
+);
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -7,21 +14,21 @@ import {
   captureGovernanceSource,
   listGovernanceSources,
   readGovernanceSource,
-} from '../src/modules/governance-intake/governance-intake.ts';
+} from '../src/composition-root/governance-sources-production.ts';
 import { recordGovernanceFinding } from '../src/composition-root/governance-findings-production.ts';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
-import { runCli } from '../src/cli.ts';
+import { runCli } from '../bootstrap/workflow-engine-host.ts';
 import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
-import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { renderHandoff as renderHandoffWithContractReader } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import {
   loadRepositoryConsumerConfiguration,
   repositoryConsumerConfigurationExists,
-} from '../src/modules/repository-consumer/repository-consumer-config.ts';
+} from '../src/runtime/workflow-configuration/repository-consumer.ts';
 import {
   linkSourceToChange,
   reconcileArchivedWorkItems,
   validateWorkRegistry,
-} from '../src/modules/governance-intake/work-registry.ts';
+} from '../src/composition-root/work-registry-production.ts';
 import {
   createGovernancePersistenceFixture,
   changeFindingRecordForTest,

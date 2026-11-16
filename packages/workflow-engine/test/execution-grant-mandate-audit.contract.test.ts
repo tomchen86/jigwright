@@ -10,16 +10,18 @@ import { verifyAuthorityAuditEvents } from '../src/runtime/storage-journal/autho
 import {
   canonicalExecutionBudgetGrantRequest,
   canonicalExecutionBudgetGrantEnvelope,
-  consumeExecutionBudgetGrant,
   createExecutionBudgetGrantEnvelope,
   createExecutionBudgetGrantRequest,
-  inspectExecutionBudgetGrant,
   parseExecutionBudgetGrantRequest,
+} from '../src/modules/authority/execution-governance-grant-contracts.ts';
+import {
+  consumeExecutionBudgetGrant,
+  inspectExecutionBudgetGrant,
   revokeExecutionBudgetGrant,
   storeExecutionBudgetGrant,
   type ExecutionBudgetGrantAuditContext,
-} from '../src/modules/authority/execution-governance.ts';
-import type { TaskMandateBinding } from '../src/modules/authority/task-mandate.ts';
+} from '../src/runtime/storage-journal/execution-budget-grants.ts';
+import type { TaskMandateBinding } from '../src/modules/authority/task-mandate-contract.ts';
 import { isWorkflowError } from './fixture.ts';
 
 const NOW = new Date('2026-08-04T03:00:00.000Z');

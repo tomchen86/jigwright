@@ -40,7 +40,7 @@ test('core owns the exact current data-authorization policy port without a secon
   );
   for (const consumer of [
     '../workflow-engine/src/modules/provider-orchestration/provider-retry-decision.ts',
-    '../workflow-engine/src/runtime/provider-execution/ai-adapter-policy.ts',
+    '../workflow-engine/src/runtime/provider-policy/ai-adapter-policy.ts',
   ]) {
     const source = fs.readFileSync(path.join(packageRoot, consumer), 'utf8');
     assert.match(

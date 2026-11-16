@@ -9,18 +9,18 @@
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import type { BehaviorContractRef } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import type { BehaviorContractRef } from '../planning-provider/planning-artifact-types.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   assertSessionId,
   normalizeChangedPath,
   normalizePolicyPath,
-} from '../../runtime/session-workspace/paths.ts';
-import {
-  parseTaskStrategyGreenFailureRecord,
-  type TaskStrategyGreenFailureRecord,
-  type TaskStrategyPatchHead,
-} from '../../runtime/storage-journal/task-strategy-correction-store.ts';
+} from '../../foundation/repository-path/repository-path.ts';
+import { parseTaskStrategyGreenFailureRecord } from './task-strategy-correction-record.ts';
+import type {
+  TaskStrategyGreenFailureRecord,
+  TaskStrategyPatchHead,
+} from './task-strategy-correction-record.ts';
 import {
   assertTaskStrategyImplementationOutput as assertCurrentTaskStrategyImplementationOutput,
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
@@ -62,54 +62,6 @@ export const TASK_STRATEGY_IMPLEMENTATION_POLICY = deepFreeze({
 export const TASK_STRATEGY_IMPLEMENTATION_POLICY_DIGEST = sha256(
   canonicalJson(TASK_STRATEGY_IMPLEMENTATION_POLICY),
 );
-
-export type TaskStrategyImplementationFrozenFile = Readonly<{
-  path: string;
-  mode: '100644' | '100755';
-  objectId: string;
-}>;
-
-export type TaskStrategyImplementationCorrection = Readonly<{
-  round: number;
-  greenFailureRecordDigest: string;
-  greenFailureSubjectDigest: string;
-  candidateTree: string;
-  failingCheckFingerprint: string;
-  currentPatchHead: TaskStrategyPatchHead;
-}>;
-
-export type TaskStrategyImplementationSubject = Readonly<{
-  schemaVersion: 1;
-  kind: 'task-strategy-implementation-subject.v1';
-  subjectDigest: string;
-  sessionId: string;
-  changeId: string;
-  taskId: string;
-  strategy: 'cross-agent-tdd' | 'tdd-single-agent';
-  transactionDigest: string;
-  taskContractDigest: string;
-  sourceTree: string;
-  failureFingerprint: string;
-  redEvidenceNodeId: string;
-  redEvidenceResultDigest: string;
-  testPaths: readonly string[];
-  fixturePaths: readonly string[];
-  frozenFiles: readonly TaskStrategyImplementationFrozenFile[];
-  correction?: TaskStrategyImplementationCorrection;
-}>;
-
-export type TaskStrategyImplementationManifest = Readonly<{
-  schemaVersion: 1;
-  kind: 'task-strategy-implementation-manifest';
-  repositoryId: string;
-  baseCommit: string;
-  baseTree: string;
-  subject: TaskStrategyImplementationSubject;
-  behaviorContractRefs: readonly BehaviorContractRef[];
-  implementationPathScopes: readonly string[];
-  capabilityProfile: 'repository-read-only';
-  greenFailureRecord?: TaskStrategyGreenFailureRecord;
-}>;
 
 export function createTaskStrategyImplementationSubject(
   input: Omit<
@@ -548,3 +500,16 @@ function outputInvalid() {
     ExitCode.verification,
   );
 }
+
+import type {
+  TaskStrategyImplementationFrozenFile,
+  TaskStrategyImplementationCorrection,
+  TaskStrategyImplementationSubject,
+  TaskStrategyImplementationManifest,
+} from './task-strategy-implementation-manifest.ts';
+export type {
+  TaskStrategyImplementationFrozenFile,
+  TaskStrategyImplementationCorrection,
+  TaskStrategyImplementationSubject,
+  TaskStrategyImplementationManifest,
+} from './task-strategy-implementation-manifest.ts';

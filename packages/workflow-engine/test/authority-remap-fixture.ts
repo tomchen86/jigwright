@@ -2,7 +2,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { git, sourceRepositoryRoot } from './fixture.ts';
-import { parseCapabilityProfile } from '../src/modules/authority/maintainer-manifest.ts';
+import { parseCapabilityProfile } from '../src/modules/authority/maintainer-manifest-contracts.ts';
 
 export function write(
   repository: string,

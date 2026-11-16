@@ -11,18 +11,18 @@ import crypto from 'node:crypto';
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 
-/**
- * V1 typed search-term kinds. Matching is fixed case-sensitive literal; arbitrary
- * regular expressions and case folding are rejected. `literal-content`, `symbol`,
- * and `config-key` match exact literal blob content; `literal-path` additionally
- * matches raw tracked path bytes so a path floor also catches dangling consumers.
- */
-export type InvestigationTermKind =
-  'literal-content' | 'literal-path' | 'symbol' | 'config-key';
-
-export const INVESTIGATION_TERM_MATCHING = 'case-sensitive-literal-v1' as const;
-
-export type InvestigationTermMatching = typeof INVESTIGATION_TERM_MATCHING;
+import {
+  SEARCH_TERM_MATCHING as INVESTIGATION_TERM_MATCHING,
+  type SearchTermKind as InvestigationTermKind,
+  type SearchTermMatching as InvestigationTermMatching,
+  type NormalizedSearchTerm as NormalizedInvestigationTerm,
+} from '../../source/search-term.ts';
+export { INVESTIGATION_TERM_MATCHING };
+export type {
+  InvestigationTermKind,
+  InvestigationTermMatching,
+  NormalizedInvestigationTerm,
+};
 
 const TERM_KINDS: ReadonlySet<string> = new Set<InvestigationTermKind>([
   'literal-content',
@@ -33,18 +33,6 @@ const TERM_KINDS: ReadonlySet<string> = new Set<InvestigationTermKind>([
 
 const MAX_TERM_BYTES = 256;
 const MAX_TERM_SEMANTIC_TEXT_BYTES = 4096;
-
-/**
- * A normalized term binds its exact kind, byte-preserving value, and fixed
- * matching under one semantic `termId`. Two inputs with the same kind and value
- * always deduplicate to the same identity; a different kind never collides.
- */
-export type NormalizedInvestigationTerm = {
-  termId: string;
-  kind: InvestigationTermKind;
-  value: string;
-  matching: InvestigationTermMatching;
-};
 
 /**
  * The recognized term sources. The engine floor counts separately from the three

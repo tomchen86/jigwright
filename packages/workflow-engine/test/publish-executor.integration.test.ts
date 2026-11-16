@@ -4,18 +4,16 @@ import test from 'node:test';
 
 import { deriveAuthorityAuditRepositoryId } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import { showAuthorityAuditTask } from '../src/runtime/storage-journal/authority-audit-service.ts';
+import { inspectExternalEffectGrant } from '../src/composition-root/external-effect-production.ts';
+import { issueExternalEffectGrant } from '../src/composition-root/external-effect-production.ts';
+import { runRepositoryHook } from '../src/composition-root/repository-hooks-production.ts';
 import {
-  inspectExternalEffectGrant,
-  issueExternalEffectGrant,
-} from '../src/modules/authority/external-effect-grant.ts';
-import { runRepositoryHook } from '../src/entrypoints/hooks/hooks.ts';
-import {
-  executePublishGrant,
   publishPoststateDigest,
   type PublishRunner,
   type PublishRunnerObservation,
   type PublishRunnerRequest,
-} from '../src/adapters/remote/github/publish-executor.ts';
+} from '../src/modules/authority/publish-grant.ts';
+import { executePublishGrant } from '../src/composition-root/external-effect-production.ts';
 import { git, isWorkflowError } from './fixture.ts';
 import {
   EFFECT_GRANT_ID as GRANT_ID,

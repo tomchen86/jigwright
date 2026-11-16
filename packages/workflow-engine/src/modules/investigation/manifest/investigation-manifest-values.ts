@@ -5,10 +5,10 @@
  * Invariants:
  * - Digest reference collections reject duplicates after sorting.
  */
-import type { InvestigationSemanticAuthor } from '../domain/investigation-applicability.ts';
-import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import crypto from 'node:crypto';
-import type { InvestigationV3FailureCode } from './investigation-manifest.ts';
+import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
+import type { InvestigationSemanticAuthor } from '../domain/investigation-applicability.ts';
+import type { InvestigationV3FailureCode } from './investigation-manifest-types.ts';
 
 export const DIGEST = /^[0-9a-f]{64}$/;
 
@@ -149,5 +149,3 @@ export class ManifestValidationError extends Error {
 export function unrepresentable(message: string): ManifestValidationError {
   return new ManifestValidationError('MANIFEST_UNREPRESENTABLE', message);
 }
-
-export const SEMANTIC_ASSURANCE = 'actor-attested-not-engine-verified' as const;

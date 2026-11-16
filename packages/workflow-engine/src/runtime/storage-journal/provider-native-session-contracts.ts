@@ -5,7 +5,7 @@
  * - Input keys, digest identity, and reference error codes remain exact.
  * - Chain state distinguishes usable completion from authorized continuation.
  */
-import type { ProviderWrapperSessionProtocolBinding } from '@jigwright/agent-runtime';
+import type { ProviderWrapperSessionProtocolBinding } from '@jigwright/core/harness-jsonl-v2-contracts';
 import {
   type ProviderNativeSessionContinuationAuthorityV1,
   type ProviderNativeSessionClaimRefV1,

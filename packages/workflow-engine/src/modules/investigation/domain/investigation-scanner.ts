@@ -1,36 +1,29 @@
-/**
- * Scans tracked tree content into bounded term hits and inventory facts.
- *
- * Invariants:
- * - Effective scan terms cannot exceed the admitted term limit.
- */
+import type {
+  InvestigationScanFactsResult,
+  ScanHit,
+  ScanHitContextWindow,
+  ScanHitSourceObject,
+  ScanInventoryFacts,
+  ScanInvestigationTerm,
+  ScanViolation,
+} from './investigation-scan-facts.ts';
+import { SCAN_HIT_MAX_CONTEXT_BYTES } from './investigation-scan-facts.ts';
 import crypto from 'node:crypto';
-import { performance } from 'node:perf_hooks';
-
 import type {
   TrackedObjectEntryV1,
-  TrackedObjectReaderPortV1,
   TrackedObjectSnapshotV1,
 } from '@jigwright/core/tracked-object-reader-port';
 
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
+import { type TrackedTreePathIdentity } from '../../source/tracked-path.ts';
 import {
   assertInvestigationLimits,
   INVESTIGATION_LIMITS,
   normalizeInvestigationTerm,
   type InvestigationLimits,
-  type InvestigationTermProvenance,
   type NormalizedInvestigationTerm,
 } from './investigation-terms.ts';
-import {
-  workflowTrackedObjectReaderPort,
-  type TrackedTreeEntry,
-  type TrackedTreeOperationalDeadline,
-  type TrackedTreePathIdentity,
-  type TrackedTreeSkipReason,
-  type TrackedTreeSnapshot,
-} from '../../../runtime/repository-transaction/tracked-tree-reader.ts';
 
 const POLICY_SCHEMA = 'investigation-scan-policy.v2';
 
@@ -90,61 +83,6 @@ function isGeneratedArtifactPath(utf8Path: string | null): boolean {
   );
 }
 
-/**
- * A sealed term as consumed by the scanner: its normalized identity plus the
- * retained union provenance. The normalized identity remains independent of
- * provenance while the facts retain the exact sources that contributed it.
- */
-export type ScanInvestigationTerm = NormalizedInvestigationTerm & {
-  provenance: InvestigationTermProvenance[];
-};
-
-/**
- * Stable pinned object identity carried by every scan hit so Task 3.2 grouping
- * and the exact-blob WHY task can bind matches to their exact source object. A
- * skipped object still yields `literal-path` hits: scanned text carries a
- * SHA-256 and a null `skipReason`; a skipped path carries a null SHA-256 and its
- * exact reason.
- */
-export type ScanHitSourceObject = {
-  objectId: string;
-  objectType: string;
-  mode: string;
-  byteSize: number | null;
-  contentSha256: string | null;
-  skipReason: TrackedTreeSkipReason | null;
-};
-
-/**
- * The bytes surrounding a content hit, so a class predicate can be replayed
- * later as a pure recomputation over stored evidence rather than by reopening
- * the repository. Bounded on purpose: a minified bundle is one enormous line,
- * and storing it whole would put the file back into the evidence this exists
- * to avoid.
- */
-export type ScanHitContextWindow = {
-  rawBase64: string;
-  utf8: string | null;
-  byteOffset: number;
-  byteLength: number;
-  truncated: boolean;
-};
-
-export type ScanHit = {
-  path: TrackedTreePathIdentity;
-  sourceObject: ScanHitSourceObject;
-  surface: 'path' | 'content';
-  byteOffset: number;
-  byteLength: number;
-  /**
-   * Present for content hits only. A path-surface hit has no content to quote,
-   * so it can never satisfy a predicate and can never join a class.
-   */
-  contextWindow?: ScanHitContextWindow;
-};
-
-export const SCAN_HIT_MAX_CONTEXT_BYTES = 512;
-
 export function hitContextWindow(
   haystack: Buffer,
   byteOffset: number,
@@ -190,304 +128,6 @@ export function hitContextWindow(
   };
 }
 
-export type ScanSkippedObject = {
-  path: { rawBase64: string; utf8: string | null };
-  objectId: string;
-  objectType: string;
-  mode: string;
-  byteSize: number | null;
-  reason: TrackedTreeSkipReason | 'generated-artifact';
-};
-
-export type ScanInventoryFacts = {
-  treeDigest: string;
-  skippedObjects: readonly ScanSkippedObject[];
-};
-
-export type InvestigationScanTermFacts = {
-  term: ScanInvestigationTerm;
-  hits: ScanHit[];
-};
-
-/** Deterministic scanner output consumed by the manifest-first v3 writer. */
-export type InvestigationScanFacts = {
-  schemaVersion: 1;
-  kind: 'investigation-scan-facts';
-  treeDigest: string;
-  policyDigest: string;
-  inventory: ScanInventoryFacts;
-  terms: InvestigationScanTermFacts[];
-};
-
-export type ScanViolation = {
-  code:
-    | 'TERM_HIT_LIMIT_EXCEEDED'
-    | 'TOTAL_HIT_LIMIT_EXCEEDED'
-    | 'HIT_DISPOSITION_WORK_LIMIT_EXCEEDED'
-    | 'SCANNED_BYTE_LIMIT_EXCEEDED'
-    | 'SCAN_WORK_LIMIT_EXCEEDED';
-  termId?: string;
-};
-
-export type ReadyScanFactsResult = {
-  outcome: 'ready';
-  facts: InvestigationScanFacts;
-  saturatedTermIds?: string[];
-};
-
-export type NarrowingScanFactsResult = {
-  outcome: 'requires-narrowing';
-  policyDigest: string;
-  inventory: ScanInventoryFacts;
-  violations: ScanViolation[];
-  terms: ScanInvestigationTerm[];
-};
-
-export type InvestigationScanFactsResult =
-  ReadyScanFactsResult | NarrowingScanFactsResult;
-
-/**
- * Deterministically scan every sealed term against the pinned Git-tracked tree
- * and emit one independent fact set per term, sorted by term ID so caller order
- * is irrelevant. The scanner reads only the pinned object graph — never task
- * `allowedPaths`, working-tree files, recognized environment files, a shell, or
- * the caller PATH — and matches exact literal bytes with no regex. Each supplied
- * term is revalidated by recomputation; a forged term field or duplicate term
- * ID fails closed. A per-term, aggregate, work, or scanned-byte overage returns
- * typed `requires-narrowing` with the original terms and no partial facts.
- */
-export function scanInvestigationTreeFacts(request: {
-  repositoryRoot: string;
-  treeOid: string;
-  terms: ScanInvestigationTerm[];
-  limits?: InvestigationLimits;
-  /**
-   * Accept a term that hit its own ceiling instead of refusing the scan.
-   *
-   * Off by default, because a truncated term is a search that cannot claim to
-   * be complete and silently proceeding would let that claim be made anyway.
-   * A caller that opts in is told which terms saturated, and the class
-   * compression that would have relied on their completeness is refused for
-   * exactly those terms — which is what makes carrying on honest rather than
-   * merely convenient.
-   */
-  allowSaturatedTerms?: boolean;
-  trackedObjectReader?: TrackedObjectReaderPortV1;
-}): InvestigationScanFactsResult {
-  const { repositoryRoot, treeOid, terms } = request;
-  const allowSaturatedTerms = request.allowSaturatedTerms === true;
-  const limits = assertInvestigationLimits(
-    request.limits ?? { ...INVESTIGATION_LIMITS },
-  );
-  assertScanTerms(terms);
-  if (terms.length > limits.maxEffectiveTerms) {
-    throw scanInvalid(
-      'Supplied terms exceed the effective-term limit and are not a sealed union.',
-    );
-  }
-
-  const operationalDeadline: TrackedTreeOperationalDeadline = {
-    expiresAtMonotonicMillis: performance.now() + limits.maxScanCpuMillis,
-  };
-  const scanCpuStart = process.cpuUsage();
-  const snapshot = readTrackedTreeForScan(
-    request.trackedObjectReader ?? workflowTrackedObjectReaderPort,
-    {
-      repositoryRoot,
-      treeOid,
-      limits: {
-        maxBlobBytes: limits.maxBlobBytes,
-        maxTotalScannedBytes: limits.maxTotalScannedBlobBytes,
-      },
-      operationalDeadline,
-    },
-  );
-  assertOperationalScanBudget(
-    operationalDeadline,
-    scanCpuStart,
-    limits.maxScanCpuMillis,
-  );
-
-  const policyDigest = computePolicyDigest(limits);
-  const generatedEntries = snapshot.entries.filter(
-    (entry) =>
-      entry.skipReason === undefined &&
-      isGeneratedArtifactPath(entry.path.utf8),
-  );
-  const generatedObjectIds = new Set(
-    generatedEntries.map((entry) => entry.objectId),
-  );
-  const sourceEntries =
-    generatedEntries.length === 0
-      ? snapshot.entries
-      : snapshot.entries.filter(
-          (entry) => !generatedObjectIds.has(entry.objectId),
-        );
-  const inventory = buildInventoryFacts(snapshot, generatedEntries);
-  const violations: ScanViolation[] = [];
-  if (snapshot.budgetExceeded) {
-    violations.push({ code: 'SCANNED_BYTE_LIMIT_EXCEEDED' });
-  }
-
-  // Semantic narrowing uses a deterministic byte-work ceiling. The separate
-  // operational wall/CPU watchdog throws without returning evidence, so
-  // runtime/JIT speed can never change canonical scan output.
-  let remainingScanWork = limits.maxScanWorkBytes;
-  const perTermHits: ScanHit[][] = [];
-  let totalHits = 0;
-  for (const term of terms) {
-    const collected = collectTermHits(
-      term,
-      // A path term names its target, so it still sees generated artifacts.
-      term.kind === 'literal-path' ? snapshot.entries : sourceEntries,
-      limits.maxHitsPerTerm,
-      remainingScanWork,
-      operationalDeadline,
-      scanCpuStart,
-      limits.maxScanCpuMillis,
-    );
-    if (collected.workLimitExceeded) {
-      violations.push({ code: 'SCAN_WORK_LIMIT_EXCEEDED' });
-      break;
-    }
-    remainingScanWork -= collected.workBytes;
-    const { hits } = collected;
-    if (hits.length > limits.maxHitsPerTerm) {
-      violations.push({ code: 'TERM_HIT_LIMIT_EXCEEDED', termId: term.termId });
-    }
-    totalHits += hits.length;
-    perTermHits.push(hits);
-  }
-  if (totalHits > limits.maxTotalHits) {
-    violations.push({ code: 'TOTAL_HIT_LIMIT_EXCEEDED' });
-  }
-  if (totalHits > limits.maxHitDispositionWorkItems) {
-    violations.push({ code: 'HIT_DISPOSITION_WORK_LIMIT_EXCEEDED' });
-  }
-
-  assertOperationalScanBudget(
-    operationalDeadline,
-    scanCpuStart,
-    limits.maxScanCpuMillis,
-  );
-  // A term that hit its own ceiling is the one violation a caller can carry,
-  // because the hits it did collect remain true — only their completeness is
-  // lost. Every other violation means the scan itself is not sound, so none of
-  // them are eligible for this exit.
-  const saturatedTermIds = violations
-    .filter(({ code }) => code === 'TERM_HIT_LIMIT_EXCEEDED')
-    .map(({ termId }) => termId)
-    .filter((termId): termId is string => termId !== undefined)
-    .sort();
-  const onlySaturation =
-    saturatedTermIds.length > 0 &&
-    violations.every(({ code }) => code === 'TERM_HIT_LIMIT_EXCEEDED');
-
-  if (violations.length > 0 && !(allowSaturatedTerms && onlySaturation)) {
-    violations.sort(compareViolations);
-    return {
-      outcome: 'requires-narrowing',
-      policyDigest,
-      inventory,
-      violations,
-      terms,
-    };
-  }
-
-  const saturated = allowSaturatedTerms ? saturatedTermIds : [];
-  const termFacts = terms
-    .map((term, index) => ({
-      term: structuredClone(term),
-      hits: structuredClone(perTermHits[index]!),
-    }))
-    .sort((left, right) => (left.term.termId < right.term.termId ? -1 : 1));
-
-  return {
-    outcome: 'ready',
-    facts: {
-      schemaVersion: 1,
-      kind: 'investigation-scan-facts',
-      treeDigest: snapshot.treeDigest,
-      policyDigest,
-      inventory,
-      terms: termFacts,
-    },
-    ...(saturated.length === 0 ? {} : { saturatedTermIds: saturated }),
-  };
-}
-
-function readTrackedTreeForScan(
-  reader: TrackedObjectReaderPortV1,
-  request: Parameters<TrackedObjectReaderPortV1['readPinnedTree']>[0],
-): TrackedTreeSnapshot {
-  if (
-    reader?.contractVersion !== 'jigwright.tracked-object-reader-port.v1' ||
-    typeof reader.readPinnedTree !== 'function'
-  ) {
-    throw workflowError(
-      'TRACKED_OBJECT_READER_UNSUPPORTED',
-      'Tracked-object reader contract version is unsupported.',
-      ExitCode.guard,
-    );
-  }
-  const snapshot = reader.readPinnedTree(request);
-  if (
-    !isTrackedObjectSnapshot(snapshot) ||
-    snapshot.treeOid !== request.treeOid
-  ) {
-    throw workflowError(
-      'TRACKED_OBJECT_READER_INVALID',
-      'Tracked-object reader returned an invalid snapshot.',
-      ExitCode.guard,
-    );
-  }
-  return {
-    treeOid: snapshot.treeOid,
-    treeDigest: snapshot.treeDigest,
-    entries: snapshot.entries.map(adaptTrackedObjectEntry),
-    totalScannedBlobBytes: snapshot.totalScannedBlobBytes,
-    budgetExceeded: snapshot.budgetExceeded,
-  };
-}
-
-function adaptTrackedObjectEntry(
-  entry: TrackedObjectEntryV1,
-): TrackedTreeEntry {
-  return {
-    path: { rawBase64: entry.path.rawBase64, utf8: entry.path.utf8 },
-    objectId: entry.objectId,
-    objectType: entry.objectType,
-    mode: entry.mode,
-    byteSize: entry.byteSize,
-    ...(entry.content === undefined
-      ? {}
-      : {
-          content: Buffer.isBuffer(entry.content)
-            ? entry.content
-            : Buffer.from(entry.content),
-        }),
-    ...(entry.contentSha256 === undefined
-      ? {}
-      : { contentSha256: entry.contentSha256 }),
-    ...(entry.skipReason === undefined ? {} : { skipReason: entry.skipReason }),
-  };
-}
-
-function isTrackedObjectSnapshot(
-  value: TrackedObjectSnapshotV1,
-): value is TrackedObjectSnapshotV1 {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(value.treeOid) &&
-    /^[0-9a-f]{64}$/.test(value.treeDigest) &&
-    Array.isArray(value.entries) &&
-    Number.isSafeInteger(value.totalScannedBlobBytes) &&
-    value.totalScannedBlobBytes >= 0 &&
-    typeof value.budgetExceeded === 'boolean'
-  );
-}
-
 function assertScanTerms(terms: ScanInvestigationTerm[]): void {
   const seen = new Set<string>();
   for (const term of terms) {
@@ -515,12 +155,10 @@ function assertScanTerms(terms: ScanInvestigationTerm[]): void {
 
 function collectTermHits(
   term: ScanInvestigationTerm,
-  entries: TrackedTreeEntry[],
+  entries: ScanTreeEntry[],
   maxHitsPerTerm: number,
   workBudget: number,
-  operationalDeadline: TrackedTreeOperationalDeadline,
-  scanCpuStart: NodeJS.CpuUsage,
-  maxScanCpuMillis: number,
+  assertBudget: () => void,
 ): {
   hits: ScanHit[];
   workBytes: number;
@@ -532,11 +170,7 @@ function collectTermHits(
   let workBytes = 0;
 
   for (const entry of entries) {
-    assertOperationalScanBudget(
-      operationalDeadline,
-      scanCpuStart,
-      maxScanCpuMillis,
-    );
+    assertBudget();
     const sourceObject = entrySourceObject(entry);
     // A skipped blob suppresses content scanning but never path scanning:
     // `literal-path` still matches the raw tracked path bytes of every entry.
@@ -546,13 +180,7 @@ function collectTermHits(
         return { hits: [], workBytes, workLimitExceeded: true };
       }
       workBytes += pathBytes.byteLength;
-      for (const offset of findOccurrences(
-        pathBytes,
-        needle,
-        operationalDeadline,
-        scanCpuStart,
-        maxScanCpuMillis,
-      )) {
+      for (const offset of findOccurrences(pathBytes, needle, assertBudget)) {
         hits.push(makeHit(entry.path, sourceObject, 'path', offset, needle));
         if (hits.length >= cap) {
           return {
@@ -571,9 +199,7 @@ function collectTermHits(
       for (const offset of findOccurrences(
         entry.content,
         needle,
-        operationalDeadline,
-        scanCpuStart,
-        maxScanCpuMillis,
+        assertBudget,
       )) {
         hits.push(
           makeHit(
@@ -603,7 +229,7 @@ function collectTermHits(
   };
 }
 
-function entrySourceObject(entry: TrackedTreeEntry): ScanHitSourceObject {
+function entrySourceObject(entry: ScanTreeEntry): ScanHitSourceObject {
   return {
     objectId: entry.objectId,
     objectType: entry.objectType,
@@ -639,23 +265,13 @@ function makeHit(
 function* findOccurrences(
   haystack: Buffer,
   needle: Buffer,
-  operationalDeadline: TrackedTreeOperationalDeadline,
-  scanCpuStart: NodeJS.CpuUsage,
-  maxScanCpuMillis: number,
+  assertBudget: () => void,
 ): Generator<number> {
   let from = 0;
   for (;;) {
-    assertOperationalScanBudget(
-      operationalDeadline,
-      scanCpuStart,
-      maxScanCpuMillis,
-    );
+    assertBudget();
     const index = haystack.indexOf(needle, from);
-    assertOperationalScanBudget(
-      operationalDeadline,
-      scanCpuStart,
-      maxScanCpuMillis,
-    );
+    assertBudget();
     if (index === -1) {
       break;
     }
@@ -683,8 +299,8 @@ function sortHits(hits: ScanHit[]): ScanHit[] {
 }
 
 function buildInventoryFacts(
-  snapshot: TrackedTreeSnapshot,
-  generatedEntries: readonly TrackedTreeEntry[] = [],
+  snapshot: ScanTreeSnapshot,
+  generatedEntries: readonly ScanTreeEntry[] = [],
 ): ScanInventoryFacts {
   const skippedObjects = [
     ...snapshot.entries
@@ -754,21 +370,153 @@ function scanInvalid(message: string) {
   return workflowError('INVESTIGATION_SCAN_INVALID', message, ExitCode.usage);
 }
 
-function assertOperationalScanBudget(
-  deadline: TrackedTreeOperationalDeadline,
-  cpuStart: NodeJS.CpuUsage,
-  maxCpuMillis: number,
-): void {
-  const cpu = process.cpuUsage(cpuStart);
-  if (
-    performance.now() >= deadline.expiresAtMonotonicMillis ||
-    cpu.user + cpu.system >= maxCpuMillis * 1000
-  ) {
-    throw workflowError(
-      'INVESTIGATION_SCAN_TIMEOUT',
-      'Investigation scan exceeded its operational wall/CPU deadline.',
-      ExitCode.unsafeEnvironment,
-      { details: { limitMillis: maxCpuMillis } },
+export type InvestigationScanRequest = {
+  repositoryRoot: string;
+  treeOid: string;
+  terms: ScanInvestigationTerm[];
+  limits?: InvestigationLimits;
+  allowSaturatedTerms?: boolean;
+};
+export type InvestigationTreeScanner = (
+  request: InvestigationScanRequest,
+) => InvestigationScanFactsResult;
+
+/** The existing tracked-object wire shape, with bytes adapted once for literal matching. */
+export type ScanTreeEntry = Omit<TrackedObjectEntryV1, 'content'> & {
+  content?: Buffer;
+};
+export type ScanTreeSnapshot = Omit<TrackedObjectSnapshotV1, 'entries'> & {
+  entries: ScanTreeEntry[];
+};
+
+/** Validate before starting the operational budget or observing the pinned tree. */
+export function investigationScanLimits(
+  request: Pick<InvestigationScanRequest, 'terms' | 'limits'>,
+): InvestigationLimits {
+  const { terms } = request;
+  const limits = assertInvestigationLimits(
+    request.limits ?? { ...INVESTIGATION_LIMITS },
+  );
+  assertScanTerms(terms);
+  if (terms.length > limits.maxEffectiveTerms) {
+    throw scanInvalid(
+      'Supplied terms exceed the effective-term limit and are not a sealed union.',
     );
   }
+
+  return limits;
+}
+
+/** Deterministic matching and narrowing; checkpoints abort without becoming evidence. */
+export function scanInvestigationSnapshotFacts(
+  request: {
+    snapshot: ScanTreeSnapshot;
+    terms: ScanInvestigationTerm[];
+    limits: InvestigationLimits;
+    allowSaturatedTerms?: boolean;
+  },
+  assertBudget: () => void,
+): InvestigationScanFactsResult {
+  const { snapshot, terms, limits } = request;
+  const allowSaturatedTerms = request.allowSaturatedTerms === true;
+  const policyDigest = computePolicyDigest(limits);
+  const generatedEntries = snapshot.entries.filter(
+    (entry) =>
+      entry.skipReason === undefined &&
+      isGeneratedArtifactPath(entry.path.utf8),
+  );
+  const generatedObjectIds = new Set(
+    generatedEntries.map((entry) => entry.objectId),
+  );
+  const sourceEntries =
+    generatedEntries.length === 0
+      ? snapshot.entries
+      : snapshot.entries.filter(
+          (entry) => !generatedObjectIds.has(entry.objectId),
+        );
+  const inventory = buildInventoryFacts(snapshot, generatedEntries);
+  const violations: ScanViolation[] = [];
+  if (snapshot.budgetExceeded) {
+    violations.push({ code: 'SCANNED_BYTE_LIMIT_EXCEEDED' });
+  }
+
+  // Semantic narrowing uses a deterministic byte-work ceiling. The separate
+  // operational wall/CPU watchdog throws without returning evidence, so
+  // runtime/JIT speed can never change canonical scan output.
+  let remainingScanWork = limits.maxScanWorkBytes;
+  const perTermHits: ScanHit[][] = [];
+  let totalHits = 0;
+  for (const term of terms) {
+    const collected = collectTermHits(
+      term,
+      // A path term names its target, so it still sees generated artifacts.
+      term.kind === 'literal-path' ? snapshot.entries : sourceEntries,
+      limits.maxHitsPerTerm,
+      remainingScanWork,
+      assertBudget,
+    );
+    if (collected.workLimitExceeded) {
+      violations.push({ code: 'SCAN_WORK_LIMIT_EXCEEDED' });
+      break;
+    }
+    remainingScanWork -= collected.workBytes;
+    const { hits } = collected;
+    if (hits.length > limits.maxHitsPerTerm) {
+      violations.push({ code: 'TERM_HIT_LIMIT_EXCEEDED', termId: term.termId });
+    }
+    totalHits += hits.length;
+    perTermHits.push(hits);
+  }
+  if (totalHits > limits.maxTotalHits) {
+    violations.push({ code: 'TOTAL_HIT_LIMIT_EXCEEDED' });
+  }
+  if (totalHits > limits.maxHitDispositionWorkItems) {
+    violations.push({ code: 'HIT_DISPOSITION_WORK_LIMIT_EXCEEDED' });
+  }
+
+  assertBudget();
+  // A term that hit its own ceiling is the one violation a caller can carry,
+  // because the hits it did collect remain true — only their completeness is
+  // lost. Every other violation means the scan itself is not sound, so none of
+  // them are eligible for this exit.
+  const saturatedTermIds = violations
+    .filter(({ code }) => code === 'TERM_HIT_LIMIT_EXCEEDED')
+    .map(({ termId }) => termId)
+    .filter((termId): termId is string => termId !== undefined)
+    .sort();
+  const onlySaturation =
+    saturatedTermIds.length > 0 &&
+    violations.every(({ code }) => code === 'TERM_HIT_LIMIT_EXCEEDED');
+
+  if (violations.length > 0 && !(allowSaturatedTerms && onlySaturation)) {
+    violations.sort(compareViolations);
+    return {
+      outcome: 'requires-narrowing',
+      policyDigest,
+      inventory,
+      violations,
+      terms,
+    };
+  }
+
+  const saturated = allowSaturatedTerms ? saturatedTermIds : [];
+  const termFacts = terms
+    .map((term, index) => ({
+      term: structuredClone(term),
+      hits: structuredClone(perTermHits[index]!),
+    }))
+    .sort((left, right) => (left.term.termId < right.term.termId ? -1 : 1));
+
+  return {
+    outcome: 'ready',
+    facts: {
+      schemaVersion: 1,
+      kind: 'investigation-scan-facts',
+      treeDigest: snapshot.treeDigest,
+      policyDigest,
+      inventory,
+      terms: termFacts,
+    },
+    ...(saturated.length === 0 ? {} : { saturatedTermIds: saturated }),
+  };
 }

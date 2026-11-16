@@ -9,11 +9,12 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
-import { assertChangeId, assertInvestigationId, } from "../session-workspace/paths.js";
-import { createPrivateCanonicalJson, fsyncDirectory, privatePathExists, readPrivateCanonicalJson, withPrivateRuntimeLock, writePrivateCanonicalJsonAtomic, } from "./investigation-private-files.js";
-import { currentInvestigationRefPath, investigationCasMismatch, investigationSessionPath, refUnsafe, sessionLockInvalid, sessionTransitionInvalid, sessionUnsafe, } from "./investigation-resolution-values.js";
-import { assertInvestigationSession, assertMonotonicSessionTransition, semanticSessionContentChanged, } from "./investigation-session-contract.js";
-import { deepFreeze, hasExactKeys, isRecord, } from "./investigation-store-values.js";
+import { assertChangeId, assertInvestigationId, } from "../../foundation/repository-path/repository-path.js";
+import { createPrivateCanonicalJson, fsyncDirectory, privatePathExists, readPrivateCanonicalJson, withPrivateRuntimeLock, writePrivateCanonicalJsonAtomic, } from "../journal-primitives/investigation-private-files.js";
+import { currentInvestigationRefPath, investigationCasMismatch, investigationSessionPath, refUnsafe, sessionLockInvalid, sessionUnsafe, } from "../journal-primitives/investigation-resolution-values.js";
+import { sessionTransitionInvalid } from "../../modules/investigation/domain/investigation-session-contract.js";
+import { assertInvestigationSession, assertMonotonicSessionTransition, semanticSessionContentChanged, } from "../../modules/investigation/domain/investigation-session-contract.js";
+import { deepFreeze, hasExactKeys, isRecord, } from "../../modules/investigation/domain/investigation-store-values.js";
 export function createInvestigationId() {
     const timestamp = new Date().toISOString().replace(/[^0-9]/g, '');
     return `investigation-${timestamp}-${crypto.randomUUID()}`;

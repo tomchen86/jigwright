@@ -1,7 +1,7 @@
 import test from 'node:test';
 import { createFixtureRepository, isWorkflowError } from './fixture.ts';
 import assert from 'node:assert/strict';
-import { blindSurveyIntentDigest } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { blindSurveyIntentDigest } from '../src/runtime/storage-journal/provider-invocation-manifest-validation.ts';
 import fs from 'node:fs';
 import { createManifest } from './blind-survey-manifest-fixture.ts';
 

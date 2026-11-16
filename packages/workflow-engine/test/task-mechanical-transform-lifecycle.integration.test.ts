@@ -1,15 +1,27 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import type { TransformationTerm } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import type { TransformationTerm } from '../src/modules/planning-provider/planning-artifact-types.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
-import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
-import { beginTaskDiffReview } from '../src/application/finalize/task-diff-review-lifecycle.ts';
+import { beginTaskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
 import {
   inspectTaskMechanicalTransformLifecycle,
   resumeTaskMechanicalTransformation,
@@ -17,7 +29,7 @@ import {
 import {
   inspectTaskStrategyLifecycle,
   resumeTaskStrategy,
-} from '../src/application/execute-task/task-strategy-lifecycle.ts';
+} from '../src/composition-root/task-strategy-production.ts';
 import {
   createFixtureRepository,
   git,
@@ -95,6 +107,8 @@ test('mechanical resume never overwrites foreign target bytes introduced after p
     assert.throws(
       () =>
         resumeTaskMechanicalTransformation(
+          reviewedGeneratedAssets,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -121,6 +135,8 @@ test('mechanical target replacement preserves a foreign inode introduced after f
     assert.throws(
       () =>
         resumeTaskMechanicalTransformation(
+          reviewedGeneratedAssets,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -156,6 +172,8 @@ test('mechanical target creation never overwrites a foreign pathname claimed aft
     assert.throws(
       () =>
         resumeTaskMechanicalTransformation(
+          reviewedGeneratedAssets,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -180,6 +198,8 @@ test('mechanical source removal preserves a foreign inode introduced after final
     assert.throws(
       () =>
         resumeTaskMechanicalTransformation(
+          reviewedGeneratedAssets,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -209,6 +229,8 @@ test('ordinary resume recovers a target quarantined before no-replace publicatio
     assert.throws(
       () =>
         resumeTaskMechanicalTransformation(
+          reviewedGeneratedAssets,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -235,6 +257,8 @@ test('ordinary resume recovers a source quarantined before exact removal', () =>
     assert.throws(
       () =>
         resumeTaskMechanicalTransformation(
+          reviewedGeneratedAssets,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -261,6 +285,8 @@ test('ordinary resume recovers a published target hard link before temporary cle
     assert.throws(
       () =>
         resumeTaskMechanicalTransformation(
+          reviewedGeneratedAssets,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -331,6 +357,8 @@ test('ordinary resume recovers an interrupted journal-bound mechanical projectio
     assert.throws(
       () =>
         resumeTaskMechanicalTransformation(
+          reviewedGeneratedAssets,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -361,6 +389,8 @@ test('ordinary resume completes the journal when a crash leaves exact projected 
     assert.throws(
       () =>
         resumeTaskMechanicalTransformation(
+          reviewedGeneratedAssets,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -392,6 +422,8 @@ test('status fails closed when a crashed projection path drifts from journal-bou
     assert.throws(
       () =>
         resumeTaskMechanicalTransformation(
+          reviewedGeneratedAssets,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -421,6 +453,8 @@ test('mechanical recovery failure returns one literal resume command', () => {
     assert.throws(
       () =>
         resumeTaskMechanicalTransformation(
+          reviewedGeneratedAssets,
+          productionChangeContract,
           fixture.repository,
           fixture.sessionId,
           {
@@ -504,6 +538,8 @@ test('mechanical status inspection remains strictly read-only', () => {
     const before = runtimeFiles(fixture.repository);
     assert.equal(
       inspectTaskMechanicalTransformLifecycle(
+        reviewedGeneratedAssets,
+        productionChangeContract,
         fixture.repository,
         fixture.sessionId,
       )?.state,
@@ -631,7 +667,12 @@ function createMechanicalLifecycleFixture(
     },
   });
   commitPlanningTransition(repository, 'demo-change');
-  const session = startSession(repository, 'demo-change', '1.1');
+  const session = startSession(
+    productionChangeContract,
+    repository,
+    'demo-change',
+    '1.1',
+  );
   return { repository, sessionId: session.sessionId };
 }
 
@@ -702,7 +743,7 @@ function runCli(
     process.execPath,
     [
       '--experimental-strip-types',
-      path.resolve(import.meta.dirname, '../src/cli.ts'),
+      path.resolve(import.meta.dirname, '../bootstrap/workflow-engine-host.ts'),
       ...args,
     ],
     { cwd: repository, encoding: 'utf8', env: { ...process.env } },

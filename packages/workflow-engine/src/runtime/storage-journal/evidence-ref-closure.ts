@@ -10,11 +10,11 @@ import {
   type EvidenceNode,
   canonicalEvidenceNodeEnvelope,
 } from '../../foundation/evidence-node/evidence-node.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
-  type InvestigationRuntimePaths,
   assertChangeId,
   assertInvestigationId,
-} from '../session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import { readEvidenceNode } from './evidence-node-store.ts';
 import { assertPlanReviewGrantRequirementOwnership } from './evidence-plan-review-grants.ts';
 import { assertPlanReviewRequestOwnership } from './evidence-plan-review-ownership.ts';
@@ -35,8 +35,8 @@ import {
   refInvalid,
   refUnsafe,
   sha256,
-} from './evidence-store-values.ts';
-import { exactUnsafePathObservationDigest } from './evidence-unsafe-observation.ts';
+} from '../journal-primitives/evidence-store-values.ts';
+import { exactUnsafePathObservationDigest } from '../journal-primitives/evidence-unsafe-observation.ts';
 
 export type InvestigationEvidenceRefsClosure = Readonly<{
   snapshot: EvidenceRefsSnapshot;

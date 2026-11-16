@@ -1,21 +1,24 @@
 import assert from 'node:assert/strict';
+import { builtInProviderAdapters } from '../src/composition-root/built-in-provider-adapter-production.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import { buildContextManifest } from '../src/modules/authority/execution-governance-context.ts';
 import {
-  buildContextManifest,
   inspectDurableEpochContextStore,
-  inspectDurableRetentionCatalog,
   rolloverDurableEpochContextStore,
+} from '../src/runtime/storage-journal/execution-governance-epoch-store.ts';
+import {
+  inspectDurableRetentionCatalog,
   storeDurableEvidence,
-} from '../src/modules/authority/execution-governance.ts';
+} from '../src/runtime/storage-journal/execution-governance-evidence-store.ts';
 import {
   assembleProviderPromptManifest,
   ensureProviderPromptContext,
   prepareProviderPromptContextForInvocation,
   providerPromptContextStoreRoot,
-} from '../src/runtime/provider-execution/provider-execution-governance.ts';
+} from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import { createProviderRunnerForTesting } from '../src/runtime/provider-execution/provider-runner.ts';
 import {
   createRunnerFixture,
@@ -81,9 +84,12 @@ test('production prompt assembly reads only the exact current manifest and exclu
         }),
       );
     });
-    createProviderRunnerForTesting(host).run(fixture.input, {
-      platform: 'darwin',
-    });
+    createProviderRunnerForTesting(builtInProviderAdapters, host).run(
+      fixture.input,
+      {
+        platform: 'darwin',
+      },
+    );
     assert.equal(managedPrompt.includes(oldEvidence), false);
     const parsed = JSON.parse(managedPrompt) as { manifest: unknown };
     assert.deepEqual(parsed.manifest, manifest);
@@ -315,9 +321,12 @@ test('managed prompt exposes the scope and v3 structured coverage contracts only
           }),
         );
       });
-      createProviderRunnerForTesting(host).run(fixture.input, {
-        platform: 'darwin',
-      });
+      createProviderRunnerForTesting(builtInProviderAdapters, host).run(
+        fixture.input,
+        {
+          platform: 'darwin',
+        },
+      );
       assert.equal(executeCount, 1);
     } finally {
       fixture.cleanup();

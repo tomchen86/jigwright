@@ -1,3 +1,6 @@
+import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
+import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
+import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
 /**
  * Commits an authorized session and coordinates its durable authority
  * journal.
@@ -12,12 +15,8 @@ import path from 'node:path';
 import {
   deriveAuthorityAuditRepositoryId,
   scanAuthorityAuditLedger,
-  type AuthorityAuditLedgerScope,
 } from '../../runtime/storage-journal/authority-audit-ledger.ts';
-import {
-  authorityRefusalDigest,
-  withAuthorityRefusalAudit,
-} from '../../modules/authority/authority-refusal-audit.ts';
+import { authorityRefusalDigest } from '../../modules/authority/authority-refusal-audit.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   previewExactStaging,
@@ -43,33 +42,26 @@ import {
 } from '../../runtime/repository-transaction/git.ts';
 import {
   beginAuthorityCommitJournal,
-  failAuthorityCommitBeforeCas,
   recordAuthorityCasPrepared,
   recordAuthorityCommitCreated,
   recordAuthorityRefUpdated,
-  expireAuthorityCommitBeforeCas,
   readAuthorityCommitJournal,
   recoverAuthorityCommit,
-  rollbackAuthorityCommitAfterCas,
+  createAuthorityRecoveryTerminalization,
   verifyCreatedAuthorityCommit,
   type AuthorityCommitResult,
 } from './maintainer-recovery.ts';
-import {
-  acceptApplyPrestate,
-  readDurableRefGenerationLedger,
-  recordDurableRefGenerationTransitionUnderLifecycleLock,
-} from '../../modules/authority/maintainer-candidate.ts';
+import { acceptApplyPrestate } from '../../modules/authority/maintainer-candidate-ref-ledger.ts';
 import { readCurrentAuthorityCheckReport } from '../../runtime/storage-journal/maintainer-report.ts';
 import {
   failAuthoritySession,
   inspectActiveAuthoritySession,
   readAuthoritySession,
   verifiedV2AuthorityLifecycleRefusalBinding,
-  type AuthoritySession,
   type AuthoritySessionOptions,
 } from './maintainer-session.ts';
+import type { AuthoritySession } from '../../modules/authority/authority-session-contract.ts';
 import { maintainerGrantStorePaths } from '../../runtime/storage-journal/maintainer-store.ts';
-import { createInteractiveSshSigner } from '../../adapters/signing/ssh/maintainer-signer.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
 
 export type AuthorityCommitOptions = AuthoritySessionOptions & {
@@ -114,11 +106,22 @@ class AuthorityPoststateVerificationFailed extends Error {
 }
 
 export function commitAuthoritySession(
+  createSigner: MaintainerSignerFactory,
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
+  grantServices: MaintainerGrantExecutionServices,
+  authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
+  manifestOperations: MaintainerManifestOperations,
+  taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
   requestedSessionId: string,
   subject: string,
   options: AuthorityCommitOptions = {},
 ): AuthorityCommitResult {
+  const {
+    failAuthorityCommitBeforeCas,
+    expireAuthorityCommitBeforeCas,
+    rollbackAuthorityCommitAfterCas,
+  } = createAuthorityRecoveryTerminalization(grantServices);
   let deadline = options.postApprovalDeadline;
   try {
     if (deadline === undefined) {
@@ -169,10 +172,21 @@ export function commitAuthoritySession(
       armPostApprovalAdmissionDeadline(deadline);
     }
     return withPostApprovalAdmissionDeadline(deadline, () =>
-      commitAuthoritySessionWithDeadline(cwd, requestedSessionId, subject, {
-        ...options,
-        postApprovalDeadline: deadline,
-      }),
+      commitAuthoritySessionWithDeadline(
+        createSigner,
+        withAuthorityRefusalAudit,
+        grantServices,
+        authorityApplicationReceipts,
+        manifestOperations,
+        taskMandate,
+        cwd,
+        requestedSessionId,
+        subject,
+        {
+          ...options,
+          postApprovalDeadline: deadline,
+        },
+      ),
     );
   } catch (error) {
     if (isPostApprovalAdmissionFailure(error)) {
@@ -207,29 +221,56 @@ export function commitAuthoritySession(
 }
 
 function commitAuthoritySessionWithDeadline(
+  createSigner: MaintainerSignerFactory,
+  withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
+  grantServices: MaintainerGrantExecutionServices,
+  authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
+  manifestOperations: MaintainerManifestOperations,
+  taskMandate: MaintainerTaskMandateOperations,
   cwd: string,
   requestedSessionId: string,
   subject: string,
   options: AuthorityCommitOptions,
 ): AuthorityCommitResult {
+  const {
+    failAuthorityCommitBeforeCas,
+    expireAuthorityCommitBeforeCas,
+    rollbackAuthorityCommitAfterCas,
+  } = createAuthorityRecoveryTerminalization(grantServices);
   const discovered = discoverRepository(cwd);
   const store = maintainerGrantStorePaths(discovered.gitCommonDirectory);
   const journalPath = path.join(store.journals, `${requestedSessionId}.json`);
   if (fs.existsSync(journalPath)) {
-    return recoverAuthorityCommit(cwd, requestedSessionId, options.now, {
-      testBeforeConsume: options.testBeforeConsume,
-      testBeforeAudit: options.testBeforeAudit,
-      receiptSigner: options.signer,
-      postApprovalDeadline: options.postApprovalDeadline,
-    });
+    return recoverAuthorityCommit(
+      createSigner,
+      grantServices,
+      authorityApplicationReceipts,
+      taskMandate,
+      cwd,
+      requestedSessionId,
+      options.now,
+      {
+        testBeforeConsume: options.testBeforeConsume,
+        testBeforeAudit: options.testBeforeAudit,
+        receiptSigner: options.signer,
+        postApprovalDeadline: options.postApprovalDeadline,
+      },
+    );
   }
 
   let inspection: ReturnType<typeof inspectActiveAuthoritySession>;
   try {
-    inspection = inspectActiveAuthoritySession(cwd, requestedSessionId, {
-      ...options,
-      now: operationNow(options),
-    });
+    inspection = inspectActiveAuthoritySession(
+      grantServices,
+      manifestOperations,
+      taskMandate,
+      cwd,
+      requestedSessionId,
+      {
+        ...options,
+        now: operationNow(options),
+      },
+    );
   } catch (error) {
     if (isPostApprovalAdmissionFailure(error)) {
       enterPostApprovalTerminalCleanup(options.postApprovalDeadline);
@@ -247,10 +288,7 @@ function commitAuthoritySessionWithDeadline(
   const executeCommit = (): AuthorityCommitResult => {
     const signer =
       options.signer ??
-      createInteractiveSshSigner(
-        inspection.git.repositoryRoot,
-        inspection.policy,
-      );
+      createSigner(inspection.git.repositoryRoot, inspection.policy);
     let journalCreated = false;
     const stagedProjection: {
       current: {
@@ -282,6 +320,9 @@ function commitAuthoritySessionWithDeadline(
         (assertOwned) => {
           assertOwned();
           const current = inspectActiveAuthoritySession(
+            grantServices,
+            manifestOperations,
+            taskMandate,
             cwd,
             requestedSessionId,
             {
@@ -301,7 +342,7 @@ function commitAuthoritySessionWithDeadline(
           }
           const targetRef = `refs/heads/${current.session.branch}`;
           if (current.session.expectedRefGeneration !== null) {
-            const ledger = readDurableRefGenerationLedger(
+            const ledger = grantServices.readDurableRefGenerationLedger(
               current.session.gitCommonDirectory,
               targetRef,
               true,
@@ -424,7 +465,7 @@ function commitAuthoritySessionWithDeadline(
             throw new SimulatedAuthorityCrash('ref-cas');
           }
           if (current.session.expectedRefGeneration !== null) {
-            recordDurableRefGenerationTransitionUnderLifecycleLock(
+            grantServices.recordDurableRefGenerationTransitionUnderLifecycleLock(
               current.session.gitCommonDirectory,
               {
                 ref: targetRef,
@@ -471,12 +512,21 @@ function commitAuthoritySessionWithDeadline(
           'Authority commit transaction did not create a commit.',
         );
       }
-      return recoverAuthorityCommit(cwd, requestedSessionId, options.now, {
-        testBeforeConsume: options.testBeforeConsume,
-        testBeforeAudit: options.testBeforeAudit,
-        receiptSigner: signer,
-        postApprovalDeadline: options.postApprovalDeadline,
-      });
+      return recoverAuthorityCommit(
+        createSigner,
+        grantServices,
+        authorityApplicationReceipts,
+        taskMandate,
+        cwd,
+        requestedSessionId,
+        options.now,
+        {
+          testBeforeConsume: options.testBeforeConsume,
+          testBeforeAudit: options.testBeforeAudit,
+          receiptSigner: signer,
+          postApprovalDeadline: options.postApprovalDeadline,
+        },
+      );
     } catch (error) {
       if (error instanceof SimulatedAuthorityCrash) {
         throw error;
@@ -549,12 +599,21 @@ function commitAuthoritySessionWithDeadline(
       }
       if (journalCreated) {
         try {
-          return recoverAuthorityCommit(cwd, requestedSessionId, options.now, {
-            testBeforeConsume: options.testBeforeConsume,
-            testBeforeAudit: options.testBeforeAudit,
-            receiptSigner: signer,
-            postApprovalDeadline: options.postApprovalDeadline,
-          });
+          return recoverAuthorityCommit(
+            createSigner,
+            grantServices,
+            authorityApplicationReceipts,
+            taskMandate,
+            cwd,
+            requestedSessionId,
+            options.now,
+            {
+              testBeforeConsume: options.testBeforeConsume,
+              testBeforeAudit: options.testBeforeAudit,
+              receiptSigner: signer,
+              postApprovalDeadline: options.postApprovalDeadline,
+            },
+          );
         } catch (recoveryError) {
           if (isPostApprovalAdmissionFailure(recoveryError)) {
             throw recoveryError;
@@ -717,3 +776,12 @@ function exactDate(value: Date): Date {
 function commitError(code: string, message: string) {
   return workflowError(code, message, ExitCode.staleState);
 }
+
+import {
+  type AuthorityAuditLedgerScope,
+  type WithAuthorityRefusalAudit,
+} from '../../modules/authority/authority-audit-contract.ts';
+
+import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
+
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';

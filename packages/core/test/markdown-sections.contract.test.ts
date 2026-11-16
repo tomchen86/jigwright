@@ -3,7 +3,64 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { markdownHeadings, markdownLines } from '../src/markdown-sections.ts';
+import {
+  hasExactMarkdownRegion,
+  MarkdownRegionBoundsError,
+  markdownHeadings,
+  markdownLines,
+  spliceMarkdownRegion,
+} from '../src/markdown-sections.ts';
+
+test('region splicing preserves code-unit offsets, CRLF and untouched suffix bytes', () => {
+  const current = '😀\r\nOLD\r\n尾';
+  assert.equal(
+    spliceMarkdownRegion(current, { start: 4, end: 7 }, '新'),
+    '😀\r\n新\r\n尾',
+  );
+  assert.equal(
+    spliceMarkdownRegion(current, { start: 0, end: 0 }, '!'),
+    `!${current}`,
+  );
+  for (const region of [
+    { start: -1, end: 2 },
+    { start: 2, end: 1 },
+    { start: 0.5, end: 1 },
+    { start: 0, end: NaN },
+    { start: Infinity, end: Infinity },
+    { start: 0, end: current.length + 1 },
+  ])
+    assert.throws(
+      () => spliceMarkdownRegion(current, region, ''),
+      MarkdownRegionBoundsError,
+    );
+});
+
+test('exact-region checks re-locate the candidate and preserve locator error identity', () => {
+  const observed: string[] = [];
+  const locate = (value: string) => {
+    observed.push(value);
+    return { start: 2, end: 5 };
+  };
+  assert.equal(hasExactMarkdownRegion('😀NEW尾', 'NEW', locate), true);
+  assert.equal(hasExactMarkdownRegion('😀OLD尾', 'NEW', locate), false);
+  assert.deepEqual(observed, ['😀NEW尾', '😀OLD尾']);
+  assert.equal(
+    hasExactMarkdownRegion('body', 'body', () => null),
+    false,
+  );
+  assert.equal(
+    hasExactMarkdownRegion('body', 'body', () => undefined as never),
+    false,
+  );
+  const failure = new Error('format-specific locator failure');
+  assert.throws(
+    () =>
+      hasExactMarkdownRegion('body', 'body', () => {
+        throw failure;
+      }),
+    (error) => error === failure,
+  );
+});
 
 test('markdown section parsing preserves source offsets and ignores fenced examples', () => {
   const markdown = [

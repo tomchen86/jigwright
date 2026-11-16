@@ -28,9 +28,11 @@ import {
 import {
   assertAgentProviderProfileSnapshot,
   type HostWrapperProviderProfileSnapshot,
+} from '@jigwright/core/agent-provider-config';
+import {
   type ProviderWrapperNativeSessionIdentityObservation,
   type ProviderWrapperSessionProtocolOutcome,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/harness-jsonl-v2-contracts';
 import {
   createHostObservedAgentRuntimePortV1,
   type AgentRuntimeDriverEventV1,
@@ -63,7 +65,7 @@ import {
 } from '../modules/provider-orchestration/agent-runtime-host-execution-binding.ts';
 import type { ProviderRunnerReport } from '../modules/provider-orchestration/provider-contracts.ts';
 import { isProviderId } from '../modules/provider-orchestration/provider-registry.ts';
-import { createProviderExecutionEnvironment } from '../runtime/provider-execution/execution-environment.ts';
+import { createProviderExecutionEnvironment } from '../runtime/process-environment/execution-environment.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../modules/provider-orchestration/provider-runtime-evidence.ts';
 import {
   captureGovernedProviderProjection,

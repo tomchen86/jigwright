@@ -6,7 +6,7 @@
  * - Changed references require a fresh interpretation; exact replays preserve review.
  * - Other Work Items retain their provenance when sharing the same change origin.
  */
-import type { ChangeOriginV1, WorkItemV1 } from './work-registry.ts';
+import type { ChangeOriginV1, WorkItemV1 } from './work-registry-contracts.ts';
 import {
   boundedText,
   hasExactKeys,

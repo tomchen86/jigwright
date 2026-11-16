@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import test from 'node:test';
-import { captureGovernanceSource } from '../src/modules/governance-intake/governance-intake.ts';
+import { captureGovernanceSource } from '../src/composition-root/governance-sources-production.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   applyWorkItemReview,
@@ -14,7 +14,7 @@ import {
   traceWorkItem,
   validateWorkRegistry,
   workItemDigest,
-} from '../src/modules/governance-intake/work-registry.ts';
+} from '../src/composition-root/work-registry-production.ts';
 import {
   runGitForTest,
   configureRepositoryConsumer,
@@ -23,7 +23,7 @@ import {
 
 test('Work Item promotion recovers one exact item-origin transaction after every hard-crash cut', () => {
   const moduleUrl = new URL(
-    '../src/modules/governance-intake/work-registry.ts',
+    '../src/composition-root/work-registry-production.ts',
     import.meta.url,
   ).href;
   const crashCuts = [
@@ -336,7 +336,7 @@ test('composite Work Registry readers hold the promotion lock across item-origin
     const changesRoot = path.join(repositoryRoot, 'openspec/changes');
     fs.mkdirSync(path.join(changesRoot, changeId), { recursive: true });
     const moduleUrl = new URL(
-      '../src/modules/governance-intake/work-registry.ts',
+      '../src/composition-root/work-registry-production.ts',
       import.meta.url,
     ).href;
     const readerAttempts: number[] = [];
@@ -476,7 +476,7 @@ test('composite Work Registry readers hold the promotion lock across item-origin
 
 test('Work Item promotion resumes durable rollback after hard crashes in either tracked file', () => {
   const moduleUrl = new URL(
-    '../src/modules/governance-intake/work-registry.ts',
+    '../src/composition-root/work-registry-production.ts',
     import.meta.url,
   ).href;
   const cases = [

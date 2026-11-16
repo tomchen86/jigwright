@@ -12,22 +12,24 @@ import {
   type RecoveryAuthorityDescriptorPayloadV1,
   type RecoveryAuthorityDescriptorV1,
   type RecoveryAuthorityExpectations,
-} from '../src/recovery-authority.ts';
+} from '../src/modules/authority/recovery-authority-contract.ts';
 import {
   RECOVERY_QUARANTINE_ENTER_NAMESPACE,
   RECOVERY_QUARANTINE_RELEASE_NAMESPACE,
   createRecoveryQuarantineEnterGrantPayload,
   createRecoveryQuarantineReleaseGrantPayload,
-  executeRecoveryQuarantineEnter,
-  executeRecoveryQuarantineRelease,
-  readRecoveryQuarantineGrantRecord,
-  readRecoveryQuarantineMarker,
   type RecoveryQuarantineAuditRecord,
   type RecoveryQuarantineCommonBinding,
   type RecoveryQuarantineEnvelope,
   type RecoveryQuarantineFaultPhase,
   type RecoveryQuarantineGrantPayload,
-} from '../src/recovery-quarantine.ts';
+} from '../src/modules/authority/recovery-quarantine-contract.ts';
+import {
+  executeRecoveryQuarantineEnter,
+  executeRecoveryQuarantineRelease,
+  readRecoveryQuarantineGrantRecord,
+  readRecoveryQuarantineMarker,
+} from '../src/runtime/recovery/recovery-quarantine.ts';
 
 const PUBLIC_KEY =
   'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJL6dVljsgm9EAbjCiOhA/tKsgApOhKmcB/NRewL1uns';

@@ -6,11 +6,6 @@
  * - Planning changes cannot delete a cited Source object.
  */
 import {
-  OpenSpecPlanningPathError,
-  assertOpenSpecPlanningPaths,
-  requiredOpenSpecPlanningArtifactPaths,
-} from '@jigwright/openspec-adapter/planning-paths';
-import {
   PlanningProviderBindingError,
   planningProviderBindingPath as corePlanningProviderBindingPath,
 } from '@jigwright/core/planning-provider-binding';
@@ -31,7 +26,31 @@ export function planningProviderBindingPath(changeId: string): string {
   }
 }
 
+/** Provider-owned artifact grammar, after immutable engine companion paths are admitted. */
+export type PlanningPathAdmission = (
+  input: Readonly<{
+    changeRoot: string;
+    changeId: string;
+    changedPaths: readonly string[];
+    deletedPaths: readonly string[];
+    schemaName: string;
+    currentSchemaName: string;
+    additionalExactPaths: readonly string[];
+  }>,
+) => void;
+
+export type PlanningPathPolicy = Readonly<{
+  admit: PlanningPathAdmission;
+  requiredArtifactPaths(
+    changeRoot: string,
+    changeId: string,
+    schemaName: string,
+    currentSchemaName: string,
+  ): string[];
+}>;
+
 export function assertPlanningPaths(
+  admit: PlanningPathAdmission,
   changeRoot: string,
   changeId: string,
   changedPaths: string[],
@@ -54,20 +73,15 @@ export function assertPlanningPaths(
     changeId === 'archive'
       ? []
       : [planningProviderBindingPath(changeId), ...sourceObjectPaths];
-  try {
-    assertOpenSpecPlanningPaths({
-      changeRoot,
-      changeId,
-      changedPaths,
-      deletedPaths,
-      schemaName,
-      currentSchemaName,
-      additionalExactPaths,
-    });
-  } catch (error) {
-    if (!(error instanceof OpenSpecPlanningPathError)) throw error;
-    throw mapOpenSpecPlanningPathError(error, schemaName);
-  }
+  admit({
+    changeRoot,
+    changeId,
+    changedPaths,
+    deletedPaths,
+    schemaName,
+    currentSchemaName,
+    additionalExactPaths,
+  });
 }
 
 export function planningSourceObjectPaths(
@@ -88,42 +102,4 @@ export function planningSourceObjectPaths(
     const digest = sourceRef.slice('SRC-'.length);
     return `${GOVERNANCE_SOURCE_LEDGER_ROOT}/${digest.slice(0, 2)}/${digest}.json`;
   });
-}
-
-function mapOpenSpecPlanningPathError(
-  error: OpenSpecPlanningPathError,
-  schemaName: string,
-): ReturnType<typeof workflowError> {
-  if (error.code === 'PLANNING_CHANGE_ID_RESERVED') {
-    return workflowError(error.code, error.message, ExitCode.guard);
-  }
-  if (error.code === 'PLANNING_PATH_SYNTAX_INVALID') {
-    const invalidPath = error.invalidPaths[0] ?? '';
-    return workflowError(
-      'INVALID_REPOSITORY_PATH',
-      `Invalid repository path reported by Git: ${invalidPath}`,
-      ExitCode.guard,
-      { details: { path: invalidPath } },
-    );
-  }
-  return workflowError(
-    error.code,
-    `Planning transition contains paths outside the named ${schemaName} planning tree.`,
-    ExitCode.guard,
-    { details: { invalidPaths: [...error.invalidPaths] } },
-  );
-}
-
-export function requiredPlanningArtifactPaths(
-  changeRoot: string,
-  changeId: string,
-  schemaName: string,
-  currentSchemaName: string,
-): string[] {
-  return requiredOpenSpecPlanningArtifactPaths(
-    changeRoot,
-    changeId,
-    schemaName,
-    currentSchemaName,
-  );
 }

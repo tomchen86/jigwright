@@ -16,13 +16,73 @@ import {
   isStringArray,
 } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import type {
-  CapabilityProfile,
-  CheckDependency,
-  FileRole,
-  PatchManifest,
-  PatchManifestFile,
-} from './maintainer-manifest.ts';
+export type FileRole =
+  | 'implementation'
+  | 'evidence'
+  | 'policy'
+  | 'verification-infrastructure'
+  | 'forbidden';
+
+export type CheckDependency =
+  | 'source-tree'
+  | 'base-commit'
+  | 'harness-engine'
+  | 'policy'
+  | 'runner'
+  | 'external-state';
+
+export type ProfileAuthorityClass =
+  'ordinary' | 'root-one-shot' | 'control-plane';
+
+export type PatchOperation = 'add' | 'modify' | 'delete';
+
+export type CapabilityProfileConstraints = {
+  evidenceOnlyGrantForbidden: boolean;
+  samePackageRequired: boolean;
+  evidenceAdditionsAllowed: boolean;
+  maximumFiles: number;
+};
+
+export type CapabilityProfile = {
+  id: string;
+  version: number;
+  authorityClass: ProfileAuthorityClass;
+  implementationPaths: string[];
+  evidencePaths: string[];
+  policyPaths: string[];
+  verificationInfrastructurePaths: string[];
+  forbiddenPaths: string[];
+  constraints: CapabilityProfileConstraints;
+  requiredChecks: string[];
+  checkDependencies: Record<string, CheckDependency[]>;
+  externalStateFreshness?: Record<string, { maxAgeMs: number }>;
+};
+
+export type PatchManifestFile = {
+  path: string;
+  role: Exclude<FileRole, 'forbidden'>;
+  operation: PatchOperation;
+  beforeBlobOid: string | null;
+  afterSha256: string | null;
+  beforeMode: string | null;
+  afterMode: string | null;
+};
+
+export type PatchManifest = {
+  schema: typeof MANIFEST_SCHEMA;
+  profile: string;
+  profileVersion: number;
+  trustBaseCommit: string;
+  policyDigest: string;
+  files: PatchManifestFile[];
+  patchDigest: string;
+};
+
+export type PatchManifestRequest = {
+  profile: CapabilityProfile;
+  trustBaseCommit: string;
+  policyDigest: string;
+};
 import {
   matchesAllowedPath,
   normalizeExactRepositoryPath,

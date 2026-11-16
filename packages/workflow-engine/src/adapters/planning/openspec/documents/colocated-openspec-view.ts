@@ -13,7 +13,7 @@ import {
   systemSpecCatalog,
   type CanonicalSystemSpec,
 } from '../../../../modules/source/system-spec-catalog.ts';
-import { readSystemSpecDeltaInputs } from '../../../../modules/source/system-spec-deltas.ts';
+import { readSystemSpecDeltaInputs } from './system-spec-deltas.ts';
 import {
   ExitCode,
   workflowError,

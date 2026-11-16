@@ -41,6 +41,35 @@ export type ReviewTarget = Readonly<{
   reusedFromLedger: boolean;
 }>;
 
+/**
+ * The record that keeps the saving from certifying itself.
+ *
+ * Reducing the WHY manifest is a claim that some understanding did not need
+ * rewriting. That claim has to be inspectable by whoever reviews the change,
+ * or the entries nobody re-examined become precisely the entries nobody can
+ * examine. This names every carried entry, the ledger entry it leaned on, and
+ * the resolution each subject received — so the saving can be argued with
+ * rather than merely enjoyed.
+ */
+export type ReuseCoverageRecord = Readonly<{
+  schemaVersion: 1;
+  kind: 'semantic-reuse-coverage';
+  owedCount: number;
+  carriedCount: number;
+  carried: readonly Readonly<{
+    manifestEntryId: string;
+    subjectId: string;
+    ledgerEntryId: string;
+  }>[];
+  resolutions: readonly Readonly<{
+    subjectId: string;
+    resolution: string;
+    state: string;
+  }>[];
+  /** Everything in reach, carried entries included and marked. */
+  reviewTargets: readonly ReviewTarget[];
+}>;
+
 export type CoverageManifest = Readonly<{
   schemaVersion: 1;
   kind: 'review-coverage-manifest';

@@ -1,11 +1,5 @@
-/**
- * Shares bounded audit value checks, digest identities, and exact error outcomes.
- *
- * Invariants:
- * - Digest formatting, canonical timestamps, path checks, and error codes remain unchanged.
- * - Invalid data remains rejected before publication or destructive maintenance.
- */
-import crypto from 'node:crypto';
+import { invalidScope, } from "../../modules/authority/authority-audit-contract.js";
+export { sha256Digest, invalidScope, } from "../../modules/authority/authority-audit-contract.js";
 import path from 'node:path';
 import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
 import { MAX_PATH_BYTES, SHA256_DIGEST, CANONICAL_TIMESTAMP, } from "./authority-audit-contracts.js";
@@ -32,9 +26,6 @@ export function assertAbsolutePath(raw) {
         throw invalidScope();
     }
     return raw;
-}
-export function sha256Digest(content) {
-    return `sha256:${crypto.createHash('sha256').update(content).digest('hex')}`;
 }
 export function assertDigest(raw, makeError) {
     if (typeof raw !== 'string' || !SHA256_DIGEST.test(raw)) {
@@ -75,9 +66,6 @@ function isWithin(parent, child) {
     const relative = path.relative(parent, child);
     return (relative === '' ||
         (!relative.startsWith('..') && !path.isAbsolute(relative)));
-}
-export function invalidScope() {
-    return workflowError('AUTHORITY_AUDIT_SCOPE_INVALID', 'Authority audit ledger scope must use explicit canonical absolute paths and a digest repository identity.', ExitCode.usage);
 }
 export function externalRootRequired() {
     return workflowError('AUTHORITY_AUDIT_EXTERNAL_ROOT_REQUIRED', 'Authority audit storage must be physically separate from the repository.', ExitCode.guard);

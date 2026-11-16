@@ -9,11 +9,11 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
-  type InvestigationRuntimePaths,
   assertChangeId,
   assertInvestigationId,
-} from '../session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import {
   createPrivateCanonicalJson,
   fsyncDirectory,
@@ -21,30 +21,30 @@ import {
   readPrivateCanonicalJson,
   withPrivateRuntimeLock,
   writePrivateCanonicalJsonAtomic,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   currentInvestigationRefPath,
   investigationCasMismatch,
   investigationSessionPath,
   refUnsafe,
   sessionLockInvalid,
-  sessionTransitionInvalid,
   sessionUnsafe,
-} from './investigation-resolution-values.ts';
+} from '../journal-primitives/investigation-resolution-values.ts';
+import { sessionTransitionInvalid } from '../../modules/investigation/domain/investigation-session-contract.ts';
 import {
   assertInvestigationSession,
   assertMonotonicSessionTransition,
   semanticSessionContentChanged,
-} from './investigation-session-contract.ts';
+} from '../../modules/investigation/domain/investigation-session-contract.ts';
 import {
   type CurrentInvestigationRef,
   type InvestigationSession,
-} from './investigation-session-types.ts';
+} from '../../modules/investigation/domain/investigation-session-types.ts';
 import {
   deepFreeze,
   hasExactKeys,
   isRecord,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 
 export function createInvestigationId(): string {
   const timestamp = new Date().toISOString().replace(/[^0-9]/g, '');

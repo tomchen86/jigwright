@@ -1,3 +1,16 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -7,22 +20,20 @@ import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { runGitWithEnvironment } from '../src/runtime/repository-transaction/git.ts';
-import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
-import { readCurrentTaskStrategyGreenFailure } from '../src/application/execute-task/task-strategy-correction.ts';
-import { sealTaskStrategyRed } from '../src/application/execute-task/task-strategy-execution.ts';
-import { beginTaskStrategyImplementation } from '../src/application/execute-task/task-strategy-implementation-lifecycle.ts';
+import { readCurrentTaskStrategyGreenFailure } from '../src/composition-root/task-strategy-correction-production.ts';
+import { sealTaskStrategyRed } from '../src/composition-root/task-strategy-execution-production.ts';
+import { beginTaskStrategyImplementation } from '../src/composition-root/task-strategy-production.ts';
 import { readTaskStrategyImplementationResultBinding } from '../src/runtime/storage-journal/task-strategy-provider-store.ts';
-import { beginTaskDiffReview } from '../src/application/finalize/task-diff-review-lifecycle.ts';
-import {
-  checkSession,
-  inspectSession,
-  persistSession,
-} from '../src/application/finalize/verification.ts';
+import { beginTaskDiffReview } from '../src/composition-root/task-diff-review-production.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
+import { persistSession } from '../src/runtime/session-workspace/session-persistence.ts';
+import { inspectSession } from '../src/runtime/repository-validation/session-inspection.ts';
 import {
   configureChecks,
   createFixtureRepository,
@@ -37,7 +48,12 @@ import {
 test('TaskDiff review attributes the latest authenticated correction head instead of the initial implementation', () => {
   const repository = createCorrectionFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
@@ -82,11 +98,19 @@ test('TaskDiff review attributes the latest authenticated correction head instea
     );
     assert.notEqual(initialBinding, null);
     assert.throws(
-      () => checkSession(repository, session.sessionId, { environment: {} }),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeContract,
+          repository,
+          session.sessionId,
+          { environment: {} },
+        ),
       hasCode('CHECK_FAILED'),
     );
     const failure = readCurrentTaskStrategyGreenFailure(
-      inspectSession(repository, session.sessionId),
+      inspectSession(productionChangeContract, repository, session.sessionId),
     );
     assert.notEqual(failure, null);
     if (failure === null) return;
@@ -128,16 +152,24 @@ test('TaskDiff review attributes the latest authenticated correction head instea
       initialBinding.roleResult.participant.sessionId,
     );
     assert.equal(
-      checkSession(repository, session.sessionId, { environment: {} }).passed,
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeContract,
+        repository,
+        session.sessionId,
+        { environment: {} },
+      ).passed,
       true,
     );
-    const checkedInspection = inspectSession(repository, session.sessionId);
+    const checkedInspection = inspectSession(
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     assert.notEqual(checkedInspection.session.latestCheckReportId, undefined);
-    const {
-      latestCheckReportId: _latestCheckReportId,
-      checkEvidenceEngineDigest: _checkEvidenceEngineDigest,
-      ...freshSession
-    } = checkedInspection.session;
+    const { latestCheckReportId: _latestCheckReportId, ...freshSession } =
+      checkedInspection.session;
     persistSession(checkedInspection, freshSession);
     assert.throws(
       () =>

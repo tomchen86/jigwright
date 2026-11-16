@@ -70,3 +70,11 @@ export type ExactStateSet<Left, Right> = [
   : false;
 
 export type AssertExactStateSet<Result extends true> = Result;
+
+export type TaskMechanicalTransformLifecycleState =
+  'transformation-required' | 'transformation-produced';
+
+export type TaskMechanicalTransformLifecycleStatus = Readonly<{
+  state: TaskMechanicalTransformLifecycleState;
+  projectionDigest: string;
+}>;

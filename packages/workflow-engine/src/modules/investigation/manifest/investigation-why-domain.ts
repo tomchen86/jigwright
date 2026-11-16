@@ -14,7 +14,7 @@ import type { InvestigationSemanticAuthor } from '../domain/investigation-applic
 import type {
   InvestigationKnowledgeReuseDecision,
   InvestigationWhyOverlayV3,
-} from './investigation-manifest.ts';
+} from './investigation-manifest-types.ts';
 import type { MaterializedEvidenceView } from './investigation-materializer.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;

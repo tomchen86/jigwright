@@ -18,7 +18,7 @@ import { withLedgerLock } from "./authority-audit-locks.js";
 import { recoverAuditMaintenance, protectedCheckpointDigestHistory, readRetentionCheckpoint, checkpointDigest, createRetentionCheckpoint, executeAuditMaintenance, createMaintenanceJournal, compactionResult, } from "./authority-audit-maintenance.js";
 import { recoverRecordPublications, scanLedgerUnderLock, } from "./authority-audit-record-publication.js";
 import { assertAuditDestructionGrantEnvelope, canonicalAuditDestructionGrantPayload, assertDestructionGrantTime, readDestructionTombstones, parseDestructionTombstone, canonicalTombstone, } from "./authority-audit-destruction-records.js";
-export function configureProtectedAuthorityAuditLedger(scope, input) {
+export const configureProtectedAuthorityAuditLedger = (scope, input) => {
     const prepared = prepareLedger({ ...scope, profile: 'protected' });
     if (prepared.profile !== 'protected')
         throw developmentProfile();
@@ -61,14 +61,14 @@ export function configureProtectedAuthorityAuditLedger(scope, input) {
     writeExclusivePrivateFile(prepared.paths.protectedConfiguration, bytes, protectedConfigurationInvalid);
     fsyncDirectory(prepared.paths.metadata);
     return readProtectedConfiguration(prepared.paths);
-}
+};
 export function readProtectedAuthorityAuditConfiguration(scope) {
     const prepared = prepareLedger(scope);
     if (prepared.profile !== 'protected')
         throw developmentProfile();
     return readProtectedConfiguration(prepared.paths);
 }
-export function createPinnedAuthorityAuditAnchorBackend(scope) {
+export const createPinnedAuthorityAuditAnchorBackend = (scope) => {
     const configuration = readProtectedAuthorityAuditConfiguration(scope);
     const backendPaths = ensureFilesystemWormBackend(configuration);
     return Object.freeze({
@@ -115,8 +115,8 @@ export function createPinnedAuthorityAuditAnchorBackend(scope) {
             }
         },
     });
-}
-export function createPinnedAuditDestructionSignatureVerifier(scope) {
+};
+export const createPinnedAuditDestructionSignatureVerifier = (scope) => {
     const configuration = readProtectedAuthorityAuditConfiguration(scope);
     const publicKey = crypto.createPublicKey(configuration.destructionPublicKeyPem);
     return (input) => {
@@ -127,8 +127,8 @@ export function createPinnedAuditDestructionSignatureVerifier(scope) {
             return false;
         }
     };
-}
-export function anchorProtectedAuthorityAuditLedger(scope, input) {
+};
+export const anchorProtectedAuthorityAuditLedger = (scope, input) => {
     const anchoredAt = assertMaintenanceTimestamp(input.anchoredAt);
     const backend = assertAnchorBackend(input.backend);
     const prepared = prepareLedger(scope);
@@ -175,8 +175,8 @@ export function anchorProtectedAuthorityAuditLedger(scope, input) {
         fsyncDirectory(prepared.paths.anchors);
         return deepFreeze({ receiptDigest, receiptPath, receipt });
     });
-}
-export function verifyProtectedAuthorityAuditAnchors(scope, rawBackends) {
+};
+export const verifyProtectedAuthorityAuditAnchors = (scope, rawBackends) => {
     const prepared = prepareLedger(scope);
     if (prepared.profile !== 'protected')
         throw developmentProfile();
@@ -191,7 +191,10 @@ export function verifyProtectedAuthorityAuditAnchors(scope, rawBackends) {
         recoverAuditMaintenance(prepared.paths, prepared.profile);
         recoverRecordPublications(prepared.paths, prepared.scope.repositoryId, prepared.profile);
         const scan = scanLedgerUnderLock(prepared);
-        const bySequence = new Map(scan.records.map((entry) => [entry.record.sequence, entry.recordDigest]));
+        const bySequence = new Map(scan.records.map((entry) => [
+            entry.record.sequence,
+            entry.recordDigest,
+        ]));
         const prunedBySequence = protectedCheckpointDigestHistory(prepared.paths);
         const receipts = readAnchorPublications(prepared.paths);
         for (const publication of receipts) {
@@ -232,8 +235,8 @@ export function verifyProtectedAuthorityAuditAnchors(scope, rawBackends) {
             receipts,
         });
     });
-}
-export function destroyProtectedAuthorityAuditLedger(scope, rawEnvelope, input, hooks = {}) {
+};
+export const destroyProtectedAuthorityAuditLedger = (scope, rawEnvelope, input, hooks = {}) => {
     const now = assertMaintenanceTimestamp(input.now);
     const envelope = assertAuditDestructionGrantEnvelope(rawEnvelope);
     if (typeof input.verifyHumanSignature !== 'function') {
@@ -320,4 +323,4 @@ export function destroyProtectedAuthorityAuditLedger(scope, rawEnvelope, input, 
             (payload.throughSequence -
                 (previousCheckpoint?.prunedThroughSequence ?? 0)), checkpoint);
     });
-}
+};

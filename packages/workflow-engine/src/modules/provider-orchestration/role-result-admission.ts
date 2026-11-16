@@ -8,19 +8,14 @@
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
-  bindingFromRoleContextSharingGrantPayloadV1,
-  canonicalRoleContextSharingGrantEnvelopeV1,
-} from '../authority/optional-grants-package.ts';
-import {
   computeRoleContextSharingResultAdmissionDigestV1,
   consumedRoleContextSharingUseForReplay,
 } from '../authority/role-context-sharing-consumed-replay.ts';
-import { directHumanReviewAttestationDigest } from '../authority/collaboration-grant.ts';
-import type { DirectHumanReviewAttestation } from '../authority/collaboration-grant.ts';
+import type { DirectHumanReviewAttestation } from '../authority/collaboration-grant-codec.ts';
 import { isProviderId } from './provider-registry.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
+import type { RoleResultAdmissionBindings } from './role-scheduler.ts';
 import type {
-  RoleResultAdmissionBindings,
   AdmittedRoleResult,
   AdmitRoleResultInput,
   AdmitConsumedRoleResultReplayInput,
@@ -28,22 +23,28 @@ import type {
   RoleContextSharingResultAdmissionBindingInput,
   NormalizedRoleContextSharingResultAdmissionBinding,
   AdmitConsumedRoleContextSharingResultReplayInput,
-  CollaborationGrantUseProjection,
   RoleProviderInvocationEvidence,
-  IndependenceDimension,
+  RoleContentAdmission,
+} from './role-admission-contracts.ts';
+import type { CollaborationGrantUseProjection } from '../authority/collaboration-grant-records.ts';
+
+import type {
   GrantedRoleAssignment,
   GrantedSameProviderRoleAssignment,
   RoleAssignment,
-  RoleContentAdmission,
   ProviderRoleAssignment,
   RoleParticipant,
   RecordedRoleParticipant,
-} from './role-scheduler.ts';
+} from './role-assignment.ts';
+import type { IndependenceDimension } from './role-independence.ts';
 
 export function createRoleResultAdmission(
   bindings: RoleResultAdmissionBindings,
 ) {
   const {
+    bindingFromRoleContextSharingGrantPayloadV1,
+    canonicalRoleContextSharingGrantEnvelopeV1,
+    directHumanReviewAttestationDigest,
     hasExactKeys,
     deepFreeze,
     consumedCollaborationGrantUseForReplay,
@@ -686,3 +687,5 @@ export function createRoleResultAdmission(
     isGrantedSameProviderRoleAssignment,
   };
 }
+
+export type RoleResultAdmission = ReturnType<typeof createRoleResultAdmission>;

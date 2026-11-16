@@ -35,17 +35,17 @@ import {
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR,
 } from '../../modules/provider-orchestration/task-strategy-implementation-output.ts';
-import { parseAiAdapterPolicyDocument } from '../provider-execution/ai-adapter-policy.ts';
+import { parseAiAdapterPolicyDocument } from '../provider-policy/ai-adapter-policy.ts';
 import {
   assertDurableProviderExecutionBudgetAuthority,
   validateProviderExecutionBudgetAuthority,
-} from '../provider-execution/provider-execution-policy-authority.ts';
+} from './provider-execution-policy-authority.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   assertChangeId,
   assertInvestigationId,
   assertInvocationId,
-  type InvestigationRuntimePaths,
-} from '../session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import {
   deepFreeze,
   hasExactKeys,
@@ -55,7 +55,7 @@ import {
   isTimestamp,
   providerInvocationUnsafe,
   sha256,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 
 export type ProviderInvocationLifecycleProjection = Readonly<{
   invocationId: string;

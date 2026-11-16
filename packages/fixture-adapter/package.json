@@ -20,7 +20,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@jigwright/core": "workspace:*"
+    "@jigwright/core": "workspace:*",
+    "@jigwright/repository-runtime": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.3"

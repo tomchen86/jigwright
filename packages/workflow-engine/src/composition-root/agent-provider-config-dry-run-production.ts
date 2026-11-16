@@ -11,17 +11,17 @@ import path from 'node:path';
 import {
   type AgentProviderConfigSnapshot,
   type AgentProviderRole,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
 import {
   assertProviderExecutableObservationCurrent,
   inspectProviderExecutable,
-  type ProviderExecutableIdentity,
   type ProviderExecutableObservation,
 } from '@jigwright/agent-runtime/provider-executable-identity';
+import { type AgentRuntimeExecutableIdentityV1 as ProviderExecutableIdentity } from '@jigwright/core/agent-runtime-port';
 
 import { buildClaudeProviderInvocation } from '../adapters/providers/claude/claude-provider-adapter.ts';
 import { buildCodexProviderInvocation } from '../adapters/providers/codex/codex-provider-adapter.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../adapters/providers/built-in-provider-definition.ts';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import {
   dryRunAgentProviderConfigSnapshot,
   dryRunAgentProviderConfigSnapshotWithPolicy,
@@ -29,7 +29,7 @@ import {
   type AgentProviderConfigDryRunInput,
   type AgentProviderConfigDryRunReport,
 } from '../runtime/provider-execution/agent-provider-config-dry-run.ts';
-import { loadAiAdapterPolicy } from '../runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../runtime/provider-policy/ai-adapter-policy.ts';
 import {
   AgentProviderConfigFileError,
   assertAgentProviderConfigFileCurrent,

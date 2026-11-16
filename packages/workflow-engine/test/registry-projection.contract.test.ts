@@ -4,13 +4,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { captureGovernanceSource } from '../src/modules/governance-intake/governance-intake.ts';
+import { captureGovernanceSource } from '../src/composition-root/governance-sources-production.ts';
 import {
   createWorkItem,
   inspectWorkRegistryProjectionStatus,
   renderWorkRegistry,
   validateWorkRegistryProjections,
-} from '../src/modules/governance-intake/work-registry.ts';
+} from '../src/composition-root/work-registry-production.ts';
 
 test('registry service renders readable backlog lanes and recomputes drift without changing inventory', () => {
   const root = fs.mkdtempSync(

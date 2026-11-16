@@ -5,10 +5,10 @@ import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { captureGovernanceSource } from '../src/modules/governance-intake/governance-intake.ts';
+import { captureGovernanceSource } from '../src/composition-root/governance-sources-production.ts';
 import { inspectProjectionStatus } from '../src/composition-root/projection-status-production.ts';
 import { readSystemDescriptionSnapshot } from '../src/runtime/repository-transaction/system-description-snapshot.ts';
-import { validateManagedDocuments } from '../src/runtime/managed-documents/validation/managed-documents.ts';
+import { validateManagedDocuments } from '../src/composition-root/managed-documents-production.ts';
 
 test('documents CLI produces proof before validation and renders from the same canonical snapshot', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'system-doc-cli-'));
@@ -85,7 +85,9 @@ test('documents CLI produces proof before validation and renders from the same c
       spawnSync(
         process.execPath,
         [
-          fileURLToPath(new URL('../src/cli.ts', import.meta.url)),
+          fileURLToPath(
+            new URL('../bootstrap/workflow-engine-host.ts', import.meta.url),
+          ),
           'documents',
           ...args,
           '--json',

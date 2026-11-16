@@ -1,15 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as repositoryContracts from '../src/adapters/consumer/repository/work-registry/contracts.ts';
-import {
-  loadWorkflowConfig,
-  workflowNamespaceConfig,
-} from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import * as repositoryContracts from '../src/runtime/repository-validation/change-contract-reader.ts';
+import { loadWorkflowConfig } from '../src/runtime/workflow-configuration/workflow-configuration.ts';
+import { workflowNamespaceConfig } from '../src/modules/repository-consumer/workflow-config.ts';
 import path from 'node:path';
 import fs from 'node:fs';
 import * as governanceIntakeProduction from '../src/composition-root/governance-intake-production.ts';
-import * as workRegistry from '../src/modules/governance-intake/work-registry.ts';
-import { workflowContractArtifactPaths } from '../src/adapters/consumer/repository/work-registry/contract-artifacts.ts';
+import * as workRegistry from '../src/composition-root/work-registry-production.ts';
+import { workflowContractArtifactPaths } from '../src/runtime/repository-observation/workflow-contract-artifacts.ts';
 import { createFixtureRepository } from './fixture.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -26,17 +24,13 @@ test('retired investigation readers are absent', () => {
 test('retired Issue CLI and compatibility mutation surfaces are absent', () => {
   const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
   const workRegistrySource = [
-    'work-registry.ts',
-    'work-registry-record.ts',
-    'work-registry-promotion-transaction.ts',
+    'src/application/work-registry/work-registry.ts',
+    'src/modules/governance-intake/work-registry-record.ts',
+    'src/runtime/work-registry/transactions.ts',
   ]
     .map((file) =>
       fs.readFileSync(
-        path.join(
-          repositoryRoot,
-          'packages/workflow-engine/src/modules/governance-intake',
-          file,
-        ),
+        path.join(repositoryRoot, 'packages/workflow-engine', file),
         'utf8',
       ),
     )
@@ -51,12 +45,12 @@ test('retired Issue CLI and compatibility mutation surfaces are absent', () => {
     false,
   );
   assert.deepEqual(Object.keys(governanceIntakeProduction).sort(), [
+    'GovernanceIntakeTextError',
     'INTAKE_KINDS',
-    'assertExistingGovernanceIntakeChange',
-    'deferredIntakeDestination',
-    'findActiveTaskSessionId',
-    'isRequirementKind',
+    'createGovernanceIntakeWorkflowForCommand',
+    'inspectGovernanceIntakeCounts',
     'renderGovernanceIntakeHandoff',
+    'resolveActiveSession',
     'resolveGovernanceIntakeRuntimeRoot',
     'resolveRepositoryFindingScope',
   ]);
@@ -279,16 +273,11 @@ test('runner security suite is portable to the package working directory', () =>
   );
 });
 
-test('format verification delegates to the registered canonical authority', () => {
+test('format verification preserves the registered canonical scope', () => {
   const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
   const manifest = JSON.parse(
     fs.readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8'),
   );
-  assert.equal(
-    manifest.scripts['format:check'],
-    'pnpm workflow run-check workflow-format --json',
-  );
-
   const formatWorkflow = fs.readFileSync(
     path.join(repositoryRoot, '.github/workflows/format.yml'),
     'utf8',
@@ -330,6 +319,10 @@ test('format verification delegates to the registered canonical authority', () =
     '.github/workflows/workflow-assurance.yml',
     'prettier.config.cjs',
   ];
+  assert.equal(
+    manifest.scripts['format:check'],
+    assetSeparatedFormatCommand.slice(3).join(' '),
+  );
   assert.equal(registeredFormat?.destructiveDatabase, false);
   assert.deepEqual(registeredFormat?.command, assetSeparatedFormatCommand);
   const config = JSON.parse(
@@ -749,7 +742,7 @@ test('the public asset CLI exposes only the tool-plural command', () => {
   const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
   const cliPath = path.join(
     repositoryRoot,
-    'packages/workflow-engine/src/cli.ts',
+    'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
   );
   const run = (args: string[]) =>
     spawnSync(

@@ -15,7 +15,7 @@ import {
   unavailableGrant,
   ambiguousGrant,
   isNodeError,
-} from './collaboration-grant-store-values.ts';
+} from '../../modules/authority/collaboration-grant-values.ts';
 import { assertCollaborationGrantId } from '../../modules/authority/collaboration-grant-codec.ts';
 
 export function collaborationGrantStorePaths(gitCommonDirectory: string) {

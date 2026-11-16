@@ -18,10 +18,8 @@ import {
   PROPOSE_POLICY_DIGEST,
   recreateProviderInvocationRequest,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
-import {
-  type InvestigationRuntimePaths,
-  assertChangeId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
+import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
 import { readEvidenceNode } from './evidence-node-store.ts';
 import { assertPlanReviewAuthorizationGrantOwnership } from './evidence-plan-review-grants.ts';
 import {
@@ -29,7 +27,7 @@ import {
   assertPlanningMaterializationOwnership,
   dependencyClosureEntry,
 } from './evidence-planning-ownership.ts';
-import { type InvestigationEvidenceDependencyClosureEntry } from './evidence-ref-closure.ts';
+import type { InvestigationEvidenceDependencyClosureEntry } from './evidence-ref-closure.ts';
 import {
   DIGEST_PATTERN,
   hasExactKeys,
@@ -38,7 +36,7 @@ import {
   isPlainRecord,
   refInvalid,
   sha256,
-} from './evidence-store-values.ts';
+} from '../journal-primitives/evidence-store-values.ts';
 
 export function resolvePlanReviewInvocationOwner(
   paths: InvestigationRuntimePaths,

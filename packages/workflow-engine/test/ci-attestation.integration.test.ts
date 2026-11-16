@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { verifyBaseAuthorityAttestations } from '../src/entrypoints/ci/ci-attestation.ts';
+import { verifyBaseAuthorityAttestations } from '../src/composition-root/ci-verification-production.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
 const GRANT_ID = '33333333-3333-4333-8333-333333333333';

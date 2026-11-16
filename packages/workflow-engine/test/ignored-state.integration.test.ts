@@ -1,3 +1,17 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -10,11 +24,9 @@ import {
   fingerprintRepositoryProjection,
   fingerprintWorkingState,
 } from '../src/runtime/repository-transaction/git.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import {
-  checkSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
 import { loadStableValidatedChangeContract } from '../src/composition-root/validated-contract-context.ts';
 import {
   configureChecks,
@@ -102,10 +114,22 @@ test(
       );
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentChange(repository);
-      const session = startSession(repository, 'demo-change', '1.1');
+      const session = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
 
       assert.throws(
-        () => checkSession(repository, session.sessionId),
+        () =>
+          checkSession(
+            maintainerManifestOperations,
+            productionTaskStrategyExecutionGate,
+            productionChangeContract,
+            repository,
+            session.sessionId,
+          ),
         (error) => isWorkflowError(error, 'CHECK_MUTATED_WORKTREE'),
       );
     } finally {
@@ -142,10 +166,22 @@ test('passing checks cannot mutate repository-ignored files', () => {
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeContract,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'CHECK_MUTATED_WORKTREE'),
     );
     assert.equal(fs.existsSync(laterMarker), false);
@@ -166,9 +202,22 @@ test('working-state fingerprints accept literal Git path metacharacters', () => 
     fs.writeFileSync(ignoredPath, 'export {};\n');
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
-    assert.doesNotThrow(() => checkSession(repository, session.sessionId));
+    assert.doesNotThrow(() =>
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeContract,
+        repository,
+        session.sessionId,
+      ),
+    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
@@ -227,7 +276,12 @@ test('local Git excludes cannot hide out-of-scope paths', () => {
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.appendFileSync(
       path.join(repository, '.git/info/exclude'),
       'outside.txt\n',
@@ -235,7 +289,14 @@ test('local Git excludes cannot hide out-of-scope paths', () => {
     fs.writeFileSync(outsidePath, 'must remain visible\n');
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeContract,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'OUT_OF_SCOPE_PATHS'),
     );
   } finally {
@@ -263,10 +324,22 @@ test(
       git(repository, ['config', 'core.fileMode', 'false']);
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentChange(repository);
-      const session = startSession(repository, 'demo-change', '1.1');
+      const session = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
 
       assert.throws(
-        () => checkSession(repository, session.sessionId),
+        () =>
+          checkSession(
+            maintainerManifestOperations,
+            productionTaskStrategyExecutionGate,
+            productionChangeContract,
+            repository,
+            session.sessionId,
+          ),
         (error) => isWorkflowError(error, 'CHECK_MUTATED_WORKTREE'),
       );
     } finally {
@@ -301,10 +374,22 @@ test('local stat settings cannot hide tracked content mutations', () => {
     git(repository, ['config', 'core.checkStat', 'minimal']);
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeContract,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'CHECK_MUTATED_WORKTREE'),
     );
   } finally {

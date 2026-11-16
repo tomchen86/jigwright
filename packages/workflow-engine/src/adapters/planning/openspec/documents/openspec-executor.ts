@@ -15,7 +15,7 @@ import {
   WorkflowError,
   workflowError,
 } from '../../../../foundation/errors/errors.ts';
-import { createTrustedExecutionEnvironment } from '../../../../runtime/provider-execution/execution-environment.ts';
+import { createTrustedExecutionEnvironment } from '../../../../runtime/process-environment/execution-environment.ts';
 import { resolveDeclaredPackage } from '../../../../runtime/repository-transaction/package-closure.ts';
 import {
   OPENSPEC_PACKAGE_NAME,

@@ -6,9 +6,9 @@
  * - The caller supplies its reviewed adapter capability flags and existing runner host.
  */
 
-import { assertKnownBuiltInProviderDefinitionSnapshot } from './built-in-provider-definition.ts';
-import { createProviderExecutionEnvironment } from './execution-environment.ts';
-import type { ProviderDefinitionSnapshot } from '@jigwright/agent-runtime';
+import { assertKnownBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
+import { createProviderExecutionEnvironment } from '../process-environment/execution-environment.ts';
+import type { ProviderDefinitionSnapshot } from '@jigwright/core/provider-definition-snapshot';
 import type {
   ProviderRunnerHost,
   ProviderPreflightOptions,
@@ -36,13 +36,8 @@ export const PROBE_OUTPUT_BYTES = 64 * 1024;
  * their required advertised flags, and the provider's own authentication status
  * command. Reviewed real-path install roots are derived per candidate.
  */
-export type ProviderPreflightSpec = {
-  helpProbes: ReadonlyArray<{
-    args: readonly string[];
-    requiredFlags: readonly string[];
-  }>;
-  authArgs: readonly string[];
-};
+import type { ProviderPreflightSpec } from '../../modules/provider-orchestration/provider-contracts.ts';
+export type { ProviderPreflightSpec };
 
 const REVIEWED_CANDIDATE_REAL_ROOTS: Readonly<
   Record<string, readonly string[]>

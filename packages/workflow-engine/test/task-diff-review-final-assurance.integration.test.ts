@@ -1,3 +1,7 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -6,18 +10,16 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   completeTask,
   finalizeTask,
-} from '../src/application/finalize/lifecycle.ts';
+} from './support/session-lifecycle-host.ts';
 import {
   readFinalizeTransaction,
   removeFinalizeTransaction,
-} from '../src/runtime/repository-transaction/finalize-transaction.ts';
-import { restoreFinalizeTransactionProjection } from '../src/application/finalize/projected-finalization.ts';
+} from '../src/runtime/storage-journal/finalize-transaction.ts';
+import { restoreFinalizeTransactionProjection } from '../src/runtime/finalization/projected-finalization.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
-import {
-  checkSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
 import {
   assertCurrentTaskDiffReviewSatisfied,
   beginTaskDiffReviewContinuation,
@@ -26,7 +28,7 @@ import {
   inspectTaskDiffReviewSubject,
   reconcileTaskDiffReviewContinuation,
   reconcileTaskDiffReview,
-} from '../src/application/finalize/task-diff-review-lifecycle.ts';
+} from '../src/composition-root/task-diff-review-production.ts';
 import {
   createTaskDiffReviewChallengeResponse,
   taskDiffReviewProviderSubmission,
@@ -48,7 +50,12 @@ import {
 test('advisory dispositions cannot close a challenge until the shared verifier mints Final Assurance', () => {
   const { repository, counterPath } = createReviewFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -305,7 +312,12 @@ test('advisory dispositions cannot close a challenge until the shared verifier m
 test('an accepted continuation decision requires a new candidate and never satisfies finalize', () => {
   const { repository } = createReviewFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -453,12 +465,23 @@ test('an accepted continuation decision requires a new candidate and never satis
 test('legacy complete-task refuses a review-required candidate instead of bypassing Final Assurance', () => {
   const { repository } = createReviewFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
     );
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     assert.throws(
       () => completeTask(repository, session.sessionId),
       hasCode('TASK_DIFF_REVIEW_REQUIRED'),
@@ -478,12 +501,23 @@ test('compatibility completion refuses a review-triggering projection without a 
     },
   });
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
     );
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     assert.throws(
       () => completeTask(repository, session.sessionId),
       hasCode('TASK_DIFF_REVIEW_NOT_READY'),

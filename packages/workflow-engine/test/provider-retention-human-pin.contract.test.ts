@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  classifyProviderRetentionEligibility,
-  providerRuntimeEvidenceId,
-} from '../src/runtime/provider-execution/provider-retention.ts';
+import { providerRuntimeEvidenceId } from '../src/runtime/provider-execution/provider-retention.ts';
+import { classifyProviderRetentionEligibility } from '../src/modules/provider-orchestration/provider-retention.ts';
 
 // An old-epoch accepted Attempt whose TTL has expired: the ordinary schedule
 // would delete its private runtime.

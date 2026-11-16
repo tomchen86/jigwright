@@ -1,10 +1,11 @@
+import { planningAssuranceDependencies } from '../src/composition-root/planning-assurance-production.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
+import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
 import {
   createPlanReviewNode,
   createPlanReviewProviderResultNode,
@@ -141,6 +142,7 @@ test('repository-location cannot cite a planning snapshot member', () => {
   assert.throws(
     () =>
       resolvePlanReviewRepositoryEvidence(
+        planningAssuranceDependencies,
         '/unused',
         'a'.repeat(40),
         reviewNode,
@@ -207,6 +209,7 @@ test('resolved review evidence uses canonical UTF-8 path ordering', () => {
 
     assert.deepEqual(
       resolvePlanReviewRepositoryEvidence(
+        planningAssuranceDependencies,
         repository,
         tree,
         reviewNode,
@@ -315,6 +318,7 @@ test('resolved planning evidence uses canonical UTF-8 path ordering', () => {
 
     assert.deepEqual(
       resolvePlanReviewPlanningEvidence(
+        planningAssuranceDependencies,
         repository,
         targetSnapshot,
         reviewNode,
@@ -365,6 +369,7 @@ test('planning-location cannot cite a nonmember repository path', () => {
     assert.throws(
       () =>
         resolvePlanReviewPlanningEvidence(
+          planningAssuranceDependencies,
           repositoryRoot,
           {
             artifacts: [

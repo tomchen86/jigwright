@@ -12,11 +12,8 @@ import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maint
 import {
   publishArtifactDigest,
   publishPrestateDigest,
-} from '../src/adapters/remote/github/publish-executor.ts';
-import {
-  authorizeTaskMandate,
-  TASK_MANDATE_SIGNATURE_NAMESPACE_V2,
-} from '../src/modules/authority/task-mandate.ts';
+} from '../src/modules/authority/publish-grant.ts';
+import { TASK_MANDATE_SIGNATURE_NAMESPACE_V2 } from '../src/modules/authority/task-mandate-values.ts';
 import {
   createFixtureRepository,
   git,
@@ -78,7 +75,10 @@ test('external-effect issue CLI resolves the active mandate before refusing unat
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'external-effect',
         'issue',
         '--grant',
@@ -139,7 +139,7 @@ test('publish CLI routes only an exact grant execution request', () => {
   try {
     const cli = path.join(
       sourceRepositoryRoot,
-      'packages/workflow-engine/src/cli.ts',
+      'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
     );
     const malformed = spawnSync(
       process.execPath,
@@ -161,7 +161,7 @@ test('external-effect reconciliation CLI accepts only an explicit evidence docum
   try {
     const cli = path.join(
       sourceRepositoryRoot,
-      'packages/workflow-engine/src/cli.ts',
+      'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
     );
     const result = spawnSync(
       process.execPath,
@@ -283,3 +283,6 @@ function realSigningProvider(privateKey: string): MaintainerSignerProvider {
 function digest(value: string): `sha256:${string}` {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const { authorizeTaskMandate } = taskMandateOperations;

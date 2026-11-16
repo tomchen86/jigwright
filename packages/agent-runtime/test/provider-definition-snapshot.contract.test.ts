@@ -29,7 +29,7 @@ const definition = {
   commandProfile: 'claude-fixed-read-only-v1',
 } as const;
 
-test('agent runtime owns the exact immutable built-in provider family registry', () => {
+test('agent runtime preserves the shared immutable built-in provider family registry', () => {
   const families = listBuiltInProviderFamilies();
 
   assert.deepEqual(families, ['codex', 'claude']);
@@ -40,7 +40,7 @@ test('agent runtime owns the exact immutable built-in provider family registry',
   assert.equal(isBuiltInProviderFamily('custom/internal'), false);
 });
 
-test('agent runtime owns the built-in provider capability policy', () => {
+test('agent runtime preserves the shared built-in provider capability policy', () => {
   const descriptors = listBuiltInProviderCapabilityDescriptors();
   const capabilities = [
     { purpose: 'survey', profile: 'repository-read-only' },

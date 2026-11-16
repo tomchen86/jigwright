@@ -26,7 +26,7 @@ import { parseMaintainerPolicy } from '../src/modules/authority/maintainer-polic
 import {
   parseCapabilityProfile,
   classifyFileRole,
-} from '../src/modules/authority/maintainer-manifest.ts';
+} from '../src/modules/authority/maintainer-manifest-contracts.ts';
 import { execFileSync } from 'node:child_process';
 import {
   write,
@@ -931,7 +931,7 @@ test('authority remap composes one manifest and one existing authority-plan inte
           '--experimental-strip-types',
           path.join(
             sourceRepositoryRoot,
-            'packages/workflow-engine/src/cli.ts',
+            'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
           ),
           'boundary',
           'remap',
@@ -1027,6 +1027,7 @@ test('engine source moves require the ordered closure regeneration chain instead
     assert.equal(projected.intent, null);
     assert.deepEqual(projected.regeneration?.steps, [
       'built-in-engine-closure',
+      'workflow-bootstrap-host',
       'harness-bootstrap-runtime',
       'protected-capabilities',
     ]);
@@ -1063,7 +1064,7 @@ test('workspace package source moves use the pinned v2 closure roots for regener
       'packages/workflow-engine/bootstrap/built-in-engine-closure.json',
       `${JSON.stringify({
         kind: 'built-in-engine-closure-manifest.v2',
-        entrypoint: 'src/cli.ts',
+        entrypoint: 'src/entrypoints/cli/workflow-cli.ts',
         scope: 'workspace-runtime-source-closure',
         packages: [
           {
@@ -1108,6 +1109,7 @@ test('workspace package source moves use the pinned v2 closure roots for regener
     assert.equal(projected.status, 'requires-regeneration');
     assert.deepEqual(projected.regeneration?.steps, [
       'built-in-engine-closure',
+      'workflow-bootstrap-host',
       'harness-bootstrap-runtime',
       'protected-capabilities',
     ]);
@@ -1128,7 +1130,7 @@ test('authority remap rejects retired V1 closure metadata at the pinned base', (
       'packages/workflow-engine/bootstrap/built-in-engine-closure.json',
       `${JSON.stringify({
         kind: 'built-in-engine-closure-manifest.v1',
-        entrypoint: 'src/cli.ts',
+        entrypoint: 'src/entrypoints/cli/workflow-cli.ts',
         scope: 'package-json-and-all-src-typescript',
         files: [],
       })}\n`,
@@ -1282,13 +1284,13 @@ test('authority remap fails closed when a move hits a code-owned projection endp
         endpoint === 'source'
           ? 'docs/CURRENT_AND_NEXT_STEPS.md'
           : endpoint === 'protected-loader'
-            ? 'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts'
+            ? 'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts'
             : 'docs/source-handoff.md';
       const to =
         endpoint === 'source'
           ? 'docs/relocated-handoff.md'
           : endpoint === 'protected-loader'
-            ? 'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities-relocated.ts'
+            ? 'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities-relocated.ts'
             : 'docs/CURRENT_AND_NEXT_STEPS.md';
       write(repository, from, 'generated handoff\n');
       commitAll(repository, `Add ${endpoint} projection endpoint`);
@@ -1519,3 +1521,75 @@ test('mechanical move proof rejects symbolic, abbreviated, stale, colliding, and
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
+
+for (const listed of [true, false]) {
+  test(`pinned host inventory ${listed ? 'selects' : 'does not select unrelated'} bootstrap moves for regeneration`, () => {
+    const repository = createFixtureRepository();
+    try {
+      removeFixtureActiveGuard(repository);
+      const from = 'packages/workflow-engine/bootstrap/host-dependency.ts';
+      const to = 'packages/workflow-engine/bootstrap/moved-dependency.ts';
+      const manifestPath =
+        'packages/workflow-engine/bootstrap/workflow-bootstrap-host.json';
+      write(repository, from, 'export const fixture = true;\n');
+      write(
+        repository,
+        manifestPath,
+        JSON.stringify({
+          kind: 'workflow-bootstrap-host.v1',
+          entrypoint: 'bootstrap/workflow-engine-host.ts',
+          engineManifestDigest: `sha256:${'a'.repeat(64)}`,
+          files: [
+            {
+              path: listed
+                ? 'bootstrap/host-dependency.ts'
+                : 'bootstrap/unrelated.ts',
+              mode: '100644',
+              digest: `sha256:${'b'.repeat(64)}`,
+            },
+          ],
+        }),
+      );
+      writeMaintainerPolicy(repository, (policy) => {
+        policy.bootstrapEligiblePaths = ['packages/**'];
+        policy.sealedImmutablePaths = [];
+      });
+      writeMaintainerProfiles(repository, {
+        implementationPaths: ['packages/**'],
+      });
+      commitAll(repository, 'Pin host inputs before mechanical move');
+      const baseCommit = head(repository);
+      move(repository, from, to);
+      commitAll(repository, 'Move bootstrap dependency');
+      const request = {
+        repositoryRoot: repository,
+        baseCommit,
+        moveCommit: head(repository),
+        renamePairs: [{ from, to }],
+        authorityPlan: {
+          changeId: 'host-dependency-remap',
+          taskId: '1.1',
+          profileId: 'remap-profile',
+          reason: 'Regenerate pinned host dependency after a move.',
+          message: 'Regenerate workflow host',
+        },
+      } as const;
+      const result = projectAuthorityRemap(request);
+      assert.deepEqual(
+        result.regeneration?.steps ?? [],
+        listed
+          ? [
+              'workflow-bootstrap-host',
+              'harness-bootstrap-runtime',
+              'protected-capabilities',
+            ]
+          : [],
+      );
+      // Current worktree metadata cannot alter classification of the pinned base.
+      write(repository, manifestPath, 'not valid JSON\n');
+      assert.deepEqual(projectAuthorityRemap(request), result);
+    } finally {
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
+  });
+}

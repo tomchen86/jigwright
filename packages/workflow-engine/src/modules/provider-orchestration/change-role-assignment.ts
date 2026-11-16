@@ -12,7 +12,7 @@ import {
   type AgentProviderCapability,
   type AgentProviderConfigSnapshot,
   type AgentProviderProfileSnapshot,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

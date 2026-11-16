@@ -19,8 +19,8 @@ import type {
 } from '@jigwright/core/job-attempt-runtime';
 import type { ExecutionRetryPolicyV1 } from '@jigwright/core/execution-retry-policy';
 import type { ExecutionPolicySnapshotV1 } from '@jigwright/core/execution-policy-snapshot';
-import type { TaskMandateBinding } from '../authority/task-mandate.ts';
-import type { GrantRequest } from '../authority/execution-governance.ts';
+import type { TaskMandateBinding } from '../authority/task-mandate-contract.ts';
+import type { GrantRequest } from '../authority/execution-governance-grant-contracts.ts';
 import type {
   ReadOnlyProbeKindV1,
   ReadOnlyProbeRequestV1,

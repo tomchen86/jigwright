@@ -10,22 +10,39 @@ import {
   assertProviderWrapperProtocolReceipt,
   type ProviderWrapperProtocolBinding,
   type ProviderWrapperProtocolReceipt,
-} from '@jigwright/agent-runtime/harness-jsonl-v1';
+} from '@jigwright/core/harness-jsonl-v1-contracts';
 import {
   assertProviderWrapperSessionProtocolReceipt,
   type ProviderWrapperSessionProtocolBinding,
   type ProviderWrapperSessionProtocolReceipt,
-} from '@jigwright/agent-runtime/harness-jsonl-v2';
+} from '@jigwright/core/harness-jsonl-v2-contracts';
 import {
   assertProviderNativeSessionClaimV1,
   type ProviderNativeSessionClaimV1,
 } from './provider-native-session.ts';
 
-export * from '@jigwright/agent-runtime/harness-jsonl-v1';
+export {
+  HARNESS_JSONL_V1_CONTRACT_VERSION,
+  HARNESS_JSONL_V1_LIMITS,
+  type ProviderWrapperProtocolDeclaration,
+  type ProviderWrapperProtocolBinding,
+  type ProviderWrapperHelloFrame,
+  type ProviderWrapperProgressFrame,
+  type ProviderWrapperResultFrame,
+  type ProviderWrapperErrorFrame,
+  type ProviderWrapperCancelAckFrame,
+  type ProviderWrapperFrame,
+  type ProviderWrapperFrameReceipt,
+  type ProviderWrapperProtocolReceipt,
+  type ProviderWrapperProtocolExecution,
+  ProviderWrapperProtocolError,
+  renderProviderWrapperFrame,
+  assertProviderWrapperProtocolReceipt,
+} from '@jigwright/core/harness-jsonl-v1-contracts';
 export {
   assertProviderWrapperSessionProtocolReceipt,
   type ProviderWrapperSessionProtocolReceipt,
-} from '@jigwright/agent-runtime/harness-jsonl-v2';
+} from '@jigwright/core/harness-jsonl-v2-contracts';
 
 export type ProviderRuntimeProtocolReceipt =
   ProviderWrapperProtocolReceipt | ProviderWrapperSessionProtocolReceipt;

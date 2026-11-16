@@ -1,3 +1,25 @@
+import {
+  verifyArchiveDeltaOutcomes as verifyArchiveDeltaOutcomesWithReader,
+  assertSpecDeltaScenarioPreservation as assertSpecDeltaScenarioPreservationWithReader,
+} from '../runtime/repository-transaction/archive-delta-verifier.ts';
+export const verifyArchiveDeltaOutcomes =
+  verifyArchiveDeltaOutcomesWithReader.bind(
+    undefined,
+    readSystemSpecDeltaInputs,
+  );
+export const assertSpecDeltaScenarioPreservation =
+  assertSpecDeltaScenarioPreservationWithReader.bind(
+    undefined,
+    readSystemSpecDeltaInputs,
+  );
+import type { PlanningArchiveSourcePolicy } from '../modules/planning-provider/planning-archive-projection-port.ts';
+import { openSpecPlanningPathPolicy } from '../adapters/planning/openspec/documents/planning-path-policy.ts';
+import { readSystemSpecDeltaInputs } from '../adapters/planning/openspec/documents/system-spec-deltas.ts';
+export const productionPlanningArchiveSourcePolicy: PlanningArchiveSourcePolicy =
+  Object.freeze({
+    planningPaths: openSpecPlanningPathPolicy,
+    readSystemSpecDeltaInputs,
+  });
 /**
  * Adapts OpenSpec archive execution and validates its projected document
  * results.
@@ -136,6 +158,7 @@ export function createOpenSpecPlanningArchiveProjectionPort(): PlanningArchivePr
 export function createArchiveProjectionDependencies() {
   return {
     archiveProjectionPort: createOpenSpecPlanningArchiveProjectionPort(),
+    sourcePolicy: productionPlanningArchiveSourcePolicy,
     readSystemDescriptionSnapshot,
   };
 }

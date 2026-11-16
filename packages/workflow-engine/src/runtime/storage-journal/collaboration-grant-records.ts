@@ -11,7 +11,8 @@ import type {
   CollaborationTerminalRecord,
   CollaborationReservationRecord,
   CollaborationGrantUseProjection,
-} from './collaboration-grant-store-types.ts';
+} from '../../modules/authority/collaboration-grant-records.ts';
+
 import {
   collaborationGrantStorePaths,
   assertExistingStoreReadOnlySafe,
@@ -25,11 +26,13 @@ import {
 import {
   assertCollaborationGrantId,
   type CollaborationGrantEnvelope,
+} from '../../modules/authority/collaboration-grant-codec.ts';
+import {
   collaborationGrantSignatureNamespace,
   collaborationGrantEnvelopeDigest,
   parseCollaborationGrantEnvelope,
   canonicalCollaborationGrantEnvelope,
-} from '../../modules/authority/collaboration-grant-codec.ts';
+} from '../grants/grant-services.ts';
 import {
   grantNotFound,
   deepFreeze,
@@ -38,14 +41,14 @@ import {
   hasExactKeys,
   DIGEST,
   isExactTimestamp,
-} from './collaboration-grant-store-values.ts';
+} from '../../modules/authority/collaboration-grant-values.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
   type HumanRevocationAuthorization,
   assertHumanRevocationAuthorization,
 } from '../../modules/authority/human-revocation-contract.ts';
-import { assertStoredUse } from './collaboration-grant-use-contract.ts';
+import { assertStoredUse } from '../grants/grant-services.ts';
 
 export function inspectCollaborationGrants(
   gitCommonDirectory: string,

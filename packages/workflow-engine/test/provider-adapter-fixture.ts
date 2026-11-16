@@ -8,22 +8,20 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   DEFAULT_AI_ADAPTER_RETRY_ACCOUNTING,
   parseAiAdapterPolicyDocument,
-} from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+} from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
   createProviderInvocationRequest,
   type ProviderInvocationRequest,
   type ProviderInvocationRequestInput,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import {
-  BLIND_SURVEY_OUTPUT_SCHEMA,
-  createProviderExecutionPolicySnapshot,
-  type ProviderInvocationAcceptanceBinding,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { BLIND_SURVEY_OUTPUT_SCHEMA } from '../src/modules/provider-orchestration/blind-survey-output.ts';
+import { createProviderExecutionPolicySnapshot } from '../src/runtime/storage-journal/provider-invocation-policy.ts';
+import type { ProviderInvocationAcceptanceBinding } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
 import {
   ensureProviderPromptContext,
   providerPromptContextStoreRoot,
-} from '../src/runtime/provider-execution/provider-execution-governance.ts';
+} from '../src/runtime/storage-journal/provider-execution-governance.ts';
 import {
   type ProviderExecutableIdentity,
   type ProviderRunInput,
@@ -34,8 +32,8 @@ import {
   parseAgentProviderConfigToml,
   type BuiltInReviewedProviderProfileSnapshot,
   type HostWrapperProviderProfileSnapshot,
-  type ProviderWrapperSessionProtocolBinding,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
+import { type ProviderWrapperSessionProtocolBinding } from '@jigwright/core/harness-jsonl-v2-contracts';
 import type {
   AgentRuntimeAssignmentBindingV1,
   AgentRuntimeNativeSessionTurnControllerV1,

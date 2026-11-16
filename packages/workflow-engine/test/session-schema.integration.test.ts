@@ -1,3 +1,7 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import {
   createFixtureRepository,
@@ -7,27 +11,25 @@ import {
   isWorkflowError,
   prepareCurrentV3IntroductionFixture,
 } from './fixture.ts';
-import {
-  startSession,
-  getSession,
-  checkSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
+import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import assert from 'node:assert/strict';
 import { reviseTask } from '../src/application/revise/task-revision.ts';
 import path from 'node:path';
 import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { commitSession } from '../src/runtime/finalization/commit.ts';
 import {
   finalizeTask,
-  commitSession,
   completeTask,
-} from '../src/application/finalize/lifecycle.ts';
+} from './support/session-lifecycle-host.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 import {
   readImmutableReport,
   writeImmutableReport,
 } from '../src/runtime/storage-journal/report-store.ts';
-import { validateCiPlanningCommit } from '../src/entrypoints/ci/ci-planning.ts';
+import { validateCiPlanningCommit } from '../src/composition-root/ci-replay-production.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { prepareCurrentChange } from './support/session-lifecycle-fixture.ts';
 
@@ -36,12 +38,23 @@ test('doctor counts a durable revising session as a write-capable session withou
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const started = startSession(repository, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     assert.throws(
       () =>
-        reviseTask(repository, started.sessionId, 'Inspect current planning.', {
-          testCrashAfter: 'session-revising',
-        }),
+        reviseTask(
+          productionChangeContract,
+          repository,
+          started.sessionId,
+          'Inspect current planning.',
+          {
+            testCrashAfter: 'session-revising',
+          },
+        ),
       /simulated task revision crash after session-revising/u,
     );
     assert.equal(getSession(repository, started.sessionId).state, 'revising');
@@ -60,7 +73,10 @@ test('doctor counts a durable revising session as a write-capable session withou
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'doctor',
         '--json',
       ],
@@ -91,7 +107,12 @@ test('current single-writer sessions use a neutral routing identity and reject t
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const started = startSession(repository, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     assert.equal(started.isolation?.routingRole, 'single');
 
     const sessionPath = path.join(
@@ -118,7 +139,12 @@ test('current session reader rejects persisted records missing the isolation key
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const started = startSession(repository, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const runtime = runtimeRoot(repository);
     const sessionPath = path.join(
       runtime,
@@ -179,7 +205,12 @@ test('current session reader rejects persisted records missing the planning assu
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const started = startSession(repository, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const sessionPath = path.join(
       runtimeRoot(repository),
       'sessions',
@@ -256,7 +287,6 @@ test('tracked session schema exposes only the current WorkflowSession shape', ()
     'baseline',
     'branch',
     'changeId',
-    'checkEvidenceEngineDigest',
     'commitHash',
     'commitReportId',
     'committedAt',
@@ -349,7 +379,12 @@ test('current session reader rejects persisted records missing required check di
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const started = startSession(repository, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const runtime = runtimeRoot(repository);
     const sessionPath = path.join(
       runtime,
@@ -419,7 +454,12 @@ test('v3 sessions and every task report pin the exact planning assurance', () =>
       directHumanReviewAttestationDigest: null,
     };
 
-    const started = startSession(repository, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     assert.deepEqual(
       (started as typeof started & { planningAssurance: unknown })
         .planningAssurance,
@@ -433,7 +473,12 @@ test('v3 sessions and every task report pin the exact planning assurance', () =>
     );
     satisfyCurrentTaskDiffReview(repository, started.sessionId);
     finalizeTask(repository, started.sessionId);
-    commitSession(repository, started.sessionId, 'Bind planning assurance');
+    commitSession(
+      productionChangeContract,
+      repository,
+      started.sessionId,
+      'Bind planning assurance',
+    );
 
     const committed = getSession(repository, started.sessionId);
     assert.deepEqual(
@@ -467,7 +512,12 @@ test('current session reader preserves R-007 assurance without fabricated standa
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const started = startSession(repository, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const sessionPath = path.join(
       runtimeRoot(repository),
       'sessions',
@@ -562,7 +612,12 @@ test('task transitions reject a session whose planning assurance is stale', () =
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const started = startSession(repository, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const sessionPath = path.join(
       runtimeRoot(repository),
       'sessions',
@@ -575,7 +630,14 @@ test('task transitions reject a session whose planning assurance is stale', () =
     fs.writeFileSync(sessionPath, `${JSON.stringify(stored, null, 2)}\n`);
 
     assert.throws(
-      () => checkSession(repository, started.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeContract,
+          repository,
+          started.sessionId,
+        ),
       (error) => isWorkflowError(error, 'SESSION_PLANNING_ASSURANCE_STALE'),
     );
   } finally {
@@ -588,9 +650,20 @@ test('completion rejects a check report with mismatched planning assurance', () 
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const started = startSession(repository, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-    const checked = checkSession(repository, started.sessionId);
+    const checked = checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      started.sessionId,
+    );
     const reportsRoot = path.join(runtimeRoot(repository), 'reports');
     const forged = structuredClone(
       readImmutableReport(reportsRoot, started.sessionId, checked.reportId),
@@ -614,6 +687,102 @@ test('completion rejects a check report with mismatched planning assurance', () 
       () => completeTask(repository, started.sessionId),
       (error) => isWorkflowError(error, 'CHECK_REPORT_STALE'),
     );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+import { inspectSession } from '../src/runtime/repository-validation/session-inspection.ts';
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import {
+  readSessionFile,
+  writeJsonAtomic,
+} from '../src/runtime/session-workspace/session-store.ts';
+
+test('task transitions accept reordered planning assurance while rejecting changed planning generation and digest', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
+    const started = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
+    const sessionPath = path.join(
+      runtimeRoot(repository),
+      'sessions',
+      `${started.sessionId}.json`,
+    );
+    const original = readSessionFile(sessionPath);
+    assert.ok(original.planningAssurance);
+    const canonical = JSON.parse(canonicalJson(original)) as typeof original;
+    assert.ok(canonical.planningAssurance);
+    assert.notEqual(
+      JSON.stringify(canonical.planningAssurance),
+      JSON.stringify(original.planningAssurance),
+    );
+    assert.deepEqual(canonical.planningAssurance, original.planningAssurance);
+    writeJsonAtomic(sessionPath, canonical);
+    assert.deepEqual(
+      inspectSession(productionChangeContract, repository, started.sessionId)
+        .session.planningAssurance,
+      original.planningAssurance,
+    );
+    // Explicitly reverse the nested baseline order as well as the outer order.
+    const reordered = {
+      ...canonical,
+      planningAssurance: {
+        ...canonical.planningAssurance,
+        investigationBaseline: {
+          tree: canonical.planningAssurance.investigationBaseline.tree,
+          head: canonical.planningAssurance.investigationBaseline.head,
+        },
+      },
+    };
+    assert.notEqual(
+      JSON.stringify(reordered.planningAssurance.investigationBaseline),
+      JSON.stringify(original.planningAssurance.investigationBaseline),
+    );
+    assert.equal(
+      canonicalJson(reordered.planningAssurance),
+      canonicalJson(original.planningAssurance),
+    );
+    writeJsonAtomic(sessionPath, reordered);
+    assert.deepEqual(
+      inspectSession(productionChangeContract, repository, started.sessionId)
+        .session.planningAssurance,
+      original.planningAssurance,
+    );
+    for (const field of ['planningGenerationId', 'planTargetDigest'] as const) {
+      const changed = {
+        ...reordered,
+        planningAssurance: {
+          ...reordered.planningAssurance,
+          [field]: 'f'.repeat(64),
+        },
+      };
+      assert.notEqual(
+        changed.planningAssurance[field],
+        original.planningAssurance[field],
+      );
+      writeJsonAtomic(sessionPath, changed);
+      // It remains a valid stored binding; the live authority comparison rejects it.
+      assert.equal(
+        readSessionFile(sessionPath).planningAssurance?.[field],
+        changed.planningAssurance[field],
+      );
+      assert.throws(
+        () =>
+          inspectSession(
+            productionChangeContract,
+            repository,
+            started.sessionId,
+          ),
+        (error) => isWorkflowError(error, 'SESSION_PLANNING_ASSURANCE_STALE'),
+      );
+    }
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

@@ -1,3 +1,17 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -5,11 +19,9 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { resolveCheckRunner } from '../src/adapters/consumer/repository/work-registry/runner-resolution.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import {
-  checkSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
 import {
   addFixturePackage,
   configureChecks,
@@ -194,10 +206,22 @@ test(
       configureChecks(repository, { package: packageCheck() }, ['package']);
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentChange(repository);
-      const session = startSession(repository, 'demo-change', '1.1');
+      const session = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
 
       assert.throws(
-        () => checkSession(repository, session.sessionId),
+        () =>
+          checkSession(
+            maintainerManifestOperations,
+            productionTaskStrategyExecutionGate,
+            productionChangeContract,
+            repository,
+            session.sessionId,
+          ),
         (error) => isWorkflowError(error, 'CHECK_RUNNER_UNAVAILABLE'),
       );
     } finally {
@@ -231,10 +255,22 @@ test(
       configureChecks(repository, { package: packageCheck() }, ['package']);
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentChange(repository);
-      const session = startSession(repository, 'demo-change', '1.1');
+      const session = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
 
       assert.throws(
-        () => checkSession(repository, session.sessionId),
+        () =>
+          checkSession(
+            maintainerManifestOperations,
+            productionTaskStrategyExecutionGate,
+            productionChangeContract,
+            repository,
+            session.sessionId,
+          ),
         (error) => isWorkflowError(error, 'CHECK_RUNNER_UNAVAILABLE'),
       );
     } finally {
@@ -253,10 +289,22 @@ test('package runner rejects identities contradicting npm/workspace aliases', ()
       configureChecks(repository, { package: packageCheck() }, ['package']);
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentChange(repository);
-      const session = startSession(repository, 'demo-change', '1.1');
+      const session = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
 
       assert.throws(
-        () => checkSession(repository, session.sessionId),
+        () =>
+          checkSession(
+            maintainerManifestOperations,
+            productionTaskStrategyExecutionGate,
+            productionChangeContract,
+            repository,
+            session.sessionId,
+          ),
         (error) => isWorkflowError(error, 'CHECK_RUNNER_UNAVAILABLE'),
         spec,
       );

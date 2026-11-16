@@ -1,3 +1,26 @@
+import {
+  INVESTIGATION_MANIFEST_V3_KIND,
+  INVESTIGATION_MANIFEST_V3_SCHEMA_VERSION,
+  INVESTIGATION_V3_ATTEMPTED_TRANSITIONS,
+} from '../domain/investigation-schema.ts';
+import type {
+  ExemptionInvestigationApplicabilityV3,
+  ExemptionInvestigationAuthoringState,
+  InvestigationApprovalV3,
+  InvestigationAssuranceFacts,
+  InvestigationAuthoringState,
+  InvestigationKnowledgeReuseDecision,
+  InvestigationManifestDraftV3,
+  InvestigationManifestV3,
+  InvestigationSemanticException,
+  InvestigationV3Blocker,
+  InvestigationV3FailureCode,
+  InvestigationV3RoleResult,
+  InvestigationWhyOverlayV3,
+  ManifestIdentity,
+  OrdinaryInvestigationApplicabilityV3,
+  OrdinaryInvestigationAuthoringState,
+} from './investigation-manifest-types.ts';
 /**
  * Builds, seals, and validates v3 Investigation Manifests and structured
  * blockers.
@@ -6,370 +29,77 @@
  * - Authority validation requires manifest identity to match the lifecycle
  *   snapshot.
  */
-import { SEMANTIC_ASSURANCE } from './investigation-manifest-values.ts';
-import type {
-  InvestigationGroupRef,
-  AppliedInvestigationDisposition,
-  InvestigationSemanticGroupDecision,
-} from '../domain/investigation-domain.ts';
-import { createInvestigationApplicability } from '../domain/investigation-applicability.ts';
-import type {
-  InvestigationSemanticAuthor,
-  InvestigationExemptionCategory,
-  InvestigationChangeClass,
-} from '../domain/investigation-applicability.ts';
-import type { NormalizedChangeIntent } from '../../../runtime/storage-journal/provider-invocation-store.ts';
-import { materializeInvestigationEvidenceView } from './investigation-materializer.ts';
-import type {
-  InvestigationReplayAuthoringInput,
-  InvestigationV3Baseline,
-  InvestigationScanSaturationDecision,
-} from './investigation-materializer.ts';
-import type { FloorOverflowDecision } from '../domain/floor-overflow-pruning.ts';
-import { normalizeInvestigationTerm } from '../domain/investigation-terms.ts';
-import type {
-  InvestigationTermContribution,
-  PreviewInvestigationTerm,
-  InvestigationLimits,
-} from '../domain/investigation-terms.ts';
-import {
-  INVESTIGATION_TERM_NORMALIZATION_VERSION,
-  INVESTIGATION_ROOT_CANONICALIZATION_VERSION,
-} from '../domain/investigation-roots.ts';
+import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
+import { WorkflowError } from '../../../foundation/errors/errors.ts';
+import type { NormalizedChangeIntent } from '../../source/change-intent.ts';
 import type { MutationClassPolicy } from '../../source/mutation-class-policy.ts';
+import type { FloorOverflowDecision } from '../domain/floor-overflow-pruning.ts';
+import type {
+  InvestigationChangeClass,
+  InvestigationExemptionCategory,
+  InvestigationSemanticAuthor,
+} from '../domain/investigation-applicability.ts';
+import { createInvestigationApplicability } from '../domain/investigation-applicability.ts';
+import type { InvestigationSemanticGroupDecision } from '../domain/investigation-domain.ts';
 import type {
   DeclaredInvestigationRoot,
   ReviewedPathRelationship,
 } from '../domain/investigation-groups.ts';
-import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
-import { WorkflowError } from '../../../foundation/errors/errors.ts';
 import {
-  normalizeRequirements,
+  INVESTIGATION_ROOT_CANONICALIZATION_VERSION,
+  INVESTIGATION_TERM_NORMALIZATION_VERSION,
+  SEMANTIC_ASSURANCE,
+} from '../domain/investigation-schema.ts';
+import type {
+  InvestigationLimits,
+  InvestigationTermContribution,
+  PreviewInvestigationTerm,
+} from '../domain/investigation-terms.ts';
+import { normalizeInvestigationTerm } from '../domain/investigation-terms.ts';
+import type { InvestigationV3Baseline } from './investigation-baseline.ts';
+import {
   assertOrdinaryPlanReviewCoverageBinding,
+  normalizeRequirements,
 } from './investigation-manifest-requirements.ts';
-import type { InvestigationRequirementV3 } from './investigation-manifest-requirements.ts';
 import {
-  assertRecord,
-  assertExactKeys,
-  DIGEST,
-  unrepresentable,
-  digestWithDomain,
-  deepFreeze,
-  digest,
-  normalizeSemanticAuthor,
-  assertDigest,
-  isRecord,
-  ManifestValidationError,
-  boundedText,
-  normalizeTextArray,
-  assertUnique,
-  assertGitObjectId,
-} from './investigation-manifest-values.ts';
-import {
-  normalizeSemanticGroupDecisions,
-  normalizeDispositionDecisions,
-  normalizeSaturationDecision,
-  normalizeRoleResults,
-  normalizeWhyOverlays,
-  normalizeKnowledgeReuseDecisions,
-  validateWhyCoverage,
-  normalizeExceptions,
   normalizeAssuranceFacts,
+  normalizeDispositionDecisions,
+  normalizeExceptions,
   normalizeFloorOverflowDecision,
+  normalizeKnowledgeReuseDecisions,
+  normalizeRoleResults,
+  normalizeSaturationDecision,
+  normalizeSemanticGroupDecisions,
+  normalizeWhyOverlays,
   persistedDispositionsFrom,
   persistedToDispositionDecisions,
+  validateWhyCoverage,
 } from './investigation-manifest-semantic-evidence.ts';
+import {
+  assertDigest,
+  assertExactKeys,
+  assertGitObjectId,
+  assertRecord,
+  assertUnique,
+  boundedText,
+  deepFreeze,
+  DIGEST,
+  digest,
+  digestWithDomain,
+  isRecord,
+  ManifestValidationError,
+  normalizeSemanticAuthor,
+  normalizeTextArray,
+  unrepresentable,
+} from './investigation-manifest-values.ts';
+import type { InvestigationEvidenceReplayer } from './investigation-materializer.ts';
+import type {
+  InvestigationReplayAuthoringInput,
+  InvestigationScanSaturationDecision,
+} from './investigation-replay-input.ts';
+import type { InvestigationRequirementV3 } from './investigation-requirement-types.ts';
 
 const ASSURANCE_FACT_ID = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;
-
-export const INVESTIGATION_MANIFEST_V3_SCHEMA_VERSION = 3 as const;
-
-export const INVESTIGATION_MANIFEST_V3_KIND =
-  'manifest-first-investigation' as const;
-
-export type InvestigationV3RoleResult = {
-  role: 'reviewer-pre-anchor' | 'investigation-reviewer';
-  targetDigest: string;
-  providerId: string | null;
-  sessionId: string | null;
-  principalId: string | null;
-  requiredIndependence: string;
-  achievedIndependence: string;
-  requestDigest: string;
-  outputDigest: string;
-  contentDigest: string;
-  policyDigest: string;
-  provenanceDigest: string;
-  grantUse: {
-    kind: 'collaboration-grant-use-identity.v1';
-    grantId: string;
-    signedEnvelopeDigest: string;
-    transitionDigest: string;
-  } | null;
-  roleContextSharingUse: {
-    kind: 'role-context-sharing-use-identity.v1';
-    grantId: string;
-    signedEnvelopeDigest: string;
-    transitionDigest: string;
-    useProjectionDigest: string;
-    admissionDigest: string;
-  } | null;
-};
-
-export type InvestigationAssuranceFacts = {
-  assessmentDigest: string;
-  coverageTier: 'standard' | 'elevated' | 'critical';
-  escalated: boolean;
-  reasons: string[];
-  provenanceDigest: string;
-};
-
-export type InvestigationSourceAnchor = {
-  pathIdentity: { rawBase64: string; utf8: string | null };
-  blobOid: string;
-  byteRange: { start: number; end: number };
-  termId: string;
-};
-
-export type InvestigationWhyOverlayV3 = {
-  overlayId: string;
-  pathIdentity: { rawBase64: string; utf8: string | null };
-  blobOid: string;
-  contentSha256: string;
-  groupRefs: InvestigationGroupRef[];
-  anchors: InvestigationSourceAnchor[];
-  why: string;
-  protectedInvariant: string;
-  reviewerQuestion: string;
-  answer: string;
-  semanticAuthor: InvestigationSemanticAuthor;
-  readComplete: true;
-  semanticAssurance: typeof SEMANTIC_ASSURANCE;
-};
-
-export type InvestigationKnowledgeReuseDecision = {
-  decisionId: string;
-  pathIdentity: { rawBase64: string; utf8: string | null };
-  blobOid: string;
-  knowledgeRef: {
-    subjectId: string;
-    versionDigest: string;
-  };
-  freshness: {
-    decision: 'fresh';
-    rationale: string;
-    semanticAuthor: InvestigationSemanticAuthor;
-    provenanceDigest: string;
-  };
-};
-
-export type InvestigationSemanticException = {
-  exceptionId: string;
-  kind: 'semantic-group' | 'disposition' | 'why' | 'knowledge-reuse';
-  subjectKey: string;
-  rationale: string;
-  semanticAuthor: InvestigationSemanticAuthor;
-  provenanceDigest: string;
-};
-
-type CommonAuthoringState = {
-  schemaVersion: 1;
-  repositoryId: string;
-  changeId: string;
-  investigationId: string;
-  normalizedIntent: NormalizedChangeIntent;
-  authoring: {
-    sessionRevision: number;
-    sessionSnapshotDigest: string;
-  };
-};
-
-export type OrdinaryInvestigationAuthoringState = CommonAuthoringState & {
-  applicabilityKind: 'ordinary';
-  ordinary: InvestigationReplayAuthoringInput & {
-    whyOverlays: InvestigationWhyOverlayV3[];
-    knowledgeReuseDecisions: InvestigationKnowledgeReuseDecision[];
-    investigationRoleResults: InvestigationV3RoleResult[];
-    floorOverflowDecision: FloorOverflowDecision | null;
-    exceptions: InvestigationSemanticException[];
-    investigationRequirements: InvestigationRequirementV3[];
-    assuranceFacts: InvestigationAssuranceFacts;
-  };
-};
-
-export type ExemptionInvestigationAuthoringState = CommonAuthoringState & {
-  applicabilityKind: 'exemption';
-  exemption: {
-    category: InvestigationExemptionCategory;
-    baseline: InvestigationV3Baseline;
-    declaredPaths: string[];
-    declaredChangeClasses: InvestigationChangeClass[];
-    rationale: string;
-    semanticAuthor: InvestigationSemanticAuthor;
-    nonTrivialBehaviorReliance: 'none-declared';
-    researchBudgetMinutes: number | null;
-  };
-};
-
-export type InvestigationAuthoringState =
-  OrdinaryInvestigationAuthoringState | ExemptionInvestigationAuthoringState;
-
-export type PersistedDisposition = Omit<
-  AppliedInvestigationDisposition,
-  'coveredHitKeys' | 'dispositionDigest'
-> & {
-  dispositionDigest: string;
-};
-
-export type InvestigationReplayContractV3 = {
-  baseline: InvestigationV3Baseline;
-  termContributions: InvestigationTermContribution[];
-  canonicalTerms: PreviewInvestigationTerm[];
-  termNormalizationVersion: typeof INVESTIGATION_TERM_NORMALIZATION_VERSION;
-  termSetDigest: string;
-  scanner: {
-    evaluatorId: 'investigation-scanner.v1';
-    policyDigest: string;
-    canonicalizationVersion: 'investigation-scan-canonicalization.v1';
-    limits: InvestigationLimits;
-    allowSaturatedTerms: boolean;
-  };
-  grouping: {
-    evaluatorId: 'investigation-groups.v1';
-    policyDigest: string;
-    canonicalizationVersion: 'investigation-mechanical-groups.v3';
-    mutationPolicy: MutationClassPolicy;
-    declaredRoots: DeclaredInvestigationRoot[];
-    reviewedRelationships: ReviewedPathRelationship[];
-  };
-  coverage: {
-    evaluatorId: 'investigation-coverage.v3';
-    canonicalizationVersion: typeof INVESTIGATION_ROOT_CANONICALIZATION_VERSION;
-  };
-  inventoryRoot: string;
-  hitRoot: string;
-  mechanicalGroupRoot: string;
-  counts: {
-    terms: number;
-    hits: number;
-    mechanicalGroups: number;
-  };
-};
-
-export type InvestigationSemanticDeltaV3 = {
-  investigationRoleResults: InvestigationV3RoleResult[];
-  scanSaturationDecision: InvestigationScanSaturationDecision | null;
-  floorOverflowDecision: FloorOverflowDecision | null;
-  semanticGroupDecisions: InvestigationSemanticGroupDecision[];
-  finalGroupRoot: string;
-  dispositions: PersistedDisposition[];
-  whyOverlays: InvestigationWhyOverlayV3[];
-  knowledgeReuseDecisions: InvestigationKnowledgeReuseDecision[];
-  exceptions: InvestigationSemanticException[];
-  investigationRequirements: InvestigationRequirementV3[];
-  assuranceFacts: InvestigationAssuranceFacts;
-};
-
-export type OrdinaryInvestigationApplicabilityV3 = {
-  kind: 'ordinary';
-  replayContract: InvestigationReplayContractV3;
-  semanticDelta: InvestigationSemanticDeltaV3;
-  derivedCommitments: {
-    coverageRoot: string;
-    zeroHitTermIds: string[];
-    finalGroupCount: number;
-  };
-};
-
-export type ExemptionInvestigationApplicabilityV3 = {
-  kind: 'exemption';
-  category: InvestigationExemptionCategory;
-  baseline: InvestigationV3Baseline;
-  declaredPaths: string[];
-  declaredChangeClasses: InvestigationChangeClass[];
-  rationale: string;
-  semanticAuthor: InvestigationSemanticAuthor;
-  nonTrivialBehaviorReliance: 'none-declared';
-  researchBudgetMinutes: number | null;
-  policyDigest: string;
-  applicabilityDigest: string;
-};
-
-export type InvestigationApprovalV3 = {
-  schemaVersion: 1;
-  kind: 'investigation-approval';
-  investigationTargetDigest: string;
-  semanticAuthor: InvestigationSemanticAuthor;
-  approvalProvenanceDigest: string;
-  semanticAssurance: typeof SEMANTIC_ASSURANCE;
-  sealDigest: string;
-};
-
-type ManifestIdentity = {
-  schemaVersion: typeof INVESTIGATION_MANIFEST_V3_SCHEMA_VERSION;
-  kind: typeof INVESTIGATION_MANIFEST_V3_KIND;
-  repositoryId: string;
-  changeId: string;
-  investigationId: string;
-  normalizedIntent: NormalizedChangeIntent;
-  intentDigest: string;
-  authoring: {
-    sessionRevision: number;
-    sessionSnapshotDigest: string;
-  };
-};
-
-export type InvestigationManifestDraftV3 = ManifestIdentity & {
-  applicability:
-    | OrdinaryInvestigationApplicabilityV3
-    | ExemptionInvestigationApplicabilityV3;
-  investigationApproval: null;
-  manifestDigest: null;
-};
-
-export type InvestigationManifestV3 = ManifestIdentity & {
-  applicability:
-    | OrdinaryInvestigationApplicabilityV3
-    | ExemptionInvestigationApplicabilityV3;
-  investigationApproval: InvestigationApprovalV3;
-  manifestDigest: string;
-};
-
-export const INVESTIGATION_V3_KNOWN_FAILURE_CODES = [
-  'SCHEMA_V1_FORBIDDEN',
-  'TERM_INTEGRITY_MISMATCH',
-  'REPLAY_INPUT_MISSING',
-  'REPLAY_CLOSURE_UNSUPPORTED',
-  'MANIFEST_UNREPRESENTABLE',
-  'RECONSTRUCTION_MISMATCH',
-  'SEMANTIC_COMPLETENESS_FAILURE',
-  'SOURCE_ANCHOR_UNRESOLVED',
-  'REVIEW_TARGET_STALE',
-  'PROJECTION_PIPELINE_FORBIDDEN',
-  'PUBLICATION_RECOVERY_REQUIRED',
-] as const;
-
-/** Diagnostic catalog only. New engine failures remain valid without editing it. */
-export type InvestigationV3FailureCode =
-  (typeof INVESTIGATION_V3_KNOWN_FAILURE_CODES)[number] | (string & {});
-
-export const INVESTIGATION_V3_ATTEMPTED_TRANSITIONS = [
-  'build-draft',
-  'draft-seal',
-  'authority-validation',
-  'publication',
-] as const;
-
-export type InvestigationV3Blocker = {
-  schemaVersion: 1;
-  kind: 'investigation-v3-failure';
-  failureIdentity: string;
-  attemptedTransition: (typeof INVESTIGATION_V3_ATTEMPTED_TRANSITIONS)[number];
-  candidateDigest: string;
-  failureCode: InvestigationV3FailureCode;
-  detailsDigest: string;
-  missingAssuranceFacts: string[];
-};
 
 /**
  * Structured v3 failure emitter. This is deliberately only a failure contract:
@@ -494,16 +224,20 @@ type AuthorityValidationResult =
     }
   | { outcome: 'blocked'; blocker: InvestigationV3Blocker };
 
-export function buildInvestigationManifestDraft(input: {
-  repositoryRoot: string;
-  state: InvestigationAuthoringState;
-}): BuiltResult {
+export function buildInvestigationManifestDraft(
+  materializeInvestigationEvidenceView: InvestigationEvidenceReplayer,
+  input: {
+    repositoryRoot: string;
+    state: InvestigationAuthoringState;
+  },
+): BuiltResult {
   try {
     const identity = normalizeAuthoringIdentity(input.state);
     const intentDigest = digest(identity.normalizedIntent);
     const applicability =
       input.state.applicabilityKind === 'ordinary'
         ? buildOrdinaryApplicability(
+            materializeInvestigationEvidenceView,
             input.repositoryRoot,
             input.state,
             identity,
@@ -530,12 +264,19 @@ export function buildInvestigationManifestDraft(input: {
   }
 }
 
-export function validateDraftForSeal(input: {
-  repositoryRoot: string;
-  draft: unknown;
-}): VerifiedDraftResult {
+export function validateDraftForSeal(
+  materializeInvestigationEvidenceView: InvestigationEvidenceReplayer,
+  input: {
+    repositoryRoot: string;
+    draft: unknown;
+  },
+): VerifiedDraftResult {
   try {
-    const draft = parseDraft(input.repositoryRoot, input.draft);
+    const draft = parseDraft(
+      materializeInvestigationEvidenceView,
+      input.repositoryRoot,
+      input.draft,
+    );
     const applicabilityContentDigest = digestWithDomain(
       'investigation-applicability-content/v3',
       draft.applicability,
@@ -614,17 +355,20 @@ export function sealInvestigationManifestDraft(input: {
   }
 }
 
-export function validateForAuthority(input: {
-  repositoryRoot: string;
-  manifest: unknown;
-  expected: {
-    repositoryId: string;
-    changeId: string;
-    investigationId: string;
-    sessionRevision: number;
-    sessionSnapshotDigest: string;
-  };
-}): AuthorityValidationResult {
+export function validateForAuthority(
+  materializeInvestigationEvidenceView: InvestigationEvidenceReplayer,
+  input: {
+    repositoryRoot: string;
+    manifest: unknown;
+    expected: {
+      repositoryId: string;
+      changeId: string;
+      investigationId: string;
+      sessionRevision: number;
+      sessionSnapshotDigest: string;
+    };
+  },
+): AuthorityValidationResult {
   if (isRecord(input.manifest) && input.manifest.schemaVersion === 1) {
     return blockedWithCode(
       'authority-validation',
@@ -634,7 +378,11 @@ export function validateForAuthority(input: {
     );
   }
   try {
-    const manifest = parseFinalManifest(input.repositoryRoot, input.manifest);
+    const manifest = parseFinalManifest(
+      materializeInvestigationEvidenceView,
+      input.repositoryRoot,
+      input.manifest,
+    );
     if (
       manifest.repositoryId !== input.expected.repositoryId ||
       manifest.changeId !== input.expected.changeId ||
@@ -661,6 +409,7 @@ export function validateForAuthority(input: {
 }
 
 function buildOrdinaryApplicability(
+  materializeInvestigationEvidenceView: InvestigationEvidenceReplayer,
   repositoryRoot: string,
   state: OrdinaryInvestigationAuthoringState,
   parentIdentity: ManifestIdentity,
@@ -840,6 +589,7 @@ function buildExemptionApplicability(
 }
 
 function parseDraft(
+  materializeInvestigationEvidenceView: InvestigationEvidenceReplayer,
   repositoryRoot: string,
   value: unknown,
 ): InvestigationManifestDraftV3 {
@@ -849,6 +599,7 @@ function parseDraft(
   }
   const identity = parseManifestIdentity(record);
   const applicability = parseApplicability(
+    materializeInvestigationEvidenceView,
     repositoryRoot,
     identity,
     record.applicability,
@@ -862,12 +613,14 @@ function parseDraft(
 }
 
 function parseFinalManifest(
+  materializeInvestigationEvidenceView: InvestigationEvidenceReplayer,
   repositoryRoot: string,
   value: unknown,
 ): InvestigationManifestV3 {
   const record = assertManifestTop(value);
   const identity = parseManifestIdentity(record);
   const applicability = parseApplicability(
+    materializeInvestigationEvidenceView,
     repositoryRoot,
     identity,
     record.applicability,
@@ -930,6 +683,7 @@ function parseFinalManifest(
 }
 
 function parseApplicability(
+  materializeInvestigationEvidenceView: InvestigationEvidenceReplayer,
   repositoryRoot: string,
   identity: ManifestIdentity,
   value: unknown,
@@ -1038,7 +792,12 @@ function parseApplicability(
       assuranceFacts: semantic.assuranceFacts as InvestigationAssuranceFacts,
     },
   };
-  const rebuilt = buildOrdinaryApplicability(repositoryRoot, state, identity);
+  const rebuilt = buildOrdinaryApplicability(
+    materializeInvestigationEvidenceView,
+    repositoryRoot,
+    state,
+    identity,
+  );
   if (canonicalJson(rebuilt) !== canonicalJson(value)) {
     throw new ManifestValidationError(
       'RECONSTRUCTION_MISMATCH',
@@ -1525,18 +1284,18 @@ function missingAssuranceFactsFor(code: string): string[] {
 }
 
 export {
-  normalizeInvestigationRequirementsV3,
   assertInvestigationRequirementV3,
+  normalizeInvestigationRequirementsV3,
 } from './investigation-manifest-requirements.ts';
 export type {
   InvestigationGenericRequirementV3,
-  InvestigationPlanReviewCoverageTargetV3,
-  InvestigationPlanReviewCoverageTargetBindingV3,
-  InvestigationSemanticReuseCoverageV3,
-  InvestigationPlanReviewCoveragePayloadV3,
-  InvestigationPlanReviewCoverageRequirementV3,
   InvestigationImplementationPlannedMutationV3,
   InvestigationImplementationReconciliationPayloadV3,
   InvestigationImplementationReconciliationRequirementV3,
+  InvestigationPlanReviewCoveragePayloadV3,
+  InvestigationPlanReviewCoverageRequirementV3,
+  InvestigationPlanReviewCoverageTargetBindingV3,
+  InvestigationPlanReviewCoverageTargetV3,
   InvestigationRequirementV3,
-} from './investigation-manifest-requirements.ts';
+  InvestigationSemanticReuseCoverageV3,
+} from './investigation-requirement-types.ts';

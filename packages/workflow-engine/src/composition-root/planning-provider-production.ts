@@ -1,3 +1,18 @@
+import { assertPlanningPaths as assertPlanningPathsWithAdmission } from '../modules/source/planning-paths.ts';
+import { openSpecPlanningPathPolicy } from '../adapters/planning/openspec/documents/planning-path-policy.ts';
+export const assertPlanningPaths = assertPlanningPathsWithAdmission.bind(
+  undefined,
+  openSpecPlanningPathPolicy.admit,
+);
+export const requiredPlanningArtifactPaths =
+  openSpecPlanningPathPolicy.requiredArtifactPaths;
+import { loadChangeContract as productionChangeContractReader } from './consumer-contract-production.ts';
+const inspectPlanningTransitionWithReader =
+  inspectPlanningTransitionWithReaderWithContractReader.bind(
+    undefined,
+    productionChangeContractReader,
+  );
+import { workRegistryQueries } from './work-registry-read-production.ts';
 /**
  * Assembles planning validation, historical provider bindings and committed document projections.
  *
@@ -5,8 +20,9 @@
  * - Historical replay loads the contract from its exact commit before projecting document bytes.
  * - Provider and role policy readers preserve the selected repository authority.
  */
+import type { CurrentPlanningRoleOverridePolicy } from '../modules/provider-orchestration/planning-role-provider-policy.ts';
 import {
-  inspectPlanningTransition as inspectPlanningTransitionWithReader,
+  inspectPlanningTransition as inspectPlanningTransitionWithReaderWithContractReader,
   resolveHistoricalOpenSpecPlanningTransitionBinding as resolveHistoricalOpenSpecPlanningTransitionBindingWithReader,
   resolveHistoricalOpenSpecProviderBinding as resolveHistoricalOpenSpecProviderBindingWithReader,
   validateOpenSpecPlanning as validatePlanningTransitionWithAdapter,
@@ -16,13 +32,11 @@ import {
   partitionPlanningRolePolicyPaths,
   type PlanningRolePolicyPathPartition,
 } from '../modules/source/planning-role-policy-paths.ts';
-import {
-  readCurrentPlanningRoleOverridePolicy,
-  type CurrentPlanningRoleOverridePolicy,
-} from '../modules/source/planning-role-provider-policy-reader.ts';
+import { readCurrentPlanningRoleOverridePolicy } from '../runtime/repository-transaction/planning-role-provider-policy-reader.ts';
 import { planningProviderBindingReader } from '../runtime/repository-transaction/planning-provider-binding-store.ts';
-import { repositoryPlanningConfiguration } from '../modules/repository-consumer/repository-consumer-config.ts';
-import { loadCommittedChangeContract } from '../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadRepositoryConsumerConfiguration } from '../runtime/workflow-configuration/repository-consumer.ts';
+import { loadCommittedChangeContract } from './consumer-contract-production.ts';
+import { loadStableValidatedChangeContract } from './validated-contract-context.ts';
 import { planPlanningSemanticLedger } from '../runtime/managed-documents/transaction/semantic-ledger-projection.ts';
 
 export {
@@ -51,6 +65,7 @@ export function inspectPlanningTransition(
   );
   const inspection = inspectPlanningTransitionWithReader(
     planningProviderBindingReader,
+    workRegistryQueries.readCurrentChangeOrigin,
     repositoryRoot,
     baselineHead,
     changeRoot,
@@ -65,7 +80,8 @@ export function inspectPlanningTransition(
   );
   assertPlanningRolePolicyClosure(
     inspection.schemaName,
-    repositoryPlanningConfiguration(repositoryRoot).currentSchemaName,
+    loadRepositoryConsumerConfiguration(repositoryRoot).configuration.planning
+      .currentSchemaName,
     inspection.transitionKind,
     rolePolicyPaths,
     planningRoleOverride,
@@ -76,9 +92,10 @@ export function inspectPlanningTransition(
 export function validatePlanningTransition(
   repositoryRoot: string,
   changeId: string,
-  schemaName: Parameters<typeof validatePlanningTransitionWithAdapter>[2],
+  schemaName: Parameters<typeof validatePlanningTransitionWithAdapter>[3],
 ): ReturnType<typeof validatePlanningTransitionWithAdapter> {
   return validatePlanningTransitionWithAdapter(
+    loadStableValidatedChangeContract,
     repositoryRoot,
     changeId,
     schemaName,

@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { createTrustedExecutionEnvironment } from '../../../runtime/provider-execution/execution-environment.ts';
+import { createTrustedExecutionEnvironment } from '../../../runtime/process-environment/execution-environment.ts';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import {
   normalizePostApprovalSubprocessError,

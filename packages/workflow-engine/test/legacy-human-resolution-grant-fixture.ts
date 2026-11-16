@@ -8,31 +8,37 @@ import {
 import {
   assertHumanResolutionConsequences,
   assertHumanResolutionDecision,
-  assertHumanResolutionLifecycleBarrier,
-  inspectInvestigationQuarantineState,
-  inspectInvestigationResolutionState,
-  readActiveHumanResolutionJournal,
-  readInvestigationSession,
-  storeAvailableHumanResolutionGrant,
   type HumanResolutionConsequences,
   type HumanResolutionDecision,
   type InvestigationResolutionState,
-} from '../src/runtime/storage-journal/investigation-session-store.ts';
+} from '../src/modules/investigation/domain/human-resolution-contract.ts';
+import {
+  assertHumanResolutionLifecycleBarrier,
+  readActiveHumanResolutionJournal,
+} from '../src/runtime/lifecycle-ledgers/human-resolution-journal.ts';
+import {
+  inspectInvestigationQuarantineState,
+  inspectInvestigationResolutionState,
+} from '../src/runtime/storage-journal/human-resolution-state.ts';
+import { readInvestigationSession } from '../src/runtime/storage-journal/investigation-session-records.ts';
+import { storeAvailableHumanResolutionGrant } from '../src/runtime/storage-journal/human-resolution-grant-store.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import {
   HUMAN_RESOLUTION_SIGNATURE_NAMESPACE,
   assertResolutionDecisionAvailable,
-  assertResolutionDecisionTarget,
   canonicalHumanResolutionGrantEnvelope,
   canonicalHumanResolutionGrantPayload,
-  createMaintainerAuditTag,
   humanResolutionBlockerBinding,
-  loadMaintainerPolicyForResolution,
   validateHumanResolutionGrantPayload,
   type HumanResolutionGrantEnvelope,
   type HumanResolutionGrantPayload,
-} from '../src/modules/authority/maintainer-grant.ts';
+} from '../src/modules/investigation/domain/human-resolution-grant-contract.ts';
+import {
+  assertResolutionDecisionTarget,
+  loadMaintainerPolicyForResolution,
+} from '../src/runtime/repository-observation/human-resolution-grants.ts';
+import { createMaintainerAuditTag } from '../src/runtime/repository-transaction/maintainer-audit-tag.ts';
 
 type LegacyHumanResolutionGrantRequest = {
   investigationId: string;

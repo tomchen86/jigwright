@@ -1,3 +1,16 @@
+import { verifyPullRequest } from '../src/composition-root/ci-verification-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { handoffDocuments } from '../src/composition-root/handoff-production.ts';
+import { loadCommittedChangeContract as productionCommittedChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const updateTaskSessionBase = updateTaskSessionBaseWithContractReader.bind(
+  undefined,
+  productionChangeContract,
+  verifyPullRequest,
+  handoffDocuments,
+  {
+    loadCommittedChangeContract: productionCommittedChangeContractReader,
+  },
+);
 import test from 'node:test';
 import {
   createFixtureRepository,
@@ -6,21 +19,17 @@ import {
   isWorkflowError,
   runtimeRoot,
 } from './fixture.ts';
-import {
-  getSession,
-  startSession,
-  abortSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
+import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
+import { abortSession } from '../src/composition-root/task-session-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { updateTaskSessionBase } from '../src/application/execute-task/update-base.ts';
+import { updateTaskSessionBase as updateTaskSessionBaseWithContractReader } from '../src/application/execute-task/update-base.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
-import {
-  finalizeTask,
-  commitSession,
-} from '../src/application/finalize/lifecycle.ts';
+import { commitSession } from '../src/runtime/finalization/commit.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 import {
   prepareFinishedNonFinalTaskForBaseUpdate,
@@ -60,7 +69,10 @@ test('update-base replays a finished non-final task branch and recomputes local 
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'update-base',
         'demo-change',
         '--onto',
@@ -154,7 +166,10 @@ test('update-base replays a finished non-final task branch and recomputes local 
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'update-base',
         'demo-change',
         '--onto',
@@ -261,6 +276,92 @@ test('update-base rolls back when the selected local ref changes before receipt 
   }
 });
 
+test('update-base observes handoff render then validate and rolls back a validation failure', () => {
+  const repository = createFixtureRepository();
+  let fixture: { parent: string; worktree: string } | undefined;
+  try {
+    const prepared = prepareFinishedNonFinalTaskForBaseUpdate(repository);
+    fixture = prepared.fixture;
+    const worktree = fixture.worktree;
+    fs.writeFileSync(
+      path.join(repository, 'src/base-update.ts'),
+      'export const baseUpdate = true;\n',
+    );
+    git(repository, ['add', 'src/base-update.ts']);
+    git(repository, ['commit', '-m', 'Advance fixture base']);
+    const before = snapshotTaskPreflightState(worktree);
+    const handoffPath = path.join(worktree, 'docs/CURRENT_AND_NEXT_STEPS.md');
+    const handoffBefore = fs.readFileSync(handoffPath, 'utf8');
+    const refreshRoot = path.join(
+      runtimeRoot(worktree),
+      'base-refreshes',
+      'demo-change',
+    );
+    assert.equal(fs.existsSync(refreshRoot), false);
+    const observations: string[] = [];
+    const failure = new Error('handoff validation failed after replay');
+
+    assert.throws(
+      () =>
+        updateTaskSessionBaseWithContractReader(
+          productionChangeContract,
+          () => {
+            assert.fail(
+              'PR assurance must not run after handoff validation fails',
+            );
+          },
+          {
+            renderHandoff(root) {
+              assert.equal(root, worktree);
+              assert.notEqual(
+                git(root, ['rev-parse', 'HEAD']).trim(),
+                before.head,
+              );
+              observations.push('render');
+              return handoffDocuments.renderHandoff(root);
+            },
+            validateHandoff(root) {
+              assert.equal(root, worktree);
+              observations.push('validate');
+              throw failure;
+            },
+          },
+          {
+            loadCommittedChangeContract:
+              productionCommittedChangeContractReader,
+          },
+          worktree,
+          'demo-change',
+          'main',
+        ),
+      (error) => error === failure,
+    );
+    assert.deepEqual(observations, ['render', 'validate']);
+    const after = snapshotTaskPreflightState(worktree);
+    assert.deepEqual(
+      {
+        head: after.head,
+        tree: after.tree,
+        status: after.status,
+        runtime: after.runtime,
+      },
+      {
+        head: before.head,
+        tree: before.tree,
+        status: before.status,
+        runtime: before.runtime,
+      },
+    );
+    assert.equal(fs.readFileSync(handoffPath, 'utf8'), handoffBefore);
+    assert.equal(fs.existsSync(refreshRoot), false);
+  } finally {
+    if (fixture !== undefined) {
+      removeConcurrentTaskWorktree(repository, fixture);
+    }
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('update-base revalidates active writers after acquiring the lifecycle lock', () => {
   const repository = createFixtureRepository();
   let fixture: { parent: string; worktree: string } | undefined;
@@ -291,6 +392,7 @@ test('update-base revalidates active writers after acquiring the lifecycle lock'
           {
             afterFinishedSessionPreflight() {
               interleavedSession = startSession(
+                productionChangeContract,
                 fixture!.worktree,
                 'demo-change',
                 '1.2',
@@ -329,7 +431,12 @@ test('update-base refuses an active writer before changing Git history', () => {
       'demo-change',
       'src/task/**',
     );
-    const started = startSession(fixture.worktree, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeContract,
+      fixture.worktree,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/base-update.ts'),
       'export const baseUpdate = true;\n',
@@ -341,7 +448,10 @@ test('update-base refuses an active writer before changing Git history', () => {
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'update-base',
         'demo-change',
         '--onto',
@@ -393,7 +503,12 @@ test('update-base rolls back when generated reconciliation needs a reviewed tran
       'src/task/**',
     );
     const taskWorktree = fixture.worktree;
-    const started = startSession(taskWorktree, 'demo-change', '1.1');
+    const started = startSession(
+      productionChangeContract,
+      taskWorktree,
+      'demo-change',
+      '1.1',
+    );
     fs.mkdirSync(path.join(taskWorktree, 'src/task'), {
       recursive: true,
     });
@@ -412,6 +527,7 @@ test('update-base rolls back when generated reconciliation needs a reviewed tran
     );
     finalizeTask(taskWorktree, started.sessionId);
     const committed = commitSession(
+      productionChangeContract,
       taskWorktree,
       started.sessionId,
       'Complete concurrent fixture task',
@@ -427,7 +543,10 @@ test('update-base rolls back when generated reconciliation needs a reviewed tran
       process.execPath,
       [
         '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+        ),
         'update-base',
         'demo-change',
         '--onto',

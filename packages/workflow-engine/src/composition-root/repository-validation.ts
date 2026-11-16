@@ -1,3 +1,27 @@
+import type { RepositoryValidation } from '../modules/repository-consumer/repository-validation.ts';
+import fs from 'node:fs';
+import path from 'node:path';
+import { TextDecoder } from 'node:util';
+import { assertCommittedCheckoutDirectoryProjection } from '../runtime/repository-observation/committed-checkout.ts';
+import {
+  loadChangeContract,
+  loadCommittedChangeContract,
+} from './consumer-contract-production.ts';
+import { loadWorkflowConfig } from '../runtime/workflow-configuration/workflow-configuration.ts';
+import { type ChangeContract } from '../modules/planning-provider/change-contract.ts';
+import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
+import { normalizeExactRepositoryPath } from '../foundation/repository-path/repository-path.ts';
+import {
+  discoverRepository,
+  fingerprintWorkingState,
+  runGitBuffer,
+} from '../runtime/repository-transaction/git.ts';
+import { validateManagedDocuments } from './managed-documents-production.ts';
+import { type ManagedDocumentValidationContext } from '../modules/projection/managed-documents.ts';
+import { changeLifecycleRelativePath } from '../modules/lifecycle/change-routing.ts';
+import { readSystemDescriptionSnapshot } from '../runtime/repository-transaction/system-description-snapshot.ts';
+import { readBlobBytes } from '../runtime/repository-transaction/git-command.ts';
+
 /**
  * Validates repository changes and documents against worktree or exact
  * committed sources.
@@ -6,30 +30,6 @@
  * - Committed validation requires checkout configuration to match the
  *   committed bytes.
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import { TextDecoder } from 'node:util';
-
-import {
-  assertCommittedCheckoutDirectoryProjection,
-  loadChangeContract,
-  loadCommittedChangeContract,
-  loadWorkflowConfig,
-  type ChangeContract,
-} from '../adapters/consumer/repository/work-registry/contracts.ts';
-import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
-import { normalizeExactRepositoryPath } from '../foundation/repository-path/repository-path.ts';
-import {
-  discoverRepository,
-  fingerprintWorkingState,
-  runGitBuffer,
-} from '../runtime/repository-transaction/git.ts';
-import {
-  validateManagedDocuments,
-  type ManagedDocumentValidationContext,
-} from '../runtime/managed-documents/validation/managed-documents.ts';
-import { changeLifecycleRelativePath } from '../modules/lifecycle/change-routing.ts';
-import { readSystemDescriptionSnapshot } from '../runtime/repository-transaction/system-description-snapshot.ts';
 
 const OBJECT_ID = '[0-9a-f]{40}|[0-9a-f]{64}';
 const MAX_COMMITTED_DOCUMENT_BYTES = 16 * 1024 * 1024;
@@ -42,12 +42,6 @@ const COMMITTED_DOCUMENT_PATHS = new Set([
   changeLifecycleRelativePath,
 ]);
 const COMMITTED_WORKFLOW_PROJECTION = ['workflow'] as const;
-
-export type RepositoryValidation = {
-  repositoryRoot: string;
-  changes: string[];
-  documents: string[];
-};
 
 export function validateRepositoryState(cwd: string): RepositoryValidation {
   const git = discoverRepository(cwd);
@@ -379,7 +373,7 @@ function readCommittedText(
       'u',
     ).exec(listing);
     if (match === null) throw new Error('committed text is not 100644');
-    const bytes = runGitBuffer(repositoryRoot, ['cat-file', 'blob', match[1]!]);
+    const bytes = readBlobBytes(repositoryRoot, match[1]!);
     if (bytes.length > MAX_COMMITTED_DOCUMENT_BYTES) {
       throw new Error('committed text exceeds its byte bound');
     }

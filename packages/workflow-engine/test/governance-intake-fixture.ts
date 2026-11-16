@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { captureGovernanceSource } from '../src/modules/governance-intake/governance-intake.ts';
+import { captureGovernanceSource } from '../src/composition-root/governance-sources-production.ts';
 import { recordGovernanceFinding } from '../src/composition-root/governance-findings-production.ts';
 import {
   codeOwnedApprovalModuleRegistry,
@@ -14,7 +14,7 @@ import {
 import {
   createWorkItem,
   renderWorkRegistry,
-} from '../src/modules/governance-intake/work-registry.ts';
+} from '../src/composition-root/work-registry-production.ts';
 
 export function snapshotPlainTree(root: string): string[] {
   const entries: string[] = [];

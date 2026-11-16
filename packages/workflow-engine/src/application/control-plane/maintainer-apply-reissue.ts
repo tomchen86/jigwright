@@ -1,3 +1,15 @@
+import type { MaintainerSignerFactory } from '../../modules/authority/maintainer-signer-port.ts';
+import type { AuthorityApplicationReceiptOperations } from '../../modules/authority/authority-application-receipt.ts';
+import type { MaintainerManifestOperations } from '../../modules/authority/maintainer-manifest.ts';
+import type {
+  MaintainerApplyReissueBindings,
+  MaintainerApplyReissueBindingsTypes,
+} from './maintainer-approve.ts';
+import type { MaintainerTaskMandateOperations } from '../../modules/authority/maintainer-grant-v2.ts';
+import type { MaintainerGrantExecutionServices } from './maintainer-grant-v2.ts';
+import type { WithAuthorityRefusalAudit } from '../../modules/authority/authority-audit-contract.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
 /**
  * Reissues and applies retained candidates from expired or invalidated v2
  * grants.
@@ -6,10 +18,7 @@
  * - Reissue requires an expired or invalidated prior grant.
  */
 // maintainer apply reissue; repository effects remain bound by the public module.
-import type {
-  MaintainerApplyReissueBindings,
-  MaintainerApplyReissueBindingsTypes,
-} from './maintainer-approve.ts';
+
 type ReissueAndApplyMaintainerGrantV2Request =
   MaintainerApplyReissueBindingsTypes['ReissueAndApplyMaintainerGrantV2Request'];
 type ReissueAndApplyMaintainerGrantV2Options =
@@ -26,6 +35,12 @@ export function createMaintainerApplyReissue(
   bindings: () => MaintainerApplyReissueBindings,
 ) {
   function reissueAndApplyMaintainerGrantV2(
+    createSigner: MaintainerSignerFactory,
+    withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
+    grantServices: MaintainerGrantExecutionServices,
+    authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
+    manifestOperations: MaintainerManifestOperations,
+    taskMandate: MaintainerTaskMandateOperations,
     cwd: string,
     request: ReissueAndApplyMaintainerGrantV2Request,
     options: ReissueAndApplyMaintainerGrantV2Options = {},
@@ -41,6 +56,12 @@ export function createMaintainerApplyReissue(
     );
     return withPostApprovalAdmissionDeadline(deadline, () =>
       reissueAndApplyMaintainerGrantV2WithDeadline(
+        createSigner,
+        withAuthorityRefusalAudit,
+        grantServices,
+        authorityApplicationReceipts,
+        manifestOperations,
+        taskMandate,
         cwd,
         request,
         options,
@@ -50,6 +71,12 @@ export function createMaintainerApplyReissue(
   }
 
   function reissueAndApplyMaintainerGrantV2WithDeadline(
+    createSigner: MaintainerSignerFactory,
+    withAuthorityRefusalAudit: WithAuthorityRefusalAudit,
+    grantServices: MaintainerGrantExecutionServices,
+    authorityApplicationReceipts: AuthorityApplicationReceiptOperations,
+    manifestOperations: MaintainerManifestOperations,
+    taskMandate: MaintainerTaskMandateOperations,
     cwd: string,
     request: ReissueAndApplyMaintainerGrantV2Request,
     options: ReissueAndApplyMaintainerGrantV2Options,
@@ -59,13 +86,11 @@ export function createMaintainerApplyReissue(
     const {
       discoverRepository,
       readTerminalMaintainerGrant,
-      withAuthorityRefusalAudit,
       applyGrantRefusalBinding,
       authorityRefusalDigest,
       workflowError,
       ExitCode,
       authorityCandidateCommitMessage,
-      issueMaintainerGrantV2,
       armPostApprovalAdmissionDeadline,
       appendApplyGrantAudit,
       assertPostApprovalAdmissionDeadline,
@@ -83,6 +108,7 @@ export function createMaintainerApplyReissue(
     );
     const envelope = prior.envelope;
     const trusted = verifyHistoricalApplyGrantTrust(
+      createSigner,
       repository,
       envelope,
       options.signer,
@@ -154,7 +180,9 @@ export function createMaintainerApplyReissue(
             ExitCode.guard,
           );
         }
-        const grant = issueMaintainerGrantV2(
+        const grant = grantServices.issueMaintainerGrantV2(
+          manifestOperations,
+          taskMandate,
           cwd,
           {
             changeId: payload.changeId,
@@ -192,16 +220,31 @@ export function createMaintainerApplyReissue(
           deadline,
           options.now,
           () =>
-            startAuthoritySession(cwd, payload.changeId, grant.grantId, {
-              now: options.now,
-              signer: confirmedSigner,
-              environment: options.environment,
-              externalStateDigests: options.externalStateDigests,
-              allowSignedV2Candidate: true,
-              postApprovalDeadline: deadline,
-            }),
+            startAuthoritySession(
+              withAuthorityRefusalAudit,
+              grantServices,
+              manifestOperations,
+              taskMandate,
+              cwd,
+              payload.changeId,
+              grant.grantId,
+              {
+                now: options.now,
+                signer: confirmedSigner,
+                environment: options.environment,
+                externalStateDigests: options.externalStateDigests,
+                allowSignedV2Candidate: true,
+                postApprovalDeadline: deadline,
+              },
+            ),
         );
         const committed = commitAuthoritySession(
+          createSigner,
+          withAuthorityRefusalAudit,
+          grantServices,
+          authorityApplicationReceipts,
+          manifestOperations,
+          taskMandate,
           cwd,
           session.sessionId,
           subject,
@@ -245,6 +288,7 @@ export function createMaintainerApplyReissue(
   }
 
   function verifyHistoricalApplyGrantTrust(
+    createSigner: MaintainerSignerFactory,
     repository: ReturnType<typeof discoverRepository>,
     envelope: MaintainerGrantV2Envelope,
     providedSigner: MaintainerSignerProvider | undefined,
@@ -255,7 +299,7 @@ export function createMaintainerApplyReissue(
     const {
       parseMaintainerPolicy,
       runGit,
-      createInteractiveSshSigner,
+
       canonicalMaintainerGrantV2Payload,
       MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
       workflowError,
@@ -266,10 +310,11 @@ export function createMaintainerApplyReissue(
 
     const basePolicy = parseMaintainerPolicy(
       JSON.parse(
-        runGit(repository.repositoryRoot, [
-          'show',
-          `${envelope.payload.baseCommit}:workflow/maintainer-policy.json`,
-        ]),
+        readFileAtRevision(
+          repository.repositoryRoot,
+          envelope.payload.baseCommit,
+          'workflow/maintainer-policy.json',
+        ),
       ),
     );
     const currentPolicy = parseMaintainerPolicy(
@@ -281,8 +326,7 @@ export function createMaintainerApplyReissue(
       ),
     );
     const signer =
-      providedSigner ??
-      createInteractiveSshSigner(repository.repositoryRoot, currentPolicy);
+      providedSigner ?? createSigner(repository.repositoryRoot, currentPolicy);
     try {
       signer.verify(
         canonicalMaintainerGrantV2Payload(envelope.payload),

@@ -175,7 +175,7 @@ test('a risky hit path raises the floors the scan stage records', () => {
     kind: 'path-role-registry',
     roles: {
       grant: [
-        'packages/workflow-engine/src/modules/authority/maintainer-candidate.ts',
+        'packages/workflow-engine/src/modules/authority/maintainer-candidate-contracts.ts',
       ],
       ordinary: ['apps/**'],
     },
@@ -193,11 +193,11 @@ test('a risky hit path raises the floors the scan stage records', () => {
   });
   const risky = floorsForHitPaths(registry, [
     'apps/mobile/App.tsx',
-    'packages/workflow-engine/src/modules/authority/maintainer-candidate.ts',
+    'packages/workflow-engine/src/modules/authority/maintainer-candidate-contracts.ts',
   ]);
   assert.equal(risky.floors.planning, 'individual-only');
   assert.deepEqual(risky.reasons, [
-    'hit-path-role:grant:packages/workflow-engine/src/modules/authority/maintainer-candidate.ts',
+    'hit-path-role:grant:packages/workflow-engine/src/modules/authority/maintainer-candidate-contracts.ts',
   ]);
 });
 

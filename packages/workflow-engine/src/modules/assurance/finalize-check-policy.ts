@@ -6,10 +6,8 @@
  * - Terminal escalation replaces only explicitly subsumed task checks and
  *   retains independent checks.
  */
-import type {
-  ParsedTask,
-  WorkflowConfig,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import type { ParsedTask } from '../planning-provider/planning-artifact-types.ts';
+import type { WorkflowConfig } from '../repository-consumer/workflow-config.ts';
 
 export type FinalizeCheckEscalation = 'all-tasks-terminal' | 'explicit' | null;
 

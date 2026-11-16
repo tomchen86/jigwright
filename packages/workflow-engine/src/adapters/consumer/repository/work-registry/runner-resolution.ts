@@ -13,7 +13,7 @@ import {
   parseCheckCommand,
   type CheckDefinition,
   type ParsedCheckCommand,
-} from './contracts.ts';
+} from '../../../../modules/source/check-command.ts';
 import {
   ExitCode,
   WorkflowError,
@@ -24,13 +24,6 @@ import {
   resolveDeclaredPackage,
   type PackageClosureEntry,
 } from '../../../../runtime/repository-transaction/package-closure.ts';
-
-export type ResolvedCheckRunner = {
-  runner: string;
-  executable: string;
-  args: string[];
-  digest: string;
-};
 
 type RunnerDigestEntry = {
   kind: 'file' | 'symlink';
@@ -352,3 +345,6 @@ function unsafeRunner(checkId: string): WorkflowError {
     { details: { checkId } },
   );
 }
+
+import type { ResolvedCheckRunner } from '../../../../modules/source/check-command.ts';
+export type { ResolvedCheckRunner } from '../../../../modules/source/check-command.ts';

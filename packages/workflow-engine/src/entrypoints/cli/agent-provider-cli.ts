@@ -6,7 +6,7 @@
  * - Provider tests require an explicit --live argument and an explicit
  *   configuration path.
  */
-import { AgentProviderConfigError } from '@jigwright/agent-runtime';
+import { AgentProviderConfigError } from '@jigwright/core/agent-provider-config';
 import { ProviderExecutableObservationError } from '@jigwright/agent-runtime/provider-executable-identity';
 
 import {

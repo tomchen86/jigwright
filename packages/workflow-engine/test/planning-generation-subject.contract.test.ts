@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
+import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
 import {
   createPlanReviewNode,
   createPlanReviewTargetSnapshotNode,
@@ -9,10 +9,8 @@ import {
   planReviewSubjectDigest,
 } from '../src/modules/assurance/plan-review.ts';
 import { createPlanTarget } from '../src/modules/assurance/plan-target.ts';
-import {
-  createPlanningGeneration,
-  type PlanningGeneration,
-} from '../src/modules/lifecycle/planning-generation.ts';
+import { createPlanningGeneration } from '../src/modules/assurance/planning-generation.ts';
+import type { PlanningGeneration } from '../src/modules/assurance/planning-generation-record.ts';
 import {
   DIGESTS,
   planTargetInput,

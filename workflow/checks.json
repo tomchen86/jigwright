@@ -52,7 +52,7 @@
     "managed-documents": {
       "command": [
         "node",
-        "packages/workflow-engine/src/runtime/managed-documents/validation/managed-documents.ts"
+        "packages/workflow-engine/src/entrypoints/ci/managed-documents.ts"
       ],
       "destructiveDatabase": false
     },

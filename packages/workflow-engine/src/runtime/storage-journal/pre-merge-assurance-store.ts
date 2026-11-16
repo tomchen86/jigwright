@@ -19,8 +19,8 @@ import {
 import {
   createPrivateCanonicalJson,
   readPrivateCanonicalJson,
-} from './investigation-session-store.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+} from '../journal-primitives/investigation-private-files.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   parsePreMergeAssuranceNode,
   type PreMergeAssuranceNode,

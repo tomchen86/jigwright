@@ -9,6 +9,8 @@ const COPY_PATHS = Object.freeze([
   'packages/agent-runtime',
   'packages/core',
   'packages/grants',
+  'packages/github-adapter',
+  'packages/repository-runtime',
   'packages/openspec-adapter',
   'packages/workflow-engine',
 ] as const);
@@ -84,6 +86,31 @@ export async function createTempEngineClone(
       assertSucceeded(remote, 'Temporary clone origin setup failed.');
     }
     linkExternalDependencies(sourceRoot, repositoryRoot);
+    // Every workspace import must resolve within this clone, including optional Grants.
+    for (const repositoryPath of COPY_PATHS) {
+      const packageRoot = path.join(repositoryRoot, repositoryPath);
+      const manifest = JSON.parse(
+        fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'),
+      );
+      for (const dependency of Object.keys({
+        ...manifest.dependencies,
+        ...manifest.optionalDependencies,
+      })) {
+        if (!dependency.startsWith('@jigwright/')) continue;
+        const link = path.join(packageRoot, 'node_modules', dependency);
+        fs.rmSync(link, { recursive: true, force: true });
+        fs.mkdirSync(path.dirname(link), { recursive: true });
+        fs.symlinkSync(
+          path.join(
+            repositoryRoot,
+            'packages',
+            dependency.slice('@jigwright/'.length),
+          ),
+          link,
+          'dir',
+        );
+      }
+    }
     supplementReviewedComposition(repositoryRoot);
 
     const generator = await importFromClone<{

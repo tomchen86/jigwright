@@ -1,6 +1,6 @@
 /**
- * Creates, validates, signs and reads portable receipts for an applied
- * authority candidate.
+ * Admits portable authority receipts and coordinates their exact publication
+ * through required repository and signature capabilities.
  *
  * Invariants:
  * - Envelope parsing is byte-canonical: it rejects any input whose
@@ -11,17 +11,17 @@
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { verifySshDataSignature } from '../../adapters/signing/ssh/ci-signature.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { runGit } from '../../runtime/repository-transaction/git.ts';
 import {
   parseMaintainerEvidenceWaivers,
   type MaintainerEvidenceWaiver,
-} from './maintainer-grant-v2.ts';
-import { createMaintainerAuditTag } from './maintainer-grant.ts';
+} from './maintainer-grant-v2-codec.ts';
 import type { MaintainerPolicy } from './maintainer-policy.ts';
-import type { MaintainerSignerProvider } from './maintainer-signer-port.ts';
+import type {
+  MaintainerDataSignatureVerifier,
+  MaintainerSignerProvider,
+} from './maintainer-signer-port.ts';
 
 export const AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE =
   'workflow.authority-application-receipt.v1' as const;
@@ -232,160 +232,6 @@ export function signedGrantEnvelopeDigest(
   return sha256(canonicalEnvelope);
 }
 
-export function verifyAuthorityApplicationReceiptSignature(
-  envelope: AuthorityApplicationReceiptEnvelope,
-  policy: MaintainerPolicy,
-  errorCode = 'AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_INVALID',
-): void {
-  const signer = policy.trustedSigners.find(
-    ({ identity }) => identity === envelope.payload.signer,
-  );
-  if (signer === undefined) {
-    throw workflowError(
-      errorCode,
-      'Authority application receipt signer is not trusted by its pinned policy.',
-      ExitCode.verification,
-    );
-  }
-  verifySshDataSignature(
-    canonicalAuthorityApplicationReceiptPayload(envelope.payload),
-    envelope.signature,
-    signer,
-    authorityApplicationReceiptSignatureNamespace(envelope),
-    errorCode,
-  );
-}
-
-export function listAuthorityApplicationReceiptTagRefs(
-  repositoryRoot: string,
-  policy: MaintainerPolicy,
-): string[] {
-  return runGit(repositoryRoot, [
-    'for-each-ref',
-    '--format=%(refname)',
-    `${authorityApplicationReceiptTagPrefix(policy)}*`,
-  ])
-    .split('\n')
-    .filter(Boolean)
-    .sort();
-}
-
-export function readAuthorityApplicationReceiptTag(
-  repositoryRoot: string,
-  ref: string,
-): AuthorityApplicationReceiptTag {
-  if (!TAG_REF.test(ref)) throw receiptInvalid();
-  try {
-    const raw = runGit(repositoryRoot, ['cat-file', 'tag', ref]);
-    const separator = raw.indexOf('\n\n');
-    if (separator === -1) throw new Error('tag body missing');
-    const headers = raw.slice(0, separator).split('\n');
-    const objectHeaders = headers.filter((line) => line.startsWith('object '));
-    const typeHeaders = headers.filter((line) => line.startsWith('type '));
-    const tagHeaders = headers.filter((line) => line.startsWith('tag '));
-    const target = objectHeaders[0]?.slice('object '.length) ?? '';
-    if (
-      objectHeaders.length !== 1 ||
-      !OBJECT_ID.test(target) ||
-      typeHeaders.length !== 1 ||
-      typeHeaders[0] !== 'type commit' ||
-      tagHeaders.length !== 1 ||
-      tagHeaders[0] !== `tag ${ref.slice('refs/tags/'.length)}`
-    ) {
-      throw new Error('tag headers differ');
-    }
-    return {
-      ref,
-      target,
-      tagObject: runGit(repositoryRoot, [
-        'rev-parse',
-        '--verify',
-        `${ref}^{tag}`,
-      ]).trim(),
-      envelope: parseAuthorityApplicationReceiptEnvelope(
-        raw.slice(separator + 2),
-      ),
-    };
-  } catch {
-    throw receiptInvalid();
-  }
-}
-
-export function publishAuthorityApplicationReceipt(
-  repositoryRoot: string,
-  policy: MaintainerPolicy,
-  payload: AuthorityApplicationReceiptPayload,
-  signer?: MaintainerSignerProvider,
-): AuthorityApplicationReceiptTag {
-  validateAuthorityApplicationReceiptPayload(payload);
-  const ref = authorityApplicationReceiptTagRef(policy, payload.grantId);
-  const existing = runGit(
-    repositoryRoot,
-    ['rev-parse', '--verify', ref],
-    true,
-  ).trim();
-  if (existing) {
-    const tag = readAuthorityApplicationReceiptTag(repositoryRoot, ref);
-    if (
-      tag.target !== payload.candidateCommit ||
-      canonicalAuthorityApplicationReceiptPayload(tag.envelope.payload) !==
-        canonicalAuthorityApplicationReceiptPayload(payload)
-    ) {
-      throw receiptConflict();
-    }
-    if (signer === undefined) {
-      verifyAuthorityApplicationReceiptSignature(tag.envelope, policy);
-    } else {
-      signer.verify(
-        canonicalAuthorityApplicationReceiptPayload(payload),
-        tag.envelope.signature,
-        payload.signer,
-        authorityApplicationReceiptSignatureNamespace(tag.envelope),
-      );
-    }
-    return tag;
-  }
-  if (signer === undefined || signer.identity() !== payload.signer) {
-    throw workflowError(
-      'AUTHORITY_APPLICATION_RECEIPT_SIGNER_REQUIRED',
-      'Publishing a new authority application receipt requires the exact grant signer.',
-      ExitCode.unsafeEnvironment,
-    );
-  }
-  const canonicalPayload = canonicalAuthorityApplicationReceiptPayload(payload);
-  const signature = signer.sign(
-    canonicalPayload,
-    AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE,
-  );
-  signer.verify(
-    canonicalPayload,
-    signature,
-    payload.signer,
-    AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE,
-  );
-  const envelope: AuthorityApplicationReceiptEnvelope = {
-    payload,
-    signatureNamespace: AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE,
-    signature,
-  };
-  createMaintainerAuditTag(
-    repositoryRoot,
-    payload.candidateCommit,
-    ref,
-    canonicalAuthorityApplicationReceiptEnvelope(envelope),
-    payload.signer,
-  );
-  const published = readAuthorityApplicationReceiptTag(repositoryRoot, ref);
-  if (
-    published.target !== payload.candidateCommit ||
-    canonicalAuthorityApplicationReceiptEnvelope(published.envelope) !==
-      canonicalAuthorityApplicationReceiptEnvelope(envelope)
-  ) {
-    throw receiptConflict();
-  }
-  return published;
-}
-
 function authorityApplicationReceiptSignatureNamespace(
   envelope: AuthorityApplicationReceiptEnvelope,
 ): typeof AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE {
@@ -523,3 +369,189 @@ function receiptConflict() {
     ExitCode.conflict,
   );
 }
+
+/** Repository observations preserve each read and write phase of receipt publication. */
+export type AuthorityApplicationReceiptObservations = {
+  verifySshDataSignature: MaintainerDataSignatureVerifier;
+  readReceiptTagRefListing(repositoryRoot: string, prefix: string): string;
+  readAnnotatedReceiptTag(repositoryRoot: string, ref: string): string;
+  readReceiptTagObjectId(repositoryRoot: string, ref: string): string;
+  resolveReceiptTagRef(repositoryRoot: string, ref: string): string;
+  createMaintainerAuditTag(
+    repositoryRoot: string,
+    candidateCommit: string,
+    ref: string,
+    canonicalEnvelope: string,
+    signerIdentity: string,
+  ): string;
+};
+
+export function createAuthorityApplicationReceiptOperations(
+  observations: AuthorityApplicationReceiptObservations,
+) {
+  const {
+    verifySshDataSignature,
+    readReceiptTagRefListing,
+    readAnnotatedReceiptTag,
+    readReceiptTagObjectId,
+    resolveReceiptTagRef,
+    createMaintainerAuditTag,
+  } = observations;
+  function verifyAuthorityApplicationReceiptSignature(
+    envelope: AuthorityApplicationReceiptEnvelope,
+    policy: MaintainerPolicy,
+    errorCode = 'AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_INVALID',
+  ): void {
+    const signer = policy.trustedSigners.find(
+      ({ identity }) => identity === envelope.payload.signer,
+    );
+    if (signer === undefined) {
+      throw workflowError(
+        errorCode,
+        'Authority application receipt signer is not trusted by its pinned policy.',
+        ExitCode.verification,
+      );
+    }
+    verifySshDataSignature(
+      canonicalAuthorityApplicationReceiptPayload(envelope.payload),
+      envelope.signature,
+      signer,
+      authorityApplicationReceiptSignatureNamespace(envelope),
+      errorCode,
+    );
+  }
+
+  function listAuthorityApplicationReceiptTagRefs(
+    repositoryRoot: string,
+    policy: MaintainerPolicy,
+  ): string[] {
+    return readReceiptTagRefListing(
+      repositoryRoot,
+      authorityApplicationReceiptTagPrefix(policy),
+    )
+      .split('\n')
+      .filter(Boolean)
+      .sort();
+  }
+
+  function readAuthorityApplicationReceiptTag(
+    repositoryRoot: string,
+    ref: string,
+  ): AuthorityApplicationReceiptTag {
+    if (!TAG_REF.test(ref)) throw receiptInvalid();
+    try {
+      const raw = readAnnotatedReceiptTag(repositoryRoot, ref);
+      const separator = raw.indexOf('\n\n');
+      if (separator === -1) throw new Error('tag body missing');
+      const headers = raw.slice(0, separator).split('\n');
+      const objectHeaders = headers.filter((line) =>
+        line.startsWith('object '),
+      );
+      const typeHeaders = headers.filter((line) => line.startsWith('type '));
+      const tagHeaders = headers.filter((line) => line.startsWith('tag '));
+      const target = objectHeaders[0]?.slice('object '.length) ?? '';
+      if (
+        objectHeaders.length !== 1 ||
+        !OBJECT_ID.test(target) ||
+        typeHeaders.length !== 1 ||
+        typeHeaders[0] !== 'type commit' ||
+        tagHeaders.length !== 1 ||
+        tagHeaders[0] !== `tag ${ref.slice('refs/tags/'.length)}`
+      ) {
+        throw new Error('tag headers differ');
+      }
+      return {
+        ref,
+        target,
+        tagObject: readReceiptTagObjectId(repositoryRoot, ref),
+        envelope: parseAuthorityApplicationReceiptEnvelope(
+          raw.slice(separator + 2),
+        ),
+      };
+    } catch {
+      throw receiptInvalid();
+    }
+  }
+
+  function publishAuthorityApplicationReceipt(
+    repositoryRoot: string,
+    policy: MaintainerPolicy,
+    payload: AuthorityApplicationReceiptPayload,
+    signer?: MaintainerSignerProvider,
+  ): AuthorityApplicationReceiptTag {
+    validateAuthorityApplicationReceiptPayload(payload);
+    const ref = authorityApplicationReceiptTagRef(policy, payload.grantId);
+    const existing = resolveReceiptTagRef(repositoryRoot, ref);
+    if (existing) {
+      const tag = readAuthorityApplicationReceiptTag(repositoryRoot, ref);
+      if (
+        tag.target !== payload.candidateCommit ||
+        canonicalAuthorityApplicationReceiptPayload(tag.envelope.payload) !==
+          canonicalAuthorityApplicationReceiptPayload(payload)
+      ) {
+        throw receiptConflict();
+      }
+      if (signer === undefined) {
+        verifyAuthorityApplicationReceiptSignature(tag.envelope, policy);
+      } else {
+        signer.verify(
+          canonicalAuthorityApplicationReceiptPayload(payload),
+          tag.envelope.signature,
+          payload.signer,
+          authorityApplicationReceiptSignatureNamespace(tag.envelope),
+        );
+      }
+      return tag;
+    }
+    if (signer === undefined || signer.identity() !== payload.signer) {
+      throw workflowError(
+        'AUTHORITY_APPLICATION_RECEIPT_SIGNER_REQUIRED',
+        'Publishing a new authority application receipt requires the exact grant signer.',
+        ExitCode.unsafeEnvironment,
+      );
+    }
+    const canonicalPayload =
+      canonicalAuthorityApplicationReceiptPayload(payload);
+    const signature = signer.sign(
+      canonicalPayload,
+      AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE,
+    );
+    signer.verify(
+      canonicalPayload,
+      signature,
+      payload.signer,
+      AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE,
+    );
+    const envelope: AuthorityApplicationReceiptEnvelope = {
+      payload,
+      signatureNamespace: AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE,
+      signature,
+    };
+    createMaintainerAuditTag(
+      repositoryRoot,
+      payload.candidateCommit,
+      ref,
+      canonicalAuthorityApplicationReceiptEnvelope(envelope),
+      payload.signer,
+    );
+    const published = readAuthorityApplicationReceiptTag(repositoryRoot, ref);
+    if (
+      published.target !== payload.candidateCommit ||
+      canonicalAuthorityApplicationReceiptEnvelope(published.envelope) !==
+        canonicalAuthorityApplicationReceiptEnvelope(envelope)
+    ) {
+      throw receiptConflict();
+    }
+    return published;
+  }
+  return {
+    verifyAuthorityApplicationReceiptSignature,
+    listAuthorityApplicationReceiptTagRefs,
+    readAuthorityApplicationReceiptTag,
+    publishAuthorityApplicationReceipt,
+  };
+}
+
+export type AuthorityApplicationReceiptOperations = ReturnType<
+  typeof createAuthorityApplicationReceiptOperations
+>;

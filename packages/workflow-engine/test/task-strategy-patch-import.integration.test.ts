@@ -1,3 +1,7 @@
+import { productionTaskStrategyCorrection } from '../src/composition-root/task-strategy-correction-production.ts';
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import test from 'node:test';
 import { startSession } from '../src/application/execute-task/session.ts';
 import path from 'node:path';
@@ -5,18 +9,18 @@ import fs from 'node:fs';
 import {
   sealTaskStrategyRed,
   inspectTaskStrategyTransaction,
-} from '../src/application/execute-task/task-strategy-execution.ts';
+} from '../src/composition-root/task-strategy-execution-production.ts';
 import assert from 'node:assert/strict';
 import {
   validateTaskStrategyPatch,
   importTaskStrategyPatch,
-} from '../src/application/execute-task/task-strategy-patch.ts';
+} from '../src/composition-root/task-strategy-patch-production.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import {
   readTaskStrategyPatchRecord,
   readTaskStrategyPatchImportReceipt,
 } from '../src/runtime/storage-journal/task-strategy-patch-store.ts';
-import { checkSession } from '../src/application/finalize/verification.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import { runtimeRoot } from './fixture.ts';
 import { createHash } from 'node:crypto';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
@@ -30,7 +34,12 @@ import {
 test('cross-agent patch validation derives one bounded implementation tree without touching the task worktree', () => {
   const { repository } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
@@ -85,7 +94,12 @@ test('cross-agent patch validation derives one bounded implementation tree witho
 test('patch validation rejects frozen tests, path escape, and unsafe file modes from the derived tree', () => {
   const { repository } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     const originalTest =
       "throw new Error('feature behavior is not implemented');\n";
@@ -155,7 +169,12 @@ test('single-agent patch validation permits the RED author without weakening pat
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
@@ -197,7 +216,12 @@ test('single-agent patch validation rejects an actor other than the sealed RED a
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
@@ -236,7 +260,12 @@ test('patch import persists authority before mutation and exact replay reaches e
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
@@ -323,9 +352,16 @@ test('patch import persists authority before mutation and exact replay reaches e
       imported,
     );
 
-    const checked = checkSession(repository, session.sessionId, {
-      environment: {},
-    });
+    const checked = checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+      {
+        environment: {},
+      },
+    );
     assert.equal(checked.passed, true);
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '2');
   } finally {
@@ -339,7 +375,12 @@ test('patch-applied crash reconciles the exact candidate and later drift stales 
     'tdd-single-agent',
   );
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
@@ -381,7 +422,15 @@ test('patch-applied crash reconciles the exact candidate and later drift stales 
 
     fs.writeFileSync(implementationPath, 'export const feature = false;\n');
     assert.throws(
-      () => checkSession(repository, session.sessionId, { environment: {} }),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeContract,
+          repository,
+          session.sessionId,
+          { environment: {} },
+        ),
       hasCode('TASK_STRATEGY_PATCH_STALE'),
     );
   } finally {
@@ -392,7 +441,12 @@ test('patch-applied crash reconciles the exact candidate and later drift stales 
 test('a durable prepared patch reservation rejects a different patch before either can mutate the worktree', () => {
   const { repository } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(
@@ -443,7 +497,12 @@ test('a durable prepared patch reservation rejects a different patch before eith
 test('patch replay rejects independently redigested reservation metadata', () => {
   const { repository } = createCrossAgentFixture('assertion');
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const testPath = path.join(repository, 'test/feature.test.mjs');
     fs.mkdirSync(path.dirname(testPath), { recursive: true });
     fs.writeFileSync(

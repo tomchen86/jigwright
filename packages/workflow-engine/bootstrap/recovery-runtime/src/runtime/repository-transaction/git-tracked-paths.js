@@ -5,7 +5,7 @@
  * - NUL-delimited Git output and ignored-path normalization preserve exact path identities.
  * - Hidden index flags keep their current rejection interpretation.
  */
-import { normalizeChangedPath } from "../session-workspace/paths.js";
+import { normalizeChangedPath } from "../../foundation/repository-path/repository-path.js";
 import { runGit } from "./git-command.js";
 export function hasHiddenIndexFlag(entry) {
     const tag = entry[0];

@@ -425,7 +425,7 @@ test('real workflow doctor reports the pinned local OpenSpec installation', () =
     process.execPath,
     [
       '--experimental-strip-types',
-      'packages/workflow-engine/src/cli.ts',
+      'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
       'doctor',
       '--json',
     ],
@@ -439,6 +439,9 @@ test('real workflow doctor reports the pinned local OpenSpec installation', () =
   const openspec = result.openspec as Record<string, unknown>;
 
   assert.equal(result.ok, true);
+  assert.equal(result.command, 'doctor');
+  assert.equal(result.mode, 'diagnostic');
+  assert.equal(result.retainedSpectraUsed, false);
   assert.equal(openspec.expectedVersion, '1.6.0');
   assert.equal(openspec.healthy, true);
   assert.deepEqual(openspec.runtime, { ok: true, version: '1.6.0' });
@@ -525,6 +528,12 @@ test('workflow doctor reports unhealthy OpenSpec and malformed colocated contrac
       path.join(root, 'spec.md'),
       '# Invalid contract\n\n## Purpose\nTBD\n\n## Requirements\n',
     );
+    fs.rmSync(path.join(root, 'openspec/specs'), { recursive: true });
+    const beforeStatus = doctorFixtureStatus(root);
+    const beforeSpec = fs.readFileSync(path.join(root, 'spec.md'));
+    const beforeConfig = fs.readFileSync(
+      path.join(root, 'workflow/config.json'),
+    );
     const malformed = runWorkflowDoctor(root);
     assert.equal(malformed.ok, false);
     assert.equal(malformed.systemDocuments.configured, true);
@@ -534,6 +543,18 @@ test('workflow doctor reports unhealthy OpenSpec and malformed colocated contrac
         (issue) => issue.code === 'purpose-missing',
       ),
     );
+    assert.equal(
+      malformed.warnings.some(({ code }) => code === 'NO_BASE_SPECS'),
+      false,
+      'colocated specs suppress missing base-spec diagnostics even when malformed',
+    );
+    assert.equal(doctorFixtureStatus(root), beforeStatus);
+    assert.deepEqual(fs.readFileSync(path.join(root, 'spec.md')), beforeSpec);
+    assert.deepEqual(
+      fs.readFileSync(path.join(root, 'workflow/config.json')),
+      beforeConfig,
+    );
+    assert.equal(fs.existsSync(path.join(root, 'openspec/specs')), false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -744,7 +765,11 @@ function writeDoctorWorkflowConfig(
 }
 
 function runWorkflowDoctor(repository: string): {
+  command: 'doctor';
   ok: boolean;
+  mode: 'diagnostic';
+  retainedSpectraUsed: boolean;
+  repository: { root: string };
   systemDocuments: {
     configured: boolean;
     healthy: boolean;
@@ -756,7 +781,10 @@ function runWorkflowDoctor(repository: string): {
     process.execPath,
     [
       '--experimental-strip-types',
-      path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+      path.join(
+        sourceRepositoryRoot,
+        'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+      ),
       'doctor',
       '--json',
     ],
@@ -766,11 +794,21 @@ function runWorkflowDoctor(repository: string): {
       stdio: ['ignore', 'pipe', 'pipe'],
     },
   );
-  assert.ok(
-    result.status === 0 || result.status === ExitCode.verification,
+  assert.equal(result.signal, null, result.stderr);
+  assert.equal(result.error, undefined);
+  const report = JSON.parse(result.stdout) as ReturnType<
+    typeof runWorkflowDoctor
+  >;
+  assert.equal(
+    result.status,
+    report.ok ? 0 : ExitCode.verification,
     result.stderr,
   );
-  return JSON.parse(result.stdout) as ReturnType<typeof runWorkflowDoctor>;
+  assert.equal(report.command, 'doctor');
+  assert.equal(report.mode, 'diagnostic');
+  assert.equal(report.retainedSpectraUsed, false);
+  assert.equal(report.repository.root, fs.realpathSync(repository));
+  return report;
 }
 
 function doctorFixtureStatus(repository: string): string {

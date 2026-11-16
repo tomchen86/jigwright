@@ -15,7 +15,7 @@ import {
   publishPreparedExclusiveLock,
   reclaimDeadPreparedLock,
 } from '../repository-transaction/filesystem-safety.ts';
-import { assertHumanResolutionLifecycleBarrier } from '../storage-journal/human-resolution-journal.ts';
+import { assertHumanResolutionLifecycleBarrier } from '../lifecycle-ledgers/human-resolution-journal.ts';
 import {
   assertOwnedLock,
   listConflictingActiveWorkflowSessionIds,

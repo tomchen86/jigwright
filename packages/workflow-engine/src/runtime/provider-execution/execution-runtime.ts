@@ -8,11 +8,6 @@
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
-  type FailureDescriptor,
-  type RetryDecision,
-  type WorkflowRecord,
-  type JobRecord,
-  type AttemptRecord,
   type ChangedField,
   type ExecutionPolicySnapshot,
   projectProviderInvocationExecution,
@@ -20,16 +15,17 @@ import {
 import { readExecutionJobState } from '../storage-journal/execution-store.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import { listProviderInvocationLifecycleProjections } from '../storage-journal/provider-invocation-lifecycle.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
-import {
-  type ProviderOutputSchemaGeneration,
-  type ProviderResidualsGeneration,
-  type ProviderInvocationRecord,
-  readProviderInvocationRequest,
-  readProviderInvocation,
-  providerOutputSchemaGeneration,
-  providerResidualsGeneration,
-} from '../storage-journal/provider-invocation-store.ts';
+import { observeInvestigationRuntimeContext } from '../repository-observation/investigation-runtime-context.ts';
+import { readProviderInvocationRequest } from '../storage-journal/provider-invocation-artifacts.ts';
+import { readProviderInvocation } from '../storage-journal/provider-invocation-state.ts';
+import { providerOutputSchemaGeneration } from '../../modules/assurance/provider-output-contract.ts';
+import { providerResidualsGeneration } from '../storage-journal/provider-invocation-output-validation.ts';
+import type {
+  ExecutionJobInspection,
+  ProviderOutputSchemaGeneration,
+  ProviderResidualsGeneration,
+} from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
+import type { ProviderInvocationRecord } from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {
   type ProviderProjectionEntry,
@@ -45,34 +41,6 @@ const JOB_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,191}$/;
 const DEFAULT_JOB_WATCH_POLL_INTERVAL_MS = 1_000;
 
 const MAX_JOB_WATCH_POLL_INTERVAL_MS = 60_000;
-
-export type ExecutionResultView = {
-  attemptId: string;
-  invocationId: string;
-  acceptance: 'accepted' | 'late-duplicate';
-  outputDigest: string;
-  outputSchema: ProviderOutputSchemaGeneration;
-  residuals: ProviderResidualsGeneration | null;
-};
-
-export type ExecutionFailureView = {
-  attemptId: string;
-  failure: FailureDescriptor;
-  decision: RetryDecision;
-};
-
-export type ExecutionJobInspection = {
-  schemaVersion: 1;
-  /** Stable public AgentRuntime lifecycle projected from the durable Job. */
-  runtimeStatus: 'scheduled' | 'running' | 'completed' | 'failed' | 'cancelled';
-  workflow: WorkflowRecord;
-  job: JobRecord;
-  attemptNumbering: 'recorded';
-  attempts: AttemptRecord[];
-  acceptedAttemptId: string | null;
-  results: ExecutionResultView[];
-  latestFailure: ExecutionFailureView | null;
-};
 
 export type ExecutionJobWatchOptions = Readonly<{
   signal?: AbortSignal;
@@ -101,7 +69,7 @@ export type ProviderReplacementPreview = {
 };
 
 export function listExecutionJobs(cwd: string): ExecutionJobInspection[] {
-  const runtime = loadInvestigationRuntimeContext(cwd).runtime;
+  const runtime = observeInvestigationRuntimeContext(cwd).runtime;
   const entries = readProviderProjectionEntries(cwd);
   const grouped = new Map<string, ProviderProjectionEntry[]>();
   for (const entry of entries) {
@@ -231,7 +199,7 @@ export function inspectProviderExecutionJobSource(
 }
 
 function readProviderProjectionEntries(cwd: string): ProviderProjectionEntry[] {
-  const context = loadInvestigationRuntimeContext(cwd);
+  const context = observeInvestigationRuntimeContext(cwd);
   let records: Array<{
     record: ProviderInvocationRecord;
     request: ProviderInvocationRequest;

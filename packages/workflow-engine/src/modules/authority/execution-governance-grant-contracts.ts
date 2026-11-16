@@ -12,7 +12,7 @@ import {
   workflowError,
   ExitCode,
 } from '../../foundation/errors/errors.ts';
-import type { TaskMandateBinding } from './task-mandate.ts';
+import type { TaskMandateBinding } from './task-mandate-contract.ts';
 import {
   type JsonValue,
   exactDate,
@@ -636,4 +636,32 @@ export function unsafeGrantStore(): WorkflowError {
     'Execution-budget grant store is missing, malformed, or unsafe.',
     ExitCode.staleState,
   );
+}
+
+export type ExecutionBudgetConsumeInput = {
+  grantId: string;
+  workflowId: string;
+  epoch: number;
+  jobId: string;
+  attemptId: string;
+  mandateBinding: TaskMandateBinding;
+  requestDigest: string;
+  requestedChanges: ExecutionBudgetChange[];
+  now: Date;
+};
+
+export type ExecutionBudgetRevocationInput = {
+  grantId: string;
+  mandateBinding: TaskMandateBinding;
+  reason: string;
+  now: Date;
+};
+
+export function parseStoredExecutionBudgetGrantRecord(
+  raw: string,
+): ExecutionBudgetGrantRecord {
+  const value = parseDocument(raw);
+  validateGrantRecord(value);
+  if (canonicalGrantRecord(value) !== raw) throw unsafeGrantStore();
+  return value;
 }

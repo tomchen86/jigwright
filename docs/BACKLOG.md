@@ -50,26 +50,19 @@ Agent-observed during the shared-expense-tracker pilot on the e5dbe1f build. now
 
 Agent-observed in the shared-expense-tracker pilot. The intent-level now facade returns PROPOSE_PROTECTED_BASE_UNAVAILABLE raw; only the propose command routes it through createProposeProtectedBaseFailGrantResult. Route the facade through the same handler.
 
-### A protected base may be a local ref authorized by Grant, not only a pushed remote
-
-- Kind: feature
-- Stage: inbox
-
-> 簡單講就是grant 本地ref
-
 ### Planning worktree has no node_modules, so OpenSpec materialization fails after the investigation seals
 
 - Kind: bug
-- Stage: inbox
+- Stage: backlog
 
-Agent-observed in the shared-expense-tracker pilot. After the investigation seals, propose --resume fails with OPENSPEC_INSTALLATION_INVALID because the engine-created planning worktree has no node_modules and the OpenSpec resolver only accepts a project-local install inside the worktree. Provision the worktree during materialization or resolve OpenSpec from the main checkout.
+Implementation present from 8ea73b6bd3dad930c59cb3497fe63b833ad59c18: OpenSpec may resolve its installed executable from the primary worktree when a linked worktree lacks node_modules. Existing package-manager fixtures do not prove that original fallback scenario. Keep open for real-consumer verification on the consolidated candidate. Reconciled under repository owner override in GitHub issue #31; this is not managed delivery.
 
 ### Governed provider projection breaks on a planning worktree that contains node_modules
 
 - Kind: bug
-- Stage: inbox
+- Stage: backlog
 
-Agent-observed in the shared-expense-tracker pilot. The governed projection counts ignored files against a 100k-entry budget, so a worktree with node_modules fails every provider job with GOVERNED_PROJECTION_FAILED, while OpenSpec needs node_modules in that worktree. Exclude ignored dependency trees from the budget or provision a minimal OpenSpec closure.
+Implementation present from 009431f099ea532af6b80db87311ff7f9461e2f9: ignored-file discovery uses git ls-files --directory. Related ignored-state and provider-projection tests exist. The original pilot scenario with more than 100,000 ignored files has not been revalidated on the consolidated candidate; keep open for real-consumer verification. Reconciled under repository owner override in GitHub issue #31; this is not managed delivery.
 
 ### job retry-request dead-ends for a failed provider attempt instead of pointing at the propose retry envelope
 
@@ -84,13 +77,6 @@ Agent-observed in the shared-expense-tracker pilot. For a failed provider attemp
 - Stage: inbox
 
 Agent-observed while recording pilot findings. later --help wrote a Source and an inbox Work Item whose text is "--help". Intent verbs should answer --help with usage and refuse flag-shaped positional text before writing to the ledger.
-
-### Job inspection keeps replacement lineage visible after an accepted winner (verdict: not a defect)
-
-- Kind: bug
-- Stage: inbox
-
-Agent-observed in the shared-expense-tracker pilot; final verdict after two corrections: not an engine defect. A Job whose replacement Attempt won still reports the earlier failure under latestFailure with decision JOB_RESULT_ALREADY_ACCEPTED, and the execution-runtime contract pins that lineage view. Agents must read runtimeStatus and acceptedAttemptId first. Recommend closing this item without an engine change.
 
 ### Automatic provider retry schedule leaves the replacement attempt queued until the next propose resume
 

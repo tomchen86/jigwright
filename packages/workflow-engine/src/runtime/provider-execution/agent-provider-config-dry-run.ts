@@ -15,8 +15,8 @@ import {
   type AgentProviderConfigSnapshot,
   type AgentProviderProfileResolution,
   type AgentProviderRole,
-  type ProviderDefinitionSnapshot,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
+import { type ProviderDefinitionSnapshot } from '@jigwright/core/provider-definition-snapshot';
 
 import type { ProviderInvocationPlan } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {
@@ -26,7 +26,7 @@ import {
 import {
   loadAiAdapterPolicy,
   type LoadedAiAdapterPolicy,
-} from './ai-adapter-policy.ts';
+} from '../provider-policy/ai-adapter-policy.ts';
 
 export type AgentProviderConfigDryRunInput = Readonly<{
   platform: NodeJS.Platform;
@@ -76,7 +76,7 @@ export type AgentProviderConfigDryRunReport = Readonly<{
   dataAuthorization: Readonly<{
     allowed: boolean;
     policyDigest: string;
-    providerId: 'codex' | 'claude' | null;
+    providerId: ProviderId | null;
     reason:
       | 'BUILT_IN_PROVIDER_AUTHORIZED'
       | 'HOST_PROFILE_DISABLED'

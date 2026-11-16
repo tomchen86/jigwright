@@ -6,7 +6,7 @@
  */
 import crypto from 'node:crypto';
 
-import type { ChecksConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import type { ChecksConfig } from '../source/check-command.ts';
 
 export function digestRequiredCheckDefinitions(
   checks: ChecksConfig,

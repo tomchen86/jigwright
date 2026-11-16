@@ -5,7 +5,7 @@
  * - Core validation remains authoritative for accepted identifiers and path syntax.
  * - Error codes, messages, details, and recovery hints preserve their exact values.
  */
-import { assertChangeId as assertCoreChangeId } from '@jigwright/core/runtime-path-kernel';
+import { assertChangeId as assertCoreChangeId, assertTaskId as assertCoreTaskId, assertSessionId as assertCoreSessionId, assertInvestigationId as assertCoreInvestigationId, assertInvocationId as assertCoreInvocationId, } from '@jigwright/core/workflow-identifiers';
 import { RepositoryPathError, matchesAllowedPath as matchesCoreAllowedPath, normalizeChangedPath as normalizeCoreChangedPath, normalizeExactRepositoryPath as normalizeCoreExactRepositoryPath, normalizePolicyPath as normalizeCorePolicyPath, } from '@jigwright/core/repository-path';
 import { ExitCode, workflowError } from "../errors/errors.js";
 export function assertChangeId(value) {
@@ -45,4 +45,16 @@ function invalidPolicyPath(value) {
 }
 function invalidRepositoryPath(value) {
     return workflowError('INVALID_REPOSITORY_PATH', `Invalid repository path reported by Git: ${value}`, ExitCode.guard, { details: { path: value } });
+}
+export function assertTaskId(value) {
+    return assertCoreTaskId(value, () => workflowError('INVALID_TASK_ID', `Invalid task ID: ${value}`, ExitCode.usage, { recovery: 'Use a dotted numeric task ID, for example 1.1.' }));
+}
+export function assertSessionId(value) {
+    return assertCoreSessionId(value, () => workflowError('INVALID_SESSION_ID', `Invalid session ID: ${value}`, ExitCode.usage));
+}
+export function assertInvestigationId(value) {
+    return assertCoreInvestigationId(value, () => workflowError('INVALID_INVESTIGATION_ID', `Invalid investigation ID: ${value}`, ExitCode.usage));
+}
+export function assertInvocationId(value) {
+    return assertCoreInvocationId(value, () => workflowError('INVALID_INVOCATION_ID', `Invalid provider invocation ID: ${value}`, ExitCode.usage));
 }

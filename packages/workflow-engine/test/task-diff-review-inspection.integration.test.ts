@@ -1,10 +1,11 @@
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
+import { finalizeTask } from './support/session-lifecycle-host.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
-import { inspectTaskDiffReviewSubject } from '../src/application/finalize/task-diff-review-lifecycle.ts';
+import { inspectTaskDiffReviewSubject } from '../src/composition-root/task-diff-review-production.ts';
 import { createTaskDiffDocumentationClosureRequirement } from '../src/modules/assurance/task-diff-review.ts';
 import { git, runtimeRoot } from './fixture.ts';
 import {
@@ -17,7 +18,12 @@ import {
 test('review-diff inspect derives one exact checked candidate subject without rerunning checks', () => {
   const { repository, counterPath } = createReviewFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const reviewed = true;\n',
@@ -137,7 +143,12 @@ test('final documentation closure activates review for an ordinary candidate', (
     },
   });
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const documented = true;\n',
@@ -162,7 +173,12 @@ test('final documentation closure uses only the current roadmap hint identity', 
     additionalAllowedPaths: ['docs/ROADMAP.md'],
   });
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'docs/ROADMAP.md'),
       '# Roadmap\n\nCurrent product direction.\n',
@@ -212,7 +228,12 @@ test('final documentation closure uses only the current roadmap hint identity', 
 test('review-diff inspect is unavailable before checks freeze a candidate', () => {
   const { repository } = createReviewFixture();
   try {
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     assert.throws(
       () => inspectTaskDiffReviewSubject(repository, session.sessionId),
       hasCode('TASK_DIFF_REVIEW_NOT_READY'),

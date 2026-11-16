@@ -9,7 +9,7 @@ import {
   type DeclaredInvestigationRoot,
   type ReviewedPathRelationship,
 } from '../src/modules/investigation/domain/investigation-groups.ts';
-import type { InvestigationScanFacts } from '../src/modules/investigation/domain/investigation-scanner.ts';
+import type { InvestigationScanFacts } from '../src/modules/investigation/domain/investigation-scan-facts.ts';
 import { normalizeInvestigationTerm } from '../src/modules/investigation/domain/investigation-terms.ts';
 import {
   MUTATION_CLASSES,

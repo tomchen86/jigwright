@@ -6,6 +6,7 @@
  * - The runner receives the built-in probe and provider implementation
  *   through a frozen dependency object.
  */
+import { builtInProviderAdapters } from './built-in-provider-adapter-production.ts';
 import crypto from 'node:crypto';
 
 import { createProviderAvailabilityPilotRunner } from '../runtime/provider-execution/provider-availability-pilot.ts';
@@ -17,8 +18,11 @@ export const runProviderAvailabilityPilot =
     Object.freeze({
       now: () => new Date(),
       randomUUID: () => crypto.randomUUID(),
-      probe: probeBuiltInProviderFamilyEvidence,
-      runProvider: runBuiltInProvider,
+      probe: probeBuiltInProviderFamilyEvidence.bind(
+        undefined,
+        builtInProviderAdapters,
+      ),
+      runProvider: runBuiltInProvider.bind(undefined, builtInProviderAdapters),
     }),
   );
 

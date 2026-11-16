@@ -1,3 +1,4 @@
+export { MAX_REPOSITORY_ID_BYTES } from "../../modules/authority/authority-audit-contract.js";
 /**
  * Defines authority audit schemas, policy constants, and immutable evidence types.
  *
@@ -14,7 +15,6 @@ export const FINAL_RECORD_NAME = /^([0-9]{16})-([0-9a-f]{64})\.json$/;
 export const PUBLICATION_RECORD_NAME = /^\.([0-9]{16})-([0-9a-f]{64})\.json\.([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.publish\.tmp$/;
 export const PRIVATE_PUBLICATION_NAME = /^\.(.+)\.([0-9a-f]{64})\.([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.publish\.tmp$/;
 export const MAX_PATH_BYTES = 4_096;
-export const MAX_REPOSITORY_ID_BYTES = 512;
 export const MAX_RECORD_BYTES = 4_096;
 export const MAX_METADATA_BYTES = 32_768;
 export const MAX_ANCHOR_BACKEND_RECEIPT_BYTES = 16_384;
@@ -167,36 +167,6 @@ export const LOCK_KEYS = [
     'repositoryId',
     'schemaVersion',
 ];
-export const AUTHORITY_AUDIT_EVENT_TYPES = Object.freeze([
-    'abort',
-    'apply-grant',
-    'branch-update',
-    'candidate-bundle',
-    'cas',
-    'command',
-    'control-plane-grant',
-    'error',
-    'escalation-request',
-    'external-effect',
-    'file-change',
-    'grant-consume',
-    'poststate',
-    'provider-invocation',
-    'recovery',
-    'revoke',
-    'rollback',
-    'supersede',
-    'task-mandate',
-]);
-export const AUTHORITY_AUDIT_RESULTS = Object.freeze([
-    'aborted',
-    'failed',
-    'recorded',
-    'revoked',
-    'rolled-back',
-    'succeeded',
-    'superseded',
-]);
 export const AUTHORITY_AUDIT_PROFILE_POLICIES = deepFreeze({
     development: {
         schemaVersion: 1,
@@ -224,3 +194,4 @@ export function deepFreeze(value) {
     }
     return value;
 }
+export { AUTHORITY_AUDIT_EVENT_TYPES, AUTHORITY_AUDIT_RESULTS, } from "../../modules/authority/authority-audit-contract.js";

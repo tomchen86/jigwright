@@ -1,3 +1,40 @@
+import type { TaskStrategyImplementationOperations } from './task-strategy-implementation-operations.ts';
+import type { TaskStrategyImplementationSession } from './task-strategy-implementation-operations.ts';
+import type { TaskStrategyImplementationJournal } from './task-strategy-implementation-operations.ts';
+import type {
+  TaskStrategyPatchImplementer,
+  TaskStrategyImplementationResultBinding,
+  TaskStrategyCallerImplementationBinding,
+  TaskStrategyTransaction,
+} from '../../modules/assurance/task-strategy-evidence.ts';
+import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
+import { taskStrategyImplementationReservationForAttempt } from '../../modules/assurance/task-strategy-implementation-attempt.ts';
+import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
+import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
+import type { TaskStrategyCorrectionProjection } from '../../modules/assurance/task-strategy-correction-round-record.ts';
+import {
+  createTaskStrategyCorrectionSubject,
+  createTaskStrategyImplementationSubject,
+} from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
+import type { TaskStrategyImplementationSubject } from '../../modules/provider-orchestration/task-strategy-implementation-manifest.ts';
+import { type ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
+import {
+  type CollaborationGrantRequest,
+  type CollaborationGrantExpectedBinding,
+  collaborationPolicyDigestForPhase,
+} from '../../modules/authority/collaboration-grant-codec.ts';
+import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
+import {
+  type AuthoritativeCollaborationGrantVerifier,
+  assertAuthoritativeCollaborationGrantVerifier,
+} from '../../modules/authority/grant-verifier-port.ts';
+import crypto from 'node:crypto';
+
+import type {
+  TaskStrategyRedAuthor,
+  TaskStrategyImplementationStatus,
+} from './task-strategy-implementation-lifecycle.ts';
+
 /**
  * Builds implementation subjects, status, and collaboration authority from
  * current RED state.
@@ -6,64 +43,17 @@
  * - Recorded RED authors must retain provider, session, and principal
  *   identities.
  */
-import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
-import { inspectSession } from '../finalize/verification.ts';
-import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import {
-  resolveCurrentTaskStrategyCorrection,
-  type TaskStrategyCorrectionProjection,
-} from './task-strategy-correction.ts';
-import {
-  type TaskStrategyImplementationSubject,
-  createTaskStrategyCorrectionSubject,
-  createTaskStrategyImplementationSubject,
-} from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
-import { type ProviderId } from '../../modules/provider-orchestration/provider-registry.ts';
-import {
-  type CollaborationGrantRequest,
-  type CollaborationGrantExpectedBinding,
-  collaborationPolicyDigestForPhase,
-} from '../../modules/authority/collaboration-grant.ts';
-import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import {
-  type AuthoritativeCollaborationGrantVerifier,
-  assertAuthoritativeCollaborationGrantVerifier,
-} from '../../modules/authority/grant-verifier-port.ts';
-import crypto from 'node:crypto';
-import type {
-  TaskStrategyImplementationRuntimeBindings,
-  TaskStrategyImplementationRuntimeData,
-} from './task-strategy-implementation-lifecycle.ts';
-type TaskStrategyImplementationReservation =
-  TaskStrategyImplementationRuntimeData['TaskStrategyImplementationReservation'];
-type TaskStrategyImplementationProviderAttempt =
-  TaskStrategyImplementationRuntimeData['TaskStrategyImplementationProviderAttempt'];
-type TaskStrategyGreenFailureRecord =
-  TaskStrategyImplementationRuntimeData['TaskStrategyGreenFailureRecord'];
-import type {
-  TaskStrategyRedAuthor,
-  TaskStrategyImplementationStatus,
-} from './task-strategy-implementation-lifecycle.ts';
+
+import type { TaskStrategyImplementationReservation } from '../../modules/assurance/task-strategy-implementation-record.ts';
+import type { TaskStrategyImplementationProviderAttempt } from '../../modules/assurance/task-strategy-implementation-record.ts';
+import type { TaskStrategyGreenFailureRecord } from '../../modules/provider-orchestration/task-strategy-correction-record.ts';
+
 export function createTaskStrategyImplementationContext(
-  runtime: TaskStrategyImplementationRuntimeBindings,
+  operations: Pick<
+    TaskStrategyImplementationOperations,
+    'session' | 'observeJournal' | 'baseline' | 'dataPolicy'
+  >,
 ) {
-  const {
-    loadInvestigationRuntimeContext,
-    taskStrategyImplementationReservationForAttempt,
-    readProviderInvocation,
-    readTaskStrategyImplementationResultBinding,
-    readTaskStrategyPatchCurrentBinding,
-    assertTaskStrategyImplementationProviderAuthorityCurrent,
-    loadActiveSessionContext,
-    readTaskStrategyTransaction,
-    previewExactStaging,
-    listTaskStrategyCorrectionRounds,
-    readTaskStrategyCallerImplementationBinding,
-    readTaskStrategyPatchRecord,
-    readTaskStrategyGreenFailureRecord,
-    runGit,
-    parseAiAdapterPolicyDocument,
-  } = runtime;
   function requireRecordedRedAuthor(
     value: TaskStrategyImplementationReservation['redAuthor'],
   ): TaskStrategyRedAuthor {
@@ -94,7 +84,7 @@ export function createTaskStrategyImplementationContext(
   }
 
   function renderStatus(
-    runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
+    runtime: TaskStrategyImplementationJournal,
     root: TaskStrategyImplementationReservation,
     attempt: TaskStrategyImplementationProviderAttempt,
   ): TaskStrategyImplementationStatus {
@@ -103,29 +93,23 @@ export function createTaskStrategyImplementationContext(
     }
     const reservation =
       taskStrategyImplementationReservationForAttempt(attempt);
-    const invocation = readProviderInvocation(
-      runtime,
-      reservation.request.invocationId,
-    );
+    const invocation = runtime.provider.read(reservation.request.invocationId);
     let state:
       | 'waiting-for-provider'
       | 'provider-succeeded-awaiting-import'
       | 'patch-imported'
       | 'provider-failed';
     if (invocation.state === 'succeeded' && invocation.result !== null) {
-      const resultBinding = readTaskStrategyImplementationResultBinding(
-        runtime,
+      const resultBinding = runtime.implementation.readResult(
         reservation.sessionId,
         reservation.subject.subjectDigest,
       );
-      const patchBinding = readTaskStrategyPatchCurrentBinding(
-        runtime,
+      const patchBinding = runtime.patch.readCurrentBinding(
         reservation.sessionId,
         reservation.subject.sourceTree,
       );
       if (resultBinding !== null) {
-        assertTaskStrategyImplementationProviderAuthorityCurrent(
-          runtime,
+        runtime.implementation.assertProviderCurrent(
           reservation,
           invocation,
           resultBinding,
@@ -168,11 +152,10 @@ export function createTaskStrategyImplementationContext(
 
   function requireCurrentRedTransaction(
     cwd: string,
-    context: ReturnType<typeof loadActiveSessionContext>,
+    context: TaskStrategyImplementationSession,
   ) {
-    const runtime = loadInvestigationRuntimeContext(cwd).runtime;
-    const transaction = readTaskStrategyTransaction(
-      runtime,
+    const runtime = operations.observeJournal(cwd);
+    const transaction = runtime.correction.readTransaction(
       context.session.sessionId,
     );
     if (transaction === null) {
@@ -182,10 +165,12 @@ export function createTaskStrategyImplementationContext(
         ExitCode.guard,
       );
     }
-    const inspection = inspectSession(cwd, context.session.sessionId, {
-      expectedSession: context.session,
-    });
-    const preview = previewExactStaging(
+    const inspection = operations.session.inspectExpected(
+      cwd,
+      context.session.sessionId,
+      context.session,
+    );
+    const preview = operations.session.previewCandidate(
       inspection.git.repositoryRoot,
       inspection.session.baseline.head,
       [...inspection.changedPaths],
@@ -194,8 +179,8 @@ export function createTaskStrategyImplementationContext(
       transaction.red.candidateTree === preview.tree &&
       canonicalJson(transaction.red.changedPaths) ===
         canonicalJson(inspection.changedPaths);
-    const currentPatchHead =
-      resolveCurrentTaskStrategyCorrection(inspection).head;
+    const projection = operations.session.resolveCorrection(inspection);
+    const currentPatchHead = projection.head;
     const recoverableCorrection = readRecoverableCorrectionCandidate(
       runtime,
       transaction,
@@ -211,7 +196,15 @@ export function createTaskStrategyImplementationContext(
       transaction.baseline.tree !== context.session.baseline.tree ||
       (!redCandidateCurrent &&
         !importedCandidateCurrent &&
-        !recoverableCorrection)
+        !recoverableCorrection &&
+        !readRecoverableInitialCandidate(
+          runtime,
+          context,
+          transaction,
+          inspection,
+          projection,
+          preview.tree,
+        ))
     ) {
       throw workflowError(
         'TASK_STRATEGY_RED_STALE',
@@ -222,13 +215,127 @@ export function createTaskStrategyImplementationContext(
     return transaction;
   }
 
-  function readRecoverableCorrectionCandidate(
-    runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-    transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>,
+  /** Admit a completed effect only through its already-admitted initial authority. */
+  function readRecoverableInitialCandidate(
+    runtime: TaskStrategyImplementationJournal,
+    context: TaskStrategyImplementationSession,
+    transaction: TaskStrategyTransaction,
+    inspection: SessionInspection,
+    projection: TaskStrategyCorrectionProjection,
     currentTree: string,
   ): boolean {
-    const rounds = listTaskStrategyCorrectionRounds(
-      runtime,
+    if (
+      transaction.strategy !== 'cross-agent-tdd' ||
+      projection.transaction.recordDigest !== transaction.recordDigest ||
+      projection.head !== null ||
+      projection.failure !== null ||
+      projection.completedCorrectionRounds !== 0
+    )
+      return false;
+    const task = inspection.contract.execution?.tasks[context.session.taskId];
+    if (
+      task?.strategy !== transaction.strategy ||
+      sha256(canonicalJson(task)) !== transaction.taskContractDigest
+    ) {
+      throw implementationResultStale();
+    }
+    const subject = createSubject(transaction);
+    const provider = runtime.implementation.readReservation(
+      context.session.sessionId,
+      subject.subjectDigest,
+    );
+    let binding:
+      | TaskStrategyImplementationResultBinding
+      | TaskStrategyCallerImplementationBinding;
+    let implementer: TaskStrategyPatchImplementer;
+    // Match the lifecycle's existing provider-reservation priority. A selected
+    // stale provider result must never fall through to a caller identity.
+    if (provider !== null) {
+      const result = runtime.implementation.readResult(
+        context.session.sessionId,
+        subject.subjectDigest,
+      );
+      if (result === null) return false;
+      assertReservationCurrent(context, transaction, subject, provider);
+      const attempt = runtime.implementation.readCurrentAttempt(provider);
+      if (result.invocationId !== attempt.request.invocationId)
+        throw implementationResultStale();
+      const reservation =
+        taskStrategyImplementationReservationForAttempt(attempt);
+      runtime.implementation.assertProviderCurrent(
+        reservation,
+        runtime.provider.read(attempt.request.invocationId),
+        result,
+      );
+      binding = result;
+      implementer = {
+        providerId: attempt.assignment.providerId,
+        assurance: 'adapter-assigned',
+      };
+    } else {
+      const result = runtime.implementation.readCallerResult(
+        context.session.sessionId,
+        subject.subjectDigest,
+      );
+      if (result === null) return false;
+      const reservation = runtime.implementation.readCallerReservation(
+        context.session.sessionId,
+        subject.subjectDigest,
+      );
+      if (reservation === null) throw implementationResultStale();
+      runtime.implementation.assertCallerCurrent(
+        transaction,
+        subject,
+        reservation,
+        result,
+      );
+      const participant = reservation.assignment.participant;
+      if (
+        participant.principalId === null ||
+        participant.identityAssurance === 'maintainer-signed'
+      )
+        throw implementationResultStale();
+      binding = result;
+      implementer = {
+        providerId: null,
+        principalId: participant.principalId,
+        assurance: participant.identityAssurance,
+        degradedForm: 'caller-supplied',
+        grantId: reservation.grantId,
+      };
+    }
+    if (
+      binding.subjectDigest !== subject.subjectDigest ||
+      binding.output.sessionId !== context.session.sessionId ||
+      binding.output.sourceTree !== subject.sourceTree
+    )
+      throw implementationResultStale();
+    const record = runtime.patch.readRecord(
+      context.session.sessionId,
+      binding.output.patchDigest,
+      subject.sourceTree,
+    );
+    return (
+      record !== null &&
+      record.sessionId === context.session.sessionId &&
+      record.changeId === transaction.changeId &&
+      record.taskId === transaction.taskId &&
+      record.strategy === transaction.strategy &&
+      record.taskContractDigest === transaction.taskContractDigest &&
+      record.sourceTree === subject.sourceTree &&
+      record.candidateTree === currentTree &&
+      record.patchDigest === binding.output.patchDigest &&
+      record.patchBase64 === binding.output.patchBase64 &&
+      canonicalJson(record.implementer) === canonicalJson(implementer)
+    );
+  }
+
+  function readRecoverableCorrectionCandidate(
+    runtime: TaskStrategyImplementationJournal,
+    transaction: TaskStrategyTransaction,
+    currentTree: string,
+  ): boolean {
+    const rounds = runtime.correction.listRounds(
       transaction.sessionId,
       transaction.recordDigest,
     );
@@ -238,22 +345,19 @@ export function createTaskStrategyImplementationContext(
     }
     const binding =
       latest.reservation.authority.kind === 'provider'
-        ? readTaskStrategyImplementationResultBinding(
-            runtime,
+        ? runtime.implementation.readResult(
             transaction.sessionId,
             latest.reservation.correctionSubjectDigest,
           )
         : latest.reservation.authority.kind === 'caller-supplied'
-          ? readTaskStrategyCallerImplementationBinding(
-              runtime,
+          ? runtime.implementation.readCallerResult(
               transaction.sessionId,
               latest.reservation.correctionSubjectDigest,
             )
           : null;
     if (binding === null) return false;
     const patchDigest = binding.output.patchDigest;
-    const record = readTaskStrategyPatchRecord(
-      runtime,
+    const record = runtime.patch.readRecord(
       transaction.sessionId,
       patchDigest,
       binding.output.sourceTree,
@@ -263,12 +367,14 @@ export function createTaskStrategyImplementationContext(
 
   function implementationTask(
     cwd: string,
-    context: ReturnType<typeof loadActiveSessionContext>,
-    transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>,
+    context: TaskStrategyImplementationSession,
+    transaction: TaskStrategyTransaction,
   ) {
-    const inspection = inspectSession(cwd, context.session.sessionId, {
-      expectedSession: context.session,
-    });
+    const inspection = operations.session.inspectExpected(
+      cwd,
+      context.session.sessionId,
+      context.session,
+    );
     const task = inspection.contract.execution?.tasks[context.session.taskId];
     if (
       task === undefined ||
@@ -288,17 +394,19 @@ export function createTaskStrategyImplementationContext(
 
   function resolveCurrentImplementationSubject(
     cwd: string,
-    context: ReturnType<typeof loadActiveSessionContext>,
-    transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>,
+    context: TaskStrategyImplementationSession,
+    transaction: TaskStrategyTransaction,
   ): Readonly<{
     subject: TaskStrategyImplementationSubject;
     greenFailureRecord: TaskStrategyGreenFailureRecord | null;
   }> {
     const initialSubject = createSubject(transaction);
-    const inspection = inspectSession(cwd, context.session.sessionId, {
-      expectedSession: context.session,
-    });
-    const projection = resolveCurrentTaskStrategyCorrection(inspection);
+    const inspection = operations.session.inspectExpected(
+      cwd,
+      context.session.sessionId,
+      context.session,
+    );
+    const projection = operations.session.resolveCorrection(inspection);
     if (projection.transaction.recordDigest !== transaction.recordDigest) {
       throw implementationResultStale();
     }
@@ -327,7 +435,7 @@ export function createTaskStrategyImplementationContext(
   }
 
   function resolveCorrectionSubjectInput(
-    inspection: ReturnType<typeof inspectSession>,
+    inspection: SessionInspection,
     projection: TaskStrategyCorrectionProjection,
   ): Readonly<{
     round: number;
@@ -341,11 +449,8 @@ export function createTaskStrategyImplementationContext(
     }
     if (projection.completedCorrectionRounds === 0) return null;
     if (projection.head === null) throw implementationResultStale();
-    const runtime = loadInvestigationRuntimeContext(
-      inspection.git.repositoryRoot,
-    ).runtime;
-    const greenFailureRecord = readTaskStrategyGreenFailureRecord(
-      runtime,
+    const runtime = operations.observeJournal(inspection.git.repositoryRoot);
+    const greenFailureRecord = runtime.correction.readFailure(
       inspection.session.sessionId,
       projection.head.record.sourceTree,
     );
@@ -357,7 +462,7 @@ export function createTaskStrategyImplementationContext(
   }
 
   function createSubject(
-    transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>,
+    transaction: TaskStrategyTransaction,
   ): TaskStrategyImplementationSubject {
     return createTaskStrategyImplementationSubject({
       sessionId: transaction.sessionId,
@@ -377,7 +482,7 @@ export function createTaskStrategyImplementationContext(
   }
 
   function recordRedAuthor(
-    transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>,
+    transaction: TaskStrategyTransaction,
   ): TaskStrategyRedAuthor {
     return Object.freeze({
       providerId: transaction.author.providerId,
@@ -389,8 +494,8 @@ export function createTaskStrategyImplementationContext(
   }
 
   function assertReservationCurrent(
-    context: ReturnType<typeof loadActiveSessionContext>,
-    transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>,
+    context: TaskStrategyImplementationSession,
+    transaction: TaskStrategyTransaction,
     subject: TaskStrategyImplementationSubject,
     reservation: TaskStrategyImplementationReservation,
   ): void {
@@ -413,7 +518,7 @@ export function createTaskStrategyImplementationContext(
   }
 
   function implementationGrantRequest(
-    context: ReturnType<typeof loadActiveSessionContext>,
+    context: TaskStrategyImplementationSession,
     subject: TaskStrategyImplementationSubject,
     redAuthor: TaskStrategyRedAuthor,
     callableProviderIds: readonly ProviderId[],
@@ -484,19 +589,20 @@ export function createTaskStrategyImplementationContext(
   ): CollaborationGrantExpectedBinding {
     const policy = parseMaintainerPolicy(
       JSON.parse(
-        runGit(repositoryRoot, [
-          'show',
-          `${request.baselineCommit}:workflow/maintainer-policy.json`,
-        ]),
+        operations.baseline.readDocument(
+          repositoryRoot,
+          request.baselineCommit,
+          'workflow/maintainer-policy.json',
+        ),
       ),
     );
     return {
       repositoryId: policy.repository.id,
       repositoryOrigin: policy.repository.origin,
-      policyBlob: runGit(repositoryRoot, [
-        'rev-parse',
-        `${request.baselineCommit}:workflow/maintainer-policy.json`,
-      ]).trim(),
+      policyBlob: operations.baseline.readMaintainerBlob(
+        repositoryRoot,
+        request.baselineCommit,
+      ),
       collaborationPolicyDigest: collaborationPolicyDigestForPhase(
         request.lifecyclePhase,
       ),
@@ -534,11 +640,12 @@ export function createTaskStrategyImplementationContext(
 
   function baselineAdapterPolicy(repositoryRoot: string, commit: string) {
     try {
-      return parseAiAdapterPolicyDocument(
-        runGit(repositoryRoot, [
-          'show',
-          `${commit}:workflow/ai-adapter-policy.json`,
-        ]),
+      return operations.dataPolicy.parseCurrentDocument(
+        operations.baseline.readDocument(
+          repositoryRoot,
+          commit,
+          'workflow/ai-adapter-policy.json',
+        ),
       );
     } catch (error) {
       throw workflowError(

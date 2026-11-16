@@ -706,7 +706,8 @@ function createRealAdapterFixtureRepository(): string {
   );
   fs.cpSync(pinnedPackageEntry, path.join(repository, 'node_modules'), {
     recursive: true,
-    dereference: true,
+    // Keep dependencies at their original pnpm resolution paths.
+    dereference: false,
   });
   const changeRoot = path.join(
     repository,

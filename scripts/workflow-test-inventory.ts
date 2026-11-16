@@ -32,6 +32,7 @@ export const WORKFLOW_PACKAGE_TEST_ROOTS = Object.freeze([
   'github-adapter',
   'grants',
   'openspec-adapter',
+  'repository-runtime',
 ] as const);
 export const WORKFLOW_PACKAGE_TEST_FAMILY_REGION_START =
   '// BEGIN GENERATED PACKAGE TEST PROJECTIONS' as const;

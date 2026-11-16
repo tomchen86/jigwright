@@ -3,19 +3,17 @@ import type {
   ProviderInvocationRequest,
   ProviderProcessOutcome,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-  claimProviderInvocation,
-  completeProviderInvocation,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import { completeProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-completion.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import type { ProviderRunnerReport } from '../src/runtime/provider-execution/provider-runner.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { builtInProviderDefinitionSnapshotForTest } from './fixture.ts';
 import crypto from 'node:crypto';
-import type { RoleParticipant } from '../src/modules/provider-orchestration/role-scheduler.ts';
+import type { RoleParticipant } from '../src/modules/provider-orchestration/role-assignment.ts';
 import {
   CONTENT_NODE_ID,
   CONTENT_RESULT_DIGEST,

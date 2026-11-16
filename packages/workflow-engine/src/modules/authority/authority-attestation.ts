@@ -14,7 +14,7 @@ import {
   parseManagedTrailers,
   type AuthorityManagedTrailers,
   type ManagedTrailers,
-} from '../lifecycle/managed-trailers.ts';
+} from '@jigwright/core/managed-transition-trailers';
 
 const COMMIT_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const GRANT_ID =

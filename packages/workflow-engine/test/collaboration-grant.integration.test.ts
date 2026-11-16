@@ -1,5 +1,8 @@
 /** Signed collaboration Grant envelopes, CLI authority, durable reservation and revocation. */
 import test from 'node:test';
+import { createCollaborationGrantIssuance } from '../src/runtime/grants/collaboration-grant-issuance.ts';
+import { parseMaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
+import type { MaintainerSignerProvider } from '../src/modules/authority/maintainer-signer-port.ts';
 import {
   git,
   isWorkflowError,
@@ -8,41 +11,49 @@ import {
 } from './fixture.ts';
 import {
   issueCollaborationGrant,
+  prepareCollaborationGrantIssue,
+} from '../src/composition-root/collaboration-grant-issuance-production.ts';
+import {
   canonicalCollaborationGrantPayload,
   canonicalCollaborationGrantEnvelope,
   parseCollaborationGrantEnvelope,
-  DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE,
-  COLLABORATION_GRANT_AUTHORIZED_EFFECT,
-  prepareCollaborationGrantIssue,
   collaborationGrantEnvelopeDigest,
   validateCollaborationGrantEnvelope,
+} from '../src/runtime/grants/grant-services.ts';
+import {
+  DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE,
   COLLABORATION_GRANT_RETAINED_OBLIGATIONS,
   COLLABORATION_GRANT_REPLAY_SCOPE,
   COLLABORATION_GRANT_RESIDUALS,
-} from '../src/modules/authority/collaboration-grant.ts';
+} from '../src/modules/authority/collaboration-grant-codec.ts';
+import { COLLABORATION_GRANT_AUTHORIZED_EFFECT } from '../src/modules/authority/collaboration-grant-codec.ts';
 import type {
   CollaborationGrantEnvelope,
   CollaborationGrantPayload,
   CollaborationGrantExpectedBinding,
-} from '../src/modules/authority/collaboration-grant.ts';
+} from '../src/modules/authority/collaboration-grant-codec.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { collaborationGrantStorePaths } from '../src/runtime/storage-journal/collaboration-grant-private-files.ts';
 import {
-  collaborationGrantStorePaths,
   storeAvailableCollaborationGrant,
   reserveCollaborationGrant,
+  reserveCollaborationGrantUnderLifecycleLock,
+  readReservedCollaborationGrantUnderLifecycleLock,
+} from '../src/runtime/storage-journal/collaboration-grant-reservation.ts';
+import {
   consumeCollaborationGrant,
   readExactConsumedCollaborationGrantUse,
-  reserveCollaborationGrantUnderLifecycleLock,
   consumeCollaborationGrantUnderLifecycleLock,
-  readReservedCollaborationGrantUnderLifecycleLock,
   failCollaborationReservationUnderLifecycleLock,
-  revokeCollaborationGrant,
+} from '../src/runtime/storage-journal/collaboration-grant-consumption.ts';
+import { revokeCollaborationGrant } from '../src/composition-root/collaboration-grant-production.ts';
+import {
   inspectCollaborationGrants,
   readCollaborationGrantInspection,
-} from '../src/runtime/storage-journal/collaboration-grant-store.ts';
-import type { CollaborationConsumptionRequest } from '../src/runtime/storage-journal/collaboration-grant-store.ts';
+} from '../src/runtime/storage-journal/collaboration-grant-records.ts';
+import type { CollaborationConsumptionRequest } from '../src/modules/authority/collaboration-grant-records.ts';
 import { loadWorkflowConformanceVectors } from './support/conformance-vectors.ts';
 import type { GrantVerifierPort } from '../src/modules/authority/grant-verifier-port.ts';
 import { spawnSync } from 'node:child_process';
@@ -51,7 +62,7 @@ import os from 'node:os';
 import {
   authorizeGrantedOrdinaryRole,
   admitRoleResult,
-} from '../src/modules/provider-orchestration/role-scheduler.ts';
+} from '../src/composition-root/role-admission-production.ts';
 import crypto from 'node:crypto';
 import { withRepositoryLifecycleOperation } from '../src/runtime/session-workspace/session-store.ts';
 import {
@@ -164,6 +175,236 @@ test('collaboration issuance is canonical, domain-separated, and has no authorit
     );
     assert.equal(fs.statSync(paths.root).mode & 0o777, 0o700);
     assert.equal(fs.statSync(issued.availableEnvelopePath).mode & 0o777, 0o600);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('collaboration signer binding is lazy and preserves exact policy, ordering and failures', () => {
+  const events: string[] = [];
+  const sentinel = new Error('signer failure');
+  let failure: 'factory' | 'presence' | 'sign' | 'verify' | undefined;
+  const underlying = vectorSigner();
+  const signer: MaintainerSignerProvider = {
+    assertHumanPresent() {
+      events.push('presence');
+      if (failure === 'presence') throw sentinel;
+      underlying.assertHumanPresent();
+    },
+    identity() {
+      events.push('identity');
+      return underlying.identity();
+    },
+    sign(payload, namespace) {
+      events.push(`sign:${namespace}`);
+      if (failure === 'sign') throw sentinel;
+      return underlying.sign(payload, namespace);
+    },
+    verify(payload, signature, identity, namespace) {
+      events.push(`verify:${namespace}`);
+      if (failure === 'verify') throw sentinel;
+      return underlying.verify(payload, signature, identity, namespace);
+    },
+  };
+  const repository = minimalCollaborationGrantRepository();
+  try {
+    const request = sameProviderRequest(repository);
+    const historicalPolicy = parseMaintainerPolicy(POLICY);
+    // HEAD deliberately differs from the requested, still-ancestral baseline.
+    fs.writeFileSync(
+      path.join(repository, 'workflow/maintainer-policy.json'),
+      JSON.stringify({ ...POLICY, requiredChecks: ['new-current-check'] }),
+    );
+    git(repository, ['add', 'workflow/maintainer-policy.json']);
+    git(repository, [
+      'commit',
+      '-m',
+      'Change current policy after the baseline',
+    ]);
+    const operations = createCollaborationGrantIssuance({
+      createSigner: (root, policy) => {
+        events.push('factory');
+        assert.equal(root, fs.realpathSync(repository));
+        assert.deepEqual(policy, historicalPolicy);
+        if (failure === 'factory') throw sentinel;
+        return signer;
+      },
+      collaborationGrantStorePaths,
+      storeAvailableCollaborationGrant,
+    });
+    assert.deepEqual(events, []);
+    assert.throws(
+      () =>
+        operations.prepareCollaborationGrantIssue(
+          repository,
+          { ...request, baselineCommit: 'not-an-object-id' },
+          { now: NOW, grantId: GRANT_ID },
+        ),
+      { code: 'COLLABORATION_GRANT_INVALID' },
+    );
+    assert.deepEqual(events, []);
+
+    const issued = operations.issueCollaborationGrant(repository, request, {
+      now: NOW,
+      grantId: GRANT_ID,
+    });
+    const signingOrder = [
+      'presence',
+      'identity',
+      `sign:${NEUTRAL_COLLABORATION_GRANT_NAMESPACE}`,
+      `verify:${NEUTRAL_COLLABORATION_GRANT_NAMESPACE}`,
+    ];
+    assert.deepEqual(events, ['factory', ...signingOrder]);
+    assert.equal(
+      issued.envelope.payload.baselineCommit,
+      request.baselineCommit,
+    );
+    assert.equal(
+      issued.envelope.payload.policyBlob,
+      git(repository, [
+        'rev-parse',
+        `${request.baselineCommit}:workflow/maintainer-policy.json`,
+      ]).trim(),
+    );
+    events.length = 0;
+    assert.throws(
+      () =>
+        operations.issueCollaborationGrant(repository, request, {
+          now: NOW,
+          grantId: GRANT_ID,
+        }),
+      { code: 'COLLABORATION_GRANT_EXISTS' },
+    );
+    assert.deepEqual(events, []);
+
+    const options = {
+      now: NOW,
+      grantId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    };
+    failure = 'factory';
+    operations.prepareCollaborationGrantIssue(repository, request, {
+      ...options,
+      signer,
+    });
+    assert.deepEqual(events, signingOrder);
+    events.length = 0;
+    assert.throws(
+      () =>
+        operations.prepareCollaborationGrantIssue(repository, request, options),
+      (error) => error === sentinel,
+    );
+    assert.deepEqual(events, ['factory']);
+    events.length = 0;
+    failure = 'presence';
+    assert.throws(
+      () =>
+        operations.prepareCollaborationGrantIssue(repository, request, options),
+      (error) => error === sentinel,
+    );
+    assert.deepEqual(events, ['factory', 'presence']);
+    events.length = 0;
+    failure = 'sign';
+    assert.throws(
+      () =>
+        operations.prepareCollaborationGrantIssue(repository, request, options),
+      {
+        code: 'COLLABORATION_SIGNATURE_INVALID',
+        details: { cause: sentinel.message },
+      },
+    );
+    assert.deepEqual(events, ['factory', ...signingOrder.slice(0, 3)]);
+    events.length = 0;
+    failure = undefined;
+
+    const humanGrant = operations.prepareCollaborationGrantIssue(
+      repository,
+      {
+        ...request,
+        lifecyclePhase: 'task-diff-review',
+        taskId: '1.1',
+        rolePair: {
+          authorRole: 'task-implementer',
+          conflictingRole: 'task-diff-reviewer',
+        },
+        degradedForm: 'direct-human-review',
+        availableActor: {
+          kind: 'direct-human',
+          identity: 'fixture-maintainer',
+          assurance: 'maintainer-signed',
+        },
+      },
+      options,
+    );
+    const attestationRequest = {
+      grantEnvelope: humanGrant.envelope,
+      transitionDigest: TRANSITION_DIGEST,
+      reviewNodeId: CONTENT_NODE_ID,
+      reviewResultDigest: CONTENT_RESULT_DIGEST,
+    };
+    const attestationOrder = [
+      `verify:${NEUTRAL_COLLABORATION_GRANT_NAMESPACE}`,
+      'presence',
+      'identity',
+      `sign:${DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE}`,
+      `verify:${DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE}`,
+    ];
+    events.length = 0;
+    const attestation = operations.createDirectHumanReviewAttestation(
+      repository,
+      attestationRequest,
+      { now: NOW },
+    );
+    assert.deepEqual(events, ['factory', ...attestationOrder]);
+    assert.equal(
+      attestation.payload.signer,
+      humanGrant.envelope.payload.signer,
+    );
+    events.length = 0;
+    failure = 'factory';
+    assert.deepEqual(
+      operations.createDirectHumanReviewAttestation(
+        repository,
+        attestationRequest,
+        { now: NOW, signer },
+      ),
+      attestation,
+    );
+    assert.deepEqual(events, attestationOrder);
+    events.length = 0;
+    assert.throws(
+      () =>
+        operations.createDirectHumanReviewAttestation(
+          repository,
+          attestationRequest,
+          { now: NOW },
+        ),
+      (error) => error === sentinel,
+    );
+    assert.deepEqual(events, ['factory']);
+    events.length = 0;
+    failure = 'presence';
+    assert.throws(
+      () =>
+        operations.createDirectHumanReviewAttestation(
+          repository,
+          attestationRequest,
+          { now: NOW },
+        ),
+      (error) => error === sentinel,
+    );
+    assert.deepEqual(events, ['factory', ...attestationOrder.slice(0, 2)]);
+    events.length = 0;
+    failure = 'verify';
+    assert.throws(
+      () =>
+        operations.createDirectHumanReviewAttestation(
+          repository,
+          attestationRequest,
+          { now: NOW },
+        ),
+      { code: 'COLLABORATION_SIGNATURE_INVALID' },
+    );
+    assert.deepEqual(events, ['factory', attestationOrder[0]]);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
@@ -338,7 +579,7 @@ test('collaboration grant CLI requires a controlling TTY and has no unattended e
     const request = sameProviderRequest(repository);
     const cli = path.join(
       sourceRepositoryRoot,
-      'packages/workflow-engine/src/cli.ts',
+      'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
     );
     const args = collaborationCliArguments(cli, request);
     const nonInteractive = spawnSync(process.execPath, args, {
@@ -375,7 +616,7 @@ test('collaboration grant CLI validates the base object ID before invoking Git',
     const request = sameProviderRequest(repository);
     const cli = path.join(
       sourceRepositoryRoot,
-      'packages/workflow-engine/src/cli.ts',
+      'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
     );
     const args = collaborationCliArguments(cli, request).slice(3, -1);
     const baselineIndex = args.indexOf('--base') + 1;

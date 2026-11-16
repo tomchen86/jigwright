@@ -28,12 +28,17 @@ import type {
   PlanReviewDispositionDecision,
   AuthorizedPlanReviewDispositionEntry,
   AuthorizedPlanReviewDispositionDecision,
-  PlanReviewReport,
 } from './plan-review.ts';
+import type { PlanReviewReport } from './plan-review-report.ts';
 
 type EvidenceNode = ReturnType<
   PlanReviewDispositionProtocolBindings['createEvidenceNode']
 >;
+
+export type PlanReviewChallengeClosureSignatureVerifier = (input: {
+  authority: PlanReviewChallengeClosureAuthority;
+  publicKey: string;
+}) => void;
 
 export function createPlanReviewDispositionProtocol(
   bindings: PlanReviewDispositionProtocolBindings,
@@ -57,7 +62,6 @@ export function createPlanReviewDispositionProtocol(
     assertStoredEvidenceNode,
     assertExactDigestRoles,
     assertExactKeys,
-    verifySshSignatureWithPublicKey,
     DISPOSITION_DECISIONS,
     AUTHORIZED_DISPOSITION_DECISIONS,
   } = bindings;
@@ -418,21 +422,24 @@ export function createPlanReviewDispositionProtocol(
     });
   }
 
-  function assertAuthorizedPlanReviewChallengeClosure(input: {
-    dispositionNode: EvidenceNode;
-    reviewNode: EvidenceNode;
-    expected: {
-      repositoryId: string;
-      changeId: string;
-      investigationId: string;
-      baselineCommit: string;
-      baselineTree: string;
-      subjectDigest: string;
-      planningGenerationId: string;
-      authorId: string;
-    };
-    policy: MaintainerPolicy;
-  }): AuthorizedPlanReviewDispositionRecord {
+  function assertAuthorizedPlanReviewChallengeClosure(
+    verifySignature: PlanReviewChallengeClosureSignatureVerifier,
+    input: {
+      dispositionNode: EvidenceNode;
+      reviewNode: EvidenceNode;
+      expected: {
+        repositoryId: string;
+        changeId: string;
+        investigationId: string;
+        baselineCommit: string;
+        baselineTree: string;
+        subjectDigest: string;
+        planningGenerationId: string;
+        authorId: string;
+      };
+      policy: MaintainerPolicy;
+    },
+  ): AuthorizedPlanReviewDispositionRecord {
     const record = readPlanReviewDispositionNode(input.dispositionNode);
     const review = readPlanReviewNode(input.reviewNode);
     if (record.schemaVersion !== 2) {
@@ -470,13 +477,7 @@ export function createPlanReviewDispositionProtocol(
         'Challenge closure signer is not trusted by the baseline policy.',
       );
     }
-    verifySshSignatureWithPublicKey(
-      canonicalPlanReviewChallengeClosurePayload(authority),
-      authority.signature,
-      authority.signer,
-      signer.publicKey,
-      PLAN_REVIEW_CHALLENGE_CLOSURE_NAMESPACE,
-    );
+    verifySignature({ authority, publicKey: signer.publicKey });
     const challenges: Challenge[] = review.findings.map((finding) => ({
       challengeId: finding.findingId,
       raisedBy: review.assignment.providerId,
@@ -696,17 +697,17 @@ export function createPlanReviewDispositionProtocol(
     );
   }
 
-  function canonicalPlanReviewChallengeClosurePayload(
-    authority: PlanReviewChallengeClosureAuthority,
-  ): string {
-    const { signature: _signature, ...payload } = authority;
-    return `${canonicalJson(payload)}\n`;
-  }
-
   return {
     createPlanReviewDispositionNode,
     createAuthorizedPlanReviewDispositionNode,
     readPlanReviewDispositionNode,
     assertAuthorizedPlanReviewChallengeClosure,
   };
+}
+
+export function canonicalPlanReviewChallengeClosurePayload(
+  authority: PlanReviewChallengeClosureAuthority,
+): string {
+  const { signature: _signature, ...payload } = authority;
+  return `${canonicalJson(payload)}\n`;
 }

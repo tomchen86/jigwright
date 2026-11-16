@@ -15,7 +15,7 @@ import type {
   WorkItemLaneV1,
   WorkItemStageV1,
   WorkItemV1,
-} from './work-registry.ts';
+} from './work-registry-contracts.ts';
 
 export const WORK_ITEM_FILE_MODE = 0o644;
 

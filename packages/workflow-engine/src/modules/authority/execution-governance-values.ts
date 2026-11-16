@@ -230,3 +230,7 @@ export function normalizeInvalid(
 export function invalidRepairContext(message: string): WorkflowError {
   return workflowError('REPAIR_CONTEXT_INVALID', message, ExitCode.usage);
 }
+
+export function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error;
+}

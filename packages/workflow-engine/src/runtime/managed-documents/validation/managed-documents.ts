@@ -1,3 +1,8 @@
+import type {
+  GeneratedDocumentMutation,
+  ManagedDocumentValidationContext,
+  ManagedDocumentOperations,
+} from '../../../modules/projection/managed-documents.ts';
 /**
  * Validates managed document policy and plans or applies generated document
  * updates.
@@ -8,7 +13,6 @@
 import fs from 'node:fs';
 import { planPlanningSemanticLedger } from '../transaction/semantic-ledger-projection.ts';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 
 import {
   AtomicTextSafetyError,
@@ -16,133 +20,12 @@ import {
 } from '../../repository-transaction/atomic-text.ts';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import { engineProjectionPathsForTransition } from '../../../modules/projection/engine-projection-registry.ts';
-import type { InvestigationManifestV3 } from '../../../modules/investigation/manifest/investigation-manifest.ts';
-import type { SystemDescriptionSnapshot } from '../../../modules/source/spec-ownership.ts';
+import type { InvestigationManifestV3 } from '../../../modules/investigation/manifest/investigation-manifest-types.ts';
+
 import { systemSpecPaths } from '../../../modules/source/system-documents.ts';
 import { workingSystemDescriptionSnapshot } from './system-document-snapshot.ts';
 import { validateSystemDocuments } from './system-documents.ts';
-import {
-  projectHandoff,
-  projectHandoffForTaskProjection,
-  renderHandoffForChange,
-  validateHandoff,
-  type HandoffChange,
-} from '../../../adapters/consumer/repository/handoff/handoff.ts';
-
-type RepositoryTextReader = (relativePath: string) => string | undefined;
-
-export type GeneratedDocumentMutation = {
-  path: string;
-  before: string | undefined;
-  after: string;
-};
-
-export type ManagedDocumentValidationContext = Readonly<{
-  contracts: readonly HandoffChange[];
-  readText: RepositoryTextReader;
-  systemDescriptionSnapshot?: SystemDescriptionSnapshot;
-}>;
-
-export function validateManagedDocuments(
-  repositoryRoot: string,
-  context?: ManagedDocumentValidationContext,
-): string[] {
-  const policyPath = path.join(repositoryRoot, 'workflow/document-policy.json');
-  let value: unknown;
-  try {
-    const source = context
-      ? context.readText('workflow/document-policy.json')
-      : fs.readFileSync(policyPath, 'utf8');
-    if (source === undefined) throw new Error('document policy is missing');
-    value = JSON.parse(source);
-  } catch {
-    throw invalidPolicy();
-  }
-  if (
-    !isRecord(value) ||
-    value.schemaVersion !== 1 ||
-    typeof value.enforcementMode !== 'string' ||
-    !isRecord(value.documents)
-  ) {
-    throw invalidPolicy();
-  }
-
-  const validated: string[] = [];
-  const systemSnapshot =
-    context?.systemDescriptionSnapshot ??
-    (!context && fs.existsSync(path.join(repositoryRoot, '.git'))
-      ? workingSystemDescriptionSnapshot(repositoryRoot)
-      : undefined);
-  if (systemSnapshot && systemSpecPaths(systemSnapshot.listPaths()).length > 0)
-    validated.push(...validateSystemDocuments(repositoryRoot, systemSnapshot));
-  for (const [documentPath, rawPolicy] of Object.entries(value.documents)) {
-    if (!isRecord(rawPolicy) || typeof rawPolicy.mode !== 'string') {
-      throw invalidPolicy();
-    }
-    if (rawPolicy.enforcement !== 'active') {
-      continue;
-    }
-    if (documentPath === 'docs/CURRENT_AND_NEXT_STEPS.md') {
-      validateHandoff(
-        repositoryRoot,
-        context
-          ? { contracts: context.contracts, readText: context.readText }
-          : undefined,
-      );
-      validated.push(documentPath);
-      continue;
-    }
-    throw workflowError(
-      'UNSUPPORTED_ACTIVE_DOCUMENT_POLICY',
-      `No validator is registered for active policy ${documentPath}.`,
-      ExitCode.verification,
-    );
-  }
-  return validated;
-}
-
-export function refreshCompletionDocuments(
-  repositoryRoot: string,
-): GeneratedDocumentMutation[] {
-  const mutations = planCompletionDocuments(repositoryRoot);
-  applyGeneratedDocumentMutations(repositoryRoot, mutations);
-  return mutations;
-}
-
-export function planCompletionDocuments(
-  repositoryRoot: string,
-  taskProjection?: Readonly<{ changeId: string; tasks: string }>,
-): GeneratedDocumentMutation[] {
-  if (!hasDocumentPolicy(repositoryRoot)) {
-    return [];
-  }
-  const policy = loadDocumentPolicy(repositoryRoot);
-  const enabledPaths = completionDocumentPaths(repositoryRoot);
-  const handoff = policy.documents['docs/CURRENT_AND_NEXT_STEPS.md'];
-  if (
-    !enabledPaths.includes('docs/CURRENT_AND_NEXT_STEPS.md') ||
-    !isRecord(handoff) ||
-    handoff.enforcement !== 'active' ||
-    handoff.transition !== 'completion'
-  ) {
-    return [];
-  }
-  const documentPath = path.join(
-    repositoryRoot,
-    'docs/CURRENT_AND_NEXT_STEPS.md',
-  );
-  const before = fs.readFileSync(documentPath, 'utf8');
-  const after = taskProjection
-    ? projectHandoffForTaskProjection(
-        repositoryRoot,
-        taskProjection.changeId,
-        taskProjection.tasks,
-      )
-    : projectHandoff(repositoryRoot);
-  return before === after
-    ? []
-    : [{ path: 'docs/CURRENT_AND_NEXT_STEPS.md', before, after }];
-}
+import type { HandoffDocumentOperations } from '../../../modules/projection/handoff.ts';
 
 export function applyGeneratedDocumentMutations(
   repositoryRoot: string,
@@ -160,69 +43,6 @@ export function applyGeneratedDocumentMutations(
       mutation.before === undefined,
     );
   }
-}
-
-/**
- * Refresh the fixed opening projection from an explicit change identity. The
- * legacy policy's `transition: completion` field enables the reviewed handoff
- * projection but does not narrow the registry's code-owned plan transition.
- */
-export function refreshPlanningDocuments(
-  repositoryRoot: string,
-  changeId: string,
-  manifest: InvestigationManifestV3 | undefined,
-): GeneratedDocumentMutation[] {
-  const ledger = planPlanningSemanticLedger(repositoryRoot, changeId, manifest);
-  const mutations = [
-    ...ledger,
-    ...planPlanningHandoffDocuments(repositoryRoot, changeId),
-  ];
-  try {
-    applyGeneratedDocumentMutations(repositoryRoot, mutations);
-    return mutations;
-  } catch (error) {
-    rollbackGeneratedDocuments(repositoryRoot, mutations);
-    throw error;
-  }
-}
-
-function planPlanningHandoffDocuments(
-  repositoryRoot: string,
-  changeId: string,
-): GeneratedDocumentMutation[] {
-  if (!hasDocumentPolicy(repositoryRoot)) return [];
-  const policy = loadDocumentPolicy(repositoryRoot);
-  const handoff = policy.documents['docs/CURRENT_AND_NEXT_STEPS.md'];
-  if (
-    !engineProjectionPathsForTransition('plan').includes(
-      'docs/CURRENT_AND_NEXT_STEPS.md',
-    ) ||
-    !isRecord(handoff) ||
-    handoff.mode !== 'generated' ||
-    handoff.enforcement !== 'active'
-  ) {
-    return [];
-  }
-  const documentPath = path.join(
-    repositoryRoot,
-    'docs/CURRENT_AND_NEXT_STEPS.md',
-  );
-  const existing = fs.lstatSync(documentPath, { throwIfNoEntry: false });
-  if (
-    existing &&
-    (!existing.isFile() || existing.isSymbolicLink() || existing.nlink !== 1)
-  ) {
-    throw workflowError(
-      'HANDOFF_PATH_UNSAFE',
-      'Managed handoff path is not a plain file.',
-      ExitCode.verification,
-    );
-  }
-  const before = existing ? fs.readFileSync(documentPath, 'utf8') : undefined;
-  const after = renderHandoffForChange(repositoryRoot, changeId);
-  return before === after
-    ? []
-    : [{ path: 'docs/CURRENT_AND_NEXT_STEPS.md', before, after }];
 }
 
 export function completionDocumentPaths(repositoryRoot: string): string[] {
@@ -340,15 +160,196 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-if (
-  process.argv[1] !== undefined &&
-  pathToFileURL(fs.realpathSync(process.argv[1])).href === import.meta.url
-) {
-  process.stdout.write(
-    `${JSON.stringify({
-      command: 'documents',
-      ok: true,
-      validated: validateManagedDocuments(process.cwd()),
-    })}\n`,
-  );
+/** Required document operations; construction performs no observations. */
+export function createManagedDocumentServices(
+  handoff: HandoffDocumentOperations,
+): ManagedDocumentOperations {
+  const {
+    projectHandoff,
+    projectHandoffForTaskProjection,
+    renderHandoffForChange,
+    validateHandoff,
+  } = handoff;
+
+  function validateManagedDocuments(
+    repositoryRoot: string,
+    context?: ManagedDocumentValidationContext,
+  ): string[] {
+    const policyPath = path.join(
+      repositoryRoot,
+      'workflow/document-policy.json',
+    );
+    let value: unknown;
+    try {
+      const source = context
+        ? context.readText('workflow/document-policy.json')
+        : fs.readFileSync(policyPath, 'utf8');
+      if (source === undefined) throw new Error('document policy is missing');
+      value = JSON.parse(source);
+    } catch {
+      throw invalidPolicy();
+    }
+    if (
+      !isRecord(value) ||
+      value.schemaVersion !== 1 ||
+      typeof value.enforcementMode !== 'string' ||
+      !isRecord(value.documents)
+    ) {
+      throw invalidPolicy();
+    }
+
+    const validated: string[] = [];
+    const systemSnapshot =
+      context?.systemDescriptionSnapshot ??
+      (!context && fs.existsSync(path.join(repositoryRoot, '.git'))
+        ? workingSystemDescriptionSnapshot(repositoryRoot)
+        : undefined);
+    if (
+      systemSnapshot &&
+      systemSpecPaths(systemSnapshot.listPaths()).length > 0
+    )
+      validated.push(
+        ...validateSystemDocuments(repositoryRoot, systemSnapshot),
+      );
+    for (const [documentPath, rawPolicy] of Object.entries(value.documents)) {
+      if (!isRecord(rawPolicy) || typeof rawPolicy.mode !== 'string') {
+        throw invalidPolicy();
+      }
+      if (rawPolicy.enforcement !== 'active') {
+        continue;
+      }
+      if (documentPath === 'docs/CURRENT_AND_NEXT_STEPS.md') {
+        validateHandoff(
+          repositoryRoot,
+          context
+            ? { contracts: context.contracts, readText: context.readText }
+            : undefined,
+        );
+        validated.push(documentPath);
+        continue;
+      }
+      throw workflowError(
+        'UNSUPPORTED_ACTIVE_DOCUMENT_POLICY',
+        `No validator is registered for active policy ${documentPath}.`,
+        ExitCode.verification,
+      );
+    }
+    return validated;
+  }
+
+  function refreshCompletionDocuments(
+    repositoryRoot: string,
+  ): GeneratedDocumentMutation[] {
+    const mutations = planCompletionDocuments(repositoryRoot);
+    applyGeneratedDocumentMutations(repositoryRoot, mutations);
+    return mutations;
+  }
+
+  function planCompletionDocuments(
+    repositoryRoot: string,
+    taskProjection?: Readonly<{ changeId: string; tasks: string }>,
+  ): GeneratedDocumentMutation[] {
+    if (!hasDocumentPolicy(repositoryRoot)) {
+      return [];
+    }
+    const policy = loadDocumentPolicy(repositoryRoot);
+    const enabledPaths = completionDocumentPaths(repositoryRoot);
+    const handoff = policy.documents['docs/CURRENT_AND_NEXT_STEPS.md'];
+    if (
+      !enabledPaths.includes('docs/CURRENT_AND_NEXT_STEPS.md') ||
+      !isRecord(handoff) ||
+      handoff.enforcement !== 'active' ||
+      handoff.transition !== 'completion'
+    ) {
+      return [];
+    }
+    const documentPath = path.join(
+      repositoryRoot,
+      'docs/CURRENT_AND_NEXT_STEPS.md',
+    );
+    const before = fs.readFileSync(documentPath, 'utf8');
+    const after = taskProjection
+      ? projectHandoffForTaskProjection(
+          repositoryRoot,
+          taskProjection.changeId,
+          taskProjection.tasks,
+        )
+      : projectHandoff(repositoryRoot);
+    return before === after
+      ? []
+      : [{ path: 'docs/CURRENT_AND_NEXT_STEPS.md', before, after }];
+  }
+
+  /**
+   * Refresh the fixed opening projection from an explicit change identity. The
+   * legacy policy's `transition: completion` field enables the reviewed handoff
+   * projection but does not narrow the registry's code-owned plan transition.
+   */
+  function refreshPlanningDocuments(
+    repositoryRoot: string,
+    changeId: string,
+    manifest: InvestigationManifestV3 | undefined,
+  ): GeneratedDocumentMutation[] {
+    const ledger = planPlanningSemanticLedger(
+      repositoryRoot,
+      changeId,
+      manifest,
+    );
+    const mutations = [
+      ...ledger,
+      ...planPlanningHandoffDocuments(repositoryRoot, changeId),
+    ];
+    try {
+      applyGeneratedDocumentMutations(repositoryRoot, mutations);
+      return mutations;
+    } catch (error) {
+      rollbackGeneratedDocuments(repositoryRoot, mutations);
+      throw error;
+    }
+  }
+
+  function planPlanningHandoffDocuments(
+    repositoryRoot: string,
+    changeId: string,
+  ): GeneratedDocumentMutation[] {
+    if (!hasDocumentPolicy(repositoryRoot)) return [];
+    const policy = loadDocumentPolicy(repositoryRoot);
+    const handoff = policy.documents['docs/CURRENT_AND_NEXT_STEPS.md'];
+    if (
+      !engineProjectionPathsForTransition('plan').includes(
+        'docs/CURRENT_AND_NEXT_STEPS.md',
+      ) ||
+      !isRecord(handoff) ||
+      handoff.mode !== 'generated' ||
+      handoff.enforcement !== 'active'
+    ) {
+      return [];
+    }
+    const documentPath = path.join(
+      repositoryRoot,
+      'docs/CURRENT_AND_NEXT_STEPS.md',
+    );
+    const existing = fs.lstatSync(documentPath, { throwIfNoEntry: false });
+    if (
+      existing &&
+      (!existing.isFile() || existing.isSymbolicLink() || existing.nlink !== 1)
+    ) {
+      throw workflowError(
+        'HANDOFF_PATH_UNSAFE',
+        'Managed handoff path is not a plain file.',
+        ExitCode.verification,
+      );
+    }
+    const before = existing ? fs.readFileSync(documentPath, 'utf8') : undefined;
+    const after = renderHandoffForChange(repositoryRoot, changeId);
+    return before === after
+      ? []
+      : [{ path: 'docs/CURRENT_AND_NEXT_STEPS.md', before, after }];
+  }
+  return {
+    validateManagedDocuments,
+    refreshCompletionDocuments,
+    planCompletionDocuments,
+    refreshPlanningDocuments,
+  };
 }

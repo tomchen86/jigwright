@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { resolveGovernanceSourceAlias } from '../packages/workflow-engine/src/modules/governance-intake/source-aliases.ts';
+import { resolveGovernanceSourceAlias } from '../packages/workflow-engine/src/composition-root/governance-sources-production.ts';
 
 /** Package purpose sentences from the owner baseline in the Source ledger. */
 export function renderAgentRuleSources(sourceText: string): string {

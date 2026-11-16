@@ -1,17 +1,17 @@
-import {
-  type InvestigationManifestV3,
-  buildInvestigationManifestDraft,
-  sealInvestigationManifestDraft,
-} from '../../src/modules/investigation/manifest/investigation-manifest.ts';
+import { type InvestigationManifestV3 } from '../../src/modules/investigation/manifest/investigation-manifest-types.ts';
+import { sealInvestigationManifestDraft } from '../../src/modules/investigation/manifest/investigation-manifest.ts';
+import { buildInvestigationManifestDraft } from '../../src/composition-root/investigation-production.ts';
 import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import {
-  investigationManifestPublicationNamespace,
   readInvestigationPublicationRefState,
-  type InvestigationManifestPublicationPhase,
   publishInvestigationManifestV3,
 } from '../../src/runtime/managed-documents/transaction/investigation-publication.ts';
+import {
+  investigationManifestPublicationNamespace,
+  type InvestigationManifestPublicationPhase,
+} from '../../src/modules/investigation/manifest/investigation-publication-contracts.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { WorkflowError } from '../../src/foundation/errors/errors.ts';

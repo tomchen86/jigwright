@@ -5,10 +5,8 @@
  * - Immutable publication precedes exact stored session and subject revalidation.
  * - Provider and caller records retain distinct paths, collision errors, and replay checks.
  */
-import {
-  type InvestigationRuntimePaths,
-  assertSessionId,
-} from '../session-workspace/paths.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
+import { assertSessionId } from '../../foundation/repository-path/repository-path.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   type TaskStrategyImplementationReservation,
@@ -19,18 +17,18 @@ import {
   parseTaskStrategyCallerImplementationBinding,
   type TaskStrategyCallerImplementationReservation,
   parseTaskStrategyCallerImplementationReservation,
-} from './task-strategy-provider-record-contract.ts';
+} from '../../modules/assurance/task-strategy-implementation-record.ts';
 import {
   sha256,
   assertDigest,
   stateCorrupt,
-} from './task-strategy-provider-store-values.ts';
+} from '../../modules/assurance/task-strategy-implementation-values.ts';
 import path from 'node:path';
 import {
   createPrivateCanonicalJson,
   privatePathExists,
   readPrivateCanonicalJson,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 
 export {
   type TaskStrategyImplementationReservation,
@@ -38,7 +36,7 @@ export {
   type TaskStrategyImplementationResultBinding,
   type TaskStrategyCallerImplementationBinding,
   type TaskStrategyCallerImplementationReservation,
-} from './task-strategy-provider-record-contract.ts';
+} from '../../modules/assurance/task-strategy-implementation-record.ts';
 export {
   assertTaskStrategyImplementationProviderAuthorityCurrent,
   assertTaskStrategyCallerImplementationReservationAuthorityCurrent,

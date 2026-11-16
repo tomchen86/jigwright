@@ -1,3 +1,5 @@
+import { deriveAuthorityAuditRepositoryId } from '../../modules/authority/authority-audit-contract.ts';
+export { deriveAuthorityAuditRepositoryId } from '../../modules/authority/authority-audit-contract.ts';
 /**
  * Prepares the external audit layout and validates its pinned profile and backend configuration.
  *
@@ -10,9 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
-  type Sha256Digest,
   MAX_REPOSITORY_ID_BYTES,
-  type AuthorityAuditLedgerScope,
   type AuthorityAuditLedgerPaths,
   LOCK_NAME,
   PROFILE_STATE_NAME,
@@ -20,7 +20,6 @@ import {
   RETENTION_CHECKPOINT_NAME,
   RETENTION_CHECKPOINT_NEXT_NAME,
   MAINTENANCE_JOURNAL_NAME,
-  type AuthorityAuditProfile,
   SCOPE_KEYS,
   MAX_METADATA_BYTES,
   type AuthorityAuditProfileState,
@@ -70,30 +69,6 @@ import {
   readDestructionTombstones,
   assertTombstoneDirectoryLocal,
 } from './authority-audit-destruction-records.ts';
-
-export function deriveAuthorityAuditRepositoryId(
-  repositoryIdentity: string,
-): Sha256Digest {
-  if (
-    typeof repositoryIdentity !== 'string' ||
-    repositoryIdentity.length === 0 ||
-    repositoryIdentity.trim() !== repositoryIdentity ||
-    Buffer.byteLength(repositoryIdentity) > MAX_REPOSITORY_ID_BYTES ||
-    [...repositoryIdentity].some((character) => {
-      const point = character.codePointAt(0) ?? 0;
-      return point <= 31 || (point >= 127 && point <= 159);
-    })
-  ) {
-    throw invalidScope();
-  }
-  return sha256Digest(
-    canonicalJson({
-      schemaVersion: 1,
-      kind: 'authority-audit-repository.v1',
-      repositoryIdentity,
-    }),
-  );
-}
 
 export function authorityAuditLedgerPaths(
   scope: AuthorityAuditLedgerScope,
@@ -559,3 +534,9 @@ function assertLayout(paths: AuthorityAuditLedgerPaths): void {
     assertPrivateDirectory(path.join(paths.repositories, namespace));
   }
 }
+
+import {
+  type Sha256Digest,
+  type AuthorityAuditLedgerScope,
+  type AuthorityAuditProfile,
+} from '../../modules/authority/authority-audit-contract.ts';

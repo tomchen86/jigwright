@@ -16,7 +16,7 @@ test('markdown parsing has neutral ownership and a fixture-adapter consumer', ()
     'packages/workflow-engine/src/runtime/managed-documents/contracts/markdown-sections.ts',
   );
   const projection = readSource(
-    'packages/workflow-engine/src/modules/projection/investigation-design-projection.ts',
+    'packages/workflow-engine/src/modules/investigation/domain/investigation-design-ledger.ts',
   );
   const fixtureConsumer = readSource(
     'packages/fixture-adapter/src/fixture-markdown-outline.ts',

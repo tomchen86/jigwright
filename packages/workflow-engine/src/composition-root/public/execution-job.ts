@@ -9,9 +9,10 @@
 import {
   inspectExecutionJob as inspectExecutionJobInternal,
   watchExecutionJob as watchExecutionJobInternal,
-  type ExecutionJobInspection,
   type ExecutionJobWatchOptions,
 } from '../../runtime/provider-execution/execution-runtime.ts';
+
+import type { ExecutionJobInspection } from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
 
 export type { ExecutionJobInspection, ExecutionJobWatchOptions };
 

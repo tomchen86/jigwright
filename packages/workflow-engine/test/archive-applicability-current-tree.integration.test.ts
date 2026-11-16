@@ -1,12 +1,28 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanAmendment = commitPlanAmendmentWithContractReader.bind(
+  undefined,
+  productionPlanningExecution,
+  managedDocuments,
+  productionChangeContractReader,
+);
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
 import {
-  commitPlanAmendment,
-  commitPlanningTransition,
-} from '../src/application/propose/planning-transition.ts';
+  commitPlanAmendment as commitPlanAmendmentWithContractReader,
+  commitPlanningTransition as commitPlanningTransitionWithContractReader,
+} from '../src/runtime/planning-transition/planning-transition.ts';
 import {
   createPlanningAmendmentDecision,
   replacePlanningAmendmentDecisionMarker,

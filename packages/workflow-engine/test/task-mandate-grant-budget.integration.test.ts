@@ -3,10 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import {
-  authorizeTaskMandateProviderReservation,
-  type TaskMandateProviderReservationOperation,
-} from '../src/modules/authority/task-mandate.ts';
+import { type TaskMandateProviderReservationOperation } from '../src/modules/authority/task-mandate-values.ts';
 import { createFixtureRepository, isWorkflowError } from './fixture.ts';
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
 
@@ -120,3 +117,6 @@ test('an exhausted provider budget yields to a signed execution grant and record
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const { authorizeTaskMandateProviderReservation } = taskMandateOperations;

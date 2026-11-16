@@ -1,3 +1,27 @@
+import type {
+  PlanReviewVerdict,
+  PlanReviewSeverity,
+  PlanReviewEvidence,
+  PlanReviewProposedTerm,
+  PlanReviewFinding,
+  PlanReviewScopeAssessment,
+  PlanReviewSubmission,
+  PlanReviewChallenge,
+  PlanReviewSuggestion,
+  PlanReviewReport,
+} from './plan-review-report.ts';
+export type {
+  PlanReviewVerdict,
+  PlanReviewSeverity,
+  PlanReviewEvidence,
+  PlanReviewProposedTerm,
+  PlanReviewFinding,
+  PlanReviewScopeAssessment,
+  PlanReviewSubmission,
+  PlanReviewChallenge,
+  PlanReviewSuggestion,
+  PlanReviewReport,
+} from './plan-review-report.ts';
 /**
  * Creates and authenticates PlanReview subjects, provider results, and
  * review nodes.
@@ -13,14 +37,11 @@ import {
   assertStoredEvidenceNode,
   createEvidenceNode,
   type EvidenceNode,
-} from '../../adapters/planning/investigation/evidence-node.ts';
+} from '../../foundation/evidence-node/evidence-node.ts';
 import { type InvestigationTermKind } from '../investigation/domain/investigation-terms.ts';
 
-import {
-  verifySshSignatureWithPublicKey,
-  type MaintainerSignerProvider,
-} from '../../adapters/signing/ssh/maintainer-signer.ts';
-import { normalizeExactRepositoryPath } from '../../runtime/session-workspace/paths.ts';
+import type { MaintainerSignerProvider } from '../authority/maintainer-signer-port.ts';
+import { normalizeExactRepositoryPath } from '../../foundation/repository-path/repository-path.ts';
 import { isProviderId } from '../provider-orchestration/provider-registry.ts';
 import {
   isProviderRoleAssignment,
@@ -28,23 +49,21 @@ import {
   type ProviderInvocationRequest,
   type ProviderProcessResult,
 } from '../provider-orchestration/provider-contracts.ts';
-import type {
-  IndependenceDimension,
-  ProviderRoleAssignment,
-} from '../provider-orchestration/role-scheduler.ts';
+import type { ProviderRoleAssignment } from '../provider-orchestration/role-assignment.ts';
+import type { IndependenceDimension } from '../provider-orchestration/role-independence.ts';
 import { assertProviderProcessResult } from '../provider-orchestration/provider-runtime-evidence.ts';
-import {
-  assertPlanningGeneration,
-  type PlanningGeneration,
-} from '../lifecycle/planning-generation.ts';
+import { assertPlanningGeneration } from './planning-generation.ts';
+import type { PlanningGeneration } from './planning-generation-record.ts';
 import { normalizeInvestigationRequirementsV3 } from '../investigation/manifest/investigation-manifest.ts';
 
 import {
   createPlanReviewTargetSnapshotForSubject,
   readPlanReviewTargetSnapshotNode,
-  type CreatePlanReviewTargetSnapshotInput,
-  type PlanReviewTargetSnapshot,
 } from './plan-review-target-snapshot.ts';
+import type {
+  CreatePlanReviewTargetSnapshotInput,
+  PlanReviewTargetSnapshot,
+} from './plan-review-target-snapshot-record.ts';
 import {
   deepFreeze,
   hasExactKeys,
@@ -57,141 +76,14 @@ export {
   assertPlanReviewTargetSnapshot,
   planReviewSnapshotLineCount,
   readPlanReviewTargetSnapshotNode,
-  type CreatePlanReviewTargetSnapshotInput,
-  type PlanningArtifactMutability,
-  type PlanReviewMigrationContract,
-  type PlanReviewTargetSnapshot,
-  type PlanReviewTargetSnapshotArtifact,
 } from './plan-review-target-snapshot.ts';
-
-export type PlanReviewVerdict = 'advisory-approve' | 'advisory-reject';
-export type PlanReviewSeverity =
-  'critical' | 'high' | 'medium' | 'low' | 'informational';
-
-export type PlanReviewEvidence =
-  | {
-      kind: 'planning-location';
-      path: string;
-      line: number;
-      observation: string;
-    }
-  | {
-      kind: 'repository-location';
-      path: string;
-      line: number;
-      observation: string;
-    }
-  | { kind: 'investigation-node'; nodeId: string; resultDigest: string }
-  | { kind: 'survey-record'; nodeId: string; resultDigest: string }
-  | {
-      kind: 'investigation-role-result';
-      role: 'reviewer-pre-anchor' | 'investigation-reviewer';
-      requestDigest: string;
-      resultDigest: string;
-    };
-
-export type PlanReviewProposedTerm = {
-  kind: InvestigationTermKind;
-  value: string;
-};
-
-/**
- * A submitted finding. Challenges are current-change required and demand
- * disposition; suggestions are independent follow-ups. The `kind` and
- * `currentChangeImpact` fields are deliberately wide so a malformed pairing is
- * rejected at validation rather than swallowed by the type.
- */
-export type PlanReviewFinding = {
-  kind: 'challenge' | 'suggestion';
-  severity: PlanReviewSeverity;
-  category: string;
-  currentChangeImpact: 'required' | 'independent-follow-up';
-  summary: string;
-  evidence: PlanReviewEvidence[];
-};
-
-export type PlanReviewScopeAssessment =
-  | { kind: 'challenges' }
-  | { kind: 'no-challenge'; evidence: PlanReviewEvidence[] };
-
-export type PlanReviewSubmission = {
-  schemaVersion: 2;
-  verdict: PlanReviewVerdict;
-  coverage: string[];
-  scopeAssessment: PlanReviewScopeAssessment;
-  findings: PlanReviewFinding[];
-  proposedTerms: PlanReviewProposedTerm[];
-  suggestions: PlanReviewFinding[];
-  residualRisk: string;
-  uncertainty: string;
-};
-
-export type PlanReviewChallenge = {
-  findingId: string;
-  kind: 'challenge';
-  severity: PlanReviewSeverity;
-  category: string;
-  currentChangeImpact: 'required';
-  summary: string;
-  evidence: PlanReviewEvidence[];
-};
-
-export type PlanReviewSuggestion = {
-  suggestionId: string;
-  kind: 'suggestion';
-  severity: PlanReviewSeverity;
-  category: string;
-  currentChangeImpact: 'independent-follow-up';
-  summary: string;
-  evidence: PlanReviewEvidence[];
-};
-
-export type PlanReviewReport = {
-  schemaVersion: 2;
-  nodeId: string;
-  resultDigest: string;
-  policyDigest: string;
-  subjectDigest: string;
-  planningGenerationId: string;
-  planTargetDigest: string;
-  assignment: ProviderRoleAssignment;
-  providerResultNodeId: string;
-  providerResultResultDigest: string;
-  verdict: PlanReviewVerdict;
-  coverage: readonly string[];
-  scopeAssessment: PlanReviewScopeAssessment;
-  findings: PlanReviewChallenge[];
-  suggestions: PlanReviewSuggestion[];
-  proposedTerms: PlanReviewProposedTerm[];
-  residualRisk: string;
-  uncertainty: string;
-  requiredIndependence: IndependenceDimension;
-  achievedIndependence: IndependenceDimension;
-};
-
-export type PlanReviewSubjectInput = {
-  generation: PlanningGeneration;
-  reviewPolicyDigest: string;
-  requiredIndependence: IndependenceDimension;
-};
-
-export type PlanReviewSubject = {
-  schemaVersion: 1;
-  subjectDigest: string;
-  planningGenerationId: string;
-  planTargetDigest: string;
-  manifestDigest: string;
-  investigationTargetDigest: string;
-  reviewPolicyDigest: string;
-  requiredIndependence: IndependenceDimension;
-  investigationBaseline: { head: string; tree: string };
-  investigationDependencies: Array<{
-    role: string;
-    nodeId: string;
-    resultDigest: string;
-  }>;
-  investigationRequirements: PlanningGeneration['investigationRequirements'];
-};
+export type {
+  CreatePlanReviewTargetSnapshotInput,
+  PlanningArtifactMutability,
+  PlanReviewMigrationContract,
+  PlanReviewTargetSnapshot,
+  PlanReviewTargetSnapshotArtifact,
+} from './plan-review-target-snapshot-record.ts';
 
 export type PlanReviewDispositionDecision =
   'mitigated' | 'rejected' | 'accepted';
@@ -1357,7 +1249,6 @@ export type PlanReviewDispositionProtocolBindings = Readonly<{
   assertStoredEvidenceNode: typeof assertStoredEvidenceNode;
   assertExactDigestRoles: typeof assertExactDigestRoles;
   assertExactKeys: typeof assertExactKeys;
-  verifySshSignatureWithPublicKey: typeof verifySshSignatureWithPublicKey;
   DISPOSITION_DECISIONS: typeof DISPOSITION_DECISIONS;
   AUTHORIZED_DISPOSITION_DECISIONS: typeof AUTHORIZED_DISPOSITION_DECISIONS;
 }>;
@@ -1381,7 +1272,6 @@ const planReviewDispositionProtocol = createPlanReviewDispositionProtocol({
   assertStoredEvidenceNode,
   assertExactDigestRoles,
   assertExactKeys,
-  verifySshSignatureWithPublicKey,
   DISPOSITION_DECISIONS,
   AUTHORIZED_DISPOSITION_DECISIONS,
 });
@@ -1393,3 +1283,12 @@ export const readPlanReviewDispositionNode =
   planReviewDispositionProtocol.readPlanReviewDispositionNode;
 export const assertAuthorizedPlanReviewChallengeClosure =
   planReviewDispositionProtocol.assertAuthorizedPlanReviewChallengeClosure;
+
+import type {
+  PlanReviewSubjectInput,
+  PlanReviewSubject,
+} from './plan-review-subject.ts';
+export type {
+  PlanReviewSubjectInput,
+  PlanReviewSubject,
+} from './plan-review-subject.ts';

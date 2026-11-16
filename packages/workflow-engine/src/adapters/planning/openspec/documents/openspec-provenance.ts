@@ -9,7 +9,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const OPENSPEC_PACKAGE_NAME = '@fission-ai/openspec';
+import { OPENSPEC_PACKAGE_NAME } from '../../../../modules/planning-provider/openspec-diagnostics.ts';
+export { OPENSPEC_PACKAGE_NAME } from '../../../../modules/planning-provider/openspec-diagnostics.ts';
 export const OPENSPEC_PACKAGE_VERSION = '1.6.0';
 export const OPENSPEC_PACKAGE_INTEGRITY =
   'sha512-7yFTQ3hrrk11mQ2ACClNv2gtAN0o116vCgwoiQKmreoB6ambSnrZh7wf2FNFoSDBXHBi9iiCQ7G16fG71ZNppA==';

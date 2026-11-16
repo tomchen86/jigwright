@@ -14,7 +14,7 @@ import {
   ExitCode,
   workflowError,
 } from '../../../../foundation/errors/errors.ts';
-import { repositoryPlanningConfiguration } from '../../../../modules/repository-consumer/repository-consumer-config.ts';
+import { loadRepositoryConsumerConfiguration } from '../../../../runtime/workflow-configuration/repository-consumer.ts';
 import {
   PINNED_OPENSPEC_VERSION,
   resolveOpenSpecInstallation,
@@ -215,7 +215,9 @@ export function inspectOpenSpecSchemaContract(
   repositoryRoot: string,
 ): OpenSpecSchemaContract {
   const installation = resolveOpenSpecInstallation(repositoryRoot);
-  const planning = repositoryPlanningConfiguration(installation.repositoryRoot);
+  const planning = loadRepositoryConsumerConfiguration(
+    installation.repositoryRoot,
+  ).configuration.planning;
   const currentSchemaName = planning.currentSchemaName;
   if (
     planning.managedSchemaNames.length !== 1 ||

@@ -9,6 +9,8 @@ import type {
   MaintainerApplyAuditBindings,
   MaintainerApplyAuditBindingsTypes,
 } from './maintainer-approve.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
 type CandidateProviderInvocation =
   MaintainerApplyAuditBindingsTypes['CandidateProviderInvocation'];
 type TaskMandateBinding =
@@ -97,10 +99,11 @@ export function createMaintainerApplyAudit(
     const repository = discoverRepository(cwd);
     const policy = parseMaintainerPolicy(
       JSON.parse(
-        runGit(repository.repositoryRoot, [
-          'show',
-          `${repository.head}:workflow/maintainer-policy.json`,
-        ]),
+        readFileAtRevision(
+          repository.repositoryRoot,
+          repository.head,
+          'workflow/maintainer-policy.json',
+        ),
       ),
     );
     const bindingDigest = authorityRefusalDigest(mandateBinding);

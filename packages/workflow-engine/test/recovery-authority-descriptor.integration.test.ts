@@ -10,9 +10,7 @@ import {
   MAX_RECOVERY_AUTHORITY_DESCRIPTOR_BYTES,
   RECOVERY_AUTHORITY_KNOWN_DOMAINS,
   assertRecoveryAuthorityDomain,
-  importRecoveryAuthorityDescriptor,
   parseRecoveryAuthorityDescriptor,
-  readRecoveryAuthorityDescriptor,
   recoveryAuthorityDescriptorDigest,
   recoveryAuthorityRepositoryIdentityDigest,
   verifyRecoveryAuthorityDescriptor,
@@ -20,7 +18,11 @@ import {
   type RecoveryAuthorityDescriptorV1,
   type RecoveryAuthorityExpectations,
   type RecoveryAuthorityImportBoundary,
-} from '../src/recovery-authority.ts';
+} from '../src/modules/authority/recovery-authority-contract.ts';
+import {
+  importRecoveryAuthorityDescriptor,
+  readRecoveryAuthorityDescriptor,
+} from '../src/runtime/recovery/recovery-authority-store.ts';
 
 const PUBLIC_KEY =
   'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJL6dVljsgm9EAbjCiOhA/tKsgApOhKmcB/NRewL1uns';

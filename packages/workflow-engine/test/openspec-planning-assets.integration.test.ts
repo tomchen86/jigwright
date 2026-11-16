@@ -13,9 +13,12 @@ import {
 } from '../src/adapters/planning/openspec/documents/openspec-planning-asset-contract.ts';
 import {
   checkOpenSpecPlanningAssets,
-  generateOpenSpecPlanningAssets,
+  generateOpenSpecPlanningAssets as generateOpenSpecPlanningAssetsWithRunner,
   installOpenSpecPlanningPrompts,
 } from '../src/adapters/planning/openspec/documents/openspec-planning-assets.ts';
+import { resolveCheckRunner } from '../src/adapters/consumer/repository/work-registry/runner-resolution.ts';
+const generateOpenSpecPlanningAssets =
+  generateOpenSpecPlanningAssetsWithRunner.bind(undefined, resolveCheckRunner);
 import { workflowCommandGuidance } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
 import {
   installFakeOpenSpec,

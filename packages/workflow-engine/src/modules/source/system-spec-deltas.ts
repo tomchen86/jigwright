@@ -5,34 +5,41 @@
  * - Each delta must resolve to a known capability and readable content
  *   before grouped projection.
  */
-import {
-  combineOpenSpecDeltas,
-  type OpenSpecDeltaInput,
-} from '@jigwright/openspec-adapter/archive-projection';
 import { systemSpecCatalog } from './system-spec-catalog.ts';
 import type { SystemDescriptionSnapshot } from './spec-ownership.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
-export function readSystemSpecDeltaInputs(
+export type SystemSpecDeltaGroup = {
+  capability: string;
+  baseSpecPath: string;
+  before: string;
+  deltas: string[];
+};
+
+/** Provider-combined text for each canonical colocated specification. */
+export type SystemSpecDeltaInput = Readonly<
+  Omit<SystemSpecDeltaGroup, 'deltas'> & { delta: string }
+>;
+export type ReadSystemSpecDeltaInputs = (
+  snapshot: SystemDescriptionSnapshot,
+  deltaPaths: readonly string[],
+  readDelta?: (path: string) => string | undefined,
+) => SystemSpecDeltaInput[] | null;
+
+/** The selected provider names the capability; colocated ownership remains an engine rule. */
+export type ReadDeltaCapability = (deltaPath: string) => string | undefined;
+
+export function readSystemSpecDeltaGroups(
+  readCapability: ReadDeltaCapability,
   snapshot: SystemDescriptionSnapshot,
   deltaPaths: readonly string[],
   readDelta: (path: string) => string | undefined = snapshot.readText,
-): OpenSpecDeltaInput[] | null {
+): SystemSpecDeltaGroup[] | null {
   const catalog = systemSpecCatalog(snapshot);
   if (!catalog.length) return null;
-  const grouped = new Map<
-    string,
-    {
-      capability: string;
-      baseSpecPath: string;
-      before: string;
-      deltas: string[];
-    }
-  >();
+  const grouped = new Map<string, SystemSpecDeltaGroup>();
   for (const deltaPath of [...deltaPaths].sort()) {
-    const capability = /\/specs\/([a-z0-9]+(?:-[a-z0-9]+)*)\/spec.md$/.exec(
-      deltaPath,
-    )?.[1];
+    const capability = readCapability(deltaPath);
     const spec = catalog.find(
       (entry) => capability && entry.aliases.includes(capability),
     );
@@ -52,8 +59,5 @@ export function readSystemSpecDeltaInputs(
     group.deltas.push(delta);
     grouped.set(spec.path, group);
   }
-  return [...grouped.values()].map(({ deltas, ...entry }) => ({
-    ...entry,
-    delta: combineOpenSpecDeltas(deltas),
-  }));
+  return [...grouped.values()];
 }

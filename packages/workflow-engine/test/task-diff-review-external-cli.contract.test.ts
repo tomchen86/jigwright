@@ -14,7 +14,7 @@ import { sourceRepositoryRoot } from './fixture.ts';
 
 const cli = path.join(
   sourceRepositoryRoot,
-  'packages/workflow-engine/src/cli.ts',
+  'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
 );
 const SUBJECT = 'a'.repeat(64);
 const REVIEW = 'b'.repeat(64);

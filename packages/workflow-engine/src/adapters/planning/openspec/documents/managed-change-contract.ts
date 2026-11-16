@@ -1,3 +1,5 @@
+import { openSpecPlanningPathAdmission } from './planning-path-policy.ts';
+import type { ChangeContractReader } from '../../../../modules/planning-provider/change-contract.ts';
 /**
  * Loads a managed change contract after planning-provider readiness and
  * investigation assurance validation.
@@ -6,20 +8,23 @@
  * - Managed inputs must retain the same snapshot digest throughout provider
  *   readiness evaluation.
  */
+import type { PlanningAssurancePort } from '../../../../modules/assurance/planning-assurance-port.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { digestArtifacts } from '../../../../runtime/repository-observation/contract-artifact-observation.ts';
+
 import {
-  digestArtifacts,
-  loadChangeContract,
   loadWorkflowConfig,
+  repositoryCurrentSchemaName,
+} from '../../../../runtime/workflow-configuration/workflow-configuration.ts';
+import { readManagedSchemaName } from '../../../../runtime/repository-observation/change-metadata.ts';
+import {
   type ChangeContract,
   type ManagedSchemaName,
-  readManagedSchemaName,
-  repositoryCurrentSchemaName,
-} from '../../../consumer/repository/work-registry/contracts.ts';
-import { workflowContractArtifactPaths } from '../../../consumer/repository/work-registry/contract-artifacts.ts';
+} from '../../../../modules/planning-provider/change-contract.ts';
+import { workflowContractArtifactPaths } from '../../../../runtime/repository-observation/workflow-contract-artifacts.ts';
 import {
   ExitCode,
   workflowError,
@@ -34,13 +39,9 @@ import { collectInstalledPackageClosure } from '../../../../runtime/repository-t
 import {
   assertChangeId,
   normalizeChangedPath,
-} from '../../../../runtime/session-workspace/paths.ts';
+} from '../../../../foundation/repository-path/repository-path.ts';
 import { assertPlanningPaths } from '../../../../modules/source/planning-paths.ts';
-import {
-  validateInvestigationFirstPlanningReadiness,
-  type ConsumedPlanReviewReplayPort,
-  type InvestigationFirstPlanningAssuranceSummary,
-} from '../../../../modules/assurance/planning-assurance-validator.ts';
+import { type InvestigationFirstPlanningAssuranceSummary } from '../../../../modules/assurance/planning-assurance-validator.ts';
 import { resolveCurrentOpenSpecProviderBinding } from './openspec-provider-binding.ts';
 import type {
   PlanningProviderBindingReaderPort,
@@ -51,23 +52,6 @@ import {
   type PlanningProviderDiagnostic,
   type PlanningProviderPort,
 } from '../../../../modules/planning-provider/planning-provider-port.ts';
-
-export type ManagedChangeDiagnostic = PlanningProviderDiagnostic;
-
-export type ValidatedChangeContract = ChangeContract & {
-  schemaName: ManagedSchemaName;
-  openspec: {
-    version: '1.6.0';
-    schemaName: ManagedSchemaName;
-    statusComplete: true;
-    validationValid: true;
-  };
-  diagnostics: ManagedChangeDiagnostic[];
-  artifactModes: Record<string, '100644' | '100755'>;
-  contractDigest: string;
-  planningAssurance: InvestigationFirstPlanningAssuranceSummary | null;
-  planningProvider: ResolvedPlanningProviderBinding;
-};
 
 type ContractSnapshot = {
   contract: ChangeContract;
@@ -82,14 +66,17 @@ type ContractSnapshot = {
 };
 
 export function loadValidatedChangeContract(
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   requestedChangeId: string,
   planningProviderReader: PlanningProviderBindingReaderPort,
-  consumedPlanReviewReplay: ConsumedPlanReviewReplayPort,
+  consumedPlanReviewReplay: ConsumedRoleReplayPort,
   planningProvider: PlanningProviderPort,
+  planningAssurance: Pick<PlanningAssurancePort, 'validateReadiness'>,
 ): ValidatedChangeContract {
   const root = canonicalRepositoryRoot(repositoryRoot);
   const before = inspectSnapshot(
+    loadChangeContract,
     root,
     requestedChangeId,
     planningProviderReader,
@@ -119,6 +106,7 @@ export function loadValidatedChangeContract(
     },
   );
   const after = inspectSnapshot(
+    loadChangeContract,
     root,
     requestedChangeId,
     planningProviderReader,
@@ -150,9 +138,9 @@ export function loadValidatedChangeContract(
     );
   }
 
-  const planningAssurance =
+  const assuranceSummary =
     after.schemaName === after.currentSchemaName
-      ? validateInvestigationFirstPlanningReadiness(
+      ? planningAssurance.validateReadiness(
           root,
           after.contract,
           consumedPlanReviewReplay,
@@ -179,7 +167,7 @@ export function loadValidatedChangeContract(
       .update('\0')
       .update(providerEvaluation.evaluationDigest)
       .digest('hex'),
-    planningAssurance,
+    planningAssurance: assuranceSummary,
     planningProvider: after.planningProvider,
   };
 }
@@ -203,6 +191,7 @@ function assertPlanningProviderMatchesBinding(
 }
 
 function inspectSnapshot(
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   requestedChangeId: string,
   planningProviderReader: PlanningProviderBindingReaderPort,
@@ -335,6 +324,7 @@ function inspectChangeTree(
     assertV2PlanningPaths(changeRoot, changeId, relativePaths);
   } else {
     assertPlanningPaths(
+      openSpecPlanningPathAdmission,
       changeRoot,
       changeId,
       relativePaths,
@@ -504,3 +494,13 @@ function relative(root: string, target: string): string {
 function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
+
+import type {
+  ManagedChangeDiagnostic,
+  ValidatedChangeContract,
+} from '../../../../modules/assurance/validated-change-contract.ts';
+import type { ConsumedRoleReplayPort } from '../../../../modules/provider-orchestration/role-admission-contracts.ts';
+export type {
+  ManagedChangeDiagnostic,
+  ValidatedChangeContract,
+} from '../../../../modules/assurance/validated-change-contract.ts';

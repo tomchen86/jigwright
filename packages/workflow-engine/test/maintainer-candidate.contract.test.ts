@@ -1,3 +1,4 @@
+import type { CandidateChecksAttestationV3 } from '../src/modules/authority/maintainer-candidate-contracts.ts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -9,27 +10,30 @@ import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   acceptApplyPrestate,
+  createRefGenerationLedger,
+  recordRefGenerationTransition,
+} from '../src/modules/authority/maintainer-candidate-ref-ledger.ts';
+import {
   assertCandidateV2ChecksFresh,
   buildImmutableCandidateBundleV2,
   canonicalImmutableCandidateBundle,
-  createRefGenerationLedger,
-  ensureDurableRefGenerationLedger,
   parseImmutableCandidateBundle,
-  readStoredImmutableCandidateBundle,
+} from '../src/modules/authority/maintainer-candidate-contracts.ts';
+import {
+  ensureDurableRefGenerationLedger,
   readDurableRefGenerationLedger,
   recordDurableRefGenerationTransitionUnderLifecycleLock,
-  recordRefGenerationTransition,
-  storeImmutableCandidateBundle,
-  type CandidateChecksAttestationV3,
-} from '../src/modules/authority/maintainer-candidate.ts';
+} from '../src/runtime/storage-journal/maintainer-candidate-ref-ledger.ts';
+import { readStoredImmutableCandidateBundle } from '../src/runtime/storage-journal/maintainer-candidate-reader.ts';
+import { storeImmutableCandidateBundle } from '../src/runtime/storage-journal/maintainer-candidate-writer.ts';
 import {
   buildImmutableGitCandidate,
   canonicalImmutableGitCandidate,
   parseImmutableGitCandidate,
   verifyImmutableGitCandidateAgainstRepository,
 } from '../src/composition-root/immutable-git-candidate-production.ts';
-import type { PatchManifest } from '../src/modules/authority/maintainer-manifest.ts';
-import { canonicalPatchManifest } from '../src/modules/authority/maintainer-manifest.ts';
+import type { PatchManifest } from '../src/modules/authority/maintainer-manifest-contracts.ts';
+import { canonicalPatchManifest } from '../src/modules/authority/maintainer-manifest-contracts.ts';
 import { isWorkflowError } from './fixture.ts';
 
 const OID_A = 'a'.repeat(40);
@@ -761,7 +765,7 @@ test('immutable candidate parser rejects retired V1 bundles', () => {
 
 test('candidate checks expose only current dependency-bound freshness verification', async () => {
   const candidateModule =
-    await import('../src/modules/authority/maintainer-candidate.ts');
+    await import('../src/modules/authority/maintainer-candidate-contracts.ts');
   assert.equal('assertCandidateChecksFresh' in candidateModule, false);
 });
 

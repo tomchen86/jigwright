@@ -9,7 +9,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
-
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { normalizeExactRepositoryPath } from '../../foundation/repository-path/repository-path.ts';
 import {
@@ -19,6 +18,7 @@ import {
 } from '../../modules/planning-provider/planning-provider-binding.ts';
 import { planningProviderBindingPath } from '../../modules/source/planning-paths.ts';
 import { runGitBuffer } from './git.ts';
+import { readBlobBytes } from './git-command.ts';
 
 const FULL_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
 const TREE_ENTRY = /^(100644) blob ([0-9a-f]{40}|[0-9a-f]{64})\t([^\0]+)\0$/u;
@@ -144,7 +144,7 @@ export function readPinnedPlanningProviderEvidenceFile(
       'Pinned planning-provider evidence must be one exact non-executable regular blob.',
     );
   }
-  const bytes = runGitBuffer(repositoryRoot, ['cat-file', 'blob', entry[2]!]);
+  const bytes = readBlobBytes(repositoryRoot, entry[2]!);
   if (bytes.length > MAX_BINDING_BYTES) {
     throw bindingStoreInvalid(
       'Pinned planning-provider evidence exceeds the bounded file size.',

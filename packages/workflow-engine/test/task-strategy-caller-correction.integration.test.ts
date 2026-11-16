@@ -1,3 +1,16 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -5,30 +18,28 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import type { CollaborationGrantRequest } from '../src/modules/authority/collaboration-grant.ts';
-import { issueCollaborationGrant } from '../src/modules/authority/collaboration-grant.ts';
+import type { CollaborationGrantRequest } from '../src/modules/authority/collaboration-grant-codec.ts';
+import { issueCollaborationGrant } from '../src/composition-root/collaboration-grant-issuance-production.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { runGitWithEnvironment } from '../src/runtime/repository-transaction/git.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { investigationRuntimePaths } from '../src/runtime/paths/runtime-paths.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
   readCurrentTaskStrategyGreenFailure,
   resolveCurrentTaskStrategyCorrection,
-} from '../src/application/execute-task/task-strategy-correction.ts';
+} from '../src/composition-root/task-strategy-correction-production.ts';
 import { readTaskStrategyCorrectionRound } from '../src/runtime/storage-journal/task-strategy-correction-round-store.ts';
-import { beginTaskStrategyImplementation } from '../src/application/execute-task/task-strategy-implementation-lifecycle.ts';
-import { resumeTaskStrategy } from '../src/application/execute-task/task-strategy-lifecycle.ts';
+import { beginTaskStrategyImplementation } from '../src/composition-root/task-strategy-production.ts';
+import { resumeTaskStrategy } from '../src/composition-root/task-strategy-production.ts';
 import {
   readTaskStrategyCallerImplementationBinding,
   readTaskStrategyCallerImplementationReservation,
 } from '../src/runtime/storage-journal/task-strategy-provider-store.ts';
-import { sealTaskStrategyRed } from '../src/application/execute-task/task-strategy-execution.ts';
-import {
-  checkSession,
-  inspectSession,
-} from '../src/application/finalize/verification.ts';
+import { sealTaskStrategyRed } from '../src/composition-root/task-strategy-execution-production.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
+import { inspectSession } from '../src/runtime/repository-validation/session-inspection.ts';
 import {
   authoritativeCollaborationGrantVerifierForTest,
   configureChecks,
@@ -49,7 +60,12 @@ for (const crashCut of [
     const repository = createCallerCorrectionFixture();
     const signer = fixtureSigner(repository);
     try {
-      const session = startSession(repository, 'demo-change', '1.1');
+      const session = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
       const testPath = path.join(repository, 'test/feature.test.mjs');
       fs.mkdirSync(path.dirname(testPath), { recursive: true });
       fs.writeFileSync(testPath, "throw new Error('sealed expectation');\n");
@@ -57,7 +73,11 @@ for (const crashCut of [
         explicitActor: 'codex',
         environment: {},
       });
-      const initialInspection = inspectSession(repository, session.sessionId);
+      const initialInspection = inspectSession(
+        productionChangeContract,
+        repository,
+        session.sessionId,
+      );
       const runtime = investigationRuntimePaths(
         initialInspection.git.gitCommonDirectory,
         initialInspection.contract.config.runtimeDirectory,
@@ -122,11 +142,19 @@ for (const crashCut of [
       }
 
       assert.throws(
-        () => checkSession(repository, session.sessionId, { environment: {} }),
+        () =>
+          checkSession(
+            maintainerManifestOperations,
+            productionTaskStrategyExecutionGate,
+            productionChangeContract,
+            repository,
+            session.sessionId,
+            { environment: {} },
+          ),
         hasCode('CHECK_FAILED'),
       );
       const failure = readCurrentTaskStrategyGreenFailure(
-        inspectSession(repository, session.sessionId),
+        inspectSession(productionChangeContract, repository, session.sessionId),
       );
       assert.notEqual(failure, null);
       if (failure === null) return;
@@ -250,7 +278,7 @@ for (const crashCut of [
       assert.equal(round.result.patchResult.sourceTree, failure.candidateTree);
 
       const projection = resolveCurrentTaskStrategyCorrection(
-        inspectSession(repository, session.sessionId),
+        inspectSession(productionChangeContract, repository, session.sessionId),
       );
       assert.equal(projection.failure, null);
       assert.equal(projection.completedCorrectionRounds, 1);
@@ -259,7 +287,14 @@ for (const crashCut of [
         round.result.patchResult.patchRecordDigest,
       );
       assert.equal(
-        checkSession(repository, session.sessionId, { environment: {} }).passed,
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeContract,
+          repository,
+          session.sessionId,
+          { environment: {} },
+        ).passed,
         true,
       );
       assert.equal(
@@ -280,7 +315,11 @@ for (const crashCut of [
         assert.throws(
           () =>
             resolveCurrentTaskStrategyCorrection(
-              inspectSession(repository, session.sessionId),
+              inspectSession(
+                productionChangeContract,
+                repository,
+                session.sessionId,
+              ),
             ),
           hasCode('TASK_STRATEGY_CORRECTION_STATE_STALE'),
         );
@@ -305,7 +344,11 @@ for (const crashCut of [
           assert.throws(
             () =>
               resolveCurrentTaskStrategyCorrection(
-                inspectSession(repository, session.sessionId),
+                inspectSession(
+                  productionChangeContract,
+                  repository,
+                  session.sessionId,
+                ),
               ),
             hasCode('TASK_STRATEGY_CORRECTION_STATE_STALE'),
           );
@@ -568,7 +611,7 @@ function assertProjectionRejectsMissingAuthorityArtifact(
     assert.throws(
       () =>
         resolveCurrentTaskStrategyCorrection(
-          inspectSession(repository, sessionId),
+          inspectSession(productionChangeContract, repository, sessionId),
         ),
       hasCode('TASK_STRATEGY_CORRECTION_STATE_STALE'),
     );
@@ -600,7 +643,7 @@ function assertProjectionRejectsTamperedAuthorityBinding(
     assert.throws(
       () =>
         resolveCurrentTaskStrategyCorrection(
-          inspectSession(repository, sessionId),
+          inspectSession(productionChangeContract, repository, sessionId),
         ),
       hasCode('TASK_STRATEGY_CORRECTION_STATE_STALE'),
     );

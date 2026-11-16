@@ -1,3 +1,17 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { reviewedGeneratedAssets } from '../src/composition-root/planning-provider-authoring-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -7,15 +21,13 @@ import test from 'node:test';
 import {
   completeTask,
   finishSession,
-} from '../src/application/finalize/lifecycle.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
-import {
-  abortSession,
-  checkSession,
-  getSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+} from './support/session-lifecycle-host.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
+import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
+import { getSession } from '../src/runtime/repository-observation/workflow-session-context.ts';
+import { abortSession } from '../src/composition-root/task-session-production.ts';
 import {
   configureChecks,
   createFixtureRepository,
@@ -64,7 +76,13 @@ test('start requires combined OpenSpec readiness before creating runtime state',
     git(repository, ['commit', '-m', 'Forge invalid planning state']);
 
     assert.throws(
-      () => startSession(repository, 'demo-change', '1.1'),
+      () =>
+        startSession(
+          productionChangeContract,
+          repository,
+          'demo-change',
+          '1.1',
+        ),
       (error) => isWorkflowError(error, 'OPENSPEC_CHANGE_INVALID'),
     );
     assert.equal(
@@ -87,7 +105,13 @@ test('start rejects repository mutation during its in-lock OpenSpec validation',
     );
 
     assert.throws(
-      () => startSession(repository, 'demo-change', '1.1'),
+      () =>
+        startSession(
+          productionChangeContract,
+          repository,
+          'demo-change',
+          '1.1',
+        ),
       (error) => isWorkflowError(error, 'OPENSPEC_MUTATED_REPOSITORY'),
     );
     assert.equal(
@@ -110,7 +134,12 @@ test('check rejects OpenSpec mutation of an already-dirty allowed path', () => {
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(
       path.join(repository, 'src/feature.ts'),
       'export const intended = true;\n',
@@ -118,7 +147,14 @@ test('check rejects OpenSpec mutation of an already-dirty allowed path', () => {
     fs.writeFileSync(path.join(repository, '.git/mutate-on-next-status'), '1');
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeContract,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'OPENSPEC_MUTATED_REPOSITORY'),
     );
     assert.equal(
@@ -220,11 +256,23 @@ test('check rejects every combined-contract drift class before executing checks'
       );
       git(repository, ['checkout', '-b', 'work/demo-change']);
       prepareCurrentChange(repository);
-      const session = startSession(repository, 'demo-change', '1.1');
+      const session = startSession(
+        productionChangeContract,
+        repository,
+        'demo-change',
+        '1.1',
+      );
       fixture.mutate(repository);
 
       assert.throws(
-        () => checkSession(repository, session.sessionId),
+        () =>
+          checkSession(
+            maintainerManifestOperations,
+            productionTaskStrategyExecutionGate,
+            productionChangeContract,
+            repository,
+            session.sessionId,
+          ),
         (error) => isWorkflowError(error, fixture.code),
         fixture.name,
       );
@@ -246,7 +294,12 @@ test('check rejects a forged legacy artifact map with imported runtime drift', (
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     const sessionPath = path.join(
       runtimeRoot(repository),
       'sessions',
@@ -267,7 +320,14 @@ test('check rejects a forged legacy artifact map with imported runtime drift', (
     );
 
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeContract,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'ARTIFACTS_CHANGED'),
     );
   } finally {
@@ -296,7 +356,12 @@ test('check rejects the exact historical task 3.2 artifact map without upgrading
     renameFixtureChange(repository, changeId, '3.2');
     git(repository, ['checkout', '-b', `work/${changeId}`]);
     prepareCurrentChange(repository, changeId);
-    const session = startSession(repository, changeId, '3.2');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      changeId,
+      '3.2',
+    );
     const privateRuntimeRoot = runtimeRoot(repository);
     const sessionPath = path.join(
       privateRuntimeRoot,
@@ -329,7 +394,14 @@ test('check rejects the exact historical task 3.2 artifact map without upgrading
     ]);
     const worktreeBefore = git(repository, ['status', '--porcelain=v2', '-z']);
     assert.throws(
-      () => checkSession(repository, session.sessionId),
+      () =>
+        checkSession(
+          maintainerManifestOperations,
+          productionTaskStrategyExecutionGate,
+          productionChangeContract,
+          repository,
+          session.sessionId,
+        ),
       (error) => isWorkflowError(error, 'ARTIFACTS_CHANGED'),
     );
 
@@ -369,7 +441,13 @@ test('an unmanaged schema cannot enter current lifecycle state', () => {
     git(repository, ['checkout', '-b', 'work/demo-change']);
 
     assert.throws(
-      () => startSession(repository, 'demo-change', '1.1'),
+      () =>
+        startSession(
+          productionChangeContract,
+          repository,
+          'demo-change',
+          '1.1',
+        ),
       (error) => isWorkflowError(error, 'OPENSPEC_MANAGED_SCHEMA_REQUIRED'),
     );
     assert.equal(
@@ -423,9 +501,20 @@ test('finish revalidates combined readiness before rerunning checks or staging',
     prepareCurrentChange(repository, 'demo-change', {
       additionalPendingTask: true,
     });
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
     completeTask(repository, session.sessionId);
 
@@ -457,9 +546,20 @@ test('finish rolls back exact staging when readiness changes after staging', () 
     prepareCurrentChange(repository, 'demo-change', {
       additionalPendingTask: true,
     });
-    const session = startSession(repository, 'demo-change', '1.1');
+    const session = startSession(
+      productionChangeContract,
+      repository,
+      'demo-change',
+      '1.1',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-    checkSession(repository, session.sessionId);
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      repository,
+      session.sessionId,
+    );
     completeTask(repository, session.sessionId);
     fs.writeFileSync(
       path.join(repository, '.git/mutate-status-countdown'),

@@ -39,7 +39,19 @@
     "./runtime-path-kernel": "./src/runtime-path-kernel.ts",
     "./session-runtime-layout-port": "./src/session-runtime-layout-port.ts",
     "./tracked-object-reader-port": "./src/tracked-object-reader-port.ts",
-    "./workflow-namespace": "./src/workflow-namespace.ts"
+    "./workflow-namespace": "./src/workflow-namespace.ts",
+    "./workflow-identifiers": "./src/workflow-identifiers.ts",
+    "./built-in-provider-catalog": "./src/built-in-provider-catalog.ts",
+    "./provider-definition-snapshot": "./src/provider-definition-snapshot.ts",
+    "./agent-provider-config": "./src/agent-provider-config.ts",
+    "./harness-jsonl-v1-contracts": "./src/harness-jsonl-v1-contracts.ts",
+    "./harness-jsonl-v2-contracts": "./src/harness-jsonl-v2-contracts.ts",
+    "./grant-envelope-contracts": "./src/grant-envelope-contracts.ts",
+    "./grant-lifecycle-contracts": "./src/grant-lifecycle-contracts.ts",
+    "./collaboration-grant-envelope-codec": "./src/collaboration-grant-envelope-codec.ts",
+    "./signed-attestation-envelope-codec": "./src/signed-attestation-envelope-codec.ts",
+    "./role-context-sharing-grant-codec": "./src/role-context-sharing-grant-codec.ts",
+    "./built-in-provider-definition": "./src/built-in-provider-definition.ts"
   },
   "scripts": {
     "test": "node --experimental-strip-types --test test/*.test.ts",
@@ -47,5 +59,8 @@
   },
   "devDependencies": {
     "@types/node": "^24.13.3"
+  },
+  "architecture": {
+    "role": "domain-library"
   }
 }

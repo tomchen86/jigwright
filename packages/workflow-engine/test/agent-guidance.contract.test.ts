@@ -12,9 +12,9 @@ import {
   refreshAgentGuidance,
   removeAgentGuidance,
   statusAgentGuidance,
-} from '../src/modules/adoption/agent-guidance.ts';
+} from '../src/composition-root/agent-guidance-production.ts';
 import { dispatchAgentGuidanceCommand } from '../src/entrypoints/cli/agent-guidance-cli.ts';
-import { captureGovernanceSource } from '../src/modules/governance-intake/governance-intake.ts';
+import { captureGovernanceSource } from '../src/composition-root/governance-sources-production.ts';
 
 function fixture(t: test.TestContext): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jigwright-guidance-'));

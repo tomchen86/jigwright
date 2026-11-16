@@ -149,3 +149,72 @@ export function fsyncDirectory(directory) {
         fs.closeSync(descriptor);
     }
 }
+export function createPrivateMetadataFileExclusive(filePath, content) {
+    ensurePrivateDirectory(path.dirname(filePath));
+    const descriptor = fs.openSync(filePath, fs.constants.O_WRONLY |
+        fs.constants.O_CREAT |
+        fs.constants.O_EXCL |
+        fs.constants.O_NOFOLLOW, 0o600);
+    try {
+        fs.fchmodSync(descriptor, 0o600);
+        fs.writeFileSync(descriptor, content);
+        fs.fsyncSync(descriptor);
+    }
+    finally {
+        fs.closeSync(descriptor);
+    }
+    fsyncDirectory(path.dirname(filePath));
+}
+function ensurePrivateDirectory(directory) {
+    ensurePlainDirectory(directory);
+    const stats = fs.statSync(directory);
+    if ((stats.mode & 0o077) !== 0) {
+        fs.chmodSync(directory, 0o700);
+    }
+}
+export function readCanonicalPrivateJson(filePath, notFoundCode, maxBytes) {
+    const bytes = readPrivateBytes(filePath, notFoundCode, maxBytes);
+    const raw = bytes.toString('utf8');
+    if (!Buffer.from(raw, 'utf8').equals(bytes)) {
+        throw workflowError('BOOTSTRAP_PERSISTENCE_OBJECT_CORRUPT', 'Bootstrap persistence object is not valid UTF-8.', ExitCode.verification);
+    }
+    let value;
+    try {
+        value = JSON.parse(raw);
+    }
+    catch {
+        throw workflowError('BOOTSTRAP_PERSISTENCE_OBJECT_CORRUPT', 'Bootstrap persistence object is not JSON.', ExitCode.verification);
+    }
+    if (`${canonicalJson(value)}\n` !== raw) {
+        throw workflowError('BOOTSTRAP_PERSISTENCE_OBJECT_CORRUPT', 'Bootstrap persistence object is not canonical.', ExitCode.verification);
+    }
+    return value;
+}
+function readPrivateBytes(filePath, notFoundCode, maxBytes) {
+    const stats = fs.lstatSync(filePath, { throwIfNoEntry: false });
+    if (!stats) {
+        throw workflowError(notFoundCode, 'Bootstrap persistence object was not found.', ExitCode.conflict);
+    }
+    if (!stats.isFile() ||
+        stats.isSymbolicLink() ||
+        stats.nlink !== 1 ||
+        (stats.mode & 0o777) !== 0o600 ||
+        stats.size > maxBytes) {
+        throw workflowError('BOOTSTRAP_PERSISTENCE_OBJECT_UNSAFE', 'Bootstrap persistence object is not a bounded private file.', ExitCode.unsafeEnvironment);
+    }
+    const descriptor = fs.openSync(filePath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    try {
+        const opened = fs.fstatSync(descriptor);
+        if (opened.dev !== stats.dev ||
+            opened.ino !== stats.ino ||
+            opened.nlink !== 1 ||
+            (opened.mode & 0o777) !== 0o600 ||
+            opened.size > maxBytes) {
+            throw workflowError('BOOTSTRAP_PERSISTENCE_OBJECT_UNSAFE', 'Bootstrap persistence object changed while being opened.', ExitCode.unsafeEnvironment);
+        }
+        return fs.readFileSync(descriptor);
+    }
+    finally {
+        fs.closeSync(descriptor);
+    }
+}

@@ -3,7 +3,7 @@
  *
  * Invariants:
  * - Current record schemas, failure shapes, request bindings, and lease checks stay exact.
- * - Manifest and output validation remain available through this existing entrypoint.
+ * - Manifest and output rules are consumed from their canonical owners.
  */
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
@@ -22,23 +22,20 @@ import {
   assertInvocationId,
   assertInvestigationId,
   assertChangeId,
-} from '../session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import type {
   CapabilityPurpose,
   ProviderId,
 } from '../../modules/provider-orchestration/provider-registry.ts';
-import {
-  TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA,
-  type TaskDiffReviewRecord,
-} from '../../modules/assurance/task-diff-review-artifact.ts';
+import { TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA } from '../../modules/assurance/task-diff-review-artifact.ts';
+import type { TaskDiffReviewRecord } from '../../modules/assurance/task-diff-review-artifact-record.ts';
 import { TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
-import {
-  type BlindSurveyManifest,
-  type ProviderInvocationManifest,
-  type ProviderInvocationRecord,
-  type ProviderInvocationFailure,
-  type ProviderInvocationLease,
-} from './provider-invocation-types.ts';
+import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
+import type {
+  ProviderInvocationRecord,
+  ProviderInvocationFailure,
+  ProviderInvocationLease,
+} from '../../modules/provider-orchestration/provider-invocation-record.ts';
 import {
   isRecord,
   invocationInvalid,
@@ -51,25 +48,11 @@ import {
   sha256,
   deepFreeze,
 } from './provider-invocation-common.ts';
-import { blindSurveyIntentDigest } from './provider-invocation-manifest-validation.ts';
-import { matchesPersistedProviderOutputSchema } from './provider-invocation-output-validation.ts';
-
-export {
-  blindSurveyManifestDigest,
-  providerInvocationManifestDigest,
+import {
   blindSurveyIntentDigest,
-  assertBlindSurveyManifest,
-  assertProviderInvocationManifest,
+  type ProviderInvocationManifest,
 } from './provider-invocation-manifest-validation.ts';
-export {
-  providerOutputSchemaGeneration,
-  blindSurveyOutputValidator,
-  providerResidualsGeneration,
-  assertProviderResult,
-  providerResultFromRunnerReport,
-  providerOutputValidator,
-  assertProviderResultManifestBinding,
-} from './provider-invocation-output-validation.ts';
+import { matchesPersistedProviderOutputSchema } from '../../modules/assurance/provider-output-contract.ts';
 
 export function assertProviderRequest(
   value: unknown,

@@ -1,30 +1,33 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import test from 'node:test';
 
 import {
   WORKFLOW_CONFORMANCE_DOMAIN_IDS_V2,
-  loadWorkflowConformanceVectorsV2,
+  parseWorkflowConformanceVectorsV2,
+  workflowConformanceVectorsUrl,
 } from '../src/conformance-vectors.ts';
 
+const source = fs.readFileSync(workflowConformanceVectorsUrl(), 'utf8');
+
 test('the public core package ships every T3 3.0 conformance domain', () => {
-  const vectors = loadWorkflowConformanceVectorsV2();
+  const vectors = parseWorkflowConformanceVectorsV2(source);
   assert.equal(vectors.kind, 'jigwright.workflow-conformance-vectors.v2');
   assert.equal(vectors.schemaVersion, 2);
   assert.deepEqual(
     Object.keys(vectors.domains).sort(),
     [...WORKFLOW_CONFORMANCE_DOMAIN_IDS_V2].sort(),
   );
-  for (const domain of WORKFLOW_CONFORMANCE_DOMAIN_IDS_V2) {
+  for (const domain of WORKFLOW_CONFORMANCE_DOMAIN_IDS_V2)
     assert.ok(vectors.domains[domain].length > 0, domain);
-  }
-  assert.match(vectors.vectorSetDigest, /^sha256:[0-9a-f]{64}$/u);
+  assert.equal(
+    vectors.vectorSetDigest,
+    'sha256:b2113b55d86f6fd83cac7a1f3c62cea5df3b27a9feb0e5df5be011de694b089a',
+  );
 });
 
 test('the public corpus exposes only the current Collaboration Grant envelope domain', () => {
-  const vectors = loadWorkflowConformanceVectorsV2();
+  const vectors = parseWorkflowConformanceVectorsV2(source);
   const domains = vectors.domains as Readonly<
     Record<string, readonly Readonly<{ id: string }>[]>
   >;
@@ -35,34 +38,31 @@ test('the public corpus exposes only the current Collaboration Grant envelope do
   assert.equal(domains['legacy-ssh-envelope'], undefined);
 });
 
-test('the vector loader fails closed on same-shape byte drift', () => {
-  const source = loadWorkflowConformanceVectorsV2();
-  const directory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'jigwright-conformance-vectors-'),
+test('the vector parser rejects same-shape byte drift without filesystem access', () => {
+  const vectors = parseWorkflowConformanceVectorsV2(source);
+  const changed = JSON.stringify({
+    ...vectors,
+    domains: {
+      ...vectors.domains,
+      'canonical-json': [
+        { ...vectors.domains['canonical-json'][0], canonical: 'tampered' },
+      ],
+    },
+  });
+  assert.throws(
+    () => parseWorkflowConformanceVectorsV2(changed),
+    /digest does not match/u,
   );
-  try {
-    const file = path.join(directory, 'vectors.json');
-    fs.writeFileSync(
-      file,
-      `${JSON.stringify({
-        ...source,
-        domains: {
-          ...source.domains,
-          'canonical-json': [
-            {
-              ...source.domains['canonical-json'][0],
-              canonical: 'tampered',
-            },
-          ],
-        },
-      })}\n`,
-      { mode: 0o600 },
-    );
-    assert.throws(
-      () => loadWorkflowConformanceVectorsV2({ vectorPath: file }),
-      /digest does not match/u,
-    );
-  } finally {
-    fs.rmSync(directory, { recursive: true });
-  }
+  assert.throws(
+    () => parseWorkflowConformanceVectorsV2('{'),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.equal(
+        error.message,
+        'Workflow conformance vectors are malformed JSON.',
+      );
+      assert.ok(error.cause instanceof SyntaxError);
+      return true;
+    },
+  );
 });

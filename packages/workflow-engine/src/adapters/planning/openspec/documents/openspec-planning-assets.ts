@@ -33,10 +33,11 @@ import {
   assertExactOpenSpecAssetFiles,
   type OpenSpecFormatterMetadata,
 } from './openspec-planning-asset-contract.ts';
-import { createTrustedExecutionEnvironment } from '../../../../runtime/provider-execution/execution-environment.ts';
+import { createTrustedExecutionEnvironment } from '../../../../runtime/process-environment/execution-environment.ts';
 import { ensurePlainDirectory } from '../../../../runtime/repository-transaction/filesystem-safety.ts';
 import { resolveOpenSpecInstallation } from './openspec-executor.ts';
-import { resolveCheckRunner } from '../../../consumer/repository/work-registry/runner-resolution.ts';
+import { inspectOpenSpecSchemaContract } from './openspec-schema-contract.ts';
+import type { CheckRunnerResolver } from '../../../../modules/source/check-command.ts';
 
 const EXPECTED_GENERATOR_STDERR =
   '- Setting up Codex...\n' +
@@ -77,13 +78,32 @@ export type OpenSpecPlanningAssetOptions = {
   maxOutputBytes?: number;
 };
 
+export function validateWorkflowIntegrationAssets(
+  repositoryRoot: string,
+  options: { regeneratePlanningAssets?: boolean } = {},
+): void {
+  const installationPresent = fs.existsSync(
+    path.join(repositoryRoot, 'node_modules/@fission-ai/openspec/package.json'),
+  );
+  if (installationPresent || options.regeneratePlanningAssets) {
+    inspectOpenSpecSchemaContract(repositoryRoot);
+  }
+  const manifest = readOpenSpecAssetManifest(repositoryRoot);
+  verifyOpenSpecRepositoryAssets(repositoryRoot, manifest);
+  verifyOpenSpecRepositoryClosure(repositoryRoot);
+  if (options.regeneratePlanningAssets)
+    checkOpenSpecPlanningAssets(repositoryRoot);
+}
+
 export function generateOpenSpecPlanningAssets(
+  resolveCheckRunner: CheckRunnerResolver,
   repositoryRoot: string,
   options: OpenSpecPlanningAssetOptions = {},
 ): { assetPaths: string[]; manifestPath: string } {
   const root = canonicalOpenSpecAssetDirectory(repositoryRoot);
   verifyOpenSpecRepositoryWritePlan(root);
   const formatter = createAssetFormatter(
+    resolveCheckRunner,
     options.formatterRepositoryRoot ?? root,
   );
   const generated = generateUpstreamAssets(root, options);
@@ -323,7 +343,10 @@ function generateUpstreamAssets(
   }
 }
 
-function createAssetFormatter(repositoryRoot: string): {
+function createAssetFormatter(
+  resolveCheckRunner: CheckRunnerResolver,
+  repositoryRoot: string,
+): {
   metadata: OpenSpecFormatterMetadata;
   formatMarkdown: (content: string) => string;
   formatJson: (content: string) => string;

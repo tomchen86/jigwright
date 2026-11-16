@@ -14,8 +14,8 @@ import {
   assertProviderNativeSessionCompletionV1,
   assertProviderNativeSessionHandleV1,
 } from '../../modules/provider-orchestration/provider-native-session.ts';
-import { assertPrivateInvestigationDirectory } from './investigation-private-files.ts';
-import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import { assertPrivateInvestigationDirectory } from '../journal-primitives/investigation-private-files.ts';
+import type { InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import { providerNativeSessionStorePathsV1 as storePaths } from '../session-workspace/provider-runtime-authority-paths.ts';
 import {
   assertDigest,

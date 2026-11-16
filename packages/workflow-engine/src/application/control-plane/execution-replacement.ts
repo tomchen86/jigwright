@@ -6,29 +6,53 @@
  * - This replacement path excludes task implementation and task diff review
  *   invocations.
  */
+import type { TaskMandateActiveBinding } from '../../modules/authority/task-mandate-access-contract.ts';
+
 import { executionReplacementBudgetChanges } from './execution-replacement-budget.ts';
 import {
   parseProviderRetryExplanation,
   type ProviderRetryExplanation,
 } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
-import { createExecutionReplacementRecords } from './execution-replacement-records.ts';
 import { createExecutionReplacementPublication } from './execution-replacement-publication.ts';
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
+import {
+  createRequestBinding,
+  createTransaction,
+  assertTransactionIdentity,
+  grantMismatch,
+  replacementUnsafe,
+  isProviderDigest,
+  type ExecutionReplacementTransaction,
+} from '../../modules/provider-orchestration/execution-replacement-records.ts';
+import {
+  digestCanonical,
+  digestText,
+} from '../../modules/provider-orchestration/execution-values.ts';
+import {
+  readPersistedRequest,
+  readRequestBinding,
+  replacementRequestPath,
+  replacementRequestBindingPath,
+  replacementTransactionPath,
+  readTransactionIfPresent,
+  writeTransaction,
+  advanceTransaction,
+  writeRequestAndBinding,
+} from '../../runtime/storage-journal/execution-replacement-records.ts';
 
-import { loadAiAdapterPolicy } from '../../runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../../runtime/provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { requireExecutionJobMandateBinding } from '../../modules/provider-orchestration/execution-core.ts';
 import {
   canonicalExecutionBudgetGrantRequest,
-  consumeExecutionBudgetGrant,
   createExecutionBudgetGrantRequest,
-  inspectExecutionBudgetGrantAuthorization,
   parseExecutionBudgetGrantRequest,
-  type ExecutionBudgetConsumeReceipt,
   type ExecutionBudgetGrantRequest,
-} from '../../modules/authority/execution-governance.ts';
+} from '../../modules/authority/execution-governance-grant-contracts.ts';
+import {
+  consumeExecutionBudgetGrant,
+  inspectExecutionBudgetGrantAuthorization,
+} from '../../runtime/storage-journal/execution-budget-grants.ts';
 import {
   inspectExecutionJob,
   inspectProviderExecutionJobSource,
@@ -36,36 +60,33 @@ import {
 } from '../../runtime/provider-execution/execution-runtime.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { runGit } from '../../runtime/repository-transaction/git.ts';
-import {
-  assertPrivateInvestigationDirectory,
-  createPrivateCanonicalJson,
-  privatePathExists,
-  readPrivateCanonicalJson,
-  writePrivateCanonicalJsonAtomic,
-} from '../../runtime/storage-journal/investigation-session-store.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import type { InvestigationRuntimePaths } from '../../runtime/session-workspace/paths.ts';
-import {
-  completeInterruptedPlanReviewReplacement,
-  createPlanReviewRetryEnvelope,
-  createProviderRetryEnvelope,
-  getProposeStatus,
-  resumePropose,
-} from '../propose/propose-orchestrator.ts';
+import type { ProposeOperations } from '../../runtime/proposal/propose-operations.ts';
+export type ExecutionReplacementProposePort = Pick<
+  ProposeOperations,
+  | 'completeInterruptedPlanReviewReplacement'
+  | 'createPlanReviewRetryEnvelope'
+  | 'createProviderRetryEnvelope'
+  | 'getProposeStatus'
+  | 'resumePropose'
+> & {
+  taskMandate: Pick<
+    TaskMandateActiveBinding,
+    'assertActiveTaskMandateBindingUnderLifecycleLock'
+  >;
+};
 import {
   MAX_PROVIDER_LIMITS,
   createProviderInvocationRequest,
-  recreateProviderInvocationRequest,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {
   providerInvocationExists,
-  readProviderInvocation,
   readProviderInvocationRequest,
-} from '../../runtime/storage-journal/provider-invocation-store.ts';
+} from '../../runtime/storage-journal/provider-invocation-artifacts.ts';
+import { readProviderInvocation } from '../../runtime/storage-journal/provider-invocation-state.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
-import { assertActiveTaskMandateBindingUnderLifecycleLock } from '../../modules/authority/task-mandate.ts';
-import type { ConsumedPlanReviewReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
+import type { ConsumedRoleReplayPort } from '../../modules/provider-orchestration/role-admission-contracts.ts';
 
 export type ExecutionRetryRequestResult = Readonly<{
   schemaVersion: 1;
@@ -75,107 +96,10 @@ export type ExecutionRetryRequestResult = Readonly<{
   bindingPath: string;
 }>;
 
-/**
- * Enumerate exact durable replacement GrantRequests without creating runtime
- * directories or requiring the later binding publication to have completed.
- */
-export function listExecutionReplacementGrantRequestDigests(
-  cwd: string,
-): readonly string[] {
-  const context = loadInvestigationRuntimeContext(cwd);
-  const requestsDirectory = path.join(
-    context.lifecycleRuntime.root,
-    'execution-replacements',
-    'requests',
-  );
-  const stats = fs.lstatSync(requestsDirectory, { throwIfNoEntry: false });
-  if (stats === undefined) return Object.freeze([]);
-  assertPrivateInvestigationDirectory(
-    context.runtime,
-    requestsDirectory,
-    replacementUnsafe,
-  );
-  if (
-    !stats.isDirectory() ||
-    stats.isSymbolicLink() ||
-    fs.realpathSync(requestsDirectory) !== requestsDirectory
-  ) {
-    throw replacementUnsafe();
-  }
-  const requestDigests = fs
-    .readdirSync(requestsDirectory, { withFileTypes: true })
-    .sort((left, right) => left.name.localeCompare(right.name))
-    .map((entry) => {
-      const match = entry.name.match(/^([0-9a-f]{64})\.json$/);
-      if (!entry.isFile() || entry.isSymbolicLink() || match === null) {
-        throw replacementUnsafe();
-      }
-      const requestDigest = `sha256:${match[1]!}`;
-      readPersistedRequest(
-        context.runtime,
-        context.lifecycleRuntime.root,
-        requestDigest,
-      );
-      return requestDigest;
-    });
-  return Object.freeze(requestDigests);
-}
-
-type ExecutionReplacementRequestBinding = Readonly<{
-  schemaVersion: 1;
-  kind: 'execution-replacement-request-binding';
-  requestDigest: string;
-  workflowId: string;
-  epoch: number;
-  contextDigest: string;
-  jobId: string;
-  failedAttemptId: string;
-  failedInvocationId: string;
-  failedInvocationRevision: number;
-  failureFingerprint: string;
-  providerPolicyDigest: string;
-  providerPolicyDocumentDigest: string;
-  budgetScope?: 'next-attempt';
-  retryExplanation?: ProviderRetryExplanation;
-  recordDigest: string;
-}>;
-
-export type ExecutionReplacementPhase =
-  | 'prepared'
-  | 'grant-consumed'
-  | 'invocation-published'
-  | 'dispatch-issued'
-  | 'complete';
-
-export type ExecutionReplacementTransaction = Readonly<{
-  schemaVersion: 1;
-  kind: 'execution-replacement-transaction';
-  transactionId: string;
-  phase: ExecutionReplacementPhase;
-  grantId: string;
-  requestDigest: string;
-  request: ExecutionBudgetGrantRequest;
-  workflowId: string;
-  epoch: number;
-  contextDigest: string;
-  jobId: string;
-  failedAttemptId: string;
-  failedInvocationId: string;
-  failedInvocationRevision: number;
-  failureFingerprint: string;
-  replacementAttemptId: string;
-  replacementInvocationId: string;
-  replacementRequest: ReturnType<typeof createProviderInvocationRequest>;
-  receipt: ExecutionBudgetConsumeReceipt | null;
-  createdAt: string;
-  updatedAt: string;
-  recordDigest: string;
-}>;
-
 export type ExecuteGrantedReplacementOptions = {
   now?: Date;
   providerDispatcher?: (cwd: string, invocationId: string) => unknown;
-  consumedRoleResultReplay?: ConsumedPlanReviewReplayPort;
+  consumedRoleResultReplay?: ConsumedRoleReplayPort;
   simulateCrashAfter?:
     | 'prepared'
     | 'grant-consume-before-journal'
@@ -199,10 +123,14 @@ export class SimulatedExecutionReplacementCrash extends Error {
 
 /** Read-only view of the exact exception; publication remains in retry-request. */
 export function previewExecutionReplacementRequest(
+  propose: ExecutionReplacementProposePort,
   cwd: string,
   jobId: string,
   input: { timeoutMs: number; retryExplanation?: ProviderRetryExplanation },
 ): ExecutionBudgetGrantRequest {
+  const { requestExecutionReplacementBytes } =
+    createReplacementPublication(propose);
+
   assertTimeout(input.timeoutMs);
   if (input.retryExplanation !== undefined)
     parseProviderRetryExplanation(input.retryExplanation);
@@ -231,10 +159,14 @@ export function previewExecutionReplacementRequest(
 }
 
 export function requestExecutionReplacement(
+  propose: ExecutionReplacementProposePort,
   cwd: string,
   requestedJobId: string,
   input: { timeoutMs: number; retryExplanation?: ProviderRetryExplanation },
 ): ExecutionRetryRequestResult {
+  const { requestExecutionReplacementBytes } =
+    createReplacementPublication(propose);
+
   assertTimeout(input.timeoutMs);
   if (input.retryExplanation !== undefined)
     parseProviderRetryExplanation(input.retryExplanation);
@@ -327,19 +259,12 @@ export function requestExecutionReplacement(
           : { retryExplanation: input.retryExplanation }),
       });
       assertOwned();
-      createPrivateCanonicalJson(
+      writeRequestAndBinding(
         context.runtime,
         requestPath,
-        request,
-        replacementUnsafe,
-        'EXECUTION_REPLACEMENT_REQUEST_CONFLICT',
-      );
-      createPrivateCanonicalJson(
-        context.runtime,
         bindingPath,
+        request,
         binding,
-        replacementUnsafe,
-        'EXECUTION_REPLACEMENT_REQUEST_CONFLICT',
       );
       assertOwned();
       return Object.freeze({
@@ -354,11 +279,20 @@ export function requestExecutionReplacement(
 }
 
 export function executeGrantedReplacement(
+  propose: ExecutionReplacementProposePort,
   cwd: string,
   requestedJobId: string,
   grantId: string,
   options: ExecuteGrantedReplacementOptions = {},
 ): ExecutionReplacementTransaction {
+  const {
+    recoverReceipt,
+    publishReplacement,
+    assertPublishedReplacement,
+    requestExecutionReplacementBytes,
+    assertCurrentTransactionLineage,
+  } = createReplacementPublication(propose);
+
   const context = loadInvestigationRuntimeContext(cwd);
   const grant = inspectExecutionBudgetGrantAuthorization(
     context.lifecycleRuntime.root,
@@ -736,57 +670,6 @@ function assertTimeout(value: number): void {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function hasExactKeys(
-  value: Record<string, unknown>,
-  expected: string[],
-): boolean {
-  const actual = Object.keys(value).sort();
-  const sortedExpected = [...expected].sort();
-  return canonicalJson(actual) === canonicalJson(sortedExpected);
-}
-
-function isDigest(value: unknown): value is string {
-  return typeof value === 'string' && /^sha256:[0-9a-f]{64}$/.test(value);
-}
-
-function isProviderDigest(value: unknown): value is string {
-  return typeof value === 'string' && /^[0-9a-f]{64}$/.test(value);
-}
-
-function isUuid(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
-      value,
-    )
-  );
-}
-
-function isIdentity(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,191}$/.test(value)
-  );
-}
-
-function isTimestamp(value: unknown): value is string {
-  if (typeof value !== 'string') return false;
-  const parsed = new Date(value);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString() === value;
-}
-
-function digestCanonical(value: unknown): string {
-  return digestText(canonicalJson(value));
-}
-
-function digestText(value: string): string {
-  return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
-}
-
 function deterministicUuid(value: unknown): string {
   const hex = crypto
     .createHash('sha256')
@@ -803,14 +686,6 @@ function replacementNotGrantable() {
   );
 }
 
-function grantMismatch(message: string) {
-  return workflowError(
-    'EXECUTION_REPLACEMENT_GRANT_MISMATCH',
-    message,
-    ExitCode.guard,
-  );
-}
-
 function replacementStale() {
   return workflowError(
     'EXECUTION_REPLACEMENT_STALE',
@@ -819,101 +694,21 @@ function replacementStale() {
   );
 }
 
-function replacementUnsafe() {
-  return workflowError(
-    'EXECUTION_REPLACEMENT_STORE_UNSAFE',
-    'Durable execution replacement state is malformed or unsafe.',
-    ExitCode.staleState,
-  );
-}
-
-export type ExecutionReplacementRecordsBindings = {
-  digestCanonical: typeof digestCanonical;
-  isRecord: typeof isRecord;
-  hasExactKeys: typeof hasExactKeys;
-  isDigest: typeof isDigest;
-  isProviderDigest: typeof isProviderDigest;
-  isIdentity: typeof isIdentity;
-  replacementUnsafe: typeof replacementUnsafe;
-  isUuid: typeof isUuid;
-  isTimestamp: typeof isTimestamp;
-  parseExecutionBudgetGrantRequest: typeof parseExecutionBudgetGrantRequest;
-  canonicalJson: typeof canonicalJson;
-  recreateProviderInvocationRequest: typeof recreateProviderInvocationRequest;
-  digestText: typeof digestText;
-  canonicalExecutionBudgetGrantRequest: typeof canonicalExecutionBudgetGrantRequest;
-  readPrivateCanonicalJson: typeof readPrivateCanonicalJson;
-  grantMismatch: typeof grantMismatch;
-  path: typeof path;
-  privatePathExists: typeof privatePathExists;
-  createPrivateCanonicalJson: typeof createPrivateCanonicalJson;
-  writePrivateCanonicalJsonAtomic: typeof writePrivateCanonicalJsonAtomic;
-};
-export type ExecutionReplacementRecordsBindingsTypes = {
-  ExecutionReplacementRequestBinding: ExecutionReplacementRequestBinding;
-  ExecutionReplacementTransaction: ExecutionReplacementTransaction;
-  ExecutionBudgetGrantRequest: ExecutionBudgetGrantRequest;
-  ExecutionBudgetConsumeReceipt: ExecutionBudgetConsumeReceipt;
-  InvestigationRuntimePaths: InvestigationRuntimePaths;
-  ExecutionReplacementPhase: ExecutionReplacementPhase;
-  recreateProviderInvocationRequest: typeof recreateProviderInvocationRequest;
-};
-
-const {
-  createRequestBinding,
-  createTransaction,
-  readPersistedRequest,
-  readRequestBinding,
-  replacementRequestPath,
-  replacementRequestBindingPath,
-  replacementTransactionPath,
-  readTransactionIfPresent,
-  writeTransaction,
-  advanceTransaction,
-  assertReceipt,
-  assertTransactionIdentity,
-} = createExecutionReplacementRecords(() => ({
-  digestCanonical,
-  isRecord,
-  hasExactKeys,
-  isDigest,
-  isProviderDigest,
-  isIdentity,
-  replacementUnsafe,
-  isUuid,
-  isTimestamp,
-  parseExecutionBudgetGrantRequest,
-  canonicalJson,
-  recreateProviderInvocationRequest,
-  digestText,
-  canonicalExecutionBudgetGrantRequest,
-  readPrivateCanonicalJson,
-  grantMismatch,
-  path,
-  privatePathExists,
-  createPrivateCanonicalJson,
-  writePrivateCanonicalJsonAtomic,
-}));
-
 export type ExecutionReplacementPublicationBindings = {
   inspectExecutionBudgetGrantAuthorization: typeof inspectExecutionBudgetGrantAuthorization;
-  assertActiveTaskMandateBindingUnderLifecycleLock: typeof assertActiveTaskMandateBindingUnderLifecycleLock;
+  assertActiveTaskMandateBindingUnderLifecycleLock: TaskMandateActiveBinding['assertActiveTaskMandateBindingUnderLifecycleLock'];
   parseMaintainerPolicy: typeof parseMaintainerPolicy;
   runGit: typeof runGit;
   consumeExecutionBudgetGrant: typeof consumeExecutionBudgetGrant;
   SimulatedExecutionReplacementCrash: typeof SimulatedExecutionReplacementCrash;
-  assertReceipt: typeof assertReceipt;
-  createTransaction: typeof createTransaction;
-  writeTransaction: typeof writeTransaction;
-  replacementTransactionPath: typeof replacementTransactionPath;
   loadInvestigationRuntimeContext: typeof loadInvestigationRuntimeContext;
   readProviderInvocation: typeof readProviderInvocation;
   replacementNotGrantable: typeof replacementNotGrantable;
-  completeInterruptedPlanReviewReplacement: typeof completeInterruptedPlanReviewReplacement;
-  getProposeStatus: typeof getProposeStatus;
-  createProviderRetryEnvelope: typeof createProviderRetryEnvelope;
-  createPlanReviewRetryEnvelope: typeof createPlanReviewRetryEnvelope;
-  resumePropose: typeof resumePropose;
+  completeInterruptedPlanReviewReplacement: ProposeOperations['completeInterruptedPlanReviewReplacement'];
+  getProposeStatus: ProposeOperations['getProposeStatus'];
+  createProviderRetryEnvelope: ProposeOperations['createProviderRetryEnvelope'];
+  createPlanReviewRetryEnvelope: ProposeOperations['createPlanReviewRetryEnvelope'];
+  resumePropose: ProposeOperations['resumePropose'];
   providerInvocationExists: typeof providerInvocationExists;
   replacementStale: typeof replacementStale;
   readProviderInvocationRequest: typeof readProviderInvocationRequest;
@@ -925,67 +720,38 @@ export type ExecutionReplacementPublicationBindings = {
   replacementRationale: typeof replacementRationale;
   canonicalExecutionBudgetGrantRequest: typeof canonicalExecutionBudgetGrantRequest;
   inspectExecutionJob: typeof inspectExecutionJob;
-  readPersistedRequest: typeof readPersistedRequest;
-  readRequestBinding: typeof readRequestBinding;
   loadAiAdapterPolicy: typeof loadAiAdapterPolicy;
   replacementTimeout: typeof replacementTimeout;
   createProviderInvocationRequest: typeof createProviderInvocationRequest;
-  digestCanonical: typeof digestCanonical;
-  digestText: typeof digestText;
-  grantMismatch: typeof grantMismatch;
 };
-export type ExecutionReplacementPublicationBindingsTypes = {
-  InvestigationRuntimePaths: InvestigationRuntimePaths;
-  ExecutionReplacementTransaction: ExecutionReplacementTransaction;
-  ExecuteGrantedReplacementOptions: ExecuteGrantedReplacementOptions;
-  ConsumedPlanReviewReplayPort: ConsumedPlanReviewReplayPort;
-  ExecutionBudgetGrantRequest: ExecutionBudgetGrantRequest;
-  inspectExecutionJob: typeof inspectExecutionJob;
-};
-
-const {
-  recoverReceipt,
-  publishReplacement,
-  assertPublishedReplacement,
-  requestExecutionReplacementBytes,
-  assertCurrentTransactionLineage,
-  assertCompleteReplacementDelta,
-} = createExecutionReplacementPublication(() => ({
-  inspectExecutionBudgetGrantAuthorization,
-  assertActiveTaskMandateBindingUnderLifecycleLock,
-  parseMaintainerPolicy,
-  runGit,
-  consumeExecutionBudgetGrant,
-  SimulatedExecutionReplacementCrash,
-  assertReceipt,
-  createTransaction,
-  writeTransaction,
-  replacementTransactionPath,
-  loadInvestigationRuntimeContext,
-  readProviderInvocation,
-  replacementNotGrantable,
-  completeInterruptedPlanReviewReplacement,
-  getProposeStatus,
-  createProviderRetryEnvelope,
-  createPlanReviewRetryEnvelope,
-  resumePropose,
-  providerInvocationExists,
-  replacementStale,
-  readProviderInvocationRequest,
-  canonicalJson,
-  mergeExactChanges,
-  createExecutionBudgetGrantRequest,
-  deterministicUuid,
-  requireExecutionJobMandateBinding,
-  replacementRationale,
-  canonicalExecutionBudgetGrantRequest,
-  inspectExecutionJob,
-  readPersistedRequest,
-  readRequestBinding,
-  loadAiAdapterPolicy,
-  replacementTimeout,
-  createProviderInvocationRequest,
-  digestCanonical,
-  digestText,
-  grantMismatch,
-}));
+function createReplacementPublication(
+  propose: ExecutionReplacementProposePort,
+) {
+  return createExecutionReplacementPublication(() => ({
+    ...propose,
+    inspectExecutionBudgetGrantAuthorization,
+    assertActiveTaskMandateBindingUnderLifecycleLock:
+      propose.taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock,
+    parseMaintainerPolicy,
+    runGit,
+    consumeExecutionBudgetGrant,
+    SimulatedExecutionReplacementCrash,
+    loadInvestigationRuntimeContext,
+    readProviderInvocation,
+    replacementNotGrantable,
+    providerInvocationExists,
+    replacementStale,
+    readProviderInvocationRequest,
+    canonicalJson,
+    mergeExactChanges,
+    createExecutionBudgetGrantRequest,
+    deterministicUuid,
+    requireExecutionJobMandateBinding,
+    replacementRationale,
+    canonicalExecutionBudgetGrantRequest,
+    inspectExecutionJob,
+    loadAiAdapterPolicy,
+    replacementTimeout,
+    createProviderInvocationRequest,
+  }));
+}

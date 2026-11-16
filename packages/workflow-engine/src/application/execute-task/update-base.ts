@@ -1,3 +1,7 @@
+import type { PullRequestVerifier } from '../assurance/pull-request-verification.ts';
+import type { HandoffDocumentOperations } from '../../modules/projection/handoff.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
+import type { ChangeContractReaders } from '../../modules/planning-provider/change-contract.ts';
 /**
  * Replays finished task work onto a new base and records the refreshed
  * projection.
@@ -10,24 +14,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {
-  loadCommittedChangeContract,
   loadWorkflowConfig,
   repositoryHandoffPath,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
-import {
-  renderHandoff,
-  validateHandoff,
-} from '../../adapters/consumer/repository/handoff/handoff.ts';
-import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
-import { verifyPullRequest } from '../../entrypoints/ci/ci.ts';
+} from '../../runtime/workflow-configuration/workflow-configuration.ts';
+
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { createTaskPlanningAssuranceBinding } from '../../modules/assurance/planning-assurance-validator.ts';
 import { replaceTextAtomic } from '../../runtime/repository-transaction/atomic-text.ts';
 import {
   discoverRepository,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
-import { assertChangeId } from '../../runtime/session-workspace/paths.ts';
+import { assertChangeId } from '../../foundation/repository-path/repository-path.ts';
 import {
   readSessionFile,
   runtimePaths,
@@ -36,7 +33,7 @@ import {
   writeJsonAtomic,
   type WorkflowSession,
 } from '../../runtime/session-workspace/session-store.ts';
-import { listSessions } from './session.ts';
+import { listSessions } from '../../runtime/repository-observation/workflow-session-context.ts';
 
 export type TaskBaseUpdateResult = Readonly<{
   schemaVersion: 1;
@@ -100,6 +97,16 @@ type TaskBaseUpdateTestHooks = Readonly<{
  * operates while a task writer is active.
  */
 export function updateTaskSessionBase(
+  changeContract: Pick<
+    ChangeContractServices,
+    'loadStableValidatedChangeContract'
+  >,
+  verifyPullRequest: PullRequestVerifier['verifyPullRequest'],
+  handoffDocuments: Pick<
+    HandoffDocumentOperations,
+    'renderHandoff' | 'validateHandoff'
+  >,
+  readers: Pick<ChangeContractReaders, 'loadCommittedChangeContract'>,
   cwd: string,
   requestedChangeId: string,
   requestedOntoRef: string,
@@ -139,6 +146,10 @@ export function updateTaskSessionBase(
     return withSessionOperation(runtime, lockedAnchor.sessionId, () => {
       assertRepositoryLock();
       return updateFinishedTaskBaseLocked(
+        changeContract,
+        verifyPullRequest,
+        handoffDocuments,
+        readers,
         cwd,
         lockedAnchor,
         ontoRef,
@@ -212,6 +223,16 @@ function resolveFinishedSessionAnchor(
 }
 
 function updateFinishedTaskBaseLocked(
+  changeContract: Pick<
+    ChangeContractServices,
+    'loadStableValidatedChangeContract'
+  >,
+  verifyPullRequest: PullRequestVerifier['verifyPullRequest'],
+  handoffDocuments: Pick<
+    HandoffDocumentOperations,
+    'renderHandoff' | 'validateHandoff'
+  >,
+  readers: Pick<ChangeContractReaders, 'loadCommittedChangeContract'>,
   cwd: string,
   session: WorkflowSession,
   ontoRef: string,
@@ -255,7 +276,11 @@ function updateFinishedTaskBaseLocked(
 
   const oldHead = before.head;
   const generatedProjection = captureGeneratedProjection(before.repositoryRoot);
-  loadCommittedChangeContract(before.repositoryRoot, oldHead, session.changeId);
+  readers.loadCommittedChangeContract(
+    before.repositoryRoot,
+    oldHead,
+    session.changeId,
+  );
   const ontoCommit = resolveOntoCommit(cwd, ontoRef);
   const mergeBase = runGit(
     cwd,
@@ -283,12 +308,12 @@ function updateFinishedTaskBaseLocked(
   try {
     assertRepositoryLock();
     const afterReplay = discoverRepository(cwd);
-    const validated = loadStableValidatedChangeContract(
+    const validated = changeContract.loadStableValidatedChangeContract(
       afterReplay,
       session.changeId,
     );
     const policy = validated.contract.guard.tasks[session.taskId];
-    const planningAssurance = createTaskPlanningAssuranceBinding(
+    const planningAssurance = validated.planningAssurance.createTaskBinding(
       validated.contract,
       validated.contract.planningAssurance,
     );
@@ -339,7 +364,7 @@ function updateFinishedTaskBaseLocked(
     // Regeneration is semantic and idempotent. A changed projection requires
     // its own reviewed managed transition; update-base never text-merges or
     // silently amends a generated document.
-    renderHandoff(cwd);
+    handoffDocuments.renderHandoff(cwd);
     const afterProjection = discoverRepository(cwd);
     if (afterProjection.statusEntries.length !== 0) {
       throw workflowError(
@@ -355,7 +380,7 @@ function updateFinishedTaskBaseLocked(
         },
       );
     }
-    validateHandoff(cwd);
+    handoffDocuments.validateHandoff(cwd);
     const assurance = verifyPullRequest(
       cwd,
       ontoCommit,

@@ -1,3 +1,4 @@
+import type { ConsumedCollaborationGrantUseReader } from '../../modules/authority/collaboration-grant-records.ts';
 /**
  * Consumes or fails reserved grants and verifies exact durable crash replay.
  *
@@ -13,7 +14,8 @@ import type {
   CollaborationTerminalRecord,
   CollaborationGrantConsumedReplayRequest,
   VerifiedConsumedCollaborationGrantReplay,
-} from './collaboration-grant-store-types.ts';
+} from '../../modules/authority/collaboration-grant-records.ts';
+
 import { withRepositoryLifecycleOperation } from '../session-workspace/repository-lifecycle-lock.ts';
 import {
   collaborationGrantStorePaths,
@@ -25,16 +27,18 @@ import {
   existingStateDirectories,
 } from './collaboration-grant-private-files.ts';
 import {
-  assertCollaborationGrantId,
-  verifyCollaborationGrantCapability,
-  bindingFromPayload,
-  collaborationGrantEnvelopeDigest,
   COLLABORATION_GRANT_AUTHORIZED_EFFECT,
+  assertCollaborationGrantId,
+  bindingFromPayload,
   COLLABORATION_GRANT_RETAINED_OBLIGATIONS,
   COLLABORATION_GRANT_REPLAY_SCOPE,
   COLLABORATION_GRANT_RESIDUALS,
   type CollaborationGrantExpectedBinding,
 } from '../../modules/authority/collaboration-grant-codec.ts';
+import {
+  verifyCollaborationGrantCapability,
+  collaborationGrantEnvelopeDigest,
+} from '../grants/grant-services.ts';
 import fs from 'node:fs';
 import {
   assertAuthoritativeCollaborationGrantVerifier,
@@ -42,10 +46,8 @@ import {
   assertConsumedCollaborationGrantReplayVerifier,
   verifyConsumedCollaborationGrantReplaySignature,
 } from '../../modules/authority/grant-verifier-port.ts';
-import {
-  executeGrantLifecycleTransitionV1,
-  GRANT_LIFECYCLE_CONTRACT_VERSION_V1,
-} from '../../modules/authority/optional-grants-package.ts';
+import { executeGrantLifecycleTransitionV1 } from '../grants/optional-grants-package.ts';
+import { GRANT_LIFECYCLE_CONTRACT_VERSION_V1 } from '@jigwright/core/grant-lifecycle-contracts';
 import {
   exactDigest,
   unavailableGrant,
@@ -54,7 +56,7 @@ import {
   bindingMismatch,
   invalidUse,
   nonEmpty,
-} from './collaboration-grant-store-values.ts';
+} from '../../modules/authority/collaboration-grant-values.ts';
 import {
   readTerminal,
   cleanupNonterminal,
@@ -66,10 +68,10 @@ import {
 import {
   consumptionMatches,
   assertGrantedAssignment,
-  assertContentAdmission,
   assertDirectHumanAttestationReference,
   validateCollaborationGrantUseProjection,
-} from './collaboration-grant-use-contract.ts';
+} from '../grants/grant-services.ts';
+import { assertContentAdmission } from '../../modules/authority/collaboration-grant-use.ts';
 import {
   loadPolicyAtCommit,
   collaborationRoleTransitionDigest,
@@ -428,13 +430,12 @@ export function verifyExactConsumedCollaborationGrantCrashReplay(
 }
 
 /** Role admission consumes only proofs minted by the exact terminal reader. */
-export function consumedCollaborationGrantUseForReplay(
-  proof: VerifiedConsumedCollaborationGrantReplay,
-): CollaborationGrantUseProjection {
-  const use = verifiedConsumedCollaborationGrantReplays.get(proof);
-  if (use === undefined) throw invalidUse();
-  return use;
-}
+export const consumedCollaborationGrantUseForReplay: ConsumedCollaborationGrantUseReader =
+  (proof) => {
+    const use = verifiedConsumedCollaborationGrantReplays.get(proof);
+    if (use === undefined) throw invalidUse();
+    return use;
+  };
 
 export function failCollaborationReservation(
   gitCommonDirectory: string,

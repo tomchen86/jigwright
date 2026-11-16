@@ -4,10 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
-import {
-  authorizeTaskMandate,
-  inspectActiveTaskMandateBinding,
-} from '../src/modules/authority/task-mandate.ts';
+
 import { git, sourceRepositoryRoot } from './fixture.ts';
 
 export function prepareExecutionMandate(repository: string, changeId: string) {
@@ -142,3 +139,7 @@ export function prepareExecutionMandate(repository: string, changeId: string) {
     },
   };
 }
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const { authorizeTaskMandate, inspectActiveTaskMandateBinding } =
+  taskMandateOperations;

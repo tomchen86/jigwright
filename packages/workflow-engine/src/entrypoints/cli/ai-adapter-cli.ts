@@ -6,14 +6,14 @@
  * - Availability pilot and verification commands require an exact --record
  *   argument pair.
  */
-import { AgentProviderConfigError } from '@jigwright/agent-runtime';
+import { AgentProviderConfigError } from '@jigwright/core/agent-provider-config';
 import { ProviderExecutableObservationError } from '@jigwright/agent-runtime/provider-executable-identity';
 
 import {
   AgentProviderConfigFileError,
   evaluateAgentProviderConfig,
 } from '../../composition-root/agent-provider-config-dry-run-production.ts';
-import { evaluateAiAdapter } from '../../runtime/provider-execution/ai-adapter-evaluation.ts';
+import { evaluateAiAdapter } from '../../composition-root/built-in-provider-adapter-production.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   runProviderAvailabilityPilot,

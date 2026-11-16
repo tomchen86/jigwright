@@ -1,17 +1,11 @@
-/**
- * Connects Finding operations and intake counts to dedicated Git-ref
- * persistence.
- *
- * Invariants:
- * - Finding services share the same ref reader and publisher; counts use
- *   the resulting list operation.
- */
-import { createGovernanceFindingServices } from '../modules/governance-intake/governance-intake.ts';
-import { createGovernanceIntakeCountsReader } from '../modules/governance-intake/intake-summary.ts';
+/** Connects primitive Finding services to their shared ref reader and publisher. */
+import { createGovernanceFindingServices } from '../application/governance-intake/governance-findings.ts';
 import {
-  readFindingRef,
   publishFindingRefRecord,
+  readFindingRef,
 } from '../runtime/storage-journal/governance-finding-ref.ts';
+
+import { readGovernanceSource } from './governance-sources-production.ts';
 
 export const {
   recordGovernanceFinding,
@@ -20,10 +14,6 @@ export const {
   convertGovernanceFinding,
   linkGovernanceFinding,
 } = createGovernanceFindingServices({
-  readFindingRef,
-  publishFindingRefRecord,
+  readGovernanceSource,
+  findingRef: { readFindingRef, publishFindingRefRecord },
 });
-
-export const inspectGovernanceIntakeCounts = createGovernanceIntakeCountsReader(
-  listGovernanceFindings,
-);

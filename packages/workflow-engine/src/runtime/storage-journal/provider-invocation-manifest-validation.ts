@@ -11,35 +11,39 @@ import {
   assertChangeId,
   assertTaskId,
   assertSessionId,
-} from '../session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import {
-  type PlanReviewSubject,
-  type PlanReviewTargetSnapshot,
   assertPlanReviewSubject,
   assertPlanReviewTargetSnapshot,
 } from '../../modules/assurance/plan-review.ts';
+import type { PlanReviewSubject } from '../../modules/assurance/plan-review-subject.ts';
+import type { PlanReviewTargetSnapshot } from '../../modules/assurance/plan-review-target-snapshot-record.ts';
 import {
-  type TaskDiffReviewRecord,
-  type TaskDiffReviewChallengeResponseRecord,
   parseTaskDiffReviewRecord,
   assertTaskDiffReviewChallengeResponseCurrent,
   parseTaskDiffReviewChallengeResponseRecord,
 } from '../../modules/assurance/task-diff-review-artifact.ts';
+import type {
+  TaskDiffReviewRecord,
+  TaskDiffReviewChallengeResponseRecord,
+} from '../../modules/assurance/task-diff-review-artifact-record.ts';
 import {
-  type TaskDiffReviewSubject,
-  type TaskDiffReviewScope,
   parseTaskDiffReviewSubject,
   parseTaskDiffReviewScope,
 } from '../../modules/assurance/task-diff-review.ts';
+import type {
+  TaskDiffReviewSubject,
+  TaskDiffReviewScope,
+} from '../../modules/assurance/task-diff-review-record.ts';
 import { assertTaskStrategyImplementationManifest } from '../../modules/provider-orchestration/task-strategy-provider-contract.ts';
-import {
-  type BlindSurveyManifest,
-  type ProviderInvocationManifest,
-  type PlanReviewManifest,
-  type TaskDiffReviewManifest,
-  type TaskDiffReviewContinuationManifest,
-  type NormalizedChangeIntent,
-} from './provider-invocation-types.ts';
+import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
+import type { TaskStrategyImplementationManifest } from '../../modules/provider-orchestration/task-strategy-implementation-manifest.ts';
+import type {
+  PlanReviewManifest,
+  TaskDiffReviewManifest,
+  TaskDiffReviewContinuationManifest,
+} from '../../modules/assurance/provider-review-manifests.ts';
+import type { NormalizedChangeIntent } from '../../modules/source/change-intent.ts';
 import {
   sha256,
   isRecord,
@@ -55,6 +59,9 @@ import {
   SOURCE_REFERENCE,
   MAX_INTENT_FACT_BYTES,
 } from './provider-invocation-common.ts';
+
+import type { ProviderInvocationManifest } from '../../modules/assurance/provider-invocation-manifest.ts';
+export type { ProviderInvocationManifest } from '../../modules/assurance/provider-invocation-manifest.ts';
 
 export function blindSurveyManifestDigest(
   manifest: BlindSurveyManifest,

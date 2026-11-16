@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  SCAN_HIT_MAX_CONTEXT_BYTES,
-  hitContextWindow,
-} from '../src/modules/investigation/domain/investigation-scanner.ts';
+import { SCAN_HIT_MAX_CONTEXT_BYTES } from '../src/modules/investigation/domain/investigation-scan-facts.ts';
+import { hitContextWindow } from '../src/modules/investigation/domain/investigation-scanner.ts';
 import { deriveInvestigationGroupFacts } from '../src/modules/investigation/domain/investigation-groups.ts';
 import { normalizeInvestigationTerm } from '../src/modules/investigation/domain/investigation-terms.ts';
 import { createMutationClassPolicy } from '../src/modules/source/mutation-class-policy.ts';

@@ -1,7 +1,7 @@
-import fs from 'node:fs';
 import assert from 'node:assert/strict';
-import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 
 export function readJsonRecord(filePath: string): Record<string, unknown> {
   const value = JSON.parse(fs.readFileSync(filePath, 'utf8')) as unknown;
@@ -44,12 +44,6 @@ export function writeJsonRecord(
   record: Record<string, unknown>,
 ): void {
   fs.writeFileSync(filePath, `${canonicalJson(record)}\n`, { mode: 0o600 });
-}
-
-export function errorCode(error: unknown): string {
-  return typeof error === 'object' && error !== null && 'code' in error
-    ? String(error.code)
-    : 'UNKNOWN';
 }
 
 export function digest(value: string | Buffer): `sha256:${string}` {

@@ -1,3 +1,5 @@
+import type { ChangeRoutingAdmissionReader } from '../../modules/lifecycle/change-routing.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
 /**
  * Resumes deterministic mechanical transformations through recoverable file
  * publication.
@@ -5,6 +7,7 @@
  * Invariants:
  * - Transformation resume rejects a pre-existing staged projection.
  */
+import type { ReviewedGeneratedAssetInventory } from '../../modules/source/mutation-class-policy.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,9 +16,9 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import type {
   MechanicalTransformExecution,
   TransformationTerm,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+} from '../../modules/planning-provider/planning-artifact-types.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { readFinalizeTransaction } from '../../runtime/repository-transaction/finalize-transaction.ts';
+import { readFinalizeTransaction } from '../../runtime/storage-journal/finalize-transaction.ts';
 import { listStagedPaths } from '../../runtime/repository-transaction/git-transitions.ts';
 import { listChangedPaths } from '../../runtime/repository-transaction/git.ts';
 import {
@@ -23,27 +26,23 @@ import {
   privatePathExists,
   readPrivateCanonicalJson,
   writePrivateCanonicalJsonAtomic,
-} from '../../runtime/storage-journal/investigation-session-store.ts';
-import { loadActiveSessionContext } from '../../composition-root/lifecycle-context.ts';
+} from '../../runtime/journal-primitives/investigation-private-files.ts';
+import { loadActiveSessionContext } from '../../runtime/repository-observation/workflow-session-context.ts';
 import { classifyMutationPath } from '../../modules/source/mutation-class-policy.ts';
+import { investigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';
 import {
-  investigationRuntimePaths,
   matchesAllowedPath,
   normalizeChangedPath,
-} from '../../runtime/session-workspace/paths.ts';
-import { deriveReviewedMutationClassPolicy } from '../../runtime/managed-documents/ownership/reviewed-mutation-policy.ts';
+} from '../../foundation/repository-path/repository-path.ts';
+import { deriveReviewedMutationClassPolicy } from '../../modules/source/reviewed-mutation-policy.ts';
 import {
   withRepositoryLifecycleOperation,
   withSessionOperation,
 } from '../../runtime/session-workspace/session-store.ts';
-import {
-  readPinnedTrackedTree,
-  type TrackedTreeEntry,
-} from '../../runtime/repository-transaction/tracked-tree-reader.ts';
-import {
-  inspectSession,
-  type SessionInspection,
-} from '../finalize/verification.ts';
+import { readPinnedTrackedTree } from '../../runtime/repository-transaction/tracked-tree-reader.ts';
+import { type TrackedTreeEntry } from '../../modules/source/tracked-path.ts';
+import { inspectSession } from '../../runtime/repository-validation/session-inspection.ts';
+import type { SessionInspection } from '../../modules/lifecycle/session-inspection.ts';
 
 const RETAINED_CLASSES = new Set([
   'append-only',
@@ -52,14 +51,11 @@ const RETAINED_CLASSES = new Set([
 ]);
 const DIGEST = /^[0-9a-f]{64}$/;
 
-export type TaskMechanicalTransformLifecycleState =
-  'transformation-required' | 'transformation-produced';
-
-export type TaskMechanicalTransformLifecycleStatus = Readonly<{
-  state: TaskMechanicalTransformLifecycleState;
-  projectionDigest: string;
-}>;
-
+import type { TaskMechanicalTransformLifecycleStatus } from '../../modules/lifecycle/managed-workflow-state-contract.ts';
+export type {
+  TaskMechanicalTransformLifecycleState,
+  TaskMechanicalTransformLifecycleStatus,
+} from '../../modules/lifecycle/managed-workflow-state-contract.ts';
 type MechanicalProjectionOperation = Readonly<{
   sourcePath: string;
   targetPath: string;
@@ -131,6 +127,8 @@ export type ResumeTaskMechanicalTransformationOptions = Readonly<{
 
 /** Read-only projection status; it never creates evidence or runtime state. */
 export function inspectTaskMechanicalTransformLifecycle(
+  reviewedAssets: ReviewedGeneratedAssetInventory,
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
 ): TaskMechanicalTransformLifecycleStatus | null {
@@ -142,7 +140,7 @@ export function inspectTaskMechanicalTransformLifecycle(
   const projectionApplied =
     finalizeTransaction !== null &&
     finalizeTransaction.phase !== 'projection-prepared';
-  const inspection = inspectSession(cwd, requestedSessionId, {
+  const inspection = inspectSession(changeContract, cwd, requestedSessionId, {
     expectedSession: context.session,
     ...(projectionApplied
       ? {
@@ -152,20 +150,25 @@ export function inspectTaskMechanicalTransformLifecycle(
         }
       : {}),
   });
-  return inspectPreparedMechanicalTransformLifecycle(inspection, {
-    ...(projectionApplied
-      ? { expectedChangedPaths: [...finalizeTransaction.changedPaths] }
-      : {}),
-  });
+  return inspectPreparedMechanicalTransformLifecycle(
+    reviewedAssets,
+    inspection,
+    {
+      ...(projectionApplied
+        ? { expectedChangedPaths: [...finalizeTransaction.changedPaths] }
+        : {}),
+    },
+  );
 }
 
 export function inspectPreparedMechanicalTransformLifecycle(
+  reviewedAssets: ReviewedGeneratedAssetInventory,
   inspection: SessionInspection,
   options: Readonly<{ expectedChangedPaths?: readonly string[] }> = {},
 ): TaskMechanicalTransformLifecycleStatus | null {
   const task = mechanicalTask(inspection);
   if (task === null) return null;
-  const plan = prepareProjection(inspection, task);
+  const plan = prepareProjection(reviewedAssets, inspection, task);
   const runtime = investigationRuntimePaths(
     inspection.git.gitCommonDirectory,
     inspection.contract.config.runtimeDirectory,
@@ -203,6 +206,8 @@ export function inspectPreparedMechanicalTransformLifecycle(
  * overwritten.
  */
 export function resumeTaskMechanicalTransformation(
+  reviewedAssets: ReviewedGeneratedAssetInventory,
+  changeContract: ChangeContractServices,
   cwd: string,
   requestedSessionId: string,
   options: ResumeTaskMechanicalTransformationOptions = {},
@@ -211,7 +216,11 @@ export function resumeTaskMechanicalTransformation(
   return withRepositoryLifecycleOperation(initial.runtime, (assertOwned) =>
     withSessionOperation(initial.runtime, requestedSessionId, () => {
       assertOwned();
-      const inspection = inspectSession(cwd, requestedSessionId);
+      const inspection = inspectSession(
+        changeContract,
+        cwd,
+        requestedSessionId,
+      );
       const task = mechanicalTask(inspection);
       if (task === null) {
         throw workflowError(
@@ -233,7 +242,7 @@ export function resumeTaskMechanicalTransformation(
           { details: { stagedPaths: staged } },
         );
       }
-      const plan = prepareProjection(inspection, task);
+      const plan = prepareProjection(reviewedAssets, inspection, task);
       if (plan.operations.length === 0) {
         throw workflowError(
           'TASK_MECHANICAL_TRANSFORMATION_NO_CHANGE',
@@ -275,7 +284,7 @@ export function resumeTaskMechanicalTransformation(
       }
       options.testAfterProjectionPublish?.();
       assertOwned();
-      const current = inspectSession(cwd, requestedSessionId);
+      const current = inspectSession(changeContract, cwd, requestedSessionId);
       if (!projectionIsCurrent(current, plan)) {
         throw workflowError(
           'TASK_MECHANICAL_TRANSFORMATION_RECOVERY_REQUIRED',
@@ -301,6 +310,7 @@ export function resumeTaskMechanicalTransformation(
 }
 
 function prepareProjection(
+  reviewedAssets: ReviewedGeneratedAssetInventory,
   inspection: SessionInspection,
   task: MechanicalTransformExecution,
 ): MechanicalProjectionPlan {
@@ -308,7 +318,10 @@ function prepareProjection(
     repositoryRoot: inspection.git.repositoryRoot,
     treeOid: inspection.session.baseline.tree,
   });
-  const mutationPolicy = deriveReviewedMutationClassPolicy(baseline);
+  const mutationPolicy = deriveReviewedMutationClassPolicy(
+    reviewedAssets,
+    baseline,
+  );
   const scoped = baseline.entries.filter(
     (entry) =>
       entry.path.utf8 !== null &&

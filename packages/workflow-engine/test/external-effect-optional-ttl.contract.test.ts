@@ -4,13 +4,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
+import { canonicalExternalEffectGrantPayload } from '../src/modules/authority/external-effect-grant-envelope.ts';
 import {
-  canonicalExternalEffectGrantPayload,
   EXTERNAL_EFFECT_MAX_TTL_SECONDS,
   EXTERNAL_EFFECT_SIGNATURE_NAMESPACE,
-  issueExternalEffectGrant,
   type ExternalEffectGrantRequest,
 } from '../src/modules/authority/external-effect-grant.ts';
+import { issueExternalEffectGrant } from '../src/composition-root/external-effect-production.ts';
 import {
   EFFECT_GRANT_ID,
   EFFECT_ISSUED_AT,
@@ -200,7 +200,10 @@ function runExternalEffectIssueCli(repository: string, ttlToken: string) {
     process.execPath,
     [
       '--experimental-strip-types',
-      path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+      path.join(
+        sourceRepositoryRoot,
+        'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
+      ),
       'external-effect',
       'issue',
       '--grant',

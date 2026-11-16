@@ -7,7 +7,7 @@
 import crypto from 'node:crypto';
 import { canonicalJson } from "../../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../../foundation/errors/errors.js";
-import { normalizeExactRepositoryPath } from "../../../runtime/session-workspace/paths.js";
+import { normalizeExactRepositoryPath } from "../../../foundation/repository-path/repository-path.js";
 const DIGEST = /^[0-9a-f]{64}$/;
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const MAX_RATIONALE_BYTES = 4096;

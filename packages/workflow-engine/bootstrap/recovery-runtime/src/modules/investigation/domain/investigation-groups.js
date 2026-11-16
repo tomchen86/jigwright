@@ -7,7 +7,7 @@
  *   context limit.
  */
 import crypto from 'node:crypto';
-import { SCAN_HIT_MAX_CONTEXT_BYTES, } from "./investigation-scanner.js";
+import { SCAN_HIT_MAX_CONTEXT_BYTES, } from "./investigation-scan-facts.js";
 import { canonicalJson } from "../../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, WorkflowError, workflowError, } from "../../../foundation/errors/errors.js";
 import { assertMutationClassPolicy, assertPathIdentity, classifyMutationPath, } from "../../source/mutation-class-policy.js";

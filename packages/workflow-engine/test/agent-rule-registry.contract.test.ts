@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { renderAgentGuidanceRules } from '../src/modules/guidance/catalog/agent-rule-registry.ts';
 import { renderAgentRuleSources } from '../../../scripts/generate-agent-rule-sources.ts';
 import { createGovernanceSourceV1 } from '@jigwright/core/governance-source';
-import { resolveGovernanceSourceAlias } from '../src/modules/governance-intake/source-aliases.ts';
+import { resolveGovernanceSourceAlias } from '../src/composition-root/governance-sources-production.ts';
 
 test('agent rules are generated from current purpose, exact-text and command sources', () => {
   const root = new URL('../../../', import.meta.url);

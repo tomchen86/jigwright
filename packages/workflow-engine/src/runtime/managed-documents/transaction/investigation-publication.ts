@@ -1,3 +1,4 @@
+import { materializeInvestigationEvidenceView } from '../../repository-observation/investigation-replay.ts';
 /**
  * Publishes and resumes investigation manifests through the journal and current-ref commit point.
  *
@@ -7,9 +8,9 @@
  */
 import {
   type InvestigationManifestV3,
-  validateForAuthority,
   type InvestigationV3Blocker,
-} from '../../../modules/investigation/manifest/investigation-manifest.ts';
+} from '../../../modules/investigation/manifest/investigation-manifest-types.ts';
+import { validateForAuthority } from '../../../modules/investigation/manifest/investigation-manifest.ts';
 import fs from 'node:fs';
 import {
   type InvestigationManifestPublicationPaths,
@@ -30,7 +31,7 @@ import {
   assertSnapshotIdentity,
   parseCurrentManifestRef,
   type CurrentManifestRef,
-} from './investigation-publication-contracts.ts';
+} from '../../../modules/investigation/manifest/investigation-publication-contracts.ts';
 import {
   normalizePaths,
   candidateRelativePath,
@@ -51,7 +52,7 @@ import {
 import {
   digest,
   publicationFailure,
-} from './investigation-publication-values.ts';
+} from '../../../modules/investigation/manifest/investigation-publication-values.ts';
 import {
   publicationRefDigest,
   writeCanonical,
@@ -75,7 +76,7 @@ export {
   type InvestigationManifestPublicationFailure,
   assertInvestigationManifestPublicationFailure,
   investigationManifestPublicationFailureEmissionDigest,
-} from './investigation-publication-contracts.ts';
+} from '../../../modules/investigation/manifest/investigation-publication-contracts.ts';
 export {
   observeInvestigationManifestPublicationState,
   investigationManifestPublicationStateDigest,
@@ -113,11 +114,14 @@ export function publishInvestigationManifestV3(input: {
       input.privateRoot,
       input.paths,
     );
-    const validated = validateForAuthority({
-      repositoryRoot: input.repositoryRoot,
-      manifest: input.manifest,
-      expected: authorityExpected(input.expected),
-    });
+    const validated = validateForAuthority(
+      materializeInvestigationEvidenceView,
+      {
+        repositoryRoot: input.repositoryRoot,
+        manifest: input.manifest,
+        expected: authorityExpected(input.expected),
+      },
+    );
     if (validated.outcome !== 'verified') {
       return publicationBlockedWithCode({
         repositoryRoot: input.repositoryRoot,
@@ -457,11 +461,14 @@ export function resumeInvestigationManifestPublication(input: {
         source === null
           ? journal.manifest
           : readJson(source, paths.repositoryRoot);
-      const validated = validateForAuthority({
-        repositoryRoot: input.repositoryRoot,
-        manifest: rawManifest,
-        expected: authorityExpected(journal.expected),
-      });
+      const validated = validateForAuthority(
+        materializeInvestigationEvidenceView,
+        {
+          repositoryRoot: input.repositoryRoot,
+          manifest: rawManifest,
+          expected: authorityExpected(journal.expected),
+        },
+      );
       if (
         validated.outcome !== 'verified' ||
         validated.manifestDigest !== journal.manifestDigest ||

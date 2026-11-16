@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../src/runtime/provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { isWorkflowError } from './fixture.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
@@ -15,18 +15,22 @@ import {
 import {
   BLIND_SURVEY_OUTPUT_SCHEMA,
   BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA,
+} from '../src/modules/provider-orchestration/blind-survey-output.ts';
+import {
   blindSurveyIntentDigest,
-  claimProviderInvocation,
-  createProviderInvocation,
-  failProviderInvocation,
   providerInvocationManifestDigest,
+} from '../src/runtime/storage-journal/provider-invocation-manifest-validation.ts';
+import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
+import {
+  createProviderInvocation,
   readProviderInvocationEvidence,
   recoverProviderInvocationSupersession,
-  storeProviderExecutionPolicySnapshot,
-  type BlindSurveyManifest,
-  type ProviderInvocationRecord,
-} from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/investigation-session-store.ts';
+} from '../src/runtime/storage-journal/provider-invocation-state.ts';
+import { failProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-completion.ts';
+import { storeProviderExecutionPolicySnapshot } from '../src/runtime/storage-journal/provider-invocation-policy.ts';
+import type { BlindSurveyManifest } from '../src/modules/investigation/manifest/blind-survey-manifest.ts';
+import type { ProviderInvocationRecord } from '../src/modules/provider-orchestration/provider-invocation-record.ts';
+import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/provider-invocation-lifecycle.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 
 const FIRST_CREATED_AT = '2026-08-04T01:00:00.000Z';
@@ -533,7 +537,7 @@ function createManifest(
       summary: `Exercise provider supersession ${label}.`,
       sourceRefs: [],
       explicitPaths: [
-        'packages/workflow-engine/src/runtime/provider-execution/provider-invocation-supersession.ts',
+        'packages/workflow-engine/src/runtime/storage-journal/provider-invocation-supersession.ts',
       ],
       explicitSymbols: ['readProviderInvocationEvidence'],
       explicitConfigKeys: [],

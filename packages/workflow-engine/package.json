@@ -35,7 +35,8 @@
   "dependencies": {
     "@jigwright/agent-runtime": "workspace:*",
     "@jigwright/core": "workspace:*",
-    "@jigwright/openspec-adapter": "workspace:*"
+    "@jigwright/openspec-adapter": "workspace:*",
+    "@jigwright/repository-runtime": "workspace:*"
   },
   "optionalDependencies": {
     "@jigwright/grants": "workspace:*",

@@ -10,6 +10,8 @@ import type {
   AuthorityPlanWorktreeBindings,
   AuthorityPlanWorktreeBindingsTypes,
 } from './authority-plan.ts';
+import { readFileAtRevision } from '../../runtime/repository-transaction/git-command.ts';
+
 type AuthorityPlanIntent =
   AuthorityPlanWorktreeBindingsTypes['AuthorityPlanIntent'];
 type AuthorityPlanMutation =
@@ -352,10 +354,11 @@ export function createAuthorityPlanWorktree(
       if (mutation.expectedBeforeSha256 === null) {
         fs.rmSync(target, { force: true });
       } else {
-        const before = runGit(repositoryRoot, [
-          'show',
-          `${record.baseCommit}:${mutation.path}`,
-        ]);
+        const before = readFileAtRevision(
+          repositoryRoot,
+          record.baseCommit,
+          `${mutation.path}`,
+        );
         fs.mkdirSync(path.dirname(target), { recursive: true });
         fs.writeFileSync(target, before, 'utf8');
       }
@@ -483,10 +486,11 @@ export function createAuthorityPlanWorktree(
       tagCandidates[0] ?? `refs/tags/workflow-authority/${grantId}`;
     const basePolicy = parseMaintainerPolicy(
       JSON.parse(
-        runGit(repositoryRoot, [
-          'show',
-          `${record.baseCommit}:workflow/maintainer-policy.json`,
-        ]),
+        readFileAtRevision(
+          repositoryRoot,
+          record.baseCommit,
+          'workflow/maintainer-policy.json',
+        ),
       ),
     );
     return {

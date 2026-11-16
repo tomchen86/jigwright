@@ -18,17 +18,19 @@ import {
   type ProviderInvocationCancellationObservationV1,
   type ProviderInvocationCancellationParametersV1,
 } from '../modules/authority/provider-invocation-cancellation-grant.ts';
+import { PROVIDER_COMPLETION_GRACE_MS } from '../runtime/storage-journal/provider-invocation-common.ts';
 import {
-  PROVIDER_COMPLETION_GRACE_MS,
   claimProviderInvocationForWorkerUnderLifecycleLock,
-  createProviderInvocationCancellationBinding,
-  failProviderInvocationUnderLifecycleLock,
-  publishProviderInvocationCancellationRequestFromPreparedGrant,
-  readProviderInvocation,
-  readProviderInvocationCancellationRequest,
-  readProviderInvocationRequest,
   releaseProviderInvocationWorkerFenceUnderLifecycleLock,
-} from '../runtime/storage-journal/provider-invocation-store.ts';
+} from '../runtime/storage-journal/provider-invocation-workers.ts';
+import {
+  createProviderInvocationCancellationBinding,
+  publishProviderInvocationCancellationRequestFromPreparedGrant,
+  readProviderInvocationCancellationRequest,
+} from '../runtime/storage-journal/provider-invocation-cancellation.ts';
+import { failProviderInvocationUnderLifecycleLock } from '../runtime/storage-journal/provider-invocation-completion.ts';
+import { readProviderInvocation } from '../runtime/storage-journal/provider-invocation-state.ts';
+import { readProviderInvocationRequest } from '../runtime/storage-journal/provider-invocation-artifacts.ts';
 import { loadInvestigationRuntimeContext } from './lifecycle-context.ts';
 
 const CANCELLATION_POLL_INTERVAL_MS = 25;

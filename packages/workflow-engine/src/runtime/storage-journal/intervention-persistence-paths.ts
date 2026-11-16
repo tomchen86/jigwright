@@ -7,13 +7,16 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
+import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { ensurePlainDirectory } from '../repository-transaction/filesystem-safety.ts';
 import {
   type InterventionControlPersistencePaths,
   PRIVATE_DIRECTORY_MODE,
 } from './intervention-persistence-contracts.ts';
-import { identityFileName } from './intervention-persistence-values.ts';
+import {
+  identityFileName,
+  isPathInside,
+} from './intervention-persistence-values.ts';
 
 export function interventionControlPersistencePaths(
   requestedRoot: string,
@@ -24,10 +27,6 @@ export function interventionControlPersistencePaths(
     checkpoints: path.join(root, 'checkpoints'),
     interventions: path.join(root, 'interventions'),
     sidecarSessions: path.join(root, 'sidecar-sessions'),
-    sidecarHistory: path.join(root, 'sidecar-session-history'),
-    sidecarPromotionPins: path.join(root, 'sidecar-promotion-pins'),
-    adoptions: path.join(root, 'adoptions'),
-    controlUpdates: path.join(root, 'control-updates'),
     operations: path.join(root, 'operations'),
   };
 }
@@ -52,36 +51,6 @@ export function persistedBootstrapSidecarSessionPath(
   );
 }
 
-export function engineAdoptionRecordPath(
-  storageRoot: string,
-  txId: string,
-): string {
-  return path.join(
-    interventionControlPersistencePaths(storageRoot).adoptions,
-    `${identityFileName('adoption', txId)}.json`,
-  );
-}
-
-export function bootstrapSidecarPromotionPinPath(
-  storageRoot: string,
-  txId: string,
-): string {
-  return path.join(
-    interventionControlPersistencePaths(storageRoot).sidecarPromotionPins,
-    `${identityFileName('sidecar-promotion-pin', txId)}.json`,
-  );
-}
-
-export function controlPlaneUpdateRecordPath(
-  storageRoot: string,
-  grantId: string,
-): string {
-  return path.join(
-    interventionControlPersistencePaths(storageRoot).controlUpdates,
-    `${identityFileName('control-update', grantId)}.json`,
-  );
-}
-
 export function ensurePersistenceDirectories(storageRoot: string): void {
   const paths = interventionControlPersistencePaths(storageRoot);
   for (const directory of [
@@ -89,10 +58,6 @@ export function ensurePersistenceDirectories(storageRoot: string): void {
     paths.checkpoints,
     paths.interventions,
     paths.sidecarSessions,
-    paths.sidecarHistory,
-    paths.sidecarPromotionPins,
-    paths.adoptions,
-    paths.controlUpdates,
     paths.operations,
   ]) {
     ensurePlainDirectory(directory);
@@ -128,4 +93,35 @@ function assertStorageRoot(requestedRoot: string): string {
     );
   }
   return root;
+}
+export function canonicalAbsolutePath(requestedPath: string): string {
+  if (
+    typeof requestedPath !== 'string' ||
+    !path.isAbsolute(requestedPath) ||
+    path.resolve(requestedPath) !== requestedPath ||
+    requestedPath === path.parse(requestedPath).root
+  ) {
+    throw workflowError(
+      'BOOTSTRAP_PATH_INVALID',
+      'Bootstrap path must be an explicit normalized absolute path.',
+      ExitCode.usage,
+    );
+  }
+  return requestedPath;
+}
+export function assertPersistenceOwnedPath(
+  storageRoot: string,
+  requestedPath: string,
+  code: string,
+): string {
+  const root = interventionControlPersistencePaths(storageRoot).root;
+  const absolute = canonicalAbsolutePath(requestedPath);
+  if (!isPathInside(root, absolute)) {
+    throw workflowError(
+      code,
+      'Bootstrap mutable state must stay inside the persistence root.',
+      ExitCode.guard,
+    );
+  }
+  return absolute;
 }

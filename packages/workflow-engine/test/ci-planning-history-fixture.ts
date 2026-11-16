@@ -1,5 +1,5 @@
 /** Synthetic historical Grant claims and retired artifact fixtures. */
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
+import { createEvidenceNode } from '../src/foundation/evidence-node/evidence-node.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import path from 'node:path';
 import fs from 'node:fs';

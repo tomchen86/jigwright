@@ -69,8 +69,8 @@ function materializePackages(runtimeRoot, descriptors) {
       ...descriptor.sourceRoot.split('/'),
     );
     fs.mkdirSync(targetRoot, { recursive: true });
-    copyDirectory(path.join(sourceRoot, 'src'), path.join(targetRoot, 'src'));
     if (descriptor.name === 'jigwright') {
+      copyDirectory(path.join(sourceRoot, 'src'), path.join(targetRoot, 'src'));
       copyDirectory(
         path.join(sourceRoot, 'bootstrap'),
         path.join(targetRoot, 'bootstrap'),
@@ -79,6 +79,10 @@ function materializePackages(runtimeRoot, descriptors) {
         path.join(sourceRoot, 'native'),
         path.join(targetRoot, 'native'),
       );
+    } else {
+      // Embedded sources contain the package's declared files, including the
+      // conformance corpus and other runtime data alongside TypeScript sources.
+      copyDirectory(sourceRoot, targetRoot);
     }
     fs.writeFileSync(
       path.join(targetRoot, 'package.json'),

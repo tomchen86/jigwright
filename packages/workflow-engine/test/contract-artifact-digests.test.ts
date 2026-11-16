@@ -7,7 +7,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { pathToFileURL } from 'node:url';
 
-import { digestArtifacts } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { digestArtifacts } from '../src/runtime/repository-observation/contract-artifact-observation.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { canonicalJson as bootstrapCanonicalJson } from '../bootstrap/canonical-json.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';

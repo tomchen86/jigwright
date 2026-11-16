@@ -69,7 +69,7 @@ owners, indexed by the generated `docs/SPEC_MAP.md`,
 regenerates the handoff, closes the Work Items linked through the change's
 `origin.json`, and moves the change under `openspec/changes/archive/`.
 
-**Authority.** Grant Core is the single authority boundary. A protected
+**Product authority.** Grant Core is the single product authority boundary. A protected
 transition emits one exact challenge instead of failing; `grant human …`
 carries a person's decision back into the same transition. Grants are an
 optional capability that is disabled by default, and maintainer ceremonies are
@@ -79,6 +79,13 @@ human-only.
 repository policy can enable, disable, and bound them but never add one. Roles
 are author, builder, and reviewer, assigned by `workflow/role-provider-default.json`.
 
+Repository maintenance under the explicitly scoped owner override in
+[`AGENTS.md`](AGENTS.md#explicit-owner-override-for-repository-development)
+is recorded in ordinary issues and commit history. The consolidation and release
+record is [issue #31](https://github.com/tomchen86/jigwright/issues/31).
+Generated handoff state reports the managed workflow lifecycle; owner-authorized
+maintenance does not create an active managed change or a product Grant.
+
 ## Where things live
 
 | Question                                                  | Look in                                                        |
@@ -86,7 +93,7 @@ are author, builder, and reviewer, assigned by `workflow/role-provider-default.j
 | What must the product do?                                 | Colocated `spec.md` files, indexed by `docs/SPEC_MAP.md`       |
 | Why is a change being made, and what may each task touch? | `openspec/changes/<id>/`                                       |
 | What was decided, and what is still open?                 | `docs/DECISION-REGISTER.md`                                    |
-| What is active, blocked, and next?                        | `docs/CURRENT_AND_NEXT_STEPS.md` (generated)                   |
+| What managed work is active, blocked, and next?           | `docs/CURRENT_AND_NEXT_STEPS.md` (generated)                   |
 | What is parked?                                           | `docs/BACKLOG.md` (generated from `docs/work-registry/items/`) |
 | How do I run a transition?                                | `docs/WORKFLOW.md` and the routing table in `AGENTS.md`        |
 | Which documents may be edited, and how?                   | `workflow/document-policy.json`                                |
@@ -97,22 +104,27 @@ are author, builder, and reviewer, assigned by `workflow/role-provider-default.j
 The workspace holds one distribution package and its internal packages:
 
 - `packages/workflow-engine` — the engine and the `jigwright` CLI.
-- `packages/core` — ports and canonical JSON; it imports no feature implementation.
+- `packages/core` — public contracts, identifiers, immutable provider metadata, and pure validation; it performs no repository I/O.
+- `packages/repository-runtime` — shared filesystem containment and canonical path inspection, used by the engine and fixture adapter.
 - `packages/agent-runtime` — provider processes, protocol frames, and built-in provider definitions.
 - `packages/grants` — optional grant envelope readers and verifiers.
 - `packages/openspec-adapter`, `packages/github-adapter`, `packages/fixture-adapter` — planning, remote, and test-fixture adapters.
 
-Inside `packages/workflow-engine/src`, dependencies point downward:
+Inside `packages/workflow-engine/src`, application use cases may call complete
+runtime repository and execution operations. Runtime must not depend on
+application or entrypoints; core and domain logic remain effect-free.
+Composition roots assemble production implementations, and interfaces remain
+where implementations actually vary.
 
 | Layer               | Holds                                                                                                |
 | ------------------- | ---------------------------------------------------------------------------------------------------- |
 | `entrypoints/`      | `cli`, `ci`, `hooks`, and the provider `worker`                                                      |
-| `application/`      | use cases: `propose`, `execute-task`, `finalize`, `archive`, `control-plane`                         |
-| `runtime/`          | durable state: `storage-journal`, `session-workspace`, `managed-documents`, `repository-transaction` |
+| `application/`      | workflow use cases: `execute-task`, `archive`, `control-plane`, and `work-registry`                  |
+| `runtime/`          | repository I/O, durable state, proposal/finalization operations, managed documents, and transactions |
 | `modules/`          | domain logic, one directory per domain (below)                                                       |
 | `adapters/`         | `consumer`, `providers`, `remote`, `signing`, `compatibility`                                        |
 | `foundation/`       | canonical JSON and error types                                                                       |
-| `composition-root/` | wiring of ports to implementations                                                                   |
+| `composition-root/` | production assembly and binding of interchangeable implementations                                   |
 
 Domain modules:
 
@@ -180,6 +192,6 @@ projections, and stops at a terminal state or when its abort signal fires. It
 does not stream provider transcripts or acquire retry, cancellation, or other
 lifecycle authority.
 
-This repository has no configured remote. Its local release workflow builds
-candidate artifacts only; it does not publish an npm package or perform real
-external operations.
+The local release workflow builds candidate artifacts; it does not publish an
+npm package or perform real external operations. Publishing and other external
+operations require the separately scoped authority recorded for them.

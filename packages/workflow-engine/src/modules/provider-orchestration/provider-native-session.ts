@@ -8,8 +8,8 @@
  */
 import crypto from 'node:crypto';
 
+import { assertAgentProviderConfigSnapshot } from '@jigwright/core/agent-provider-config';
 import {
-  assertAgentProviderConfigSnapshot,
   assertProviderWrapperSessionProtocolReceipt,
   assertProviderWrapperSessionProtocolOutcome,
   providerNativeSessionIdDigest,
@@ -17,7 +17,7 @@ import {
   type ProviderWrapperSessionProtocolBinding,
   type ProviderWrapperSessionProtocolOutcome,
   type ProviderWrapperSessionProtocolReceipt,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/harness-jsonl-v2-contracts';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

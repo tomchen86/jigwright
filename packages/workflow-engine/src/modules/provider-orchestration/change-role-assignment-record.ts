@@ -11,7 +11,7 @@ import crypto from 'node:crypto';
 import {
   assertAgentProviderConfigSnapshot,
   type AgentProviderConfigSnapshot,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/agent-provider-config';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

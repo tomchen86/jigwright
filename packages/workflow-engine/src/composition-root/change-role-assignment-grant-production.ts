@@ -5,7 +5,7 @@
  * Invariants:
  * - An existing activation must match the exact challenge and operation.
  */
-import { loadChangeContract } from '../adapters/consumer/repository/work-registry/contracts.ts';
+import { loadChangeContract } from './consumer-contract-production.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import {
@@ -24,10 +24,8 @@ import {
   activateChangeRoleAssignmentGrant,
   observeChangeRoleAssignmentGrantActivation,
 } from '../runtime/storage-journal/change-role-assignment-grant-store.ts';
-import {
-  readProviderInvocation,
-  readProviderInvocationRequest,
-} from '../runtime/storage-journal/provider-invocation-store.ts';
+import { readProviderInvocation } from '../runtime/storage-journal/provider-invocation-state.ts';
+import { readProviderInvocationRequest } from '../runtime/storage-journal/provider-invocation-artifacts.ts';
 import { discoverRepository } from '../runtime/repository-transaction/git.ts';
 import { loadInvestigationRuntimeContext } from './lifecycle-context.ts';
 

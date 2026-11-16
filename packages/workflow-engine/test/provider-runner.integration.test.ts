@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { builtInProviderAdapters } from '../src/composition-root/built-in-provider-adapter-production.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -9,7 +10,7 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { createProviderRunnerForTesting } from '../src/runtime/provider-execution/provider-runner.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
+import { resolveBuiltInProviderDefinitionSnapshot } from '@jigwright/core/built-in-provider-definition';
 import { createAgentRuntimeAssignmentBindingV1 } from '../src/modules/provider-orchestration/agent-runtime-assignment-binding.ts';
 import { git } from './fixture.ts';
 import {
@@ -55,7 +56,10 @@ test('runner wraps provider-native output only after unchanged governed projecti
         elapsedMs: 12,
       };
     });
-    const report = createProviderRunnerForTesting(host).run(fixture.input, {
+    const report = createProviderRunnerForTesting(
+      builtInProviderAdapters,
+      host,
+    ).run(fixture.input, {
       platform: 'darwin',
     });
 
@@ -125,6 +129,7 @@ test('assigned runner launch cannot fall back to an unselected higher-priority c
   const inspected: string[] = [];
   try {
     const report = createProviderRunnerForTesting(
+      builtInProviderAdapters,
       fakeHost({
         inspectCandidate(candidate) {
           inspected.push(candidate);
@@ -196,6 +201,7 @@ test('fixed Codex launch binds the code-owned provider definition snapshot', () 
   const fixture = createRunnerFixture('codex');
   try {
     const report = createProviderRunnerForTesting(
+      builtInProviderAdapters,
       codexRunnerHost((input) => {
         const outputIndex = input.args.indexOf('--output-last-message');
         assert.ok(outputIndex >= 0);
@@ -248,15 +254,15 @@ test('async runner uses the async execution host while preserving single-shot va
       };
     };
 
-    const report = await createProviderRunnerForTesting(host).runAsync(
-      fixture.input,
-      {
-        platform: 'darwin',
-        onActivity(event) {
-          activity.push(event.type);
-        },
+    const report = await createProviderRunnerForTesting(
+      builtInProviderAdapters,
+      host,
+    ).runAsync(fixture.input, {
+      platform: 'darwin',
+      onActivity(event) {
+        activity.push(event.type);
       },
-    );
+    });
 
     assert.deepEqual(report.semanticOutput, semanticOutput(fixture.request));
     assert.equal(report.assurance, 'unchanged-governed-projection');
@@ -284,6 +290,7 @@ test('runner rejects persistent files outside the exact runtime closure', () => 
     assert.throws(
       () =>
         createProviderRunnerForTesting(
+          builtInProviderAdapters,
           claudeRunnerHost((input) => {
             fs.writeFileSync(
               path.join(path.dirname(input.stdinSource), 'undeclared.tmp'),
@@ -327,6 +334,7 @@ test('runner bounds provider-created projection content before hashing it', () =
     assert.throws(
       () =>
         createProviderRunnerForTesting(
+          builtInProviderAdapters,
           claudeRunnerHost(() => {
             fs.closeSync(fs.openSync(oversizedPath, 'w'));
             fs.truncateSync(oversizedPath, 128 * 1024 * 1024 + 1);
@@ -358,6 +366,7 @@ test('runner requires private Git-common runtime and no-follow engine files', ()
     assert.throws(
       () =>
         createProviderRunnerForTesting(
+          builtInProviderAdapters,
           claudeRunnerHost(() =>
             successfulProbe(
               JSON.stringify({
@@ -388,6 +397,7 @@ test('runner requires private Git-common runtime and no-follow engine files', ()
     assert.throws(
       () =>
         createProviderRunnerForTesting(
+          builtInProviderAdapters,
           claudeRunnerHost(() => successfulProbe('')),
         ).run(arbitraryGitRuntime.input, { platform: 'darwin' }),
       (error) => isWorkflowError(error, 'PROVIDER_RUNTIME_DIRECTORY_UNSAFE'),
@@ -412,6 +422,7 @@ test('runner requires private Git-common runtime and no-follow engine files', ()
     assert.throws(
       () =>
         createProviderRunnerForTesting(
+          builtInProviderAdapters,
           claudeRunnerHost(() => successfulProbe('')),
         ).run(symlinkedPrompt.input, { platform: 'darwin' }),
       (error) => isWorkflowError(error, 'PROVIDER_RUNTIME_PATH_UNSAFE'),
@@ -437,6 +448,7 @@ test('runner never truncates a preplanted hardlink in its runtime', () => {
     assert.throws(
       () =>
         createProviderRunnerForTesting(
+          builtInProviderAdapters,
           claudeRunnerHost(() => successfulProbe('')),
         ).run(fixture.input, { platform: 'darwin' }),
       (error) => isWorkflowError(error, 'PROVIDER_RUNTIME_PATH_UNSAFE'),
@@ -456,6 +468,7 @@ test('runner requires a freshly engine-created runtime directory', () => {
     assert.throws(
       () =>
         createProviderRunnerForTesting(
+          builtInProviderAdapters,
           claudeRunnerHost(() => successfulProbe('')),
         ).run(fixture.input, { platform: 'darwin' }),
       (error) => isWorkflowError(error, 'PROVIDER_RUNTIME_PATH_UNSAFE'),
@@ -579,6 +592,7 @@ test('runner binds enabled policy, provider, baseline, and semantic schema befor
       assert.throws(
         () =>
           createProviderRunnerForTesting(
+            builtInProviderAdapters,
             claudeRunnerHost(() => {
               launches += 1;
               return successfulProbe('');
@@ -656,6 +670,7 @@ test('production runner executes Attempt 2 with a durable 600s policy snapshot a
     fs.writeFileSync(baselinePolicyPath, baselinePolicy, 'utf8');
     let observedTimeoutMs = 0;
     const report = createProviderRunnerForTesting(
+      builtInProviderAdapters,
       claudeRunnerHost((input) => {
         observedTimeoutMs = input.timeoutMs;
         return successfulProbe(
@@ -736,6 +751,7 @@ test('runner fails closed for a missing, mismatched, or malformed execution poli
       assert.throws(
         () =>
           createProviderRunnerForTesting(
+            builtInProviderAdapters,
             claudeRunnerHost(() => {
               launches += 1;
               return successfulProbe('');
@@ -832,6 +848,7 @@ test('runner binds policy, request, and manifest to pinned durable inputs', () =
       assert.throws(
         () =>
           createProviderRunnerForTesting(
+            builtInProviderAdapters,
             claudeRunnerHost(() => {
               launches += 1;
               return successfulProbe('');
@@ -874,9 +891,12 @@ test('runner fingerprints around provider preflight and model execution', () => 
 
     assert.throws(
       () =>
-        createProviderRunnerForTesting(host).run(fixture.input, {
-          platform: 'darwin',
-        }),
+        createProviderRunnerForTesting(builtInProviderAdapters, host).run(
+          fixture.input,
+          {
+            platform: 'darwin',
+          },
+        ),
       (error) => isWorkflowError(error, 'PROVIDER_GOVERNED_PROJECTION_DRIFT'),
     );
   } finally {
@@ -890,6 +910,7 @@ test('runner automatically governs its prompt and schema inputs', () => {
     assert.throws(
       () =>
         createProviderRunnerForTesting(
+          builtInProviderAdapters,
           claudeRunnerHost((input) => {
             fs.writeFileSync(input.stdinSource, '{"mutated":true}\n');
             return successfulProbe(
@@ -938,9 +959,12 @@ test('runner revalidates engine files after preflight before model launch', () =
 
     assert.throws(
       () =>
-        createProviderRunnerForTesting(host).run(fixture.input, {
-          platform: 'darwin',
-        }),
+        createProviderRunnerForTesting(builtInProviderAdapters, host).run(
+          fixture.input,
+          {
+            platform: 'darwin',
+          },
+        ),
       (error) => isWorkflowError(error, 'PROVIDER_RUNTIME_PATH_UNSAFE'),
     );
   } finally {
@@ -955,6 +979,7 @@ test('runner automatically governs durable request and state inputs', () => {
       assert.throws(
         () =>
           createProviderRunnerForTesting(
+            builtInProviderAdapters,
             claudeRunnerHost(() => {
               rewritePrivateJson(
                 path.join(fixture.input.invocationDirectory, fileName),
@@ -1008,9 +1033,12 @@ test('runner derives drift itself and creates no successful provider result', ()
 
     assert.throws(
       () =>
-        createProviderRunnerForTesting(host).run(fixture.input, {
-          platform: 'darwin',
-        }),
+        createProviderRunnerForTesting(builtInProviderAdapters, host).run(
+          fixture.input,
+          {
+            platform: 'darwin',
+          },
+        ),
       (error) => {
         assert.ok(isWorkflowError(error, 'PROVIDER_GOVERNED_PROJECTION_DRIFT'));
         assert.deepEqual((error as WorkflowError).details?.changedCategories, [

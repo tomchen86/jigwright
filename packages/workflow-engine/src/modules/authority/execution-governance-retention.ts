@@ -1,3 +1,4 @@
+import type { TaskMandateBinding } from './task-mandate-contract.ts';
 /**
  * Decides evidence retention and compacts epoch history without mutating durable storage.
  *
@@ -11,7 +12,7 @@ import {
   workflowError,
   type WorkflowError,
 } from '../../foundation/errors/errors.ts';
-import type { ContextManifest } from '../lifecycle/context-manifest-contract.ts';
+import type { ContextManifest } from './execution-governance-context.ts';
 import {
   assertBoundedInteger,
   assertDigest,
@@ -505,4 +506,113 @@ export function invalidRetentionRecord(message: string): WorkflowError {
 
 function invalidRetentionPolicy(message: string): WorkflowError {
   return workflowError('RETENTION_POLICY_INVALID', message, ExitCode.usage);
+}
+
+export type WorkflowRetentionBinding = Readonly<{
+  workflowId: string;
+  mandateBinding: TaskMandateBinding;
+}>;
+
+/** Check each observation before requesting the next one; snapshots remain isolated. */
+export function collectRetentionWorkflowBindings(
+  observations: Iterable<WorkflowRetentionBinding>,
+): WorkflowRetentionBinding[] {
+  const byWorkflow = new Map<string, WorkflowRetentionBinding>();
+  for (const { workflowId, mandateBinding } of observations) {
+    const previous = byWorkflow.get(workflowId);
+    if (
+      previous !== undefined &&
+      canonicalJson(previous.mandateBinding) !== canonicalJson(mandateBinding)
+    ) {
+      throw workflowError(
+        'RETENTION_WORKFLOW_STATE_AMBIGUOUS',
+        `Provider invocations disagree about workflow ${workflowId}.`,
+        ExitCode.staleState,
+      );
+    }
+    byWorkflow.set(workflowId, {
+      workflowId,
+      mandateBinding: structuredClone(mandateBinding),
+    });
+  }
+  return [...byWorkflow.values()].sort((left, right) =>
+    left.workflowId.localeCompare(right.workflowId),
+  );
+}
+
+export const RETENTION_MAINTENANCE_MAX_WORKFLOWS = 100;
+
+export function assertEvidenceRetentionLimit(value: number): number {
+  if (
+    !Number.isSafeInteger(value) ||
+    value < 1 ||
+    value > RETENTION_MAINTENANCE_MAX_WORKFLOWS
+  ) {
+    throw workflowError(
+      'RETENTION_MAINTENANCE_INVALID',
+      `Retention maintenance limit must be between 1 and ${RETENTION_MAINTENANCE_MAX_WORKFLOWS}.`,
+      ExitCode.usage,
+    );
+  }
+  return value;
+}
+
+export function assertEvidencePinReason(value: string): string {
+  if (
+    typeof value !== 'string' ||
+    value.trim() !== value ||
+    value.length === 0 ||
+    Buffer.byteLength(value) > 2_048
+  ) {
+    throw workflowError(
+      'RETENTION_PIN_INVALID',
+      'Evidence pin reason must be a non-empty trimmed string.',
+      ExitCode.usage,
+    );
+  }
+  return value;
+}
+
+export function exactRetentionTimestamp(value: string): string {
+  const time = Date.parse(value);
+  if (!Number.isFinite(time) || new Date(time).toISOString() !== value) {
+    throw workflowError(
+      'RETENTION_MAINTENANCE_INVALID',
+      'Retention maintenance requires an exact ISO-8601 time.',
+      ExitCode.usage,
+    );
+  }
+  return value;
+}
+
+export function exactWorkflowMandateBinding(
+  bindings: readonly TaskMandateBinding[],
+): TaskMandateBinding {
+  const first = bindings[0]!;
+  if (
+    bindings.some((binding) => canonicalJson(binding) !== canonicalJson(first))
+  ) {
+    throw workflowError(
+      'RETENTION_TASK_MANDATE_MISMATCH',
+      'Execution jobs disagree about the workflow Task Mandate binding.',
+      ExitCode.staleState,
+    );
+  }
+  return structuredClone(first);
+}
+
+export function isWorkflowEvidencePinReplay(
+  current: EvidenceRetentionRecord,
+  actor: string,
+  reason: string,
+): boolean {
+  if (current.retention !== 'pinned') return false;
+  if (current.pin?.actor !== actor || current.pin.reason !== reason) {
+    throw workflowError(
+      'RETENTION_PIN_CONFLICT',
+      'Evidence is already pinned by a different durable human decision.',
+      ExitCode.conflict,
+    );
+  }
+  return true;
 }

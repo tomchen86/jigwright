@@ -18,7 +18,7 @@ import {
   type ProviderWrapperProtocolReceipt,
   assertProviderWrapperProtocolReceipt,
   ProviderWrapperProtocolError,
-} from '../../modules/provider-orchestration/agent-runtime-protocol.ts';
+} from '@jigwright/core/harness-jsonl-v1-contracts';
 import {
   outputLimitExceeded,
   nativeOutputInvalid,
@@ -28,7 +28,7 @@ import {
   isRecord,
   deepFreeze,
 } from './provider-runner-values.ts';
-import { type ProviderRunInput } from './provider-runner.ts';
+import type { ProviderRunInput } from './provider-runner.ts';
 import { openNoFollowRead } from './provider-runner-files.ts';
 
 export function enforceProcessOutcome(

@@ -1,7 +1,9 @@
+import { preflightMaintainerGrantV2 } from '../bootstrap/maintainer-authority-production.ts';
+import { prepareMaintainerGrantV2Checks } from '../bootstrap/maintainer-authority-production.ts';
 import test from 'node:test';
-import { preflightMaintainerGrantV2 } from '../src/modules/authority/maintainer-grant-v2.ts';
+
 import assert from 'node:assert/strict';
-import { prepareMaintainerGrantV2Checks } from '../src/application/control-plane/maintainer-approve.ts';
+
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -13,9 +15,10 @@ import {
 import { openMaintainerCheckJournal } from '../src/runtime/storage-journal/maintainer-check-journal.ts';
 import {
   type MaintainerPolicy,
+  isAuthorityPathEligible,
   parseMaintainerPolicy,
 } from '../src/modules/authority/maintainer-policy.ts';
-import { assertCurrentMaintainerPolicyTransition } from '../src/entrypoints/ci/ci-authority.ts';
+import { assertCurrentMaintainerPolicyTransition } from '../src/modules/assurance/commit-replay/ci-authority.ts';
 import {
   withTwoCheckCandidate,
   PROFILE_ID,
@@ -401,6 +404,78 @@ test('current V2 CI refuses stable identity and sealed trust rollback', () => {
   }
 });
 
+test('sealed maintainer paths remain ineligible and cannot be removed from current policy', () => {
+  const raw = JSON.parse(
+    fs.readFileSync(
+      path.join(sourceRepositoryRoot, 'workflow/maintainer-policy.json'),
+      'utf8',
+    ),
+  );
+  const bootstrap = parseMaintainerPolicy({ ...raw, phase: 'bootstrap' });
+  const sealed = parseMaintainerPolicy({ ...raw, phase: 'sealed' });
+  assert.ok(sealed.sealedImmutablePaths.length > 0);
+  for (const protectedPath of sealed.sealedImmutablePaths) {
+    assert.equal(isAuthorityPathEligible(bootstrap, protectedPath), true);
+    assert.equal(isAuthorityPathEligible(sealed, protectedPath), false);
+    const weakened = parseMaintainerPolicy({
+      ...sealed,
+      sealedImmutablePaths: sealed.sealedImmutablePaths.filter(
+        (filePath) => filePath !== protectedPath,
+      ),
+    });
+    assert.throws(
+      () => assertCurrentMaintainerPolicyTransition(sealed, weakened),
+      (error) =>
+        isWorkflowError(error, 'CI_AUTHORITY_POLICY_TRANSITION_INVALID'),
+      protectedPath,
+    );
+  }
+  for (const policy of [bootstrap, sealed]) {
+    assert.equal(isAuthorityPathEligible(policy, 'workflow/checks.json'), true);
+  }
+});
+
+test('managed trailer authority is limited to its exact core source', () => {
+  const policy = parseMaintainerPolicy(
+    JSON.parse(
+      fs.readFileSync(
+        path.join(sourceRepositoryRoot, 'workflow/maintainer-policy.json'),
+        'utf8',
+      ),
+    ),
+  );
+  const grammar = 'packages/core/src/managed-transition-trailers.ts';
+  assert.deepEqual(
+    policy.bootstrapEligiblePaths.filter((filePath) =>
+      filePath.startsWith('packages/core/'),
+    ),
+    [grammar],
+  );
+  assert.ok(policy.sealedImmutablePaths.includes(grammar));
+  for (const phase of ['bootstrap', 'sealed'] as const) {
+    for (const sibling of [
+      'packages/core/src/canonical-json.ts',
+      `${grammar}x`,
+      `${grammar}/child.ts`,
+    ]) {
+      assert.equal(
+        isAuthorityPathEligible({ ...policy, phase }, sibling),
+        false,
+      );
+    }
+  }
+  assert.throws(
+    () =>
+      parseMaintainerPolicy({
+        ...policy,
+        bootstrapEligiblePaths: policy.bootstrapEligiblePaths.filter(
+          (filePath) => filePath !== grammar,
+        ),
+      }),
+    (error) => isWorkflowError(error, 'MAINTAINER_POLICY_INVALID'),
+  );
+});
+
 test('repository publishes a protected capability dependency closure', () => {
   const value = JSON.parse(
     fs.readFileSync(
@@ -428,7 +503,7 @@ test('repository publishes a protected capability dependency closure', () => {
   );
   assert.equal(
     protectedPaths.includes(
-      'packages/workflow-engine/src/modules/authority/maintainer-candidate.ts',
+      'packages/workflow-engine/src/modules/authority/maintainer-candidate-contracts.ts',
     ),
     true,
   );

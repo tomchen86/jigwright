@@ -10,36 +10,42 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { AgentRuntimeProbeEvidenceV1 } from '@jigwright/core/agent-runtime-port';
-import { loadAiAdapterPolicy } from './ai-adapter-policy.ts';
+import { loadAiAdapterPolicy } from '../provider-policy/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
-import { createEvidenceNode } from '../../adapters/planning/investigation/evidence-node.ts';
+import { loadWorkflowConfig } from '../workflow-configuration/workflow-configuration.ts';
+import { createEvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';
 import { writeEvidenceNode } from '../storage-journal/evidence-node-store.ts';
 import {
   WorkflowError,
   durableFailureMessage,
 } from '../../foundation/errors/errors.ts';
 import { discoverRepository } from '../repository-transaction/git.ts';
-import { investigationRuntimePaths } from '../session-workspace/paths.ts';
+import { investigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
   type ProviderRunnerReport,
   createProviderInvocationRequest,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {
-  type BlindSurveyManifest,
   blindSurveyIntentDigest,
   providerInvocationManifestDigest,
+} from '../storage-journal/provider-invocation-manifest-validation.ts';
+import {
   BLIND_SURVEY_OUTPUT_SCHEMA,
-  ensureProviderExecutionPolicySnapshot,
-  createProviderInvocation,
-  claimProviderInvocation,
-  prepareProviderInvocationAcceptanceBinding,
   BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA,
-  blindSurveyOutputValidator,
-  completeProviderInvocationFromRunner,
+} from '../../modules/provider-orchestration/blind-survey-output.ts';
+import { ensureProviderExecutionPolicySnapshot } from '../storage-journal/provider-invocation-policy.ts';
+import {
+  createProviderInvocation,
+  prepareProviderInvocationAcceptanceBinding,
   readProviderInvocation,
+} from '../storage-journal/provider-invocation-state.ts';
+import { claimProviderInvocation } from '../storage-journal/provider-invocation-workers.ts';
+import { blindSurveyOutputValidator } from '../../modules/assurance/provider-output-contract.ts';
+import {
+  completeProviderInvocationFromRunner,
   failProviderInvocation,
-} from '../storage-journal/provider-invocation-store.ts';
+} from '../storage-journal/provider-invocation-completion.ts';
+import type { BlindSurveyManifest } from '../../modules/investigation/manifest/blind-survey-manifest.ts';
 import {
   type ProviderId,
   listBuiltInProviders,
@@ -50,7 +56,7 @@ import type {
   ProviderRunInput,
   ProviderRunOptions,
 } from './provider-runner.ts';
-import { scheduleOrdinaryRole } from '../../modules/provider-orchestration/role-scheduler.ts';
+import { scheduleOrdinaryRole } from '../../modules/provider-orchestration/role-assignment.ts';
 import { admitBuiltInProviderFamilyEvidence } from './agent-runtime-probe-evidence.ts';
 import {
   resolvePilotRecordPath,

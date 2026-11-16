@@ -33,7 +33,6 @@ export const MANAGED_WORKFLOW_COMMAND_IDS = [
   'rollback-completion',
   'commit',
   'abort',
-  'boundary-inventory',
   'boundary-vectors',
   'boundary-remap',
 ] as const;
@@ -110,19 +109,6 @@ const MANAGED_WORKFLOW_COMMAND_DEFINITIONS = [
     purpose: 'Inspect the versioned managed-task workflow command guide.',
     preconditions: [],
     consequences: ['Reads command guidance without changing repository state.'],
-    successors: [],
-  },
-  {
-    id: 'boundary-inventory',
-    route: ['boundary', 'inventory'],
-    usage: ['pnpm workflow boundary inventory [--check] [--json]'],
-    status: 'read-only',
-    purpose:
-      'Inspect or verify the machine-checked T3 consumer-coupling inventory.',
-    preconditions: [],
-    consequences: [
-      'Reads current source and governed artifacts without changing repository state.',
-    ],
     successors: [],
   },
   {

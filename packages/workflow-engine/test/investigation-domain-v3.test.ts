@@ -14,7 +14,7 @@ import {
   deriveInvestigationCommitments,
   investigationTermSetDigest,
 } from '../src/modules/investigation/domain/investigation-roots.ts';
-import { scanInvestigationTreeFacts } from '../src/modules/investigation/domain/investigation-scanner.ts';
+import { scanInvestigationTreeFacts } from '../src/composition-root/investigation-production.ts';
 import {
   normalizeInvestigationTerm,
   previewInvestigationTermUnion,

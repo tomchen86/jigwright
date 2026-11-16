@@ -1,3 +1,7 @@
+import {
+  INVESTIGATION_ROOT_CANONICALIZATION_VERSION,
+  INVESTIGATION_TERM_NORMALIZATION_VERSION,
+} from './investigation-schema.ts';
 /**
  * Derives canonical investigation commitments from terms, scan hits, groups
  * and dispositions.
@@ -9,24 +13,19 @@
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
+import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import type {
   AppliedInvestigationDisposition,
   InvestigationFinalGroupFact,
 } from './investigation-domain.ts';
-import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import type { InvestigationGroupFacts } from './investigation-groups.ts';
-import type { InvestigationScanFacts } from './investigation-scanner.ts';
+import type { InvestigationScanFacts } from './investigation-scan-facts.ts';
 import {
   normalizeInvestigationTerm,
   type PreviewInvestigationTerm,
 } from './investigation-terms.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;
-
-export const INVESTIGATION_ROOT_CANONICALIZATION_VERSION =
-  'investigation-root-canonicalization.v3' as const;
-export const INVESTIGATION_TERM_NORMALIZATION_VERSION =
-  'investigation-term-v1' as const;
 
 export type InvestigationDerivedCommitments = {
   inventoryRoot: string;

@@ -10,8 +10,8 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   loadChangeContract,
   loadCommittedChangeContract,
-} from '../src/adapters/consumer/repository/work-registry/contracts.ts';
-import { readCommittedInvestigationManifestV3 } from '../src/runtime/repository-transaction/committed-investigation-manifest.ts';
+} from '../src/composition-root/consumer-contract-production.ts';
+import { readCommittedInvestigationManifestV3 } from '../src/runtime/repository-validation/commit-replay/committed-investigation-manifest.ts';
 import {
   createFixtureRepository,
   fixtureCurrentSchemaName,

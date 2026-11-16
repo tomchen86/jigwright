@@ -1,20 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { INVESTIGATION_V3_ATTEMPTED_TRANSITIONS } from '../src/modules/investigation/domain/investigation-schema.ts';
+import { sealInvestigationManifestDraft } from '../src/modules/investigation/manifest/investigation-manifest.ts';
 import {
-  INVESTIGATION_V3_ATTEMPTED_TRANSITIONS,
   buildInvestigationManifestDraft,
   validateDraftForSeal,
-  sealInvestigationManifestDraft,
   validateForAuthority,
+} from '../src/composition-root/investigation-production.ts';
+import {
   type OrdinaryInvestigationAuthoringState,
   type InvestigationAuthoringState,
-  type InvestigationRequirementV3,
-} from '../src/modules/investigation/manifest/investigation-manifest.ts';
+} from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
+import type { InvestigationRequirementV3 } from '../src/modules/investigation/manifest/investigation-requirement-types.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import fs from 'node:fs';
 import path from 'node:path';
-import { buildInvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-builder.ts';
-import { materializeInvestigationEvidenceView } from '../src/modules/investigation/manifest/investigation-materializer.ts';
+import { buildInvestigationManifestV3 } from '../src/composition-root/investigation-production.ts';
+import { materializeInvestigationEvidenceView } from '../src/composition-root/investigation-production.ts';
 import os from 'node:os';
 import { runGitBuffer } from '../src/runtime/repository-transaction/git.ts';
 import { git } from './fixture.ts';
@@ -23,7 +25,7 @@ import {
   previewInvestigationTermUnion,
 } from '../src/modules/investigation/domain/investigation-terms.ts';
 import { createMutationClassPolicy } from '../src/modules/source/mutation-class-policy.ts';
-import { scanInvestigationTreeFacts } from '../src/modules/investigation/domain/investigation-scanner.ts';
+import { scanInvestigationTreeFacts } from '../src/composition-root/investigation-production.ts';
 import { deriveInvestigationGroupFacts } from '../src/modules/investigation/domain/investigation-groups.ts';
 import {
   ordinaryAuthoringState,

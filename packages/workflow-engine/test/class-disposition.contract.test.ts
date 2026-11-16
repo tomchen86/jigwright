@@ -13,7 +13,7 @@ const REGISTRY = parsePathRoleRegistry({
   kind: 'path-role-registry',
   roles: {
     lifecycle: [
-      'packages/workflow-engine/src/application/propose/planning-transition.ts',
+      'packages/workflow-engine/src/runtime/planning-transition/planning-transition.ts',
     ],
     ordinary: ['apps/**'],
   },
@@ -153,7 +153,7 @@ test('a group whose path forbids compression cannot join a class', () => {
       groupId: 'g-lifecycle',
       hits: [
         hit(
-          'packages/workflow-engine/src/application/propose/planning-transition.ts',
+          'packages/workflow-engine/src/runtime/planning-transition/planning-transition.ts',
           'spawn(cmd, { timeoutMs });',
         ),
       ],

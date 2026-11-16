@@ -5,10 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import {
-  parseExecutionArtifact,
-  parsePlanReviewArtifact,
-} from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { parseExecutionArtifact } from '../src/modules/planning-provider/planning-artifact-parsers.ts';
+import { parsePlanReviewArtifact } from '../src/composition-root/plan-review-artifact-production.ts';
 import {
   SPEC_DRIVEN_SCHEMA_GRAPH,
   currentSchemaGraph,

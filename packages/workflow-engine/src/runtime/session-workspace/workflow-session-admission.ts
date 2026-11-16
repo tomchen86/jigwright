@@ -17,7 +17,10 @@ import {
   observeTaskSessionIsolationLease,
   taskSessionLeaseConflict,
 } from './workflow-session-isolation.ts';
-import { normalizePolicyPath, matchesAllowedPath } from './paths.ts';
+import {
+  normalizePolicyPath,
+  matchesAllowedPath,
+} from '../../foundation/repository-path/repository-path.ts';
 import fs from 'node:fs';
 import { isBaseSpecificationPath } from '../../modules/source/system-spec-catalog.ts';
 

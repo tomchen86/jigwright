@@ -6,9 +6,9 @@ import test from 'node:test';
 import {
   ManagedTrailerSyntaxError,
   parseManagedTrailers,
-} from '../src/modules/lifecycle/managed-trailers.ts';
-import { listRangeCommits } from '../src/entrypoints/ci/ci-git.ts';
-import { replayCommitSequence } from '../src/entrypoints/ci/ci-sequence.ts';
+} from '@jigwright/core/managed-transition-trailers';
+import { listRangeCommits } from '../src/runtime/repository-validation/commit-replay/ci-git.ts';
+import { replayCommitSequence } from '../src/composition-root/ci-replay-production.ts';
 import {
   amendPlanCommitMessage,
   amendPlanCommitTrailers,

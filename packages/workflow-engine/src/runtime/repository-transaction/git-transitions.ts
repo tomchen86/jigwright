@@ -11,7 +11,6 @@ export {
   commitFacts,
   findCurrentExecutionTaskCommits,
   findExactTaskCommits,
-  hasExactTrailers,
 } from './git-commit-history.ts';
 export type { TaskCommit } from './git-commit-history.ts';
 export {

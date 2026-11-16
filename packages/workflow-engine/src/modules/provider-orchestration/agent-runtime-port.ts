@@ -6,21 +6,18 @@
  * - The current completion receipt is version 4 and carries the full
  *   invocation acceptance binding.
  */
-import type { ContextManifest } from '../lifecycle/context-manifest-contract.ts';
+import type { ChangeRoleAssignmentRecordV1 } from './change-role-assignment-record.ts';
+import type { ContextManifest } from '../authority/execution-governance-context.ts';
 import type {
   ProviderInvocationRequest,
   ProviderOutputValidator,
   ProviderRunnerReport,
 } from './provider-contracts.ts';
 import type { ProviderId } from './provider-registry.ts';
-import type {
-  HostWrapperProviderProfileSnapshot,
-  ProviderWrapperSessionProtocolBinding,
-} from '@jigwright/agent-runtime';
-import type {
-  ProviderWrapperProtocolDeclaration,
-  ProviderRuntimeProtocolReceipt,
-} from './agent-runtime-protocol.ts';
+import type { HostWrapperProviderProfileSnapshot } from '@jigwright/core/agent-provider-config';
+import type { ProviderWrapperSessionProtocolBinding } from '@jigwright/core/harness-jsonl-v2-contracts';
+import type { ProviderWrapperProtocolDeclaration } from '@jigwright/core/harness-jsonl-v1-contracts';
+import type { ProviderRuntimeProtocolReceipt } from './agent-runtime-protocol.ts';
 import type { AgentRuntimeAssignmentBindingV1 } from './agent-runtime-assignment-binding.ts';
 import type {
   AgentRuntimeHostExecutionBindingV1,
@@ -31,10 +28,8 @@ import type {
   ProviderNativeSessionCompletionTerminalV1,
 } from './provider-native-session.ts';
 
-export type {
-  ProviderRuntimeProtocolReceipt,
-  ProviderWrapperProtocolReceipt,
-} from './agent-runtime-protocol.ts';
+export type { ProviderRuntimeProtocolReceipt } from './agent-runtime-protocol.ts';
+export type { ProviderWrapperProtocolReceipt } from '@jigwright/core/harness-jsonl-v1-contracts';
 export type { AgentRuntimeAssignmentBindingV1 } from './agent-runtime-assignment-binding.ts';
 export type {
   AgentRuntimeHostExecutionBindingV1,
@@ -176,6 +171,24 @@ export type AgentRuntimeProcessTermination =
   | 'spawn-error'
   | 'protocol-error';
 
+/** Process monitoring handles retain their live observation and cleanup semantics. */
+export type ProviderInvocationCancellationWatcher = Readonly<{
+  signal: AbortSignal;
+  hasExactCancellation(): boolean;
+  stop(): void;
+}>;
+
+export type ProviderInvocationActivityHeartbeatInput = Readonly<{
+  invocationId: string;
+  leaseGeneration: number;
+  workerId: string;
+  progress: () => AgentRuntimeProcessProgressProjection;
+}>;
+
+export type ProviderInvocationActivityHeartbeat = Readonly<{
+  stop: () => void;
+}>;
+
 /** Process-level liveness/activity only; protocol semantics remain adapter-owned. */
 export type AgentRuntimeProcessActivity = Readonly<{
   type: 'spawned' | 'stdout' | 'stderr' | AgentRuntimeProcessTermination;
@@ -275,3 +288,10 @@ export interface ProviderWorkerRuntimePort {
 }
 
 export type { ProviderRunnerReport } from './provider-contracts.ts';
+
+/** Complete current assignment result, including the existing native turn controller. */
+export type CurrentAgentRuntimeAssignmentV1 = Readonly<{
+  record: ChangeRoleAssignmentRecordV1;
+  binding: AgentRuntimeAssignmentBindingV1;
+  nativeSessionTurn: AgentRuntimeNativeSessionTurnControllerV1 | null;
+}>;

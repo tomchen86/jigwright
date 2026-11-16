@@ -1,6 +1,6 @@
 # Current and Next Steps
 
-This generated handoff contains semantic project state only. Its sources are tracked OpenSpec change records and the Git-native Work Registry.
+This generated handoff reports managed workflow state from tracked OpenSpec change records and the Git-native Work Registry. It does not report repository maintenance performed outside managed transitions.
 
 ## Current Change
 
@@ -16,7 +16,7 @@ None.
 
 ## Current Focus
 
-No active OpenSpec change; follow the Roadmap for the next explicit transition.
+No active managed OpenSpec change; follow the Roadmap for the next managed transition.
 
 ## Known Blockers
 

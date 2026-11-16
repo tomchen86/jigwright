@@ -4,111 +4,34 @@
  *
  * Invariants:
  * - Active quarantine permits only exact release, trust-root restore or
- *   control-plane rollback commands.
+ *   trust-root restore commands.
  */
-import type {
-  HarnessRecoveryRefusalAuthority,
-  HarnessBootstrapRuntimeOverrides,
-  RecoveryAuthorityStatus,
-} from './harness-bootstrap-contracts.ts';
 import {
-  recoveryAuthorityStateRoot,
-  hasRecoveryOperationalTrustRootFence,
-  isExactAbsolutePath,
-  readExternalRecoveryExpectations,
-  readExternalRecoveryInput,
-  ensureRecoveryAuthorityStateRoot,
-  requireRecoveryAuthorityStateRoot,
-  readExternalRecoveryTrustRootAuditRoot,
-  readExternalRecoveryEnvelope,
-  assertPrivateRecoveryDirectory,
-} from './harness-bootstrap-external-input.ts';
-import {
-  workflowError,
   ExitCode,
+  workflowError,
   WorkflowError,
 } from '../../foundation/errors/errors.ts';
 import type {
   RecoveryAuthorityDescriptorV1,
   RecoveryAuthorityImportBoundary,
 } from '../../modules/authority/recovery-authority-contract.ts';
-import type { RecoveryOperationalTrustRootRestoreResult } from '../../modules/authority/recovery-trust-root-contract.ts';
 import type {
   RecoveryQuarantineEnterResult,
   RecoveryQuarantineReleaseResult,
 } from '../../modules/authority/recovery-quarantine-contract.ts';
-import fs from 'node:fs';
+import { isExactAbsolutePath } from '../../modules/authority/recovery-quarantine-contract.ts';
+import type { RecoveryOperationalTrustRootRestoreResult } from '../../modules/authority/recovery-trust-root-contract.ts';
 import type {
-  ControlPlaneRecoveryRollbackResult,
-  ControlPlaneRecoveryApprovalSummary,
-} from './intervention-control-updater.ts';
-import {
-  findPersistedControlPlaneRecoveryGrantForSource,
-  throwControlPlaneRecoveryAlreadyConsumed,
-  canonicalControlPlaneRecoveryGrantPayload,
-  HARNESS_RECOVERY_SIGNATURE_NAMESPACE,
-} from '../../modules/authority/control-plane-recovery-grant.ts';
-import type { ControlPlaneRecoveryGrantEnvelope } from '../../modules/authority/control-plane-recovery-grant.ts';
-import {
-  preflightControlPlaneRecoveryRollback,
-  executeControlPlaneRecoveryRollback,
-} from './intervention-control-updater.ts';
-import type { createHarnessBootstrapRecoveryProduction } from './harness-bootstrap-production.ts';
-import type {
-  importRecoveryAuthorityDescriptor,
-  readRecoveryAuthorityDescriptor,
-} from '../../modules/authority/recovery-authority-store.ts';
-import type { verifyRecoveryAuthorityDescriptor } from '../../modules/authority/recovery-authority-contract.ts';
-import type {
-  RecoveryQuarantineMarker,
-  RecoveryQuarantineEnvelope,
-  RecoveryQuarantineDependencies,
-} from '../../modules/authority/recovery-quarantine-contract.ts';
-import type { RecoveryOperationalTrustRootRestoreDependencies } from '../../modules/authority/recovery-trust-root-contract.ts';
-export interface HarnessBootstrapRecoveryCommandBindings extends ReturnType<
-  typeof createHarnessBootstrapRecoveryProduction
-> {
-  discoverRepository: (cwd: string) => {
-    repositoryRoot: string;
-    repositoryRealPath: string;
-    gitCommonDirectory: string;
-    branch: string | null;
-    head: string;
-    tree: string;
-    statusEntries: string[];
-  };
-  bootstrapInterventionStateRoot(gitCommonDirectory: string): string;
-  bootstrapInterventionUsage(): string;
-  importRecoveryAuthorityDescriptor: typeof importRecoveryAuthorityDescriptor;
-  readRecoveryAuthorityDescriptor: typeof readRecoveryAuthorityDescriptor;
-  verifyRecoveryAuthorityDescriptor: typeof verifyRecoveryAuthorityDescriptor;
-  executeRecoveryOperationalTrustRootRestore(
-    externalEnvelopePath: string,
-    privateStoreRoot: string,
-    boundary: RecoveryAuthorityImportBoundary,
-    dependencies: RecoveryOperationalTrustRootRestoreDependencies,
-  ): RecoveryOperationalTrustRootRestoreResult;
-  executeRecoveryQuarantineEnter(
-    storageRoot: string,
-    envelope: RecoveryQuarantineEnvelope,
-    dependencies: RecoveryQuarantineDependencies,
-  ): RecoveryQuarantineEnterResult;
-  executeRecoveryQuarantineRelease(
-    storageRoot: string,
-    envelope: RecoveryQuarantineEnvelope,
-    dependencies: RecoveryQuarantineDependencies,
-  ): RecoveryQuarantineReleaseResult;
-  readRecoveryQuarantineMarker(
-    storageRoot: string,
-  ): RecoveryQuarantineMarker | null;
-}
-
+  HarnessBootstrapRecoveryCommandBindings,
+  HarnessBootstrapRuntimeOverrides,
+  HarnessRecoveryRefusalAuthority,
+  RecoveryAuthorityStatus,
+} from './harness-bootstrap-contracts.ts';
 export function createHarnessBootstrapRecoveryCommands(
   bindings: HarnessBootstrapRecoveryCommandBindings,
 ) {
   const {
     discoverRepository,
-    bootstrapInterventionStateRoot,
     bootstrapInterventionUsage,
     importRecoveryAuthorityDescriptor,
     readRecoveryAuthorityDescriptor,
@@ -116,11 +39,21 @@ export function createHarnessBootstrapRecoveryCommands(
     executeRecoveryOperationalTrustRootRestore,
     executeRecoveryQuarantineEnter,
     executeRecoveryQuarantineRelease,
-    readRecoveryQuarantineMarker,
+    input,
     recoveryOperationalTrustRootDependencies,
     recoveryQuarantineDependencies,
-    createHarnessRecoveryDependencies,
   } = bindings;
+  const {
+    readExternalRecoveryExpectations,
+    readExternalRecoveryInput,
+    readExternalRecoveryEnvelope,
+    readExternalRecoveryTrustRootAuditRoot,
+    ensureRecoveryAuthorityStateRoot,
+    requireRecoveryAuthorityStateRoot,
+    readOptionalRecoveryQuarantineMarker,
+    hasRecoveryOperationalTrustRootFence,
+    readRecoveryQuarantineMarker,
+  } = input;
 
   function isRecoveryAuthorityCommand(args: readonly string[]): boolean {
     return args[0] === 'recovery-authority';
@@ -128,10 +61,6 @@ export function createHarnessBootstrapRecoveryCommands(
 
   function isRecoveryQuarantineCommand(args: readonly string[]): boolean {
     return args[0] === 'recovery-quarantine';
-  }
-
-  function isControlPlaneRecoveryCommand(args: readonly string[]): boolean {
-    return args[0] === 'control-plane';
   }
 
   function assertHarnessRecoveryQuarantineRouting(
@@ -156,7 +85,8 @@ export function createHarnessBootstrapRecoveryCommands(
       throw error;
     }
     const marker = readOptionalRecoveryQuarantineMarker(
-      recoveryAuthorityStateRoot(repository.gitCommonDirectory),
+      repository.gitCommonDirectory,
+      readRecoveryQuarantineMarker,
     );
     if (marker !== null) {
       observeRefusalAuthority({
@@ -165,11 +95,10 @@ export function createHarnessBootstrapRecoveryCommands(
       });
     }
     const operationalTrustFence = hasRecoveryOperationalTrustRootFence(
-      recoveryAuthorityStateRoot(repository.gitCommonDirectory),
+      repository.gitCommonDirectory,
     );
     if (marker !== null) {
       if (
-        isExactControlPlaneRollback(args) ||
         isExactRecoveryQuarantineCommand(args, 'release') ||
         isExactRecoveryAuthorityRestoreCommand(args)
       ) {
@@ -177,7 +106,7 @@ export function createHarnessBootstrapRecoveryCommands(
       }
       throw workflowError(
         'WORKFLOW_RECOVERY_QUARANTINED',
-        'Only exact sealed Recovery Quarantine release, trust-root restore, or control-plane rollback is available while quarantine is active.',
+        'Only exact sealed Recovery Quarantine release, trust-root restore, is available while quarantine is active.',
         ExitCode.guard,
       );
     }
@@ -404,15 +333,6 @@ export function createHarnessBootstrapRecoveryCommands(
     }
   }
 
-  function isExactControlPlaneRollback(args: readonly string[]): boolean {
-    return (
-      args.length === 3 &&
-      args[0] === 'control-plane' &&
-      args[1] === 'rollback' &&
-      isExactCliIdentifier(args[2])
-    );
-  }
-
   function isExactRecoveryQuarantineCommand(
     args: readonly string[],
     operation: 'enter' | 'release',
@@ -449,94 +369,9 @@ export function createHarnessBootstrapRecoveryCommands(
     };
   }
 
-  function readOptionalRecoveryQuarantineMarker(storageRoot: string) {
-    if (fs.lstatSync(storageRoot, { throwIfNoEntry: false }) === undefined) {
-      return null;
-    }
-    assertPrivateRecoveryDirectory(storageRoot);
-    return readRecoveryQuarantineMarker(storageRoot);
-  }
-
-  function dispatchSealedControlPlaneRecovery(
-    args: readonly string[],
-    cwd: string,
-    overrides: HarnessBootstrapRuntimeOverrides,
-  ): ControlPlaneRecoveryRollbackResult {
-    if (
-      args.length !== 3 ||
-      args[0] !== 'control-plane' ||
-      args[1] !== 'rollback' ||
-      !isExactCliIdentifier(args[2])
-    ) {
-      throw workflowError(
-        'HARNESS_RECOVERY_COMMAND_UNSUPPORTED',
-        harnessBootstrapUsage(),
-        ExitCode.usage,
-      );
-    }
-    const repository = discoverRepository(cwd);
-    const stateRoot = bootstrapInterventionStateRoot(
-      repository.gitCommonDirectory,
-    );
-    const { dependencies, signer } = createHarnessRecoveryDependencies(
-      cwd,
-      repository.repositoryRoot,
-      overrides,
-    );
-    const sourceControlPlaneGrantId = args[2];
-    const existing = findPersistedControlPlaneRecoveryGrantForSource(
-      stateRoot,
-      sourceControlPlaneGrantId,
-    );
-    if (existing?.state === 'consumed') {
-      throwControlPlaneRecoveryAlreadyConsumed();
-    }
-    let envelope: ControlPlaneRecoveryGrantEnvelope;
-    if (
-      existing?.state === 'reserved' ||
-      existing?.state === 'completion-pending'
-    ) {
-      envelope = existing.envelope;
-    } else {
-      signer.assertHumanPresent();
-      const issuedAt = (overrides.now?.() ?? new Date()).toISOString();
-      const preflight = preflightControlPlaneRecoveryRollback(
-        stateRoot,
-        sourceControlPlaneGrantId,
-        {
-          humanSigner: signer.identity(),
-          issuedAt,
-        },
-        dependencies,
-      );
-      (overrides.presentRecoverySummary ?? defaultRecoverySummaryPresenter)(
-        preflight.summary,
-      );
-      envelope = {
-        payload: preflight.payload,
-        signature: signer.sign(
-          canonicalControlPlaneRecoveryGrantPayload(preflight.payload),
-          HARNESS_RECOVERY_SIGNATURE_NAMESPACE,
-        ),
-      };
-    }
-    return executeControlPlaneRecoveryRollback(
-      stateRoot,
-      envelope,
-      dependencies,
-    );
-  }
-
-  function defaultRecoverySummaryPresenter(
-    summary: ControlPlaneRecoveryApprovalSummary,
-  ): void {
-    process.stderr.write(`\n${summary.humanReadable}\n\n`);
-  }
-
   function harnessBootstrapUsage(): string {
     return [
       bootstrapInterventionUsage(),
-      '  pnpm harness-bootstrap control-plane rollback <control-plane-grant-id> [--json]',
       '  pnpm harness-bootstrap recovery-authority import <external-descriptor.json> --expectations <external-expectations.json> [--json]',
       '  pnpm harness-bootstrap recovery-authority status --expectations <external-expectations.json> [--json]',
       '  pnpm harness-bootstrap recovery-authority restore-trust-root <external-pre-signed-envelope.json> --expectations <external-expectations.json> [--json]',
@@ -561,11 +396,9 @@ export function createHarnessBootstrapRecoveryCommands(
   return {
     isRecoveryAuthorityCommand,
     isRecoveryQuarantineCommand,
-    isControlPlaneRecoveryCommand,
     assertHarnessRecoveryQuarantineRouting,
     dispatchRecoveryAuthorityCommand,
     dispatchRecoveryQuarantineCommand,
-    dispatchSealedControlPlaneRecovery,
     harnessBootstrapUsage,
   };
 }

@@ -1,20 +1,40 @@
+import { maintainerManifestOperations } from '../src/composition-root/maintainer-manifest-production.ts';
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { productionTaskStrategyExecutionGate } from '../src/composition-root/task-strategy-gate-production.ts';
+import { productionChangeContract } from '../src/composition-root/change-routing-observation-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
 import type {
+  MechanicalTransformExecution,
   TransformationRetainedDisposition,
   TransformationTerm,
-} from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+} from '../src/modules/planning-provider/planning-artifact-types.ts';
+import {
+  evaluateMechanicalClosure,
+  assertDeterministicMechanicalProjection,
+} from '../src/modules/lifecycle/mechanical-transformation-evidence.ts';
+import { createMutationClassPolicy } from '../src/modules/source/mutation-class-policy.ts';
+import type { TrackedTreeEntry } from '../src/modules/source/tracked-path.ts';
 import {
   completeTask,
   finalizeTask,
   finishSession,
-} from '../src/application/finalize/lifecycle.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+} from './support/session-lifecycle-host.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
-import { checkSession } from '../src/application/finalize/verification.ts';
+import { checkSession } from './support/session-lifecycle-host.ts';
 import {
   createFixtureRepository,
   git,
@@ -33,6 +53,193 @@ type MechanicalFixtureOptions = Readonly<{
   referencePolicy?: boolean;
   additionalPendingTask?: boolean;
 }>;
+
+function mechanicalRuleTask(
+  contract: Partial<
+    MechanicalTransformExecution['transformationContract']
+  > = {},
+): MechanicalTransformExecution {
+  return {
+    strategy: 'mechanical-transform',
+    enforcement: 'planned',
+    allowedPaths: ['src/**'],
+    requiredChecks: [],
+    diffReview: 'policy-required',
+    transformationContract: {
+      rule: 'Replace exact reviewed bytes.',
+      examples: [{ before: 'OLD_NAME', after: 'NEW_NAME' }],
+      fileScopes: ['src/**'],
+      oldTerms: [{ kind: 'symbol', value: 'OLD_NAME' }],
+      replacementTerms: [{ kind: 'symbol', value: 'NEW_NAME' }],
+      retainedDispositions: [],
+      redInapplicableReason: 'Exact-byte transformation.',
+      ...contract,
+    },
+  };
+}
+
+function mechanicalEntry(
+  relativePath: string,
+  text: string | Buffer,
+  mode = '100644',
+): TrackedTreeEntry {
+  const content = Buffer.from(text);
+  return {
+    path: {
+      rawBase64: Buffer.from(relativePath).toString('base64'),
+      utf8: relativePath,
+    },
+    objectId: 'a'.repeat(40),
+    objectType: 'blob',
+    mode,
+    byteSize: content.length,
+    content,
+  };
+}
+
+test('pure mechanical closure scans unchanged live terms beyond mutation scopes', () => {
+  const entries = [
+    mechanicalEntry('src/feature.ts', 'NEW_NAME'),
+    mechanicalEntry('other/unchanged.ts', 'OLD_NAME'),
+  ];
+  assert.throws(
+    () =>
+      evaluateMechanicalClosure(
+        entries,
+        'b'.repeat(40),
+        'c'.repeat(64),
+        ['src/feature.ts'],
+        mechanicalRuleTask(),
+        createMutationClassPolicy({ rules: [] }),
+      ),
+    (error) =>
+      isWorkflowError(
+        error,
+        'TASK_MECHANICAL_TRANSFORMATION_LIVE_TERM_REMAINS',
+      ),
+  );
+});
+
+test('pure mechanical closure requires exact retained dispositions and rejects unused ones', () => {
+  const entries = [
+    mechanicalEntry('src/feature.ts', 'NEW_NAME'),
+    mechanicalEntry('docs/history.txt', 'OLD_NAME'),
+  ];
+  const task = mechanicalRuleTask();
+  const policy = createMutationClassPolicy({
+    rules: [
+      {
+        ruleId: 'retained-history',
+        mutationClass: 'immutable',
+        selector: { kind: 'exact-path', path: 'docs/history.txt' },
+      },
+    ],
+  });
+  const evaluate = () =>
+    evaluateMechanicalClosure(
+      entries,
+      'b'.repeat(40),
+      'c'.repeat(64),
+      ['src/feature.ts'],
+      task,
+      policy,
+    );
+  assert.throws(evaluate, (error) =>
+    isWorkflowError(
+      error,
+      'TASK_MECHANICAL_TRANSFORMATION_RETAINED_DISPOSITION_REQUIRED',
+    ),
+  );
+  const disposition: TransformationRetainedDisposition = {
+    term: { kind: 'symbol', value: 'OLD_NAME' },
+    path: 'docs/history.txt',
+    mutationClass: 'immutable',
+    reason: 'Preserve historical wording.',
+  };
+  task.transformationContract.retainedDispositions.push(disposition);
+  const result = evaluate();
+  assert.equal(result.scannedPathCount, 2);
+  assert.equal(result.oldTermHits[0]!.path, 'docs/history.txt');
+  assert.equal(result.oldTermHits[0]!.occurrenceCount, 1);
+  assert.equal(
+    result.retainedDispositions,
+    task.transformationContract.retainedDispositions,
+  );
+  task.transformationContract.retainedDispositions.push({
+    ...disposition,
+    path: 'docs/absent.txt',
+  });
+  assert.throws(evaluate, (error) =>
+    isWorkflowError(
+      error,
+      'TASK_MECHANICAL_TRANSFORMATION_RETAINED_DISPOSITION_INVALID',
+    ),
+  );
+});
+
+test('pure mechanical projection replaces overlapping terms simultaneously and preserves bytes and modes', () => {
+  const task = mechanicalRuleTask({
+    oldTerms: [
+      { kind: 'content', value: 'AA' },
+      { kind: 'content', value: 'A' },
+    ],
+    replacementTerms: [
+      { kind: 'content', value: 'A' },
+      { kind: 'content', value: 'Z' },
+    ],
+  });
+  const baseline = [mechanicalEntry('src/feature.ts', 'AAA\r\né')];
+  const candidate = [mechanicalEntry('src/feature.ts', 'AZ\r\né')];
+  const policy = createMutationClassPolicy({ rules: [] });
+  assert.match(
+    assertDeterministicMechanicalProjection(baseline, candidate, task, policy),
+    /^[0-9a-f]{64}$/,
+  );
+  assert.equal(baseline[0]!.content!.toString(), 'AAA\r\né');
+  for (const altered of [
+    mechanicalEntry('src/feature.ts', 'AZ\né'),
+    mechanicalEntry('src/feature.ts', 'AZ\r\né', '100755'),
+    mechanicalEntry('src/feature.ts', 'ZZZ\r\né'),
+  ])
+    assert.throws(
+      () =>
+        assertDeterministicMechanicalProjection(
+          baseline,
+          [altered],
+          task,
+          policy,
+        ),
+      (error) =>
+        isWorkflowError(
+          error,
+          'TASK_MECHANICAL_TRANSFORMATION_PROJECTION_MISMATCH',
+        ),
+    );
+});
+
+test('pure mechanical projection rejects a path rename collision', () => {
+  const task = mechanicalRuleTask({
+    oldTerms: [{ kind: 'path', value: 'OLD' }],
+    replacementTerms: [{ kind: 'path', value: 'NEW' }],
+  });
+  assert.throws(
+    () =>
+      assertDeterministicMechanicalProjection(
+        [
+          mechanicalEntry('src/OLD.ts', 'same'),
+          mechanicalEntry('src/NEW.ts', 'same'),
+        ],
+        [mechanicalEntry('src/NEW.ts', 'same')],
+        task,
+        createMutationClassPolicy({ rules: [] }),
+      ),
+    (error) =>
+      isWorkflowError(
+        error,
+        'TASK_MECHANICAL_TRANSFORMATION_PROJECTION_MISMATCH',
+      ),
+  );
+});
 
 test('mechanical transformation closure scans unchanged live consumers in the full candidate tree', () => {
   const fixture = createMechanicalFixture({
@@ -83,9 +290,16 @@ test('mechanical transformation closure mints evidence only for the exact determ
   try {
     replaceInFile(fixture.repository, 'src/features/first.ts');
     replaceInFile(fixture.repository, 'src/features/second.ts');
-    const checked = checkSession(fixture.repository, fixture.sessionId, {
-      environment: {},
-    });
+    const checked = checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      fixture.repository,
+      fixture.sessionId,
+      {
+        environment: {},
+      },
+    );
     assert.equal(checked.passed, true);
     assert.deepEqual(checked.changedPaths, [
       'src/features/first.ts',
@@ -133,7 +347,14 @@ test('compatibility check-complete-finish consumes reviewed mechanical evidence'
   });
   try {
     replaceInFile(fixture.repository, 'src/features/feature.ts');
-    checkSession(fixture.repository, fixture.sessionId, { environment: {} });
+    checkSession(
+      maintainerManifestOperations,
+      productionTaskStrategyExecutionGate,
+      productionChangeContract,
+      fixture.repository,
+      fixture.sessionId,
+      { environment: {} },
+    );
     const completed = completeTask(fixture.repository, fixture.sessionId);
     assert.ok(completed.reportId);
     const finished = finishSession(fixture.repository, fixture.sessionId);
@@ -226,9 +447,16 @@ test('mechanical transformation closure permits an exact reviewed historical ret
   try {
     replaceInFile(withDisposition.repository, 'src/features/feature.ts');
     assert.equal(
-      checkSession(withDisposition.repository, withDisposition.sessionId, {
-        environment: {},
-      }).passed,
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeContract,
+        withDisposition.repository,
+        withDisposition.sessionId,
+        {
+          environment: {},
+        },
+      ).passed,
       true,
     );
   } finally {
@@ -258,9 +486,16 @@ test('mechanical closure observes and dispositions retained terms outside mutati
   try {
     replaceInFile(fixture.repository, 'src/features/feature.ts');
     assert.equal(
-      checkSession(fixture.repository, fixture.sessionId, {
-        environment: {},
-      }).passed,
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeContract,
+        fixture.repository,
+        fixture.sessionId,
+        {
+          environment: {},
+        },
+      ).passed,
       true,
     );
   } finally {
@@ -290,9 +525,16 @@ test('mechanical closure scans and dispositions the full tracked tree outside ta
   try {
     replaceInFile(fixture.repository, 'src/features/feature.ts');
     assert.equal(
-      checkSession(fixture.repository, fixture.sessionId, {
-        environment: {},
-      }).passed,
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeContract,
+        fixture.repository,
+        fixture.sessionId,
+        {
+          environment: {},
+        },
+      ).passed,
       true,
     );
   } finally {
@@ -343,9 +585,16 @@ test('mechanical transformation evidence is candidate-bound without a wall-clock
   try {
     replaceInFile(fixture.repository, 'src/features/feature.ts');
     assert.equal(
-      checkSession(fixture.repository, fixture.sessionId, {
-        environment: {},
-      }).passed,
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeContract,
+        fixture.repository,
+        fixture.sessionId,
+        {
+          environment: {},
+        },
+      ).passed,
       true,
     );
     fs.appendFileSync(
@@ -375,9 +624,16 @@ test('mechanical transformation closure supports deterministic path-term renames
       path.join(fixture.repository, 'src/features/NEW_NAME.ts'),
     );
     assert.equal(
-      checkSession(fixture.repository, fixture.sessionId, {
-        environment: {},
-      }).passed,
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeContract,
+        fixture.repository,
+        fixture.sessionId,
+        {
+          environment: {},
+        },
+      ).passed,
       true,
     );
   } finally {
@@ -467,7 +723,12 @@ function createMechanicalFixture(options: MechanicalFixtureOptions): {
     },
   });
   commitPlanningTransition(repository, 'demo-change');
-  const session = startSession(repository, 'demo-change', '1.1');
+  const session = startSession(
+    productionChangeContract,
+    repository,
+    'demo-change',
+    '1.1',
+  );
   return { repository, sessionId: session.sessionId };
 }
 
@@ -485,9 +746,16 @@ function assertCheckFails(
 ): void {
   assert.throws(
     () =>
-      checkSession(fixture.repository, fixture.sessionId, {
-        environment: {},
-      }),
+      checkSession(
+        maintainerManifestOperations,
+        productionTaskStrategyExecutionGate,
+        productionChangeContract,
+        fixture.repository,
+        fixture.sessionId,
+        {
+          environment: {},
+        },
+      ),
     (error) => isWorkflowError(error, code),
   );
 }

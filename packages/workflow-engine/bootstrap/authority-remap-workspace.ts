@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { runGitBuffer } from '../src/runtime/repository-transaction/git.ts';
-import { normalizeExactRepositoryPath } from '../src/runtime/session-workspace/paths.ts';
+import { normalizeExactRepositoryPath } from '../src/foundation/repository-path/repository-path.ts';
 import {
   HARNESS_BOOTSTRAP_RUNTIME_ROOT,
   remapInvalid,

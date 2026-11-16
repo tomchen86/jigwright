@@ -9,7 +9,6 @@ import {
   authorityAuditLedgerPaths,
   scanAuthorityAuditLedger,
   type AuthorityAuditAppendInput,
-  type AuthorityAuditLedgerScope,
 } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { isWorkflowError } from './fixture.ts';
@@ -277,3 +276,5 @@ test('scan fails closed on noncanonical bytes, sequence gaps, tampering, and uns
     fs.rmSync(permissions.root, { recursive: true, force: true });
   }
 });
+
+import { type AuthorityAuditLedgerScope } from '../src/modules/authority/authority-audit-contract.ts';

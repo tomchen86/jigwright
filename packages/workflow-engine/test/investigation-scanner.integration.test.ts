@@ -1,3 +1,5 @@
+import { readPinnedPathDiff } from '../src/runtime/repository-observation/investigation-floor.ts';
+import { createInvestigationTreeScanner } from '../src/runtime/repository-observation/investigation-scanner.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -15,10 +17,8 @@ import {
   validateEngineFloor,
   type EngineFloorFacts,
 } from '../src/modules/investigation/domain/investigation-floor.ts';
-import {
-  scanInvestigationTreeFacts,
-  type ScanSkippedObject,
-} from '../src/modules/investigation/domain/investigation-scanner.ts';
+import { scanInvestigationTreeFacts } from '../src/composition-root/investigation-production.ts';
+import { type ScanSkippedObject } from '../src/modules/investigation/domain/investigation-scan-facts.ts';
 import {
   INVESTIGATION_APPLICABILITY_POLICY_DIGEST,
   createInvestigationApplicability,
@@ -58,11 +58,10 @@ test('domain scanner consumes the public tracked-object reader port without Git'
     },
   ]);
 
-  const result = scanInvestigationTreeFacts({
+  const result = createInvestigationTreeScanner(trackedObjectReader)({
     repositoryRoot: '/not/a/git/repository',
     treeOid,
     terms: [termWithProvenance('symbol', 'SecondConsumer')],
-    trackedObjectReader,
   });
 
   assert.equal(result.outcome, 'ready');
@@ -74,14 +73,13 @@ test('domain scanner consumes the public tracked-object reader port without Git'
 
   assert.throws(
     () =>
-      scanInvestigationTreeFacts({
+      createInvestigationTreeScanner({
+        contractVersion: 'jigwright.tracked-object-reader-port.v2',
+        readPinnedTree: trackedObjectReader.readPinnedTree,
+      } as never)({
         repositoryRoot: '/not/a/git/repository',
         treeOid,
         terms: [termWithProvenance('symbol', 'SecondConsumer')],
-        trackedObjectReader: {
-          contractVersion: 'jigwright.tracked-object-reader-port.v2',
-          readPinnedTree: trackedObjectReader.readPinnedTree,
-        } as never,
       }),
     (error) => isWorkflowError(error, 'TRACKED_OBJECT_READER_UNSUPPORTED'),
   );
@@ -583,7 +581,7 @@ test('engine floor path facts come from an exact pinned diff, not the worktree',
     commitAll(repository, 'Advance HEAD beyond target commit');
     fs.writeFileSync(path.join(repository, 'worktree-only.ts'), 'ignored\n');
 
-    const changedPaths = derivePinnedDiffPathFacts({
+    const changedPaths = derivePinnedDiffPathFacts(readPinnedPathDiff, {
       repositoryRoot: repository,
       baseCommit,
       targetCommit,
@@ -605,7 +603,7 @@ test('engine floor path facts come from an exact pinned diff, not the worktree',
     git(repository, ['config', 'diff.renameLimit', '1']);
     git(repository, ['config', 'diff.algorithm', 'histogram']);
     assert.deepEqual(
-      derivePinnedDiffPathFacts({
+      derivePinnedDiffPathFacts(readPinnedPathDiff, {
         repositoryRoot: repository,
         baseCommit,
         targetCommit,
@@ -619,7 +617,7 @@ test('engine floor path facts come from an exact pinned diff, not the worktree',
     assert.equal(JSON.stringify(changedPaths).includes('worktree-only'), false);
     assert.throws(
       () =>
-        derivePinnedDiffPathFacts({
+        derivePinnedDiffPathFacts(readPinnedPathDiff, {
           repositoryRoot: repository,
           baseCommit: 'HEAD',
           targetCommit,
@@ -1649,11 +1647,10 @@ test('generated artifacts are excluded from content scans but not from path term
     },
   ]);
   const scan = (term: ReturnType<typeof termWithProvenance>) => {
-    const result = scanInvestigationTreeFacts({
+    const result = createInvestigationTreeScanner(trackedObjectReader)({
       repositoryRoot: '/not/a/git/repository',
       treeOid,
       terms: [term],
-      trackedObjectReader,
     });
     assert.equal(result.outcome, 'ready');
     if (result.outcome !== 'ready') assert.fail('expected a ready scan');

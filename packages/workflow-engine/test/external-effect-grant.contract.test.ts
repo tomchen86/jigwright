@@ -4,10 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import {
-  deriveAuthorityAuditRepositoryId,
-  type AuthorityAuditLedgerScope,
-} from '../src/runtime/storage-journal/authority-audit-ledger.ts';
+import { deriveAuthorityAuditRepositoryId } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import {
   showAuthorityAuditTask,
   verifyAuthorityAuditEvents,
@@ -15,15 +12,19 @@ import {
 import {
   canonicalExternalEffectGrantEnvelope,
   canonicalExternalEffectGrantPayload,
-  EXTERNAL_EFFECT_SIGNATURE_NAMESPACE,
-  externalEffectStorePaths,
-  inspectExternalEffectGrant,
-  issueExternalEffectGrant,
   parseExternalEffectGrantEnvelope,
-  reserveExternalEffectGrant,
-  revokeExternalEffectGrant,
+} from '../src/modules/authority/external-effect-grant-envelope.ts';
+import {
+  EXTERNAL_EFFECT_SIGNATURE_NAMESPACE,
   type ExternalEffectKind,
 } from '../src/modules/authority/external-effect-grant.ts';
+import { externalEffectStorePaths } from '../src/runtime/storage-journal/external-effect-grant-store.ts';
+import {
+  inspectExternalEffectGrant,
+  reserveExternalEffectGrant,
+  revokeExternalEffectGrant,
+} from '../src/composition-root/external-effect-production.ts';
+import { issueExternalEffectGrant } from '../src/composition-root/external-effect-production.ts';
 import {
   EFFECT_GRANT_ID as GRANT_ID,
   EFFECT_ISSUED_AT as ISSUED_AT,
@@ -33,7 +34,6 @@ import {
   publishGrantRequest,
 } from './external-effect-fixture.ts';
 import { isWorkflowError } from './fixture.ts';
-import { revokeTaskMandate } from '../src/modules/authority/task-mandate.ts';
 
 test('a human issues one domain-separated five-minute grant bound to the exact mandate and effect', () => {
   const fixture = prepareFixture();
@@ -470,3 +470,8 @@ test('generic revoke is human, audited, terminal, and idempotent without dispatc
     }
   }
 });
+
+import { type AuthorityAuditLedgerScope } from '../src/modules/authority/authority-audit-contract.ts';
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const { revokeTaskMandate } = taskMandateOperations;

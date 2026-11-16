@@ -31,7 +31,11 @@ import {
   assertOwnedLock,
   parseManagedSessionLock,
 } from './session-operation-locks.ts';
-import { assertSessionId, assertChangeId, assertTaskId } from './paths.ts';
+import {
+  assertSessionId,
+  assertChangeId,
+  assertTaskId,
+} from '../../foundation/repository-path/repository-path.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 
 export type OwnedRuntimeFilePublication = Readonly<{

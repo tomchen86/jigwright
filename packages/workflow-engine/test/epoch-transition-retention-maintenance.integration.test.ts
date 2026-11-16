@@ -6,14 +6,16 @@ import test from 'node:test';
 
 import {
   assembleCurrentPromptFromStore,
-  buildContextManifest,
   initializeDurableEpochContextStore,
   inspectDurableEpochContextStore,
-  inspectDurableRetentionCatalog,
   rolloverDurableEpochContextStore,
-  type ContextManifest,
+} from '../src/runtime/storage-journal/execution-governance-epoch-store.ts';
+import {
+  buildContextManifest,
   type WorkflowContextState,
-} from '../src/modules/authority/execution-governance.ts';
+} from '../src/modules/authority/execution-governance-context.ts';
+import { inspectDurableRetentionCatalog } from '../src/runtime/storage-journal/execution-governance-evidence-store.ts';
+import { type ContextManifest } from '../src/modules/authority/execution-governance-context.ts';
 import { runDurableContextRetentionMaintenance } from '../src/runtime/provider-execution/retention-control.ts';
 
 function manifest(epoch: number, content: string): ContextManifest {

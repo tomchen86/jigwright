@@ -1,3 +1,5 @@
+import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
+import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 /**
  * Finds the contracts and design explanations that a module change must disposition.
  *
@@ -200,4 +202,50 @@ function readableExplanation(content: string | undefined): boolean {
   } catch {
     return false;
   }
+}
+
+export type SystemDocumentGrantBinding = Readonly<{
+  challengeId: string;
+  operationId: string;
+  approvalSubjectDigest: `sha256:${string}`;
+}>;
+
+export function parseDispositions(
+  value: unknown,
+): readonly SystemDocumentDisposition[] {
+  if (!Array.isArray(value))
+    throw reviewInvalid('dispositions must be an array.');
+  return value.map((entry) => {
+    if (
+      !isRecord(entry) ||
+      typeof entry.path !== 'string' ||
+      !['still-valid', 'updated', 'later'].includes(
+        entry.disposition as string,
+      ) ||
+      Object.keys(entry).some(
+        (key) =>
+          !['path', 'disposition', 'reason', 'followUpRef'].includes(key),
+      ) ||
+      [entry.reason, entry.followUpRef].some(
+        (field) =>
+          field !== undefined && (typeof field !== 'string' || !field.trim()),
+      )
+    )
+      throw reviewInvalid(
+        'Each disposition needs a path and still-valid, updated, or later; reasons and optional references are nonempty text.',
+      );
+    return entry as SystemDocumentDisposition;
+  });
+}
+
+export function reviewInvalid(
+  message: string,
+  details?: Record<string, unknown>,
+) {
+  return workflowError(
+    'SYSTEM_DOCUMENT_REVIEW_INVALID',
+    message,
+    ExitCode.guard,
+    details === undefined ? {} : { details },
+  );
 }

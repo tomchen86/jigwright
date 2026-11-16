@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { normalizeChangedPath } from '../session-workspace/paths.ts';
+import { normalizeChangedPath } from '../../foundation/repository-path/repository-path.ts';
 import { splitNull } from './git-transition-values.ts';
 import { listChangedPaths, runGit, runGitWithEnvironment } from './git.ts';
 

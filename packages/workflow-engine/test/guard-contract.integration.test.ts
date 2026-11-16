@@ -4,11 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import {
-  loadChangeContract,
-  parseTasks,
-} from '../src/adapters/consumer/repository/work-registry/contracts.ts';
-import { normalizeChangedPath } from '../src/runtime/session-workspace/paths.ts';
+import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
+import { parseTasks } from '../src/modules/planning-provider/planning-artifact-parsers.ts';
+import { normalizeChangedPath } from '../src/foundation/repository-path/repository-path.ts';
 import {
   createFixtureRepository,
   isWorkflowError,

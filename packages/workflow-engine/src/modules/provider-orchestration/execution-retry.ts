@@ -6,7 +6,7 @@
  * - Retry guards retain their defined order and first applicable reason
  *   code.
  */
-import type { GrantRequest } from '../authority/execution-governance.ts';
+import type { GrantRequest } from '../authority/execution-governance-grant-contracts.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode } from '../../foundation/errors/errors.ts';
 import type {

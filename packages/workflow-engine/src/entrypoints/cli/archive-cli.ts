@@ -4,13 +4,14 @@
  * Invariants:
  * - Archive publication options must be recognized, paired, and unique.
  */
+import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
   commitArchiveTransition,
-  discoverArchivePullRequestCandidates,
   preparePostMergeArchivePullRequest,
-} from '../../composition-root/cli-command-services.ts';
+} from '../../composition-root/archive-cli-production.ts';
+import { discoverArchivePullRequestCandidates } from '../../composition-root/cli-command-services.ts';
 import type { GitHubArchiveAdapterModuleV1 } from '../../composition-root/cli-command-services.ts';
 
 import type { GitHubArchiveAdapterConfigV1 } from '@jigwright/github-adapter';
@@ -19,10 +20,7 @@ import {
   ExitCode,
   WorkflowError,
 } from '../../foundation/errors/errors.ts';
-import {
-  type ArchivePullRequestCliDependencies,
-  ARCHIVE_PULL_REQUEST_CLI_DEPENDENCIES,
-} from '../../composition-root/archive-cli-production.ts';
+import { type ArchivePullRequestCliDependencies } from '../../composition-root/archive-cli-production.ts';
 import {
   type CommandResult,
   shellCommandArgument,
@@ -34,7 +32,7 @@ import {
 export async function dispatchArchivePullRequest(
   args: string[],
   cwd: string,
-  dependencies: ArchivePullRequestCliDependencies = ARCHIVE_PULL_REQUEST_CLI_DEPENDENCIES,
+  dependencies: ArchivePullRequestCliDependencies,
 ): Promise<CommandResult> {
   const [, action, ...rest] = args;
   if (action === 'doctor') {
@@ -45,7 +43,11 @@ export async function dispatchArchivePullRequest(
       command: 'archive-pr',
       action,
       ok: true,
-      result: dependencies.discover(cwd, rest[1]!),
+      result: dependencies.discover(
+        loadStableValidatedChangeContract,
+        cwd,
+        rest[1]!,
+      ),
     };
   }
   if (action === 'status') {
@@ -330,7 +332,11 @@ export function dispatchArchiveCommand(
       return {
         command,
         ok: true,
-        result: discoverArchivePullRequestCandidates(cwd, rest[1]!),
+        result: discoverArchivePullRequestCandidates(
+          loadStableValidatedChangeContract,
+          cwd,
+          rest[1]!,
+        ),
       };
     }
     case 'after-merge': {

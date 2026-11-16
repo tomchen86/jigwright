@@ -72,7 +72,7 @@ export function appendAuthorityAuditRecord(scope, rawInput, options = {}) {
         return entry;
     });
 }
-export function scanAuthorityAuditLedger(scope) {
+export const scanAuthorityAuditLedger = (scope) => {
     const prepared = prepareLedger(scope);
     return withLedgerLock(prepared.paths, prepared.scope.repositoryId, () => {
         recoverAuditMaintenance(prepared.paths, prepared.profile);
@@ -90,7 +90,7 @@ export function scanAuthorityAuditLedger(scope) {
             records: Object.freeze(records),
         });
     });
-}
+};
 /**
  * Runs the code-owned development retention policy. The live suffix remains
  * hash-linked to a compact checkpoint; expired event objects and records are

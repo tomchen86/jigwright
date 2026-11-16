@@ -1,3 +1,4 @@
+import { preflightMaintainerGrantV2 } from '../bootstrap/maintainer-authority-production.ts';
 import test from 'node:test';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -6,25 +7,20 @@ import { type MaintainerSignerProvider } from '../src/adapters/signing/ssh/maint
 import {
   readStoredImmutableCandidateBundle,
   readStoredCandidateHumanReadableSummary,
-  readDurableRefGenerationLedger,
-} from '../src/modules/authority/maintainer-candidate.ts';
+} from '../src/runtime/storage-journal/maintainer-candidate-reader.ts';
+import { readDurableRefGenerationLedger } from '../src/runtime/storage-journal/maintainer-candidate-ref-ledger.ts';
 import { git, isWorkflowError } from './fixture.ts';
 import { inspectMaintainerGrants } from '../src/runtime/storage-journal/maintainer-store.ts';
 import { spawnSync } from 'node:child_process';
 import {
   projectAuthorityAttestationRelay,
   issueAuthorityAttestation,
-} from '../src/application/control-plane/maintainer-attestation.ts';
-import { verifyBaseAuthorityAttestations } from '../src/entrypoints/ci/ci-attestation.ts';
-import {
-  type MaintainerGrantV2Payload,
-  issueMaintainerGrantV2,
-  preflightMaintainerGrantV2,
-} from '../src/modules/authority/maintainer-grant-v2.ts';
-import {
-  readAuthoritySession,
-  startAuthoritySession,
-} from '../src/application/control-plane/maintainer-session.ts';
+} from '../bootstrap/maintainer-authority-production.ts';
+import { verifyBaseAuthorityAttestations } from '../src/composition-root/ci-verification-production.ts';
+import { type MaintainerGrantV2Payload } from '../src/modules/authority/maintainer-grant-v2-codec.ts';
+import { issueMaintainerGrantV2 } from '../bootstrap/maintainer-authority-production.ts';
+import { readAuthoritySession } from '../src/application/control-plane/maintainer-session.ts';
+import { startAuthoritySession } from '../bootstrap/maintainer-authority-production.ts';
 import {
   deriveAuthorityAuditRepositoryId,
   scanAuthorityAuditLedger,
@@ -33,11 +29,11 @@ import {
   verifyAuthorityAuditEvents,
   showAuthorityAuditTask,
 } from '../src/runtime/storage-journal/authority-audit-service.ts';
-import { revokeTaskMandate } from '../src/modules/authority/task-mandate.ts';
+
 import os from 'node:os';
-import { listRangeCommits } from '../src/entrypoints/ci/ci-git.ts';
-import { validateCiAuthorityCommit } from '../src/entrypoints/ci/ci-authority.ts';
-import { replayCommitSequence } from '../src/entrypoints/ci/ci-sequence.ts';
+import { listRangeCommits } from '../src/runtime/repository-validation/commit-replay/ci-git.ts';
+import { validateCiAuthorityCommit } from '../src/composition-root/ci-replay-production.ts';
+import { replayCommitSequence } from '../src/composition-root/ci-replay-production.ts';
 import {
   parseAuthorityApplicationReceiptEnvelope,
   type AuthorityApplicationReceiptEnvelope,
@@ -1141,3 +1137,6 @@ test('reissuing a stored candidate rejects stale evidence before signing', () =>
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const { revokeTaskMandate } = taskMandateOperations;

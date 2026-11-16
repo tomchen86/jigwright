@@ -7,7 +7,7 @@
  */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import type { TaskMandateBinding } from '../authority/task-mandate.ts';
+import type { TaskMandateBinding } from '../authority/task-mandate-contract.ts';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {

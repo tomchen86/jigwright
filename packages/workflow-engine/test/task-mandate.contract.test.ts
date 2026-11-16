@@ -11,17 +11,12 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import {
-  authorizeTaskMandate,
-  authorizeTaskMandateOperation,
-  authorizeTaskMandateProviderReservation,
   canonicalTaskMandateEnvelope,
   canonicalTaskMandatePayload,
-  inspectActiveTaskMandateBinding,
-  inspectTaskMandate,
   parseTaskMandateEnvelope,
-  revokeTaskMandate,
-  type TaskMandateEnvelope,
-} from '../src/modules/authority/task-mandate.ts';
+} from '../src/modules/authority/task-mandate-records.ts';
+
+import { type TaskMandateEnvelope } from '../src/modules/authority/task-mandate-values.ts';
 import { git, isWorkflowError, sourceRepositoryRoot } from './fixture.ts';
 import {
   TASK_ID,
@@ -489,7 +484,7 @@ test('task authorize CLI refuses unattended signing before creating mandate stat
   const manifest = path.join(repository, 'task-mandate.json');
   const cli = path.join(
     sourceRepositoryRoot,
-    'packages/workflow-engine/src/cli.ts',
+    'packages/workflow-engine/bootstrap/workflow-engine-host.ts',
   );
   fs.writeFileSync(manifest, `${JSON.stringify(request(), null, 2)}\n`);
   try {
@@ -522,3 +517,13 @@ test('task authorize CLI refuses unattended signing before creating mandate stat
     cleanupRepository(repository);
   }
 });
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const {
+  authorizeTaskMandate,
+  authorizeTaskMandateOperation,
+  authorizeTaskMandateProviderReservation,
+  inspectActiveTaskMandateBinding,
+  inspectTaskMandate,
+  revokeTaskMandate,
+} = taskMandateOperations;

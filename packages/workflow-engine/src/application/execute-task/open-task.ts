@@ -1,28 +1,49 @@
-/**
- * Opens execution tasks through a recoverable planning and session journal.
- *
- * Invariants:
- * - Opening a task requires the exact registered draft workspace at its
- *   pinned base.
- */
-import crypto from 'node:crypto';
+import {
+  type OpenTaskJournal,
+  OPEN_TASK_COMMIT_OID,
+  createPreparedOpenTaskJournal,
+  advanceOpenTaskJournalPhase,
+  assertOpenTaskCompletionPhase,
+  parseOpenTaskJournal,
+  exactOpenTaskTimestamp,
+  assertOpenTaskMandateTaskId,
+  exactOpenTaskRetryCommand,
+  openTaskPhaseDiverged,
+  openTaskUnsafe,
+} from '../../modules/lifecycle/open-task-journal.ts';
+export type { OpenTaskJournal } from '../../modules/lifecycle/open-task-journal.ts';
+import {
+  readOpenTaskJournalAtRoot,
+  listOpenTaskJournalsAtRoot,
+  publishPreparedJournal,
+  replaceJournal,
+} from '../../runtime/storage-journal/open-task-journal.ts';
+import type { OpenTaskLifecycleStatus } from '../../modules/lifecycle/open-task-status.ts';
+import type {
+  TaskMandatePreparationAuthorization,
+  TaskMandateActiveBinding,
+  TaskMandateOptions,
+} from '../../modules/authority/task-mandate-access-contract.ts';
+import type { ChangeContractServices } from '../../modules/lifecycle/change-routing.ts';
+import type { PlanningTransitionExecutionServices } from '../../modules/lifecycle/planning-execution-epoch.ts';
+import type {
+  ManagedDocumentOperations,
+  GeneratedDocumentMutation,
+} from '../../modules/projection/managed-documents.ts';
+import type { ChangeContractReader } from '../../modules/planning-provider/change-contract.ts';
+import type { PlanningDraftWorkspacePort } from '../../modules/planning-provider/planning-workspace.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { systemDocumentContext } from '../../modules/source/system-document-context.ts';
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import {
-  loadChangeContract,
-  loadWorkflowConfig,
-} from '../../adapters/consumer/repository/work-registry/contracts.ts';
-import { validateCiPlanningCommit } from '../../entrypoints/ci/ci-planning.ts';
+import { loadWorkflowConfig } from '../../runtime/workflow-configuration/workflow-configuration.ts';
+import type { CiPlanningReplayOperations } from '../../modules/assurance/commit-replay/ci-planning.ts';
 import { isEngineProjectionPathForTransition } from '../../modules/projection/engine-projection-registry.ts';
 import {
   ExitCode,
   WorkflowError,
   workflowError,
 } from '../../foundation/errors/errors.ts';
-import { ensurePlainDirectory } from '../../runtime/repository-transaction/filesystem-safety.ts';
 import {
   commitChangedPaths,
   commitFacts,
@@ -35,32 +56,22 @@ import {
   readFileAtCommit,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
-import { validateHandoffForChange } from '../../adapters/consumer/repository/handoff/handoff.ts';
-import { parseManagedTrailers } from '../../modules/lifecycle/managed-trailers.ts';
-import {
-  refreshPlanningDocuments,
-  rollbackGeneratedDocuments,
-  type GeneratedDocumentMutation,
-} from '../../runtime/managed-documents/validation/managed-documents.ts';
+import type { HandoffDocumentOperations } from '../../modules/projection/handoff.ts';
+import { parseManagedTrailers } from '@jigwright/core/managed-transition-trailers';
+import { rollbackGeneratedDocuments } from '../../runtime/managed-documents/validation/managed-documents.ts';
 import {
   assertChangeId,
   assertTaskId,
-  normalizeChangedPath,
-} from '../../runtime/session-workspace/paths.ts';
-import {
-  commitPlanningTransitionUnderAuthority,
-  type PlanningTransitionResult,
-} from '../propose/planning-transition.ts';
+} from '../../foundation/repository-path/repository-path.ts';
+import { commitPlanningTransitionUnderAuthority } from '../../runtime/planning-transition/planning-transition.ts';
+import type { PlanningTransitionResult } from '../../modules/lifecycle/planning-transition-result.ts';
 import {
   reclaimDeadChangeTransitionLock,
   withOpenTaskPlanningAuthority,
 } from '../../runtime/session-workspace/planning-lock.ts';
 import { readPlanningTransitionReport } from '../../runtime/storage-journal/planning-report.ts';
 import {
-  inspectPlanningDraftWorkspace,
-  readPlanningDraftWorkspace,
-} from '../../runtime/session-workspace/planning-workspace.ts';
-import {
+  type WorkflowSession,
   assertOwnedLock,
   assertTaskSessionWorktreeRegistration,
   assertTaskSessionIsolationLeasesOwned,
@@ -68,7 +79,6 @@ import {
   readSessionFile,
   runtimePaths,
   withRepositoryLifecycleOperation,
-  type WorkflowSession,
 } from '../../runtime/session-workspace/session-store.ts';
 import {
   startSession,
@@ -78,75 +88,9 @@ import {
   assertProductionChangeRoutingAdmission,
 } from './session.ts';
 import {
-  assertActiveTaskMandateBindingUnderLifecycleLock,
-  authorizeTaskMandateOperation,
-  type TaskMandateBinding,
-  type TaskMandateOptions,
-} from '../../modules/authority/task-mandate.ts';
-import {
   assertTaskMandateOptional,
   resolveTaskAuthorizationRequirement,
-} from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
-
-const COMMIT_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
-const SHA256 = /^[0-9a-f]{64}$/;
-const SHA256_PREFIX = /^sha256:[0-9a-f]{64}$/;
-const MANDATE_TASK_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const MANDATE_ID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-const MAX_JOURNAL_BYTES = 128 * 1024;
-
-export type OpenTaskPhase =
-  'prepared' | 'plan-committed' | 'session-active' | 'completed';
-
-export type OpenTaskJournal = Readonly<{
-  schemaVersion: 2;
-  kind: 'open-task-transaction.v2';
-  transactionId: string;
-  phase: OpenTaskPhase;
-  changeId: string;
-  taskId: string;
-  mandateTaskId: string | null;
-  mandateBinding: TaskMandateBinding | null;
-  authorizationPolicyDigest: string;
-  repositoryRoot: string;
-  gitCommonDirectory: string;
-  worktree: string;
-  branch: string;
-  parentCommit: string;
-  parentTree: string;
-  planningCommit: string;
-  baselineTree: string;
-  reportId: string;
-  changedPaths: readonly string[];
-  sessionId: string;
-  createdAt: string;
-  completedAt: string | null;
-}>;
-
-export type OpenTaskLifecycleStatus = Readonly<{
-  kind: 'open-task-lifecycle-status.v1';
-  state:
-    | 'opening'
-    | 'active'
-    | 'revising'
-    | 'committed'
-    | 'aborted'
-    | 'recovery-required';
-  lastDurablePhase: OpenTaskPhase;
-  transactionId: string;
-  changeId: string;
-  taskId: string;
-  mandateTaskId: string | null;
-  sessionId: string;
-  parentCommit: string;
-  planningCommit: string;
-  baselineTree: string;
-  reportId: string;
-  retrySafe: boolean;
-  recoveryCommand: string | null;
-  errorCode: string | null;
-}>;
+} from '../../runtime/repository-observation/task-authorization-policy.ts';
 
 export type OpenTaskResult = Readonly<{
   changeId: string;
@@ -164,6 +108,21 @@ export type OpenTaskResult = Readonly<{
 }>;
 
 export type OpenTaskPorts = Readonly<{
+  planningExecution: PlanningTransitionExecutionServices;
+  planningReplay: Pick<CiPlanningReplayOperations, 'validateCiPlanningCommit'>;
+  taskMandate: Pick<
+    TaskMandateActiveBinding,
+    'assertActiveTaskMandateBindingUnderLifecycleLock'
+  > &
+    Pick<TaskMandatePreparationAuthorization, 'authorizeTaskMandateOperation'>;
+  changeContract: ChangeContractServices;
+  handoffDocuments: Pick<HandoffDocumentOperations, 'validateHandoffForChange'>;
+  managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>;
+  loadChangeContract: ChangeContractReader;
+  planningWorkspace: Pick<
+    PlanningDraftWorkspacePort,
+    'inspectPlanningDraftWorkspace' | 'readPlanningDraftWorkspace'
+  >;
   readSystemDocuments(
     session: WorkflowSession,
   ): ReturnType<typeof systemDocumentContext>;
@@ -195,16 +154,22 @@ export function openTaskWithPorts(
   const initialRepository = discoverRepository(cwd);
   assertOpenTaskWorktreeRegistration(initialRepository);
   assertProductionChangeRoutingAdmission(
+    ports.changeContract,
     initialRepository.repositoryRoot,
     changeId,
   );
-  const taskId = resolveOpenTaskId(cwd, changeId, requestedTaskId);
+  const taskId = resolveOpenTaskId(
+    ports.loadChangeContract,
+    cwd,
+    changeId,
+    requestedTaskId,
+  );
   const mandateTaskId =
     requestedMandateTaskId === undefined
       ? null
-      : assertMandateTaskId(requestedMandateTaskId);
+      : assertOpenTaskMandateTaskId(requestedMandateTaskId);
   const config = loadWorkflowConfig(initialRepository.repositoryRoot);
-  const initialContract = loadChangeContract(
+  const initialContract = ports.loadChangeContract(
     initialRepository.repositoryRoot,
     changeId,
   );
@@ -230,23 +195,29 @@ export function openTaskWithPorts(
     changeId,
     taskId,
   );
-  const planningWorkspace = readPlanningDraftWorkspace(cwd, changeId);
+  const planningWorkspace = ports.planningWorkspace.readPlanningDraftWorkspace(
+    cwd,
+    changeId,
+  );
   if (
     observedBeforeAuthorization === null &&
     (planningWorkspace === null ||
       planningWorkspace.baseCommit !== initialRepository.head)
   ) {
     const planningCommit = assertCommittedPlanningGeneration(
+      ports.planningReplay,
       initialRepository.repositoryRoot,
       config.changeRoot,
       changeId,
     );
     return existingPlanResult(
       mandateTaskId === null
-        ? startSession(cwd, changeId, taskId, {
+        ? startSession(ports.changeContract, cwd, changeId, taskId, {
             environment: options.environment,
           })
         : startMandatedSession(
+            ports.taskMandate,
+            ports.changeContract,
             cwd,
             changeId,
             taskId,
@@ -260,7 +231,7 @@ export function openTaskWithPorts(
   }
   const authorization =
     observedBeforeAuthorization === null && mandateTaskId !== null
-      ? authorizeTaskMandateOperation(
+      ? ports.taskMandate.authorizeTaskMandateOperation(
           cwd,
           mandateTaskId,
           { kind: 'draft-commit' },
@@ -295,7 +266,10 @@ export function openTaskWithPorts(
       );
     }
 
-    const workspace = inspectPlanningDraftWorkspace(cwd, changeId);
+    const workspace = ports.planningWorkspace.inspectPlanningDraftWorkspace(
+      cwd,
+      changeId,
+    );
     if (
       workspace === null ||
       workspace.worktreePath !== initialRepository.repositoryRealPath ||
@@ -312,13 +286,13 @@ export function openTaskWithPorts(
     const binding =
       mandateTaskId === null
         ? null
-        : assertActiveTaskMandateBindingUnderLifecycleLock(
+        : ports.taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock(
             cwd,
             authorization!.binding,
             assertRepositoryLock,
             options.mandate,
           );
-    const createdAt = exactTimestamp(options.now ?? new Date());
+    const createdAt = exactOpenTaskTimestamp(options.now ?? new Date());
     const sessionId = createSessionId();
     let prepared: OpenTaskJournal | null = null;
 
@@ -328,6 +302,9 @@ export function openTaskWithPorts(
       assertRepositoryLock,
       (authority) =>
         commitPlanningTransitionUnderAuthority(
+          ports.planningExecution,
+          ports.managedDocuments,
+          ports.loadChangeContract,
           cwd,
           changeId,
           authority,
@@ -335,7 +312,7 @@ export function openTaskWithPorts(
           {
             beforeRefUpdate(context) {
               const current = discoverRepository(cwd);
-              prepared = createPreparedJournal({
+              prepared = createPreparedOpenTaskJournal({
                 changeId,
                 taskId,
                 mandateTaskId,
@@ -361,7 +338,7 @@ export function openTaskWithPorts(
                 sessionId,
                 createdAt,
               });
-              publishPreparedJournal(runtime, prepared);
+              publishPreparedJournal(runtime.root, prepared);
               if (options.testCrashAfter === 'journal-prepared') {
                 throw simulatedInterruption('journal-prepared');
               }
@@ -375,13 +352,14 @@ export function openTaskWithPorts(
       );
     }
     assertTransitionMatchesJournal(transition, prepared);
-    assertCommittedPlanningState(cwd, prepared);
+    assertCommittedPlanningState(ports.handoffDocuments, cwd, prepared);
     let durable = advanceJournalPhase(runtime, prepared, 'plan-committed');
     if (options.testCrashAfter === 'plan-committed') {
       throw simulatedInterruption('plan-committed');
     }
 
     const session = ensureExactSession(
+      ports.changeContract,
       cwd,
       runtime,
       durable,
@@ -428,19 +406,11 @@ export function readOpenTaskJournal(
     repository.gitCommonDirectory,
     config.runtimeDirectory,
   );
-  const filePath = journalPath(runtime, changeId, taskId);
-  const stats = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  if (!stats) {
-    const directory = path.dirname(filePath);
-    if (fs.lstatSync(directory, { throwIfNoEntry: false })) {
-      assertPrivateDirectory(directory);
-    }
-    return null;
-  }
-  return parseJournal(readPrivateCanonicalFile(filePath));
+  return readOpenTaskJournalAtRoot(runtime.root, changeId, taskId);
 }
 
 export function resolveOpenTaskId(
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   requestedChangeId: string,
   requestedTaskId?: string,
@@ -475,6 +445,7 @@ export function resolveOpenTaskId(
 }
 
 function assertCommittedPlanningGeneration(
+  planningReplay: Pick<CiPlanningReplayOperations, 'validateCiPlanningCommit'>,
   repositoryRoot: string,
   changeRoot: string,
   changeId: string,
@@ -487,13 +458,13 @@ function assertCommittedPlanningGeneration(
   ]).split('\0');
   for (let index = 0; index + 1 < values.length; index += 2) {
     const commitHash = values[index]!.trimStart();
-    if (!COMMIT_OID.test(commitHash)) continue;
+    if (!OPEN_TASK_COMMIT_OID.test(commitHash)) continue;
     const trailers = parseManagedTrailers(values[index + 1]!);
     if (
       (trailers?.kind === 'plan' || trailers?.kind === 'amend-plan') &&
       trailers.changeId === changeId
     ) {
-      validateCiPlanningCommit(
+      planningReplay.validateCiPlanningCommit(
         repositoryRoot,
         commitHash,
         changeId,
@@ -531,6 +502,8 @@ function existingPlanResult(
 }
 
 export function findOpenTaskLifecycleStatus(
+  handoffDocuments: Pick<HandoffDocumentOperations, 'validateHandoffForChange'>,
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   identifier: string,
 ): OpenTaskLifecycleStatus | null {
@@ -548,10 +521,17 @@ export function findOpenTaskLifecycleStatus(
       ExitCode.conflict,
     );
   }
-  return inspectOpenTaskJournalStatus(cwd, matches[0]!);
+  return inspectOpenTaskJournalStatus(
+    handoffDocuments,
+    loadChangeContract,
+    cwd,
+    matches[0]!,
+  );
 }
 
 export function contextualizeOpenTaskError(
+  handoffDocuments: Pick<HandoffDocumentOperations, 'validateHandoffForChange'>,
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   changeId: string,
   taskId: string,
@@ -568,7 +548,12 @@ export function contextualizeOpenTaskError(
   try {
     const journal = readOpenTaskJournal(cwd, changeId, taskId);
     if (journal === null) return error;
-    const status = inspectOpenTaskJournalStatus(cwd, journal);
+    const status = inspectOpenTaskJournalStatus(
+      handoffDocuments,
+      loadChangeContract,
+      cwd,
+      journal,
+    );
     return workflowError(
       workflowFailure.code,
       workflowFailure.message,
@@ -600,48 +585,19 @@ function listOpenTaskJournals(cwd: string): OpenTaskJournal[] {
     repository.gitCommonDirectory,
     config.runtimeDirectory,
   );
-  const directory = path.join(runtime.root, 'open-task', 'transactions');
-  const stats = fs.lstatSync(directory, { throwIfNoEntry: false });
-  if (!stats) return [];
-  assertPrivateDirectory(directory);
-  const canonicalEntries = fs
-    .readdirSync(directory)
-    .filter((entry) => entry.endsWith('.json'))
-    .sort();
-  const journals = canonicalEntries.map((entry) => {
-    const journal = parseJournal(
-      readPrivateCanonicalFile(path.join(directory, entry)),
-    );
-    if (
-      path.basename(journalPath(runtime, journal.changeId, journal.taskId)) !==
-      entry
-    ) {
-      throw openTaskUnsafe('Open-task journal pathname is not canonical.');
-    }
-    return journal;
-  });
-  const expectedEntries = journals
-    .map((journal) =>
-      path.basename(journalPath(runtime, journal.changeId, journal.taskId)),
-    )
-    .sort();
-  if (
-    canonicalJson(fs.readdirSync(directory).sort()) !==
-    canonicalJson(expectedEntries)
-  ) {
-    throw openTaskUnsafe('Open-task journal inventory is not exact.');
-  }
-  return journals;
+  return listOpenTaskJournalsAtRoot(runtime.root);
 }
 
 function inspectOpenTaskJournalStatus(
+  handoffDocuments: Pick<HandoffDocumentOperations, 'validateHandoffForChange'>,
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   journal: OpenTaskJournal,
 ): OpenTaskLifecycleStatus {
   let errorCode: string | null = null;
   let completedSessionState: WorkflowSession['state'] | null = null;
   try {
-    assertJournalAuthority(cwd, journal);
+    assertJournalAuthority(loadChangeContract, cwd, journal);
     const repository = discoverRepository(cwd);
     const config = loadWorkflowConfig(repository.repositoryRoot);
     const runtime = runtimePaths(
@@ -672,7 +628,7 @@ function inspectOpenTaskJournalStatus(
           );
         }
       } else if (repository.head === journal.planningCommit) {
-        assertCommittedPlanningState(cwd, journal);
+        assertCommittedPlanningState(handoffDocuments, cwd, journal);
         if (sessionExists) readAndAssertExactSession(cwd, runtime, journal);
       } else {
         throw workflowError(
@@ -687,7 +643,7 @@ function inspectOpenTaskJournalStatus(
           'Durable open-task phase is ahead of its observable planning commit.',
         );
       }
-      assertCommittedPlanningState(cwd, journal);
+      assertCommittedPlanningState(handoffDocuments, cwd, journal);
       if (journal.phase === 'plan-committed') {
         if (sessionExists) readAndAssertExactSession(cwd, runtime, journal);
       } else {
@@ -742,7 +698,7 @@ function recoverOpenTask(
   options: OpenTaskOptions,
   ports: OpenTaskPorts,
 ): OpenTaskResult {
-  assertJournalAuthority(cwd, journal);
+  assertJournalAuthority(ports.loadChangeContract, cwd, journal);
   if (journal.phase === 'completed') {
     const session = readAndAssertExactSession(cwd, runtime, journal);
     return resultFrom(journal, session, true, ports);
@@ -753,20 +709,27 @@ function recoverOpenTask(
   if (durable.phase === 'prepared') {
     if (current.head === durable.parentCommit) {
       if (durable.mandateBinding !== null) {
-        assertActiveTaskMandateBindingUnderLifecycleLock(
+        ports.taskMandate.assertActiveTaskMandateBindingUnderLifecycleLock(
           cwd,
           durable.mandateBinding,
           assertRepositoryLock,
           options.mandate,
         );
       } else {
-        assertJournalTaskAuthorization(cwd, durable);
+        assertJournalTaskAuthorization(ports.loadChangeContract, cwd, durable);
       }
       withOpenTaskPlanningAuthority(
         runtime,
         durable.changeId,
         assertRepositoryLock,
-        () => recoverPreparedPlanningCommit(cwd, durable),
+        () =>
+          recoverPreparedPlanningCommit(
+            ports.handoffDocuments,
+            ports.managedDocuments,
+            ports.loadChangeContract,
+            cwd,
+            durable,
+          ),
       );
       current = discoverRepository(cwd);
     }
@@ -777,7 +740,7 @@ function recoverOpenTask(
         ExitCode.staleState,
       );
     }
-    assertCommittedPlanningState(cwd, durable);
+    assertCommittedPlanningState(ports.handoffDocuments, cwd, durable);
     durable = advanceJournalPhase(runtime, durable, 'plan-committed');
   } else {
     if (current.head !== durable.planningCommit) {
@@ -785,12 +748,13 @@ function recoverOpenTask(
         'Durable open-task phase is ahead of its observable planning commit.',
       );
     }
-    assertCommittedPlanningState(cwd, durable);
+    assertCommittedPlanningState(ports.handoffDocuments, cwd, durable);
   }
 
   let session: WorkflowSession;
   if (durable.phase === 'plan-committed') {
     session = ensureExactSession(
+      ports.changeContract,
       cwd,
       runtime,
       durable,
@@ -806,10 +770,13 @@ function recoverOpenTask(
 }
 
 function recoverPreparedPlanningCommit(
+  handoffDocuments: Pick<HandoffDocumentOperations, 'validateHandoffForChange'>,
+  managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   journal: OpenTaskJournal,
 ): void {
-  assertJournalAuthority(cwd, journal);
+  assertJournalAuthority(loadChangeContract, cwd, journal);
   const repository = discoverRepository(cwd);
   if (
     repository.head !== journal.parentCommit ||
@@ -823,6 +790,9 @@ function recoverPreparedPlanningCommit(
     );
   }
   const projectionMutations = restorePreparedPlanningProjection(
+    handoffDocuments,
+    managedDocuments,
+    loadChangeContract,
     repository.repositoryRoot,
     journal,
   );
@@ -864,10 +834,13 @@ function recoverPreparedPlanningCommit(
     );
     throw error;
   }
-  assertCommittedPlanningState(cwd, journal);
+  assertCommittedPlanningState(handoffDocuments, cwd, journal);
 }
 
 function restorePreparedPlanningProjection(
+  handoffDocuments: Pick<HandoffDocumentOperations, 'validateHandoffForChange'>,
+  managedDocuments: Pick<ManagedDocumentOperations, 'refreshPlanningDocuments'>,
+  loadChangeContract: ChangeContractReader,
   repositoryRoot: string,
   journal: OpenTaskJournal,
 ): GeneratedDocumentMutation[] {
@@ -900,7 +873,7 @@ function restorePreparedPlanningProjection(
     return { path: projectionPath, before, after };
   });
   try {
-    refreshPlanningDocuments(
+    managedDocuments.refreshPlanningDocuments(
       repositoryRoot,
       journal.changeId,
       loadChangeContract(repositoryRoot, journal.changeId).investigation
@@ -916,7 +889,11 @@ function restorePreparedPlanningProjection(
         );
       }
     }
-    validatePreparedPlanningProjection(repositoryRoot, journal);
+    validatePreparedPlanningProjection(
+      handoffDocuments,
+      repositoryRoot,
+      journal,
+    );
     return mutations;
   } catch (error) {
     rollbackPreparedPlanningProjection(repositoryRoot, mutations, true);
@@ -959,6 +936,7 @@ function readPlainProjectionFile(
 }
 
 function ensureExactSession(
+  changeContract: ChangeContractServices,
   cwd: string,
   runtime: ReturnType<typeof runtimePaths>,
   journal: OpenTaskJournal,
@@ -977,6 +955,7 @@ function ensureExactSession(
   const session =
     journal.mandateBinding === null
       ? startSessionUnderLifecycleLock(
+          changeContract,
           cwd,
           journal.changeId,
           journal.taskId,
@@ -985,6 +964,7 @@ function ensureExactSession(
           environment,
         )
       : startMandatedSessionUnderLifecycleLock(
+          changeContract,
           cwd,
           journal.changeId,
           journal.taskId,
@@ -1071,7 +1051,11 @@ function assertSessionIngressIdentity(
   }
 }
 
-function assertJournalAuthority(cwd: string, journal: OpenTaskJournal): void {
+function assertJournalAuthority(
+  loadChangeContract: ChangeContractReader,
+  cwd: string,
+  journal: OpenTaskJournal,
+): void {
   const repository = discoverRepository(cwd);
   const config = loadWorkflowConfig(repository.repositoryRoot);
   const expectedBranch = config.branchTemplate.replaceAll(
@@ -1091,7 +1075,7 @@ function assertJournalAuthority(cwd: string, journal: OpenTaskJournal): void {
       ExitCode.staleState,
     );
   }
-  assertJournalTaskAuthorization(cwd, journal);
+  assertJournalTaskAuthorization(loadChangeContract, cwd, journal);
   assertPreparedPlanningAuthority(
     repository.repositoryRoot,
     config.runtimeDirectory,
@@ -1101,6 +1085,7 @@ function assertJournalAuthority(cwd: string, journal: OpenTaskJournal): void {
 }
 
 function assertJournalTaskAuthorization(
+  loadChangeContract: ChangeContractReader,
   cwd: string,
   journal: OpenTaskJournal,
 ): void {
@@ -1192,6 +1177,7 @@ function assertPreparedPlanningAuthority(
 }
 
 function assertCommittedPlanningState(
+  handoffDocuments: Pick<HandoffDocumentOperations, 'validateHandoffForChange'>,
   cwd: string,
   journal: OpenTaskJournal,
 ): void {
@@ -1210,7 +1196,11 @@ function assertCommittedPlanningState(
       ExitCode.staleState,
     );
   }
-  validatePreparedPlanningProjection(repository.repositoryRoot, journal);
+  validatePreparedPlanningProjection(
+    handoffDocuments,
+    repository.repositoryRoot,
+    journal,
+  );
 }
 
 function planningProjectionPaths(journal: OpenTaskJournal): string[] {
@@ -1220,49 +1210,15 @@ function planningProjectionPaths(journal: OpenTaskJournal): string[] {
 }
 
 function validatePreparedPlanningProjection(
+  handoffDocuments: Pick<HandoffDocumentOperations, 'validateHandoffForChange'>,
   repositoryRoot: string,
   journal: OpenTaskJournal,
 ): void {
   if (
     planningProjectionPaths(journal).includes('docs/CURRENT_AND_NEXT_STEPS.md')
   ) {
-    validateHandoffForChange(repositoryRoot, journal.changeId);
+    handoffDocuments.validateHandoffForChange(repositoryRoot, journal.changeId);
   }
-}
-
-function createPreparedJournal(
-  input: Omit<
-    OpenTaskJournal,
-    'schemaVersion' | 'kind' | 'transactionId' | 'phase' | 'completedAt'
-  >,
-): OpenTaskJournal {
-  const stable = {
-    schemaVersion: 2 as const,
-    kind: 'open-task-transaction.v2' as const,
-    changeId: input.changeId,
-    taskId: input.taskId,
-    mandateTaskId: input.mandateTaskId,
-    mandateBinding: structuredClone(input.mandateBinding),
-    authorizationPolicyDigest: input.authorizationPolicyDigest,
-    repositoryRoot: input.repositoryRoot,
-    gitCommonDirectory: input.gitCommonDirectory,
-    worktree: input.worktree,
-    branch: input.branch,
-    parentCommit: input.parentCommit,
-    parentTree: input.parentTree,
-    planningCommit: input.planningCommit,
-    baselineTree: input.baselineTree,
-    reportId: input.reportId,
-    changedPaths: [...input.changedPaths],
-    sessionId: input.sessionId,
-    createdAt: input.createdAt,
-  };
-  return parseJournal({
-    ...stable,
-    transactionId: transactionDigest(stable),
-    phase: 'prepared',
-    completedAt: null,
-  });
 }
 
 function completeJournal(
@@ -1271,17 +1227,13 @@ function completeJournal(
   now?: Date,
 ): OpenTaskJournal {
   if (journal.phase === 'completed') return journal;
-  if (journal.phase !== 'session-active') {
-    throw openTaskPhaseDiverged(
-      'Open-task cannot complete before its exact session-active phase.',
-    );
-  }
-  const completed = parseJournal({
+  assertOpenTaskCompletionPhase(journal);
+  const completed = parseOpenTaskJournal({
     ...journal,
     phase: 'completed',
-    completedAt: exactTimestamp(now ?? new Date()),
+    completedAt: exactOpenTaskTimestamp(now ?? new Date()),
   });
-  replaceJournal(runtime, journal, completed);
+  replaceJournal(runtime.root, journal, completed);
   return completed;
 }
 
@@ -1290,319 +1242,9 @@ function advanceJournalPhase(
   journal: OpenTaskJournal,
   nextPhase: 'plan-committed' | 'session-active',
 ): OpenTaskJournal {
-  const expectedCurrent =
-    nextPhase === 'plan-committed' ? 'prepared' : 'plan-committed';
-  if (journal.phase !== expectedCurrent) {
-    throw openTaskPhaseDiverged(
-      `Open-task cannot advance from ${journal.phase} to ${nextPhase}.`,
-    );
-  }
-  const next = parseJournal({ ...journal, phase: nextPhase });
-  replaceJournal(runtime, journal, next);
+  const next = advanceOpenTaskJournalPhase(journal, nextPhase);
+  replaceJournal(runtime.root, journal, next);
   return next;
-}
-
-function publishPreparedJournal(
-  runtime: ReturnType<typeof runtimePaths>,
-  journal: OpenTaskJournal,
-): void {
-  const filePath = journalPath(runtime, journal.changeId, journal.taskId);
-  ensureJournalDirectory(filePath);
-  const content = `${canonicalJson(journal)}\n`;
-  const temporary = writePrivateTemporary(filePath, content);
-  try {
-    fs.linkSync(temporary, filePath);
-    fsyncDirectory(path.dirname(filePath));
-    fs.unlinkSync(temporary);
-    fsyncDirectory(path.dirname(filePath));
-    if (readPrivateCanonicalFile(filePath) !== content) {
-      throw openTaskUnsafe('Prepared open-task journal publication changed.');
-    }
-  } catch (error) {
-    fs.rmSync(temporary, { force: true });
-    if (isNodeError(error) && error.code === 'EEXIST') {
-      const existing = parseJournal(readPrivateCanonicalFile(filePath));
-      if (canonicalJson(existing) === canonicalJson(journal)) return;
-      throw workflowError(
-        'OPEN_TASK_TRANSACTION_CONFLICT',
-        'A different durable open-task transaction already exists.',
-        ExitCode.conflict,
-      );
-    }
-    throw error;
-  } finally {
-    fs.rmSync(temporary, { force: true });
-  }
-}
-
-function replaceJournal(
-  runtime: ReturnType<typeof runtimePaths>,
-  previous: OpenTaskJournal,
-  next: OpenTaskJournal,
-): void {
-  const filePath = journalPath(runtime, previous.changeId, previous.taskId);
-  const before = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  const observed = parseJournal(readPrivateCanonicalFile(filePath));
-  const current = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  if (
-    !before ||
-    !current ||
-    before.dev !== current.dev ||
-    before.ino !== current.ino ||
-    canonicalJson(observed) !== canonicalJson(previous)
-  ) {
-    throw openTaskUnsafe('Open-task journal changed before phase advancement.');
-  }
-  const content = `${canonicalJson(next)}\n`;
-  const temporary = writePrivateTemporary(filePath, content);
-  try {
-    const beforeRename = fs.lstatSync(filePath, { throwIfNoEntry: false });
-    if (
-      !beforeRename ||
-      before.dev !== beforeRename.dev ||
-      before.ino !== beforeRename.ino
-    ) {
-      throw openTaskUnsafe('Open-task journal pathname changed.');
-    }
-    fs.renameSync(temporary, filePath);
-    fsyncDirectory(path.dirname(filePath));
-    if (readPrivateCanonicalFile(filePath) !== content) {
-      throw openTaskUnsafe('Completed open-task journal publication changed.');
-    }
-  } finally {
-    fs.rmSync(temporary, { force: true });
-  }
-}
-
-function readPrivateCanonicalFile(filePath: string): string {
-  const parent = path.dirname(filePath);
-  assertPrivateDirectory(parent);
-  reconcilePublishedJournalAlias(filePath);
-  const before = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  if (
-    !before?.isFile() ||
-    before.isSymbolicLink() ||
-    before.nlink !== 1 ||
-    (before.mode & 0o777) !== 0o600 ||
-    before.size > MAX_JOURNAL_BYTES
-  ) {
-    throw openTaskUnsafe('Open-task journal file is unsafe.');
-  }
-  let descriptor: number | undefined;
-  try {
-    descriptor = fs.openSync(
-      filePath,
-      fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW,
-    );
-    const opened = fs.fstatSync(descriptor);
-    const content = fs.readFileSync(descriptor, 'utf8');
-    const after = fs.fstatSync(descriptor);
-    const current = fs.lstatSync(filePath, { throwIfNoEntry: false });
-    if (
-      !current ||
-      opened.dev !== before.dev ||
-      opened.ino !== before.ino ||
-      opened.dev !== after.dev ||
-      opened.ino !== after.ino ||
-      opened.size !== after.size ||
-      opened.mtimeMs !== after.mtimeMs ||
-      current.dev !== opened.dev ||
-      current.ino !== opened.ino ||
-      current.nlink !== 1 ||
-      (opened.mode & 0o777) !== 0o600 ||
-      Buffer.byteLength(content) > MAX_JOURNAL_BYTES
-    ) {
-      throw openTaskUnsafe('Open-task journal changed while being read.');
-    }
-    let value: unknown;
-    try {
-      value = JSON.parse(content);
-    } catch {
-      throw openTaskUnsafe('Open-task journal is not JSON.');
-    }
-    if (`${canonicalJson(value)}\n` !== content) {
-      throw openTaskUnsafe('Open-task journal bytes are not canonical.');
-    }
-    return content;
-  } finally {
-    if (descriptor !== undefined) fs.closeSync(descriptor);
-  }
-}
-
-function parseJournal(input: unknown): OpenTaskJournal {
-  let value: unknown = input;
-  if (typeof input === 'string') {
-    try {
-      value = JSON.parse(input);
-    } catch {
-      throw openTaskUnsafe('Open-task journal is not JSON.');
-    }
-  }
-  if (!isRecord(value)) throw openTaskUnsafe('Open-task journal is malformed.');
-  const commonKeys = [
-    'authorizationPolicyDigest',
-    'baselineTree',
-    'branch',
-    'changeId',
-    'changedPaths',
-    'completedAt',
-    'createdAt',
-    'gitCommonDirectory',
-    'kind',
-    'mandateBinding',
-    'mandateTaskId',
-    'parentCommit',
-    'parentTree',
-    'phase',
-    'planningCommit',
-    'reportId',
-    'repositoryRoot',
-    'schemaVersion',
-    'sessionId',
-    'taskId',
-    'transactionId',
-    'worktree',
-  ];
-  const expectedKeys = commonKeys.sort();
-  if (
-    Object.keys(value).sort().join('\0') !== expectedKeys.join('\0') ||
-    value.schemaVersion !== 2 ||
-    value.kind !== 'open-task-transaction.v2' ||
-    (value.phase !== 'prepared' &&
-      value.phase !== 'plan-committed' &&
-      value.phase !== 'session-active' &&
-      value.phase !== 'completed') ||
-    typeof value.transactionId !== 'string' ||
-    !SHA256.test(value.transactionId) ||
-    typeof value.changeId !== 'string' ||
-    typeof value.taskId !== 'string' ||
-    (value.mandateTaskId !== null &&
-      (typeof value.mandateTaskId !== 'string' ||
-        !MANDATE_TASK_ID.test(value.mandateTaskId))) ||
-    typeof value.authorizationPolicyDigest !== 'string' ||
-    !SHA256_PREFIX.test(value.authorizationPolicyDigest) ||
-    typeof value.repositoryRoot !== 'string' ||
-    typeof value.gitCommonDirectory !== 'string' ||
-    typeof value.worktree !== 'string' ||
-    typeof value.branch !== 'string' ||
-    typeof value.parentCommit !== 'string' ||
-    !COMMIT_OID.test(value.parentCommit) ||
-    typeof value.parentTree !== 'string' ||
-    !COMMIT_OID.test(value.parentTree) ||
-    typeof value.planningCommit !== 'string' ||
-    !COMMIT_OID.test(value.planningCommit) ||
-    typeof value.baselineTree !== 'string' ||
-    !COMMIT_OID.test(value.baselineTree) ||
-    typeof value.reportId !== 'string' ||
-    !SHA256.test(value.reportId) ||
-    !Array.isArray(value.changedPaths) ||
-    value.changedPaths.some((entry) => typeof entry !== 'string') ||
-    typeof value.sessionId !== 'string' ||
-    typeof value.createdAt !== 'string' ||
-    (value.completedAt !== null && typeof value.completedAt !== 'string') ||
-    (value.phase !== 'completed' && value.completedAt !== null) ||
-    (value.phase === 'completed' && value.completedAt === null)
-  ) {
-    throw openTaskUnsafe('Open-task journal is malformed.');
-  }
-  const changeId = assertChangeId(value.changeId);
-  const taskId = assertTaskId(value.taskId);
-  const changedPaths = value.changedPaths.map((entry) =>
-    normalizeChangedPath(entry as string),
-  );
-  if (
-    canonicalJson(changedPaths) !==
-      canonicalJson([...new Set(changedPaths)].sort()) ||
-    !path.isAbsolute(value.repositoryRoot) ||
-    !path.isAbsolute(value.gitCommonDirectory) ||
-    !path.isAbsolute(value.worktree)
-  ) {
-    throw openTaskUnsafe('Open-task journal identity is malformed.');
-  }
-  const mandateBinding =
-    value.mandateBinding === null
-      ? null
-      : parseMandateBinding(value.mandateBinding);
-  const createdAt = exactTimestamp(new Date(value.createdAt));
-  const completedAt =
-    value.completedAt === null
-      ? null
-      : exactTimestamp(new Date(value.completedAt));
-  if (
-    createdAt !== value.createdAt ||
-    completedAt !== value.completedAt ||
-    (mandateBinding === null) !== (value.mandateTaskId === null) ||
-    (mandateBinding !== null &&
-      (mandateBinding.mandateTaskId !== value.mandateTaskId ||
-        mandateBinding.changeId !== changeId))
-  ) {
-    throw openTaskUnsafe('Open-task journal bindings are not exact.');
-  }
-  const journal: OpenTaskJournal = {
-    schemaVersion: 2,
-    kind: 'open-task-transaction.v2',
-    transactionId: value.transactionId,
-    phase: value.phase,
-    changeId,
-    taskId,
-    mandateTaskId: value.mandateTaskId,
-    mandateBinding,
-    authorizationPolicyDigest: value.authorizationPolicyDigest,
-    repositoryRoot: value.repositoryRoot,
-    gitCommonDirectory: value.gitCommonDirectory,
-    worktree: value.worktree,
-    branch: value.branch,
-    parentCommit: value.parentCommit,
-    parentTree: value.parentTree,
-    planningCommit: value.planningCommit,
-    baselineTree: value.baselineTree,
-    reportId: value.reportId,
-    changedPaths,
-    sessionId: value.sessionId,
-    createdAt,
-    completedAt,
-  };
-  if (journal.transactionId !== transactionDigest(journal)) {
-    throw openTaskUnsafe('Open-task transaction identity does not match.');
-  }
-  return Object.freeze(journal);
-}
-
-function parseMandateBinding(value: unknown): TaskMandateBinding {
-  if (
-    !isRecord(value) ||
-    Object.keys(value).sort().join('\0') !==
-      [
-        'changeId',
-        'externalAuditRoot',
-        'mandateDigest',
-        'mandateId',
-        'mandateTaskId',
-        'schemaVersion',
-      ]
-        .sort()
-        .join('\0') ||
-    value.schemaVersion !== 1 ||
-    typeof value.mandateTaskId !== 'string' ||
-    !MANDATE_TASK_ID.test(value.mandateTaskId) ||
-    typeof value.mandateId !== 'string' ||
-    !MANDATE_ID.test(value.mandateId) ||
-    typeof value.mandateDigest !== 'string' ||
-    !SHA256.test(value.mandateDigest) ||
-    typeof value.changeId !== 'string' ||
-    typeof value.externalAuditRoot !== 'string' ||
-    !path.isAbsolute(value.externalAuditRoot)
-  ) {
-    throw openTaskUnsafe('Open-task mandate binding is malformed.');
-  }
-  return {
-    schemaVersion: 1,
-    mandateTaskId: value.mandateTaskId,
-    mandateId: value.mandateId,
-    mandateDigest: value.mandateDigest,
-    changeId: assertChangeId(value.changeId),
-    externalAuditRoot: value.externalAuditRoot,
-  };
 }
 
 function assertRequestedTransaction(
@@ -1671,210 +1313,6 @@ function resultFrom(
   };
 }
 
-function transactionDigest(
-  value: Omit<OpenTaskJournal, 'transactionId' | 'phase' | 'completedAt'> &
-    Partial<Pick<OpenTaskJournal, 'transactionId' | 'phase' | 'completedAt'>>,
-): string {
-  return crypto
-    .createHash('sha256')
-    .update(
-      canonicalJson({
-        schema: 'open-task-transaction.v2',
-        changeId: value.changeId,
-        taskId: value.taskId,
-        mandateTaskId: value.mandateTaskId,
-        mandateBinding: value.mandateBinding,
-        authorizationPolicyDigest: value.authorizationPolicyDigest,
-        repositoryRoot: value.repositoryRoot,
-        gitCommonDirectory: value.gitCommonDirectory,
-        worktree: value.worktree,
-        branch: value.branch,
-        parentCommit: value.parentCommit,
-        parentTree: value.parentTree,
-        planningCommit: value.planningCommit,
-        baselineTree: value.baselineTree,
-        reportId: value.reportId,
-        changedPaths: value.changedPaths,
-        sessionId: value.sessionId,
-        createdAt: value.createdAt,
-      }),
-    )
-    .digest('hex');
-}
-
-function journalPath(
-  runtime: ReturnType<typeof runtimePaths>,
-  changeId: string,
-  taskId: string,
-): string {
-  return path.join(
-    runtime.root,
-    'open-task',
-    'transactions',
-    `${changeId}.${taskId}.json`,
-  );
-}
-
-function ensureJournalDirectory(filePath: string): void {
-  const directory = path.dirname(filePath);
-  ensurePlainDirectory(path.dirname(directory));
-  ensurePlainDirectory(directory);
-  fs.chmodSync(path.dirname(directory), 0o700);
-  fs.chmodSync(directory, 0o700);
-  assertPrivateDirectory(directory);
-}
-
-function reconcilePublishedJournalAlias(filePath: string): void {
-  const target = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  if (!target || target.nlink === 1) return;
-  if (
-    !target.isFile() ||
-    target.isSymbolicLink() ||
-    target.nlink !== 2 ||
-    (target.mode & 0o777) !== 0o600
-  ) {
-    throw openTaskUnsafe('Open-task journal publication residue is unsafe.');
-  }
-  const directory = path.dirname(filePath);
-  const basename = path.basename(filePath);
-  const aliases = fs
-    .readdirSync(directory)
-    .filter(
-      (entry) =>
-        entry !== basename &&
-        entry.startsWith(`${basename}.`) &&
-        entry.endsWith('.tmp'),
-    )
-    .map((entry) => path.join(directory, entry))
-    .filter((candidate) => {
-      const stats = fs.lstatSync(candidate, { throwIfNoEntry: false });
-      return (
-        stats?.isFile() === true &&
-        !stats.isSymbolicLink() &&
-        stats.dev === target.dev &&
-        stats.ino === target.ino &&
-        stats.nlink === 2 &&
-        (stats.mode & 0o777) === 0o600
-      );
-    });
-  if (aliases.length !== 1) {
-    throw openTaskUnsafe('Open-task journal publication residue is ambiguous.');
-  }
-  fs.unlinkSync(aliases[0]!);
-  fsyncDirectory(directory);
-  const reconciled = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  if (
-    !reconciled?.isFile() ||
-    reconciled.isSymbolicLink() ||
-    reconciled.nlink !== 1 ||
-    reconciled.dev !== target.dev ||
-    reconciled.ino !== target.ino
-  ) {
-    throw openTaskUnsafe('Open-task journal publication did not reconcile.');
-  }
-}
-
-function assertPrivateDirectory(directory: string): void {
-  for (const candidate of [path.dirname(directory), directory]) {
-    const stats = fs.lstatSync(candidate, { throwIfNoEntry: false });
-    if (
-      !stats?.isDirectory() ||
-      stats.isSymbolicLink() ||
-      fs.realpathSync(candidate) !== path.resolve(candidate) ||
-      (stats.mode & 0o777) !== 0o700
-    ) {
-      throw openTaskUnsafe('Open-task runtime directory is unsafe.');
-    }
-  }
-}
-
-function writePrivateTemporary(filePath: string, content: string): string {
-  const temporary = `${filePath}.${process.pid}.${crypto.randomUUID()}.tmp`;
-  let descriptor: number | undefined;
-  try {
-    descriptor = fs.openSync(
-      temporary,
-      fs.constants.O_RDWR |
-        fs.constants.O_CREAT |
-        fs.constants.O_EXCL |
-        fs.constants.O_NOFOLLOW,
-      0o600,
-    );
-    fs.fchmodSync(descriptor, 0o600);
-    fs.writeFileSync(descriptor, content, 'utf8');
-    fs.fsyncSync(descriptor);
-    fs.closeSync(descriptor);
-    descriptor = undefined;
-    return temporary;
-  } catch (error) {
-    if (descriptor !== undefined) fs.closeSync(descriptor);
-    fs.rmSync(temporary, { force: true });
-    throw error;
-  }
-}
-
-function exactTimestamp(now: Date): string {
-  const milliseconds = now.getTime();
-  if (!Number.isFinite(milliseconds)) {
-    throw workflowError(
-      'OPEN_TASK_CLOCK_INVALID',
-      'Open-task requires a valid wall-clock timestamp.',
-      ExitCode.staleState,
-    );
-  }
-  return new Date(milliseconds).toISOString();
-}
-
-function assertMandateTaskId(value: string): string {
-  if (!MANDATE_TASK_ID.test(value) || value.length > 128) {
-    throw workflowError(
-      'OPEN_TASK_MANDATE_TASK_ID_INVALID',
-      'Open-task mandate task ID must be lower-case kebab-case.',
-      ExitCode.usage,
-    );
-  }
-  return value;
-}
-
-function exactOpenTaskRetryCommand(journal: OpenTaskJournal): string {
-  return `pnpm workflow open-task ${journal.changeId} --task ${journal.taskId}${
-    journal.mandateTaskId === null ? '' : ` --mandate ${journal.mandateTaskId}`
-  } --json`;
-}
-
-function openTaskPhaseDiverged(message: string): WorkflowError {
-  return workflowError(
-    'OPEN_TASK_PHASE_DIVERGED',
-    message,
-    ExitCode.staleState,
-  );
-}
-
 function simulatedInterruption(phase: string): Error {
   return new Error(`Simulated open-task interruption after ${phase}.`);
-}
-
-function openTaskUnsafe(message: string) {
-  return workflowError(
-    'OPEN_TASK_JOURNAL_CORRUPT',
-    message,
-    ExitCode.staleState,
-  );
-}
-
-function fsyncDirectory(directory: string): void {
-  const descriptor = fs.openSync(directory, fs.constants.O_RDONLY);
-  try {
-    fs.fsyncSync(descriptor);
-  } finally {
-    fs.closeSync(descriptor);
-  }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && 'code' in error;
 }

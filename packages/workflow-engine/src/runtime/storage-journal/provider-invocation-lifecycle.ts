@@ -13,25 +13,25 @@ import {
   PROPOSE_POLICY_DIGEST,
   recreateProviderInvocationRequest,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
-import { inspectProviderInvocationSupersessionRelations } from '../provider-execution/provider-invocation-supersession-schema.ts';
+import { inspectProviderInvocationSupersessionRelations } from './provider-invocation-supersession-schema.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import {
-  type InvestigationRuntimePaths,
   assertChangeId,
   assertInvestigationId,
   assertInvocationId,
-} from '../session-workspace/paths.ts';
+} from '../../foundation/repository-path/repository-path.ts';
 import {
   type InvestigationEvidenceRefsClosure,
   readInvestigationEvidenceRefsClosure,
 } from './evidence-ref-closure.ts';
-import { exactUnsafePathObservationDigest } from './evidence-unsafe-observation.ts';
+import { exactUnsafePathObservationDigest } from '../journal-primitives/evidence-unsafe-observation.ts';
 import { readEvidenceNode } from './evidence-node-store.ts';
 import { resolvePlanReviewInvocationOwner } from './evidence-plan-review-ownership.ts';
 import {
   privatePathExists,
   readPrivateCanonicalJson,
   walkPrivateDirectory,
-} from './investigation-private-files.ts';
+} from '../journal-primitives/investigation-private-files.ts';
 import {
   deepFreeze,
   hasExactKeys,
@@ -41,7 +41,7 @@ import {
   isTimestamp,
   providerInvocationUnsafe,
   sha256,
-} from './investigation-store-values.ts';
+} from '../../modules/investigation/domain/investigation-store-values.ts';
 import {
   assertProviderInvocationOutputManifestBinding,
   assertProviderRuntimeDurableAuthorities,

@@ -1,3 +1,8 @@
+import { planningAssuranceDependencies } from '../src/composition-root/planning-assurance-production.ts';
+import {
+  readCurrentPlanningAgentRolePlanV2,
+  readCurrentPlanningRoleOverridePolicy,
+} from '../src/runtime/repository-transaction/planning-role-provider-policy-reader.ts';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -5,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { loadChangeContract } from '../src/composition-root/consumer-contract-production.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
 import {
@@ -21,7 +26,13 @@ import {
   type AgentRolePlanV2,
   type CurrentAgentRolePlan,
 } from '../src/modules/provider-orchestration/agent-role-plan.ts';
-import { assertPlanningPaths } from '../src/modules/source/planning-paths.ts';
+import {
+  parseCurrentCentralRoleProviderDefaultPolicy,
+  parseCurrentAgentRolePlanV2,
+  projectCurrentPlanningRoleOverridePolicy,
+  assertCurrentPlanningRoleOverridePolicy,
+} from '../src/modules/provider-orchestration/planning-role-provider-policy.ts';
+import { assertPlanningPaths } from '../src/composition-root/planning-provider-production.ts';
 import {
   agentRolePlanV2Path,
   partitionPlanningRolePolicyPaths,
@@ -658,15 +669,29 @@ test('agent-role plan v2 is a repository-owned planning companion and changes th
     writeCentralConfiguration(repository);
     writeReadyV3ExemptChange(repository);
     const before = loadChangeContract(repository, CHANGE_ID);
+    assert.throws(
+      () =>
+        deriveInvestigationFirstPlanningSubject(
+          planningAssuranceDependencies,
+          repository,
+          before,
+          undefined!,
+        ),
+      (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
+    );
     const beforeSubject = deriveInvestigationFirstPlanningSubject(
+      planningAssuranceDependencies,
       repository,
       before,
+      readCurrentPlanningRoleOverridePolicy(repository, before.changeId),
     );
     writePlanV2(repository);
     const after = loadChangeContract(repository, CHANGE_ID);
     const afterSubject = deriveInvestigationFirstPlanningSubject(
+      planningAssuranceDependencies,
       repository,
       after,
+      readCurrentPlanningRoleOverridePolicy(repository, after.changeId),
     );
     assert.deepEqual(after.artifactPaths, before.artifactPaths);
     assert.deepEqual(after.artifactDigests, before.artifactDigests);
@@ -715,8 +740,10 @@ test('agent-role plan v2 is a repository-owned planning companion and changes th
 
     writePlanV2(repository, planV2({ customWrapperPolicy: 'forbidden' }));
     const changedOverrideSubject = deriveInvestigationFirstPlanningSubject(
+      planningAssuranceDependencies,
       repository,
       loadChangeContract(repository, CHANGE_ID),
+      readCurrentPlanningRoleOverridePolicy(repository, CHANGE_ID),
     );
     assert.notEqual(
       changedOverrideSubject.target.targetDigest,
@@ -727,12 +754,188 @@ test('agent-role plan v2 is a repository-owned planning companion and changes th
     assert.throws(
       () =>
         deriveInvestigationFirstPlanningSubject(
+          planningAssuranceDependencies,
           repository,
           loadChangeContract(repository, CHANGE_ID),
+          readCurrentPlanningRoleOverridePolicy(repository, CHANGE_ID),
         ),
       (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('planning role policy decoding binds exact bytes to the central configuration without filesystem reads', (context) => {
+  const centralBytes = Buffer.from(
+    renderCentralRoleProviderDefault(centralConfiguration()),
+  );
+  const overrideBytes = Buffer.from(renderAgentRolePlanV2(planV2()));
+  context.mock.method(fs, 'readFileSync', () => {
+    throw new Error('Unexpected policy I/O');
+  });
+  context.mock.method(fs, 'openSync', () => {
+    throw new Error('Unexpected policy I/O');
+  });
+  const central = parseCurrentCentralRoleProviderDefaultPolicy(centralBytes);
+  const plan = parseCurrentAgentRolePlanV2(overrideBytes, CHANGE_ID, central);
+  assert.deepEqual(plan, planV2());
+  assert.deepEqual(projectCurrentPlanningRoleOverridePolicy(plan), {
+    path: agentRolePlanV2Path(CHANGE_ID),
+    baseCentralConfigurationDigest: CENTRAL_CONFIGURATION_DIGEST,
+    planDigest: planV2().planDigest,
+  });
+  assert.throws(
+    () => parseCurrentAgentRolePlanV2(overrideBytes, 'another-change', central),
+    (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
+  );
+  const otherCentral = createCentralRoleProviderDefault({
+    schemaVersion: 1,
+    kind: 'central-role-provider-default',
+    providerGroups: central.providerGroups,
+    globalProviderRanking: ['codex', 'claude'],
+  });
+  assert.throws(
+    () => parseCurrentAgentRolePlanV2(overrideBytes, CHANGE_ID, otherCentral),
+    (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
+  );
+  for (const malformed of [Buffer.from([0xff]), Buffer.from('{}')]) {
+    assert.throws(
+      () => parseCurrentAgentRolePlanV2(malformed, CHANGE_ID, central),
+      (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
+    );
+    assert.throws(
+      () => parseCurrentCentralRoleProviderDefaultPolicy(malformed),
+      (error) =>
+        isWorkflowError(error, 'CENTRAL_ROLE_PROVIDER_DEFAULT_INVALID'),
+    );
+  }
+});
+
+test('planning role policy input distinguishes explicit absence from omitted or cross-change wiring', () => {
+  const policy = projectCurrentPlanningRoleOverridePolicy(planV2());
+  assert.equal(assertCurrentPlanningRoleOverridePolicy(null, CHANGE_ID), null);
+  assert.deepEqual(
+    assertCurrentPlanningRoleOverridePolicy(policy, CHANGE_ID),
+    policy,
+  );
+  for (const invalid of [
+    undefined,
+    { ...policy, path: agentRolePlanV2Path('another-change') },
+    { ...policy, planDigest: 'invalid' },
+  ]) {
+    assert.throws(
+      () => assertCurrentPlanningRoleOverridePolicy(invalid!, CHANGE_ID),
+      (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
+    );
+  }
+});
+
+test('current planning role reader confirms absence and requires central bytes for an existing override', () => {
+  const repository = temporaryRepository();
+  try {
+    assert.equal(
+      readCurrentPlanningRoleOverridePolicy(repository, CHANGE_ID),
+      null,
+    );
+    writePlanV2(repository);
+    assert.throws(
+      () => readCurrentPlanningRoleOverridePolicy(repository, CHANGE_ID),
+      (error) =>
+        isWorkflowError(error, 'CENTRAL_ROLE_PROVIDER_DEFAULT_UNAVAILABLE'),
+    );
+    writeCentralConfiguration(repository);
+    assert.deepEqual(
+      readCurrentPlanningRoleOverridePolicy(repository, CHANGE_ID),
+      projectCurrentPlanningRoleOverridePolicy(planV2()),
+    );
+    fs.writeFileSync(
+      path.join(repository, CENTRAL_ROLE_PROVIDER_DEFAULT_PATH),
+      Buffer.from([0xff]),
+    );
+    assert.throws(
+      () => readCurrentPlanningRoleOverridePolicy(repository, CHANGE_ID),
+      (error) =>
+        isWorkflowError(error, 'CENTRAL_ROLE_PROVIDER_DEFAULT_INVALID'),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('current planning role reader rejects unsafe files and invalid UTF-8', () => {
+  const repository = temporaryRepository();
+  try {
+    writeCentralConfiguration(repository);
+    const destination = writePlanV2(repository);
+    const target = path.join(repository, 'alternate.json');
+    fs.renameSync(destination, target);
+    fs.symlinkSync(target, destination);
+    assert.throws(
+      () => readCurrentPlanningAgentRolePlanV2(repository, CHANGE_ID),
+      (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
+    );
+    fs.unlinkSync(destination);
+    fs.renameSync(target, destination);
+    fs.chmodSync(destination, 0o755);
+    assert.throws(
+      () => readCurrentPlanningAgentRolePlanV2(repository, CHANGE_ID),
+      (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
+    );
+    fs.chmodSync(destination, 0o644);
+    for (const invalid of [
+      Buffer.alloc(64 * 1024 + 1, 0x20),
+      Buffer.from([0xff]),
+    ]) {
+      fs.writeFileSync(destination, invalid);
+      assert.throws(
+        () => readCurrentPlanningAgentRolePlanV2(repository, CHANGE_ID),
+        (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
+      );
+    }
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('current planning role reader rejects central replacement or override deletion between pair reads', () => {
+  for (const mutation of ['central-replaced', 'override-deleted'] as const) {
+    const repository = temporaryRepository();
+    const close = fs.closeSync;
+    try {
+      writeCentralConfiguration(repository);
+      const destination = writePlanV2(repository);
+      const replacement = path.join(repository, 'new-central.json');
+      const central = centralConfiguration();
+      const changedCentral = createCentralRoleProviderDefault({
+        schemaVersion: central.schemaVersion,
+        kind: central.kind,
+        providerGroups: central.providerGroups,
+        globalProviderRanking: ['codex', 'claude'],
+      });
+      fs.writeFileSync(
+        replacement,
+        renderCentralRoleProviderDefault(changedCentral),
+      );
+      let closes = 0;
+      fs.closeSync = (descriptor) => {
+        close(descriptor);
+        if (++closes === 2) {
+          if (mutation === 'central-replaced')
+            fs.renameSync(
+              replacement,
+              path.join(repository, CENTRAL_ROLE_PROVIDER_DEFAULT_PATH),
+            );
+          else fs.unlinkSync(destination);
+        }
+      };
+      assert.throws(
+        () => readCurrentPlanningAgentRolePlanV2(repository, CHANGE_ID),
+        (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
+      );
+    } finally {
+      fs.closeSync = close;
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
   }
 });

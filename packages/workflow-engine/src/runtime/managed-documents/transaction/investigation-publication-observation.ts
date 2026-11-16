@@ -13,7 +13,7 @@ import type {
   InvestigationManifestPublicationPhase,
   PublicationResult,
   InvestigationManifestPublicationFailure,
-} from './investigation-publication-contracts.ts';
+} from '../../../modules/investigation/manifest/investigation-publication-contracts.ts';
 import {
   candidateResidue,
   normalizePaths,
@@ -31,11 +31,9 @@ import {
   PublicationFailure,
   prefixedDigest,
   deepFreeze,
-} from './investigation-publication-values.ts';
-import {
-  type InvestigationV3FailureCode,
-  createInvestigationV3Blocker,
-} from '../../../modules/investigation/manifest/investigation-manifest.ts';
+} from '../../../modules/investigation/manifest/investigation-publication-values.ts';
+import { type InvestigationV3FailureCode } from '../../../modules/investigation/manifest/investigation-manifest-types.ts';
+import { createInvestigationV3Blocker } from '../../../modules/investigation/manifest/investigation-manifest.ts';
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import {
   type GitState,

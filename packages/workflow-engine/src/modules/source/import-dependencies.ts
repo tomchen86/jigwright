@@ -9,10 +9,11 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 import type { SystemDescriptionSnapshot } from './spec-ownership.ts';
-import {
-  semanticFileSubjectId,
-  type SemanticDependency,
-} from '../why-knowledge/semantic-ledger.ts';
+
+export type SourceImportDependency = Readonly<{
+  path: string;
+  sourceDigest: string | null;
+}>;
 
 export function sourceDigest(source: string): string {
   return `sha256:${crypto.createHash('sha256').update(source).digest('hex')}`;
@@ -21,7 +22,7 @@ export function sourceDigest(source: string): string {
 export function readImportDependencies(
   snapshot: SystemDescriptionSnapshot,
   subjectPath: string,
-): readonly SemanticDependency[] {
+): readonly SourceImportDependency[] {
   const source = snapshot.readText(subjectPath);
   if (source === undefined || !/\.[cm]?[jt]sx?$/.test(subjectPath)) return [];
   const paths = new Set(snapshot.listPaths());
@@ -33,8 +34,6 @@ export function readImportDependencies(
   return [...targets].sort().map((target) => {
     const content = snapshot.readText(target);
     return {
-      relation: 'imports',
-      subjectId: semanticFileSubjectId(target),
       path: target,
       sourceDigest: content === undefined ? null : sourceDigest(content),
     };

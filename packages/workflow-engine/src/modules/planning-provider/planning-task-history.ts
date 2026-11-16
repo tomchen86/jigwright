@@ -61,3 +61,8 @@ function mapTaskHistoryError<T>(operation: () => T): T {
     );
   }
 }
+
+export type PlanningTaskState = {
+  id: string;
+  completed: boolean;
+};

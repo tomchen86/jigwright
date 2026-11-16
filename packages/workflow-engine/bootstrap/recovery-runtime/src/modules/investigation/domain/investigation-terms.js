@@ -9,7 +9,8 @@
 import crypto from 'node:crypto';
 import { canonicalJson } from "../../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../../foundation/errors/errors.js";
-export const INVESTIGATION_TERM_MATCHING = 'case-sensitive-literal-v1';
+import { SEARCH_TERM_MATCHING as INVESTIGATION_TERM_MATCHING, } from "../../source/search-term.js";
+export { INVESTIGATION_TERM_MATCHING };
 const TERM_KINDS = new Set([
     'literal-content',
     'literal-path',

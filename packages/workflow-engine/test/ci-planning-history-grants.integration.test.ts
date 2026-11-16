@@ -1,16 +1,26 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 /** Immutable historical planning Grant claims and duplicate-use detection. */
 import test from 'node:test';
 import {
   collectCurrentCollaborationGrantUses,
   collectHistoricalCollaborationGrantUses,
   validateCiPlanningCommit,
-} from '../src/entrypoints/ci/ci-planning.ts';
+} from '../src/composition-root/ci-replay-production.ts';
 import assert from 'node:assert/strict';
 import { git, isWorkflowError } from './fixture.ts';
 import fs from 'node:fs';
-import { assertUniqueCollaborationGrantUses } from '../src/modules/authority/collaboration-grant.ts';
+import { assertUniqueCollaborationGrantUses } from '../src/runtime/grants/grant-services.ts';
 import path from 'node:path';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import { prepareCurrentV3IntroductionRepository } from './ci-planning-assurance-fixture.ts';
 import {
   writeRetiredInvestigationArtifact,

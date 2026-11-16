@@ -1,3 +1,13 @@
+import { planningTransitionExecution as productionPlanningExecution } from '../src/composition-root/planning-execution-epoch-production.ts';
+import { managedDocuments } from '../src/composition-root/managed-documents-production.ts';
+import { loadChangeContract as productionChangeContractReader } from '../src/composition-root/consumer-contract-production.ts';
+const commitPlanningTransition =
+  commitPlanningTransitionWithContractReader.bind(
+    undefined,
+    productionPlanningExecution,
+    managedDocuments,
+    productionChangeContractReader,
+  );
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -10,12 +20,12 @@ import {
   canonicalAuthorityApplicationReceiptEnvelope,
   canonicalAuthorityApplicationReceiptPayload,
   parseAuthorityApplicationReceiptEnvelope,
-  readAuthorityApplicationReceiptTag,
   type AuthorityApplicationReceiptEnvelope,
   type AuthorityApplicationReceiptPayload,
 } from '../src/modules/authority/authority-application-receipt.ts';
-import { listRangeCommits } from '../src/entrypoints/ci/ci-git.ts';
-import { validateCiAuthorityCommit } from '../src/entrypoints/ci/ci-authority.ts';
+import { readAuthorityApplicationReceiptTag } from '../src/composition-root/authority-application-receipt-production.ts';
+import { listRangeCommits } from '../src/runtime/repository-validation/commit-replay/ci-git.ts';
+import { validateCiAuthorityCommit } from '../src/composition-root/ci-replay-production.ts';
 import {
   canonicalMaintainerGrantV2Envelope,
   canonicalMaintainerGrantV2Payload,
@@ -24,9 +34,9 @@ import {
   type MaintainerEvidenceWaiver,
   type MaintainerGrantV2Envelope,
   type MaintainerGrantV2Payload,
-} from '../src/modules/authority/maintainer-grant-v2.ts';
-import { assertCandidateV2ChecksFresh } from '../src/modules/authority/maintainer-candidate.ts';
-import { approveAndApplyMaintainerGrantV2 } from '../src/application/control-plane/maintainer-approve.ts';
+} from '../src/modules/authority/maintainer-grant-v2-codec.ts';
+import { assertCandidateV2ChecksFresh } from '../src/modules/authority/maintainer-candidate-contracts.ts';
+import { approveAndApplyMaintainerGrantV2 } from '../bootstrap/maintainer-authority-production.ts';
 import { parseMaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import {
@@ -36,9 +46,9 @@ import {
 import {
   computeProtectedCapabilityEntryDigests,
   REQUIRED_PROTECTED_CAPABILITIES,
-} from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
-import { authorizeTaskMandate } from '../src/modules/authority/task-mandate.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+} from '../src/runtime/repository-validation/protected-capabilities.ts';
+
+import { commitPlanningTransition as commitPlanningTransitionWithContractReader } from '../src/runtime/planning-transition/planning-transition.ts';
 import {
   createFixtureRepository,
   git,
@@ -357,7 +367,10 @@ function installTrustBase(
         policyPaths: ['workflow/**'],
         verificationInfrastructurePaths: ['.github/workflows/**'],
         forbiddenPaths: [
-          'packages/workflow-engine/src/modules/authority/maintainer-grant.ts',
+          'packages/workflow-engine/src/modules/authority/maintainer-grant-contracts.ts',
+          'packages/workflow-engine/src/runtime/grants/human-resolution-grant-verification.ts',
+          'packages/workflow-engine/src/runtime/repository-observation/human-resolution-grants.ts',
+          'packages/workflow-engine/src/runtime/repository-transaction/maintainer-audit-tag.ts',
         ],
         constraints: {
           evidenceOnlyGrantForbidden: true,
@@ -383,7 +396,7 @@ function installTrustBase(
   fs.mkdirSync(
     path.join(
       repository,
-      'packages/workflow-engine/src/adapters/consumer/repository/work-registry',
+      'packages/workflow-engine/src/runtime/repository-validation',
     ),
     { recursive: true },
   );
@@ -404,7 +417,7 @@ function installTrustBase(
   fs.writeFileSync(
     path.join(
       repository,
-      'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts',
+      'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts',
     ),
     'export const PROTECTED_CAPABILITY_LOADER = true;\n',
   );
@@ -438,7 +451,7 @@ function installTrustBase(
     'packages/workflow-engine/src/modules/authority/execution-governance.ts',
   ];
   const closureDependencies = [
-    'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts',
+    'packages/workflow-engine/src/runtime/repository-validation/protected-capabilities.ts',
     'workflow/protected-capabilities.json',
   ];
   const closure = computeProtectedCapabilityEntryDigests(
@@ -568,3 +581,6 @@ function externalAuditRoot(repository: string): string {
   temporaryAuditRoots.add(root);
   return root;
 }
+
+import { taskMandateOperations } from '../src/composition-root/task-mandate-production.ts';
+const { authorizeTaskMandate } = taskMandateOperations;

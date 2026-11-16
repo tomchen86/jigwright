@@ -9,16 +9,17 @@
 import {
   isBuiltInProviderFamily,
   listBuiltInProviderCapabilityDescriptors,
+  listBuiltInProviderFamilies,
   type BuiltInProviderCapability,
   type BuiltInProviderCapabilityProfile,
   type BuiltInProviderCapabilityPurpose,
   type BuiltInProviderFamily,
-} from '@jigwright/agent-runtime';
+} from '@jigwright/core/built-in-provider-catalog';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
 /**
- * The reviewed built-in provider capability facade. Agent Runtime owns the
+ * The reviewed built-in provider capability facade. The shared core catalog owns the
  * exact family identities; repository policy may enable/disable those fixed
  * identities and lower bounded limits, but it can never add an ID, executable
  * path, argv, shell fragment, module path, prompt, or result parser. This slice
@@ -49,6 +50,14 @@ const BUILT_IN_PROVIDERS: readonly BuiltInProvider[] = Object.freeze(
  * Return the deeply frozen built-in provider registry. The same immutable
  * value is returned on every call, so no caller can mutate the shared registry.
  */
+/**
+ * The reviewed provider identities in stable preference order. Callers build
+ * per-provider candidates from this instead of repeating the identities.
+ */
+export function listProviderIds(): readonly ProviderId[] {
+  return listBuiltInProviderFamilies();
+}
+
 export function listBuiltInProviders(): readonly BuiltInProvider[] {
   return BUILT_IN_PROVIDERS;
 }

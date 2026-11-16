@@ -1,3 +1,4 @@
+import * as workRegistryProduction from '../src/composition-root/work-registry-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
@@ -20,28 +21,61 @@ const currentWorkRegistrySources = [
   new URL('../../core/src/repository-consumer-port.ts', import.meta.url),
   new URL('../../fixture-adapter/src/repository-consumer.ts', import.meta.url),
   new URL(
-    '../src/modules/repository-consumer/repository-consumer-config.ts',
+    '../src/modules/repository-consumer/repository-consumer-policy.ts',
     import.meta.url,
   ),
   new URL(
     '../src/modules/governance-intake/governance-intake.ts',
     import.meta.url,
   ),
-  new URL('../src/modules/governance-intake/work-registry.ts', import.meta.url),
+  new URL(
+    '../src/composition-root/work-registry-production.ts',
+    import.meta.url,
+  ),
   new URL(
     '../src/adapters/consumer/repository/handoff/handoff.ts',
     import.meta.url,
   ),
+  new URL(
+    '../src/runtime/governance-intake/canonical-record-storage.ts',
+    import.meta.url,
+  ),
+  new URL('../src/runtime/governance-intake/source-ledger.ts', import.meta.url),
+  new URL(
+    '../src/runtime/governance-intake/source-aliases.ts',
+    import.meta.url,
+  ),
+  new URL(
+    '../src/modules/governance-intake/governance-sources.ts',
+    import.meta.url,
+  ),
+  new URL(
+    '../src/application/governance-intake/governance-findings.ts',
+    import.meta.url,
+  ),
   ...[
     'governance-findings.ts',
-    'governance-intake-storage.ts',
-    'work-registry-promotion-preparation.ts',
     'work-registry-projections.ts',
     'work-registry-queries.ts',
-    'work-registry-storage.ts',
   ].map(
     (file) =>
       new URL(`../src/modules/governance-intake/${file}`, import.meta.url),
+  ),
+  new URL('../src/runtime/work-registry/storage.ts', import.meta.url),
+  new URL('../src/runtime/work-registry/transactions.ts', import.meta.url),
+  new URL('../src/runtime/work-registry/write-repository.ts', import.meta.url),
+  new URL('../src/application/work-registry/work-registry.ts', import.meta.url),
+  new URL(
+    '../src/application/work-registry/work-registry-promotion-preparation.ts',
+    import.meta.url,
+  ),
+  new URL(
+    '../src/application/work-registry/work-registry-queries.ts',
+    import.meta.url,
+  ),
+  new URL(
+    '../src/application/work-registry/work-registry-projections.ts',
+    import.meta.url,
   ),
 ] as const;
 
@@ -162,15 +196,16 @@ test('production has no disableable Work Registry or configurable Source-root su
     fs.readFileSync(currentWorkRegistrySources[0], 'utf8'),
     /GOVERNANCE_SOURCE_LEDGER_ROOT/u,
   );
-  const workRegistrySource = fs.readFileSync(
-    currentWorkRegistrySources[4],
-    'utf8',
-  );
-  assert.match(workRegistrySource, /export function attachSourceToWorkItem/u);
-  assert.match(
-    workRegistrySource,
-    /export function ensureFindingConversionWorkItem/u,
-  );
+  for (const operation of [
+    'attachSourceToWorkItem',
+    'ensureFindingConversionWorkItem',
+  ] as const) {
+    assert.equal(
+      typeof workRegistryProduction[operation],
+      'function',
+      operation,
+    );
+  }
   const governanceIntakeSource = fs.readFileSync(
     currentWorkRegistrySources[3],
     'utf8',
