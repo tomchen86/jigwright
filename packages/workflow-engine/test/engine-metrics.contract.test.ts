@@ -30,7 +30,7 @@ import {
   createExecutionBudgetGrantRequest,
 } from '../src/modules/authority/execution-governance-grant-contracts.ts';
 import { storeExecutionBudgetGrant } from '../src/runtime/storage-journal/execution-budget-grants.ts';
-import { listExecutionReplacementGrantRequestDigests } from '../src/runtime/storage-journal/execution-replacement-records.ts';
+import { listExecutionReplacementGrantRequestDigests } from '../src/runtime/repository-observation/execution-replacement-requests.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import {
   compareAndSwapHumanResolutionHead,

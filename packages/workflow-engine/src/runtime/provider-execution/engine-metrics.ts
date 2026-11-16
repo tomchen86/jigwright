@@ -19,7 +19,7 @@ import {
   type EngineMetricsSnapshot,
 } from '../../modules/provider-orchestration/engine-metrics.ts';
 import { listExecutionBudgetGrantMetrics } from '../storage-journal/execution-budget-grants.ts';
-import { listExecutionReplacementGrantRequestDigests } from '../storage-journal/execution-replacement-records.ts';
+import { listExecutionReplacementGrantRequestDigests } from '../repository-observation/execution-replacement-requests.ts';
 import { listExecutionJobs } from '../provider-execution/execution-runtime.ts';
 import {
   privatePathExists,

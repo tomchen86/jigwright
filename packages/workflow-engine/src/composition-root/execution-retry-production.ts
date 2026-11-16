@@ -40,7 +40,7 @@ export const executeGrantedReplacement = executeReplacement.bind(
 export { SimulatedExecutionReplacementCrash } from '../application/control-plane/execution-replacement.ts';
 export type * from '../application/control-plane/execution-replacement.ts';
 
-export { listExecutionReplacementGrantRequestDigests } from '../runtime/storage-journal/execution-replacement-records.ts';
+export { listExecutionReplacementGrantRequestDigests } from '../runtime/repository-observation/execution-replacement-requests.ts';
 export type {
   ExecutionReplacementPhase,
   ExecutionReplacementTransaction,
