@@ -206,10 +206,17 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
     ),
     'utf8',
   );
-  const providerWorker = fs.readFileSync(
+  const providerWorkerTerminal = fs.readFileSync(
     path.join(
       sourceRepositoryRoot,
-      'packages/workflow-engine/src/entrypoints/worker/provider-worker.ts',
+      'packages/workflow-engine/src/application/provider-worker/provider-terminal-followups.ts',
+    ),
+    'utf8',
+  );
+  const providerWorkerTerminalProduction = fs.readFileSync(
+    path.join(
+      sourceRepositoryRoot,
+      'packages/workflow-engine/src/composition-root/provider-worker-terminal-production.ts',
     ),
     'utf8',
   );
@@ -287,8 +294,12 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
     );
   }
   assert.match(
-    providerWorker,
-    /processProviderFailureRetry\([\s\S]*?consumedRoleResultReplay:\s*productionConsumedPlanReviewReplayPort/,
+    providerWorkerTerminal,
+    /processProviderFailureRetry\([\s\S]*?consumedRoleResultReplay:\s*consumedPlanReviewReplay/,
+  );
+  assert.match(
+    providerWorkerTerminalProduction,
+    /runTerminalFollowups\.bind\([\s\S]*?consumedPlanReviewReplay:\s*productionConsumedPlanReviewReplayPort/,
   );
   assert.match(
     cli,
