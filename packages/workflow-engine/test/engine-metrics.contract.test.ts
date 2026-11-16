@@ -378,7 +378,7 @@ test('replacement request observation preserves missing stores, sorting and firs
   assert.deepEqual(observed, sorted);
   assert.equal(Object.isFrozen(observed), true);
   assert.equal(fs.existsSync(path.join(root, 'request-bindings')), false);
-  const malformedName = `${'0'.repeat(64)}.json`;
+  const malformedName = `${digests[0]!.slice(7)}.json`;
   const unsafeName = 'z-unsafe.json';
   assert.ok(malformedName.localeCompare(unsafeName) < 0);
   fs.writeFileSync(

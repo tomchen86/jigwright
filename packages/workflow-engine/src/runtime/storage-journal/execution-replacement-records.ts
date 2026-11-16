@@ -168,7 +168,6 @@ export function advanceTransaction(
   return next;
 }
 
-/** Observe requests without creating directories or requiring binding publication. */
 /** Publish in request-then-binding order under the caller's lifecycle lock. */
 export function writeRequestAndBinding(
   paths: InvestigationRuntimePaths,
