@@ -47,7 +47,7 @@
       "packages/workflow-engine/src/application/control-plane/authority-plan-worktree.ts",
       "packages/workflow-engine/src/application/control-plane/authority-plan.ts",
       "packages/workflow-engine/src/application/control-plane/collaboration-grant-revocation.ts",
-      "packages/workflow-engine/src/application/control-plane/engine-metrics-computation.ts",
+      "packages/workflow-engine/src/modules/provider-orchestration/engine-metrics.ts",
       "packages/workflow-engine/src/application/control-plane/engine-metrics.ts",
       "packages/workflow-engine/src/application/control-plane/evidence-retention.ts",
       "packages/workflow-engine/src/application/control-plane/execution-replacement-publication.ts",

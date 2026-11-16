@@ -12,11 +12,11 @@ Keep installed provider profiles on the host so repositories select roles withou
 
 Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessment and planned action, then submit the template with `jigwright job retry-request <job-id> --input retry.json --json`. The timeout may stay unchanged. See [retry behavior and single-use budget exceptions](../../../../../docs/features/PROVIDER_RETRY.md).
 
-<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:1072fd31f7b85d4522c30c3f606f8f93e523e00d6b7b05bf88c50efee899f558 -->
+<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:844de1dd5951ffa85e470a36720070d0c3783abb24240b62711ca6a904dc8c24 -->
 
 <!-- prettier-ignore-start -->
 
-53 files changed in this module since confirmation.
+54 files changed in this module since confirmation.
 
 ## Commands
 
@@ -83,6 +83,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [change-role-assignment-record.ts](change-role-assignment-record.ts) | Materializes durable role assignment records, session slots, and Grant requirements. | 1 | History unavailable |
 | [change-role-assignment.ts](change-role-assignment.ts) | Resolves providers and session topology from central rules, overrides, and authorization. | 1 | History unavailable |
 | [data-authorization-policy-port.ts](data-authorization-policy-port.ts) | Exposes shared current data authorization policy types to provider orchestration. | 1 | History unavailable |
+| [engine-metrics.ts](engine-metrics.ts) | Computes retry, recovery, governance and retention metrics from recorded observations. | 1 | History unavailable |
 | [execution-attempts.ts](execution-attempts.ts) | Creates execution jobs and attempts and applies lease and result transitions. | 1 | Header changed since confirmation |
 | [execution-core.ts](execution-core.ts) | Projects provider requests and invocation records into execution job and attempt state. | 1 | History unavailable |
 | [execution-record-types.ts](execution-record-types.ts) | Defines engine Job, Attempt, failure and retry records around the shared execution contracts. | 1 | Header changed since confirmation |

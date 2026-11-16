@@ -1,12 +1,12 @@
 {
   "kind": "workflow-bootstrap-host.v1",
   "entrypoint": "bootstrap/workflow-engine-host.ts",
-  "engineManifestDigest": "sha256:8c46806e8d62f398c39167567a4460120a1245da846c575009001601b69d2ea4",
+  "engineManifestDigest": "sha256:2ac79ff0828ef7c5347c741240f2d92a52e378712b9eb9acc42bc33046cd6088",
   "files": [
     {
       "path": "bootstrap/built-in-engine-closure-pin.ts",
       "mode": "100644",
-      "digest": "sha256:33e71e6da1d864863f08f2c00e423ccfc7e19fc56a7f216912ff3b3eabc22992"
+      "digest": "sha256:1eab3ce96e55cd6159d68d690b70ef8feb4f97840c6a1a9ddf018dfbabfbc968"
     },
     {
       "path": "bootstrap/canonical-json.ts",

@@ -646,14 +646,9 @@
       "digest": "sha256:41ea1cd1dfd9ac386fa9e1c13646fc2d1f6a6d0e7f2ef3dac12710a6d99761f3"
     },
     {
-      "path": "src/application/control-plane/engine-metrics-computation.ts",
-      "mode": "100644",
-      "digest": "sha256:67fb728821fd007750eadf0f2f12101178972b6a4e1de9d48730a8bf7f0a351f"
-    },
-    {
       "path": "src/application/control-plane/engine-metrics.ts",
       "mode": "100644",
-      "digest": "sha256:e013e394aea3aefdc04a3f82ed8e731487c3760cb8ce9f969c0e4a3a0776f3e4"
+      "digest": "sha256:bdf6612c241b7bd34ec2ded2ed43ff3ab62199c222188822ff0646d0898daa5a"
     },
     {
       "path": "src/application/control-plane/evidence-retention.ts",
@@ -668,7 +663,7 @@
     {
       "path": "src/application/control-plane/execution-replacement-budget.ts",
       "mode": "100644",
-      "digest": "sha256:6d3a6b58f70757d341bf59514a776b33b5c18726484abfb090255ea859f38a99"
+      "digest": "sha256:f4dde089059547c728f3b199cb225179bb053c54c717463528422fa570285c96"
     },
     {
       "path": "src/application/control-plane/execution-replacement-publication.ts",
@@ -1553,7 +1548,7 @@
     {
       "path": "src/composition-root/public/execution-job.ts",
       "mode": "100644",
-      "digest": "sha256:ac6e23d0e88cab8149f1484dce59db300e950b70aa70625a821e8490dc380850"
+      "digest": "sha256:e5320289bdb3f42d5f214a80e489e4f6f95cefdf573b498fead2619149dcf11b"
     },
     {
       "path": "src/composition-root/public/manifest-v3.ts",
@@ -1833,7 +1828,7 @@
     {
       "path": "src/entrypoints/cli/workflow-cli.ts",
       "mode": "100644",
-      "digest": "sha256:5406f369bc1c2f3055b5f9e374c06ed03837cf5804a77277fc0b3d8a3a4c6388"
+      "digest": "sha256:8c392544d9b8141c9317d577e5fbff9f88f5f6b86aeb1af42e51ef8b1e12d2a0"
     },
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
@@ -3416,6 +3411,11 @@
       "digest": "sha256:08ec43e10fc42ab2308ec682d3ca9b23314c17a211f2d7bf31c030ccae3409a9"
     },
     {
+      "path": "src/modules/provider-orchestration/engine-metrics.ts",
+      "mode": "100644",
+      "digest": "sha256:4624c1c8b59130ca6fc4538e2881c8259b5342d84b20ef3705eee34c5c72c128"
+    },
+    {
       "path": "src/modules/provider-orchestration/execution-attempts.ts",
       "mode": "100644",
       "digest": "sha256:e84142b6aa369a57769e78618fe1bc8e109517419c1f6f4242c349d009731b61"
@@ -3483,7 +3483,7 @@
     {
       "path": "src/modules/provider-orchestration/provider-invocation-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:d00953db2e4af182dd9f36d8c5f874f1d6267415f55d4538944704e98611b231"
+      "digest": "sha256:2ac1103ae59697317aacc1f1a6dbf43d05a49449fdfa45b6e811b533fb057cf9"
     },
     {
       "path": "src/modules/provider-orchestration/provider-invocation-record.ts",
@@ -4173,7 +4173,7 @@
     {
       "path": "src/runtime/provider-execution/execution-runtime.ts",
       "mode": "100644",
-      "digest": "sha256:32caa4b92a9dc520bc252d06016b6c07e062f88101c8854e3a65f6d803099070"
+      "digest": "sha256:a047f00b1c5f9738cfe455441b50e43ead88d5bd6a937a4c2c8c7a6c7fbcb072"
     },
     {
       "path": "src/runtime/provider-execution/provider-availability-pilot.ts",
@@ -4188,7 +4188,7 @@
     {
       "path": "src/runtime/provider-execution/provider-execution-projection.ts",
       "mode": "100644",
-      "digest": "sha256:6038588d4480bb1be34cdd3af1ca0608d0b1728a2ac96b6e9f2d08ace367f3dd"
+      "digest": "sha256:5572495fb479b782af935df05caf9bdadfe00d2b3a9577b97cf89aa3149d89b5"
     },
     {
       "path": "src/runtime/provider-execution/provider-probe-executor.ts",
