@@ -1,4 +1,4 @@
-/** Dependency checks use the current tree, without migration identities or exceptions. */
+/** Current rules compare Git relationships and keep purity and cycles strictly enforced. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -20,6 +20,11 @@ import {
   type DependencyEdge,
 } from './support/repository-dependency-graph.ts';
 import { repositoryRoot } from './boundary-contract-fixture.ts';
+import {
+  architectureRegressions,
+  readArchitectureBaseGraph,
+  selectArchitectureBase,
+} from './support/architecture-ratchet.ts';
 
 function loadedFileCycles(edges: readonly DependencyEdge[]): string[][] {
   return findDependencyCycles(
@@ -66,6 +71,177 @@ function fixture(t: TestContext, additions: Record<string, string>): string {
   }
   return directory;
 }
+
+function fixtureGit(root: string, ...args: string[]): string {
+  const result = spawnSync(
+    'git',
+    ['-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false', ...args],
+    { cwd: root, encoding: 'utf8' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
+}
+
+function commitFixture(root: string): string {
+  fixtureGit(root, 'add', '.');
+  fixtureGit(root, 'commit', '--allow-empty', '-m', 'Architecture fixture');
+  return fixtureGit(root, 'rev-parse', 'HEAD');
+}
+
+function initializeFixtureGit(root: string): string {
+  fixtureGit(root, 'init', '-b', 'main');
+  fixtureGit(root, 'config', 'user.name', 'Architecture Test');
+  fixtureGit(root, 'config', 'user.email', 'architecture@example.test');
+  return commitFixture(root);
+}
+
+test('architecture ratchet accepts removals but rejects new relationships and equal-total substitutions', (t) => {
+  const oldFile = 'packages/workflow-engine/src/entrypoints/cli/old.ts';
+  const newFile = 'packages/workflow-engine/src/entrypoints/cli/new.ts';
+  const bypass = "import '../../runtime/store.ts';";
+  const root = fixture(t, {
+    [oldFile]: bypass,
+    [newFile]: 'export {};',
+    'packages/workflow-engine/src/runtime/store.ts':
+      "throw new Error('Historical source must not execute'); export const store = 1;",
+  });
+  const base = initializeFixtureGit(root);
+  const baseline = readArchitectureBaseGraph(root, base);
+  assert.equal(baseline.problems.length, 1);
+  const regressions = () =>
+    architectureRegressions(
+      root,
+      baseline.problems,
+      readRepositoryDependencyGraph(root).problems,
+    );
+  assert.deepEqual(regressions(), []);
+  fs.writeFileSync(
+    path.join(root, oldFile),
+    `// Line numbers are not relationships.\n${bypass}`,
+  );
+  assert.deepEqual(regressions(), []);
+  fs.writeFileSync(path.join(root, newFile), bypass);
+  assert.deepEqual(
+    regressions().map(({ from }) => from),
+    [newFile],
+  );
+  fs.writeFileSync(path.join(root, oldFile), 'export {};');
+  assert.equal(
+    readRepositoryDependencyGraph(root).problems.length,
+    baseline.problems.length,
+  );
+  assert.deepEqual(
+    regressions().map(({ from }) => from),
+    [newFile],
+  );
+  fs.writeFileSync(path.join(root, newFile), 'export {};');
+  assert.deepEqual(regressions(), []);
+  const advanced = readArchitectureBaseGraph(root, commitFixture(root));
+  fs.writeFileSync(path.join(root, oldFile), bypass);
+  assert.deepEqual(
+    architectureRegressions(
+      root,
+      advanced.problems,
+      readRepositoryDependencyGraph(root).problems,
+    ).map(({ from }) => from),
+    [oldFile],
+  );
+});
+
+test('architecture Git bases bootstrap once then advance with PR, push and local main history', (t) => {
+  const root = fixture(t, {});
+  const oldMain = initializeFixtureGit(root);
+  const anchor = commitFixture(root);
+  fixtureGit(root, 'switch', '-c', 'feature');
+  const feature = commitFixture(root);
+  fixtureGit(root, 'update-ref', 'refs/heads/main', oldMain);
+  fixtureGit(root, 'update-ref', 'refs/remotes/origin/main', oldMain);
+  const eventPath = path.join(root, '.git', 'architecture-event.json');
+  const event = (name: string, value: object) => {
+    fs.writeFileSync(eventPath, JSON.stringify(value));
+    return { GITHUB_EVENT_NAME: name, GITHUB_EVENT_PATH: eventPath };
+  };
+  assert.deepEqual(selectArchitectureBase(root, {}, anchor), {
+    base: anchor,
+    head: feature,
+    reason: 'reviewed consolidation anchor',
+  });
+  assert.equal(
+    selectArchitectureBase(
+      root,
+      event('pull_request', { pull_request: { base: { sha: oldMain } } }),
+      anchor,
+    ).base,
+    anchor,
+  );
+  assert.throws(
+    () =>
+      selectArchitectureBase(
+        root,
+        event('pull_request_target', {
+          pull_request: { base: { sha: feature } },
+        }),
+        anchor,
+      ),
+    /base equals HEAD/,
+  );
+  assert.throws(
+    () =>
+      selectArchitectureBase(
+        root,
+        event('push', { before: '0'.repeat(40) }),
+        anchor,
+      ),
+    /existing Git commit/,
+  );
+  fixtureGit(root, 'update-ref', 'refs/heads/main', feature);
+  fixtureGit(root, 'update-ref', 'refs/remotes/origin/main', feature);
+  const next = commitFixture(root);
+  assert.deepEqual(selectArchitectureBase(root, {}, anchor), {
+    base: feature,
+    head: next,
+    reason: 'merge-base refs/remotes/origin/main',
+  });
+  assert.equal(
+    selectArchitectureBase(
+      root,
+      event('pull_request_target', {
+        pull_request: { base: { sha: feature } },
+      }),
+      anchor,
+    ).base,
+    feature,
+  );
+  assert.equal(
+    selectArchitectureBase(root, event('push', { before: anchor }), anchor)
+      .base,
+    anchor,
+    'a multi-commit push compares the entire pushed range',
+  );
+  fixtureGit(root, 'update-ref', 'refs/heads/main', next);
+  fixtureGit(root, 'update-ref', 'refs/remotes/origin/main', next);
+  assert.deepEqual(selectArchitectureBase(root, {}, anchor), {
+    base: feature,
+    head: next,
+    reason: 'main first parent',
+  });
+  fixtureGit(root, 'update-ref', '-d', 'refs/remotes/origin/main');
+  assert.equal(selectArchitectureBase(root, {}, anchor).base, feature);
+});
+
+test('architecture ratchet never exempts existing pure effects or unknown dependencies', (t) => {
+  const root = fixture(t, {
+    'packages/workflow-engine/src/modules/rules/value.ts': "import 'node:fs';",
+    'packages/workflow-engine/src/runtime/unknown.ts': 'import(target);',
+  });
+  const { problems } = readRepositoryDependencyGraph(root);
+  assert.deepEqual(
+    architectureRegressions(root, problems, problems)
+      .map(({ rule }) => rule)
+      .sort(),
+    ['domain-external-effect', 'unresolved-computed-dependency'],
+  );
+});
 
 test('file loading agrees with Node for inline type imports and exports', (t) => {
   for (const declaration of [
@@ -363,8 +539,19 @@ test('architecture rules preserve inward direction and detect missing source own
       root + 'application/run.ts',
       root + 'runtime/git.ts',
     ),
-    'application-to-runtime',
+    null,
   );
+  for (const [from, to, rule] of [
+    ['application/run.ts', 'adapters/store.ts', 'application-to-adapters'],
+    [
+      'application/run.ts',
+      'composition-root/run.ts',
+      'application-to-composition-root',
+    ],
+    ['runtime/store.ts', 'application/run.ts', 'runtime-to-application'],
+    ['runtime/store.ts', 'entrypoints/run.ts', 'runtime-to-entrypoints'],
+  ])
+    assert.equal(classifyLayerDependency(root + from, root + to), rule);
   assert.equal(
     classifyLayerDependency(
       root + 'modules/lifecycle/state.ts',
@@ -675,13 +862,21 @@ test('application and runtime immutable reads do not invert into CI entrypoints'
   );
 });
 
-test('current repository has no architecture exceptions', () => {
+test('current repository introduces no architecture regressions against its Git base', (t) => {
+  const { base, head, reason } = selectArchitectureBase(repositoryRoot);
+  t.diagnostic(`Architecture base ${base}; candidate ${head}; ${reason}`);
+  const baseline = readArchitectureBaseGraph(repositoryRoot, base);
   const { problems } = readRepositoryDependencyGraph(repositoryRoot);
+  const regressions = architectureRegressions(
+    repositoryRoot,
+    baseline.problems,
+    problems,
+  );
   assert.equal(
-    problems.length,
+    regressions.length,
     0,
-    `${problems.length} architecture violations:\n` +
-      problems
+    `${regressions.length} architecture regressions against ${base}:\n` +
+      regressions
         .slice(0, 30)
         .map(
           ({ from, to, line, rule }) =>

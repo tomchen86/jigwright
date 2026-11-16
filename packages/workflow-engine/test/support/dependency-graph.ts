@@ -247,7 +247,7 @@ const ALLOWED_LAYERS: Record<string, readonly string[]> = {
     'modules',
     'foundation',
   ],
-  application: ['modules', 'foundation'],
+  application: ['runtime', 'modules', 'foundation'],
   runtime: ['modules', 'foundation'],
   adapters: ['modules', 'foundation'],
   modules: ['foundation'],
