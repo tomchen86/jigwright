@@ -39,7 +39,7 @@ export const providerOperationsServices = {
   consumedPlanReviewReplay: productionConsumedPlanReviewReplayPort,
 };
 
-import { collectEngineMetrics as collectMetrics } from '../application/control-plane/engine-metrics.ts';
+import { collectEngineMetrics as collectMetrics } from '../runtime/provider-execution/engine-metrics.ts';
 export const collectEngineMetrics = collectMetrics.bind(
   undefined,
   inspectProviderRetentionMetrics,

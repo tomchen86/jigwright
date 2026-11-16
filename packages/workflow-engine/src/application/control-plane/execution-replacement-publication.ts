@@ -10,19 +10,28 @@
 import type { ProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
 import type {
   ExecutionReplacementPublicationBindings,
-  ExecutionReplacementPublicationBindingsTypes,
+  ExecuteGrantedReplacementOptions,
 } from './execution-replacement.ts';
-type InvestigationRuntimePaths =
-  ExecutionReplacementPublicationBindingsTypes['InvestigationRuntimePaths'];
-type ExecutionReplacementTransaction =
-  ExecutionReplacementPublicationBindingsTypes['ExecutionReplacementTransaction'];
-type ExecuteGrantedReplacementOptions =
-  ExecutionReplacementPublicationBindingsTypes['ExecuteGrantedReplacementOptions'];
-type ConsumedRoleReplayPort =
-  ExecutionReplacementPublicationBindingsTypes['ConsumedRoleReplayPort'];
-type ExecutionBudgetGrantRequest =
-  ExecutionReplacementPublicationBindingsTypes['ExecutionBudgetGrantRequest'];
-declare const inspectExecutionJob: ExecutionReplacementPublicationBindings['inspectExecutionJob'];
+import type { InvestigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';
+import type { ConsumedRoleReplayPort } from '../../modules/provider-orchestration/role-admission-contracts.ts';
+import type { ExecutionBudgetGrantRequest } from '../../modules/authority/execution-governance-grant-contracts.ts';
+import type { ExecutionJobInspection } from '../../modules/provider-orchestration/provider-invocation-lifecycle.ts';
+import {
+  assertReceipt,
+  createTransaction,
+  grantMismatch,
+  type ExecutionReplacementTransaction,
+} from '../../modules/provider-orchestration/execution-replacement-records.ts';
+import {
+  digestCanonical,
+  digestText,
+} from '../../modules/provider-orchestration/execution-values.ts';
+import {
+  writeTransaction,
+  replacementTransactionPath,
+  readPersistedRequest,
+  readRequestBinding,
+} from '../../runtime/storage-journal/execution-replacement-records.ts';
 
 export function createExecutionReplacementPublication(
   bindings: () => ExecutionReplacementPublicationBindings,
@@ -43,12 +52,7 @@ export function createExecutionReplacementPublication(
       runGit,
       consumeExecutionBudgetGrant,
       SimulatedExecutionReplacementCrash,
-      createTransaction,
-      writeTransaction,
-      replacementTransactionPath,
     } = boundServices;
-    const assertReceipt: ExecutionReplacementPublicationBindings['assertReceipt'] =
-      boundServices.assertReceipt;
 
     if (transaction.receipt !== null) return transaction;
     const inspected = inspectExecutionBudgetGrantAuthorization(
@@ -133,8 +137,6 @@ export function createExecutionReplacementPublication(
       resumePropose,
       SimulatedExecutionReplacementCrash,
     } = boundServices;
-    const assertReceipt: ExecutionReplacementPublicationBindings['assertReceipt'] =
-      boundServices.assertReceipt;
 
     assertReceipt(transaction, transaction.receipt);
     const context = loadInvestigationRuntimeContext(cwd);
@@ -317,7 +319,7 @@ export function createExecutionReplacementPublication(
   }
 
   function requestExecutionReplacementBytes(
-    inspection: ReturnType<typeof inspectExecutionJob>,
+    inspection: ExecutionJobInspection,
     timeoutMs: number,
     previousProviderPolicyDigest: string,
     providerPolicyDigest: string,
@@ -443,14 +445,10 @@ export function createExecutionReplacementPublication(
       loadInvestigationRuntimeContext,
       readProviderInvocation,
       readProviderInvocationRequest,
-      readPersistedRequest,
-      readRequestBinding,
       loadAiAdapterPolicy,
       replacementTimeout,
       createProviderInvocationRequest,
-      digestCanonical,
       inspectExecutionBudgetGrantAuthorization,
-      digestText,
       canonicalJson,
       replacementStale,
     } = boundServices;
@@ -550,7 +548,7 @@ export function createExecutionReplacementPublication(
     providerPolicyTimeoutCeilingMs: number,
   ): void {
     const boundServices: ExecutionReplacementPublicationBindings = bindings();
-    const { canonicalJson, grantMismatch } = boundServices;
+    const { canonicalJson } = boundServices;
 
     const maxAttemptsChange = request.requestedChanges.find(
       ({ path }) => path === '/retryPolicy/maxAttempts',

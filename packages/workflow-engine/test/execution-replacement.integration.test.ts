@@ -46,7 +46,27 @@ import {
   resumePropose,
   startPropose,
 } from '../src/composition-root/propose-production.ts';
-import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
+import {
+  createProviderInvocationRequest,
+  type ProviderInvocationRequest,
+} from '../src/modules/provider-orchestration/provider-contracts.ts';
+import {
+  assertReceipt,
+  assertRequestBinding,
+  assertTransactionRecord,
+  createRequestBinding,
+  createTransaction,
+} from '../src/modules/provider-orchestration/execution-replacement-records.ts';
+import {
+  advanceTransaction,
+  readPersistedRequest,
+  readRequestBinding,
+  replacementRequestBindingPath,
+  replacementRequestPath,
+  replacementTransactionPath,
+  writeRequestAndBinding,
+  writeTransaction,
+} from '../src/runtime/storage-journal/execution-replacement-records.ts';
 import { claimProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-workers.ts';
 import {
   completeProviderInvocation,
@@ -68,6 +88,178 @@ import {
   sourceRepositoryRoot,
 } from './fixture.ts';
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
+
+test('replacement records preserve clone, shallow freeze and receipt identity', () => {
+  const { binding, transaction } = replacementRecordFixture();
+  const input = structuredClone(transaction);
+  const validated = assertTransactionRecord(input);
+  assert.deepEqual(validated, input);
+  assert.equal(Object.isFrozen(validated), true);
+  assert.equal(Object.isFrozen(validated.request), false);
+  assert.notEqual(validated.request, input.request);
+  assert.notEqual(validated.receipt, input.receipt);
+  assert.notEqual(
+    validated.replacementRequest.limits,
+    input.replacementRequest.limits,
+  );
+  validated.replacementRequest.limits.timeoutMs = 123;
+  assert.equal(input.replacementRequest.limits.timeoutMs, 600_000);
+  const validatedBinding = assertRequestBinding(binding);
+  assert.deepEqual(validatedBinding, binding);
+  assert.notEqual(validatedBinding, binding);
+  assert.equal(Object.isFrozen(validatedBinding), true);
+  assert.throws(() => assertRequestBinding({ ...binding, extra: true }), {
+    code: 'EXECUTION_REPLACEMENT_STORE_UNSAFE',
+    exitCode: 14,
+    message: 'Durable execution replacement state is malformed or unsafe.',
+  });
+  assert.throws(
+    () =>
+      assertReceipt(transaction, {
+        ...transaction.receipt!,
+        attemptId: 'other-attempt',
+      }),
+    {
+      code: 'EXECUTION_REPLACEMENT_GRANT_MISMATCH',
+      exitCode: 10,
+      message: 'Grant receipt does not bind the exact replacement Attempt.',
+    },
+  );
+});
+
+test('replacement store preserves replay conflicts and durable phase advancement', (t) => {
+  const repository = createFixtureRepository();
+  t.after(() => fs.rmSync(repository, { recursive: true, force: true }));
+  const { runtime: paths, lifecycleRuntime } =
+    loadInvestigationRuntimeContext(repository);
+  const { binding, transaction } = replacementRecordFixture();
+  const requestPath = replacementRequestPath(
+    lifecycleRuntime.root,
+    transaction.requestDigest,
+  );
+  const bindingPath = replacementRequestBindingPath(
+    lifecycleRuntime.root,
+    transaction.requestDigest,
+  );
+  const transactionPath = replacementTransactionPath(
+    lifecycleRuntime.root,
+    transaction.transactionId,
+  );
+  writeRequestAndBinding(
+    paths,
+    requestPath,
+    bindingPath,
+    transaction.request,
+    binding,
+  );
+  const requestBytes = fs.readFileSync(requestPath, 'utf8');
+  const bindingBytes = fs.readFileSync(bindingPath, 'utf8');
+  writeRequestAndBinding(
+    paths,
+    requestPath,
+    bindingPath,
+    transaction.request,
+    binding,
+  );
+  assert.equal(fs.readFileSync(requestPath, 'utf8'), requestBytes);
+  assert.equal(fs.readFileSync(bindingPath, 'utf8'), bindingBytes);
+  assert.deepEqual(
+    readPersistedRequest(
+      paths,
+      lifecycleRuntime.root,
+      transaction.requestDigest,
+    ),
+    transaction.request,
+  );
+  assert.deepEqual(
+    readRequestBinding(paths, lifecycleRuntime.root, transaction.requestDigest),
+    binding,
+  );
+  const {
+    recordDigest: _bindingDigest,
+    schemaVersion: _schemaVersion,
+    kind: _kind,
+    ...bindingCore
+  } = binding;
+  assert.throws(
+    () =>
+      writeRequestAndBinding(
+        paths,
+        requestPath,
+        bindingPath,
+        transaction.request,
+        createRequestBinding({
+          ...bindingCore,
+          failedInvocationRevision: binding.failedInvocationRevision + 1,
+        }),
+      ),
+    {
+      code: 'EXECUTION_REPLACEMENT_REQUEST_CONFLICT',
+      exitCode: 11,
+      message: 'A different durable investigation record already exists.',
+    },
+  );
+  assert.equal(fs.readFileSync(requestPath, 'utf8'), requestBytes);
+  assert.equal(fs.readFileSync(bindingPath, 'utf8'), bindingBytes);
+  writeTransaction(paths, transactionPath, transaction, false);
+  const consumedBytes = fs.readFileSync(transactionPath, 'utf8');
+  writeTransaction(paths, transactionPath, transaction, false);
+  assert.equal(fs.readFileSync(transactionPath, 'utf8'), consumedBytes);
+  const { recordDigest: _transactionDigest, ...core } = transaction;
+  assert.throws(
+    () =>
+      writeTransaction(
+        paths,
+        transactionPath,
+        createTransaction({ ...core, updatedAt: '2026-08-03T10:01:00.000Z' }),
+        false,
+      ),
+    {
+      code: 'EXECUTION_REPLACEMENT_TRANSACTION_CONFLICT',
+      exitCode: 11,
+      message: 'A different durable investigation record already exists.',
+    },
+  );
+  assert.equal(fs.readFileSync(transactionPath, 'utf8'), consumedBytes);
+  const published = advanceTransaction(
+    paths,
+    transactionPath,
+    transaction,
+    'invocation-published',
+    '2026-08-03T10:02:00.000Z',
+  );
+  const publishedBytes = fs.readFileSync(transactionPath, 'utf8');
+  const before = fs.statSync(transactionPath, { bigint: true });
+  assert.deepEqual(
+    advanceTransaction(
+      paths,
+      transactionPath,
+      transaction,
+      'invocation-published',
+      '2026-08-03T10:03:00.000Z',
+    ),
+    published,
+  );
+  assert.throws(
+    () =>
+      advanceTransaction(
+        paths,
+        transactionPath,
+        transaction,
+        'complete',
+        '2026-08-03T10:04:00.000Z',
+      ),
+    {
+      code: 'EXECUTION_REPLACEMENT_STORE_UNSAFE',
+      exitCode: 14,
+      message: 'Durable execution replacement state is malformed or unsafe.',
+    },
+  );
+  assert.equal(fs.readFileSync(transactionPath, 'utf8'), publishedBytes);
+  const after = fs.statSync(transactionPath, { bigint: true });
+  assert.equal(after.ino, before.ino);
+  assert.equal(after.mtimeNs, before.mtimeNs);
+});
 
 test('granted Survey retries raise a 300s policy ceiling through 600s to the 3600s hard cap', async (t) => {
   const { repository, mandate, investigationId, paths, jobId } =
@@ -1267,6 +1459,120 @@ function fixtureProviderTimeout(repository: string): number {
     limits: { timeoutMs: number };
   };
   return policy.limits.timeoutMs;
+}
+
+function replacementRecordFixture() {
+  const digest = `sha256:${'a'.repeat(64)}`;
+  const createdAt = '2026-08-03T10:00:00.000Z';
+  const grantId = '22222222-2222-4222-8222-222222222222';
+  const replacementInvocationId = 'replacement-fixture';
+  const replacementAttemptId = `attempt-provider-${replacementInvocationId}`;
+  const request = createExecutionBudgetGrantRequest({
+    requestId: '11111111-1111-4111-8111-111111111111',
+    workflowId: 'replacement-workflow',
+    epoch: 1,
+    jobId: 'replacement-job',
+    mandateBinding: {
+      schemaVersion: 1,
+      mandateTaskId: 'replacement-task',
+      mandateId: '33333333-3333-4333-8333-333333333333',
+      mandateDigest: 'b'.repeat(64),
+      changeId: 'demo-change',
+      externalAuditRoot: '/tmp/replacement-record-audit',
+    },
+    requestedChanges: [{ path: '/timeoutMs', from: 300_000, to: 600_000 }],
+    rationale: 'Exercise replacement record and durable store contracts.',
+    expiresAfterAttempts: 1,
+    createdAt: new Date(createdAt),
+  });
+  const requestDigest = `sha256:${crypto.createHash('sha256').update(canonicalExecutionBudgetGrantRequest(request)).digest('hex')}`;
+  const binding = createRequestBinding({
+    requestDigest,
+    workflowId: request.workflowId,
+    epoch: request.epoch,
+    contextDigest: digest,
+    jobId: request.jobId,
+    failedAttemptId: 'failed-attempt',
+    failedInvocationId: 'failed-invocation',
+    failedInvocationRevision: 1,
+    failureFingerprint: digest,
+    providerPolicyDigest: 'a'.repeat(64),
+    providerPolicyDocumentDigest: digest,
+  });
+  const replacementRequest = createProviderInvocationRequest({
+    invocationId: replacementInvocationId,
+    nonce: 'replacement-fixture-nonce',
+    purpose: 'survey',
+    providerId: 'codex',
+    roleAssignment: {
+      role: 'plan-reviewer',
+      providerId: 'codex',
+      sessionId: 'replacement-session',
+      targetDigest: 'a'.repeat(64),
+      requiredIndependence: 'provider-independent',
+      achievedIndependence: 'provider-independent',
+    },
+    capabilityProfile: 'repository-read-only',
+    repositoryId: 'replacement-repository',
+    baseCommit: 'a'.repeat(40),
+    baseTree: 'b'.repeat(40),
+    targetDigest: 'a'.repeat(64),
+    inputManifestDigest: 'a'.repeat(64),
+    authorizationNodeId: 'a'.repeat(64),
+    writeAllowedPaths: [],
+    outputSchema: {
+      id: 'replacement-fixture',
+      version: 1,
+      digest: 'a'.repeat(64),
+    },
+    evaluatorVersion: 'replacement-fixture.v1',
+    policyDigest: binding.providerPolicyDigest,
+    limits: { timeoutMs: 600_000, aggregateOutputBytes: 1_048_576 },
+  });
+  const receipt = withReceiptId({
+    schemaVersion: 1,
+    kind: 'execution-budget-consume-receipt',
+    receiptId: digest,
+    grantId,
+    requestDigest,
+    workflowId: request.workflowId,
+    epoch: request.epoch,
+    jobId: request.jobId,
+    attemptId: replacementAttemptId,
+    mandateBinding: request.mandateBinding,
+    useNumber: 1,
+    remainingUses: 0,
+    consumedAt: createdAt,
+  });
+  const transaction = createTransaction({
+    schemaVersion: 1,
+    kind: 'execution-replacement-transaction',
+    transactionId: digestCanonical({
+      kind: 'execution-replacement-transaction',
+      grantId,
+      requestDigest,
+      replacementAttemptId,
+    }),
+    phase: 'grant-consumed',
+    grantId,
+    requestDigest,
+    request,
+    workflowId: request.workflowId,
+    epoch: request.epoch,
+    contextDigest: binding.contextDigest,
+    jobId: request.jobId,
+    failedAttemptId: binding.failedAttemptId,
+    failedInvocationId: binding.failedInvocationId,
+    failedInvocationRevision: binding.failedInvocationRevision,
+    failureFingerprint: binding.failureFingerprint,
+    replacementAttemptId,
+    replacementInvocationId,
+    replacementRequest,
+    receipt,
+    createdAt,
+    updatedAt: createdAt,
+  });
+  return { binding, transaction };
 }
 
 function withReceiptId(

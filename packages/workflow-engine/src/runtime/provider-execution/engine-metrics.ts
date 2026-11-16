@@ -18,17 +18,17 @@ import {
   type EngineGovernanceMetricsSource,
   type EngineMetricsSnapshot,
 } from '../../modules/provider-orchestration/engine-metrics.ts';
-import { listExecutionBudgetGrantMetrics } from '../../runtime/storage-journal/execution-budget-grants.ts';
-import { listExecutionReplacementGrantRequestDigests } from './execution-replacement.ts';
-import { listExecutionJobs } from '../../runtime/provider-execution/execution-runtime.ts';
+import { listExecutionBudgetGrantMetrics } from '../storage-journal/execution-budget-grants.ts';
+import { listExecutionReplacementGrantRequestDigests } from '../storage-journal/execution-replacement-records.ts';
+import { listExecutionJobs } from '../provider-execution/execution-runtime.ts';
 import {
   privatePathExists,
   readPrivateCanonicalJson,
-} from '../../runtime/journal-primitives/investigation-private-files.ts';
-import { readHumanResolutionNode } from '../../runtime/storage-journal/human-resolution-nodes.ts';
+} from '../journal-primitives/investigation-private-files.ts';
+import { readHumanResolutionNode } from '../storage-journal/human-resolution-nodes.ts';
 import type { WorkflowSupersedeReason } from '../../modules/authority/intervention-control.ts';
-import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../../runtime/repository-observation/investigation-runtime-context.ts';
-import { type InvestigationRuntimePaths } from '../../runtime/paths/runtime-paths.ts';
+import { observeInvestigationRuntimeContext as loadInvestigationRuntimeContext } from '../repository-observation/investigation-runtime-context.ts';
+import { type InvestigationRuntimePaths } from '../paths/runtime-paths.ts';
 import type {
   ProviderRetentionMetrics,
   ProviderRetentionOptions,

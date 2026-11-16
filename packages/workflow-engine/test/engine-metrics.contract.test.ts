@@ -22,7 +22,7 @@ import {
 import {
   inspectEngineSupersedeReason,
   collectEngineMetrics as collectEngineMetricsWithRetention,
-} from '../src/application/control-plane/engine-metrics.ts';
+} from '../src/runtime/provider-execution/engine-metrics.ts';
 import { collectEngineMetrics } from '../src/composition-root/provider-operations-cli-production.ts';
 import {
   canonicalExecutionBudgetGrantRequest,
@@ -30,6 +30,7 @@ import {
   createExecutionBudgetGrantRequest,
 } from '../src/modules/authority/execution-governance-grant-contracts.ts';
 import { storeExecutionBudgetGrant } from '../src/runtime/storage-journal/execution-budget-grants.ts';
+import { listExecutionReplacementGrantRequestDigests } from '../src/runtime/storage-journal/execution-replacement-records.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import {
   compareAndSwapHumanResolutionHead,
@@ -45,7 +46,11 @@ const NOW = '2026-08-03T10:00:00.000Z';
 const DIGEST = `sha256:${'a'.repeat(64)}`;
 
 test('metrics and inspection DTO owners have a pure value/type dependency closure', () => {
-  for (const name of ['engine-metrics', 'provider-invocation-lifecycle']) {
+  for (const name of [
+    'engine-metrics',
+    'provider-invocation-lifecycle',
+    'execution-replacement-records',
+  ]) {
     assertPureDependencyClosure(
       fileURLToPath(
         new URL(
@@ -323,6 +328,75 @@ test('engine governance metrics require canonical supersede reasons', () => {
   });
   assert.deepEqual(metrics.metrics.supersede_by_reason, {
     'workflow-replaced': 1,
+  });
+});
+
+test('replacement request observation preserves missing stores, sorting and first errors', (t) => {
+  const repository = createFixtureRepository();
+  t.after(() => fs.rmSync(repository, { recursive: true, force: true }));
+  const runtime = loadInvestigationRuntimeContext(repository);
+  const root = path.join(
+    runtime.lifecycleRuntime.root,
+    'execution-replacements',
+  );
+  const directory = path.join(root, 'requests');
+  const empty = listExecutionReplacementGrantRequestDigests(repository);
+  assert.deepEqual(empty, []);
+  assert.equal(Object.isFrozen(empty), true);
+  assert.equal(fs.existsSync(runtime.lifecycleRuntime.root), false);
+  const binding: TaskMandateBinding = {
+    schemaVersion: 1,
+    mandateTaskId: 'metrics-task',
+    mandateId: '11111111-1111-4111-8111-111111111111',
+    mandateDigest: 'c'.repeat(64),
+    changeId: 'demo-change',
+    externalAuditRoot: '/tmp/metrics-request-observation-audit',
+  };
+  const bytes = [
+    metricsGrantRequest(
+      binding,
+      '22222222-2222-4222-8222-222222222222',
+      600_000,
+    ),
+    metricsGrantRequest(
+      binding,
+      '33333333-3333-4333-8333-333333333333',
+      900_000,
+    ),
+  ].map(canonicalExecutionBudgetGrantRequest);
+  const digests = bytes.map((value) => `sha256:${sha256Hex(value)}`);
+  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+  const sorted = [...digests].sort((a, b) => a.localeCompare(b));
+  for (const digest of [...sorted].reverse()) {
+    fs.writeFileSync(
+      path.join(directory, `${digest.slice(7)}.json`),
+      bytes[digests.indexOf(digest)]!,
+      { mode: 0o600 },
+    );
+  }
+  const observed = listExecutionReplacementGrantRequestDigests(repository);
+  assert.deepEqual(observed, sorted);
+  assert.equal(Object.isFrozen(observed), true);
+  assert.equal(fs.existsSync(path.join(root, 'request-bindings')), false);
+  const malformedName = `${'0'.repeat(64)}.json`;
+  const unsafeName = 'z-unsafe.json';
+  assert.ok(malformedName.localeCompare(unsafeName) < 0);
+  fs.writeFileSync(
+    path.join(directory, malformedName),
+    JSON.stringify(JSON.parse(bytes[0]!), null, 2),
+    { mode: 0o600 },
+  );
+  fs.writeFileSync(path.join(directory, unsafeName), '{}\n', { mode: 0o600 });
+  assert.throws(() => listExecutionReplacementGrantRequestDigests(repository), {
+    code: 'EXECUTION_REPLACEMENT_GRANT_MISMATCH',
+    exitCode: 10,
+    message: 'Canonical execution replacement request is missing or unsafe.',
+  });
+  fs.unlinkSync(path.join(directory, malformedName));
+  assert.throws(() => listExecutionReplacementGrantRequestDigests(repository), {
+    code: 'EXECUTION_REPLACEMENT_STORE_UNSAFE',
+    exitCode: 14,
+    message: 'Durable execution replacement state is malformed or unsafe.',
   });
 });
 
