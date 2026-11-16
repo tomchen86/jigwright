@@ -221,7 +221,7 @@ function buildHandoff(
   return [
     '# Current and Next Steps',
     '',
-    'This generated handoff contains semantic project state only. Its sources are tracked OpenSpec change records and the Git-native Work Registry.',
+    'This generated handoff reports managed workflow state from tracked OpenSpec change records and the Git-native Work Registry. It does not report repository maintenance performed outside managed transitions.',
     '',
     '## Current Change',
     '',
@@ -242,7 +242,7 @@ function buildHandoff(
     '## Current Focus',
     '',
     contract === null
-      ? 'No active OpenSpec change; follow the Roadmap for the next explicit transition.'
+      ? 'No active managed OpenSpec change; follow the Roadmap for the next managed transition.'
       : current
         ? current.title
         : 'No implementation tasks remain; follow the Roadmap for the next explicit transition.',
@@ -293,7 +293,7 @@ function buildRoutingHandoff(
   return [
     '# Current and Next Steps',
     '',
-    'This generated repository inventory is derived from controlled lifecycle, task, Work Registry, and archive facts.',
+    'This generated inventory reports managed workflow state from controlled lifecycle, task, Work Registry, and archive facts. It does not report repository maintenance performed outside managed transitions.',
     '',
     '## Current Work',
     '',

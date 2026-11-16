@@ -403,7 +403,7 @@
     {
       "path": "src/adapters/consumer/repository/handoff/handoff.ts",
       "mode": "100644",
-      "digest": "sha256:f24327eb5c81e6b92bb2da2b297e6d30ff126ea1243a3be6998405970db8bb3c"
+      "digest": "sha256:927aec29070a88fa1b634f9a17476d85cf101b5ed889ff886136eaf83e7c6196"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/check-registry-adapter.ts",

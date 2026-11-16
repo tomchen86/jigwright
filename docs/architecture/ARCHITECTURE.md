@@ -15,10 +15,14 @@ The engine separates domain rules in `src/modules`, shared primitives in
 `src/runtime` and `src/adapters`, production assembly in `src/composition-root`,
 and input/output dispatch in `src/entrypoints`. A domain owner may consume its
 own sources, foundation primitives and declared public domain-library exports.
-Foundation has the narrower core-only package boundary. Use cases receive
-required capabilities; composition binds the actual operations without eager
-repository observations or silent production fallbacks. Interfaces belong to
-the rule that needs them, and implementations use those canonical contracts.
+Foundation has the narrower core-only package boundary. Application use cases
+may call complete exported runtime repository and execution operations. Runtime
+must not depend on application or entrypoints; core and domain rules remain
+effect-free. Application does not assemble concrete adapters or import production
+composition. Composition binds actual implementations without eager repository
+observations or silent production fallbacks. Preserve interfaces where
+implementations actually vary; their canonical contracts belong to the rule
+that needs them.
 
 `test/architecture-graph.contract.test.ts` checks the current source graph,
 including type references, re-exports, dynamic imports, CommonJS loaders and
@@ -42,7 +46,11 @@ declaration ownership; their erasure alone does not establish good architecture.
 Architecture acceptance also requires cohesive responsibilities, useful
 abstractions, independent domain tests, preserved integration behavior and
 accurate folder ownership. Passing import checks alone does not establish those
-properties. The permanent guard uses no per-edge baseline or frozen module map.
+properties. Dependency-direction violations are compared between a selected Git
+base and the candidate using the same scanner. New violating relationships fail
+even when the total count is unchanged. Domain purity and cycle checks remain
+strict for the candidate. The guard uses no frozen per-edge baseline or module
+map; Git history supplies the comparison base.
 Runtime source-closure and authorization digests remain product integrity
 checks and are regenerated from their actual owners after source changes.
 
