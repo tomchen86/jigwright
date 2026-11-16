@@ -2848,7 +2848,7 @@
     {
       "path": "src/modules/investigation/domain/investigation-checkpoint-contract.ts",
       "mode": "100644",
-      "digest": "sha256:00655c01ea9d97f255906cf0c3d9ae502799dbda7b10964da7b26409bc8f4077"
+      "digest": "sha256:7314146e8af15d80c540128a46743c33bacaa638f3847bbfc18e851e207a8975"
     },
     {
       "path": "src/modules/investigation/domain/investigation-design-ledger.ts",
@@ -2898,12 +2898,12 @@
     {
       "path": "src/modules/investigation/domain/investigation-session-contract.ts",
       "mode": "100644",
-      "digest": "sha256:91a78d12f38be84f86e95cca5ae8bbcd55d25894f526af48c0b43c24c19048ae"
+      "digest": "sha256:fe5400a47f2678f3e793d377eb9a03a2dd2fa7bc55ee26156438a866b51f03aa"
     },
     {
       "path": "src/modules/investigation/domain/investigation-session-types.ts",
       "mode": "100644",
-      "digest": "sha256:4879e11d0d455f93da3d836ddbc620c53529c757f0ea19955957f8279857739a"
+      "digest": "sha256:3a5bcd58369e9eddf13b2cb06289ef720ad8a2ea72ab46ef64829f131e9b0ce7"
     },
     {
       "path": "src/modules/investigation/domain/investigation-store-values.ts",
@@ -3303,7 +3303,7 @@
     {
       "path": "src/modules/proposal/propose-input.ts",
       "mode": "100644",
-      "digest": "sha256:e361b71608b72e5f6134fb700ef674b772b0e4b5f4d874266bfb07a48a39e6e5"
+      "digest": "sha256:d572fb50499267fc184739fdb40ea22969a477ca83b8148467e3de0f8c57bf67"
     },
     {
       "path": "src/modules/proposal/propose-investigation-projections.ts",
@@ -3313,7 +3313,7 @@
     {
       "path": "src/modules/proposal/propose-output.ts",
       "mode": "100644",
-      "digest": "sha256:07f8a0551ef8abe599e9fb45d616d0375a37429b1d09f3547b2c4172845dbbd3"
+      "digest": "sha256:cd70e92fbb29d0af5a47e2e9b8e3acc6b3b27caac2d68e3e5ca3fbd9f3a55128"
     },
     {
       "path": "src/modules/proposal/propose-reviewer-checkpoint.ts",
@@ -3868,7 +3868,7 @@
     {
       "path": "src/runtime/investigation-lifecycle/investigation-session.ts",
       "mode": "100644",
-      "digest": "sha256:7e5e33baef8355221b7733f75bb6103da981bd465b9da15119aa1d980a536f53"
+      "digest": "sha256:af89e67e409786d92c684dabd4057c7a4ea340b0eb44ba5a032bd27cf8485785"
     },
     {
       "path": "src/runtime/journal-primitives/evidence-store-values.ts",
@@ -4068,7 +4068,7 @@
     {
       "path": "src/runtime/proposal/propose-investigation-manifest.ts",
       "mode": "100644",
-      "digest": "sha256:32bc8c3be762a6ee844d151f46673af9f2e6f891907f91866f6d70672006610a"
+      "digest": "sha256:35db8ce5ed77d2ecdf30a26f42121179bf5d42e2b2dc9a1836d9c91f031fcd97"
     },
     {
       "path": "src/runtime/proposal/propose-investigation-rebuild.ts",
@@ -4078,7 +4078,7 @@
     {
       "path": "src/runtime/proposal/propose-operations.ts",
       "mode": "100644",
-      "digest": "sha256:cac4ca97da48b5b797dbe9dc51cb520fcbccd5335a5586236f83fd338510daa5"
+      "digest": "sha256:d77579465daad3e1d064423746ed6eb2a540b9f279d6668a34b3e0fa126fac5a"
     },
     {
       "path": "src/runtime/proposal/propose-output.ts",
@@ -4113,7 +4113,7 @@
     {
       "path": "src/runtime/proposal/propose-resume.ts",
       "mode": "100644",
-      "digest": "sha256:a4a134d9f7e9fb73cb4f74635f69f3f04b593ba8b88c2cd4c09ede72213c6275"
+      "digest": "sha256:423d647c64415b686deefb2049d341b648c67a3d81a538831e0a9172b171c28b"
     },
     {
       "path": "src/runtime/proposal/propose-reviewer-reconciliation.ts",

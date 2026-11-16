@@ -977,6 +977,10 @@ export function assertProposeInput(value: unknown): ProposeInput {
 
 export function createScanSaturationAcceptanceEnvelope(
   output: ProposeOutput,
+  contribution: Pick<
+    InvestigationScanSaturationAcceptanceEnvelope,
+    'rationale' | 'semanticAuthor'
+  >,
 ): InvestigationScanSaturationAcceptanceEnvelope {
   if (
     output.state !== 'scan-saturation-acceptance-required' ||
@@ -997,5 +1001,7 @@ export function createScanSaturationAcceptanceEnvelope(
     ...output.inputSchema.binding,
     saturatedTermIds: output.inputSchema.saturatedTermIds,
     acknowledgeIncompleteScan: true,
+    rationale: contribution.rationale,
+    semanticAuthor: contribution.semanticAuthor,
   });
 }

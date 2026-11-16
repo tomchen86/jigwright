@@ -412,8 +412,15 @@ export function createProposeOperations(decisions: ProposeDecisionServices) {
 
   function createScanSaturationAcceptanceEnvelope(
     output: ProposeOutput,
+    contribution: Pick<
+      InvestigationScanSaturationAcceptanceEnvelope,
+      'rationale' | 'semanticAuthor'
+    >,
   ): InvestigationScanSaturationAcceptanceEnvelope {
-    return createScanSaturationAcceptanceEnvelopeOperation(output);
+    return createScanSaturationAcceptanceEnvelopeOperation(
+      output,
+      contribution,
+    );
   }
 
   function createProviderRetryEnvelope(

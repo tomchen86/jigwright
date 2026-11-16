@@ -469,6 +469,11 @@ export function renderScanSaturationOutput(
       },
       saturatedTermIds: requirement.saturatedTermIds,
       requiredAcknowledgement: { acknowledgeIncompleteScan: true },
+      requiredContribution: {
+        rationale:
+          '<why continuing with incomplete scan evidence is justified>',
+        semanticAuthor: '<agent identity>',
+      },
     },
     work: null,
     materializedArtifacts: null,

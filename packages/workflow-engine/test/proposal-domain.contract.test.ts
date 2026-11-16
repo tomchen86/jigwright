@@ -352,14 +352,29 @@ test('checkpoint and saturation dispatch clone and freeze validated data', () =>
     binding: binding(),
     saturatedTermIds: [digest('1'), digest('2')],
   };
-  const envelope = createScanSaturationAcceptanceEnvelope({
-    ...output(),
-    state: 'scan-saturation-acceptance-required',
-    inputSchema,
-  });
+  const contribution = {
+    rationale: 'Accept the explicitly incomplete fixture scan.',
+    semanticAuthor: 'codex',
+  };
+  const envelope = createScanSaturationAcceptanceEnvelope(
+    {
+      ...output(),
+      state: 'scan-saturation-acceptance-required',
+      inputSchema,
+    },
+    contribution,
+  );
   assert.ok(Object.isFrozen(envelope.saturatedTermIds));
   assert.notEqual(envelope.saturatedTermIds, inputSchema.saturatedTermIds);
   assert.deepEqual(assertProposeInput(envelope), envelope);
+  for (const key of ['rationale', 'semanticAuthor'] as const) {
+    for (const value of [undefined, '', '  ', 'x'.repeat(16 * 1024 + 1)]) {
+      assert.throws(
+        () => assertProposeInput({ ...envelope, [key]: value }),
+        code('INVESTIGATION_SCAN_SATURATION_ACCEPTANCE_INVALID'),
+      );
+    }
+  }
   assert.throws(
     () =>
       assertProposeInput({
@@ -369,7 +384,7 @@ test('checkpoint and saturation dispatch clone and freeze validated data', () =>
     code('INVESTIGATION_SCAN_SATURATION_ACCEPTANCE_INVALID'),
   );
   assert.throws(
-    () => createScanSaturationAcceptanceEnvelope(output()),
+    () => createScanSaturationAcceptanceEnvelope(output(), contribution),
     code(
       'INVESTIGATION_SCAN_SATURATION_ACCEPTANCE_NOT_AVAILABLE',
       ExitCode.guard,

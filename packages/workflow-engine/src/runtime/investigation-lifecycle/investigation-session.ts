@@ -669,6 +669,7 @@ function reopenInvestigationForReviewerTermsInternal(
             },
             updatedAt: new Date().toISOString(),
           };
+          delete candidate.scanSaturationAcceptance;
           candidate.state = deriveInvestigationSessionState(candidate);
           return candidate;
         },
