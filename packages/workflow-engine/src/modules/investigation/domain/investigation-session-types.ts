@@ -96,6 +96,8 @@ export type InvestigationScanSaturationAcceptanceEnvelope = {
   blindManifestDigest: string;
   saturatedTermIds: string[];
   acknowledgeIncompleteScan: true;
+  rationale: string;
+  semanticAuthor: string;
 };
 
 export type StoredInvestigationScanSaturationAcceptance = {

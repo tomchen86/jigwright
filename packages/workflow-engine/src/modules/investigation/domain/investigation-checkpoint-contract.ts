@@ -8,6 +8,7 @@
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import { parseClassDisposition } from './class-disposition.ts';
+import { boundedText } from '../manifest/investigation-manifest-values.ts';
 import {
   INVESTIGATION_LIMITS,
   previewInvestigationTermUnion,
@@ -135,6 +136,8 @@ export function assertInvestigationScanSaturationAcceptanceEnvelope(
       'blindManifestDigest',
       'saturatedTermIds',
       'acknowledgeIncompleteScan',
+      'rationale',
+      'semanticAuthor',
     ]) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'scan-saturation-acceptance' ||
@@ -155,6 +158,12 @@ export function assertInvestigationScanSaturationAcceptanceEnvelope(
   }
   assertInvestigationId(value.investigationId);
   assertChangeId(value.changeId);
+  try {
+    boundedText(value.rationale, 'saturation rationale');
+    boundedText(value.semanticAuthor, 'semantic author ID');
+  } catch {
+    throw scanSaturationAcceptanceInvalid();
+  }
   if (Buffer.byteLength(canonicalJson(value), 'utf8') > MAX_CHECKPOINT_BYTES) {
     throw scanSaturationAcceptanceInvalid();
   }
@@ -498,7 +507,7 @@ const SEMANTIC_TEXT_RULE =
 function scanSaturationAcceptanceInvalid() {
   return workflowError(
     'INVESTIGATION_SCAN_SATURATION_ACCEPTANCE_INVALID',
-    'Investigation scan saturation acceptance is malformed or unbound.',
+    'Scan saturation acceptance requires exact current bindings and term IDs, acknowledgeIncompleteScan: true, a non-empty rationale, and a semanticAuthor.',
     ExitCode.usage,
   );
 }

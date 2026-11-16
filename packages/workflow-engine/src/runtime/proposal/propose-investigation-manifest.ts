@@ -147,16 +147,7 @@ export function buildProposeInvestigationManifestV3(
         ExitCode.guard,
       );
     }
-    if (rebuilt.saturatedTermIds.length > 0) {
-      // The old acknowledgement predates semantic author/rationale fields. A
-      // Manifest may name the missing fact but must not invent it or let a local
-      // continuation mechanism stand in for the central Grant contract.
-      throw workflowError(
-        'SEMANTIC_COMPLETENESS_FAILURE',
-        'The legacy scan-saturation acknowledgement has no v3 semantic author and rationale.',
-        ExitCode.guard,
-      );
-    }
+    const acceptance = rebuilt.session.scanSaturationAcceptance;
     const groupCheckpoint = rebuilt.session.milestones.groupDispositions;
     const whyCheckpoint = rebuilt.session.milestones.whyAnswers;
     if (
@@ -178,8 +169,21 @@ export function buildProposeInvestigationManifestV3(
       termContributions: rebuilt.v3Domain.termContributions,
       canonicalTerms: rebuilt.v3Domain.canonicalTerms,
       scanner: {
-        allowSaturatedTerms: false,
-        saturationDecision: null,
+        allowSaturatedTerms: acceptance !== undefined,
+        saturationDecision:
+          acceptance === undefined
+            ? null
+            : {
+                saturatedTermIds: acceptance.envelope.saturatedTermIds,
+                acknowledgeIncompleteScan:
+                  acceptance.envelope.acknowledgeIncompleteScan,
+                rationale: acceptance.envelope.rationale,
+                semanticAuthor: {
+                  id: acceptance.envelope.semanticAuthor,
+                  provenance: `scan-saturation-acceptance:${acceptance.envelopeDigest}`,
+                },
+                provenanceDigest: acceptance.envelopeDigest,
+              },
       },
       grouping: {
         mutationPolicy: rebuilt.v3Domain.mutationPolicy,

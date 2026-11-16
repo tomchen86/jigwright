@@ -4,6 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest-types.ts';
 import { readInvestigationSession } from '../src/runtime/storage-journal/investigation-session-records.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import {
@@ -42,7 +43,15 @@ test('propose requires and durably records an exact scan saturation acceptance',
     assert.equal(fixture.output.nextAction, 'accept-scan-saturation');
     assert.equal(fixture.output.work, null);
 
-    const envelope = createScanSaturationAcceptanceEnvelope(fixture.output);
+    const contribution = {
+      rationale:
+        'Read the whole dense fixture; its repeated hits exceed the ceiling. Keep the incomplete scan explicit.',
+      semanticAuthor: 'codex',
+    };
+    const envelope = createScanSaturationAcceptanceEnvelope(
+      fixture.output,
+      contribution,
+    );
     assert.equal(envelope.saturatedTermIds.length, 1);
 
     assert.throws(
@@ -122,6 +131,68 @@ test('propose requires and durably records an exact scan saturation acceptance',
     assert.deepEqual(
       getProposeStatus(fixture.repository, fixture.investigationId).work,
       accepted.work,
+    );
+
+    const dispositions = fixture.submit({
+      dispositions: accepted.work!.groups.map(({ groupId }) => ({
+        groupId,
+        classification: 'load-bearing',
+        rationale:
+          'Read this deterministic fixture source as part of the saturated scan.',
+        author: 'codex',
+      })),
+    });
+    const sealed = fixture.submit({
+      answers: dispositions.work!.fullBlobManifest.map(
+        ({ manifestEntryId }) => ({
+          manifestEntryId,
+          why: 'This fixture source is in the pinned saturated investigation.',
+          protectedInvariant:
+            'The incomplete scan remains explicitly acknowledged.',
+          reviewerQuestion:
+            'Does the Manifest preserve the exact acceptance and its author?',
+          answer:
+            'The dense fixture repeats one symbol 513 times; the hit ceiling does not establish complete coverage.',
+          semanticAuthor: 'codex',
+          readComplete: true,
+        }),
+      ),
+    });
+    assert.equal(sealed.state, 'awaiting-planning-contribution');
+    const manifest = JSON.parse(
+      fs.readFileSync(
+        path.join(
+          fixture.repository,
+          'openspec/changes',
+          fixture.changeId,
+          'investigation.json',
+        ),
+        'utf8',
+      ),
+    ) as InvestigationManifestV3;
+    assert.equal(manifest.applicability.kind, 'ordinary');
+    if (manifest.applicability.kind !== 'ordinary')
+      assert.fail('ordinary Manifest required');
+    assert.deepEqual(
+      manifest.applicability.semanticDelta.scanSaturationDecision,
+      {
+        saturatedTermIds: envelope.saturatedTermIds,
+        acknowledgeIncompleteScan: true,
+        rationale: contribution.rationale,
+        semanticAuthor: {
+          id: contribution.semanticAuthor,
+          provenance: `scan-saturation-acceptance:${session.scanSaturationAcceptance!.envelopeDigest}`,
+        },
+        provenanceDigest: session.scanSaturationAcceptance!.envelopeDigest,
+      },
+    );
+    assert.equal(
+      getProposeStatus(fixture.repository, fixture.investigationId).state,
+      'awaiting-planning-contribution',
+    );
+    assert.equal(
+      resumePropose(fixture.repository, fixture.changeId, envelope).state,
+      'awaiting-planning-contribution',
     );
   } finally {
     fixture.dispose();

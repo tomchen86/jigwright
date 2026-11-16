@@ -421,7 +421,10 @@ export function createProposeResumption({
             assertOwned,
           );
         }
-        if (current.revision !== input.expectedRevision) {
+        if (
+          current.revision !== input.expectedRevision ||
+          current.milestones.groupDispositions !== null
+        ) {
           throw workflowError(
             'PROPOSE_INPUT_STALE',
             'Scan saturation acceptance is not bound to the current investigation revision.',
@@ -510,8 +513,7 @@ function assertScanSaturationAcceptanceBinding(
     session.intentDigest !== input.intentDigest ||
     session.blindManifestDigest !== input.blindManifestDigest ||
     session.milestones.mainTerms === null ||
-    session.milestones.blindResult === null ||
-    session.milestones.groupDispositions !== null
+    session.milestones.blindResult === null
   ) {
     throw workflowError(
       'PROPOSE_INPUT_STALE',

@@ -17,6 +17,7 @@ import { getInvestigationStatus } from '../src/runtime/investigation-lifecycle/i
 import {
   createPlanningContributionEnvelope,
   createPlanReviewProgressEnvelope,
+  createScanSaturationAcceptanceEnvelope,
   getProposeStatus,
   resumePropose,
   startPropose,
@@ -66,6 +67,8 @@ test('reviewer reopen limit preserves exact materialization evidence for human r
         'export const SecondReviewerNeedle = true;',
         'export const ThirdReviewerNeedle = true;',
         'export const FourthReviewerNeedle = true;',
+        `// ${'ReviewerReopenBaseNeedle '.repeat(513)}`,
+        `// ${'FirstReviewerNeedle '.repeat(513)}`,
         '',
       ].join('\n'),
     );
@@ -117,7 +120,7 @@ test('reviewer reopen limit preserves exact materialization evidence for human r
         });
       },
     });
-    const afterMain = resumePropose(
+    const saturation = resumePropose(
       repository,
       changeId,
       createInvestigationCheckpointEnvelope(started.investigation!, {
@@ -125,6 +128,17 @@ test('reviewer reopen limit preserves exact materialization evidence for human r
         terms: [mainTerm('ReviewerReopenBaseNeedle')],
       }),
     );
+    assert.equal(saturation.state, 'scan-saturation-acceptance-required');
+    const acceptance = {
+      rationale:
+        'Read the full deterministic fixture while preserving its incomplete search coverage.',
+      semanticAuthor: 'codex',
+    };
+    const firstAcceptance = createScanSaturationAcceptanceEnvelope(
+      saturation,
+      acceptance,
+    );
+    const afterMain = resumePropose(repository, changeId, firstAcceptance);
     const afterDispositions = resumePropose(
       repository,
       changeId,
@@ -263,7 +277,28 @@ test('reviewer reopen limit preserves exact materialization evidence for human r
       pendingReviewProgress = createPlanReviewProgressEnvelope(
         getProposeStatus(repository, investigationId),
       );
-      return resumePropose(repository, changeId, pendingReviewProgress);
+      const reopened = resumePropose(
+        repository,
+        changeId,
+        pendingReviewProgress,
+      );
+      if (reopened.state !== 'scan-saturation-acceptance-required')
+        return reopened;
+      assert.equal(
+        readInvestigationSession(runtime, investigationId)
+          .scanSaturationAcceptance,
+        undefined,
+      );
+      assert.throws(
+        () => resumePropose(repository, changeId, firstAcceptance),
+        (error) => isWorkflowError(error, 'PROPOSE_INPUT_STALE'),
+      );
+      const renewed = createScanSaturationAcceptanceEnvelope(
+        reopened,
+        acceptance,
+      );
+      assert.equal(renewed.saturatedTermIds.length, 2);
+      return resumePropose(repository, changeId, renewed);
     };
     const incorporateReviewerTerm = (
       reopened: ReturnType<typeof resumePropose>,
@@ -484,13 +519,12 @@ test('reviewer reopen limit preserves exact materialization evidence for human r
       authorizedButNotReopened.lifecycleRevision,
       blockedSession.lifecycleRevision,
     );
-    const thirdReopened = resumePropose(
+    let thirdReopened = resumePropose(
       repository,
       changeId,
       pendingReviewProgress!,
     );
-    assert.equal(thirdReopened.state, 'awaiting-group-dispositions');
-    assert.equal(thirdReopened.work?.termSources.reviewer, 3);
+    assert.equal(thirdReopened.state, 'scan-saturation-acceptance-required');
     assert.equal(
       readInvestigationSession(runtime, investigationId).revision,
       blockedSession.revision + 1,
@@ -505,6 +539,13 @@ test('reviewer reopen limit preserves exact materialization evidence for human r
       readInvestigationSession(runtime, investigationId).lifecycleRevision,
       blockedSession.lifecycleRevision + 1,
     );
+    thirdReopened = resumePropose(
+      repository,
+      changeId,
+      createScanSaturationAcceptanceEnvelope(thirdReopened, acceptance),
+    );
+    assert.equal(thirdReopened.state, 'awaiting-group-dispositions');
+    assert.equal(thirdReopened.work?.termSources.reviewer, 3);
     reviewStatus = incorporateReviewerTerm(thirdReopened);
 
     const fourthBlocked = runReviewWithNovelTerm('FourthReviewerNeedle');

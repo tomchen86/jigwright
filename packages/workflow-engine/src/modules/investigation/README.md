@@ -8,11 +8,11 @@ Build the investigation around a manifest of the exact tracked source snapshot s
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.investigation-readme v=1 digest=sha256:4bc0676c94a208640540c19406aa24674848a2a633b0edbf51dd2905b760d4a5 -->
+<!-- jigwright:region id=documents.investigation-readme v=1 digest=sha256:3d768281e9481db12888c8f91862dc1c908483005553f6be41f374f10eb5ef77 -->
 
 <!-- prettier-ignore-start -->
 
-45 files changed in this module since confirmation.
+46 files changed in this module since confirmation.
 
 ## Commands
 

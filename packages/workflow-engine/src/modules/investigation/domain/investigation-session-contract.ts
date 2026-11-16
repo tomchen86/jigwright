@@ -336,7 +336,8 @@ export function assertMonotonicSessionTransition(
   if (
     (beforeSaturationAcceptance !== null &&
       canonicalJson(beforeSaturationAcceptance) !==
-        canonicalJson(afterSaturationAcceptance)) ||
+        canonicalJson(afterSaturationAcceptance) &&
+      !(reviewerReopen && afterSaturationAcceptance === null)) ||
     (beforeSaturationAcceptance === null &&
       afterSaturationAcceptance !== null &&
       afterSaturationAcceptance.envelope.expectedRevision !== current.revision)

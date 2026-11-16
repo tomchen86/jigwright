@@ -35,7 +35,7 @@
 | packages/workflow-engine/src/modules/authority | [Authority](../packages/workflow-engine/src/modules/authority/spec.md) | 18 | 58 |
 | packages/workflow-engine/src/modules/governance-intake | [Governance Intake](../packages/workflow-engine/src/modules/governance-intake/spec.md) | 23 | 56 |
 | packages/workflow-engine/src/modules/guidance | [Guidance](../packages/workflow-engine/src/modules/guidance/spec.md) | 3 | 5 |
-| packages/workflow-engine/src/modules/investigation | [Investigation](../packages/workflow-engine/src/modules/investigation/spec.md) | 7 | 25 |
+| packages/workflow-engine/src/modules/investigation | [Investigation](../packages/workflow-engine/src/modules/investigation/spec.md) | 7 | 27 |
 | packages/workflow-engine/src/modules/lifecycle | [Lifecycle](../packages/workflow-engine/src/modules/lifecycle/spec.md) | 6 | 11 |
 | packages/workflow-engine/src/modules/planning-provider | [Planning provider](../packages/workflow-engine/src/modules/planning-provider/spec.md) | 1 | 2 |
 | packages/workflow-engine/src/modules/projection | [Projection](../packages/workflow-engine/src/modules/projection/spec.md) | 6 | 12 |

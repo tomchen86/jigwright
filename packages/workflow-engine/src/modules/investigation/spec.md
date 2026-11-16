@@ -196,6 +196,25 @@ The routine `workflow propose` surface SHALL persist investigation state, start 
 
 The wrapper SHALL assemble existing planning and plan-commit prerequisites without replacing their authority or exposing a separate routine review journey.
 
+#### Scenario: Caller accepts a bounded incomplete scan
+covers: #Requirement: Propose Is a Durable Resumable Planning Wrapper
+test: packages/workflow-engine/test/propose-scan-saturation-acceptance.integration.test.ts#propose requires and durably records an exact scan saturation acceptance
+
+- **GIVEN** the pinned scan reaches a per-term hit ceiling
+- **WHEN** the caller supplies the exact saturated term IDs, an incomplete-scan acknowledgement, a rationale, and a semantic author
+- **THEN** the engine validates the semantic fields before recording the acceptance
+- **AND** the v3 Manifest preserves those fields and the accepted envelope digest as provenance without claiming a complete scan
+- **AND** status and exact acceptance replay remain available after dispositions and sealing
+
+#### Scenario: Reviewer terms reopen an acknowledged scan
+covers: #Requirement: Propose Is a Durable Resumable Planning Wrapper
+test: packages/workflow-engine/test/investigation-reviewer-recovery.integration.test.ts#reviewer reopen limit preserves exact materialization evidence for human resolution
+
+- **GIVEN** an investigation has accepted incomplete scan evidence
+- **WHEN** reviewer terms reopen the investigation
+- **THEN** the current acceptance is invalidated with the dispositions and WHY answers
+- **AND** a saturated revised scan requires a fresh exact acknowledgement while the old envelope remains stale
+
 #### Scenario: Caller must provide main terms
 covers: #Requirement: Propose Is a Durable Resumable Planning Wrapper
 test: packages/workflow-engine/test/investigation-session.integration.test.ts#start seals a manifest-bound blind request before accepting main terms

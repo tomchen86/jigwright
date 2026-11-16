@@ -278,7 +278,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/investigation-checkpoint-contract.js",
       "mode": "100644",
-      "digest": "sha256:82166f138f2d6edb91c0e55b886d1931812dfed93af304ebd6cb1d76dc5a5b3b"
+      "digest": "sha256:10408340fbc81fb38a1926f619afe9e72730b05e6e732d3c16aacb23157b6765"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/investigation-domain.js",
@@ -308,7 +308,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/investigation-session-contract.js",
       "mode": "100644",
-      "digest": "sha256:ef60d642648efce2f1885826b49fdd993d9424fb810ed8653cd0abf7ec269b2a"
+      "digest": "sha256:db70d9bff1d5dfb6cc7dd7d811bd59b68b79a5495cc4ea8c046318ae8be2a74a"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/investigation-session-types.js",
@@ -339,6 +339,11 @@
       "path": "bootstrap/recovery-runtime/src/modules/investigation/manifest/investigation-manifest-types.js",
       "mode": "100644",
       "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/investigation/manifest/investigation-manifest-values.js",
+      "mode": "100644",
+      "digest": "sha256:c0c0c3b50fe260f2656b2de17d430f2e4f9bd718c114dec28e22826962af42ca"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/manifest/investigation-materializer.js",
