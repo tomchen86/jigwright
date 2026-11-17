@@ -419,6 +419,58 @@ test('PlanReview preserves strengthened and exact-Grant independence labels', ()
   }
 });
 
+test('PlanReview separates affirmative coverage from explicit challenges regardless of severity', () => {
+  const context = reviewContext();
+  const scopeEvidence = [...PLAN_REVIEW_COVERAGE].sort().map((area) => ({
+    kind: 'repository-location' as const,
+    path: 'README.md',
+    line: 1,
+    observation: `Reviewed ${area}; no correction is needed.`,
+  }));
+  for (const severity of [null, 'informational', 'low'] as const) {
+    const wire = providerSubmission({
+      verdict: 'advisory-approve',
+      scopeEvidence,
+      findings:
+        severity === null
+          ? []
+          : [
+              {
+                severity,
+                category: 'task-strategy-risks',
+                summary:
+                  'Confirm the README formatting check before completion.',
+                evidence: scopeEvidence,
+              },
+            ],
+      proposedTerms: [],
+      suggestions: [],
+    });
+    assert.equal(PLAN_REVIEW_OUTPUT_VALIDATOR.validate(wire), true);
+    const submission = canonicalizePlanReviewProviderSubmission(wire);
+    const reviewNode = createPlanReviewNode({
+      subject: context.subject,
+      assignment: context.assignment,
+      providerResultNode: providerResultFor(context, submission),
+      submission,
+    });
+    const validation = validatePlanReview({
+      ...currentValidationInput(context, reviewNode),
+      dispositionNode: null,
+    });
+    assert.equal(validation.current, true);
+    assert.equal(validation.eligible, severity === null);
+    assert.equal(
+      validation.undispositionedChallengeIds.length,
+      severity === null ? 0 : 1,
+    );
+    assert.deepEqual(submission.scopeAssessment, {
+      kind: 'no-challenge',
+      evidence: scopeEvidence,
+    });
+  }
+});
+
 test('PlanReview scope assessment tracks only scope-category findings', () => {
   const scopeEvidence = [
     {

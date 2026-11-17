@@ -2,7 +2,7 @@
  * Render the exact managed provider prompt and planning snapshot instructions.
  *
  * Invariants:
- * - Purpose-specific instruction text and canonical prompt bytes stay unchanged.
+ * - Purpose-specific instructions distinguish review coverage from required challenges.
  * - Planning snapshot validation precedes exposing its content to a provider.
  */
 
@@ -39,8 +39,8 @@ const PROVIDER_PURPOSE_INSTRUCTIONS: Readonly<
     // Coverage, the scope-assessment kind, and every constant discriminator are
     // filled in by the engine from what was actually submitted, so there is no
     // derived field here for a provider to contradict.
-    'Review all seven coverage areas; report what you find as "findings" entries whose category names the area.',
-    'The output "scopeEvidence" array cites what you read to assess scope. Report a scope problem as a "findings" entry with category "missing-scope" or "missing-consumers"; the engine derives the scope assessment from those categories.',
+    'Review all seven coverage areas. Put only actual current-change challenges requiring a decision or correction in findings; every finding requires disposition regardless of severity or advisory verdict. Do not create one finding per area merely to show coverage. Return findings: [] when no challenge is found.',
+    'The output "scopeEvidence" array cites affirmative evidence and no-action observations from the review. Report an actual scope problem as a "findings" entry with category "missing-scope" or "missing-consumers"; the engine derives the scope assessment from those categories. Put already-planned execution reminders in residualRisk and independent follow-up ideas in suggestions; do not move current-change correctness problems into suggestions.',
     // Advisory only: the engine scans every proposed term across the whole
     // pinned tree under a fixed per-term hit ceiling, and a term that exceeds
     // it currently has no recovery exit. A provider cannot count hits, so this
@@ -48,7 +48,7 @@ const PROVIDER_PURPOSE_INSTRUCTIONS: Readonly<
     // cannot measure.
     'For every proposed search term, prefer a verified, repository-specific exact literal that preserves the relevant relationship. When a concept has a commonly used name, use a longer literal containing repository-specific context, a fully qualified symbol, or a literal path rather than the unqualified identifier. Confirm that each literal exists in the pinned repository; use multiple specific terms when necessary to preserve coverage rather than inventing a broader token.',
     'Read every planning artifact only from the immutable planningSnapshot artifact readPath supplied in this prompt. Never substitute the worktree path or the baseline-tree copy for a planning artifact.',
-    'In the immutable investigation.json v3 Manifest, find the unique applicability.semanticDelta.investigationRequirements[] entry whose kind is "plan-review-coverage-requirement". Read structured PlanReview coverage only from that entry\'s coverage.requiredTargetIds and coverage.targetBindings. Treat every requiredTargetIds entry as mandatory. For each required target, cite the matching targetBindings row\'s exact evidenceKind and path at least once in scopeAssessment, a finding, or a suggestion. Extra evidence is allowed; omitting a required row is rejected at plan commit.',
+    'In the immutable investigation.json v3 Manifest, find the unique applicability.semanticDelta.investigationRequirements[] entry whose kind is "plan-review-coverage-requirement". Read structured PlanReview coverage only from that entry\'s coverage.requiredTargetIds and coverage.targetBindings. Treat every requiredTargetIds entry as mandatory. For each required target, cite the matching targetBindings row\'s exact evidenceKind and path at least once in scopeEvidence, a finding, or a suggestion. If findings contain a missing-scope or missing-consumers challenge, cite every required target in findings or suggestions because the canonical challenged scope assessment does not retain scopeEvidence. Extra evidence is allowed; omitting a required row is rejected at plan commit.',
     'Cite a planningSnapshot member with kind "planning-location" and its logical path. Cite any other repository file with kind "repository-location"; repository-location lines are validated against the pinned baseline tree. The two namespaces are disjoint and a citation in the wrong namespace is rejected.',
     'Treat planningSnapshot.migration as a binding remediation constraint: preserved-byte-identical artifacts cannot be proposed as editable in this generation, replaceable-on-replanning artifacts may change only through a new planning generation, and engine-managed artifacts are not author-editable.',
   ]),
@@ -56,10 +56,12 @@ const PROVIDER_PURPOSE_INSTRUCTIONS: Readonly<
     'Independently review the exact bound candidate tree and its base-to-candidate blob and mode transitions.',
     'Use only the reviewed read/search capability surface and do not mutate the worktree, index, refs, runtime, or any repository file.',
     'Return only output that conforms to the bound task-diff-review output schema.',
-    'Review every required area; report what you find as "findings" entries whose category names the area. The output "scopeEvidence" array cites what you read to assess scope, and the engine derives the scope assessment from the findings.',
+    'Review every required area. Put only actual current-change challenges requiring a decision or correction in findings; every finding requires disposition regardless of severity or advisory verdict. Do not create one finding per area merely to show coverage. Return findings: [] when no challenge is found.',
+    'The output "scopeEvidence" array cites affirmative evidence and no-action observations. The engine derives the scope assessment from findings. Put already-planned execution reminders in residualRisk and independent follow-up ideas in suggestions; do not move current-change correctness problems into suggestions.',
     'The output "riskPathDispositions" array must contain exactly one row for every subject.reviewRequirement.riskPaths entry covered by reviewScope, with the exact path and role; do not include ordinary paths.',
     'Inspect correctness and invariants, plan alignment, test adequacy, path scope, trust boundaries, dangling consumers, and generated or mirror consistency.',
-    'When subject.documentationRequirement.required is true, review the complete changeBaseTree-to-candidateTree change and return exactly one documentationAssessment: updated with every changed documentation path, generated-verified with exact source/generated paths and check evidence, no-impact with a concrete rationale only when no documentation path changed, or needs-changes with exact documentation remediation paths. Omission is rejected. When it is false, omit documentationAssessment.',
+    'When subject.documentationRequirement.required is true, review the complete changeBaseTree-to-candidateTree change and return exactly one documentationAssessment: updated with every changed documentation path, generated-verified with exact source/generated paths and check evidence, no-impact with a concrete rationale only when no documentation path changed, or needs-changes with exact documentation remediation paths. Omission or null is rejected. When it is false, return documentationAssessment: null.',
+    'Documentation paths are only paths under docs/ or named README.md. For updated.paths and generated-verified.sources/generated, use only subject.documentationRequirement.changedPaths, not the broader subject.changedPaths; completion projections such as tasks.md and a handoff excluded from documentationRequirement.changedPaths must not be listed. needs-changes.requiredPaths names documentation remediation paths.',
     'Every challenge must cite exact repository, check-report, or planning-node evidence. A no-challenge scope assessment must still cite affirmative evidence.',
     'Classify current-change blockers as challenges and independent follow-up ideas as suggestions. The advisory verdict never authorizes completion.',
     'Treat the manifest subject, candidate tree, check evidence, task contract, planning generation, and review policy as immutable bindings; do not substitute live runtime metadata.',

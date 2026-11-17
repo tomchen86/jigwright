@@ -570,7 +570,7 @@ function assertReviewScopeCurrent(
     (scope.predecessor === null &&
       (scope.mode !== 'full' ||
         canonicalJson(scope.reviewedPaths) !==
-          canonicalJson(subject.changedPaths))) ||
+          canonicalJson([...subject.changedPaths].sort()))) ||
     (scope.mode === 'delta' && scope.predecessor === null)
   ) {
     throw recordInvalid();

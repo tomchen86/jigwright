@@ -79,6 +79,8 @@ export function createTaskDiffReviewSubmissionProtocol(
   const TASK_DIFF_REVIEW_OUTPUT_SCHEMA_ID =
     'workflow.task-diff-review-output.v1';
 
+  const DOCUMENTATION_PATH_PATTERN = '^(?:docs/.*|(?:.*/)?README\\.md)$';
+
   const TASK_DIFF_REVIEW_LIMITS = Object.freeze({
     maxTextBytes: MAX_TEXT_BYTES,
     maxFindings: MAX_FINDINGS,
@@ -110,7 +112,7 @@ export function createTaskDiffReviewSubmissionProtocol(
   const TASK_DIFF_REVIEW_PROVIDER_OUTPUT_SCHEMA = Object.freeze({
     type: 'object',
     additionalProperties: false,
-    required: [...PROVIDER_SUBMISSION_KEYS],
+    required: [...PROVIDER_SUBMISSION_KEYS, 'documentationAssessment'],
     properties: {
       verdict: { enum: [...VERDICTS] },
       scopeEvidence: {
@@ -146,6 +148,7 @@ export function createTaskDiffReviewSubmissionProtocol(
       uncertainty: { type: 'string', minLength: 1 },
       documentationAssessment: {
         anyOf: [
+          { type: 'null' },
           {
             type: 'object',
             additionalProperties: false,
@@ -155,7 +158,11 @@ export function createTaskDiffReviewSubmissionProtocol(
               paths: {
                 type: 'array',
                 minItems: 1,
-                items: { type: 'string', minLength: 1 },
+                items: {
+                  type: 'string',
+                  minLength: 1,
+                  pattern: DOCUMENTATION_PATH_PATTERN,
+                },
               },
               notes: { type: 'string', minLength: 1 },
             },
@@ -183,7 +190,11 @@ export function createTaskDiffReviewSubmissionProtocol(
               generated: {
                 type: 'array',
                 minItems: 1,
-                items: { type: 'string', minLength: 1 },
+                items: {
+                  type: 'string',
+                  minLength: 1,
+                  pattern: DOCUMENTATION_PATH_PATTERN,
+                },
               },
               evidence: {
                 type: 'array',
@@ -202,7 +213,11 @@ export function createTaskDiffReviewSubmissionProtocol(
               requiredPaths: {
                 type: 'array',
                 minItems: 1,
-                items: { type: 'string', minLength: 1 },
+                items: {
+                  type: 'string',
+                  minLength: 1,
+                  pattern: DOCUMENTATION_PATH_PATTERN,
+                },
               },
               notes: { type: 'string', minLength: 1 },
             },
@@ -417,9 +432,10 @@ export function createTaskDiffReviewSubmissionProtocol(
     if (findings === undefined || suggestions === undefined) {
       throw recordInvalid();
     }
-    const { scopeEvidence, ...rest } = value;
+    const { scopeEvidence, documentationAssessment, ...rest } = value;
     return {
       ...rest,
+      ...(documentationAssessment == null ? {} : { documentationAssessment }),
       schemaVersion: 1,
       coverage: [...TASK_DIFF_REVIEW_COVERAGE],
       scopeAssessment:
@@ -457,6 +473,7 @@ export function createTaskDiffReviewSubmissionProtocol(
     } = submission;
     return {
       ...rest,
+      documentationAssessment: submission.documentationAssessment ?? null,
       scopeEvidence:
         scopeAssessment.kind === 'no-challenge'
           ? scopeAssessment.evidence.map((entry) => ({ ...entry }))

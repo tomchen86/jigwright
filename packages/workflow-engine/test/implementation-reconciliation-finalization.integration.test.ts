@@ -15,6 +15,7 @@ import {
 } from '../src/composition-root/implementation-reconciliation-production.ts';
 import {
   completeTask,
+  finalizeSession,
   finalizeTask,
 } from './support/session-lifecycle-host.ts';
 import {
@@ -55,6 +56,8 @@ import {
 } from './fixture.ts';
 import { driveProposeToDispositions } from './propose-drive-fixture.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
+import { replayCommitSequence } from '../src/composition-root/ci-replay-production.ts';
+import { listRangeCommits } from '../src/runtime/repository-validation/commit-replay/ci-git.ts';
 
 const CHANGE_ID = 'implementation-reconciliation';
 const TARGET = 'src/feature.ts';
@@ -134,6 +137,23 @@ test('all task-finalization paths require and replay exact implementation reconc
       finished.stagedPaths.some((candidatePath) =>
         candidatePath.startsWith('workflow/semantic-ledger/objects/'),
       ),
+    );
+    const committed = finalizeSession(
+      repository,
+      session.sessionId,
+      'Reconcile implementation fixture',
+    );
+    assert.deepEqual(
+      replayCommitSequence(
+        repository,
+        listRangeCommits(
+          repository,
+          session.baseline.head,
+          committed.commitHash,
+        ),
+        new Map(),
+      ).completedTasks,
+      [{ changeId: CHANGE_ID, taskId: '1.1' }],
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

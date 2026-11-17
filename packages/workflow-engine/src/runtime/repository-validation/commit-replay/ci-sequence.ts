@@ -25,6 +25,7 @@ import { recordDefinitions } from '../../../modules/assurance/commit-replay/ci-s
 import { ciError } from '../../../modules/assurance/commit-replay/ci-sequence.ts';
 import type { CiSequenceReplayServices } from './services.ts';
 import type { CiSequenceReplayOperations } from '../../../modules/assurance/commit-replay/ci-sequence.ts';
+import { replayTaskSemanticLedger } from './ci-semantic-ledger.ts';
 
 /** Immutable commit replay operations; caller-owned semantic services are required. */
 
@@ -432,8 +433,19 @@ export function createCiSequenceReplay(
         ({ changeId }) => `openspec/changes/${changeId}/tasks.md`,
       ),
     );
-    const implicit = new Set([...transitionPaths, ...completionPaths]);
     const changedPaths = listCommitPaths(repositoryRoot, commit);
+    const ledgerPaths = replayTaskSemanticLedger(
+      repositoryRoot,
+      commit.parents[0]!,
+      commit.hash,
+      authority.changeId,
+      changedPaths,
+    );
+    const implicit = new Set([
+      ...transitionPaths,
+      ...completionPaths,
+      ...ledgerPaths,
+    ]);
     const planningMutation = changedPaths.find(
       (changedPath) =>
         changedPath.startsWith('openspec/changes/') &&

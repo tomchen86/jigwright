@@ -42,6 +42,37 @@ test('TaskDiffReview provider output schema and validator bind the complete sema
   });
 });
 
+test('TaskDiffReview provider schema requires every property and uses null for an inapplicable documentation assessment', () => {
+  assert.deepEqual(
+    [...TASK_DIFF_REVIEW_PROVIDER_OUTPUT_SCHEMA.required].sort(),
+    Object.keys(TASK_DIFF_REVIEW_PROVIDER_OUTPUT_SCHEMA.properties).sort(),
+  );
+  assert.ok(
+    TASK_DIFF_REVIEW_PROVIDER_OUTPUT_SCHEMA.properties.documentationAssessment.anyOf.some(
+      (branch) => (branch.type as string) === 'null',
+    ),
+  );
+  const canonical = validSubmission();
+  const authored = taskDiffReviewProviderSubmission(canonical);
+  assert.equal(authored.documentationAssessment, null);
+  assert.deepEqual(parseTaskDiffReviewProviderSubmission(authored), canonical);
+  const { documentationAssessment: _assessment, ...omitted } = authored;
+  assert.deepEqual(parseTaskDiffReviewProviderSubmission(omitted), canonical);
+  assert.equal(
+    TASK_DIFF_REVIEW_OUTPUT_VALIDATOR.validate({
+      ...authored,
+      documentationAssessment: {},
+    }),
+    false,
+  );
+  assert.throws(() =>
+    parseTaskDiffReviewSubmission({
+      ...canonical,
+      documentationAssessment: null,
+    }),
+  );
+});
+
 test('TaskDiffReview provider output rejects incomplete, duplicate, and evidence-free conclusions', () => {
   const canonical = validSubmission();
   const submission = taskDiffReviewProviderSubmission(canonical) as Record<
@@ -101,6 +132,53 @@ test('TaskDiffReview provider output rejects incomplete, duplicate, and evidence
     assert.equal(TASK_DIFF_REVIEW_OUTPUT_VALIDATOR.validate(candidate), false);
     assert.throws(() => parseTaskDiffReviewSubmission(candidate));
   }
+});
+
+test('TaskDiffReview provider schema excludes task artifacts from documentation paths', () => {
+  const branches =
+    TASK_DIFF_REVIEW_PROVIDER_OUTPUT_SCHEMA.properties.documentationAssessment
+      .anyOf;
+  for (const [decision, field] of [
+    ['updated', 'paths'],
+    ['generated-verified', 'generated'],
+    ['needs-changes', 'requiredPaths'],
+  ] as const) {
+    const branch = branches.find(
+      (value) =>
+        'properties' in value && value.properties?.decision.const === decision,
+    ) as unknown as {
+      properties: Record<string, { items: { pattern?: string } }>;
+    };
+    const pattern = branch.properties[field]!.items.pattern;
+    assert.ok(
+      pattern,
+      `${decision} must publish the canonical documentation path restriction`,
+    );
+    for (const candidate of [
+      'README.md',
+      'docs/WORKFLOW.md',
+      'packages/core/README.md',
+    ]) {
+      assert.match(candidate, new RegExp(pattern));
+    }
+    assert.doesNotMatch(
+      'openspec/changes/example/tasks.md',
+      new RegExp(pattern),
+    );
+    assert.doesNotMatch('src/implementation.ts', new RegExp(pattern));
+  }
+  const authored = taskDiffReviewProviderSubmission(validSubmission());
+  assert.throws(() =>
+    parseTaskDiffReviewProviderSubmission({
+      ...authored,
+      documentationAssessment: {
+        decision: 'updated',
+        paths: ['README.md', 'openspec/changes/example/tasks.md'],
+        notes:
+          'The task checkbox is a lifecycle projection, not a documentation path.',
+      },
+    }),
+  );
 });
 
 test('TaskDiffReview derives the scope assessment from its findings', () => {

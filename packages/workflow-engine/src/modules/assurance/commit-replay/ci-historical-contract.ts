@@ -1,5 +1,5 @@
 /** Canonical commit replay contracts and pure predicates. */
-import { parseCheckCommand } from '../../source/check-command.ts';
+import { parseChecksConfigSource } from '../../source/check-command.ts';
 import type { CheckDefinition } from '@jigwright/core/check-command';
 import type { ParsedTask } from '../../planning-provider/planning-artifact-types.ts';
 import { ExitCode } from '../../../foundation/errors/errors.ts';
@@ -33,30 +33,14 @@ export function canonicalCheckDefinition(definition: CheckDefinition): string {
 export function parseCheckRegistry(
   value: Record<string, unknown>,
 ): Record<string, CheckDefinition> {
-  return Object.fromEntries(
-    Object.entries(value).map(([checkId, definition]) => {
-      if (
-        !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(checkId) ||
-        !isRecord(definition) ||
-        !hasExactKeys(definition, ['command', 'destructiveDatabase']) ||
-        !isStringArray(definition.command) ||
-        !parseCheckCommand(definition.command) ||
-        typeof definition.destructiveDatabase !== 'boolean'
-      ) {
-        throw ciContractError(
-          'CI_PARENT_CHECKS_INVALID',
-          `The parent check definition is invalid: ${checkId}.`,
-        );
-      }
-      return [
-        checkId,
-        {
-          command: definition.command,
-          destructiveDatabase: definition.destructiveDatabase,
-        },
-      ];
-    }),
-  );
+  const parsed = parseChecksConfigSource({ schemaVersion: 1, checks: value });
+  if (!parsed.ok) {
+    throw ciContractError(
+      'CI_PARENT_CHECKS_INVALID',
+      `The parent check definition is invalid: ${parsed.checkId}.`,
+    );
+  }
+  return parsed.value.checks;
 }
 
 export function parseTaskPolicy(
