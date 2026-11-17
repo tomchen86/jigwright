@@ -2133,7 +2133,7 @@
     {
       "path": "src/modules/assurance/task-diff-review-artifact.ts",
       "mode": "100644",
-      "digest": "sha256:7c6acbc24df2be0b007ddebcbf08f130f58b9aac5662ec76f2ac2c430b164b7e"
+      "digest": "sha256:7a2c4502b405f6e2613940bf56b986108c86b149280db0d9c57ad684de8aad81"
     },
     {
       "path": "src/modules/assurance/task-diff-review-binding-codec.ts",

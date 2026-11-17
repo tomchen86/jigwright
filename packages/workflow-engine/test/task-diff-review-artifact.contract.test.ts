@@ -5,7 +5,9 @@ import {
   parseDocumentationClosureRecord,
 } from '../src/modules/assurance/documentation-closure.ts';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import test from 'node:test';
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 
 import {
   assertTaskDiffReviewChallengeResponseCurrent,
@@ -73,6 +75,52 @@ test('TaskDiffReview record canonically binds a fresh session-independent assign
     samePrincipal.assignment.reviewerPrincipalId,
     samePrincipal.assignment.implementerPrincipalId,
   );
+});
+
+test('full TaskDiffReview coverage compares mixed-case path sets in the same order', () => {
+  const base = reviewInput();
+  const subject = createTaskDiffReviewSubject({
+    ...subjectInput(),
+    transitions: ['README.md', 'docs/guide.md', 'src/a.ts'].map((path) => ({
+      ...subjectInput().transitions[0]!,
+      path,
+    })),
+  });
+  const plan = deriveTaskDiffReviewCandidatePlan({ current: subject });
+  assert.equal(plan.action, 'review');
+  if (plan.action !== 'review')
+    assert.fail('fresh subject must require review');
+  const record = createTaskDiffReviewRecord({
+    ...base,
+    subject,
+    reviewScope: plan.scope,
+  });
+  assert.deepEqual(parseTaskDiffReviewRecord(record), record);
+  assert.deepEqual(
+    [...record.reviewScope.reviewedPaths].sort(),
+    [...subject.changedPaths].sort(),
+  );
+  for (const reviewedPaths of [
+    ['README.md', 'docs/guide.md'],
+    [...plan.scope.reviewedPaths, 'extra.md'].sort(),
+  ]) {
+    const { scopeDigest: _digest, ...body } = { ...plan.scope, reviewedPaths };
+    assert.throws(
+      () =>
+        createTaskDiffReviewRecord({
+          ...base,
+          subject,
+          reviewScope: {
+            ...body,
+            scopeDigest: crypto
+              .createHash('sha256')
+              .update(canonicalJson(body))
+              .digest('hex'),
+          },
+        }),
+      hasCode('TASK_DIFF_REVIEW_RECORD_INVALID'),
+    );
+  }
 });
 
 test('final-change TaskDiffReview requires an explicit documentation disposition', () => {
