@@ -1918,7 +1918,7 @@
     {
       "path": "src/modules/assurance/commit-replay/ci-historical-contract.ts",
       "mode": "100644",
-      "digest": "sha256:0522b431d71b473782a2a0cf798e63776ba6ccaf6324e38f6eda92132d6dad0f"
+      "digest": "sha256:ad55de9926bbf4cdaf40ea266b11621fda3429feafce83ff7ea2c0aa90a3b912"
     },
     {
       "path": "src/modules/assurance/commit-replay/ci-planning.ts",
@@ -3733,7 +3733,7 @@
     {
       "path": "src/modules/why-knowledge/implementation-reconciliation.ts",
       "mode": "100644",
-      "digest": "sha256:bdbadf0b42a484846b7c19c5b72e8ebe1917c5f715384c88054d0eb23c449464"
+      "digest": "sha256:74837e38611faecd9231c0967be39a40644fe6c7ee5bec74b2a759f4fb087d63"
     },
     {
       "path": "src/modules/why-knowledge/semantic-freshness.ts",
@@ -3943,7 +3943,7 @@
     {
       "path": "src/runtime/managed-documents/transaction/semantic-ledger-projection.ts",
       "mode": "100644",
-      "digest": "sha256:fcccdd100924d85ad21522c0707e7628dc84699e2daf74ecbc7c9c98136813d8"
+      "digest": "sha256:fd094e37824688741473f907877717409bf7b3643db842a1a6f1e9bd3f3fd63d"
     },
     {
       "path": "src/runtime/managed-documents/transaction/task-projection.ts",
@@ -4643,7 +4643,7 @@
     {
       "path": "src/runtime/repository-transaction/system-description-snapshot.ts",
       "mode": "100644",
-      "digest": "sha256:d36cdd63fb80efd175b6e19deac1feb1e9e474eb99108c51a49126c601e542c5"
+      "digest": "sha256:44e4fd322b49d6c13184bbcdb781eab79e0acc8c01f3cff4ba4fd71fea058a96"
     },
     {
       "path": "src/runtime/repository-transaction/task-strategy-patch-operators.ts",
@@ -4678,7 +4678,7 @@
     {
       "path": "src/runtime/repository-validation/commit-replay/ci-authority.ts",
       "mode": "100644",
-      "digest": "sha256:551c9ed622f00bdb98582604e9ca9ad8f1ea94248ddd964b3bc2b92afe1bae9b"
+      "digest": "sha256:af63670d85253af7e5fbe9faa8e9676da6b8059a349e6da79b1c180608dda85c"
     },
     {
       "path": "src/runtime/repository-validation/commit-replay/ci-git.ts",
@@ -4701,9 +4701,14 @@
       "digest": "sha256:780beff026301930bf65872cc3e51c94e8eaad1657c21d54aea8d3ae1017e8ae"
     },
     {
+      "path": "src/runtime/repository-validation/commit-replay/ci-semantic-ledger.ts",
+      "mode": "100644",
+      "digest": "sha256:b888ba062654a7bde5261e392635da3c841bcb8cb1e864c6610bbaf892fe7e14"
+    },
+    {
       "path": "src/runtime/repository-validation/commit-replay/ci-sequence.ts",
       "mode": "100644",
-      "digest": "sha256:4bba3657db794529706e9a3f83c921158817b59a21bc90324acb8f1e487bfd20"
+      "digest": "sha256:76f5c4f7c7b57da5edf692766f9bf3cdea9ebc271ba43d54ce9133303cc00e8c"
     },
     {
       "path": "src/runtime/repository-validation/commit-replay/ci-verification.ts",

@@ -11,8 +11,7 @@ import {
   readTagObject,
 } from '../../repository-transaction/git-command.ts';
 import type { RangeCommit } from '../../../modules/assurance/commit-replay/ci-git.ts';
-import { parseCheckCommand } from '../../../modules/source/check-command.ts';
-import type { CheckDefinition } from '@jigwright/core/check-command';
+import { parseChecksConfigSource } from '../../../modules/source/check-command.ts';
 import { parseTasks } from '../../../modules/planning-provider/planning-artifact-parsers.ts';
 import { commitFacts } from '../../repository-transaction/git-transitions.ts';
 import { runGit } from '../../repository-transaction/git.ts';
@@ -507,23 +506,20 @@ export function createCiAuthorityReplay(
     return Object.fromEntries(
       requiredChecks.map((checkId) => {
         const value = checkRegistry[checkId];
-        if (
-          !isRecord(value) ||
-          !hasExactKeys(value, ['command', 'destructiveDatabase']) ||
-          !isStringArray(value.command) ||
-          !parseCheckCommand(value.command) ||
-          typeof value.destructiveDatabase !== 'boolean'
-        ) {
+        const parsed = parseChecksConfigSource({
+          schemaVersion: 1,
+          checks: { [checkId]: value },
+        });
+        if (!parsed.ok) {
           throw ciAuthorityError(
             'CI_AUTHORITY_PARENT_CHECKS_INVALID',
             `Authority parent check is missing or invalid: ${checkId}.`,
           );
         }
-        const definition: CheckDefinition = {
-          command: value.command,
-          destructiveDatabase: value.destructiveDatabase,
-        };
-        return [checkId, canonicalCheckDefinition(definition)];
+        return [
+          checkId,
+          canonicalCheckDefinition(parsed.value.checks[checkId]!),
+        ];
       }),
     );
   }

@@ -24,7 +24,11 @@ import type {
   InvestigationWhyOverlayV3,
 } from '../../../modules/investigation/manifest/investigation-manifest-types.ts';
 import { normalizeExactRepositoryPath } from '../../../foundation/repository-path/repository-path.ts';
-import type { ActualMutation } from '../../../modules/why-knowledge/semantic-reconciliation.ts';
+import type {
+  ActualMutation,
+  MutationDisposition,
+} from '../../../modules/why-knowledge/semantic-reconciliation.ts';
+import type { SystemDescriptionSnapshot } from '../../../modules/source/spec-ownership.ts';
 import {
   createLedgerEntry,
   semanticFileSubjectId,
@@ -288,39 +292,13 @@ function projectReconciledWhyClaims(input: {
       );
     }
     if (source === null && current === null) continue;
-    const sourceDigest = prefixedDigest(
-      sha256(source ?? Buffer.from('deleted', 'utf8')),
-    );
-    const entry = createLedgerEntry({
-      schemaVersion: 2,
-      kind: 'semantic-ledger-entry',
-      subject: { subjectId, kind: 'file', path: subjectPath },
-      binding: {
-        baselineCommit: input.baselineCommit,
-        blobDigest: sourceDigest,
-        sourceDigest,
-        semanticDigest: prefixedDigest(
-          sha256(
-            canonicalJson({
-              schema: 'implementation-reconciliation-exact-source.v1',
-              sourceDigest,
-              disposition: mutation.disposition,
-            }),
-          ),
-        ),
-        extractorVersion: 'implementation-reconciliation-exact-source.v1',
-      },
-      semanticDependencies: readSemanticImportDependencies(
-        snapshot,
-        subjectPath,
-      ),
-      policyDigest: prefixedDigest(input.policyDigest),
-      provenance: {
-        changeId: input.changeId,
-        createdAtCommit: input.baselineCommit,
-      },
+    const entry = createReconciledLedgerEntry({
+      ...input,
+      subjectPath,
+      source,
+      disposition: mutation.disposition,
       supersedes: current?.entryId ?? null,
-      status: source === null ? 'tombstone' : 'current',
+      snapshot,
     });
     entries.push(entry);
   }
@@ -336,6 +314,57 @@ function projectReconciledWhyClaims(input: {
     entryIds: Object.freeze(entries.map(({ entryId }) => entryId).sort()),
     paths: Object.freeze([...new Set(paths)].sort()),
     indexDigest: sha256(canonicalJson(index)),
+  });
+}
+
+/** Shared deterministic entry calculation for live projection and Git replay. */
+export function createReconciledLedgerEntry(input: {
+  changeId: string;
+  baselineCommit: string;
+  subjectPath: string;
+  source: Buffer | null;
+  disposition: MutationDisposition;
+  supersedes: string | null;
+  snapshot: SystemDescriptionSnapshot;
+  policyDigest: string;
+}): LedgerEntry {
+  const sourceDigest = prefixedDigest(
+    sha256(input.source ?? Buffer.from('deleted', 'utf8')),
+  );
+  return createLedgerEntry({
+    schemaVersion: 2,
+    kind: 'semantic-ledger-entry',
+    subject: {
+      subjectId: semanticFileSubjectId(input.subjectPath),
+      kind: 'file',
+      path: input.subjectPath,
+    },
+    binding: {
+      baselineCommit: input.baselineCommit,
+      blobDigest: sourceDigest,
+      sourceDigest,
+      semanticDigest: prefixedDigest(
+        sha256(
+          canonicalJson({
+            schema: 'implementation-reconciliation-exact-source.v1',
+            sourceDigest,
+            disposition: input.disposition,
+          }),
+        ),
+      ),
+      extractorVersion: 'implementation-reconciliation-exact-source.v1',
+    },
+    semanticDependencies: readSemanticImportDependencies(
+      input.snapshot,
+      input.subjectPath,
+    ),
+    policyDigest: prefixedDigest(input.policyDigest),
+    provenance: {
+      changeId: input.changeId,
+      createdAtCommit: input.baselineCommit,
+    },
+    supersedes: input.supersedes,
+    status: input.source === null ? 'tombstone' : 'current',
   });
 }
 

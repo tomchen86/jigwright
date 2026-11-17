@@ -15,6 +15,15 @@ import { readPinnedTrackedTree } from './tracked-tree-reader.ts';
 import { snapshotFromTrackedTree } from '../../modules/source/system-description-snapshot.ts';
 export { snapshotFromTrackedTree } from '../../modules/source/system-description-snapshot.ts';
 
+/** Text visibility used when projecting bindings from the working tree. */
+export function isSystemDescriptionTextPath(file: string): boolean {
+  return (
+    /\.(?:[cm]?[jt]sx?|json|md)$/.test(file) &&
+    !/(?:^|\/)(?:node_modules|\.git|dist|coverage)\//.test(file) &&
+    !/(?:^|\/)\.env(?:\.|$)/.test(file)
+  );
+}
+
 export function readSystemDescriptionSnapshot(
   repositoryRoot: string,
   treeOid?: string,
@@ -57,12 +66,7 @@ export function readSystemDescriptionSnapshot(
   for (const file of files) {
     normalizeExactRepositoryPath(file);
     // Only document and source formats consumed by this feature are read.
-    if (
-      !/\.(?:[cm]?[jt]sx?|json|md)$/.test(file) ||
-      /(?:^|\/)(?:node_modules|\.git|dist|coverage)\//.test(file) ||
-      /(?:^|\/)\.env(?:\.|$)/.test(file)
-    )
-      continue;
+    if (!isSystemDescriptionTextPath(file)) continue;
     const absolute = path.join(repositoryRoot, file);
     const stat = fs.lstatSync(absolute, { throwIfNoEntry: false });
     if (!stat?.isFile() || stat.isSymbolicLink() || stat.size > 2 * 1024 * 1024)

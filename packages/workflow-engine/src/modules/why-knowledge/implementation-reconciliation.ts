@@ -49,7 +49,7 @@ const MAX_MUTATIONS = 4_096;
 const MAX_RANGES = 16_384;
 const DIGEST = /^[0-9a-f]{64}$/;
 const GIT_OBJECT = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
-const DISPOSITIONS = new Set<MutationDisposition>([
+export const IMPLEMENTATION_MUTATION_DISPOSITIONS = Object.freeze([
   'existing-subject-changed',
   'new-subject',
   'subject-deleted',
@@ -57,7 +57,10 @@ const DISPOSITIONS = new Set<MutationDisposition>([
   'non-semantic-change',
   'generated-output',
   'vendored-or-external',
-]);
+] satisfies MutationDisposition[]);
+const DISPOSITIONS = new Set<MutationDisposition>(
+  IMPLEMENTATION_MUTATION_DISPOSITIONS,
+);
 
 export { IMPLEMENTATION_RECONCILIATION_POLICY_DIGEST } from './implementation-reconciliation-policy.ts';
 

@@ -8,6 +8,7 @@ import { assertPureDependencyClosure } from './support/pure-dependency-closure.t
 import { createCiHistoricalReplay } from '../src/runtime/repository-validation/commit-replay/ci-historical-contract.ts';
 import { createTaskExecutionGenerationReader } from '../src/runtime/repository-validation/commit-replay/task-execution-evidence.ts';
 import { assertCompletePlanningTree } from '../src/modules/assurance/commit-replay/ci-planning.ts';
+import { parseCheckRegistry } from '../src/modules/assurance/commit-replay/ci-historical-contract.ts';
 import type { CiPlanningReplayOperations } from '../src/modules/assurance/commit-replay/ci-planning.ts';
 import type { CiSequenceReplayOperations } from '../src/modules/assurance/commit-replay/ci-sequence.ts';
 import {
@@ -57,6 +58,30 @@ function git(root: string, args: string[]): string {
     env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1' },
   });
 }
+
+test('historical check replay accepts live stderr without weakening registry validation', () => {
+  const definition = {
+    command: ['node', 'scripts/check.mjs'],
+    destructiveDatabase: false,
+  };
+  for (const liveStderr of [true, false]) {
+    const checks = { 'fixture-check': { ...definition, liveStderr } };
+    assert.deepEqual(parseCheckRegistry(checks), checks);
+  }
+  for (const invalid of [
+    { ...definition, liveStderr: 'yes' },
+    { ...definition, unknown: true },
+    { ...definition, command: ['node', '../outside.mjs'] },
+    { ...definition, destructiveDatabase: 'false' },
+  ]) {
+    assert.throws(
+      () => parseCheckRegistry({ 'fixture-check': invalid }),
+      (error) =>
+        error instanceof WorkflowError &&
+        error.code === 'CI_PARENT_CHECKS_INVALID',
+    );
+  }
+});
 function repository(t: test.TestContext, includePlan = true): string {
   const root = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), 'ci-replay-boundary-')),

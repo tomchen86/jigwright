@@ -16,6 +16,12 @@ import {
 import { semanticFileSubjectId } from '../src/modules/why-knowledge/semantic-ledger.ts';
 import { projectReconciledInvestigationManifestWhyToLedger } from '../src/runtime/managed-documents/transaction/semantic-ledger-projection.ts';
 import { readLedgerEntry } from '../src/runtime/storage-journal/semantic-ledger-store.ts';
+import {
+  ledgerIndexPath,
+  ledgerObjectPath,
+} from '../src/runtime/storage-journal/semantic-ledger-store.ts';
+import { replayTaskSemanticLedger } from '../src/runtime/repository-validation/commit-replay/ci-semantic-ledger.ts';
+import type { MutationDisposition } from '../src/modules/why-knowledge/semantic-reconciliation.ts';
 import { isWorkflowError } from './fixture.ts';
 
 const BASELINE = {
@@ -197,6 +203,159 @@ test('reconciled ledger projection consumes v3 WHY overlays without v2 evidence 
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
+
+for (const variant of [
+  'changed',
+  'unchanged',
+  'new',
+  'deleted',
+  'binary',
+  'symlink',
+  'asset-import',
+] as const) {
+  test(`Git replay verifies exact ${variant} reconciliation and rejects ledger drift`, (t) => {
+    const root = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'reconciliation-replay-'),
+    );
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const git = (...args: string[]) =>
+      execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+    git('init', '--quiet');
+    git('config', 'user.name', 'Replay Fixture');
+    git('config', 'user.email', 'replay@example.invalid');
+    git('config', 'commit.gpgsign', 'false');
+    const target = 'src/a.ts';
+    const other = 'src/other.ts';
+    const overlays = [
+      whyOverlay(target, 'A remains available.'),
+      whyOverlay(other, 'Other remains unchanged.'),
+    ];
+    fs.mkdirSync(path.join(root, 'src'));
+    if (variant !== 'new')
+      fs.writeFileSync(path.join(root, target), 'export const a = 1;\n');
+    fs.writeFileSync(path.join(root, other), 'export const other = 1;\n');
+    fs.writeFileSync(
+      path.join(root, 'src/a.css'),
+      '.fixture { color: red; }\n',
+    );
+    fs.mkdirSync(path.join(root, 'dist'));
+    fs.writeFileSync(
+      path.join(root, 'dist/asset.ts'),
+      'export const asset = 1;\n',
+    );
+    const planning = path.join(root, 'openspec/changes/v3-change');
+    fs.mkdirSync(planning, { recursive: true });
+    // This unit exercises projection only; the integration test validates the governing plan.
+    fs.writeFileSync(
+      path.join(planning, 'investigation.json'),
+      JSON.stringify({
+        applicability: {
+          kind: 'ordinary',
+          semanticDelta: { whyOverlays: overlays },
+        },
+      }),
+    );
+    const commit = (message: string) => {
+      git('add', '.');
+      git('commit', '--quiet', '-m', message);
+      return git('rev-parse', 'HEAD');
+    };
+    const initial = commit('Initial projection fixture');
+    const project = (
+      baselineCommit: string,
+      paths: string[],
+      disposition: MutationDisposition,
+    ) =>
+      projectReconciledInvestigationManifestWhyToLedger({
+        repositoryRoot: root,
+        changeId: 'v3-change',
+        baselineCommit,
+        whyOverlays: overlays,
+        policyDigest: IMPLEMENTATION_RECONCILIATION_POLICY_DIGEST,
+        actualMutations: paths.map((file) => ({
+          subjectId: semanticFileSubjectId(file),
+          disposition,
+          whatChanged: 'Fixture source binding.',
+          whyChanged: 'Exercise portable replay.',
+          preservedInvariants: [],
+          removedInvariants: [],
+          ranges: [],
+        })),
+      });
+    const seed = project(
+      initial,
+      variant === 'new' ? [other] : [target, other],
+      'existing-subject-changed',
+    )!;
+    const parent = commit('Seed parent ledger');
+    if (variant === 'deleted') fs.unlinkSync(path.join(root, target));
+    else if (variant === 'symlink') {
+      fs.unlinkSync(path.join(root, target));
+      fs.symlinkSync('other.ts', path.join(root, target));
+    } else if (variant === 'binary')
+      fs.writeFileSync(path.join(root, target), Buffer.from([0, 255, 1]));
+    else if (variant === 'asset-import')
+      fs.writeFileSync(
+        path.join(root, target),
+        "import './a.css';\nimport '../dist/asset.ts';\nexport const a = 2;\n",
+      );
+    else if (variant !== 'unchanged')
+      fs.writeFileSync(path.join(root, target), 'export const a = 2;\n');
+    const disposition =
+      variant === 'deleted'
+        ? 'subject-deleted'
+        : variant === 'new'
+          ? 'new-subject'
+          : variant === 'unchanged'
+            ? 'generated-output'
+            : 'existing-subject-changed';
+    const projection = project(parent, [target], disposition)!;
+    const head = commit('Commit reconciled projection');
+    const replay = (candidate: string) =>
+      replayTaskSemanticLedger(
+        root,
+        parent,
+        candidate,
+        'v3-change',
+        git('diff', '--name-only', parent, candidate).split('\n'),
+      );
+    assert.deepEqual(replay(head), [...projection.paths]);
+    const object = projection.paths.find((file) => file !== ledgerIndexPath())!;
+    const extra = ledgerObjectPath(`sha256:${'0'.repeat(64)}`);
+    for (const mutate of [
+      () =>
+        fs.writeFileSync(
+          path.join(root, ledgerIndexPath()),
+          `${canonicalJson({ schemaVersion: 1, kind: 'semantic-ledger-index', subjects: {} })}\n`,
+        ),
+      () =>
+        fs.appendFileSync(
+          path.join(root, ledgerObjectPath(seed.entryIds[0]!)),
+          '\n',
+        ),
+      () => {
+        fs.mkdirSync(path.dirname(path.join(root, extra)), { recursive: true });
+        fs.copyFileSync(path.join(root, object), path.join(root, extra));
+      },
+    ]) {
+      mutate();
+      git('add', '.');
+      const malformed = git(
+        'commit-tree',
+        git('write-tree'),
+        '-p',
+        parent,
+        '-m',
+        'Invalid projection fixture',
+      );
+      assert.throws(
+        () => replay(malformed),
+        (error) => isWorkflowError(error, 'CI_TASK_SEMANTIC_LEDGER_INVALID'),
+      );
+      git('reset', '--hard', head);
+    }
+  });
+}
 
 function reconciliationRequirement() {
   return {
