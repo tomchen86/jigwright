@@ -42,6 +42,37 @@ test('TaskDiffReview provider output schema and validator bind the complete sema
   });
 });
 
+test('TaskDiffReview provider schema requires every property and uses null for an inapplicable documentation assessment', () => {
+  assert.deepEqual(
+    [...TASK_DIFF_REVIEW_PROVIDER_OUTPUT_SCHEMA.required].sort(),
+    Object.keys(TASK_DIFF_REVIEW_PROVIDER_OUTPUT_SCHEMA.properties).sort(),
+  );
+  assert.ok(
+    TASK_DIFF_REVIEW_PROVIDER_OUTPUT_SCHEMA.properties.documentationAssessment.anyOf.some(
+      (branch) => (branch.type as string) === 'null',
+    ),
+  );
+  const canonical = validSubmission();
+  const authored = taskDiffReviewProviderSubmission(canonical);
+  assert.equal(authored.documentationAssessment, null);
+  assert.deepEqual(parseTaskDiffReviewProviderSubmission(authored), canonical);
+  const { documentationAssessment: _assessment, ...omitted } = authored;
+  assert.deepEqual(parseTaskDiffReviewProviderSubmission(omitted), canonical);
+  assert.equal(
+    TASK_DIFF_REVIEW_OUTPUT_VALIDATOR.validate({
+      ...authored,
+      documentationAssessment: {},
+    }),
+    false,
+  );
+  assert.throws(() =>
+    parseTaskDiffReviewSubmission({
+      ...canonical,
+      documentationAssessment: null,
+    }),
+  );
+});
+
 test('TaskDiffReview provider output rejects incomplete, duplicate, and evidence-free conclusions', () => {
   const canonical = validSubmission();
   const submission = taskDiffReviewProviderSubmission(canonical) as Record<

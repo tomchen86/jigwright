@@ -110,7 +110,7 @@ export function createTaskDiffReviewSubmissionProtocol(
   const TASK_DIFF_REVIEW_PROVIDER_OUTPUT_SCHEMA = Object.freeze({
     type: 'object',
     additionalProperties: false,
-    required: [...PROVIDER_SUBMISSION_KEYS],
+    required: [...PROVIDER_SUBMISSION_KEYS, 'documentationAssessment'],
     properties: {
       verdict: { enum: [...VERDICTS] },
       scopeEvidence: {
@@ -146,6 +146,7 @@ export function createTaskDiffReviewSubmissionProtocol(
       uncertainty: { type: 'string', minLength: 1 },
       documentationAssessment: {
         anyOf: [
+          { type: 'null' },
           {
             type: 'object',
             additionalProperties: false,
@@ -417,9 +418,10 @@ export function createTaskDiffReviewSubmissionProtocol(
     if (findings === undefined || suggestions === undefined) {
       throw recordInvalid();
     }
-    const { scopeEvidence, ...rest } = value;
+    const { scopeEvidence, documentationAssessment, ...rest } = value;
     return {
       ...rest,
+      ...(documentationAssessment == null ? {} : { documentationAssessment }),
       schemaVersion: 1,
       coverage: [...TASK_DIFF_REVIEW_COVERAGE],
       scopeAssessment:
@@ -457,6 +459,7 @@ export function createTaskDiffReviewSubmissionProtocol(
     } = submission;
     return {
       ...rest,
+      documentationAssessment: submission.documentationAssessment ?? null,
       scopeEvidence:
         scopeAssessment.kind === 'no-challenge'
           ? scopeAssessment.evidence.map((entry) => ({ ...entry }))

@@ -19,6 +19,8 @@ import {
   parseTaskDiffReviewDispositionRecord,
   parseTaskDiffFinalAssuranceRecord,
   parseTaskDiffReviewRecord,
+  parseTaskDiffReviewProviderSubmission,
+  taskDiffReviewProviderSubmission,
 } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import type {
   CreateTaskDiffReviewRecordInput,
@@ -95,6 +97,18 @@ test('final-change TaskDiffReview requires an explicit documentation disposition
 
   assert.throws(
     () => createTaskDiffReviewRecord({ ...base, subject }),
+    hasCode('TASK_DIFF_REVIEW_RECORD_INVALID'),
+  );
+  assert.throws(
+    () =>
+      createTaskDiffReviewRecord({
+        ...base,
+        subject,
+        submission: parseTaskDiffReviewProviderSubmission({
+          ...taskDiffReviewProviderSubmission(base.submission),
+          documentationAssessment: null,
+        }),
+      }),
     hasCode('TASK_DIFF_REVIEW_RECORD_INVALID'),
   );
 

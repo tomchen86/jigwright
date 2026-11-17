@@ -28,6 +28,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import { renderManagedProviderPrompt } from '../src/runtime/provider-execution/provider-runner-prompts.ts';
 import { withArchiveEligibility } from '../src/application/archive/archive-eligibility.ts';
 import { verifyPullRequest } from '../src/composition-root/ci-verification-production.ts';
 import { assertDocumentationClosureCommitCurrent } from '../src/runtime/managed-documents/contracts/documentation-closure.ts';
@@ -483,6 +484,20 @@ test('provider worker durably executes the code-owned TaskDiffReview contract wi
           TASK_DIFF_REVIEW_OUTPUT_SCHEMA.digest,
         );
         assert.equal(input.request.writeAllowedPaths.length, 0);
+        const prompt = renderManagedProviderPrompt(
+          input.request,
+          null,
+          null,
+          null,
+        );
+        assert.match(
+          prompt,
+          /Do not create one finding per area merely to show coverage/,
+        );
+        assert.match(
+          prompt,
+          /When it is false, return documentationAssessment: null/,
+        );
         return {
           invocationId: fixture.invocationId,
           providerId: input.providerId,
