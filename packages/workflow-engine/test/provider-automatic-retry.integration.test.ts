@@ -126,6 +126,7 @@ test('worker persists Retry-After, creates one cheap replacement, and dispatches
 test('replacement worker rejects a prior Attempt without its exact execution policy snapshot', () => {
   const fixture = startWorkerFixture('worker-rejects-missing-prior-policy');
   try {
+    const dispatched: string[] = [];
     runProviderWorker(fixture.repository, fixture.invocationId, {
       runner() {
         throw workflowError(
@@ -135,12 +136,22 @@ test('replacement worker rejects a prior Attempt without its exact execution pol
           { details: { retryAfterMs: 0 } },
         );
       },
-      automaticRetry: { enabled: true },
+      automaticRetry: {
+        enabled: true,
+        dispatcher(_cwd, invocationId) {
+          dispatched.push(invocationId);
+        },
+      },
     });
     const replacement = requiredSchedule(
       fixture.repository,
       fixture.invocationId,
     ).replacementInvocationId;
+    assert.deepEqual(dispatched, [replacement]);
+    assert.equal(
+      readProviderInvocation(fixture.runtime, replacement).state,
+      'prepared',
+    );
     fs.rmSync(
       path.join(
         fixture.runtime.invocations,

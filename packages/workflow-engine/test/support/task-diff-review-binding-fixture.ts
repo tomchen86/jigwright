@@ -336,17 +336,18 @@ function createReview(
   });
 }
 
-// Captured from the six original storage creators at f77a16ad before refactoring.
+// Captured from the original storage creators at f77a16ad before refactoring.
+// Reservation/result identities include the current TaskDiffReview wire schema.
 export const goldenRecords = {
   reservation: {
-    digest: '04f22565f62a0d95af4957319da4cddca79bb0df60d6e9db70a8d5373b5b467c',
+    digest: 'a979113d875ddead5250a01a1373793bbb3c09df1a141da50b04cea12573e07c',
     wireSha256:
-      '1b6f17f2226fe0de338bb47009d53bcb47c63a5d53cfbb1acbcd7a1186c72803',
+      '1f0fd7c3d2e50b727c2356bedacd2b16f704296298f2e6fb13ea67fbaf54a9b9',
   },
   result: {
-    digest: '3ca581a11743a89fba1fbfdc81b58ff815a78c195c1c15cddf437b046f821dc9',
+    digest: 'f293b3f141613620690b55bd42821277da532666fe5733ac8cc2e60ff5d788b4',
     wireSha256:
-      '7ba87cc9631dee99e1edc17aa037e3acdadf3af662bfffbb42b9b5137d6eb055',
+      '394d257a846a19c497de496b575820ecbb84ca85ef6287e6b918fbd7e581c16d',
   },
   continuationReservation: {
     digest: 'c4f48bdff595772a3f6a95e7210e0e261ce2147f6097ab42233aa03bcba85753',
