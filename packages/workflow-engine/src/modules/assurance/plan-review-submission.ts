@@ -370,11 +370,15 @@ export function createPlanReviewSubmissionProtocol(
     properties: {
       verdict: { enum: [...VERDICTS] },
       scopeEvidence: {
+        description:
+          'Affirmative evidence and no-action observations. Required even when findings is empty; positive coverage is not a challenge.',
         type: 'array',
         minItems: 1,
         items: { $ref: '#/$defs/evidence' },
       },
       findings: {
+        description:
+          'Actual current-change challenges only. Every entry requires disposition regardless of severity or verdict. Use an empty array when no challenge is found, not informational entries to report successful coverage.',
         type: 'array',
         maxItems: PLAN_REVIEW_LIMITS.maxFindings,
         items: { $ref: '#/$defs/finding' },
@@ -385,6 +389,8 @@ export function createPlanReviewSubmissionProtocol(
         items: { $ref: '#/$defs/term' },
       },
       suggestions: {
+        description:
+          'Independent follow-up ideas with evidence; never use this field to downgrade a current-change correctness problem.',
         type: 'array',
         maxItems: PLAN_REVIEW_LIMITS.maxSuggestions,
         items: { $ref: '#/$defs/suggestion' },

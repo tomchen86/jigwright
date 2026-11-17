@@ -69,7 +69,7 @@ test('requires current review evidence and authorized dispositions before commit
             ],
             findings: [
               {
-                severity: 'medium' as const,
+                severity: 'low' as const,
                 category: 'missing-scope',
                 summary:
                   'Confirm the adjacent provider worker remains covered.',

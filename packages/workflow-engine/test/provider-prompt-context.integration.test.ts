@@ -287,9 +287,9 @@ test('lifecycle invocation selection rolls semantic provider context once and st
 
 test('managed prompt exposes the scope and v3 structured coverage contracts only to plan review', () => {
   const scopeAssessmentInstruction =
-    'The output "scopeEvidence" array cites what you read to assess scope. Report a scope problem as a "findings" entry with category "missing-scope" or "missing-consumers"; the engine derives the scope assessment from those categories.';
+    'The output "scopeEvidence" array cites affirmative evidence and no-action observations from the review. Report an actual scope problem as a "findings" entry with category "missing-scope" or "missing-consumers"; the engine derives the scope assessment from those categories. Put already-planned execution reminders in residualRisk and independent follow-up ideas in suggestions; do not move current-change correctness problems into suggestions.';
   const structuredCoverageInstruction =
-    'In the immutable investigation.json v3 Manifest, find the unique applicability.semanticDelta.investigationRequirements[] entry whose kind is "plan-review-coverage-requirement". Read structured PlanReview coverage only from that entry\'s coverage.requiredTargetIds and coverage.targetBindings. Treat every requiredTargetIds entry as mandatory. For each required target, cite the matching targetBindings row\'s exact evidenceKind and path at least once in scopeAssessment, a finding, or a suggestion. Extra evidence is allowed; omitting a required row is rejected at plan commit.';
+    'In the immutable investigation.json v3 Manifest, find the unique applicability.semanticDelta.investigationRequirements[] entry whose kind is "plan-review-coverage-requirement". Read structured PlanReview coverage only from that entry\'s coverage.requiredTargetIds and coverage.targetBindings. Treat every requiredTargetIds entry as mandatory. For each required target, cite the matching targetBindings row\'s exact evidenceKind and path at least once in scopeEvidence, a finding, or a suggestion. If findings contain a missing-scope or missing-consumers challenge, cite every required target in findings or suggestions because the canonical challenged scope assessment does not retain scopeEvidence. Extra evidence is allowed; omitting a required row is rejected at plan commit.';
   for (const purpose of ['survey', 'plan-review'] as const) {
     const fixture = createRunnerFixture('claude', 1_048_576, 2, purpose);
     let executeCount = 0;
@@ -310,6 +310,14 @@ test('managed prompt exposes the scope and v3 structured coverage contracts only
         );
         if (purpose === 'plan-review') {
           const renderedInstructions = prompt.instructions.join('\n');
+          assert.match(
+            renderedInstructions,
+            /every finding requires disposition regardless of severity or advisory verdict/,
+          );
+          assert.match(
+            renderedInstructions,
+            /Return findings: \[\] when no challenge is found/,
+          );
           assert.doesNotMatch(renderedInstructions, /evidence node/i);
           assert.doesNotMatch(renderedInstructions, /\boutput\./);
         }
