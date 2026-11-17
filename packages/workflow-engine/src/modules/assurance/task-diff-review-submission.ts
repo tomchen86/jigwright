@@ -79,6 +79,8 @@ export function createTaskDiffReviewSubmissionProtocol(
   const TASK_DIFF_REVIEW_OUTPUT_SCHEMA_ID =
     'workflow.task-diff-review-output.v1';
 
+  const DOCUMENTATION_PATH_PATTERN = '^(?:docs/.*|(?:.*/)?README\\.md)$';
+
   const TASK_DIFF_REVIEW_LIMITS = Object.freeze({
     maxTextBytes: MAX_TEXT_BYTES,
     maxFindings: MAX_FINDINGS,
@@ -156,7 +158,11 @@ export function createTaskDiffReviewSubmissionProtocol(
               paths: {
                 type: 'array',
                 minItems: 1,
-                items: { type: 'string', minLength: 1 },
+                items: {
+                  type: 'string',
+                  minLength: 1,
+                  pattern: DOCUMENTATION_PATH_PATTERN,
+                },
               },
               notes: { type: 'string', minLength: 1 },
             },
@@ -184,7 +190,11 @@ export function createTaskDiffReviewSubmissionProtocol(
               generated: {
                 type: 'array',
                 minItems: 1,
-                items: { type: 'string', minLength: 1 },
+                items: {
+                  type: 'string',
+                  minLength: 1,
+                  pattern: DOCUMENTATION_PATH_PATTERN,
+                },
               },
               evidence: {
                 type: 'array',
@@ -203,7 +213,11 @@ export function createTaskDiffReviewSubmissionProtocol(
               requiredPaths: {
                 type: 'array',
                 minItems: 1,
-                items: { type: 'string', minLength: 1 },
+                items: {
+                  type: 'string',
+                  minLength: 1,
+                  pattern: DOCUMENTATION_PATH_PATTERN,
+                },
               },
               notes: { type: 'string', minLength: 1 },
             },

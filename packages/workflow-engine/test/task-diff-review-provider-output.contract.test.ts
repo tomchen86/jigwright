@@ -134,6 +134,53 @@ test('TaskDiffReview provider output rejects incomplete, duplicate, and evidence
   }
 });
 
+test('TaskDiffReview provider schema excludes task artifacts from documentation paths', () => {
+  const branches =
+    TASK_DIFF_REVIEW_PROVIDER_OUTPUT_SCHEMA.properties.documentationAssessment
+      .anyOf;
+  for (const [decision, field] of [
+    ['updated', 'paths'],
+    ['generated-verified', 'generated'],
+    ['needs-changes', 'requiredPaths'],
+  ] as const) {
+    const branch = branches.find(
+      (value) =>
+        'properties' in value && value.properties?.decision.const === decision,
+    ) as unknown as {
+      properties: Record<string, { items: { pattern?: string } }>;
+    };
+    const pattern = branch.properties[field]!.items.pattern;
+    assert.ok(
+      pattern,
+      `${decision} must publish the canonical documentation path restriction`,
+    );
+    for (const candidate of [
+      'README.md',
+      'docs/WORKFLOW.md',
+      'packages/core/README.md',
+    ]) {
+      assert.match(candidate, new RegExp(pattern));
+    }
+    assert.doesNotMatch(
+      'openspec/changes/example/tasks.md',
+      new RegExp(pattern),
+    );
+    assert.doesNotMatch('src/implementation.ts', new RegExp(pattern));
+  }
+  const authored = taskDiffReviewProviderSubmission(validSubmission());
+  assert.throws(() =>
+    parseTaskDiffReviewProviderSubmission({
+      ...authored,
+      documentationAssessment: {
+        decision: 'updated',
+        paths: ['README.md', 'openspec/changes/example/tasks.md'],
+        notes:
+          'The task checkbox is a lifecycle projection, not a documentation path.',
+      },
+    }),
+  );
+});
+
 test('TaskDiffReview derives the scope assessment from its findings', () => {
   const submission = validSubmission();
   const authored = taskDiffReviewProviderSubmission(submission);

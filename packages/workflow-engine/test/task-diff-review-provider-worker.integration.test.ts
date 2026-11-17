@@ -498,6 +498,14 @@ test('provider worker durably executes the code-owned TaskDiffReview contract wi
           prompt,
           /When it is false, return documentationAssessment: null/,
         );
+        assert.match(
+          prompt,
+          /Documentation paths are only paths under docs\/ or named README\.md/,
+        );
+        assert.match(
+          prompt,
+          /use only subject\.documentationRequirement\.changedPaths/,
+        );
         return {
           invocationId: fixture.invocationId,
           providerId: input.providerId,
